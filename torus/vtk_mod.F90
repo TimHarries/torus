@@ -52,7 +52,7 @@ contains
       integer :: lunit
       integer :: subcell, i
       real :: xp, xm, yp, ym, zm, zp, d, r1, r2, phi, dphi
-      type(OCTALVECTOR) :: rVec
+      type(VECTOR) :: rVec
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
             ! find the child

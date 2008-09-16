@@ -266,7 +266,7 @@ contains
 !       write(*,*) "Luminosity fudged"
        a_star%radius = radius             ! 10^10cm
        a_star%teff = temperature          ! Kelvins
-       a_star%position = DoubleVector(x, y, z)  ! 10^10cm
+       a_star%position = Vector(x, y, z)  ! 10^10cm
 
        ! assiging a specturm to this star
        ! ( For now it is just BB specturm)
@@ -964,7 +964,7 @@ contains
         IMPLICIT NONE
         
         TYPE(octal), INTENT(IN)       :: thisOctal
-        TYPE(octalVector), INTENT(IN) :: point
+        TYPE(vector), INTENT(IN) :: point
         INTEGER                       :: subcell
         
         IF ( point%x < thisOctal%centre%x ) THEN
@@ -1328,7 +1328,7 @@ contains
     type(sourcetype) :: a_star
     integer :: i, nstar
     real(double) :: dummy_d, R_disc, R2_disc, R2_cell, d2
-    TYPE(octalVector)     :: cellCenter
+    TYPE(vector)     :: cellCenter
 
     nstar = get_nstar(this)
     
@@ -1384,7 +1384,7 @@ contains
     type(sourcetype) :: a_star
     integer :: i, nstar
     real(double) :: R_sq, R_max_sq
-    TYPE(octalVector)     :: cellCenter
+    TYPE(vector)     :: cellCenter
 
     nstar = get_nstar(this)
     
@@ -1437,7 +1437,7 @@ contains
     !
     integer, parameter :: nsample =300
     real(double) :: d, x, y, z, xc, yc, zc, rho_disc_ave, r, dummy_d, rho_sample
-    type(octalVector)     :: cellCenter
+    type(vector)     :: cellCenter
     logical, save :: first_time = .true.
     integer :: i, n
     real(double) , parameter:: rho_min = 1.0d-23
@@ -1534,7 +1534,7 @@ contains
 
     !
     real(double) :: d, d2, xc, yc, zc, rho_disc_ave, dummy_d
-    type(octalVector)     :: cellCenter
+    type(vector)     :: cellCenter
     logical, save :: first_time = .true.
     real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8
     real(double) :: c9, c10, c11, c12, c13, c14, c15, c16
@@ -1620,7 +1620,7 @@ contains
     integer, parameter :: nsample =300
     real(double) :: d, x, y, z, xc, yc, zc, rho_disc_max, r, dummy_d
     real(double) :: rho_tmp
-    type(octalVector)     :: cellCenter
+    type(vector)     :: cellCenter
     logical, save :: first_time = .true.
     integer :: i
     
@@ -1812,13 +1812,13 @@ contains
     integer, intent(in)  :: i                           ! index in the source arrays (stars) 
     integer, intent(in)  :: nsource                     ! The number of sources.
     type(sourcetype), intent(inout) :: sources(nsource) ! sources (stars)
-   type(octalvector), intent(in)    :: n_obs            ! direcion to the observer (should be normalized)
+   type(vector), intent(in)    :: n_obs            ! direcion to the observer (should be normalized)
     real(double), intent(in)    :: Rmax        ! The radius of the cylinder (in 10^10cm)
     !
     logical, save :: first_time=.true.
     integer :: j, subcell
 
-    type(octalvector) :: r0, r, rp
+    type(vector) :: r0, r, rp
     real(double) :: p
     type(octal), pointer  :: child 
 

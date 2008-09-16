@@ -37,7 +37,7 @@ contains
     implicit none
     real(double) :: out
     real(double), optional :: timenow
-    type(octalVector), intent(in) :: r_vec
+    type(VECTOR), intent(in) :: r_vec
     type(gridtype), intent(in) :: grid
 
 
@@ -150,12 +150,12 @@ contains
 
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     LOGICAL, OPTIONAL, INTENT(IN) :: ignoreDisk
     
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(VECTOR) :: starPosn
+    TYPE(VECTOR) :: pointVec
     REAL              :: r, rM, theta, y
     
 
@@ -203,12 +203,12 @@ contains
     use flowSpeedVariables
     
     type(GRIDTYPE), intent(in)    :: grid
-    type(octalVector), intent(in) :: point
+    type(VECTOR), intent(in) :: point
     logical, optional, intent(in) :: ignoreDisk
     real :: y
 
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(VECTOR) :: starPosn
+    TYPE(VECTOR) :: pointVec
 
     real(oct) :: r, theta
     real :: TTauriMdotLocal
@@ -351,10 +351,10 @@ contains
                                !TTauriRinner, TTauriRouter
 
     type(GRIDTYPE), intent(in)    :: grid
-    type(octalVector), intent(in) :: point
+    type(VECTOR), intent(in) :: point
     logical, optional, intent(in) :: ignoreDisk
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(VECTOR) :: starPosn
+    TYPE(VECTOR) :: pointVec
     real :: r, rM, theta, y
     real :: Rstart
     !real :: Rend, thetaDisk
@@ -662,12 +662,12 @@ contains
 !
 !    IMPLICIT NONE
 !
-!    TYPE(octalVector), INTENT(IN) :: point
+!    TYPE(VECTOR), INTENT(IN) :: point
 !    TYPE(gridtype), INTENT(IN)    :: grid
 !    LOGICAL, OPTIONAL, INTENT(IN) :: ignoreDisk
 !
-!    TYPE(octalVector) :: starPosn
-!    TYPE(octalVector) :: pointVec
+!    TYPE(VECTOR) :: starPosn
+!    TYPE(VECTOR) :: pointVec
 !
 !    REAL :: r, rM, theta, y, ang
 !
@@ -717,7 +717,7 @@ contains
   function testDensity(point, grid)
     use input_variables
     real :: testDensity
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r
     r = modulus(point)
@@ -730,7 +730,7 @@ contains
   function protoDensity(point, grid) result(testdensity)
     use input_variables
     real :: testDensity
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r
     r = modulus(point)
@@ -743,7 +743,7 @@ contains
 
   real function whitneyDensity(point, grid)
     use input_variables
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r, mu, mu_0, muCavity, rhoEnv, r_c, rhoCavity
     real :: h, rhoDisc, alpha
@@ -800,7 +800,7 @@ contains
 
   real function planetgapDensity(point, grid) result(rhoDisc)
     use input_variables
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real(double) :: r, h, fac
 
@@ -828,7 +828,7 @@ contains
     use constants_mod
     use input_variables
     real :: testDensity
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r,v
     r = modulus(point)
@@ -843,7 +843,7 @@ contains
 
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     real :: r, hr, rd
     
     rd = rOuter / 2.
@@ -863,7 +863,7 @@ contains
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
     real(double) :: kspiral
     integer :: nspiral1
@@ -873,7 +873,7 @@ contains
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
-    type(OCTALVECTOR),save :: stream1(nStream), stream2(nStream)
+    type(VECTOR),save :: stream1(nStream), stream2(nStream)
     logical :: ok
 
     if (firstTime) then
@@ -888,7 +888,7 @@ contains
        do i = 1, nStream
           phi = phi1 + dphi * real(i-1)/real(nStream-1)
           r = (phi-phi1)/dphi * r1
-          stream1(i) = OCTALVECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
+          stream1(i) = VECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
        enddo
 
        phi1 = 0.
@@ -901,7 +901,7 @@ contains
        do i = 1, nStream
           phi = phi1 + dphi * real(i-1)/real(nStream-1)
           r = (phi-phi1)/dphi * r1
-          stream2(i) = OCTALVECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
+          stream2(i) = VECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
        enddo
 
 
@@ -964,7 +964,7 @@ contains
   function iras04158Disc(point) result (rhoOut)
     use input_variables, only : betadisc, rinner, router, alphadisc, height, rho0
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, fac
 
     rhoOut = tiny(rhoOut)
@@ -987,7 +987,7 @@ contains
   function warpedDisc(point, grid) result (rhoOut)
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight
     real(double) :: fac
     real(double) :: phi
@@ -1018,7 +1018,7 @@ contains
 
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     real :: r,  mStar, rCav, r_c, r_d
     real :: openingAngle, mu, mu_0, bigR
     real :: z, H_R, H_0, alpha
@@ -1109,7 +1109,7 @@ contains
 !  end function Equation2
 
   function clumpyDisc(rVec, grid) result (rhoOut)
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     type(GRIDTYPE) :: grid
     real :: rhoOut
     
@@ -1133,7 +1133,7 @@ contains
     use constants_mod
     implicit none
     REAL(double) :: ppdiskDensity
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
 
     REAL(double) :: R, rInnerAU, rOuterAU
@@ -1364,7 +1364,7 @@ end subroutine calcPlanetMass
 
 
   function torusLogoDensity(rVec) result(rho)
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     real(double) :: rho, phi, theta
     integer :: i, j
     character(len=50) :: logo(10)
@@ -1408,7 +1408,7 @@ end subroutine calcPlanetMass
     USE magField
     
     TYPE(GRIDTYPE), INTENT(IN)    :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     INTEGER, INTENT(OUT), OPTIONAL :: sampleNum 
       ! index number of the gridSample that was closest
     REAL(double), INTENT(OUT), OPTIONAL :: rho
@@ -1418,15 +1418,15 @@ end subroutine calcPlanetMass
 
     INTEGER :: iSample
     REAL(oct) :: rStar
-    TYPE(octalVector) :: samplePos
+    TYPE(VECTOR) :: samplePos
     INTEGER :: nFound
     INTEGER :: latestSampleFound 
     INTEGER :: nearestSampleNum
 !!$    REAL :: distanceArray(SIZE(magFieldGrid))
     REAL :: starDistance
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: flowVector
-    TYPE(octalVector) :: lineEnd1, lineEnd2
+    TYPE(VECTOR) :: starPosn
+    TYPE(VECTOR) :: flowVector
+    TYPE(VECTOR) :: lineEnd1, lineEnd2
     REAL(oct) :: prevDistance, nextDistance, nearestDistance
     REAL(oct) :: distance
     TYPE(gridSample), POINTER :: thisSample

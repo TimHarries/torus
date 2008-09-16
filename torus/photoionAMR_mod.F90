@@ -75,7 +75,7 @@ contains
     integer :: myRank, ierr
     character(len=20) :: plotfile
     real(double) :: tDump, nextDumpTime
-    type(OCTALVECTOR) :: direction, viewVec
+    type(VECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: thread1(200), thread2(200), nBound(200), nPairs
     integer :: group(100), nGroup
@@ -88,12 +88,12 @@ contains
 
     nHydroThreads = nThreadsGlobal-1
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
     cfl = 0.3d0
     mu = 2.d0
 
-    viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
+    viewVec = VECTOR(-1.d0,0.d0,0.d0)
     viewVec = rotateZ(viewVec, 40.d0*degtorad)
     viewVec = rotateY(viewVec, 30.d0*degtorad)
 
@@ -128,11 +128,11 @@ contains
        if (myRank == 1) call tune(6,"Exchange across boundary")
        call writeInfo("Done", TRIVIAL)
 
-       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
        call calculateRhoU(grid%octreeRoot, direction)
-       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
        call calculateRhoV(grid%octreeRoot, direction)
-       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
 
        call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
@@ -265,11 +265,11 @@ contains
        call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
-       !       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       !       direction = VECTOR(1.d0, 0.d0, 0.d0)
        !       call calculateRhoU(grid%octreeRoot, direction)
-       !       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       !       direction = VECTOR(0.d0, 1.d0, 0.d0)
        !       call calculateRhoV(grid%octreeRoot, direction)
-       !       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       !       direction = VECTOR(0.d0, 0.d0, 1.d0)
        !       call calculateRhoW(grid%octreeRoot, direction)
 
 
@@ -399,7 +399,7 @@ contains
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     integer :: iSource
-    type(OCTALVECTOR) :: rVec, uHat, rHat
+    type(VECTOR) :: rVec, uHat, rHat
     real(double) :: lCore
     integer :: nMonte, iMonte
     integer :: subcell
@@ -407,7 +407,7 @@ contains
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: octVec
     real(double) :: r
     integer :: ilam
     integer :: nInf
@@ -848,7 +848,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   include 'mpif.h'
   integer :: myRank, ierr
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
@@ -1118,8 +1118,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    use grid_mod
    implicit none
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: direction
-   type(OCTALVECTOR) :: posVec, norm(6), p3(6)
+   type(VECTOR) :: direction
+   type(VECTOR) :: posVec, norm(6), p3(6)
    real(oct) :: t(6),tval,denom(6)
    integer :: i,j
    logical :: ok, thisOk(6)
@@ -1200,13 +1200,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   subroutine intersectCubeAMR(grid, posVec, direction, tval)
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(in) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(in) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
+   type(VECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
-   type(OCTALVECTOR) :: subcen, point
+   type(VECTOR) :: subcen, point
    integer :: subcell
    
    real(oct) :: t(6),denom(6)
@@ -1220,19 +1220,19 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
 
-   norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
-   norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-   norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
-   norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
-   norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-   norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+   norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+   norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+   norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+   norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+   norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+   norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
 
-   p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-   p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-   p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-   p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-   p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-   p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+   p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+   p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+   p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+   p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+   p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+   p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
 
    thisOk = .true.
 
@@ -1294,18 +1294,18 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(inout) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
    type(OCTAL),pointer :: thisOctal
-   type(OCTALVECTOR) :: subcen, point
+   type(VECTOR) :: subcen, point
    integer :: subcell
    real(double) :: compZ, currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    logical :: ok
-   type(OCTALVECTOR) :: xHat, zHAt
+   type(VECTOR) :: xHat, zHAt
 
    point = posVec
 
@@ -1836,7 +1836,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     real(double) :: photonPacketWeight
     integer :: i 
     real :: e, xsec
-!    type(OCTALVECTOR) :: rVec
+!    type(VECTOR) :: rVec
 
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
@@ -2390,7 +2390,7 @@ subroutine dumpLexington(grid, epsoverdt)
   real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   real(double) :: oirate, oiirate, oiiirate, oivrate
   real(double) :: v, epsoverdt
-  type(OCTALVECTOR) :: octVec
+  type(VECTOR) :: octVec
   real :: fac
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
   real(double) :: cooling, dustHeating
@@ -2413,7 +2413,7 @@ subroutine dumpLexington(grid, epsoverdt)
         call random_number(phi)
         phi = phi * twoPi
         
-        octVec = OCTALVECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
+        octVec = VECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
         
         
         call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
@@ -2661,7 +2661,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   integer :: subcell, i, iIon, iTrans
   real(double) :: luminosity, v, rate
   real :: pops(10)
-  type(OCTALVECTOR) :: rvec
+  type(VECTOR) :: rvec
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3888,7 +3888,7 @@ end subroutine readHeIIrecombination
   subroutine getNewMPIPhoton(position, direction, frequency, endloop)
     include 'mpif.h'
     integer :: ierr
-    type(OCTALVECTOR) :: position, direction
+    type(VECTOR) :: position, direction
     real(double) :: frequency
     integer, parameter :: nTemp = 7
     real(double) :: tempstorage(nTemp)
@@ -3919,7 +3919,7 @@ end subroutine readHeIIrecombination
   subroutine sendMPIPhoton(position, direction, frequency, iThread)
     include 'mpif.h'
     integer :: ierr
-    type(OCTALVECTOR) :: position, direction
+    type(VECTOR) :: position, direction
     real(double) :: frequency
     integer, parameter :: nTemp = 7
     real(double) :: tempstorage(nTemp)

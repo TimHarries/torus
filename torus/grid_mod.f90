@@ -45,12 +45,6 @@ module grid_mod
      module procedure getIndices_single
      module procedure getIndices_octal
   end interface
-
-  interface outsideGrid
-     module procedure outsideGrid_single
-     module procedure outsideGrid_double
-     module procedure outsideGrid_octal
-  end interface
      
 
 contains
@@ -1083,12 +1077,12 @@ contains
              rho = rhoNought * (rInner/r)**2
              if (sqrt(rVec%x**2 + rVec%y**2) > rInner) then
                 grid%rho(i,j,k) = rho * exp(-abs(rVec%z/height))
-                rVec = rVec / r
+                rVec = rVec / dble(r)
                 vVec = rVec  .cross. spinAxis
                 if (modulus(vVec) /= 0.) then
                    call normalize(vVec)
                    vel = sqrt(bigG * mCore / r) / cSpeed
-                   vVec = vel  * vVec 
+                   vVec = dble(vel)  * vVec 
                    grid%velocity(i,j,k) = vVec
                 endif
              endif
@@ -1169,12 +1163,12 @@ contains
                 rho = rhoNought * (rInner/r)**2
                 grid%rho(i,j,k) = rho * exp(-abs(grid%zAxis(k)/height))
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))
-                rVec = rVec / r
+                rVec = rVec / dble(r)
                 vVec = rVec  .cross. spinAxis
                 if (modulus(vVec) /= 0.) then
                    call normalize(vVec)
                    vel = sqrt(bigG * mCore / r) / cSpeed
-                   vVec = vel  * vVec 
+                   vVec = dble(vel)  * vVec 
                    grid%velocity(i,j,k) = vVec
                 endif
              endif
@@ -1203,7 +1197,7 @@ contains
     implicit none
     type(GRIDTYPE) :: Grid
     integer, parameter :: nRad = 50
-    real :: phi
+    real(double) :: phi
     real :: rTorus
     real :: rOuter
     real :: theta
@@ -1256,8 +1250,8 @@ contains
 
        do j = 1, nAng
           phi  = real(j-1)/real(nAng-1)*Pi
-          aVec = router * (cos(phi) * rHat)
-          bVec = router * (sin(phi) * torusAxis)
+          aVec = dble(router) * (cos(phi) * rHat)
+          bVec = dble(router) * (sin(phi) * torusAxis)
           rUp = r0Vec + (aVec + bVec)
           rDown = r0Vec + (aVec - bVec)
           call locate(grid%xAxis,grid%nx,real(rUp%x), i1)
@@ -1394,7 +1388,7 @@ contains
              rVec%x = grid%xAxis(grid%nx) * real(i-1)/99.
              rVec%y = rVec%x * tan(ang)
              rVec%z = 0.
-             rVec = rotateX(rVec, rotAng)
+             rVec = rotateX(rVec, dble(rotAng))
              rVec%x = rVec%x + binarySep  - stagPoint
              call locate(grid%xAxis,Grid%nx, real(rVec%x), i1)
              call locate(grid%yAxis,Grid%ny, real(rVec%y), i2)
@@ -1643,14 +1637,15 @@ contains
 
     real :: scale
     type(GRIDTYPE) :: Grid
-    real :: radius, mdot, rMin, rMax, vel, v,  r, x
+    real :: radius, mdot, rMin, rMax, vel, v,  x
+    real(double) :: r
     integer :: i, j, k
     integer :: nSpiral, iSpiral
     integer :: i1,i2
     real :: muStart,muEnd
-    real :: thickness,  woundFac
+    real(double) :: thickness,  woundFac
     integer :: j1,j2
-    real :: phi, theta, phaseOffset, spiralPhase
+    real(double) :: phi, theta, phaseOffset, spiralPhase
     type(VECTOR) :: rHat, perp, zAxis, startVec, endVec, thisVec
 
     grid%geometry = "spiral"
@@ -1712,16 +1707,16 @@ contains
           rHat = VECTOR(cos(phi),sin(phi),0.)
           perp = rHat .cross. zAxis
 
-          startVec = (r*rHat) - ((thickness/2.)*r)*perp
-          endVec = (r*rHat) + ((thickness/2.)*r)*perp
+          startVec = (r*rHat) - ((thickness/2.d0)*r)*perp
+          endVec = (r*rHat) + ((thickness/2.d0)*r)*perp
 
 
           do i1 = 1,100
              x = real(i1-1)/99.
-             thisVec = startVec + (x*(endVec-startVec))
+             thisVec = startVec + (dble(x)*(endVec-startVec))
              call getPolar(thisVec, r, theta, phi)
-             call locate(grid%rAxis,grid%nr,r,i2)
-             call locate(grid%phiAxis,grid%nPhi,phi,k)
+             call locate(grid%rAxis,grid%nr,real(r),i2)
+             call locate(grid%phiAxis,grid%nPhi,real(phi),k)
 
              do j = min(j1,j2), max(j1,j2)
                 v = 10.e5+(vel-10.e5)*(1.- radius/grid%rAxis(i2))**1
@@ -2358,12 +2353,12 @@ contains
           do j = 1, 10000
              xTemp = (xDist(2) - xDist(1))*real(j-1)/9999. + xDist(1)
              rVec = VECTOR(xTemp, (yDist(2)-yDist(1))*real(j-1)/9999.+yDist(1), 0.)
-             thisVec = rotateX(rVec, rotationAngle)
+             thisVec = rotateX(rVec, dble(rotationAngle))
              thisVec = thisVec - grid%starPos2
-             thisVec = rotateZ(thisVec, -deflectionAngle)
-             thisDirection = rotateX(direction(2), rotationAngle)
+             thisVec = rotateZ(thisVec, dble(-deflectionAngle))
+             thisDirection = rotateX(direction(2), dble(rotationAngle))
              thisVec = thisVec + grid%starPos2 + depthVec
-             thisDirection = rotateZ(thisDirection, deflectionAngle)
+             thisDirection = rotateZ(thisDirection, dble(deflectionAngle))
              if (.not.outSideGrid(thisVec, grid)) then
                 call getIndices(grid, thisVec, i1,i2,i3,t1,t2,t3)
                 shockCone(i1,i2,i3) = .true.
@@ -2380,12 +2375,12 @@ contains
           rotationAngle = twoPi * real(i-1)/299.
           do j = 2, nSteps
              rVec = VECTOR(xDist(j), yDist(j), 0.)
-             thisVec = rotateX(rVec, rotationAngle)
+             thisVec = rotateX(rVec, dble(rotationAngle))
              thisVec = thisVec - grid%starPos2
-             thisVec = rotateZ(thisVec, -deflectionAngle)
-             thisDirection = rotateX(direction(j), rotationAngle)
+             thisVec = rotateZ(thisVec, dble(-deflectionAngle))
+             thisDirection = rotateX(direction(j), dble(rotationAngle))
              thisVec = thisVec + grid%starPos2 + depthVec
-             thisDirection = rotateZ(thisDirection, deflectionAngle)
+             thisDirection = rotateZ(thisDirection, dble(deflectionAngle))
              if (.not.outSideGrid(thisVec, grid)) then
                 call getIndices(grid, thisVec, i1,i2,i3,t1,t2,t3)
                 shockCone(i1,i2,i3) = .true.
@@ -2494,7 +2489,7 @@ contains
              vVec = rVec .cross. zAxis
              call normalize(vVec)
              vel = (twoPi * (modulus(rVec)*1.e10) / period)/cSpeed
-             grid%velocity(i,j,k) = grid%velocity(i,j,k) + (vel*vVec)
+             grid%velocity(i,j,k) = grid%velocity(i,j,k) + (dble(vel)*vVec)
              if (shockCone(i,j,k)) then
                 grid%velocity(i,j,k) = (grid%velocity(i,j,k) .dot. shockDirection(i,j,k))*shockDirection(i,j,k)
                 grid%rho(i,j,k) = grid%rho(i,j,k) * fac
@@ -2514,50 +2509,20 @@ contains
 
   end subroutine fillGridBinary
 
-  logical pure function outsideGrid_single(posVec, grid)    
+  logical pure function outsideGrid(posVec, grid)    
     type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in)   :: posVec
 
-    outSideGrid_single = .false.
+    outSideGrid = .false.
 
     if ((posVec%x > grid%xAxis(grid%nx)) .or. &
          (posVec%y > grid%yAxis(grid%ny)) .or. &
          (posVec%z > grid%zAxis(grid%nz)) .or. &
          (posVec%x < grid%xAxis(1)) .or. &
          (posVec%y < grid%yAxis(1)) .or. &
-         (posVec%z < grid%zAxis(1))) outsideGrid_single = .true.
+         (posVec%z < grid%zAxis(1))) outsideGrid = .true.
 
-  end function outsideGrid_single
-
-  logical pure function outsideGrid_double(posVec, grid)
-    type(GRIDTYPE), intent(in) :: grid
-    type(DOUBLEVECTOR), intent(in)   :: posVec
-
-    outSideGrid_double = .false.
-
-    if ((posVec%x > grid%xAxis(grid%nx)) .or. &
-         (posVec%y > grid%yAxis(grid%ny)) .or. &
-         (posVec%z > grid%zAxis(grid%nz)) .or. &
-         (posVec%x < grid%xAxis(1)) .or. &
-         (posVec%y < grid%yAxis(1)) .or. &
-         (posVec%z < grid%zAxis(1))) outsideGrid_double = .true.
-
-  end function outsideGrid_double
-
-  logical pure function outsideGrid_octal(posVec, grid)
-    type(GRIDTYPE), intent(in) :: grid
-    type(OCTALVECTOR), intent(in)   :: posVec
-
-    outSideGrid_octal = .false.
-    
-    if ((posVec%x > grid%xAxis(grid%nx)) .or. &
-         (posVec%y > grid%yAxis(grid%ny)) .or. &
-         (posVec%z > grid%zAxis(grid%nz)) .or. &
-         (posVec%x < grid%xAxis(1)) .or. &
-         (posVec%y < grid%yAxis(1)) .or. &
-         (posVec%z < grid%zAxis(1))) outsideGrid_octal = .true.
-    
-  end function outsideGrid_octal
+  end function outsideGrid
 
 
   subroutine getIndices_single(grid, rVec, i1, i2, i3, t1, t2, t3)
@@ -2566,7 +2531,7 @@ contains
     type(VECTOR), intent(in)   :: rVec
     integer, intent(out)       :: i1, i2, i3
     real, intent(out)          :: t1, t2 ,t3
-    real                       :: r, theta, phi, mu
+    real(double)                       :: r, theta, phi, mu
 
     if (grid%cartesian) then
 
@@ -2620,7 +2585,7 @@ contains
 
        call getPolar(rVec, r, theta, phi)
        mu = rVec%z/r
-       call hunt(grid%rAxis, grid%nr, r, i1)
+       call hunt(grid%rAxis, grid%nr, real(r), i1)
        if (i1 == 0) then
           i1 = 1
        endif
@@ -2629,11 +2594,11 @@ contains
        t1 = (r-grid%rAxis(i1))/(grid%rAxis(i1+1)-grid%rAxis(i1))
 
 
-       call hunt(grid%muAxis, grid%nMu, mu, i2)
+       call hunt(grid%muAxis, grid%nMu, real(mu), i2)
        if (i2 == grid%nMu) i2 = grid%nMu-1
        t2 = (mu-grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2))
 
-       call hunt(grid%phiAxis, grid%nPhi, phi, i3)
+       call hunt(grid%phiAxis, grid%nPhi, real(phi), i3)
        if (i3 == grid%nPhi) i3=i3-1
        t3 = (phi-grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3))
 
@@ -2646,7 +2611,7 @@ contains
   subroutine getIndices_octal(grid, rVec, i1, i2, i3, t1, t2, t3)
     ! making this PURE may cause problems with XL Fortran
     type(GRIDTYPE), intent(in)          :: grid
-    type(OCTALVECTOR), intent(in)       :: rVec
+    type(VECTOR), intent(in)       :: rVec
     integer, intent(out)                :: i1, i2, i3
     real(oct), intent(out)   :: t1, t2 ,t3
     real(oct)                :: r, theta, phi, mu
@@ -4097,7 +4062,7 @@ contains
     integer, allocatable :: ir(:,:)
     integer :: nTheta, nPhi, nr
     integer :: iTheta, iPhi, i1
-    real :: fac, fac2, r, theta, phi
+    real(double) :: fac, fac2, r, theta, phi
     type(VECTOR) :: starPos1, starPos2, rVec
     character(len=80) :: filename
 
@@ -4178,7 +4143,7 @@ contains
     do i = 1, grid%nx
        do j = 1, grid%ny
           do k = 1, grid%nz
-             grid%velocity(i,j,k) = grid%velocity(i,j,k) / real(cSpeed)
+             grid%velocity(i,j,k) = grid%velocity(i,j,k) / cSpeed
           enddo
        enddo
     enddo
@@ -4299,9 +4264,9 @@ contains
              yArray2(1:ir(itheta,iphi)) = ionPattern(itheta,iphi,1:ir(itheta,iphi),3)
 
              if ( (r > rArray(1)) .and. (r < rArray(ir(itheta,iphi)))) then
-                call locate(rArray, ir(itheta,iphi), r, i1)
-                fac = logint(r, rArray(i1), rArray(i1+1), yArray(i1), yArray(i1+1))
-                fac2 = logint(r, rArray(i1), rArray(i1+1), yArray2(i1), yArray2(i1+1))
+                call locate(rArray, ir(itheta,iphi), real(r), i1)
+                fac = logint(real(r), rArray(i1), rArray(i1+1), yArray(i1), yArray(i1+1))
+                fac2 = logint(real(r), rArray(i1), rArray(i1+1), yArray2(i1), yArray2(i1+1))
              endif
              if (r > rArray(ir(itheta,iphi))) then
                 fac = 1.
@@ -4687,12 +4652,12 @@ contains
           ang = twoPi*real(i-1)/real(nAng-1)
           x = cos(ang)*x2y2
           y = sin(ang)*x2y2
-          norm2 = rotateZ(norm, ang)
+          norm2 = rotateZ(norm, dble(ang))
           sVec = VECTOR(x,y,z)
-          sVec1 = sVec - (dr/2.)*norm2
-          sVec2 = sVec + (dr/2.)*norm2
+          sVec1 = sVec - (dr/2.d0)*norm2
+          sVec2 = sVec + (dr/2.d0)*norm2
           do j = 1, nr
-             sVec = sVec1 + (real(j-1)/real(nr-1))*(sVec2-sVec1)
+             sVec = sVec1 + (dble(j-1)/dble(nr-1))*(sVec2-sVec1)
              call getIndices(grid, sVec, i1, i2, i3, t1, t2, t3)
              r = modulus(sVec)
              if ((r >= 2.e6).and.(r < 3.e6)) then
@@ -5488,7 +5453,7 @@ contains
 !                  + (grid%rAxis(1)*beta2*vext*(1.-grid%rAxis(1)/grid%rAxis(i))**(beta2-1.))/grid%rAxis(i)**2
 
              grid%velocity(i,j,k) = (vel / cSpeed) * rHat
-             grid%dVbyDr(i,j,k) = dv * rHat
+             grid%dVbyDr(i,j,k) = dble(dv) * rHat
              grid%rho(i,j,k) = mDot / (fourPi * vel * grid%rAxis(i)**2 * 1.e20)
              grid%inStar(i,j,k) = .false.
              grid%inUse(i,j,k) = .true.
@@ -5507,12 +5472,12 @@ contains
                      grid%rAxis(i)*sin(grid%phiAxis(k))*sinTheta, &
                      grid%rAxis(i)*grid%muAxis(j))
                 r = grid%rAxis(i)
-                rVec = rVec / r
+                rVec = rVec / dble(r)
                 vVec = rVec  .cross. spinAxis
                 if (modulus(vVec) /= 0.) then
                    call normalize(vVec)
                    vel = sqrt(bigG * mCore / (r*1.e10)) / cSpeed
-                   vVec = vel  * vVec 
+                   vVec = dble(vel)  * vVec 
                    grid%velocity(i,j,k) = grid%velocity(i,j,k) +  vVec
                 endif
              enddo
@@ -6348,7 +6313,7 @@ contains
     real(double) :: kabs !, ksca
     real(double) :: d
     logical :: use_this_subcell, update
-    type(octalvector) :: rvec, rhat
+    type(VECTOR) :: rvec, rhat
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -6442,7 +6407,7 @@ contains
                 ! The directional derivative the velocity field in radial direction.
                 rhat = rvec
                 call normalize(rhat)
-                value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
+                value = amrGridDirectionalDeriv(grid,rvec, rhat, thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("bias")
                 value = thisOctal%biasCont3d(subcell)
              case("prob")
@@ -6563,7 +6528,7 @@ contains
     integer :: nstar
     integer :: i 
     type(sourcetype) :: a_star
-    type(octalvector) :: position, newposition
+    type(VECTOR) :: position, newposition
     type(OCTAL), pointer :: thisOctal
 
     
@@ -6576,7 +6541,7 @@ contains
     do i = 1, nstar       
        ! Finding the position of the stars in the list,
        a_star = get_a_star(a_cluster,i)         
-       position = OCTALVECTOR(a_star%position%x, a_star%position%y, a_star%position%z)
+       position = VECTOR(a_star%position%x, a_star%position%y, a_star%position%z)
 
        ! Finding the octal which contains the position.
        call amrGridValues(grid%octreeRoot, position, foundOctal=thisOctal)
@@ -6623,11 +6588,11 @@ contains
     ! on the z=0 plane, and so on...
     real, intent(in)              :: val_3rd_dim 
     integer, intent(in) :: luout  ! file unit number for the output
-    type(octalvector), intent(in) :: center   ! position of the center of the root node
+    type(VECTOR), intent(in) :: center   ! position of the center of the root node
     !
     !
     type(octal), pointer  :: child 
-    type(octalvector) :: rvec
+    type(VECTOR) :: rvec
     real :: value
 
     integer :: subcell, i

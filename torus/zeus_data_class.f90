@@ -465,7 +465,7 @@ contains
     ! 
     integer :: ir, itheta, iphi  ! index
     ! intermediate values
-    type(doublevector) :: d3(2,2,2), d2(2,2), d1(2), t, Vip
+    type(vector) :: d3(2,2,2), d2(2,2), d1(2), t, Vip
 !    real(double) :: ln_r1, ln_r2, ln_r
     integer :: i, j, k
 
@@ -796,7 +796,7 @@ contains
     implicit none
     type(zeus_data), intent(inout) :: this
     real(double), intent(in) :: scale 
-    real(single) :: dummy
+    real(double) :: dummy
     integer :: i, j, k
     dummy = scale
     do k = 1, this%nphi

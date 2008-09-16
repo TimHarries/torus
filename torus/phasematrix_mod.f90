@@ -289,7 +289,7 @@ contains
        meanscat=meanscat+acos(oldDirection.dot.newDirection)*180./pi
        tot=tot+newDirection
     enddo
-    tot = tot / real(nTest)
+    tot = tot / dble(nTest)
     meanscat = meanscat / real(ntest)
     write(*,*) "Final vector: ",tot
     write(*,*) "mean scattering angle ",meanscat
@@ -305,7 +305,7 @@ contains
     real, optional :: weight
     integer, intent(in) :: nMuMie, nLambda
     integer :: i, j, k, m, ilam
-    real :: theta, r, phi
+    real(double) :: theta, r, phi
     real, intent(in) :: lamArray(:)
     real, allocatable, save :: prob(:,:)
     real, allocatable, save :: cosArray(:)
@@ -340,7 +340,7 @@ contains
     endif
 
     call random_number(r)
-    call locate(prob(ilam,1:nMuMie), nMuMie, r, j)
+    call locate(prob(ilam,1:nMuMie), nMuMie, real(r), j)
     theta = cosArray(j) + &
          (cosArray(j+1)-cosArray(j))*(r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
 

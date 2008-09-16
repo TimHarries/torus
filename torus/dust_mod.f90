@@ -858,7 +858,7 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(octalvector) :: rVec
+    type(VECTOR) :: rVec
     real :: x, z
     real :: height
     real(double) :: fac
@@ -1078,13 +1078,13 @@ contains
     real(double) :: rhotemp
     real :: temptemp
     real :: direction
-    type(OCTALVECTOR) :: currentPos, temp
+    type(VECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
 
     nz = 0
     halfSmallestSubcell = grid%halfSmallestSubcell
 
-    currentPos = OCTALVECTOR(xPos, yPos, direction*halfSmallestSubcell)
+    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
 
     do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
@@ -1098,9 +1098,9 @@ contains
        zAxis(nz) = temp%z
        subcellsize(nz) = thisOctal%subcellsize
        !       endif
-       currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+       currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
        !       else
-       !          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+       !          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
        !       endif
     end do
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
@@ -1183,7 +1183,7 @@ contains
 
   recursive subroutine fillDustWhitney(grid, thisOctal)
     use input_variables
-    TYPE(octalVector) :: point
+    TYPE(VECTOR) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r, mu, mu_0, muCavity, rhoEnv, r_c
     real :: h, rhoDisc, alpha

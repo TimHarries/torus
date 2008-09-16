@@ -73,11 +73,12 @@ contains
     real :: thickness                        ! thickness of arm
     real :: r1
     integer ::  j1,j2
-    real :: phi, theta, r
+    real(double) :: phi, theta, r
     real :: phaseOffset, spiralPhase         ! phase offsets of arms
     type(VECTOR) :: rHat, perp, zAxis, startVec, endVec  ! vectors
     type(VECTOR) :: thisVec, posvec, vVec
-    real :: rMin, rMax, r0, phi0, phi1
+    real :: rMin, rMax, r0,  phi1
+    real(double) :: phi0
     real :: tot
     real :: x0, x1, y0, y1, dx, dy
     real :: vPhi
@@ -151,7 +152,7 @@ contains
 
              ! keep radial velocity but add a phi component
 
-             grid%velocity(i,j,k) = vVec + vPhi * perp
+             grid%velocity(i,j,k) = vVec + dble(vPhi) * perp
 
           enddo
        enddo
@@ -177,7 +178,7 @@ contains
           tot = 0.
           do j = 1, 10000
              r = rMin + (r0 - rMin) * real(j-1)/9999.
-             call locate(grid%rAxis, grid%nr, r, i1)
+             call locate(grid%rAxis, grid%nr, real(r), i1)
              w = modulus(grid%velocity(i1,1,1))/modulus(grid%velocity(grid%nr,1,1))
              tot = tot + ((r0-rMin)/(10000.*rMin)) * (1. - (rMin/r)**2) / w
           enddo
@@ -190,7 +191,7 @@ contains
           tot = 0.
           do j = 1, 10000
              r = rMin + (r1 - rMin) * real(j-1)/9999.
-             call locate(grid%rAxis, grid%nr, r, i1)
+             call locate(grid%rAxis, grid%nr, real(r), i1)
              w = modulus(grid%velocity(i1,1,1))/modulus(grid%velocity(grid%nr,1,1))
              tot = tot + ((r1-rMin)/(10000.*rMin)) * (1. - (rMin/r)**2) / w
           enddo
@@ -207,18 +208,18 @@ contains
           call normalize(rHat)
           perp = rHat .cross. zAxis
 
-          posVec = r0*VECTOR(cos(phi0),sin(phi0),0.)
+          posVec = dble(r0)*VECTOR(cos(phi0),sin(phi0),0.d0)
 
 
-          startVec = posVec - ((thickness/2.)*r0)*perp
-          endVec = posVec + ((thickness/2.)*r0)*perp
+          startVec = posVec - dble((thickness/2.)*r0)*perp
+          endVec = posVec + dble((thickness/2.)*r0)*perp
 
           do i1 = 1,100
              x = real(i1-1)/99.
-             thisVec = startVec + (x*(endVec-startVec))
+             thisVec = startVec + (dble(x)*(endVec-startVec))
              call getPolar(thisVec, r, theta, phi)
-             call locate(grid%rAxis,grid%nr,r,i2)
-             call locate(grid%phiAxis,grid%nPhi,phi,k)
+             call locate(grid%rAxis,grid%nr,real(r),i2)
+             call locate(grid%phiAxis,grid%nPhi,real(phi),k)
              do j = min(j1,j2), max(j1,j2)
                 if (facGrid(i2,j,k) == 1.) then
                    facGrid(i2,j,k) = 20.
@@ -302,7 +303,7 @@ contains
                 call normalize(phiHat)
              endif
 
-             grid%velocity(i,j,k) = vVec + vPhi * phiHat
+             grid%velocity(i,j,k) = vVec + dble(vPhi) * phiHat
 
           enddo
        enddo
@@ -585,7 +586,7 @@ contains
        do i = 1, 1000       
           ang = twoPi*real(i-1)/999.
           do j = 1, 1000
-             rVec = (real(j-1)/999.)*VECTOR(rDisk*cos(ang),rDisk*sin(ang),0.)
+             rVec = (dble(j-1)/999.d0)*VECTOR(dble(rDisk*cos(ang)),dble(rDisk*sin(ang)),0.d0)
              r = modulus(rVec)
              vHat = rVec .cross. zAxis
              if (modulus(vHat) /= 0.) call normalize(vHat)
@@ -602,7 +603,7 @@ contains
                 else
                    v = 0.
                 endif
-                grid%velocity(i1,i2,i3) = v * vHat
+                grid%velocity(i1,i2,i3) = dble(v) * vHat
                 done(i1,i2,i3) = .true.
              endif
           enddo
@@ -757,7 +758,7 @@ contains
           do k = 1, 100
              y = yDist * real(k-1)/99.
              rVec = VECTOR(xDist, y, 0.)
-             rVec = rotateX(rVec, rotationAngle)
+             rVec = rotateX(rVec, dble(rotationAngle))
              call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
 !             write(*,*) i1, i2, i3
              grid%etaLine(i1,i2,i3) = 1.e-30

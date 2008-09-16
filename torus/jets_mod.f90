@@ -242,11 +242,11 @@ contains
     IMPLICIT NONE
 
     REAL                          :: out
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
 
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
 
     !
     LOGICAL, SAVE  :: first_time = .true. 
@@ -427,11 +427,11 @@ contains
     IMPLICIT NONE
 
     REAL                          :: out
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
 
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
 
     !
     LOGICAL, SAVE  :: first_time = .true. 
@@ -522,15 +522,15 @@ contains
     IMPLICIT NONE
 
     TYPE(vector)                  :: out  ! componets in [c]
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
-    real                          :: Vr
+    real(double)                          :: Vr
     TYPE(vector)                  :: rhat
 
     ! radial speed in [c]
     Vr = JetsVelocity(point,grid)*1.0d5/cSpeed  
     
-    rhat = o2s(point)/real( modulus(point) )
+    rhat = (point)/modulus(point)
     
     out = Vr * rhat
 
@@ -557,11 +557,11 @@ contains
     IMPLICIT NONE
     
     REAL  ::  out 
-    TYPE(octalVector), INTENT(IN) :: point 
+    TYPE(vector), INTENT(IN) :: point 
     TYPE(gridtype), INTENT(IN) :: grid
     
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
     
     REAL :: Rp, cos_theta
     real :: r
@@ -650,10 +650,10 @@ contains
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     
-    TYPE(octalVector) :: point
+    TYPE(vector) :: point
     
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
     TYPE(vector) :: vP
 
     REAL :: r    
@@ -720,9 +720,9 @@ contains
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     
-    TYPE(octalVector) :: point    
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: point    
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
     
     starPosn = grid%starPos1
    
@@ -890,39 +890,39 @@ contains
 
     ! now store the 'base level' values
     
-    thisOctal%cornerVelocity(1) = JetsVelocity_in_C(octalVector(x1,y1,z1),grid)
-    thisOctal%cornerVelocity(2) = JetsVelocity_in_C(octalVector(x2,y1,z1),grid)
-    thisOctal%cornerVelocity(3) = JetsVelocity_in_C(octalVector(x3,y1,z1),grid)
-    thisOctal%cornerVelocity(4) = JetsVelocity_in_C(octalVector(x1,y2,z1),grid)
-    thisOctal%cornerVelocity(5) = JetsVelocity_in_C(octalVector(x2,y2,z1),grid)
-    thisOctal%cornerVelocity(6) = JetsVelocity_in_C(octalVector(x3,y2,z1),grid)
-    thisOctal%cornerVelocity(7) = JetsVelocity_in_C(octalVector(x1,y3,z1),grid)
-    thisOctal%cornerVelocity(8) = JetsVelocity_in_C(octalVector(x2,y3,z1),grid)
-    thisOctal%cornerVelocity(9) = JetsVelocity_in_C(octalVector(x3,y3,z1),grid)
+    thisOctal%cornerVelocity(1) = JetsVelocity_in_C(vector(x1,y1,z1),grid)
+    thisOctal%cornerVelocity(2) = JetsVelocity_in_C(vector(x2,y1,z1),grid)
+    thisOctal%cornerVelocity(3) = JetsVelocity_in_C(vector(x3,y1,z1),grid)
+    thisOctal%cornerVelocity(4) = JetsVelocity_in_C(vector(x1,y2,z1),grid)
+    thisOctal%cornerVelocity(5) = JetsVelocity_in_C(vector(x2,y2,z1),grid)
+    thisOctal%cornerVelocity(6) = JetsVelocity_in_C(vector(x3,y2,z1),grid)
+    thisOctal%cornerVelocity(7) = JetsVelocity_in_C(vector(x1,y3,z1),grid)
+    thisOctal%cornerVelocity(8) = JetsVelocity_in_C(vector(x2,y3,z1),grid)
+    thisOctal%cornerVelocity(9) = JetsVelocity_in_C(vector(x3,y3,z1),grid)
 
     ! middle level
   
-    thisOctal%cornerVelocity(10) = JetsVelocity_in_C(octalVector(x1,y1,z2),grid)
-    thisOctal%cornerVelocity(11) = JetsVelocity_in_C(octalVector(x2,y1,z2),grid)
-    thisOctal%cornerVelocity(12) = JetsVelocity_in_C(octalVector(x3,y1,z2),grid)
-    thisOctal%cornerVelocity(13) = JetsVelocity_in_C(octalVector(x1,y2,z2),grid)
-    thisOctal%cornerVelocity(14) = JetsVelocity_in_C(octalVector(x2,y2,z2),grid)
-    thisOctal%cornerVelocity(15) = JetsVelocity_in_C(octalVector(x3,y2,z2),grid)
-    thisOctal%cornerVelocity(16) = JetsVelocity_in_C(octalVector(x1,y3,z2),grid)
-    thisOctal%cornerVelocity(17) = JetsVelocity_in_C(octalVector(x2,y3,z2),grid)
-    thisOctal%cornerVelocity(18) = JetsVelocity_in_C(octalVector(x3,y3,z2),grid)
+    thisOctal%cornerVelocity(10) = JetsVelocity_in_C(vector(x1,y1,z2),grid)
+    thisOctal%cornerVelocity(11) = JetsVelocity_in_C(vector(x2,y1,z2),grid)
+    thisOctal%cornerVelocity(12) = JetsVelocity_in_C(vector(x3,y1,z2),grid)
+    thisOctal%cornerVelocity(13) = JetsVelocity_in_C(vector(x1,y2,z2),grid)
+    thisOctal%cornerVelocity(14) = JetsVelocity_in_C(vector(x2,y2,z2),grid)
+    thisOctal%cornerVelocity(15) = JetsVelocity_in_C(vector(x3,y2,z2),grid)
+    thisOctal%cornerVelocity(16) = JetsVelocity_in_C(vector(x1,y3,z2),grid)
+    thisOctal%cornerVelocity(17) = JetsVelocity_in_C(vector(x2,y3,z2),grid)
+    thisOctal%cornerVelocity(18) = JetsVelocity_in_C(vector(x3,y3,z2),grid)
 
     ! top level
     
-    thisOctal%cornerVelocity(19) = JetsVelocity_in_C(octalVector(x1,y1,z3),grid)
-    thisOctal%cornerVelocity(20) = JetsVelocity_in_C(octalVector(x2,y1,z3),grid)
-    thisOctal%cornerVelocity(21) = JetsVelocity_in_C(octalVector(x3,y1,z3),grid)
-    thisOctal%cornerVelocity(22) = JetsVelocity_in_C(octalVector(x1,y2,z3),grid)
-    thisOctal%cornerVelocity(23) = JetsVelocity_in_C(octalVector(x2,y2,z3),grid)
-    thisOctal%cornerVelocity(24) = JetsVelocity_in_C(octalVector(x3,y2,z3),grid)
-    thisOctal%cornerVelocity(25) = JetsVelocity_in_C(octalVector(x1,y3,z3),grid)
-    thisOctal%cornerVelocity(26) = JetsVelocity_in_C(octalVector(x2,y3,z3),grid)
-    thisOctal%cornerVelocity(27) = JetsVelocity_in_C(octalVector(x3,y3,z3),grid)
+    thisOctal%cornerVelocity(19) = JetsVelocity_in_C(vector(x1,y1,z3),grid)
+    thisOctal%cornerVelocity(20) = JetsVelocity_in_C(vector(x2,y1,z3),grid)
+    thisOctal%cornerVelocity(21) = JetsVelocity_in_C(vector(x3,y1,z3),grid)
+    thisOctal%cornerVelocity(22) = JetsVelocity_in_C(vector(x1,y2,z3),grid)
+    thisOctal%cornerVelocity(23) = JetsVelocity_in_C(vector(x2,y2,z3),grid)
+    thisOctal%cornerVelocity(24) = JetsVelocity_in_C(vector(x3,y2,z3),grid)
+    thisOctal%cornerVelocity(25) = JetsVelocity_in_C(vector(x1,y3,z3),grid)
+    thisOctal%cornerVelocity(26) = JetsVelocity_in_C(vector(x2,y3,z3),grid)
+    thisOctal%cornerVelocity(27) = JetsVelocity_in_C(vector(x3,y3,z3),grid)
     
   END SUBROUTINE VelocityCorners
 
@@ -931,7 +931,7 @@ contains
   function density_inverse_sq(point) RESULT(out)
     implicit none
     real                          :: out
-    type(octalvector), intent(in) :: point
+    type(vector), intent(in) :: point
 !    type(gridtype), intent(in)    :: grid
 
     real(oct)        :: rr                     !  [10^10 cm]

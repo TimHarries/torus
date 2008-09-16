@@ -190,7 +190,7 @@ contains
     real              :: dTheta, dPhi, dOmega
     real              :: totomega
     real(double)              :: escprob,  tau_mn
-    type(octalVector) :: rVecOctal
+    type(VECTOR) :: rVecOctal
     type(OCTAL),pointer:: octalCopy
     
     dtheta = pi / real(ntheta-1)
@@ -234,7 +234,7 @@ contains
           else
              tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
                                    (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
-             tau_mn = tau_mn / (directionalderiv(grid,s2o(rvec),i1,i2,i3,direction)/1.e10)
+             tau_mn = tau_mn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
           end if
           
           tau_mn = tau_mn *  lambdaTrans(m,n) / cSpeed_dbl
@@ -275,7 +275,7 @@ contains
     type(OCTAL),pointer,optional:: thisOctal
     integer,intent(in),optional :: thisSubcell 
     
-    real :: r, thetatostar, phiTostar
+    real(double) :: r, thetatostar, phiTostar
     real :: totomega, disttooccult
     integer :: i, j
     type(vector) :: tostar, occultposition, starposition
@@ -298,7 +298,7 @@ contains
 !    real :: lambdaArray(maxTau)
     !logical :: hitCore
 !    real :: tauLocal
-    type(octalVector) :: rVecOctal
+    type(VECTOR) :: rVecOctal
     type(OCTAL),pointer :: octalCopy
 
     full = .false.
@@ -317,11 +317,11 @@ contains
 
     tostar = starposition - rVec
     disttostar = modulus(tostar)
-    tostar = tostar / disttostar
+    tostar = tostar / dble(disttostar)
 
     tooccult = occultposition - rVec
     disttooccult = modulus(tooccult)
-    tooccult = tooccult / disttooccult
+    tooccult = tooccult / dble(disttooccult)
 
     sinang = starradius / disttostar
     ang = asin(min(1.,max(-1.,sinAng)))
@@ -402,7 +402,7 @@ contains
                                                                    startOctal=octalCopy) / 1.e10)
                       end if
                    else
-                      tau_cmn = tau_cmn / (directionalderiv(grid,s2o(rVec),i1,i2,i3,direction)/1.e10)
+                      tau_cmn = tau_cmn / (directionalderiv(grid,rVec,i1,i2,i3,direction)/1.e10)
                    end if
                 endif
 
@@ -430,7 +430,8 @@ contains
     type(vector) :: rvec
     integer :: i1, i2, i3
     integer :: i, j, nphi=5, ntheta=5
-    real :: r, thetatostar, phiTostar,betacmn
+    real(double) :: r, thetatostar, phiTostar
+    real :: betacmn
     real :: h, totomega, disttooccult
     integer nstar
     type(vector) :: tostar, occultposition, starposition
@@ -471,11 +472,11 @@ contains
 
     tostar = starposition - rvec
     disttostar = modulus(tostar)
-    tostar = tostar / disttostar
+    tostar = tostar / dble(disttostar)
 
     tooccult = occultposition - rvec
     disttooccult = modulus(tooccult)
-    tooccult = tooccult / disttooccult
+    tooccult = tooccult / dble(disttooccult)
 
     h  = sqrt(max(0.,(disttostar**2 - starradius**2)))
     cosang = h / disttostar
@@ -535,7 +536,7 @@ contains
                       tau_cmn = 0. !abs(tau_cmn)
                    endif
                    tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
-                   tau_cmn = tau_cmn / (directionalderiv(grid,s2o(rvec),i1,i2,i3,direction)/1.e10)
+                   tau_cmn = tau_cmn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
                 endif
 
                 if (tau_cmn < 0.1) then
@@ -891,7 +892,7 @@ contains
                       if (k /= i3) then
                          rVec = vector(grid%xaxis(i), grid%yaxis(j), grid%zaxis(k))
                          ang = atan2(rVec%z, rVec%y)
-                         thisVec = rotateX(rVec, ang)
+                         thisVec = rotateX(rVec, dble(ang))
                          call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
                          if (.not.grid%inStar(i1,i2,i3)) then
                             grid%ne(i,j,k) = grid%ne(i1,i2,i3)
@@ -1071,7 +1072,7 @@ contains
                       if (j /= i2) then
                          rVec = vector(grid%xaxis(i), grid%yaxis(j), grid%zaxis(k))
                          ang = atan2(rVec%y, rVec%x)
-                         thisVec = rotateZ(rVec, ang)
+                         thisVec = rotateZ(rVec, dble(ang))
                          call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
                          if (.not.grid%inStar(i1,i2,i3)) then
                             grid%ne(i,j,k) = grid%ne(i1,i2,i3)
@@ -2680,9 +2681,9 @@ contains
       type(VECTOR) :: toStar, toOccult, direction, rVec, starPos, occultPos
       real :: distToStar, distToOccult, h
       real :: starRadius, occultRadius
-      real :: thetaToStar, phiToStar
+      real(double) :: thetaToStar, phiToStar
       real :: dotProd, sinAng
-      real :: r, occultedFrac
+      real(double) :: r, occultedFrac
       integer :: nTheta = 10, nPhi = 10
       real :: cosAng, ang, theta, phi, dtheta, dphi, domega
       integer :: i, j
@@ -2692,8 +2693,8 @@ contains
       toOccult = occultPos - rVec
       distToStar = modulus(toStar)
       distToOccult = modulus(toOccult)
-      toStar = toStar / distToStar
-      toOccult = toOccult / distToOccult
+      toStar = toStar / dble(distToStar)
+      toOccult = toOccult / dble(distToOccult)
       
       if (distToOccult > distToStar) then
          visFrac = 1.
@@ -2911,7 +2912,7 @@ contains
     real, dimension(maxLevels)  :: previousXall
     real                        :: previousNeRatio      
     logical, parameter          :: debugInfo = .false.
-    Type(octalVector)           :: starCentre 
+    Type(VECTOR)           :: starCentre 
     real(double), parameter :: CI = 2.07d-16   ! in cgs units
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
 !    real :: lam
@@ -3701,7 +3702,7 @@ contains
     !
     type(octalWrapper), dimension(:), allocatable :: octalArray ! array containing pointers to octals
     type(octal), pointer :: thisOctal
-    TYPE(octalVector) :: point
+    TYPE(VECTOR) :: point
     REAL(double) :: ri
     ! work arrays
     integer :: nd  ! depth points
@@ -3770,13 +3771,13 @@ contains
     logical, dimension(:), intent(in), optional :: subcellMask
 
     integer               :: iSubcell
-    type(octalVector)     :: inPlanePoint
+    type(VECTOR)     :: inPlanePoint
     !real(double) :: Ne1, Ne2
     !logical               :: ok
     real(oct)  :: distance
-    type(octalVector)     :: starCentre
-    type(octalVector)     :: rHat
-    type(octalVector)     :: cellCentre
+    type(VECTOR)     :: starCentre
+    type(VECTOR)     :: rHat
+    type(VECTOR)     :: cellCentre
     type(octal),pointer   :: inPlaneOctal
     integer               :: inPlaneSubcell
     real, dimension(1:grid%maxLevels+1) :: departCoeff 
@@ -3789,7 +3790,7 @@ contains
     integer               :: iChild
     
     starCentre = grid%starPos1
-    rHat = octalVector(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
+    rHat = VECTOR(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
       
     DO iSubcell = 1, thisOctal%maxChildren, 1
       if (present(subcellMask)) then
@@ -3802,7 +3803,7 @@ contains
 
       ! calculate the radial distance from the star's centre in the x-y plane 
       distance = modulus(cellCentre -                                         &
-                         octalVector(starCentre%x,starCentre%y,cellCentre%z))
+                         VECTOR(starCentre%x,starCentre%y,cellCentre%z))
       
       inPlanePoint = starCentre + (distance * rHat)
       inPlanePoint%z = cellCentre%z 
@@ -3863,8 +3864,8 @@ contains
     integer               :: iSubcell
     !real(double) :: Ne1, Ne2
     !logical               :: ok
-    type(octalVector)     :: starCentre
-    type(octalVector)     :: cellCentre, r, r2
+    type(VECTOR)     :: starCentre
+    type(VECTOR)     :: cellCentre, r, r2
     type(octal),pointer   :: foundOctal
     integer               :: foundSubcell
     real(oct) :: phi

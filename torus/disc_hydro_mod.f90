@@ -170,13 +170,13 @@ contains
     real(double) :: rhotemp	
     real :: temptemp
     real :: direction
-    type(OCTALVECTOR) :: currentPos, temp
+    type(VECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
 
     nz = 0
     halfSmallestSubcell = grid%halfSmallestSubcell
 
-    currentPos = OCTALVECTOR(xPos, yPos, direction*halfSmallestSubcell)
+    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
 
     do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
@@ -190,9 +190,9 @@ contains
           zAxis(nz) = temp%z
           subcellsize(nz) = thisOctal%subcellsize
 !       endif
-          currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+          currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
 !       else
-!          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+!          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
 !       endif
     end do
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
@@ -207,10 +207,10 @@ contains
     real(double) :: rho(:)
     integer :: i, subcell
     real :: direction
-    type(octalvector) :: currentPos
+    type(VECTOR) :: currentPos
     
     do i = 1, nz
-       currentPos = OCTALVECTOR(xPos, yPos, direction*zAxis(i)/1.d10)
+       currentPos = VECTOR(xPos, yPos, direction*zAxis(i)/1.d10)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell)
 ! original code moved to realPutDensity
@@ -537,7 +537,7 @@ contains
 
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(octalvector) :: rVec
+    type(VECTOR) :: rVec
     integer :: nx, subcell, i
     real(double) :: xAxis(:)
 
@@ -567,7 +567,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real :: temperature
-    type(octalvector) :: rvec
+    type(VECTOR) :: rvec
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren

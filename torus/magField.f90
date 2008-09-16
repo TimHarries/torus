@@ -5,13 +5,13 @@ USE vector_mod
 IMPLICIT NONE
 
 TYPE gridsample
-  TYPE(octalVector) :: position ! same units as AMR grid  
+  TYPE(vector) :: position ! same units as AMR grid  
   REAL :: velocity ! velocity magnitude (cSpeed)
-  TYPE(octalVector) :: flowVector 
+  TYPE(vector) :: flowVector 
     ! local direction of flow.
     ! should be normalised, and (usually) directed inwards towards star.
-  TYPE(octalVector) :: prevFlowVector ! flowVectors for the next and
-  TYPE(octalVector) :: nextFlowVector !   previous samples
+  TYPE(vector) :: prevFlowVector ! flowVectors for the next and
+  TYPE(vector) :: nextFlowVector !   previous samples
   REAL :: nextVelocity ! velocity magnitude of next sample(cSpeed)
   REAL :: prevVelocity ! velocity magnitude of previous sample (cSpeed)
   REAL :: rho ! g cm-3
@@ -23,8 +23,8 @@ TYPE gridsample
                             !   sample will actually be in the forward direction
                             !   (in the direction defined by flowvector)
   REAL(oct) :: nextDistance ! distance to next sample (1.e10 cm)
-  TYPE(octalVector) :: prevDirection ! directions to previous/next samples in flow 
-  TYPE(octalVector) :: nextDirection
+  TYPE(vector) :: prevDirection ! directions to previous/next samples in flow 
+  TYPE(vector) :: nextDirection
   REAL(oct) :: distanceUpperLimit 
     ! maximum possible distance that a point could be from this gridSample, 
     !   and still be in the flow defined by this gridSample. used to quickly
@@ -33,15 +33,15 @@ TYPE gridsample
 END TYPE gridSample
 
 TYPE hotSpotVariable
-  TYPE(spVectorOctal) :: position ! position, r should be 1.0  
+  TYPE(spVector) :: position ! position, r should be 1.0  
   REAL :: speed ! (cm s-1)
   REAL :: rho ! g cm-3
   REAL(oct) :: radius ! radius of (circular) stream (radians)
   REAL :: temperature ! K
 
   ! variables below are for an alternative implementation, for testing
-  TYPE(octalVector) :: XYZposition ! centre of hot spot (usual grid coords + units) 
-  TYPE(octalVector) :: subSurfacePosn ! a position directly below the centre of the
+  TYPE(vector) :: XYZposition ! centre of hot spot (usual grid coords + units) 
+  TYPE(vector) :: subSurfacePosn ! a position directly below the centre of the
       !   hot spot; if a surface element has a (cartesian) distance that is less than 
       !   "radius_1e10" from this point, it is within the spot
       !   (usual grid unit; coordinates are relative to stellar centre) 
@@ -98,8 +98,8 @@ CONTAINS
     REAL :: rhoValue   ! rho, from file  
     REAL(oct) :: areaValue  ! cross-sectional area, from file  
     INTEGER :: fileRead ! loop counter
-    TYPE(spVectorOctal) :: spPosition ! position, spherical polar coords.
-    TYPE(octalVector) :: prevVector
+    TYPE(spVector) :: spPosition ! position, spherical polar coords.
+    TYPE(vector) :: prevVector
     TYPE(gridSample), POINTER :: thisSample
     TYPE(gridSample), POINTER :: prevSample
     INTEGER :: iStream ! index of current stream
@@ -109,7 +109,7 @@ CONTAINS
     REAL(double) :: localAccretionRate
     REAL(double) :: totalAccretionRate
     REAL :: distance
-    TYPE(spVectorOctal) :: spSubSurfacePosn ! sub-surface position (sph. pol.) 
+    TYPE(spVector) :: spSubSurfacePosn ! sub-surface position (sph. pol.) 
 
     IF (scaleFlowRho) THEN
       PRINT *, "Will rescale densities by factor of: ",flowRhoScale
@@ -196,14 +196,14 @@ CONTAINS
         IF ( fileRead == 2 ) THEN
           ! we want to store the data in our arrays
           
-          spPosition = spVectorOctal(rValue, thetaValue, phiValue)
+          spPosition = spVector(rValue, thetaValue, phiValue)
           ! transform to grid coordinates
           spPosition%r = spPosition%r * Rstar
           magFieldGrid(iSample)%position = spPosition ! (includes conversion to
                                               ! cartesian coordinates)
           magFieldGrid(iSample)%position =                           &
             magFieldGrid(iSample)%position + &
-              octalVector(starPosn%x,starPosn%y,starPosn%z)
+              vector(starPosn%x,starPosn%y,starPosn%z)
                                               
           magFieldGrid(iSample)%velocity = (velValue * 1.e5) / cSpeed 
 !          magFieldGrid(iSample)%velocity = (velValue * 1.e-5) 
@@ -240,7 +240,7 @@ CONTAINS
           IF ( iSampleInStream == 1 ) THEN
               
             thisSample => magFieldGrid(iSample)
-            thisSample%flowVector = zeroVectorOctal
+            thisSample%flowVector = zeroVector
 
             ! store data about a surface hotspot
             magFieldHotspots(iStream)%position = spPosition

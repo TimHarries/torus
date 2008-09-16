@@ -393,8 +393,8 @@ contains
     real(double) :: ds, phi, i0(:), r, cosTheta
     real(double) :: Hcol, HeICol, HeIICol
     integer :: iTrans
-    type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
-    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition, pvec, photoDirection
+    type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel
+    type(VECTOR) :: rayVel, startVel, endVel, endPosition, pvec, photoDirection
     real(double) :: alphanu, snu, jnu
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
@@ -932,7 +932,7 @@ contains
     integer :: nAtom
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
-    type(OCTALVECTOR) :: position, direction
+    type(VECTOR) :: position, direction
     integer :: nOctal, iOctal, subcell
     real(double), allocatable :: ds(:), phi(:), i0(:,:)
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
@@ -954,7 +954,7 @@ contains
     integer, allocatable :: iseed(:)
     real(double) :: tolerance
     integer, allocatable :: sourceNumber(:)
-!    type(OCTALVECTOR) :: posVec
+!    type(VECTOR) :: posVec
 !    real(double) :: r
     real(double), allocatable :: cosTheta(:)
     real(double), allocatable :: weight(:)
@@ -1174,7 +1174,7 @@ contains
 !          do ir = 1, 50
 !             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
 !             r = 10.d0**r
-!             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!             posVec = VECTOR(r, 0.d0, 0.d0)
 !             thisOctal => grid%octreeRoot
 !             call findSubcellLocal(posVec, thisOctal, subcell)
 
@@ -1192,7 +1192,7 @@ contains
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom, &
                               nfreq, freq, iCont(iray,1:nFreq))
                          if ((iray == 10).and.(iOctal==iOctal_beg).and.(subcell == 1).and.(myrankglobal==2)) &
-                              write(*,*) myrankglobal, " direction ",o2s(direction)
+                              write(*,*) myrankglobal, " direction ",direction
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       iter = 0
@@ -1640,7 +1640,7 @@ contains
   
 
   subroutine randomRayDirection(probTowardsSource, point, source, nSource, direction, weight)
-    type(OCTALVECTOR) :: point, direction, toStar
+    type(VECTOR) :: point, direction, toStar
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     real(double) :: probTowardsSource, weight
@@ -1701,7 +1701,7 @@ contains
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray) result (i0)
 
-    type(OCTALVECTOR) :: position, direction, pvec, photoDirection
+    type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
     integer :: nSource
     real(double) :: freqArray(:)
@@ -1718,8 +1718,8 @@ contains
 !    integer :: endSubcell
     integer :: subcell
     real(double) :: costheta
-    type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
-    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
+    type(VECTOR) :: currentPosition, thisPosition, thisVel
+    type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
     real(double) :: alphanu, snu, jnu
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
@@ -1794,7 +1794,7 @@ contains
     i0 = tiny(i0)!0.d0
     intensityIntegral = 0.0
     tau = 0.d0
-    rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+    rayVel = VECTOR(0.d0, 0.d0, 0.d0)
 
     thisOctal => grid%octreeRoot
     icount = 0
@@ -2021,9 +2021,9 @@ contains
     real(double) :: distance
     integer :: itrans
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(5000)
+    type(VECTOR) :: rayPosition(5000)
     real(double) :: da(5000), dOmega(5000)
-    type(OCTALVECTOR) :: viewVec
+    type(VECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
     integer :: nLambda
@@ -2125,7 +2125,7 @@ contains
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
     type(GRIDTYPE) :: grid
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(:), viewVec, xProj,yProj
+    type(VECTOR) :: rayPosition(:), viewVec, xProj,yProj
     real(double) :: da(:), dOmega(:), distance
     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
     real(double) :: rMax, rMin
@@ -2182,7 +2182,7 @@ contains
           yPos = 0.d0
           zPos = r1 * cos(phi1)
 
-          xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+          xProj =  VECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
           call normalize(xProj)
           yProj = viewVec .cross. xProj
          call normalize(yProj)
@@ -2213,7 +2213,7 @@ contains
     integer :: nAtom
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
-    type(OCTALVECTOR) :: viewvec, rayPos, xProj, yProj
+    type(VECTOR) :: viewvec, rayPos, xProj, yProj
     real(double) :: distance = 250.d0*pctocm/1.d10
     real(double) :: deltaV
     integer :: iTrans
@@ -2257,7 +2257,7 @@ contains
 
     call addvelocityAxis(cube, -200.d0, 200.d0)
 
-    xProj =   viewVec .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    xProj =   viewVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
     call normalize(xProj)
     yProj =  xProj .cross.viewVec
     call normalize(yProj)

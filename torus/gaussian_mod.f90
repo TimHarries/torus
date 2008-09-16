@@ -20,7 +20,7 @@ module gaussian_mod
 
   type GAUSSIAN
      real(double) :: sigma
-     type(OCTALVECTOR) :: centre
+     type(VECTOR) :: centre
      real(double) :: amplitude
   end type GAUSSIAN
 
@@ -41,7 +41,7 @@ contains
   subroutine findFactor(fac, position, gArray, ng)
     real :: fac
     integer :: ng, i
-    type(OCTALVECTOR) :: position
+    type(VECTOR) :: position
     type(GAUSSIAN) :: gArray(ng)
 
     fac = 0.
@@ -52,7 +52,7 @@ contains
 
   real function eval(thisgaussian, position)
     type(GAUSSIAN) :: thisGaussian
-    type(OCTALVECTOR) :: position
+    type(VECTOR) :: position
     real(oct) :: x
 
     x = modulus(thisGaussian%centre - position)

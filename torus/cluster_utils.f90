@@ -43,7 +43,7 @@ contains
   subroutine analyze_cluster(a_cluster, dir_obs, distance, grid)
     implicit none
     type(cluster), intent(in) :: a_cluster 
-    type(octalvector), intent(in) :: dir_obs
+    type(VECTOR), intent(in) :: dir_obs
     real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
@@ -80,7 +80,7 @@ contains
     implicit none
 
     type(cluster), intent(in) :: a_cluster 
-    type(octalvector), intent(in) :: dir_obs
+    type(VECTOR), intent(in) :: dir_obs
     real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
@@ -91,7 +91,7 @@ contains
     integer :: nstar
     type(sourcetype) :: a_star
     real(double) :: T  !   temperature in K.    
-    type(octalvector) :: position   ! position of stars [10^10cm]
+    type(VECTOR) :: position   ! position of stars [10^10cm]
     real(double) :: R            ! radius of star    [10^10cm]
     !
     ! The mean wavelength of the filters
@@ -343,7 +343,7 @@ contains
     implicit none
 
     type(cluster), intent(in) :: a_cluster 
-    type(octalvector), intent(in) :: dir_obs
+    type(VECTOR), intent(in) :: dir_obs
     real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     type(filter_set), intent(in) :: filters 
@@ -354,7 +354,7 @@ contains
     integer :: nstar
     type(sourcetype) :: a_star
     real(double) :: T  !   temperature in K.    
-    type(octalvector) :: position   ! position of stars [10^10cm]
+    type(VECTOR) :: position   ! position of stars [10^10cm]
     real(double) :: R            ! radius of star    [10^10cm]
     ! 
     ! number of filters in a set
@@ -613,16 +613,16 @@ contains
     real(double), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
     integer, intent(in)                :: nr            ! number of radial points for integration
     integer, intent(in)                :: nphi          ! number of angle  points for integration
-    type(OCTALVECTOR), intent(in)      :: pos_star      ! position of the star
+    type(VECTOR), intent(in)      :: pos_star      ! position of the star
     real(double), intent(in)  :: dist_obs      ! [cm] distance to the observer
-    type(OCTALVECTOR), intent(in)      :: dir_obs       ! direction
+    type(VECTOR), intent(in)      :: dir_obs       ! direction
     type(GRIDTYPE), intent(in)         :: amrgrid       ! the opacity grid
     logical, intent(in)                :: contPhoton    ! is this a continuum photon?
     real(double), intent(in)  :: offset        ! offset scale factor
     !
-    type(OCTALVECTOR), allocatable     :: p(:)          ! integration grids
+    type(VECTOR), allocatable     :: p(:)          ! integration grids
     real(double), allocatable :: dA(:)         ! surface elements at p
-    type(OCTALVECTOR)                  :: q             
+    type(VECTOR)                  :: q             
     real(quad)                :: F, F_core, Fi, I1, F_sub
     !
     real(double)              :: pi
@@ -724,18 +724,18 @@ contains
   ! THIS IS STILL DEVELOPMENTAL STAGE!!
   subroutine setup_grid(p, dA,nr, nphi, R_min, R_max, pos_star, dir_obs)
     implicit none
-    type(OCTALVECTOR), intent(inout)     :: p(:)          ! integration grids
+    type(VECTOR), intent(inout)     :: p(:)          ! integration grids
     real(double), intent(inout) :: dA(:)         ! surface elements at p
     integer, intent(in)                :: nr            ! number of radial points for integration
     integer, intent(in)                :: nphi          ! number of angle  points for integration
     real(double), intent(in)  :: R_min         ! [cm] minimum radius (usually 5*R_star)
     real(double), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
     
-    type(OCTALVECTOR), intent(in)      :: pos_star      ! position of the sta
-    type(OCTALVECTOR), intent(in)      :: dir_obs       ! direction
+    type(VECTOR), intent(in)      :: pos_star      ! position of the sta
+    type(VECTOR), intent(in)      :: dir_obs       ! direction
     
     integer :: i , j , k
-    type(OCTALVECTOR)                  :: q             ! 
+    type(VECTOR)                  :: q             ! 
     real(double)              :: pi
     real(double)              :: r, phi, dphi, dr, rp, rm
     real(double)              :: log_r, log_R_max, log_R_min
@@ -784,7 +784,7 @@ contains
     implicit none
 
     type(cluster), intent(in) :: a_cluster 
-    type(octalvector), intent(in) :: dir_obs
+    type(VECTOR), intent(in) :: dir_obs
     real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
@@ -793,7 +793,7 @@ contains
     integer :: nstar
     type(sourcetype) :: a_star
     real(double) :: T  !   temperature in K.    
-    type(octalvector) :: position   ! position of stars [10^10cm]
+    type(VECTOR) :: position   ! position of stars [10^10cm]
     real(double) :: R            ! radius of star    [10^10cm]
     !
     ! The mean wavelength of the filters
@@ -859,7 +859,7 @@ contains
        ! extinction
        !Av = m_V - m_V0(i)
        tau_inf=0.0d0
-!       call IntegratePathAMR(real(lam_V),  real(lam_V), OCTALVECTOR(1.,1.,1.), &
+!       call IntegratePathAMR(real(lam_V),  real(lam_V), VECTOR(1.,1.,1.), &
 !            position, &
 !            dir_obs, grid, lambda, tauExt, tauAbs, &
 !            tauSca, maxTau, nTau, opaqueCore, escProb, .true. , &

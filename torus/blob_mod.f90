@@ -64,7 +64,7 @@ contains
     type(GRIDTYPE) :: grid         ! the opacity grid
     integer :: i1,i2,i3            ! indices
     real :: r1, r2, r3             ! random deviates
-    real :: r, mu, phi, theta      ! spherical polar coords
+    real(double) :: r, mu, phi, theta      ! spherical polar coords
     real :: sinTheta              
     real :: blobContrast
  
@@ -107,9 +107,9 @@ contains
 
     call getPolar(blobs(iBlob)%position, r, theta, phi)
     mu = cos(theta)
-    call locate(grid%rAxis, grid%nr, r, i1)
-    call locate(grid%muAxis, grid%nmu, mu, i2)
-    call locate(grid%phiAxis, grid%nphi, phi, i3)
+    call locate(grid%rAxis, grid%nr, real(r), i1)
+    call locate(grid%muAxis, grid%nmu, real(mu), i2)
+    call locate(grid%phiAxis, grid%nphi, real(phi), i3)
 
     ! set up the instantaneous blob velocity
     ! NB the velocity grid is actually unitless doppler shifts and
@@ -132,7 +132,7 @@ contains
     integer :: maxBlobs                  ! the number of blobs in the array
     type(BLOBTYPE) :: blobs(*)           ! the blob array
     type(GRIDTYPE) :: grid               ! the opacity grid          
-    real :: t1, t2, t3                   
+    real(double) :: t1, t2, t3                   
     integer :: i, j, i1, i2, i3          ! counters
     integer ::   nTimes = 100000    ! the number of time segments
     real :: dTime, thisdTime, timeScale, vel
@@ -167,7 +167,7 @@ contains
 
              ! update the blob position
 
-             blobs(j)%position = blobs(j)%position + thisdTime * blobs(j)%velocity
+             blobs(j)%position = blobs(j)%position + dble(thisdTime) * blobs(j)%velocity
 
              ! is the blob outside 20 core radii? If so, switch it off
 
@@ -183,7 +183,7 @@ contains
 
                 ! update the velocity
 
-                blobs(j)%velocity = (cSpeed/1.e10) * &
+                blobs(j)%velocity = (cSpeed/1.d10) * &
                      interpGridvelocity(grid, i1,i2,i3, t1, t2, t3)
              endif
 
@@ -263,7 +263,7 @@ contains
                    
                       
                       facGrid(i,j,k) = min(facgrid(i,j,k) + fac2 * exp(-fac1),blobs(m)%contrast)
-                      r = modulus(posGrid(i,j,k)/grid%rAxis(1))
+                      r = modulus(posGrid(i,j,k)/dble(grid%rAxis(1)))
 !                      if ((fac1 < 1.) .and. (r > 1.) .and. (r < 3.)) then
 !                         write(*,*) r,facGrid(i,j,k)
 !                      endif

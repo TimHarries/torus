@@ -226,7 +226,7 @@ contains
     IMPLICIT NONE
 
     type(romanova), intent(in)    :: this
-    type(octalVector), intent(in)  :: position       ! [10^10cm]
+    type(VECTOR), intent(in)  :: position       ! [10^10cm]
     real*8, intent(out) :: r, phi, theta ! r in R*, theta and phi are in rad, 
     !
     real*8 :: x, y, z       ! [10^10cm]
@@ -277,7 +277,7 @@ contains
     
     IMPLICIT NONE
 
-    type(octalVector), intent(in)  :: position       ! [10^10cm]
+    type(VECTOR), intent(in)  :: position       ! [10^10cm]
     real*8, intent(out) :: r, phi, theta ! r in R*, theta and phi are in rad, 
     !
     real*8 :: x, y, z       ! [10^10cm]
@@ -326,7 +326,7 @@ contains
 
     REAL(double)                  :: out     ! [g/cm^3]
     type(romanova), intent(in)    :: this
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
 
     !
     real(double), parameter ::  rom_rho_min = 1.0d-17 ! [g/cm^3]     
@@ -380,7 +380,7 @@ contains
 
     type(vector)                  :: out   ! [c]
     type(romanova), intent(in)    :: this
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     type(vector) :: v, rot
     real :: Vrot, w
     real, parameter :: pi=3.14159265
@@ -419,7 +419,7 @@ contains
 
 
     ! changing units to speed of light
-    out = v/REAL(cSpeed)                                  ! [c]
+    out = v/cSpeed                                   ! [c]
 
     
   END FUNCTION Romanova_velocity
@@ -440,7 +440,7 @@ contains
     IMPLICIT NONE
     REAL                          :: out 
     type(romanova), intent(in)    :: this
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(VECTOR), INTENT(IN) :: point
     !
     real(double) :: r, theta, phi
     ! The following should be set as a componet of this obejct
@@ -497,7 +497,7 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     !    
-    TYPE(octalVector) :: point    
+    TYPE(VECTOR) :: point    
     REAL(oct) :: r 
     real(double), parameter :: rho_contrast = 0.015d0
 !    real(double), parameter :: rho_contrast = 0.060d0
@@ -574,7 +574,7 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     
-    TYPE(octalVector) :: point 
+    TYPE(VECTOR) :: point 
 
     point = subcellCentre(thisOctal,subcell)
 
@@ -624,39 +624,39 @@ contains
 
     ! now store the 'base level' values
     
-    thisOctal%cornerVelocity(1) = Romanova_velocity(this, octalVector(x1,y1,z1))
-    thisOctal%cornerVelocity(2) = Romanova_velocity(this, octalVector(x2,y1,z1))
-    thisOctal%cornerVelocity(3) = Romanova_velocity(this, octalVector(x3,y1,z1))
-    thisOctal%cornerVelocity(4) = Romanova_velocity(this, octalVector(x1,y2,z1))
-    thisOctal%cornerVelocity(5) = Romanova_velocity(this, octalVector(x2,y2,z1))
-    thisOctal%cornerVelocity(6) = Romanova_velocity(this, octalVector(x3,y2,z1))
-    thisOctal%cornerVelocity(7) = Romanova_velocity(this, octalVector(x1,y3,z1))
-    thisOctal%cornerVelocity(8) = Romanova_velocity(this, octalVector(x2,y3,z1))
-    thisOctal%cornerVelocity(9) = Romanova_velocity(this, octalVector(x3,y3,z1))
+    thisOctal%cornerVelocity(1) = Romanova_velocity(this, VECTOR(x1,y1,z1))
+    thisOctal%cornerVelocity(2) = Romanova_velocity(this, VECTOR(x2,y1,z1))
+    thisOctal%cornerVelocity(3) = Romanova_velocity(this, VECTOR(x3,y1,z1))
+    thisOctal%cornerVelocity(4) = Romanova_velocity(this, VECTOR(x1,y2,z1))
+    thisOctal%cornerVelocity(5) = Romanova_velocity(this, VECTOR(x2,y2,z1))
+    thisOctal%cornerVelocity(6) = Romanova_velocity(this, VECTOR(x3,y2,z1))
+    thisOctal%cornerVelocity(7) = Romanova_velocity(this, VECTOR(x1,y3,z1))
+    thisOctal%cornerVelocity(8) = Romanova_velocity(this, VECTOR(x2,y3,z1))
+    thisOctal%cornerVelocity(9) = Romanova_velocity(this, VECTOR(x3,y3,z1))
 
     ! middle level
   
-    thisOctal%cornerVelocity(10) = Romanova_velocity(this, octalVector(x1,y1,z2))
-    thisOctal%cornerVelocity(11) = Romanova_velocity(this, octalVector(x2,y1,z2))
-    thisOctal%cornerVelocity(12) = Romanova_velocity(this, octalVector(x3,y1,z2))
-    thisOctal%cornerVelocity(13) = Romanova_velocity(this, octalVector(x1,y2,z2))
-    thisOctal%cornerVelocity(14) = Romanova_velocity(this, octalVector(x2,y2,z2))
-    thisOctal%cornerVelocity(15) = Romanova_velocity(this, octalVector(x3,y2,z2))
-    thisOctal%cornerVelocity(16) = Romanova_velocity(this, octalVector(x1,y3,z2))
-    thisOctal%cornerVelocity(17) = Romanova_velocity(this, octalVector(x2,y3,z2))
-    thisOctal%cornerVelocity(18) = Romanova_velocity(this, octalVector(x3,y3,z2))
+    thisOctal%cornerVelocity(10) = Romanova_velocity(this, VECTOR(x1,y1,z2))
+    thisOctal%cornerVelocity(11) = Romanova_velocity(this, VECTOR(x2,y1,z2))
+    thisOctal%cornerVelocity(12) = Romanova_velocity(this, VECTOR(x3,y1,z2))
+    thisOctal%cornerVelocity(13) = Romanova_velocity(this, VECTOR(x1,y2,z2))
+    thisOctal%cornerVelocity(14) = Romanova_velocity(this, VECTOR(x2,y2,z2))
+    thisOctal%cornerVelocity(15) = Romanova_velocity(this, VECTOR(x3,y2,z2))
+    thisOctal%cornerVelocity(16) = Romanova_velocity(this, VECTOR(x1,y3,z2))
+    thisOctal%cornerVelocity(17) = Romanova_velocity(this, VECTOR(x2,y3,z2))
+    thisOctal%cornerVelocity(18) = Romanova_velocity(this, VECTOR(x3,y3,z2))
 
     ! top level
     
-    thisOctal%cornerVelocity(19) = Romanova_velocity(this, octalVector(x1,y1,z3))
-    thisOctal%cornerVelocity(20) = Romanova_velocity(this, octalVector(x2,y1,z3))
-    thisOctal%cornerVelocity(21) = Romanova_velocity(this, octalVector(x3,y1,z3))
-    thisOctal%cornerVelocity(22) = Romanova_velocity(this, octalVector(x1,y2,z3))
-    thisOctal%cornerVelocity(23) = Romanova_velocity(this, octalVector(x2,y2,z3))
-    thisOctal%cornerVelocity(24) = Romanova_velocity(this, octalVector(x3,y2,z3))
-    thisOctal%cornerVelocity(25) = Romanova_velocity(this, octalVector(x1,y3,z3))
-    thisOctal%cornerVelocity(26) = Romanova_velocity(this, octalVector(x2,y3,z3))
-    thisOctal%cornerVelocity(27) = Romanova_velocity(this, octalVector(x3,y3,z3))
+    thisOctal%cornerVelocity(19) = Romanova_velocity(this, VECTOR(x1,y1,z3))
+    thisOctal%cornerVelocity(20) = Romanova_velocity(this, VECTOR(x2,y1,z3))
+    thisOctal%cornerVelocity(21) = Romanova_velocity(this, VECTOR(x3,y1,z3))
+    thisOctal%cornerVelocity(22) = Romanova_velocity(this, VECTOR(x1,y2,z3))
+    thisOctal%cornerVelocity(23) = Romanova_velocity(this, VECTOR(x2,y2,z3))
+    thisOctal%cornerVelocity(24) = Romanova_velocity(this, VECTOR(x3,y2,z3))
+    thisOctal%cornerVelocity(25) = Romanova_velocity(this, VECTOR(x1,y3,z3))
+    thisOctal%cornerVelocity(26) = Romanova_velocity(this, VECTOR(x2,y3,z3))
+    thisOctal%cornerVelocity(27) = Romanova_velocity(this, VECTOR(x3,y3,z3))
     
   END SUBROUTINE VelocityCorners
 

@@ -271,7 +271,7 @@ contains
     implicit none
     real(double) :: density_out  ! in [g/cm^3]
     type(jet), intent(in) :: this
-    type(octalvector), intent(in) :: rvec  ! componets should be in [10^10cm]
+    type(VECTOR), intent(in) :: rvec  ! componets should be in [10^10cm]
     !
     real(double), parameter :: pi = 3.14159265d0
     !real(double), parameter :: rho_min = 1.0d-22
@@ -372,7 +372,7 @@ contains
     type(vector) :: out
     !
     type(jet), intent(in) :: this
-    type(octalvector), intent(in) :: rvec
+    type(VECTOR), intent(in) :: rvec
     !
     real(double) :: Vr, Vphi, w, r, x, y, z
     real(double) :: Vx, Vy, Vz, phi, theta
@@ -427,7 +427,7 @@ contains
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
     logical :: splitThis
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     integer :: n
 
     splitThis = .false.
@@ -485,7 +485,7 @@ contains
     
     real(oct)  :: cellSize
     real(double) :: rho_disc, mass_cell
-    TYPE(octalVector)     :: cellCentre
+    TYPE(VECTOR)     :: cellCentre
 
     ! get the size and the position of the centre of the current cell
     cellSize = thisOctal%subcellSize*2.0d0
@@ -523,7 +523,7 @@ contains
     type(jet), intent(in) :: this
     
     real(oct)  :: cellSize, d
-    TYPE(octalVector)     :: cellCentre
+    TYPE(VECTOR)     :: cellCentre
 !    integer, parameter :: nr = 100  ! low resolution
     integer, parameter :: nr = 200   ! midium resolution
 !    integer, parameter :: nr = 280  ! Hi resolution
@@ -708,7 +708,7 @@ contains
     INTEGER, INTENT(IN) :: subcell
     TYPE(jet), INTENT(IN)  :: this
     !
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
 
     cellCentre = subcellCentre(thisOctal, subcell)
     if (in_jet_flow(this, cellCentre, thisOctal%subcellSize) ) then
@@ -784,7 +784,7 @@ contains
     type(jet), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
-    TYPE(octalVector)     :: cellCentre, rvec
+    TYPE(VECTOR)     :: cellCentre, rvec
     real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d
 
     ! get the size and the position of the centre of the current cell
@@ -798,26 +798,26 @@ contains
 
     if (thisOctal%threeD)  then
        ! assigning density 
-       rvec = OCTALVECTOR(x, y, z);        c0 =  jet_density(this, rvec)    
-       rvec = OCTALVECTOR(x+d, y+d, z+d);  c1 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x+d, y+d, z-d);  c2 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x+d, y-d, z+d);  c3 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x+d, y-d, z-d);  c4 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x-d, y+d, z+d);  c5 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x-d, y+d, z-d);  c6 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x-d, y-d, z+d);  c7 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x-d, y-d, z-d);  c8 =  jet_density(this, rvec)
+       rvec = VECTOR(x, y, z);        c0 =  jet_density(this, rvec)    
+       rvec = VECTOR(x+d, y+d, z+d);  c1 =  jet_density(this, rvec)
+       rvec = VECTOR(x+d, y+d, z-d);  c2 =  jet_density(this, rvec)
+       rvec = VECTOR(x+d, y-d, z+d);  c3 =  jet_density(this, rvec)
+       rvec = VECTOR(x+d, y-d, z-d);  c4 =  jet_density(this, rvec)
+       rvec = VECTOR(x-d, y+d, z+d);  c5 =  jet_density(this, rvec)
+       rvec = VECTOR(x-d, y+d, z-d);  c6 =  jet_density(this, rvec)
+       rvec = VECTOR(x-d, y-d, z+d);  c7 =  jet_density(this, rvec)
+       rvec = VECTOR(x-d, y-d, z-d);  c8 =  jet_density(this, rvec)
        
        !
        ave_jet_density =  &
             (c0 + c1+ c2 + c3 + c4 + c5 + c6 + c7 + c8)/9.0d0
     else ! 2D amr
        ! assigning density 
-       rvec = OCTALVECTOR(x, y, z);        c0 =  jet_density(this, rvec)    
-       rvec = OCTALVECTOR(x+d, y, z+d);  c1 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x+d, y, z-d);  c2 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x-d, y, z+d);  c3 =  jet_density(this, rvec)
-       rvec = OCTALVECTOR(x-d, y, z-d);  c4 =  jet_density(this, rvec)       
+       rvec = VECTOR(x, y, z);        c0 =  jet_density(this, rvec)    
+       rvec = VECTOR(x+d, y, z+d);  c1 =  jet_density(this, rvec)
+       rvec = VECTOR(x+d, y, z-d);  c2 =  jet_density(this, rvec)
+       rvec = VECTOR(x-d, y, z+d);  c3 =  jet_density(this, rvec)
+       rvec = VECTOR(x-d, y, z-d);  c4 =  jet_density(this, rvec)       
        !
        ave_jet_density = (c0 + c1+ c2 + c3 + c4)/5.0d0
     end if
@@ -920,7 +920,7 @@ contains
     logical :: out
     !
     type(jet), intent(in) :: this
-    type(octalvector), intent(in) :: rvec
+    type(VECTOR), intent(in) :: rvec
     real(double), optional, intent(in) :: subcellsize
     !
     real(double) ::  ww, r, x, y, z
@@ -990,39 +990,39 @@ contains
        z3 = thisOctal%centre%z + thisOctal%subcellSize
        
        ! now store the 'base level' values    
-       thisOctal%cornerVelocity(1) = jet_velocity(this, OCTALVECTOR(x1,y1,z1))
-       thisOctal%cornerVelocity(2) = jet_velocity(this, OCTALVECTOR(x2,y1,z1))
-       thisOctal%cornerVelocity(3) = jet_velocity(this, OCTALVECTOR(x3,y1,z1))
-       thisOctal%cornerVelocity(4) = jet_velocity(this, OCTALVECTOR(x1,y2,z1))
-       thisOctal%cornerVelocity(5) = jet_velocity(this, OCTALVECTOR(x2,y2,z1))
-       thisOctal%cornerVelocity(6) = jet_velocity(this, OCTALVECTOR(x3,y2,z1))
-       thisOctal%cornerVelocity(7) = jet_velocity(this, OCTALVECTOR(x1,y3,z1))
-       thisOctal%cornerVelocity(8) = jet_velocity(this, OCTALVECTOR(x2,y3,z1))
-       thisOctal%cornerVelocity(9) = jet_velocity(this, OCTALVECTOR(x3,y3,z1))
+       thisOctal%cornerVelocity(1) = jet_velocity(this, VECTOR(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = jet_velocity(this, VECTOR(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = jet_velocity(this, VECTOR(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = jet_velocity(this, VECTOR(x1,y2,z1))
+       thisOctal%cornerVelocity(5) = jet_velocity(this, VECTOR(x2,y2,z1))
+       thisOctal%cornerVelocity(6) = jet_velocity(this, VECTOR(x3,y2,z1))
+       thisOctal%cornerVelocity(7) = jet_velocity(this, VECTOR(x1,y3,z1))
+       thisOctal%cornerVelocity(8) = jet_velocity(this, VECTOR(x2,y3,z1))
+       thisOctal%cornerVelocity(9) = jet_velocity(this, VECTOR(x3,y3,z1))
 
        ! middle level
   
-       thisOctal%cornerVelocity(10) = jet_velocity(this, OCTALVECTOR(x1,y1,z2))
-       thisOctal%cornerVelocity(11) = jet_velocity(this, OCTALVECTOR(x2,y1,z2))
-       thisOctal%cornerVelocity(12) = jet_velocity(this, OCTALVECTOR(x3,y1,z2))
-       thisOctal%cornerVelocity(13) = jet_velocity(this, OCTALVECTOR(x1,y2,z2))
-       thisOctal%cornerVelocity(14) = jet_velocity(this, OCTALVECTOR(x2,y2,z2))
-       thisOctal%cornerVelocity(15) = jet_velocity(this, OCTALVECTOR(x3,y2,z2))
-       thisOctal%cornerVelocity(16) = jet_velocity(this, OCTALVECTOR(x1,y3,z2))
-       thisOctal%cornerVelocity(17) = jet_velocity(this, OCTALVECTOR(x2,y3,z2))
-       thisOctal%cornerVelocity(18) = jet_velocity(this, OCTALVECTOR(x3,y3,z2))
+       thisOctal%cornerVelocity(10) = jet_velocity(this, VECTOR(x1,y1,z2))
+       thisOctal%cornerVelocity(11) = jet_velocity(this, VECTOR(x2,y1,z2))
+       thisOctal%cornerVelocity(12) = jet_velocity(this, VECTOR(x3,y1,z2))
+       thisOctal%cornerVelocity(13) = jet_velocity(this, VECTOR(x1,y2,z2))
+       thisOctal%cornerVelocity(14) = jet_velocity(this, VECTOR(x2,y2,z2))
+       thisOctal%cornerVelocity(15) = jet_velocity(this, VECTOR(x3,y2,z2))
+       thisOctal%cornerVelocity(16) = jet_velocity(this, VECTOR(x1,y3,z2))
+       thisOctal%cornerVelocity(17) = jet_velocity(this, VECTOR(x2,y3,z2))
+       thisOctal%cornerVelocity(18) = jet_velocity(this, VECTOR(x3,y3,z2))
        
        ! top level
        
-       thisOctal%cornerVelocity(19) = jet_velocity(this, OCTALVECTOR(x1,y1,z3))
-       thisOctal%cornerVelocity(20) = jet_velocity(this, OCTALVECTOR(x2,y1,z3))
-       thisOctal%cornerVelocity(21) = jet_velocity(this, OCTALVECTOR(x3,y1,z3))
-       thisOctal%cornerVelocity(22) = jet_velocity(this, OCTALVECTOR(x1,y2,z3))
-       thisOctal%cornerVelocity(23) = jet_velocity(this, OCTALVECTOR(x2,y2,z3))
-       thisOctal%cornerVelocity(24) = jet_velocity(this, OCTALVECTOR(x3,y2,z3))
-       thisOctal%cornerVelocity(25) = jet_velocity(this, OCTALVECTOR(x1,y3,z3))
-       thisOctal%cornerVelocity(26) = jet_velocity(this, OCTALVECTOR(x2,y3,z3))
-       thisOctal%cornerVelocity(27) = jet_velocity(this, OCTALVECTOR(x3,y3,z3))
+       thisOctal%cornerVelocity(19) = jet_velocity(this, VECTOR(x1,y1,z3))
+       thisOctal%cornerVelocity(20) = jet_velocity(this, VECTOR(x2,y1,z3))
+       thisOctal%cornerVelocity(21) = jet_velocity(this, VECTOR(x3,y1,z3))
+       thisOctal%cornerVelocity(22) = jet_velocity(this, VECTOR(x1,y2,z3))
+       thisOctal%cornerVelocity(23) = jet_velocity(this, VECTOR(x2,y2,z3))
+       thisOctal%cornerVelocity(24) = jet_velocity(this, VECTOR(x3,y2,z3))
+       thisOctal%cornerVelocity(25) = jet_velocity(this, VECTOR(x1,y3,z3))
+       thisOctal%cornerVelocity(26) = jet_velocity(this, VECTOR(x2,y3,z3))
+       thisOctal%cornerVelocity(27) = jet_velocity(this, VECTOR(x3,y3,z3))
 
     else  ! 2D case
 
@@ -1040,15 +1040,15 @@ contains
        z3 = thisOctal%centre%z + thisOctal%subcellSize
        
        ! now store the 'base level' values    
-       thisOctal%cornerVelocity(1) = jet_velocity(this, OCTALVECTOR(x1,y1,z1))
-       thisOctal%cornerVelocity(2) = jet_velocity(this, OCTALVECTOR(x2,y1,z1))
-       thisOctal%cornerVelocity(3) = jet_velocity(this, OCTALVECTOR(x3,y1,z1))
-       thisOctal%cornerVelocity(4) = jet_velocity(this, OCTALVECTOR(x1,y2,z2))
-       thisOctal%cornerVelocity(5) = jet_velocity(this, OCTALVECTOR(x2,y2,z2))
-       thisOctal%cornerVelocity(6) = jet_velocity(this, OCTALVECTOR(x3,y2,z2))
-       thisOctal%cornerVelocity(7) = jet_velocity(this, OCTALVECTOR(x1,y3,z3))
-       thisOctal%cornerVelocity(8) = jet_velocity(this, OCTALVECTOR(x2,y3,z3))
-       thisOctal%cornerVelocity(9) = jet_velocity(this, OCTALVECTOR(x3,y3,z3))
+       thisOctal%cornerVelocity(1) = jet_velocity(this, VECTOR(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = jet_velocity(this, VECTOR(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = jet_velocity(this, VECTOR(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = jet_velocity(this, VECTOR(x1,y2,z2))
+       thisOctal%cornerVelocity(5) = jet_velocity(this, VECTOR(x2,y2,z2))
+       thisOctal%cornerVelocity(6) = jet_velocity(this, VECTOR(x3,y2,z2))
+       thisOctal%cornerVelocity(7) = jet_velocity(this, VECTOR(x1,y3,z3))
+       thisOctal%cornerVelocity(8) = jet_velocity(this, VECTOR(x2,y3,z3))
+       thisOctal%cornerVelocity(9) = jet_velocity(this, VECTOR(x3,y3,z3))
 
     end if
 

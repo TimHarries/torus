@@ -47,9 +47,9 @@ module path_integral
       logical, intent(in) :: VoigtProf              ! T if use voigt profile
       real, intent(in)          :: wavelength             ! the wavelength 
       real, intent(in)          :: lambda0                ! rest wavelength of line
-      type(OCTALVECTOR), intent(in)  :: vVec              ! velocity vector
-      type(OCTALVECTOR), intent(in)  :: aVec              ! starting position vector
-      type(OCTALVECTOR), intent(in)  :: uHat              ! direction
+      type(VECTOR), intent(in)  :: vVec              ! velocity vector
+      type(VECTOR), intent(in)  :: aVec              ! starting position vector
+      type(VECTOR), intent(in)  :: uHat              ! direction
       type(GRIDTYPE), intent(in)     :: grid              ! the opacity grid
       logical, intent(in)            :: contPhoton        ! is this a continuum photon?
       integer, intent(in)            :: maxTau 
@@ -83,7 +83,7 @@ module path_integral
 
       if (gridUsesAMR) then
          if (VoigtProf) then
-            call integratePathVoigtProf(wavelength,  lambda0, o2s(vVec), o2s(aVec), o2s(uHat), Grid, &
+            call integratePathVoigtProf(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  redRegion, usePops, mLevel, nLevel, &
@@ -105,7 +105,7 @@ module path_integral
             write(*,*) "Error: coolStarPosition must be present. [integratePath]"
             stop
          end if
-         call integratePathCaresian(wavelength,  lambda0, o2s(vVec), o2s(aVec), o2s(uHat), Grid,  lambda, &
+         call integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, &
               tauExt, tauAbs, tauSca,  linePhotonAlbedo, maxTau, nTau, opaqueCore, escProb, contPhoton, &
               lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, redRegion, rStar, &
               coolStarPosition, usePops, mLevel, nLevel, fStrength, gM, gN, localTau, interp)
@@ -156,7 +156,8 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
   logical :: hitDisk
   real :: distToDisk
 
-  real :: t1, t2, t3                                ! interpolation factors
+  real(double) :: t1, t2, t3                                ! interpolation factors
+  real(double) :: rt1, rt2, rt3                                ! interpolation factors
 
   real, parameter :: precision = 1.e-4              ! relative precision
 
@@ -167,9 +168,9 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
   logical :: contPhoton                             ! is this a continuum photon?
 
-  real ::  mu, cosTheta                    ! polar coords
-  real :: r,  phi  
-  real :: theta
+  real(double) ::  mu, cosTheta                    ! polar coords
+  real(double) :: r,  phi  
+  real(double) :: theta
 
   integer :: iStart                                 ! starting index
 
@@ -196,7 +197,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
   real :: posOffset(maxtau,3)                       ! position interpolation offsets
   real :: kabs(maxtau), ksca(maxtau), dlam(maxtau)  ! opacities
   type(VECTOR) :: rVecArray(maxTau)                 ! array of position vectors
-  real :: x,x1,x2                                 ! multipliers
+  real(double) :: x,x1,x2                                 ! multipliers
 
   logical :: endLoop                                ! is the loop finished?
 
@@ -275,7 +276,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
      ! add on a small distance
 
-     rVec = rVec + dlambda * uHat
+     rVec = rVec + dble(dlambda) * uHat
 
      if ((modulus(rVec) /= 0.).and.(modulus(rVec-coolStarPosition) < rStar)) then
         rHat = rVec
@@ -351,7 +352,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
            linePhotonAlbedo(nTau) = kScaInterp/ (kScaInterp + kAbsInterp)
            lambda(nTau) = lambda(nTau-1) + dlambda
         endif
-        rVec = rVec + dlambda *  uHat ! add on small distance
+        rVec = rVec + dble(dlambda) *  uHat ! add on small distance
 
      enddo ! until out of the grid
 
@@ -384,9 +385,9 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
      if (modulus(rVec) == 0.)  then
         if (grid%rCore == 0.) then
-           rVec = 1.0001 * grid%rAxis(1)*uHat
+           rVec = 1.0001d0 * dble(grid%rAxis(1))*uHat
         else
-           rVec = 1.0001 * grid%rCore*uHat
+           rVec = 1.0001d0 * dble(grid%rCore)*uHat
         endif
      endif
 
@@ -480,7 +481,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
 
         tauSob = chil  / nu
-        tauSob = tauSob / directionalDeriv(grid,s2o(rVec),i1,i2,i3,uHat)
+        tauSob = tauSob / directionalDeriv(grid,rVec,i1,i2,i3,uHat)
 
         if (tauSob < 0.01) then
           escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
@@ -563,7 +564,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
 
      if (grid%geometry == "ttauri") then
-        tVec = intersectionLinePlane(rVec, uHat, grid%diskNormal, 0., ok)
+        tVec = intersectionLinePlane(rVec, uHat, grid%diskNormal, 0.d0, ok)
         if (ok) then
            minDist = modulus(tVec)
            if (minDist > grid%diskRadius) then
@@ -585,7 +586,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
         ! add on the small distance step to the position
 
-        rVec = rVec + dlambda * uHat
+        rVec = rVec + dble(dlambda) * uHat
         call getPolar(rVec, r, theta, phi)
         mu = rVec%z/r
 
@@ -610,11 +611,11 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
               end if
               projVel(nTau) = projVel(nTau-1)
            else if ((r < grid%rCore).and.(.not.opaqueCore)) then
-              rHat = (-1.)*(rVec / r)
+              rHat = (-1.d0)*(rVec / r)
               cosTheta  = uHat .dot. rHat
-              call solveQuad(1.,-2.*r*cosTheta,r*r-grid%rCore*grid%rCore,x1,x2,ok)
+              call solveQuadDble(1.d0,-2.d0*r*cosTheta,r*r-dble(grid%rCore*grid%rCore),x1,x2,ok)
               dlambda = max(x1,x2) * fudgeFactor
-              rVec = rVec +  dlambda * uHat   
+              rVec = rVec +  dble(dlambda) * uHat   
               r = modulus(rVec)
               mu = rVec%z/r
               call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
@@ -858,7 +859,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                        tauSob = chil / nu
                     endif
 
-                    tauSob1 = tauSob / directionalDeriv(grid,s2o(rVecArray(i)),i1,i2,i3,uHat)
+                    tauSob1 = tauSob / directionalDeriv(grid,rVecArray(i),i1,i2,i3,uHat)
 
 
 
@@ -881,7 +882,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                        tauSob = chil / nu
                     endif
 
-                    tauSob2 = tauSob / directionalDeriv(grid,s2o(rVecArray(i+1)),i1,i2,i3,uHat)
+                    tauSob2 = tauSob / directionalDeriv(grid,rVecArray(i+1),i1,i2,i3,uHat)
 
                     ! interpolate in velocity space to get sobolev depth
 
@@ -940,7 +941,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                           tauSob = chil / nu
                        endif
                        
-                       tauSob1 = tauSob / directionalDeriv(grid,s2o(rVecArray(i)),i1,i2,i3,uHat)
+                       tauSob1 = tauSob / directionalDeriv(grid,rVecArray(i),i1,i2,i3,uHat)
                        
 
                        
@@ -963,7 +964,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                           tauSob = chil / nu
                        endif
                        
-                       tauSob2 = tauSob / directionalDeriv(grid,s2o(rVecArray(i+1)),i1,i2,i3,uHat)
+                       tauSob2 = tauSob / directionalDeriv(grid,rVecArray(i+1),i1,i2,i3,uHat)
                        
                        ! interpolate in velocity space to get sobolev depth
                        
@@ -1053,7 +1054,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                              tauSob = chil / nu
                           endif
 
-                          tauSob1 = tauSob / directionalDeriv(grid,s2o(rVecArray(i)),i1,i2,i3,uHat)
+                          tauSob1 = tauSob / directionalDeriv(grid,rVecArray(i),i1,i2,i3,uHat)
 
                           i1 = posIndex(i+1,1)
                           i2 = posIndex(i+1,2)
@@ -1072,7 +1073,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                              tauSob = chil / nu
                           endif
 
-                          tauSob2 = tauSob / directionalDeriv(grid,s2o(rVecArray(i+1)),i1,i2,i3,uHat)
+                          tauSob2 = tauSob / directionalDeriv(grid,rVecArray(i+1),i1,i2,i3,uHat)
 
                           x = 1.
                           if ((projVel(i+1)-projVel(i)) /= 0.) then
@@ -1146,9 +1147,9 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   type(SOURCETYPE) :: source(:)
   real, intent(in)          :: wavelength             ! the wavelength 
   real, intent(in)          :: lambda0                ! rest wavelength of line
-  type(OCTALVECTOR), intent(in)  :: vVec                   ! velocity vector
-  type(OCTALVECTOR), intent(in)  :: aVec                   ! starting position vector
-  type(OCTALVECTOR), intent(in)  :: uHat                   ! direction
+  type(VECTOR), intent(in)  :: vVec                   ! velocity vector
+  type(VECTOR), intent(in)  :: aVec                   ! starting position vector
+  type(VECTOR), intent(in)  :: uHat                   ! direction
   type(GRIDTYPE), intent(in):: grid                   ! the opacity grid
   integer, intent(in)       :: maxTau 
   real, dimension(:), intent(out) :: lambda           ! path distance array
@@ -1194,9 +1195,9 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real(double), allocatable, save :: dummy(:)  ! Work array (size=maxTau)
   !
   !
-  type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
-  type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
-  type(OCTALVECTOR)         :: rVec                   ! position vector
+  type(VECTOR)         :: aVecOctal              ! VECTOR version of 'aVec'
+  type(VECTOR)         :: uHatOctal              ! VECTOR version of 'uHat'
+  type(VECTOR)         :: rVec                   ! position vector
   logical                   :: contPhoton             ! is this a continuum photon?
 
   real :: nu, nu2                                        ! frequencies
@@ -1673,7 +1674,7 @@ end subroutine integratePathAMR
 !   implicit none
 
 !   logical :: escaped
-!   type(OCTALVECTOR) :: octVec
+!   type(VECTOR) :: octVec
 !   integer :: subcell
 !   real(oct) :: tval
 
@@ -1706,8 +1707,8 @@ end subroutine integratePathAMR
 
 
 !   real                      :: rho(1:maxTau)          ! density
-!   type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
-!   type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
+!   type(VECTOR)         :: aVecOctal              ! VECTOR version of 'aVec'
+!   type(VECTOR)         :: uHatOctal              ! VECTOR version of 'uHat'
 !   type(VECTOR)              :: rVec                   ! position vector
 !   logical                   :: contPhoton             ! is this a continuum photon?
 !   real, dimension(1:maxTau) :: chiLine                ! line opacities
@@ -1848,8 +1849,8 @@ end subroutine integratePathAMR
     integer, intent(out)      :: error                  ! error code returned
 
     !    
-    type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
-    type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
+    type(VECTOR)         :: aVecOctal              ! VECTOR version of 'aVec'
+    type(VECTOR)         :: uHatOctal              ! VECTOR version of 'uHat'
     type(VECTOR)              :: rVec                   ! position vector
     logical                   :: contPhoton             ! is this a continuum photon?    
     real(double) :: nu, nu_p, nu0, nu0_p           ! frequencies   
@@ -2449,13 +2450,13 @@ end subroutine integratePathAMR
   subroutine intersectCubeAMR(grid, posVec, direction, tval)
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(in) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(in) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
+   type(VECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
-   type(OCTALVECTOR) :: subcen, point
+   type(VECTOR) :: subcen, point
    integer :: subcell
    
    real(oct) :: t(6),denom(6)
@@ -2469,19 +2470,19 @@ end subroutine integratePathAMR
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
 
-   norm(1) = OCTALVECTOR(1., 0., 0.)
-   norm(2) = OCTALVECTOR(0., 1., 0.)
-   norm(3) = OCTALVECTOR(0., 0., 1.)
-   norm(4) = OCTALVECTOR(-1., 0., 0.)
-   norm(5) = OCTALVECTOR(0., -1., 0.)
-   norm(6) = OCTALVECTOR(0., 0., -1.)
+   norm(1) = VECTOR(1., 0., 0.)
+   norm(2) = VECTOR(0., 1., 0.)
+   norm(3) = VECTOR(0., 0., 1.)
+   norm(4) = VECTOR(-1., 0., 0.)
+   norm(5) = VECTOR(0., -1., 0.)
+   norm(6) = VECTOR(0., 0., -1.)
 
-   p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2., subcen%y, subcen%z)
-   p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2. ,subcen%z)
-   p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.)
-   p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2., subcen%y,  subcen%z)
-   p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2., subcen%z)
-   p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.)
+   p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2., subcen%y, subcen%z)
+   p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2. ,subcen%z)
+   p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.)
+   p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2., subcen%y,  subcen%z)
+   p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2., subcen%z)
+   p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.)
 
    thisOk = .true.
 
@@ -2555,7 +2556,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   type(SOURCETYPE) :: source(:)
   logical, intent(in)           :: gridUsesAMR     !
   logical, intent(in)           :: VoigtProf       ! T to use Voigt Profile
-  type(OCTALVECTOR), intent(in) :: amrGridCentre  ! central coordinates of grid
+  type(VECTOR), intent(in) :: amrGridCentre  ! central coordinates of grid
   logical, intent(in)           :: sphericityTest !
 
   type(vector), intent(in)  :: dir_obs            ! direction to the observer (unit vector)
@@ -2593,9 +2594,9 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   integer  :: error       ! error code returned
   integer  :: i 
   type(vector) :: tempVec
-  type(octalvector) :: zerovec
+  type(VECTOR) :: zerovec
   real :: junk
-  type(OCTALVECTOR) :: octVec, position
+  type(VECTOR) :: octVec, position
   logical :: contPhoton = .true.
   character(len=80) :: message
   integer :: ntest = 301
@@ -2621,7 +2622,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   write(message,*) " "
   call writeInfo(message, TRIVIAL)
 
-  zeroVec = OCTALVECTOR(0.,0.,0.)
+  zeroVec = VECTOR(0.,0.,0.)
   
   !
   ! The distance from the center from which a test ray starts.
@@ -2637,7 +2638,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   ! test along x-axis 
   !
-  octVec = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+  octVec = VECTOR(1.d0, 0.d0, 0.d0)
 !  position = (octVec*R)
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
@@ -2645,7 +2646,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
   position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
-       wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
+       wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
        tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2671,7 +2672,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   ! test along y-axis 
   !
-  octVec = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+  octVec = VECTOR(0.d0, 1.d0, 0.d0)
 !  position = (octVec*R) 
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
@@ -2679,7 +2680,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
   position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
-       wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
+       wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
        tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2705,7 +2706,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   ! test along z-axis 
   !
-  octVec = OCTALVECTOR(1.d-3, 1.2d-4, 1.d0)
+  octVec = VECTOR(1.d-3, 1.2d-4, 1.d0)
 !  position = (octVec*R)
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
@@ -2713,7 +2714,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
   position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
-       wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
+       wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
        tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2739,7 +2740,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   ! test towards the observer
   !
-  octVec = s2o(dir_obs)
+  octVec = dir_obs
 !  position = (octVec*R) + amrGridCentre
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1 + 1.d-5*randomUnitVector()
@@ -2747,8 +2748,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
   position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
-       wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
-       position, s2o(dir_obs), grid, lambda, &
+       wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5), &
+       position, dir_obs, grid, lambda, &
        tauExt, tauAbs, tauSca, linePhotonalbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
        contPhoton, lamStart, lamEnd, nLambda, tauCont, &
        hitCore, thinLine,lineResAbs, .false.,  &
@@ -2779,8 +2780,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      do i = 1, 100
         tempVec = randomUnitVector()
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             lambda0,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
-             amrGridCentre, s2o(tempVec), grid, lambda, &
+             lambda0,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5), &
+             amrGridCentre, tempVec, grid, lambda, &
              tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
              contPhoton, lamStart, lamEnd, nLambda, tauCont, &
              hitCore, thinLine, lineResAbs, .false., &
@@ -2811,7 +2812,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      do i = 1, ntest
         theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
         x1 = cos(theta); x2 = sin(theta)
-        octVec = OCTALVECTOR(x1, x2, 0.0)
+        octVec = VECTOR(x1, x2, 0.0)
         !           call Normalize(octVec)  ! just in case ..
         ! position of emission
 !        position = (octVec*R) + amrGridCentre
@@ -2821,7 +2822,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
         position%z = max(position%z, grid%halfSmallestSubcell)
         ! continuum
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2833,7 +2834,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
         
         ! line 
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2862,7 +2863,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      do i = 1, ntest
         theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
         x1 = cos(theta); x2 = sin(theta)
-        octVec = OCTALVECTOR(x2, 0.0, x1)
+        octVec = VECTOR(x2, 0.0, x1)
         !          call Normalize(octVec)  ! just in case ..
         
         ! position of emission
@@ -2873,7 +2874,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
         position%z = max(position%z, grid%halfSmallestSubcell)
         ! continuum
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2885,7 +2886,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
         ! line 
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2915,12 +2916,12 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      do i = 1, ntest
         theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
         x1 = cos(theta); x2 = sin(theta)
-        octVec = OCTALVECTOR(x2, 0.0, x1)
+        octVec = VECTOR(x2, 0.0, x1)
         !          call Normalize(octVec)  ! just in case ..
         
         ! position of emission
-        position =  OCTALVECTOR(9.5d0, 0.0d0, 11.0d0) ! in a middle of stream
-!        position =  OCTALVECTOR(34.0d0, 0.0d0, 6.0d0) ! in a middle of stream
+        position =  VECTOR(9.5d0, 0.0d0, 11.0d0) ! in a middle of stream
+!        position =  VECTOR(34.0d0, 0.0d0, 6.0d0) ! in a middle of stream
 !        position = (octVec*R) + grid%starPos1
         position%x = max(position%x, grid%halfSmallestSubcell)
         position%y = max(position%y, grid%halfSmallestSubcell)
@@ -2928,7 +2929,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
         ! continuum
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
@@ -2940,7 +2941,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
         ! line 
         call IntegratePath(gridUsesAMR, VoigtProf, &
-             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             wavelength,  lambda0, VECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &

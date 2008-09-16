@@ -136,7 +136,7 @@ program torus
   ! vectors
 
   type(VECTOR) :: outVec, originalViewVec
-  type(OCTALVECTOR) :: rVec 
+  type(VECTOR) :: rVec 
 
   ! output arrays
 
@@ -190,8 +190,8 @@ program torus
 
   ! adaptive grid stuff
 
-  type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
-  type(OCTALVECTOR) :: octVec
+  type(VECTOR) :: amrGridCentre ! central coordinates of grid
+  type(VECTOR) :: octVec
   real :: ang
   real(double) :: kabs, eta
   integer :: nt
@@ -365,13 +365,13 @@ program torus
   grid%resonanceLine = resonanceLine
 
 
-  amrGridCentre = OCTALVECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+  amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
   !
 
   if (geometry.eq."raman") then
-     hotSourcePosition = 0.75*secondSourcePosition
-     coolStarPosition = (-0.25)*secondSourcePosition
+     hotSourcePosition = 0.75d0*secondSourcePosition
+     coolStarPosition = (-0.25d0)*secondSourcePosition
      secondSourcePosition = hotSourcePosition
   endif
 
@@ -737,7 +737,7 @@ program torus
   endif ! (gridusesAMR)
   !=================================================================
 
-  outVec = (-1.)* originalViewVec
+  outVec = (-1.d0)* originalViewVec
 
   ! set up the sources
   call set_up_sources
@@ -838,7 +838,7 @@ program torus
 !           ang = 45.*degtorad
            t = 120.d0*degtorad
            call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
+                VECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo
         stop
@@ -887,7 +887,7 @@ program torus
   if (molecular) then
      if (writemol) call molecularLoop(grid, co)
      if (readmol) call calculateMoleculeSpectrum(grid, co)
-!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+!        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
 
      stop
   endif
@@ -1047,7 +1047,7 @@ CONTAINS
        meanDepart = 0.
        nt = 0
        outVec = VECTOR(1., 0., 0.)
-       rVec = rGrid(i) * outVec 
+       rVec = dble(rGrid(i)) * outVec 
        r = rgrid(i)
 !       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
 !            rVec, outVec, grid, lambda, &
@@ -1058,7 +1058,7 @@ CONTAINS
 
        do j = 1, 100
           ang = twoPi * real(j-1)/100.
-          octVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
+          octVec = VECTOR(r*cos(ang), r*sin(ang),0.)
           call amrGridValues(grid%octreeRoot, octVec, temperature=tReal, &
               ilambda=1, N=levelPops, Ne=Ne)
           t1 = dble(treal)
@@ -1104,7 +1104,7 @@ CONTAINS
        meaneta =0.
        nt = 0
        outVec = VECTOR(1., 0., 0.)
-       rVec = rGrid(i) * outVec 
+       rVec = dble(rGrid(i)) * outVec 
        r = rgrid(i)
 !       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
 !            rVec, outVec, grid, lambda, &
@@ -1117,7 +1117,7 @@ CONTAINS
 
        do j = 1, 100
           ang = twoPi * real(j-1)/100.
-          octVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
+          octVec = VECTOR(r*cos(ang), r*sin(ang),0.)
           call amrGridValues(grid%octreeRoot, octVec, temperature=treal, &
               ilambda=1, grid=grid ,etacont = eta, kappaAbs=kabs)
           if (treal > 1.) then
@@ -1317,7 +1317,7 @@ CONTAINS
           call writeInfo(message, IMPORTANT)
           grid%dipoleOffset = dipoleOffset                         
           grid%diskNormal = VECTOR(0.,0.,1.)
-          grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
+          grid%diskNormal = rotateX(grid%diskNormal,dble(grid%dipoleOffSet))
 !          end if
        elseif (geometry == "romanova") then
 !           write(*,'(a,f5.2,a)') 'Using new dipole offset value (',&
@@ -1410,7 +1410,7 @@ CONTAINS
 
     else  ! not reading a population file
 
-       amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
+       amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        
        select case (geometry)
@@ -1474,7 +1474,7 @@ CONTAINS
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile)
           nu =1.d15
 !           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
 !           call testSurface(source(1)%surface)
@@ -1691,7 +1691,7 @@ CONTAINS
 	if (lineEmission) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
            if (geometry == "ttauri") then
               call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
            elseif (geometry == "magstream") then
@@ -1764,8 +1764,8 @@ CONTAINS
 !                 allocate(lambda(1:maxTau),tauExt(1:maxTau),tauAbs(1:maxTau),tauSca(1:maxTau),&
 !                          contTau(1:maxTau,1:nLambda), linePhotonalbedo(1:maxtau))
 !                 call integratePath(gridUsesAMR, VoigtProf, &
-!                      lambdatau,  lamLine, OCTALVECTOR(1.0d-20,1.0d-20,1.0d-20), OCTALVECTOR(150.0,0,-200.), &
-!                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+!                      lambdatau,  lamLine, VECTOR(1.0d-20,1.0d-20,1.0d-20), VECTOR(150.0,0,-200.), &
+!                      VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
 !                      tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
 !                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
 !                      .false., nUpper, nLower, 0., 0., 0., junk,&
@@ -1775,8 +1775,8 @@ CONTAINS
 !                 write(*,*) "Rescaling scattering and absorption coefficients ... "
 !                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
 !                 call integratePath(gridUsesAMR, VoigtProf, &
-!                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
-!                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+!                      lambdatau,  lamLine, VECTOR(1.,1.,1.), VECTOR(75.0,0,-50.), &
+!                      VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
 !                      tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
 !                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
 !                      .false., nUpper, nLower, 0., 0., 0., junk,&
@@ -1902,7 +1902,7 @@ subroutine set_up_sources
         if (.not.cmf) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
            if (geometry == "ttauri") then
               call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
            elseif (geometry == "magstream") then
@@ -1923,7 +1923,7 @@ subroutine set_up_sources
            source(1)%position = VECTOR(0.,0.,0.)
            call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
-           call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
+           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile)
            call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
 
 
@@ -1950,7 +1950,7 @@ subroutine set_up_sources
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile)
        endif
        nu =1.d15
        call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
@@ -2009,14 +2009,14 @@ subroutine set_up_sources
        allocate(source(1:nSource)) 
        source(1)%teff = 30000.  ! o star
        source(1)%radius = 10. * rSol / 1.e10
-       source(1)%position = (VECTOR(1.,0.,0.)*real(autocm))/1.e10
+       source(1)%position = (VECTOR(1.,0.,0.)*dble(autocm))/1.d10
        source(1)%luminosity = fourPi * stefanBoltz * (10.*rSol)**2.0 * (source(1)%teff)**4
        call readSpectrum(source(1)%spectrum, "ostar.flx", ok)
        call normalizedSpectrum(source(1)%spectrum)
 
        source(2)%teff = 40000.             ! wr star 
        source(2)%radius = 20. * rSol / 1.e10
-       source(2)%position = (VECTOR(-1.,0.,0.)*real(autocm))/1.e10
+       source(2)%position = (VECTOR(-1.,0.,0.)*dble(autocm))/1.d10
        source(2)%luminosity = 0.5 * source(1)%luminosity
        call readSpectrum(source(2)%spectrum, "wr.flx", ok)
        call normalizedSpectrum(source(2)%spectrum)
@@ -2085,7 +2085,7 @@ subroutine set_up_sources
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
-          call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile)
+          call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, contFluxFile)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
@@ -2117,7 +2117,7 @@ subroutine set_up_sources
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
-          call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile1)
+          call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1)
           call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
@@ -2131,7 +2131,7 @@ subroutine set_up_sources
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
-          call buildSphere(o2s(source(2)%position), real(source(2)%radius), source(2)%surface, 400, contFluxFile2)
+          call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2)
           call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
        endif
        call normalizedSpectrum(source(2)%spectrum)
@@ -2153,7 +2153,7 @@ subroutine set_up_sources
        tmp = source(1)%radius * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
 
-       call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile1)
+       call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1)
 
 
        if (contFluxfile1 .eq. "blackbody") then
@@ -2171,7 +2171,7 @@ subroutine set_up_sources
        tmp = source(2)%radius * 1.e10  ! [cm]
        source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
 
-       call buildSphere(o2s(source(2)%position), real(source(2)%radius), source(2)%surface, 400, contFluxFile2)
+       call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2)
 
        if (contFluxfile2 .eq. "blackbody") then
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
@@ -2265,7 +2265,7 @@ subroutine do_lucyRadiativeEq
            write (*,*) " "
            write (*,*) "Computing the magnitudes and colors of stars ..."
            ! -- note grid distance here is in [pc]
-           call analyze_cluster(young_cluster,s2o(outVec),dble(gridDistance),grid)
+           call analyze_cluster(young_cluster,outVec,dble(gridDistance),grid)
         end if
 
         call torus_mpi_barrier
@@ -2277,7 +2277,7 @@ subroutine do_lucyRadiativeEq
         ! parameter file to restrict to one star.  (10 AU cylinder
         ! zone is used to restrict the effective computational domain.
         call restrict(grid%octreeroot, idx_restrict_star, nsource, &
-                      source,  s2o(outVec), 7.5d4) ! the last value is 50 AU (in 10^10cm)
+                      source,  outVec, 7.5d4) ! the last value is 50 AU (in 10^10cm)
 	!                      source,  s2o(outVec), 1.5d4) ! the last value is 10 AU (in 10^10cm)
 
         call reassign_10K_temperature(grid%octreeroot)

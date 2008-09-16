@@ -270,7 +270,7 @@ contains
     IMPLICIT NONE
 
     REAL(double)                  :: out
-    TYPE(octalVector), INTENT(IN) :: point    
+    TYPE(Vector), INTENT(IN) :: point    
     !
     real(double), parameter ::  rho_min = 1.0e-18 ! [g/cm^3]     
     real(double), parameter ::  rho_max = 1.0e-2  ! [g/cm^3]     
@@ -300,7 +300,7 @@ contains
     IMPLICIT NONE
 
     type(vector)                  :: out   ! [c]
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(Vector), INTENT(IN) :: point
     type(vector) :: v
 
     ! Point in spherical coordinates
@@ -333,7 +333,7 @@ contains
     
     IMPLICIT NONE
     REAL                          :: out 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(Vector), INTENT(IN) :: point
     !
     real(double) :: r
     
@@ -364,7 +364,7 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     !    
-    TYPE(octalVector) :: point
+    TYPE(Vector) :: point
     
     REAL(oct) :: r    
         
@@ -413,7 +413,7 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     
-    TYPE(octalVector) :: point 
+    TYPE(Vector) :: point 
 
     point = subcellCentre(thisOctal,subcell)
 
@@ -458,39 +458,39 @@ contains
        
        ! now store the 'base level' values
        
-       thisOctal%cornerVelocity(1) = cmfgen_velocity(octalVector(x1,y1,z1))
-       thisOctal%cornerVelocity(2) = cmfgen_velocity(octalVector(x2,y1,z1))
-       thisOctal%cornerVelocity(3) = cmfgen_velocity(octalVector(x3,y1,z1))
-       thisOctal%cornerVelocity(4) = cmfgen_velocity(octalVector(x1,y2,z1))
-       thisOctal%cornerVelocity(5) = cmfgen_velocity(octalVector(x2,y2,z1))
-       thisOctal%cornerVelocity(6) = cmfgen_velocity(octalVector(x3,y2,z1))
-       thisOctal%cornerVelocity(7) = cmfgen_velocity(octalVector(x1,y3,z1))
-       thisOctal%cornerVelocity(8) = cmfgen_velocity(octalVector(x2,y3,z1))
-       thisOctal%cornerVelocity(9) = cmfgen_velocity(octalVector(x3,y3,z1))
+       thisOctal%cornerVelocity(1) = cmfgen_velocity(Vector(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = cmfgen_velocity(vector(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = cmfgen_velocity(vector(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = cmfgen_velocity(vector(x1,y2,z1))
+       thisOctal%cornerVelocity(5) = cmfgen_velocity(vector(x2,y2,z1))
+       thisOctal%cornerVelocity(6) = cmfgen_velocity(vector(x3,y2,z1))
+       thisOctal%cornerVelocity(7) = cmfgen_velocity(vector(x1,y3,z1))
+       thisOctal%cornerVelocity(8) = cmfgen_velocity(vector(x2,y3,z1))
+       thisOctal%cornerVelocity(9) = cmfgen_velocity(vector(x3,y3,z1))
        
        ! middle level
        
-       thisOctal%cornerVelocity(10) = cmfgen_velocity(octalVector(x1,y1,z2))
-       thisOctal%cornerVelocity(11) = cmfgen_velocity(octalVector(x2,y1,z2))
-       thisOctal%cornerVelocity(12) = cmfgen_velocity(octalVector(x3,y1,z2))
-       thisOctal%cornerVelocity(13) = cmfgen_velocity(octalVector(x1,y2,z2))
-       thisOctal%cornerVelocity(14) = cmfgen_velocity(octalVector(x2,y2,z2))
-       thisOctal%cornerVelocity(15) = cmfgen_velocity(octalVector(x3,y2,z2))
-       thisOctal%cornerVelocity(16) = cmfgen_velocity(octalVector(x1,y3,z2))
-       thisOctal%cornerVelocity(17) = cmfgen_velocity(octalVector(x2,y3,z2))
-       thisOctal%cornerVelocity(18) = cmfgen_velocity(octalVector(x3,y3,z2))
+       thisOctal%cornerVelocity(10) = cmfgen_velocity(vector(x1,y1,z2))
+       thisOctal%cornerVelocity(11) = cmfgen_velocity(vector(x2,y1,z2))
+       thisOctal%cornerVelocity(12) = cmfgen_velocity(vector(x3,y1,z2))
+       thisOctal%cornerVelocity(13) = cmfgen_velocity(vector(x1,y2,z2))
+       thisOctal%cornerVelocity(14) = cmfgen_velocity(vector(x2,y2,z2))
+       thisOctal%cornerVelocity(15) = cmfgen_velocity(vector(x3,y2,z2))
+       thisOctal%cornerVelocity(16) = cmfgen_velocity(vector(x1,y3,z2))
+       thisOctal%cornerVelocity(17) = cmfgen_velocity(vector(x2,y3,z2))
+       thisOctal%cornerVelocity(18) = cmfgen_velocity(vector(x3,y3,z2))
        
        ! top level
        
-       thisOctal%cornerVelocity(19) = cmfgen_velocity(octalVector(x1,y1,z3))
-       thisOctal%cornerVelocity(20) = cmfgen_velocity(octalVector(x2,y1,z3))
-       thisOctal%cornerVelocity(21) = cmfgen_velocity(octalVector(x3,y1,z3))
-       thisOctal%cornerVelocity(22) = cmfgen_velocity(octalVector(x1,y2,z3))
-       thisOctal%cornerVelocity(23) = cmfgen_velocity(octalVector(x2,y2,z3))
-       thisOctal%cornerVelocity(24) = cmfgen_velocity(octalVector(x3,y2,z3))
-       thisOctal%cornerVelocity(25) = cmfgen_velocity(octalVector(x1,y3,z3))
-       thisOctal%cornerVelocity(26) = cmfgen_velocity(octalVector(x2,y3,z3))
-       thisOctal%cornerVelocity(27) = cmfgen_velocity(octalVector(x3,y3,z3))
+       thisOctal%cornerVelocity(19) = cmfgen_velocity(vector(x1,y1,z3))
+       thisOctal%cornerVelocity(20) = cmfgen_velocity(vector(x2,y1,z3))
+       thisOctal%cornerVelocity(21) = cmfgen_velocity(vector(x3,y1,z3))
+       thisOctal%cornerVelocity(22) = cmfgen_velocity(vector(x1,y2,z3))
+       thisOctal%cornerVelocity(23) = cmfgen_velocity(vector(x2,y2,z3))
+       thisOctal%cornerVelocity(24) = cmfgen_velocity(vector(x3,y2,z3))
+       thisOctal%cornerVelocity(25) = cmfgen_velocity(vector(x1,y3,z3))
+       thisOctal%cornerVelocity(26) = cmfgen_velocity(vector(x2,y3,z3))
+       thisOctal%cornerVelocity(27) = cmfgen_velocity(vector(x3,y3,z3))
     
     else  ! 2D case
        
@@ -506,15 +506,15 @@ contains
        
        ! now store the 'base level' values
        
-       thisOctal%cornerVelocity(1) = cmfgen_velocity(octalVector(x1,0.d0,z1))
-       thisOctal%cornerVelocity(2) = cmfgen_velocity(octalVector(x2,0.d0,z1))
-       thisOctal%cornerVelocity(3) = cmfgen_velocity(octalVector(x3,0.d0,z1))
-       thisOctal%cornerVelocity(4) = cmfgen_velocity(octalVector(x1,0.d0,z2))
-       thisOctal%cornerVelocity(5) = cmfgen_velocity(octalVector(x2,0.d0,z2))
-       thisOctal%cornerVelocity(6) = cmfgen_velocity(octalVector(x3,0.d0,z2))
-       thisOctal%cornerVelocity(7) = cmfgen_velocity(octalVector(x1,0.d0,z3))
-       thisOctal%cornerVelocity(8) = cmfgen_velocity(octalVector(x2,0.d0,z3))
-       thisOctal%cornerVelocity(9) = cmfgen_velocity(octalVector(x3,0.d0,z3))
+       thisOctal%cornerVelocity(1) = cmfgen_velocity(vector(x1,0.d0,z1))
+       thisOctal%cornerVelocity(2) = cmfgen_velocity(vector(x2,0.d0,z1))
+       thisOctal%cornerVelocity(3) = cmfgen_velocity(vector(x3,0.d0,z1))
+       thisOctal%cornerVelocity(4) = cmfgen_velocity(vector(x1,0.d0,z2))
+       thisOctal%cornerVelocity(5) = cmfgen_velocity(vector(x2,0.d0,z2))
+       thisOctal%cornerVelocity(6) = cmfgen_velocity(vector(x3,0.d0,z2))
+       thisOctal%cornerVelocity(7) = cmfgen_velocity(vector(x1,0.d0,z3))
+       thisOctal%cornerVelocity(8) = cmfgen_velocity(vector(x2,0.d0,z3))
+       thisOctal%cornerVelocity(9) = cmfgen_velocity(vector(x3,0.d0,z3))
     endif
 
   END SUBROUTINE VelocityCorners

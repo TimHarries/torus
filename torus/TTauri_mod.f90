@@ -51,7 +51,7 @@ contains
     real :: theta1, theta2
     real :: thetaStart, thetaEnd
     real :: mDot, rStar, mStar
-    real :: r, theta, phi
+    real(double) :: r, theta, phi
     real :: rM, y, rho
     real :: nuArray(3000),fnu(3000), fac
     integer :: nNu
@@ -101,7 +101,7 @@ contains
     grid%diskRadius = rInner/1.e10
 
     grid%diskNormal = VECTOR(0.,0.,1.)
-    grid%diskNormal = rotateX(grid%diskNormal, dipoleOffSet)
+    grid%diskNormal = rotateX(grid%diskNormal, dble(dipoleOffSet))
 
     grid%inUse = .false.
 
@@ -191,7 +191,7 @@ contains
              rho = rho * r**(-5./2.) / sqrt(2.*bigG * mStar)
              rho = rho * sqrt(4.- 3.*y) / sqrt(1.-min(y,0.99))
 
-             posVec = VECTOR(r * sin(theta), 0., r*cos(theta)) / 1.e10
+             posVec = VECTOR(r * sin(theta), 0.d0, r*cos(theta)) / 1.d010
              posVec = rotateZ(posVec, phi)
              vP = rotateZ(vP, phi)
              if (theta > pi/2.) vP%z = -vP%z
@@ -364,7 +364,7 @@ contains
     real :: phi
     integer :: i, j
     integer :: i1, i2, i3
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
     if (grid%adaptive) then 
        call infallEnhancmentAMR(grid, distortionVec, nVec, timeStep, doDistortion, &
@@ -375,11 +375,11 @@ contains
       dTime = timeStep/real(nTimes)
       do j = 1, nVec
         do i = 1, nTimes
-          thisVec = distortionVec(j)/1.e10
+          thisVec = distortionVec(j)/1.d10
           call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
           thisVel = interpGridVelocity(grid,i1, i2, i3, t1, t2, t3)
           thisVel = cSpeed * thisVel
-          distortionVec(j) = distortionVec(j) + (dTime * thisVel)
+          distortionVec(j) = distortionVec(j) + (dble(dTime) * thisVel)
         enddo
       enddo
       write(*,*) "done."
@@ -393,8 +393,8 @@ contains
         do i = 1, nVec
           do j = 1, nPhi
              phi = twoPi * real(j-1)/real(nPhi-1)
-             thisVec = rotateZ(distortionVec(i), phi)
-             thisVec = thisVec / 1.e10
+             thisVec = rotateZ(distortionVec(i), dble(phi))
+             thisVec = thisVec / 1.d10
              call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
              if ((.not.done(i1,i2,i3)).and.(.not.grid%inStar(i1,i2,i3)).and. &
                   grid%inUse(i1,i2,i3)) then

@@ -13,7 +13,7 @@ module source_mod
 
 
   type SOURCETYPE
-     type(OCTALVECTOR)    :: position   ! [10^10cm]
+     type(VECTOR)    :: position   ! [10^10cm]
      real(double) :: radius     ! [10^10cm]
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]
@@ -30,7 +30,7 @@ module source_mod
 
     function newSource(position, luminosity, radius, teff, spectrum)
       type(SOURCETYPE) :: newSource
-      type(DOUBLEVECTOR), intent(in) :: position
+      type(VECTOR), intent(in) :: position
       real(double), intent(in) :: luminosity, radius, teff
       type(SPECTRUMTYPE) :: spectrum
       newSource%position = position
@@ -174,7 +174,7 @@ module source_mod
     subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance, sourcenumber)
       integer :: nSource
       type(SOURCETYPE) :: source(nSource)
-      type(OCTALVECTOR) :: rVec, uHat
+      type(VECTOR) :: rVec, uHat
       integer, optional :: sourceNumber
       real(double) :: distance, cosTheta, sintheta
       logical :: hitSource
@@ -199,7 +199,7 @@ module source_mod
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat)
       type(SOURCETYPE) :: source
-      type(OCTALVECTOR) :: position, direction, rHat
+      type(VECTOR) :: position, direction, rHat
 
 
 !      ! simply treating as a point source
@@ -209,7 +209,7 @@ module source_mod
       !
       ! uncomment below for a finite-size source.
       !
-      rHat = randomUnitDoubleVector()
+      rHat = randomUnitVector()
       position = source%position + source%radius*rHat
       ! A limb darkening law should be applied here for 
       ! for general case here.....
@@ -225,7 +225,7 @@ module source_mod
     real(double) :: distance, radius
     real(double) :: x1, x2,a,b,c,d,costheta
     logical :: ok
-    type(OCTALVECTOR) :: rVec, uHat, centre
+    type(VECTOR) :: rVec, uHat, centre
 
     d = modulus(centre - rVec)
     cosTheta = (uHat .dot. (centre-rVec)) / d
@@ -308,16 +308,16 @@ module source_mod
   !        it has a correct direction, this routine should work.
   function random_direction_from_sphere(rvec) RESULT(out)
     implicit none
-    type(octalvector) :: out 
+    type(VECTOR) :: out 
     !
-    type(octalvector), intent(in) :: rvec
+    type(VECTOR), intent(in) :: rvec
     !
-    type(octalvector) :: dir 
+    type(VECTOR) :: dir 
     real(oct) :: inner_product
     
     inner_product = -1.0d0
     do while (inner_product<0.0d0) 
-       dir = randomUnitOctalVector()
+       dir = randomUnitVECTOR()
        inner_product = dir .dot. rvec
     end do
     
@@ -370,7 +370,7 @@ module source_mod
   logical function insideSource(thisOctal, subcell, nsource, source)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(OCTALVECTOR) :: rVec, corner
+    type(VECTOR) :: rVec, corner
     integer :: nsource
     type(SOURCETYPE) :: source(:)
     integer :: i
@@ -382,69 +382,69 @@ module source_mod
     do i = 1, nSource
        
        if (thisOctal%twoD) then
-          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(oneOverrootTwo,0.d0,oneOverrootTwo)
+          corner = rVec + thisOctal%subcellSize/rootTwo * VECTOR(oneOverrootTwo,0.d0,oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(oneOverrootTwo,0.d0,-oneOverrootTwo)
+          corner = rVec + thisOctal%subcellSize/rootTwo * VECTOR(oneOverrootTwo,0.d0,-oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(-oneOverrootTwo,0.d0,oneOverrootTwo)
+          corner = rVec + thisOctal%subcellSize/rootTwo * VECTOR(-oneOverrootTwo,0.d0,oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(-oneOverrootTwo, 0.d0, -oneOverrootTwo)
+          corner = rVec + thisOctal%subcellSize/rootTwo * VECTOR(-oneOverrootTwo, 0.d0, -oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
        else if (thisOctal%oneD) then
-          corner = rVec - OCTALVECTOR(thisOctal%subcellSize/2.d0,0.d0,0.d0)
+          corner = rVec - VECTOR(thisOctal%subcellSize/2.d0,0.d0,0.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
        else
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, 1.d0, 1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(1.d0, 1.d0, 1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, -1.d0, 1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(1.d0, -1.d0, 1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, 1.d0, -1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(1.d0, 1.d0, -1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, -1.d0, -1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(1.d0, -1.d0, -1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, -1.d0, -1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(-1.d0, -1.d0, -1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(-1.d0, 1.d0, 1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, 1.d0, -1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(-1.d0, 1.d0, -1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, -1.d0, 1.d0)
+          corner = rVec + thisOctal%subcellSize/2.d0 * VECTOR(-1.d0, -1.d0, 1.d0)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.

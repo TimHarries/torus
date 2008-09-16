@@ -32,7 +32,7 @@ contains
     implicit none
     type(GRIDTYPE) :: grid
     integer i1,i2,i3
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
 !    weight = 0.
 !    if (grid%inUse(i1  , i2  , i3  )) weight(1) =  ((1.-t1)  * (1.-t2) * (1.-t3))
@@ -79,7 +79,7 @@ contains
     implicit none
     type(GRIDTYPE) :: grid
     integer i1,i2,i3, iLambda
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
 
 
@@ -102,7 +102,7 @@ contains
     implicit none
     type(GRIDTYPE) :: grid
     integer i1,i2,i3, iLambda
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
     interpGridKappaScaRed = &
          ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(grid%kappaScaRed(i1  , i2   , i3   , ilambda)) + &
@@ -123,7 +123,7 @@ contains
     implicit none
     type(GRIDTYPE) :: grid
     integer i1,i2,i3, iLambda
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
 
 
@@ -152,7 +152,7 @@ contains
     implicit none
     type(GRIDTYPE) :: grid
     integer i1,i2,i3, iLambda
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
 
 
@@ -232,7 +232,7 @@ contains
     integer nx,ny,nz
     real :: scalarGrid(1:nx,1:ny,1:nz)
     integer i1,i2,i3
-    real :: t1, t2, t3
+    real(double) :: t1, t2, t3
 
 
     interpGridScalar2 = &
@@ -275,7 +275,7 @@ contains
     implicit none
     type(GRIDTYPE), intent(in) :: grid
     integer, intent(in)        :: i1,i2,i3
-    real, intent(in)           :: t1, t2, t3
+    real(double), intent(in)           :: t1, t2, t3
     integer                    :: j1,j2,j3
 
 
@@ -309,7 +309,7 @@ contains
     integer, intent(in) :: n1, n2, n3
     type(VECTOR), intent(in) :: thisVec(1:n1,1:n2,1:n3)
     integer, intent(in)        :: i1,i2,i3
-    real, intent(in)           :: t1, t2, t3
+    real(double), intent(in)           :: t1, t2, t3
     integer                    :: j1,j2,j3
 
 
@@ -339,10 +339,10 @@ contains
     implicit none
     type(GRIDTYPE), intent(in) :: grid        ! the opacity grid
     type(VECTOR), intent(in)   :: direction   ! vector
-    type(OCTALVECTOR), intent(in)   :: position    ! vectors
+    type(VECTOR), intent(in)   :: position    ! vectors
     integer, intent(in)        :: i1, i2, i3  ! indices
    
-    real            :: t1, t2, t3             ! multipliers
+    real(double)            :: t1, t2, t3             ! multipliers
     type(VECTOR)    :: position1, position2, position_tmp
     type(VECTOR)    :: rHat
     real(double)            :: r, theta, phi      ! spherical polar coords
@@ -351,7 +351,7 @@ contains
     real            :: dr
     real            :: phi1, phi2, dphi, dx
     real            :: dy, dz, dtheta
-    type(octalvector)   :: octalvec_tmp
+    type(VECTOR)   :: octalvec_tmp
 
     ! dr is a small increment of distance
 
@@ -392,7 +392,7 @@ contains
 
     ! get a new position a little way back from current position
     position_tmp = position
-    position1 = position_tmp - dr * direction
+    position1 = position_tmp - dble(dr) * direction
 
     ! this might be inside core or outside grid- 
     ! in which case just use the current
@@ -420,7 +420,7 @@ contains
     ! now go forward a bit from current position
 
     position_tmp = position
-    position2 = position_tmp + dr * direction
+    position2 = position_tmp + dble(dr) * direction
     r = modulus(position2)
 
 
@@ -1202,7 +1202,7 @@ stop
     
     type(octal), pointer  :: child 
     real(double) :: dV !,r1,r2
-!    type(octalvector)     :: rvec
+!    type(VECTOR)     :: rvec
     integer               :: subcell
     integer               :: i
 
@@ -1320,7 +1320,7 @@ stop
 !    vel = gasdev()*sigmaVel/cSpeed
 
 
-    thermalElectronVelocity = maxwellianVelocity(mElectron,temperature)/real(cSpeed)
+    thermalElectronVelocity = maxwellianVelocity(mElectron,temperature)/cSpeed
 
 
   end function thermalElectronVelocity
@@ -1331,7 +1331,7 @@ stop
     !real :: vel
     !real :: sigmaVel
  
-    thermalHydrogenVelocity = maxwellianVelocity(mHydrogen, temperature)/real(cSpeed)
+    thermalHydrogenVelocity = maxwellianVelocity(mHydrogen, temperature)/cSpeed
 
 
   end function thermalHydrogenVelocity

@@ -86,9 +86,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer :: intPathError
   integer :: nContPhotons
   real :: chanceHotRing
-  type(OCTALVECTOR) :: positionOc    ! photon position position
+  type(VECTOR) :: positionOc    ! photon position position
   real :: observedLambda
-  type(OCTALVECTOR) :: rHatinStar, rHat
+  type(VECTOR) :: rHatinStar, rHat
   type(VECTOR) :: slitPosition
   real(double) :: tau_bnd
   real :: dlambda, thisTau
@@ -200,7 +200,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   integer :: i, iSlit, istep, ispline 
   type(VECTOR) :: viewVec, outVec, thisVec
-  type(OCTALVECTOR) :: amrGridCentre
+  type(VECTOR) :: amrGridCentre
 
   integer :: toofewsamples   ! number of errors from integratePathAMR
   integer :: boundaryprobs   ! number of errors from integratePathAMR
@@ -296,7 +296,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      allocate(pvimage(1:nSlit))
   endif
 
-  amrGridCentre = OCTALVECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+  amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
   ! Choose whether to rotate the view
   call choose_view( geometry,   nPhase,          distortionType, doRaman, & ! Intent in
@@ -332,7 +332,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      call unixTimes(cpuTime, startTime)
 
      viewVec = originalViewVec
-     outVec = (-1.)*viewVec
+     outVec = (-1.d0)*viewVec
      thisVec = viewVec
 
 
@@ -342,8 +342,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (rotateView.and.(nPhase /= 1)) then
         if (writeoutput) write(*,'(a)') "Rotating view..."
         phi = -rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1)
-        viewVec =  arbitraryRotate(thisVec, phi, rotationAxis)
-        outVec = (-1.) * viewVec
+        viewVec =  arbitraryRotate(thisVec, dble(phi), rotationAxis)
+        outVec = (-1.d0) * viewVec
         if (writeoutput) write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
              viewVec%y,",",viewVec%z,")"
      endif
@@ -351,15 +351,15 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (phaseOffset /= 0.) then
         if (writeoutput) write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
         phi = twoPi * phaseOffset
-        viewVec =  arbitraryRotate(viewVec, phi, rotationAxis)
-        outVec = (-1.) * viewVec
+        viewVec =  arbitraryRotate(viewVec, dble(phi), rotationAxis)
+        outVec = (-1.d0) * viewVec
      endif
 
 
      if (tiltView.and.(nPhase /= 1)) then
         phi = -twoPi * real(iPhase-1)/real(nPhase-1)
-        viewVec =  arbitraryRotate(thisVec, phi, xAxis)
-        outVec = (-1.) * viewVec
+        viewVec =  arbitraryRotate(thisVec, dble(phi), xAxis)
+        outVec = (-1.d0) * viewVec
      endif
 
 
@@ -449,7 +449,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         ! file is read from a file!  (RK changed here.)
         nu = cSpeed / (lamLine * angstromtocm)
         call contread(contFluxFile, nu, coreContinuumFlux)
-        call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+        call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
         if (geometry == "ttauri") then
            call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
         elseif (geometry == "romanova") then
@@ -780,14 +780,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
                  if (.not.grid%oneKappa) then
                     if (.not.flatspec) then
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, real(t1), real(t2), real(t3))
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, real(t1), real(t2), real(t3))
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, t1, t2, t3)
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, t1, t2, t3)
                     else
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1,  real(t1), real(t2), real(t3))
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1,  real(t1), real(t2), real(t3))
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1, t1, t2, t3)
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1, t1, t2, t3)
                     endif
                  else
-                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,real(t1),real(t2),real(t3))
+                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2, t3)
                     thisChi = grid%oneKappaAbs(1,iLambda) * r
                     thisSca = grid%oneKappaSca(1,iLambda) * r
                  endif
@@ -1042,14 +1042,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
        viewVec%x = 0.
        viewVec%y = -sin(inclination)
        viewVec%z = -cos(inclination)
-       outVec = (-1.)*viewVec
+       outVec = (-1.d0)*viewVec
        thisVec = viewVec
 
        if (rotateView.and.(nPhase /= 1)) then
          write(*,'(a)') "Rotating view..."
          phi = -rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1)
-         viewVec =  arbitraryRotate(thisVec, phi, rotationAxis)
-         outVec = (-1.) * viewVec
+         viewVec =  arbitraryRotate(thisVec, dble(phi), rotationAxis)
+         outVec = (-1.d0) * viewVec
          write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
          viewVec%y,",",viewVec%z,")"
        endif
@@ -1057,14 +1057,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
        if (phaseOffset /= 0.) then
          write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
          phi = twoPi * phaseOffset
-         viewVec =  arbitraryRotate(viewVec, phi, rotationAxis)
-         outVec = (-1.) * viewVec
+         viewVec =  arbitraryRotate(viewVec, dble(phi), rotationAxis)
+         outVec = (-1.d0) * viewVec
        endif
 
        if (tiltView.and.(nPhase /= 1)) then
          phi = -twoPi * real(iPhase-1)/real(nPhase-1)
-         viewVec =  arbitraryRotate(thisVec, phi, xAxis)
-         outVec = (-1.) * viewVec
+         viewVec =  arbitraryRotate(thisVec, dble(phi), xAxis)
+         outVec = (-1.d0) * viewVec
        endif
 
      end if
@@ -1138,7 +1138,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !     if (molecular) then
 !        if (writemol) call  molecularLoop(grid, co)
 !        call calculateMoleculeSpectrum(grid, co)
-!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+!        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
 !        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
 !        stop
 !     endif
@@ -1182,7 +1182,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (nSlit  > 1) then
            rHat = slitPosition2 - slitPosition1
            do iSlit = 1, nSlit
-              slitPosition = slitPosition1 + (real(iSlit-1)/real(nSlit-1))*(slitPosition2 - slitPosition1)
+              slitPosition = slitPosition1 + (dble(iSlit-1)/dble(nSlit-1))*(slitPosition2 - slitPosition1)
               pvImage(iSlit) = initPVimage(nv, vMin, vMax, np, -slitLength/2., slitLength/2., &
                    slitPosition, slitPA, slitWidth, slitLength)
            enddo
@@ -1238,9 +1238,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         ! scattering flux!  Should be modified later.  (RK)
         call compute_obs_line_flux(lamline, REAL(mHydrogen), DBLE(grid%rstar1), &
              dble(TTauriRouter/1.0e10), dble(amrGridSize)/2.001d0/SQRT(2.0d0), &
-             OCTALVECTOR(0.0d0, 0.0d0, 0.0d0), starSurface, &
+             VECTOR(0.0d0, 0.0d0, 0.0d0), starSurface, &
              form_nr_wind, form_nr_acc, form_nr_core, form_nphi,  &
-             s2o(outVec), objectDistance, grid, sampleFreq, opaqueCore,  &
+             outVec, objectDistance, grid, sampleFreq, opaqueCore,  &
              flux, grid%lamArray, grid%nlambda, obsfluxfile, &
              thin_disc_on, (ttau_disc_on .and. .not. ttau_turn_off_disc), &
              (ttau_jet_on .and. .not. ttau_turn_off_jet), ttau_discwind_on, npix, &
@@ -1498,8 +1498,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               
               call integratePath(gridUsesAMR, VoigtProf, &
                          thisPhoton%lambda, lamLine, &
-                         s2o(thisPhoton%velocity), &
-                         thisPhoton%position, s2o(outVec), grid, &
+                         thisPhoton%velocity, &
+                         thisPhoton%position, outVec, grid, &
                          lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau , nTau, thin_disc_on, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
@@ -1537,8 +1537,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               ! find optical depths to observer
               call integratePath(gridUsesAMR, VoigtProf, &
                          thisPhoton%lambda, lamLine, &
-                         s2o(thisPhoton%velocity), &
-                         thisPhoton%position, s2o(outVec), grid, &
+                         thisPhoton%velocity, &
+                         thisPhoton%position, outVec, grid, &
                          lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
@@ -1752,7 +1752,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
            call integratePath(gridUsesAMR, VoigtProf, &
               thisPhoton%lambda, lamLine, &
-              s2o(thisPhoton%velocity), &
+              thisPhoton%velocity, &
               thisPhoton%position, &
               thisPhoton%direction, grid, &
               lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
@@ -1867,7 +1867,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                     
                     call integratePath(gridUsesAMR, VoigtProf, &
                          obsPhoton%lambda, lamLine, &
-                         s2o(obsPhoton%velocity), &
+                         obsPhoton%velocity, &
                          obsPhoton%position, obsPhoton%direction, grid, &
                          lambdaObs, tauExtObs, tauAbsObs, tauScaObs, linePhotonAlbedo, maxTau, nTauObs,  thin_disc_on, opaqueCore, &
                          escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
@@ -1934,14 +1934,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
                  if (.not.grid%oneKappa) then
                     if (.not.flatspec) then
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, real(t1), real(t2), real(t3))
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, real(t1), real(t2), real(t3))
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, t1, t2, t3) 
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, t1, t2, t3)
                     else
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1,  real(t1), real(t2), real(t3))
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1,  real(t1), real(t2), real(t3))
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1, t1, t2, t3)
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1, t1, t2, t3)
                     endif
                  else
-                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,real(t1),real(t2),real(t3))
+                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
                     thisChi = grid%oneKappaAbs(1,iLambda) * r
                     thisSca = grid%oneKappaSca(1,iLambda) * r
                  endif
@@ -1974,8 +1974,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        albedo = 0.
                     endif
                  else
-                    r1 = modulus(o2s(thisPhoton%position) - grid%starpos1)/grid%rStar1
-                    r2 = modulus(o2s(thisPhoton%position) - grid%starpos2)/grid%rStar2
+                    r1 = modulus(thisPhoton%position - grid%starpos1)/dble(grid%rStar1)
+                    r2 = modulus(thisPhoton%position - grid%starpos2)/dble(grid%rStar2)
                     r = min (r1, r2)
                     if (r < 1.01) then
                        albedo = 0.5
@@ -2012,7 +2012,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                  if (doRaman) then
                     call integratePath(gridUsesAMR, VoigtProf, &
-                            obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
+                            obsPhoton%lambda, lamLine, obsPhoton%velocity, &
                             obsPhoton%position, obsPhoton%direction, grid, &
                             lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
                             escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
@@ -2057,7 +2057,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                  call integratePath(gridUsesAMR, VoigtProf, &
                       obsPhoton%lambda, lamLine, &
-                      s2o(obsPhoton%velocity), &
+                      obsPhoton%velocity, &
                       obsPhoton%position, obsPhoton%direction, grid, &
                       lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
                       escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
@@ -2243,7 +2243,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                  call integratePath(gridUsesAMR, VoigtProf, &
                             thisPhoton%lambda, lamLine, &
-                            s2o(thisPhoton%velocity), thisPhoton%position, &
+                            thisPhoton%velocity, thisPhoton%position, &
                             thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
                             tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
                             escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
@@ -2654,20 +2654,20 @@ CONTAINS
        rotationAxis = grid%diskNormal
        if (writeoutput) write(*,*) "rotation axis",rotationAxis
     case ("donati")
-       rotationAxis = rotateX(rotationAxis, -dipoleOffset)
+       rotationAxis = rotateX(rotationAxis, -dble(dipoleOffset))
     case("jets")
        rotationAxis = VECTOR(1., 0., 0.)
     end select
 
     if (distortionType == "spiral") then
-       rotationAxis = rotateX(rotationAxis, dipoleOffset)
+       rotationAxis = rotateX(rotationAxis, dble(dipoleOffset))
     endif
 
     normToRotation = rotationAxis .cross. yAxis
     call normalize(normToRotation)
 
-    tempVec  = arbitraryRotate(rotationAxis, inclination, normToRotation)
-    originalViewVec =  (-1.)*tempVec
+    tempVec  = arbitraryRotate(rotationAxis, dble(inclination), normToRotation)
+    originalViewVec =  (-1.d0)*tempVec
 
   end subroutine define_rotation_axis
 

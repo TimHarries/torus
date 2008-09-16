@@ -59,19 +59,19 @@ contains
 
   subroutine buildSphere(centre, radius, surface, nTheta, contFile)
     type(VECTOR),intent(in) :: centre
-    real,intent(in) :: radius ! 1.e10 cm
-    real :: area ! 1.e20 cm^2
+    real(double),intent(in) :: radius ! 1.e10 cm
+    real(double) :: area ! 1.e20 cm^2
     type(SURFACETYPE),intent(out) :: surface
     integer,intent(in) :: nTheta
     character(len=*),intent(in) :: contfile
     integer :: nPhi, i, j, n
-    real :: theta, phi, dTheta, dPhi
-    real :: dPhase
+    real(double) :: theta, phi, dTheta, dPhi
+    real(double) :: dPhase
     type(VECTOR) :: rVec
     integer :: nNuHotFlux
     integer :: returnVal
-    real :: dummyReal
-    real :: nu, hnu
+    real(double) :: dummyReal
+    real(double) :: nu, hnu
     logical :: ok
     type(SPECTRUMTYPE) :: hotspec
     surface%centre = centre
@@ -165,7 +165,7 @@ contains
 
 
   integer function getElement(surface, direction)
-    type(OCTALVECTOR) :: direction , td
+    type(VECTOR) :: direction , td
     type(SURFACETYPE) :: surface
     real :: theta, phi
     integer :: itheta, iphi
@@ -214,7 +214,7 @@ contains
   end subroutine emptySurface
     
   subroutine addElement(surface, radius, rVec, area)
-    real,intent(in) :: radius, area
+    real(double),intent(in) :: radius, area
     type(SURFACETYPE),intent(inout) :: surface
     type(VECTOR),intent(in) :: rVec
 
@@ -307,7 +307,7 @@ contains
     real, intent(in) :: lineFreq
     real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
     integer :: iElement
-    type(octalVector) :: aboveSurface
+    type(VECTOR) :: aboveSurface
     real(double) :: Laccretion, Taccretion
     real :: ttauriMdotLocal
     real :: theta1, theta2
@@ -447,7 +447,7 @@ contains
     real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
     !
     integer :: iElement
-    type(octalVector) :: aboveSurface
+    type(VECTOR) :: aboveSurface
     real(double) :: rho, Vn
     type(vector) :: V  ! velocity 
     type(vector) :: n  ! normal vector
@@ -639,14 +639,14 @@ contains
     
   subroutine getPhotoVec(surface, position, direction)
     type(SURFACETYPE),intent(in) :: surface
-    type(OCTALVECTOR),intent(out) :: position
-    type(OCTALVECTOR),intent(out) :: direction
+    type(VECTOR),intent(out) :: position
+    type(VECTOR),intent(out) :: direction
     real :: r
     integer :: j
 
     call random_number(r)
     call locate(surface%element(:)%prob, SIZE(surface%element), r, j)
-    position = surface%centre + 1.0001*surface%element(j)%position
+    position = surface%centre + 1.0001d0*surface%element(j)%position
     direction = fromPhotosphereVector(surface%element(j)%norm)
   end subroutine getPhotoVec
   
@@ -658,8 +658,8 @@ contains
 
     integer :: i
     type(vector) :: rVec
-    real :: dist, photoOmega
-    real :: cosTheta, geometricalFactor
+    real(double) :: dist, photoOmega
+    real(double) :: cosTheta, geometricalFactor
     
     photoFlux = 0.0
     photoOmega = 0.0
@@ -667,7 +667,7 @@ contains
     do i = 1, SIZE(surface%element)
        rVec = position - (surface%centre+surface%element(i)%position)
        dist = modulus(rVec)
-       rVec = (-1.) * rVec / dist
+       rVec = (-1.d0) * rVec / dist
        cosTheta = rVec .dot. surface%element(i)%norm
        if (cosTheta < 0.) then
           geometricalFactor = abs(cosTheta)*surface%element(i)%area / dist**2
@@ -696,15 +696,15 @@ contains
     type(VECTOR) :: rVec
     real,intent(out) :: hotOmega, photoOmega
     integer :: i
-    real :: cosTheta
-    real :: dist
+    real(double) :: cosTheta
+    real(double) :: dist
     hotOmega = 0.
     photoOmega = 0.
 
     do i = 1, SIZE(surface%element)
        rVec = position - (surface%centre+surface%element(i)%position)
        dist = modulus(rVec)
-       rVec = (-1.) * rVec / dist
+       rVec = (-1.d0) * rVec / dist
        cosTheta = rVec .dot. surface%element(i)%norm
        if (cosTheta < 0.) then
           if (surface%element(i)%hot) then
@@ -784,7 +784,7 @@ contains
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
     INTEGER :: iElement, iSpot
-    TYPE(octalVector) :: surfacePoint
+    TYPE(VECTOR) :: surfacePoint
     
     PRINT *, 'Creating stellar surface for magStream system'
     write(*,*) "number of hotspots",size(magfieldhotspots), magfieldhotspots(1)%temperature

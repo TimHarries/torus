@@ -174,7 +174,7 @@ module image_mod
      real :: thisVel, velincgs
      real :: weight
      type(filter_set), intent(in) :: filters     
-     type(octalvector), intent(in) :: center  ! the center of the model space. [10^10cm]
+     type(VECTOR), intent(in) :: center  ! the center of the model space. [10^10cm]
      real, intent(in), optional :: lambda0_cont  ! rest wavelength of contiuum photon
      !
      integer :: i

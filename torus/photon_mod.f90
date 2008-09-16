@@ -40,8 +40,8 @@ module photon_mod
      real :: lambda                       ! wavelength
      type(VECTOR) :: normal               ! scattering normal
      type(VECTOR) :: oldNormal            ! the last scattering normal
-     type(OCTALVECTOR) :: position             ! the photon position
-     type(OCTALVECTOR) :: direction            ! the photon direction
+     type(VECTOR) :: position             ! the photon position
+     type(VECTOR) :: direction            ! the photon direction
      type(VECTOR) :: velocity             ! the photon 'velocity'
      type(VECTOR) :: originalNormal
      logical :: contPhoton                ! continuum photon? or
@@ -125,7 +125,7 @@ contains
     real :: vRay, vOverCsqr
     real :: fac
     real :: nuRest
-    type(octalVector) :: pointOctalVec
+    type(VECTOR) :: pointOctalVec
     type(octal), pointer :: octalLocation
     integer :: subcellLocation
     logical :: mie_scattering
@@ -273,7 +273,7 @@ contains
        ! to rotate the polarization so that is measured w.r.t. to 
        ! reference direction
 
-       refNormal = zAxis .cross. ((-.1)*outgoing)
+       refNormal = zAxis .cross. ((-1.d0)*outgoing)
        call normalize(refNormal)
        cosGamma = refNormal .dot. obsNormal
        sinGamma = outgoing .dot. (refNormal .cross. obsNormal)
@@ -323,10 +323,10 @@ contains
           call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
 
           if (.not.grid%resonanceLine) then
-             outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,real(t1),real(t2),real(t3)) + &
+             outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) + &
                   thermalElectronVelocity(grid%temperature(i1,i2,i3))
           else
-             outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,real(t1),real(t2),real(t3))
+             outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
           endif
        endif
 
@@ -348,7 +348,7 @@ contains
           outPhoton%Velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec)
        else
           call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
-          outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,real(t1),real(t2),real(t3))
+          outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
        endif
 
        vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
@@ -407,7 +407,7 @@ contains
     real :: vo6
     real :: x,y,z
     real(oct) :: xOctal, yOctal, zOctal
-    type(octalVector) :: octalCentre, octVec
+    type(VECTOR) :: octalCentre, octVec
     type(OCTAL), pointer :: thisOctal
     type(filter_set) :: filterSet
     real :: directionalWeight
@@ -433,7 +433,7 @@ contains
     real :: vRot                               ! rotational velocity
     integer :: i1, i2, i3                      ! position indices
     type(VECTOR) :: rHat, perp                 ! radial unit vector
-    type(OCTALVECTOR) :: rHatInStar
+    type(VECTOR) :: rHatInStar
     type(VECTOR) :: rotatedVec                 ! rotated vector
     logical :: pencilBeam                      ! beamed radiation
     type(VECTOR), parameter :: zAxis = VECTOR(0.0,0.0,1.0) ! the z axis
@@ -441,7 +441,7 @@ contains
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
     type(VECTOR) :: rVel
-    type(octalVector) :: octalPoint            ! 
+    type(VECTOR) :: octalPoint            ! 
     type(octal), pointer :: sourceOctal        ! randomly selected octal
 !    type(octal), pointer :: foundOctal       
     integer :: subcell
@@ -495,9 +495,9 @@ contains
     real(double) :: rd, bias(5000),totDouble, lambias(5000), dlambias(5000)
     integer :: i, nbias
 
-!    type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
+!    type(VECTOR) :: positionOctal     ! VECTOR type version of thisPhoton%position
 
-    type(octalVector) :: octalvec_tmp
+    type(VECTOR) :: octalvec_tmp
     type(Vector) :: vec_tmp
     ! For Voigt Profile 
     real :: temperature,  N_HI
@@ -604,7 +604,7 @@ contains
        if ((grid%cartesian.or.grid%adaptive) .and.     &
                          (.not.grid%lineEmission)) then
 
-          thisPhoton%position = grid%rCore * randomUnitVector()
+          thisPhoton%position = dble(grid%rCore) * randomUnitVector()
           
           if (nSource > 0) then
              call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar)
@@ -666,7 +666,7 @@ contains
                     grid%geometry(1:6) == "cmfgen"    .or.  &
                     grid%geometry(1:8) == "romanova")  then
                    ! need to check the position is not inside the star
-                   if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) then
+                   if ((modulus(thisPhoton%position-grid%starPos1)) > grid%rStar1) then
                       exit
                    else
                       continue ! pick another one
@@ -733,7 +733,7 @@ contains
 
                 enddo
                 biasWeight =  biasWeight * &
-                  (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,real(t1),real(t2),real(t3)))
+                  (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
 
              end if ! cartesian or adaptive
           
@@ -793,7 +793,7 @@ contains
 
                 enddo
                 biasWeight =  biasWeight * &
-                     (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,real(t1),real(t2),real(t3)))
+                     (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
                      
              elseif (grid%adaptive) then
                    
@@ -868,7 +868,7 @@ contains
                       grid%geometry(1:6) == "cmfgen"    .or. &
                       grid%geometry(1:8) == "romanova"          ) then
                     ! need to check the position is not inside the star
-                    if ((modulus(thisPhoton%position-s2o(grid%starPos1))) > grid%rStar1) exit
+                    if ((modulus(thisPhoton%position-grid%starPos1)) > grid%rStar1) exit
                   else if (.not. inOctal(grid%octreeRoot, thisPhoton%position)) then
                     exit
                   end if
@@ -910,7 +910,7 @@ contains
                 y = r * sqrt(1.d0-mu*mu) * sin(phi)
                 z = r * mu
                 if (useBias.and.(.not.grid%cartesian)) then
-                   biasWeight = interpGridScalar2(grid%biasCont3d,grid%nr,grid%nmu,grid%nphi,i1,i2,i3,real(t1),real(t2),real(t3))
+                   biasWeight = interpGridScalar2(grid%biasCont3d,grid%nr,grid%nmu,grid%nphi,i1,i2,i3,t1,t2,t3)
 !                   biasWeight = grid%biasCont3d(i1,i2,i3)
                    biasWeight = 1.d0/biasWeight
                 endif
@@ -952,15 +952,15 @@ contains
                          call normalize(tVec)
                          rotAngle = zAxis .dot. rSpot
                          rotAngle = acos(rotAngle)
-                         rHat = arbitraryrotate(rHat,rotAngle,tVec)
+                         rHat = arbitraryrotate(rHat,dble(rotAngle),tVec)
                          if (nSpot == 2) then
                             call random_number(r1)
                             if (r1 < 0.5) then
-                               rHat = (-1.) * rHat
-                               rSpot = (-1.) * rSpot
+                               rHat = (-1.d0) * rHat
+                               rSpot = (-1.d0) * rSpot
                             endif
                          endif
-                         thisPhoton%position = r * rHat
+                         thisPhoton%position = dble(r) * rHat
                       else
                          tVec = randomUnitVector()
                          ang = tVec .dot. rSpot
@@ -970,20 +970,20 @@ contains
                             ang = tVec .dot. rSpot
                             ang = acos(ang)
                          enddo
-                         thisPhoton%position = r*tVec
+                         thisPhoton%position = dble(r)*tVec
                       endif
                    else
-                      thisPhoton%position = (r*randomUnitVector())
+                      thisPhoton%position = (dble(r)*randomUnitVector())
                    endif
 
                 case("binary")
                    call random_number(r)
                    if (r < grid%lumRatio) then
-                      thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
+                      thisPhoton%position = grid%starPos1 + (1.01d0*(grid%rStar1) * randomUnitVector())
                       thisPhoton%fromStar1 = .true.
                       !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    else
-                      thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
+                      thisPhoton%position = grid%starPos2 + (1.01d0*(grid%rStar2) * randomUnitVector())
                       thisPhoton%fromStar2 = .true.
                       !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    endif
@@ -1024,10 +1024,10 @@ contains
 !                   r = get_jets_parameter("Rmin")
                    r = grid%rStar1
                    rHat = vector(x,y,z)
-                   thisPhoton%position = r*randomUnitVector()
+                   thisPhoton%position = dble(r)*randomUnitVector()
 
                 case DEFAULT
-                   thisPhoton%position = (r*randomUnitVector())
+                   thisPhoton%position = (dble(r)*randomUnitVector())
              end select
 
 
@@ -1227,7 +1227,7 @@ contains
           thisPhoton%direction%y = v
           thisPhoton%direction%z = w
           vec_tmp = thisPhoton%direction
-          rotatedVec = rotateY(vec_tmp, 30.*real(degToRad))
+          rotatedVec = rotateY(vec_tmp, 30.d0*degToRad)
           thisPhoton%direction = rotatedVec
 
        endif
@@ -1272,7 +1272,7 @@ contains
              vPhi = (vRot/cSpeed)*sqrt(max(0.d0,1.d0-(thisPhoton%position%z/grid%rCore)**2))
              perp = thisPhoton%position .cross. zAxis
              call normalize(perp)
-             thisPhoton%velocity = vPhi*perp
+             thisPhoton%velocity = dble(vPhi)*perp
           endif
        endif
 
@@ -1370,7 +1370,7 @@ contains
 
           enddo
           biasWeight =  biasWeight * &
-               (1.d0/ interpGridScalar2(grid%biasLine3D,grid%nx,grid%ny,grid%nz,i1,i2,i3,real(t1),real(t2),real(t3)))
+               (1.d0/ interpGridScalar2(grid%biasLine3D,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
 
        elseif (grid%adaptive) then
     
@@ -1443,7 +1443,7 @@ contains
                   grid%geometry(1:6) == "cmfgen"     .or.  &
                   grid%geometry(1:8) == "romanova"          ) then
                 ! need to check the position is not inside the star
-                if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
+                if ((modulus(thisPhoton%position-(grid%starPos1))) > grid%rStar1) exit
              else
                 ! exit
                 ! pick another one
@@ -1467,7 +1467,7 @@ contains
           if (thisPhoton%resonanceLine) then
              r = grid%rCore*1.00001d0
              rHat = randomUnitVector()
-             thisPhoton%position = r * rHat
+             thisPhoton%position = dble(r) * rHat
              thisPhoton%originalNormal = thisPhoton%position
              thisPhoton%direction = randomUnitVector()
              t = (thisPhoton%direction .dot. rHat)
@@ -1537,7 +1537,7 @@ contains
              thisPhoton%position%y = r*sin(phi)*sinTheta
              thisPhoton%position%z = r*mu
                 if (useBias.and.(.not.grid%cartesian)) then
-                   biasWeight = interpgridscalar2(grid%biasline3d, grid%nr,grid%nmu,grid%nphi,i1,i2,i3,real(t1),real(t2),real(t3))
+                   biasWeight = interpgridscalar2(grid%biasline3d, grid%nr,grid%nmu,grid%nphi,i1,i2,i3,t1,t2,t3)
                    biasWeight = 1.d0/biasWeight
                 endif
              endif
@@ -1659,7 +1659,7 @@ contains
 
        if (grid%doRaman) then
           thisPhoton%velocity = &
-               maxwellianVelocity(16.d0*mHydrogen, grid%tempSource)/real(cSpeed)
+               maxwellianVelocity(16.d0*mHydrogen, grid%tempSource)/cSpeed
        endif
 
 
@@ -1787,11 +1787,11 @@ contains
     position = VECTOR(grid%rAxis(grid%nr), x, y)
     direction = VECTOR(-1.,0.,0.)
     d = modulus(position)
-    toPlanet = (-1./d)*position
+    toPlanet = (-1.d0/dble(d))*position
     cosTheta = toPlanet .dot. direction
     call solveQuad(1.,-2.*d*cosTheta,d*d-grid%rAxis(grid%nr)*grid%rAxis(grid%nr),x1,x2,ok)
     x = min(x1,x2)
-    position = position + x*direction
+    position = position + dble(x)*direction
 
     thisPhoton%position = position
     thisPhoton%direction = direction

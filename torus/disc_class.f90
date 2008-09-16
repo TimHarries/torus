@@ -375,7 +375,7 @@ contains
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
     logical :: splitThis
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     integer :: n
 
     splitThis = .false.
@@ -431,7 +431,7 @@ contains
     
     real(oct)  :: cellSize, x, y, z, w, h
     real(double) :: rho_disc, scale_length
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
 !    logical:: close_to_disc
 
     ! get the size and the position of the centre of the current cell
@@ -654,7 +654,7 @@ contains
     real, intent(in) :: sigmaAbs, sigmaSca    ! [cm^2] photon-dust x-sections
     real, intent(in) :: meanDustParticleMass  ! [g]
     !
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     real :: r
     real, parameter :: rho_bg = rho_min  ! background density
     ! the following should be really taken from a parameter files... 
@@ -721,7 +721,7 @@ contains
     type(alpha_disc), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d, s
 
     ! get the size and the position of the centre of the current cell
@@ -775,7 +775,7 @@ contains
     TYPE(alpha_disc), INTENT(IN)  :: this
     
     TYPE(octal), POINTER   :: pChild
-    type(octalvector) :: rvec
+    type(VECTOR) :: rvec
     
     INTEGER :: subcell, n
     
@@ -826,7 +826,7 @@ contains
     TYPE(alpha_disc), INTENT(IN)  :: this
 
     TYPE(octal), POINTER   :: pChild
-    type(octalvector) :: rvec
+    type(VECTOR) :: rvec
     INTEGER :: subcell, n
     
     if (thisOctal%threeD) then
@@ -886,39 +886,39 @@ contains
        z3 = thisOctal%centre%z + thisOctal%subcellSize
        
        ! now store the 'base level' values    
-       thisOctal%cornerVelocity(1) = keplerian_velocity(this, OCTALVECTOR(x1,y1,z1))
-       thisOctal%cornerVelocity(2) = keplerian_velocity(this, OCTALVECTOR(x2,y1,z1))
-       thisOctal%cornerVelocity(3) = keplerian_velocity(this, OCTALVECTOR(x3,y1,z1))
-       thisOctal%cornerVelocity(4) = keplerian_velocity(this, OCTALVECTOR(x1,y2,z1))
-       thisOctal%cornerVelocity(5) = keplerian_velocity(this, OCTALVECTOR(x2,y2,z1))
-       thisOctal%cornerVelocity(6) = keplerian_velocity(this, OCTALVECTOR(x3,y2,z1))
-       thisOctal%cornerVelocity(7) = keplerian_velocity(this, OCTALVECTOR(x1,y3,z1))
-       thisOctal%cornerVelocity(8) = keplerian_velocity(this, OCTALVECTOR(x2,y3,z1))
-       thisOctal%cornerVelocity(9) = keplerian_velocity(this, OCTALVECTOR(x3,y3,z1))
+       thisOctal%cornerVelocity(1) = keplerian_velocity(this, VECTOR(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = keplerian_velocity(this, VECTOR(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = keplerian_velocity(this, VECTOR(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = keplerian_velocity(this, VECTOR(x1,y2,z1))
+       thisOctal%cornerVelocity(5) = keplerian_velocity(this, VECTOR(x2,y2,z1))
+       thisOctal%cornerVelocity(6) = keplerian_velocity(this, VECTOR(x3,y2,z1))
+       thisOctal%cornerVelocity(7) = keplerian_velocity(this, VECTOR(x1,y3,z1))
+       thisOctal%cornerVelocity(8) = keplerian_velocity(this, VECTOR(x2,y3,z1))
+       thisOctal%cornerVelocity(9) = keplerian_velocity(this, VECTOR(x3,y3,z1))
 
        ! middle level
   
-       thisOctal%cornerVelocity(10) = keplerian_velocity(this, OCTALVECTOR(x1,y1,z2))
-       thisOctal%cornerVelocity(11) = keplerian_velocity(this, OCTALVECTOR(x2,y1,z2))
-       thisOctal%cornerVelocity(12) = keplerian_velocity(this, OCTALVECTOR(x3,y1,z2))
-       thisOctal%cornerVelocity(13) = keplerian_velocity(this, OCTALVECTOR(x1,y2,z2))
-       thisOctal%cornerVelocity(14) = keplerian_velocity(this, OCTALVECTOR(x2,y2,z2))
-       thisOctal%cornerVelocity(15) = keplerian_velocity(this, OCTALVECTOR(x3,y2,z2))
-       thisOctal%cornerVelocity(16) = keplerian_velocity(this, OCTALVECTOR(x1,y3,z2))
-       thisOctal%cornerVelocity(17) = keplerian_velocity(this, OCTALVECTOR(x2,y3,z2))
-       thisOctal%cornerVelocity(18) = keplerian_velocity(this, OCTALVECTOR(x3,y3,z2))
+       thisOctal%cornerVelocity(10) = keplerian_velocity(this, VECTOR(x1,y1,z2))
+       thisOctal%cornerVelocity(11) = keplerian_velocity(this, VECTOR(x2,y1,z2))
+       thisOctal%cornerVelocity(12) = keplerian_velocity(this, VECTOR(x3,y1,z2))
+       thisOctal%cornerVelocity(13) = keplerian_velocity(this, VECTOR(x1,y2,z2))
+       thisOctal%cornerVelocity(14) = keplerian_velocity(this, VECTOR(x2,y2,z2))
+       thisOctal%cornerVelocity(15) = keplerian_velocity(this, VECTOR(x3,y2,z2))
+       thisOctal%cornerVelocity(16) = keplerian_velocity(this, VECTOR(x1,y3,z2))
+       thisOctal%cornerVelocity(17) = keplerian_velocity(this, VECTOR(x2,y3,z2))
+       thisOctal%cornerVelocity(18) = keplerian_velocity(this, VECTOR(x3,y3,z2))
        
        ! top level
        
-       thisOctal%cornerVelocity(19) = keplerian_velocity(this, OCTALVECTOR(x1,y1,z3))
-       thisOctal%cornerVelocity(20) = keplerian_velocity(this, OCTALVECTOR(x2,y1,z3))
-       thisOctal%cornerVelocity(21) = keplerian_velocity(this, OCTALVECTOR(x3,y1,z3))
-       thisOctal%cornerVelocity(22) = keplerian_velocity(this, OCTALVECTOR(x1,y2,z3))
-       thisOctal%cornerVelocity(23) = keplerian_velocity(this, OCTALVECTOR(x2,y2,z3))
-       thisOctal%cornerVelocity(24) = keplerian_velocity(this, OCTALVECTOR(x3,y2,z3))
-       thisOctal%cornerVelocity(25) = keplerian_velocity(this, OCTALVECTOR(x1,y3,z3))
-       thisOctal%cornerVelocity(26) = keplerian_velocity(this, OCTALVECTOR(x2,y3,z3))
-       thisOctal%cornerVelocity(27) = keplerian_velocity(this, OCTALVECTOR(x3,y3,z3))
+       thisOctal%cornerVelocity(19) = keplerian_velocity(this, VECTOR(x1,y1,z3))
+       thisOctal%cornerVelocity(20) = keplerian_velocity(this, VECTOR(x2,y1,z3))
+       thisOctal%cornerVelocity(21) = keplerian_velocity(this, VECTOR(x3,y1,z3))
+       thisOctal%cornerVelocity(22) = keplerian_velocity(this, VECTOR(x1,y2,z3))
+       thisOctal%cornerVelocity(23) = keplerian_velocity(this, VECTOR(x2,y2,z3))
+       thisOctal%cornerVelocity(24) = keplerian_velocity(this, VECTOR(x3,y2,z3))
+       thisOctal%cornerVelocity(25) = keplerian_velocity(this, VECTOR(x1,y3,z3))
+       thisOctal%cornerVelocity(26) = keplerian_velocity(this, VECTOR(x2,y3,z3))
+       thisOctal%cornerVelocity(27) = keplerian_velocity(this, VECTOR(x3,y3,z3))
 
     else  ! 2D case
 
@@ -936,15 +936,15 @@ contains
        z3 = thisOctal%centre%z + thisOctal%subcellSize
        
        ! now store the 'base level' values    
-       thisOctal%cornerVelocity(1) = keplerian_velocity(this, OCTALVECTOR(x1,y1,z1))
-       thisOctal%cornerVelocity(2) = keplerian_velocity(this, OCTALVECTOR(x2,y1,z1))
-       thisOctal%cornerVelocity(3) = keplerian_velocity(this, OCTALVECTOR(x3,y1,z1))
-       thisOctal%cornerVelocity(4) = keplerian_velocity(this, OCTALVECTOR(x1,y2,z2))
-       thisOctal%cornerVelocity(5) = keplerian_velocity(this, OCTALVECTOR(x2,y2,z2))
-       thisOctal%cornerVelocity(6) = keplerian_velocity(this, OCTALVECTOR(x3,y2,z2))
-       thisOctal%cornerVelocity(7) = keplerian_velocity(this, OCTALVECTOR(x1,y3,z3))
-       thisOctal%cornerVelocity(8) = keplerian_velocity(this, OCTALVECTOR(x2,y3,z3))
-       thisOctal%cornerVelocity(9) = keplerian_velocity(this, OCTALVECTOR(x3,y3,z3))
+       thisOctal%cornerVelocity(1) = keplerian_velocity(this, VECTOR(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = keplerian_velocity(this, VECTOR(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = keplerian_velocity(this, VECTOR(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = keplerian_velocity(this, VECTOR(x1,y2,z2))
+       thisOctal%cornerVelocity(5) = keplerian_velocity(this, VECTOR(x2,y2,z2))
+       thisOctal%cornerVelocity(6) = keplerian_velocity(this, VECTOR(x3,y2,z2))
+       thisOctal%cornerVelocity(7) = keplerian_velocity(this, VECTOR(x1,y3,z3))
+       thisOctal%cornerVelocity(8) = keplerian_velocity(this, VECTOR(x2,y3,z3))
+       thisOctal%cornerVelocity(9) = keplerian_velocity(this, VECTOR(x3,y3,z3))
 
     end if
 
@@ -962,7 +962,7 @@ contains
     type(vector) :: out
     !
     type(alpha_disc), intent(in) :: this
-    type(octalvector), intent(in) :: rvec
+    type(VECTOR), intent(in) :: rvec
     !
     real(double) :: Vphi, w, r, x, y, z
     real(double) :: Vx, Vy, Vz, phi
@@ -1012,7 +1012,7 @@ contains
     logical :: out
     !
     type(alpha_disc), intent(in) :: this
-    type(octalvector), intent(in) :: rvec
+    type(VECTOR), intent(in) :: rvec
     !
     real(double) ::  x, y, z !, rho, sizescale
 !    real(double), parameter :: rho_min = 0.9d-19

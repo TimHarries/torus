@@ -1012,17 +1012,17 @@ contains
       
       real(double), intent(in) :: mass
       real, intent(in) ::  temperature
-      real :: x, y, t, u, vel
+      real(double) :: x, y, t, u, vel
       logical :: ok
 
       ok = .false.
       do while(.not.ok)
 
          call random_number(x)
-         x = 3. * x
+         x = 3.d0 * x
          call random_number(y)
          
-         t = 4./sqrt(pi) * x**2 * exp(-x**2)
+         t = 4.d0/sqrt(pi) * x**2 * exp(-x**2)
          
          if (y < t) then
             ok = .true.

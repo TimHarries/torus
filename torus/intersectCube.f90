@@ -49,7 +49,7 @@
 
   do i = 1, 6
     if (thisOk(i)) then
-       intersection = posVec + t(i) * direction
+       intersection = posVec + dble(t(i)) * direction
        if ( (intersection%x < tol*grid%xAxis(1)) .or. &
             (intersection%y < tol*grid%yAxis(1)) .or. &
             (intersection%z < tol*grid%zAxis(1)) .or. &
@@ -72,7 +72,7 @@
   if (j == 0) ok = .false.
 
 
-  intersection = posVec + tval * direction
+  intersection = posVec + dble(tval) * direction
 
 !  write(*,*) tval, intersection,ok
 !  write(*,*) t

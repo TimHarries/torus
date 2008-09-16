@@ -86,7 +86,7 @@ contains
     real ::tmp
     real(double) :: eps, x
     integer :: myRank, ierr
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
 
     eps = 0.01d0 * grid%halfSmallestSubcell
 
@@ -227,7 +227,7 @@ contains
     integer :: nOctals
     integer, parameter :: nStorage = 12
     real(double) :: loc(3), tempStorage(nStorage)
-    type(OCTALVECTOR) :: octVec, direction, rVec
+    type(VECTOR) :: octVec, direction, rVec
     integer :: nBound
     integer :: iOctal
     integer :: subcell, neighbourSubcell
@@ -240,22 +240,22 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
     case("left")
-       direction = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+       direction = VECTOR(-1.d0, 0.d0, 0.d0)
        nBound = 1
     case("right")
-       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
        nBound = 2
     case("top")
-       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
        nBound = 3
     case("bottom")
-       direction = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+       direction = VECTOR(0.d0, 0.d0, -1.d0)
        nBound = 4
     case("front")
-       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
        nBound = 5
     case("back")
-       direction = OCTALVECTOR(0.d0, -1.d0, 0.d0)
+       direction = VECTOR(0.d0, -1.d0, 0.d0)
        nBound = 6
     case DEFAULT
        write(*,*) "boundary type not recognised ",boundaryType
@@ -352,7 +352,7 @@ contains
 !             write(*,*) myRank, " found the signal to end the send loop"
           else
 
-             octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
+             octVec = VECTOR(loc(1), loc(2), loc(3))
 
              call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
 
@@ -490,7 +490,7 @@ contains
     integer :: nOctals
     integer, parameter :: nStorage = 12
     real(double) :: loc(3), tempStorage(nStorage)
-    type(OCTALVECTOR) :: octVec, direction, rVec
+    type(VECTOR) :: octVec, direction, rVec
     integer :: nBound
     integer :: iOctal
     integer :: nDepth, thisnDepth
@@ -502,22 +502,22 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
     case("left")
-       direction = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+       direction = VECTOR(-1.d0, 0.d0, 0.d0)
        nBound = 1
     case("right")
-       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
        nBound = 2
     case("top")
-       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
        nBound = 3
     case("bottom")
-       direction = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+       direction = VECTOR(0.d0, 0.d0, -1.d0)
        nBound = 4
     case("front")
-       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
        nBound = 5
     case("back")
-       direction = OCTALVECTOR(0.d0, -1.d0, 0.d0)
+       direction = VECTOR(0.d0, -1.d0, 0.d0)
        nBound = 6
     case DEFAULT
        write(*,*) "boundary type not recognised ",boundaryType
@@ -610,7 +610,7 @@ contains
 !             write(*,*) myRank, " found the signal to end the send loop"
           else
 
-             octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
+             octVec = VECTOR(loc(1), loc(2), loc(3))
 
              call MPI_RECV(thisnDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
 
@@ -716,7 +716,7 @@ contains
     type(octal), pointer  :: child, neighbourOctal
     !
     integer :: subcell, i, iThread
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec
+    type(VECTOR) :: dirVec(6), centre, octVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     integer :: myRank, ierr
@@ -748,22 +748,22 @@ contains
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(2) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0, 1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(1) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(2) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(5) = VECTOR( 0.d0, 1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0,-1.d0,  0.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(+1.d0, 0.d0, 0.d0)
-             dirVec(3) = OCTALVECTOR(0.d0, 0.d0, +1.d0)
-             dirVec(4) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(+1.d0, 0.d0, 0.d0)
+             dirVec(3) = VECTOR(0.d0, 0.d0, +1.d0)
+             dirVec(4) = VECTOR(0.d0, 0.d0, -1.d0)
           else
              nDir = 2
-             dirVec(1) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(+1.d0, 0.d0, 0.d0)
+             dirVec(1) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(+1.d0, 0.d0, 0.d0)
           endif
 
           do j = 1, nDir
@@ -896,7 +896,7 @@ contains
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
-    type(OCTALVECTOR) :: direction, rVec
+    type(VECTOR) :: direction, rVec
     integer :: subcell, neighbourSubcell, tSubcell
     integer :: nBound, nDepth, nd
 
@@ -1005,7 +1005,7 @@ contains
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
     real(double) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi,fac
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
 !    call normalize(direction)
@@ -1117,7 +1117,7 @@ contains
 
 
   function getNBoundFromDirection(direction) result (nBound)
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     integer :: nBound
 
     if (direction%x > 0.9d0) then
@@ -1139,7 +1139,7 @@ contains
     include 'mpif.h'
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: rVec, direction, currentPosition
+    type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
@@ -1450,7 +1450,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     integer :: subcell
     integer :: tag1 = 78, tag2 = 79
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: octVec
     sendLoop = .true.
 !    write(*,*) myrankGlobal, " waiting for a locator"
     do while (sendLoop)
@@ -1462,7 +1462,7 @@ contains
           sendLoop = .false.
 !          write(*,*) myRankGlobal, " found the signal to end the send loop from ", receivethread
        else
-          octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
+          octVec = VECTOR(loc(1), loc(2), loc(3))
           thisOctal => grid%octreeRoot
           subcell = 1
 !          write(*,*) myrankglobal," calling subscell local"

@@ -31,8 +31,8 @@ MODULE amr_mod
 
   type STREAMTYPE
      integer :: nSamples
-     type(OCTALVECTOR),pointer :: position(:) => null()
-     type(OCTALVECTOR), pointer :: direction(:) => null()
+     type(VECTOR),pointer :: position(:) => null()
+     type(VECTOR), pointer :: direction(:) => null()
      type(VECTOR), pointer :: velocity(:) => null()
      real, pointer :: speed(:) => null()
      real(double),pointer :: distanceAlongStream(:)   => null()
@@ -46,8 +46,8 @@ MODULE amr_mod
 
   type curtaintype
      integer :: nr, ntheta
-     type(OCTALVECTOR), pointer :: position(:,:) => null()
-     type(OCTALVECTOR), pointer :: velocity(:,:) => null()
+     type(VECTOR), pointer :: position(:,:) => null()
+     type(VECTOR), pointer :: velocity(:,:) => null()
      real(double), pointer :: density(:,:) => null()
      real(double), pointer :: temperature(:,:) => null()
   end type curtaintype
@@ -78,7 +78,7 @@ CONTAINS
     TYPE(octal), POINTER :: parentOctal
 !    real(double) :: rhoDouble, r
     INTEGER :: parentSubcell
-!    type(OCTALVECTOR) :: rVec
+!    type(VECTOR) :: rVec
     LOGICAL :: inheritProps
     LOGICAL :: interpolate
 
@@ -323,7 +323,7 @@ CONTAINS
     IMPLICIT NONE
     type(OCTAL), pointer :: thisOctal
     TYPE(gridtype), INTENT(INOUT)    :: grid 
-    TYPE(octalVector), INTENT(IN)    :: centre ! coordinates of the grid centre
+    TYPE(vector), INTENT(IN)    :: centre ! coordinates of the grid centre
     REAL, INTENT(IN)                 :: size 
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
@@ -525,7 +525,7 @@ CONTAINS
     INTEGER       :: newChildIndex     ! the storage location for the new child
     integer :: i
     logical :: inheritProps, interpolate
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
 
     ! For "romanova" geometry
@@ -1132,7 +1132,7 @@ CONTAINS
       real(oct) :: valueJ
       TYPE(octal), POINTER :: Acontent
       LOGICAL(KIND=logic), DIMENSION(8) :: AinUse
-      TYPE(octalVector)    :: starPos
+      TYPE(vector)    :: starPos
       
       starPos = grid%starPos1
       valueA = modulus(array(l)%content%centre - starPos)
@@ -1330,8 +1330,8 @@ CONTAINS
  
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN)      :: startPoint ! photon start point
-    TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
+    TYPE(vector), INTENT(IN)      :: startPoint ! photon start point
+    TYPE(vector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
     REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
 !    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
@@ -1361,29 +1361,29 @@ CONTAINS
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
 
-    TYPE(octalVector)       :: locator 
+    TYPE(vector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
                        !   *next* cell of the octree that the ray will interesect.
                        !   initially this will be the same as the startPoint
       
-    TYPE(octalVector)       :: currentPoint ! current position of ray 
+    TYPE(vector)       :: currentPoint ! current position of ray 
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
     TYPE(octal)             :: octree       ! the octree structure within 'grid'
-    TYPE(octalVector)       :: directionNormalized
+    TYPE(vector)       :: directionNormalized
     real(oct)    :: distanceLimit ! max length of ray before aborting
     ! margin is the size of the region around the edge of a subcell
     !   where numerical inaccuracies may cause problems.
     real(oct)    :: margin
  
     ! variables for testing special cases (stellar intersections etc.)
-    TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
-    TYPE(octalVector)       :: diskNormal         ! disk normal vector
+    TYPE(vector)       :: starPosition       ! position vector of stellar centre
+    TYPE(vector)       :: diskNormal         ! disk normal vector
     real(oct)    :: rStar              ! stellar radius
     real(oct)    :: endLength          ! max path length of photon
-    TYPE(octalVector)       :: endPoint           ! where photon leaves grid
+    TYPE(vector)       :: endPoint           ! where photon leaves grid
     LOGICAL                 :: absorbPhoton       ! photon will be absorbed
     real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
-    TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
+    TYPE(vector)       :: diskIntersection   ! point of photon intersection with disk
     real(oct)    :: starIntersectionDistance1 ! distance to first  intersection
     real(oct)    :: starIntersectionDistance2 ! distance to second intersection
     LOGICAL                 :: starIntersectionFound1 ! 1st star intersection takes place      
@@ -1392,7 +1392,7 @@ CONTAINS
     real(oct)    :: intersectionRadius ! disk radius when photon intersects
     real(oct)    :: diskDistance       ! distance to disk intersection
     real(oct)    :: distanceThroughStar! distance of chord through star
-    TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
+    TYPE(vector)       :: dummyStartPoint    ! modified start point 
 !    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     real(oct), PARAMETER :: fudgefactor = 1.000001 ! overestimates stellar size
     
@@ -1619,14 +1619,14 @@ CONTAINS
     ! note: in the code comments, the terms 'subcell' and 'cell' are
     !  mostly interchangeable.
 
-    TYPE(octalVector), INTENT(INOUT)    :: currentPoint ! current ray position
-    TYPE(octalVector), INTENT(IN)       :: startPoint   ! initial ray position
-    TYPE(octalVector)                   :: locator, rotloc
+    TYPE(vector), INTENT(INOUT)    :: currentPoint ! current ray position
+    TYPE(vector), INTENT(IN)       :: startPoint   ! initial ray position
+    TYPE(vector)                   :: locator, rotloc
                   ! 'locator' is used to indicate a point that lies within the  
                   !   *next* cell of the octree that the ray will interesect.
                   !   initially this will be the same as the currentPoint
       
-    TYPE(octalVector), INTENT(IN)       :: direction    ! ray's direction vector 
+    TYPE(vector), INTENT(IN)       :: direction    ! ray's direction vector 
     TYPE(octal), INTENT(IN)             :: octree       ! an octal grid
     TYPE(gridtype), INTENT(IN)          :: grid         ! grid structure
     REAL, INTENT(IN)                    :: sampleFreq
@@ -1660,15 +1660,15 @@ CONTAINS
 
 
 
-    TYPE(octalVector)      :: exitPoint      ! where ray leaves current cell
-    TYPE(octalVector)      :: centre         ! centre of current subcell
+    TYPE(vector)      :: exitPoint      ! where ray leaves current cell
+    TYPE(vector)      :: centre         ! centre of current subcell
     real(oct)   :: subcellSize    ! size of current subcell
     real(oct)   :: minWallDistance ! distance to *nearest* wall
     
     real(oct)   :: length         ! distance from start of the ray's path.
     real(oct)   :: sampleLength   ! distance interval between samples 
     real(oct)   :: trialLength    ! trial distance to a possible next sample
-    TYPE(octalVector)      :: trialPoint     ! trial location for a next sample 
+    TYPE(vector)      :: trialPoint     ! trial location for a next sample 
     INTEGER                :: trial          ! loop counter for trial points 
     INTEGER                :: subcell        ! current subcell 
     INTEGER                :: subIndex       ! octal's child index for current subcell 
@@ -1684,7 +1684,7 @@ CONTAINS
           rotloc = locator
        endif
        if (octree%oneD) then
-          rotloc  = OCTALVECTOR(modulus(locator),0.d0,0.d0)
+          rotloc  = VECTOR(modulus(locator),0.d0,0.d0)
        endif
 
 
@@ -1842,14 +1842,14 @@ CONTAINS
 
     implicit none
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR), intent(in) :: currentPoint
-    type(OCTALVECTOR), intent(in) :: direction
-    type(OCTALVECTOR), intent(out) :: locator    
+    type(VECTOR), intent(in) :: currentPoint
+    type(VECTOR), intent(in) :: direction
+    type(VECTOR), intent(out) :: locator    
     logical, intent(inout) :: abortRay
     type(OCTAL), target  :: thisOctal
     integer, intent(inout) :: error
     real(oct), INTENT(IN)    :: halfSmallestSubcell
-    type(OCTALVECTOR), intent(out) :: exitPoint
+    type(VECTOR), intent(out) :: exitPoint
     real(oct), intent(out) :: minWallDistance
     type(OCTAL), pointer :: sOctal
     logical, optional :: edgeOfGrid
@@ -1878,9 +1878,9 @@ CONTAINS
 
     IMPLICIT NONE
           
-    TYPE(octalVector), INTENT(IN)       :: currentPoint ! current ray position
-    TYPE(octalVector), INTENT(IN)       :: direction    ! ray's direction vector 
-    TYPE(octalVector), INTENT(OUT)      :: locator       
+    TYPE(vector), INTENT(IN)       :: currentPoint ! current ray position
+    TYPE(vector), INTENT(IN)       :: direction    ! ray's direction vector 
+    TYPE(vector), INTENT(OUT)      :: locator       
                   ! 'locator' is used to indicate a point that lies within the  
                   !   *next* cell of the octree that the ray will interesect.
     LOGICAL, INTENT(INOUT)              :: abortRay     ! flag to signal completion
@@ -1889,8 +1889,8 @@ CONTAINS
     real(oct), INTENT(IN)    :: margin
                   ! margin is the size of the region around the edge of a subcell
                   !   where numerical inaccuracies may cause problems.
-    TYPE(octalVector), INTENT(OUT)      :: exitPoint    ! where ray leaves current cell
-    TYPE(octalVector), INTENT(IN)       :: centre       ! centre of current subcell
+    TYPE(vector), INTENT(OUT)      :: exitPoint    ! where ray leaves current cell
+    TYPE(vector), INTENT(IN)       :: centre       ! centre of current subcell
     real(oct), INTENT(IN)         :: subcellSize  ! size of current subcell
     real(oct), INTENT(OUT)   :: minWallDistance ! distance to *nearest* wall
     
@@ -1903,7 +1903,7 @@ CONTAINS
                   !   'direction' vector)
     LOGICAL                :: found          ! status flag  
     real(oct)   :: wallFromOrigin ! distance of cell wall from the origin
-    TYPE(octalVector)      :: wallNormal     ! normal to plane of cell wall
+    TYPE(vector)      :: wallNormal     ! normal to plane of cell wall
 
     INTEGER, parameter :: max_num_err = 10;
     INTEGER, save :: num_err = 0    
@@ -1913,7 +1913,7 @@ CONTAINS
     REAL(oct) :: compZ, currentZ, tval, x1, x2
     REAL(oct) :: r1, theta, mu, disttor1
 
-    TYPE(octalvector) :: xDir, zDir
+    TYPE(vector) :: xDir, zDir
     logical :: ok
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
@@ -1985,7 +1985,7 @@ CONTAINS
        
     IF ( wallDistanceX < wallDistanceY .AND. &
          wallDistanceX < wallDistanceZ ) THEN
-      wallNormal =  xHatOctal
+      wallNormal =  xHat
       IF ( direction%x > 0.0_oc ) THEN
         wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -1996,7 +1996,7 @@ CONTAINS
           wallDistanceY,wallDistanceZ, margin 
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2005,12 +2005,12 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
 
     ELSEIF ( wallDistanceY < wallDistanceX .AND. &
              wallDistanceY < wallDistanceZ ) THEN
-      wallNormal =  yHatOctal
+      wallNormal =  yHat
       IF ( direction%y > 0.0_oc ) THEN
         wallFromOrigin = centre%y + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2019,7 +2019,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*yHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*yHat)
       ELSE
         wallFromOrigin = centre%y - (subcellSize / 2.0_oc) 
         exitPoint = intersectionLinePlane &
@@ -2028,12 +2028,12 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*yHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*yHat)
       ENDIF
       
     ELSEIF ( wallDistanceZ < wallDistanceX .AND. &
              wallDistanceZ < wallDistanceY ) THEN
-      wallNormal =  zHatOctal
+      wallNormal =  zHat
       IF ( direction%z > 0.0_oc ) THEN
        wallFromOrigin = centre%z + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2042,7 +2042,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*zHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*zHat)
       ELSE
         wallFromOrigin = centre%z - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2051,7 +2051,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*zHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*zHat)
       ENDIF
 
     ! we now consider the case where the ray is leaving through one
@@ -2061,7 +2061,7 @@ CONTAINS
     !   few IFs by keeping it separate.
     ELSEIF ( wallDistanceX == wallDistanceY .AND. &
              wallDistanceX /= wallDistanceZ ) THEN
-      wallNormal =  xHatOctal
+      wallNormal =  xHat
       IF ( direction%x > 0.0_oc ) THEN
         wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2070,7 +2070,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2079,16 +2079,16 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
       IF ( direction%y > 0.0_oc ) THEN             
-        locator = locator + (halfSmallestSubcell*yHatOctal)
+        locator = locator + (halfSmallestSubcell*yHat)
       ELSE  
-        locator = locator - (halfSmallestSubcell*yHatOctal)
+        locator = locator - (halfSmallestSubcell*yHat)
       ENDIF  
     ELSEIF ( wallDistanceX == wallDistanceZ .AND. &
              wallDistanceX /= wallDistanceY ) THEN
-      wallNormal =  xHatOctal
+      wallNormal =  xHat
       IF ( direction%x > 0.0_oc ) THEN
         wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2097,7 +2097,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2106,17 +2106,17 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
       IF ( direction%z > 0.0_oc ) THEN             
-        locator = locator + (halfSmallestSubcell*zHatOctal)
+        locator = locator + (halfSmallestSubcell*zHat)
       ELSE  
-        locator = locator - (halfSmallestSubcell*zHatOctal)
+        locator = locator - (halfSmallestSubcell*zHat)
       ENDIF  
 
     ELSEIF ( wallDistanceY == wallDistanceZ  .AND. &
              wallDistanceX /= wallDistanceZ ) THEN
-      wallNormal =  yHatOctal
+      wallNormal =  yHat
       IF ( direction%y > 0.0_oc ) THEN
         wallFromOrigin = centre%y + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2125,7 +2125,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*yHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*yHat)
       ELSE
         wallFromOrigin = centre%y - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2134,12 +2134,12 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*yHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*yHat)
       ENDIF
       IF ( direction%z > 0.0_oc ) THEN             
-        locator = locator + (halfSmallestSubcell*zHatOctal)
+        locator = locator + (halfSmallestSubcell*zHat)
       ELSE  
-        locator = locator - (halfSmallestSubcell*zHatOctal)
+        locator = locator - (halfSmallestSubcell*zHat)
       ENDIF  
       
     ! we now consider the case where the ray is leaving through one
@@ -2147,7 +2147,7 @@ CONTAINS
          
     ELSEIF ( wallDistanceX == wallDistanceY  .AND. &
              wallDistanceY == wallDistanceZ ) THEN
-      wallNormal =  xHatOctal
+      wallNormal =  xHat
       IF ( direction%x > 0.0_oc ) THEN
         wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2156,7 +2156,7 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint + (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
@@ -2165,17 +2165,17 @@ CONTAINS
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
         END IF
-        locator = exitpoint - (halfSmallestSubcell*xHatOctal)
+        locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
       IF ( direction%y > 0.0_oc ) THEN             
-        locator = locator + (halfSmallestSubcell*yHatOctal)
+        locator = locator + (halfSmallestSubcell*yHat)
       ELSE  
-        locator = locator - (halfSmallestSubcell*yHatOctal)
+        locator = locator - (halfSmallestSubcell*yHat)
       ENDIF  
       IF ( direction%z > 0.0_oc ) THEN             
-        locator = locator + (halfSmallestSubcell*zHatOctal)
+        locator = locator + (halfSmallestSubcell*zHat)
       ELSE  
-        locator = locator - (halfSmallestSubcell*zHatOctal)
+        locator = locator - (halfSmallestSubcell*zHat)
       ENDIF  
 
     ! we should now have run out of possibilities
@@ -2195,7 +2195,7 @@ CONTAINS
        r1 = centre%x - subcellSize/2.d0
        r2 = centre%x + subcellSize/2.d0
        d = sqrt(currentpoint%x**2+currentpoint%y**2)
-       xDir = OCTALVECTOR(currentpoint%x, currentpoint%y,0.d0)
+       xDir = VECTOR(currentpoint%x, currentpoint%y,0.d0)
 
 
        if ((direction%x**2+direction%y**2) /= 0.0) then
@@ -2242,7 +2242,7 @@ CONTAINS
           distToXboundary = 1.e30
        endif
 
-       zDir = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       zDir = VECTOR(0.d0, 0.d0, 1.d0)
        compZ = zDir.dot.direction
        currentZ = currentpoint%z
 
@@ -2294,9 +2294,9 @@ CONTAINS
     
     IMPLICIT NONE
     
-    TYPE(octalVector), INTENT(IN)      :: point     ! place to make sample
+    TYPE(vector), INTENT(IN)      :: point     ! place to make sample
     real(oct), INTENT(IN)   :: length    ! 
-    TYPE(octalVector), INTENT(IN)      :: direction ! direction vector
+    TYPE(vector), INTENT(IN)      :: direction ! direction vector
     TYPE(gridtype), INTENT(IN)         :: grid      ! grid structure
     TYPE(octal), TARGET, INTENT(IN)    :: thisOctal ! grid structure
     INTEGER, INTENT(IN)                :: subcell   ! subcell containing 'point'
@@ -2324,8 +2324,8 @@ CONTAINS
     TYPE(vector)                       :: directionReal ! direction vector (REAL values)
     TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
  
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
     REAL :: Vr, r, Rs
     
     starPosn = grid%starPos1
@@ -2432,8 +2432,8 @@ CONTAINS
     IMPLICIT NONE
 
     TYPE(octal), POINTER              :: octalTree
-    TYPE(octalVector), INTENT(IN)     :: point
-    TYPE(octalVector)                 :: point2 ! may be projected point
+    TYPE(vector), INTENT(IN)     :: point
+    TYPE(vector)                 :: point2 ! may be projected point
     TYPE(octal), OPTIONAL, POINTER    :: startOctal
     TYPE(octal), OPTIONAL, POINTER    :: foundOctal
     INTEGER, INTENT(OUT), OPTIONAL    :: foundSubcell
@@ -2481,7 +2481,7 @@ CONTAINS
        point2 = projectToXZ(point)
     endif
     if (octaltree%oneD) then
-       point2  = OCTALVECTOR(modulus(point),0.d0,0.d0)
+       point2  = VECTOR(modulus(point),0.d0,0.d0)
     endif
 
 
@@ -2671,7 +2671,7 @@ CONTAINS
 
     TYPE(vector)                   :: amrGridVelocity
     TYPE(octal), POINTER           :: octalTree
-    TYPE(octalVector), INTENT(IN)  :: point
+    TYPE(vector), INTENT(IN)  :: point
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
@@ -2680,13 +2680,13 @@ CONTAINS
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
 
-    TYPE(octalVector)              :: centre
+    TYPE(vector)              :: centre
     real(oct)           :: fac, inc
     real(oct)           :: t1, t2, t3
     real(oct)           :: r1, r2, phi1, phi2
-    real :: phi
+    real(double) :: phi
     type(vector) :: newvec
-    TYPE(octalVector) :: point_local, vvec, rHat
+    TYPE(vector) :: point_local, vvec, rHat
 
     if (octalTree%threeD) then
        point_local = point
@@ -2698,7 +2698,7 @@ CONTAINS
        point_local = point
     end if
     if (octalTree%oneD) then
-       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
 
@@ -3093,20 +3093,20 @@ CONTAINS
 
     TYPE(gridtype), INTENT(IN)     :: grid 
     REAL                           :: amrGridDirectionalDeriv
-    TYPE(octalVector), INTENT(IN)  :: position
+    TYPE(vector), INTENT(IN)  :: position
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
     TYPE(octal),  POINTER         :: thisOctal !, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
 
-    TYPE(octalVector)              :: octalDirection
+    TYPE(vector)              :: octalDirection
     TYPE(octal), POINTER           :: firstOctal
     real(oct)           :: dr, dx, dphi
     real(oct)           :: r
     real(oct)           :: phi1, phi2
-    TYPE(octalVector)              :: position1
-    TYPE(octalVector)              :: position2
+    TYPE(vector)              :: position1
+    TYPE(vector)              :: position2
     INTEGER                        :: subcell
 
 
@@ -3197,7 +3197,7 @@ CONTAINS
 
     REAL                           :: amrGridKappaAbs
     TYPE(octal), POINTER           :: octalTree
-    TYPE(octalVector), INTENT(IN)  :: point
+    TYPE(vector), INTENT(IN)  :: point
     INTEGER, INTENT(IN)            :: iLambda
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
@@ -3206,7 +3206,7 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
-    TYPE(octalVector) :: point_local
+    TYPE(vector) :: point_local
 
     if (octalTree%threeD) then
        point_local = point
@@ -3219,7 +3219,7 @@ CONTAINS
     end if
 
     if (octalTree%oneD) then
-       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
     
@@ -3271,7 +3271,7 @@ CONTAINS
     REAL                           :: amrGridKappaSca
     TYPE(octal), POINTER           :: octalTree
     INTEGER, INTENT(IN)            :: iLambda
-    TYPE(octalVector), INTENT(IN)  :: point
+    TYPE(vector), INTENT(IN)  :: point
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
@@ -3279,7 +3279,7 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
-    TYPE(octalVector) :: point_local
+    TYPE(vector) :: point_local
 
     if (octalTree%threeD) then
        point_local = point
@@ -3291,7 +3291,7 @@ CONTAINS
        point_local = point
     end if
     if (octalTree%oneD) then
-       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
     
@@ -3340,7 +3340,7 @@ CONTAINS
 
     REAL                           :: amrGridTemperature
     TYPE(octal), POINTER           :: octalTree
-    TYPE(octalVector), INTENT(IN)  :: point
+    TYPE(vector), INTENT(IN)  :: point
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
@@ -3348,7 +3348,7 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
-    TYPE(octalVector) :: point_local
+    TYPE(vector) :: point_local
 
     if (octalTree%threeD) then
        point_local = point
@@ -3360,7 +3360,7 @@ CONTAINS
        point_local = point
     end if
     if (octalTree%oneD) then
-       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
     
@@ -3409,7 +3409,7 @@ CONTAINS
 
     REAL                           :: amrGridDensity
     TYPE(octal), POINTER           :: octalTree
-    TYPE(octalVector), INTENT(IN)  :: point
+    TYPE(vector), INTENT(IN)  :: point
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
@@ -3417,7 +3417,7 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
-    TYPE(octalVector) :: point_local
+    TYPE(vector) :: point_local
 
     if (octalTree%threeD) then
        point_local = point
@@ -3429,7 +3429,7 @@ CONTAINS
        point_local = point
     end if
     if (octalTree%oneD) then
-       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
     
@@ -3602,7 +3602,7 @@ CONTAINS
     IMPLICIT NONE
 
     TYPE(octal), INTENT(IN)       :: thisOctal
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     INTEGER                       :: subcell
     real(double) :: r, phi
 
@@ -3735,8 +3735,8 @@ CONTAINS
     IMPLICIT NONE
     LOGICAL                       :: inOctal
     TYPE(octal), INTENT(IN)       :: thisOctal
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(octalVector)             :: octVec2D
+    TYPE(vector), INTENT(IN) :: point
+    TYPE(vector)             :: octVec2D
     real(double)                  :: r, phi, dphi, eps
     logical, optional :: alreadyRotated
     logical :: doRotate
@@ -3808,7 +3808,7 @@ CONTAINS
     LOGICAL                       :: inSubcell
     TYPE(octal), INTENT(IN)       :: thisOctal
     INTEGER, INTENT(IN)           :: thisSubcell
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
 
     IF (inOctal(thisOctal,point)) THEN
       inSubcell = whichSubcell(thisOctal,point) == thisSubcell
@@ -3827,7 +3827,7 @@ CONTAINS
  
     LOGICAL                       :: looseInOctal
     TYPE(octal), INTENT(IN)       :: thisOctal
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
 
     if (thisOctal%threeD) then
        IF ((point%x <= thisOctal%centre%x - 1.1_oc * thisOctal%subcellSize ) .OR. &
@@ -3890,8 +3890,8 @@ CONTAINS
       REAL(oct) :: halfSmallestSubcell
       REAL(oct) :: offset
       TYPE(octal), POINTER :: neighbour
-      TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
-      TYPE(octalVector) :: aHat
+      TYPE(vector), ALLOCATABLE, DIMENSION(:) :: locator
+      TYPE(vector) :: aHat
       INTEGER              :: subcell
       INTEGER              :: nLocator ! number of locators (4 for twoD, 6 for threed)
 
@@ -3926,9 +3926,9 @@ CONTAINS
       offset = halfSmallestSubcell / 2.0_oc
 
       IF ( thisOctal%threed ) THEN
-        locator(:) = thisOctal%centre + ( offset * octalVector(1.0_oc,1.0_oc,1.0_oc) )
+        locator(:) = thisOctal%centre + ( offset * vector(1.0_oc,1.0_oc,1.0_oc) )
       ELSE
-        locator(:) = thisOctal%centre + ( offset * octalVector(1.0_oc,0.0_oc,1.0_oc) )
+        locator(:) = thisOctal%centre + ( offset * vector(1.0_oc,0.0_oc,1.0_oc) )
       END IF
 
       IF ( thisOctal%threeD ) THEN
@@ -3941,9 +3941,9 @@ CONTAINS
             locator(6)%z = thisOctal%centre%z - thisOctal%subcellSize - halfSmallestSubcell
          else
             locator(:) = thisOctal%centre
-            locator(1) = locator(1) + (thisOctal%subcellSize + halfSmallestSubcell) * zHatOctal
-            locator(2) = locator(2) - (thisOctal%subcellSize + halfSmallestSubcell) * zHatOctal
-            aHat = OCTALVECTOR(thisOctal%centre%x,thisOctal%centre%y,0.d0)
+            locator(1) = locator(1) + (thisOctal%subcellSize + halfSmallestSubcell) * zHat
+            locator(2) = locator(2) - (thisOctal%subcellSize + halfSmallestSubcell) * zHat
+            aHat = VECTOR(thisOctal%centre%x,thisOctal%centre%y,0.d0)
             call normalize(aHat)
             locator(3) = locator(3) + (thisOctal%subcellSize + halfSmallestSubcell) * aHat
             locator(4) = locator(4) - (thisOctal%subcellSize + halfSmallestSubcell) * aHat
@@ -4004,7 +4004,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(octal), POINTER :: currentOctal
     TYPE(octal), POINTER :: resultOctal
     INTEGER, INTENT(OUT) :: subcell
@@ -4035,7 +4035,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(octal), POINTER :: currentOctal
     TYPE(octal), POINTER :: resultOctal
     INTEGER, INTENT(OUT) :: subcell
@@ -4067,8 +4067,8 @@ IF ( .NOT. gridConverged ) RETURN
     !   tree as needed to find the correct octal.
     use input_variables, only : hydrodynamics
     IMPLICIT NONE
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(octalVector) :: point_local
+    TYPE(vector), INTENT(IN) :: point
+    TYPE(vector) :: point_local
     TYPE(octal),POINTER    :: thisOctal
     INTEGER, INTENT(OUT)   :: subcell
     LOGICAL, INTENT(OUT),optional   :: prob
@@ -4094,7 +4094,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
     if (thisOctal%oneD) then
        if (.not.hydrodynamics) then
-          point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
        else
           point_local = point
        endif
@@ -4115,12 +4115,12 @@ IF ( .NOT. gridConverged ) RETURN
 
     RECURSIVE SUBROUTINE findSubcellLocalPrivate(point,thisOctal,subcell,&
                                                  haveDescended,boundaryProblem)
-      TYPE(octalVector), INTENT(IN) :: point
+      TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
       INTEGER, INTENT(OUT)   :: subcell
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
-!      type(octalvector) :: rVec
+!      type(vector) :: rVec
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
@@ -4223,8 +4223,8 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only : hydrodynamics
     IMPLICIT NONE
     integer :: nDepth
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(octalVector) :: point_local
+    TYPE(vector), INTENT(IN) :: point
+    TYPE(vector) :: point_local
     TYPE(octal),POINTER    :: thisOctal
     INTEGER, INTENT(OUT)   :: subcell
     LOGICAL, INTENT(OUT),optional   :: prob
@@ -4250,7 +4250,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
     if (thisOctal%oneD) then
        if (.not.hydrodynamics) then
-          point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
        else
           point_local = point
        endif
@@ -4271,13 +4271,13 @@ IF ( .NOT. gridConverged ) RETURN
 
     RECURSIVE SUBROUTINE findSubcellLocalPrivateLevel(point,thisOctal,subcell,&
                                                  haveDescended,boundaryProblem, nDepth)
-      TYPE(octalVector), INTENT(IN) :: point
+      TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
       INTEGER, INTENT(OUT)   :: subcell
       integer :: nDepth
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
-!      type(octalvector) :: rVec
+!      type(vector) :: rVec
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
@@ -4403,8 +4403,8 @@ IF ( .NOT. gridConverged ) RETURN
     LOGICAL                    :: split        
     real(double) :: massratio, d1, d2
     real(oct)  :: cellSize
-    TYPE(octalVector)     :: searchPoint, rVec
-    TYPE(octalVector)     :: cellCentre
+    TYPE(vector)     :: searchPoint, rVec
+    TYPE(vector)     :: cellCentre
     REAL                  :: x, y, z
     REAL(double) :: hr, rd, fac, warpHeight, phi
     INTEGER               :: i
@@ -4627,13 +4627,13 @@ IF ( .NOT. gridConverged ) RETURN
       enddo
       rgrid(1:100) = 10.d0**rgrid(1:100)
 
-      r = modulus(rVec - OCTALVECTOR(0.d0,0.d0,-d1))/rstar1
+      r = modulus(rVec - VECTOR(0.d0,0.d0,-d1))/rstar1
       if ((r > rgrid(1)).and.(r<rgrid(99))) then
          call locate(rgrid,100,r,i)
          if (thisOctal%subcellsize/rstar1 > (rgrid(i+1)-rgrid(i))) split = .true.
       endif
 
-      r = modulus(rVec - OCTALVECTOR(0.d0,0.d0,d2))/rstar2
+      r = modulus(rVec - VECTOR(0.d0,0.d0,d2))/rstar2
       if ((r > rgrid(1)).and.(r<rgrid(99))) then
          call locate(rgrid,100,r,i)
          if (thisOctal%subcellsize/rstar2 > (rgrid(i+1)-rgrid(i))) split = .true.
@@ -4768,7 +4768,7 @@ IF ( .NOT. gridConverged ) RETURN
       r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
 
       cellCentre = subcellCentre(thisOctal, subcell)
-      rd = modulus(OCTALVECTOR(cellCentre%x, cellCentre%y, 0.d0))
+      rd = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
       
       split = .false.
       if(thisOctal%nDepth < 3) split = .true.
@@ -5475,8 +5475,8 @@ IF ( .NOT. gridConverged ) RETURN
     IMPLICIT NONE
 
     TYPE(gridtype), INTENT(IN)        :: grid
-    TYPE(octalVector), INTENT(IN)     :: startPoint
-    TYPE(octalVector), INTENT(IN)     :: direction
+    TYPE(vector), INTENT(IN)     :: startPoint
+    TYPE(vector), INTENT(IN)     :: direction
     REAL, INTENT(IN)  :: sampleFreq
 
     REAL(double)                              :: rho
@@ -5562,7 +5562,7 @@ IF ( .NOT. gridConverged ) RETURN
       TYPE(vector) FUNCTION velocityFunc(point,grid)
         USE vector_mod
         USE gridtype_mod
-        TYPE(octalVector), INTENT(IN) :: point
+        TYPE(vector), INTENT(IN) :: point
         TYPE(gridtype), INTENT(IN)    :: grid
       END FUNCTION velocityFunc
     END INTERFACE
@@ -5573,9 +5573,9 @@ IF ( .NOT. gridConverged ) RETURN
        x3 = thisOctal%centre%x + thisOctal%subcellSize
        y1 = 0.d0
        z1 = 0.d0
-       thisOctal%cornerVelocity(1) = velocityFunc(octalVector(x1,y1,z1),grid)
-       thisOctal%cornerVelocity(2) = velocityFunc(octalVector(x2,y1,z1),grid)
-       thisOctal%cornerVelocity(3) = velocityFunc(octalVector(x3,y1,z1),grid)
+       thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
+       thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1),grid)
+       thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1),grid)
        goto 666
     endif
 
@@ -5598,39 +5598,39 @@ IF ( .NOT. gridConverged ) RETURN
           
           ! now store the 'base level' values
           
-          thisOctal%cornerVelocity(1) = velocityFunc(octalVector(x1,y1,z1),grid)
-          thisOctal%cornerVelocity(2) = velocityFunc(octalVector(x2,y1,z1),grid)
-          thisOctal%cornerVelocity(3) = velocityFunc(octalVector(x3,y1,z1),grid)
-          thisOctal%cornerVelocity(4) = velocityFunc(octalVector(x1,y2,z1),grid)
-          thisOctal%cornerVelocity(5) = velocityFunc(octalVector(x2,y2,z1),grid)
-          thisOctal%cornerVelocity(6) = velocityFunc(octalVector(x3,y2,z1),grid)
-          thisOctal%cornerVelocity(7) = velocityFunc(octalVector(x1,y3,z1),grid)
-          thisOctal%cornerVelocity(8) = velocityFunc(octalVector(x2,y3,z1),grid)
-          thisOctal%cornerVelocity(9) = velocityFunc(octalVector(x3,y3,z1),grid)
+          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
+          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1),grid)
+          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1),grid)
+          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1),grid)
+          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1),grid)
+          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1),grid)
+          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1),grid)
+          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1),grid)
+          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1),grid)
           
           ! middle level
           
-          thisOctal%cornerVelocity(10) = velocityFunc(octalVector(x1,y1,z2),grid)
-          thisOctal%cornerVelocity(11) = velocityFunc(octalVector(x2,y1,z2),grid)
-          thisOctal%cornerVelocity(12) = velocityFunc(octalVector(x3,y1,z2),grid)
-          thisOctal%cornerVelocity(13) = velocityFunc(octalVector(x1,y2,z2),grid)
-          thisOctal%cornerVelocity(14) = velocityFunc(octalVector(x2,y2,z2),grid)
-          thisOctal%cornerVelocity(15) = velocityFunc(octalVector(x3,y2,z2),grid)
-          thisOctal%cornerVelocity(16) = velocityFunc(octalVector(x1,y3,z2),grid)
-          thisOctal%cornerVelocity(17) = velocityFunc(octalVector(x2,y3,z2),grid)
-          thisOctal%cornerVelocity(18) = velocityFunc(octalVector(x3,y3,z2),grid)
+          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2),grid)
+          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2),grid)
+          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2),grid)
+          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2),grid)
+          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2),grid)
+          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2),grid)
+          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2),grid)
+          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2),grid)
+          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2),grid)
           
           ! top level
           
-          thisOctal%cornerVelocity(19) = velocityFunc(octalVector(x1,y1,z3),grid)
-          thisOctal%cornerVelocity(20) = velocityFunc(octalVector(x2,y1,z3),grid)
-          thisOctal%cornerVelocity(21) = velocityFunc(octalVector(x3,y1,z3),grid)
-          thisOctal%cornerVelocity(22) = velocityFunc(octalVector(x1,y2,z3),grid)
-          thisOctal%cornerVelocity(23) = velocityFunc(octalVector(x2,y2,z3),grid)
-          thisOctal%cornerVelocity(24) = velocityFunc(octalVector(x3,y2,z3),grid)
-          thisOctal%cornerVelocity(25) = velocityFunc(octalVector(x1,y3,z3),grid)
-          thisOctal%cornerVelocity(26) = velocityFunc(octalVector(x2,y3,z3),grid)
-          thisOctal%cornerVelocity(27) = velocityFunc(octalVector(x3,y3,z3),grid)
+          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3),grid)
+          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3),grid)
+          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3),grid)
+          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3),grid)
+          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3),grid)
+          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3),grid)
+          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3),grid)
+          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3),grid)
+          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3),grid)
 
        else ! cylindrical 
           if (thisOctal%splitAzimuthally) then
@@ -5646,39 +5646,39 @@ IF ( .NOT. gridConverged ) RETURN
 
              ! bottom level
 
-             thisOctal%cornerVelocity(1) = velocityFunc(octalVector(r1*cos(phi1),r1*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(2) = velocityFunc(octalVector(r1*cos(phi2),r1*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(3) = velocityFunc(octalVector(r1*cos(phi3),r1*sin(phi3),z1),grid)
-             thisOctal%cornerVelocity(4) = velocityFunc(octalVector(r2*cos(phi1),r2*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(5) = velocityFunc(octalVector(r2*cos(phi2),r2*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(6) = velocityFunc(octalVector(r2*cos(phi3),r2*sin(phi3),z1),grid)
-             thisOctal%cornerVelocity(7) = velocityFunc(octalVector(r3*cos(phi1),r3*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(8) = velocityFunc(octalVector(r3*cos(phi2),r3*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(9) = velocityFunc(octalVector(r3*cos(phi3),r3*sin(phi3),z1),grid)
+             thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1),grid)
+             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(3) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1),grid)
+             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1),grid)
+             thisOctal%cornerVelocity(5) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(6) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1),grid)
+             thisOctal%cornerVelocity(7) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1),grid)
+             thisOctal%cornerVelocity(8) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(9) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z1),grid)
 
              ! middle level
 
-             thisOctal%cornerVelocity(10) = velocityFunc(octalVector(r1*cos(phi1),r1*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(11) = velocityFunc(octalVector(r1*cos(phi2),r1*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(12) = velocityFunc(octalVector(r1*cos(phi3),r1*sin(phi3),z2),grid)
-             thisOctal%cornerVelocity(13) = velocityFunc(octalVector(r2*cos(phi1),r2*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(14) = velocityFunc(octalVector(r2*cos(phi2),r2*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(15) = velocityFunc(octalVector(r2*cos(phi3),r2*sin(phi3),z2),grid)
-             thisOctal%cornerVelocity(16) = velocityFunc(octalVector(r3*cos(phi1),r3*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(17) = velocityFunc(octalVector(r3*cos(phi2),r3*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(18) = velocityFunc(octalVector(r3*cos(phi3),r3*sin(phi3),z2),grid)
+             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2),grid)
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2),grid)
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2),grid)
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2),grid)
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2),grid)
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z2),grid)
 
              ! top level
 
-             thisOctal%cornerVelocity(10) = velocityFunc(octalVector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(11) = velocityFunc(octalVector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(12) = velocityFunc(octalVector(r1*cos(phi3),r1*sin(phi3),z3),grid)
-             thisOctal%cornerVelocity(13) = velocityFunc(octalVector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(14) = velocityFunc(octalVector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(15) = velocityFunc(octalVector(r2*cos(phi3),r2*sin(phi3),z3),grid)
-             thisOctal%cornerVelocity(16) = velocityFunc(octalVector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(17) = velocityFunc(octalVector(r3*cos(phi2),r3*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(18) = velocityFunc(octalVector(r3*cos(phi3),r3*sin(phi3),z3),grid)
+             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3),grid)
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3),grid)
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3),grid)
 
           else
 
@@ -5694,30 +5694,30 @@ IF ( .NOT. gridConverged ) RETURN
 
              ! bottom level
 
-             thisOctal%cornerVelocity(1) = velocityFunc(octalVector(r1*cos(phi1),r1*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(2) = velocityFunc(octalVector(r1*cos(phi2),r1*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(3) = velocityFunc(octalVector(r2*cos(phi1),r2*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(4) = velocityFunc(octalVector(r2*cos(phi2),r2*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(5) = velocityFunc(octalVector(r3*cos(phi1),r3*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(6) = velocityFunc(octalVector(r3*cos(phi2),r3*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1),grid)
+             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(3) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1),grid)
+             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(5) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1),grid)
+             thisOctal%cornerVelocity(6) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1),grid)
 
              ! middle level
 
-             thisOctal%cornerVelocity(7) = velocityFunc(octalVector(r1*cos(phi1),r1*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(8) = velocityFunc(octalVector(r1*cos(phi2),r1*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(9) = velocityFunc(octalVector(r2*cos(phi1),r2*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(10) = velocityFunc(octalVector(r2*cos(phi2),r2*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(11) = velocityFunc(octalVector(r3*cos(phi1),r3*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(12) = velocityFunc(octalVector(r3*cos(phi2),r3*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(7) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2),grid)
+             thisOctal%cornerVelocity(8) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(9) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2),grid)
+             thisOctal%cornerVelocity(10) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2),grid)
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2),grid)
 
              ! top level
 
-             thisOctal%cornerVelocity(13) = velocityFunc(octalVector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(14) = velocityFunc(octalVector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(15) = velocityFunc(octalVector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(16) = velocityFunc(octalVector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(17) = velocityFunc(octalVector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(18) = velocityFunc(octalVector(r3*cos(phi2),r3*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
+             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
 
           endif
        endif
@@ -5736,21 +5736,21 @@ IF ( .NOT. gridConverged ) RETURN
        
        ! now store the 'base level' values
        
-       thisOctal%cornerVelocity(1) = velocityFunc(octalVector(x1,0.d0,z1),grid)
-       thisOctal%cornerVelocity(2) = velocityFunc(octalVector(x2,0.d0,z1),grid)
-       thisOctal%cornerVelocity(3) = velocityFunc(octalVector(x3,0.d0,z1),grid)
-       thisOctal%cornerVelocity(4) = velocityFunc(octalVector(x1,0.d0,z2),grid)
-       thisOctal%cornerVelocity(5) = velocityFunc(octalVector(x2,0.d0,z2),grid)
-       thisOctal%cornerVelocity(6) = velocityFunc(octalVector(x3,0.d0,z2),grid)
-       thisOctal%cornerVelocity(7) = velocityFunc(octalVector(x1,0.d0,z3),grid)
-       thisOctal%cornerVelocity(8) = velocityFunc(octalVector(x2,0.d0,z3),grid)
-       thisOctal%cornerVelocity(9) = velocityFunc(octalVector(x3,0.d0,z3),grid)
+       thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,0.d0,z1),grid)
+       thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,0.d0,z1),grid)
+       thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,0.d0,z1),grid)
+       thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,0.d0,z2),grid)
+       thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,0.d0,z2),grid)
+       thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,0.d0,z2),grid)
+       thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,0.d0,z3),grid)
+       thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,0.d0,z3),grid)
+       thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,0.d0,z3),grid)
     endif
 666 continue
 
 !    if(isnan(thisOctal%cornerVelocity(1)%x)) then
 !          write(*,*) "cornervel",thisOctal%cornerVelocity(1)
-!          write(*,*) velocityFunc(octalVector(x1,0.d0,z1),grid)
+!          write(*,*) velocityFunc(vector(x1,0.d0,z1),grid)
 !          write(*,*) x1,z1
 !          write(*,*) x2,z2
 !          write(*,*) x3,z3
@@ -5771,12 +5771,12 @@ IF ( .NOT. gridConverged ) RETURN
                                
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
 
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
-    TYPE(octalvector)      :: vP
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
+    TYPE(vector)      :: vP
     REAL(double)  :: modVp
     REAL(double)  :: phi
     REAL(double)  :: r, rM, theta, y
@@ -5882,10 +5882,10 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(INOUT) :: grid
 
-    TYPE(octalVector) :: point
+    TYPE(vector) :: point
 
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
 
     REAL :: r, rM, theta, bigR, thetaStar
     REAL :: bigRstar, thetaStarHartmann, bigRstarHartmann, rMnorm
@@ -5996,7 +5996,7 @@ IF ( .NOT. gridConverged ) RETURN
     !
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
-    TYPE(octalVector)     :: rvec
+    TYPE(vector)     :: rvec
     integer :: n
     real(double) :: r, theta, rM, w, p, rho
     real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
@@ -6074,7 +6074,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: TTauriRinner, TTauriRouter
 
     IMPLICIT NONE    
-    TYPE(octalVector), intent(in):: rvec
+    TYPE(vector), intent(in):: rvec
     real(double) :: r, theta, rM,  w
     real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
     !
@@ -6148,7 +6148,7 @@ IF ( .NOT. gridConverged ) RETURN
     !
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
-    TYPE(octalVector)     :: point
+    TYPE(vector)     :: point
     integer :: n
     real(double) :: d, dV
     !
@@ -6202,7 +6202,7 @@ IF ( .NOT. gridConverged ) RETURN
     !
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
-    TYPE(octalVector)     :: point
+    TYPE(vector)     :: point
     integer :: n
     real(double) :: rho
 
@@ -6256,22 +6256,22 @@ IF ( .NOT. gridConverged ) RETURN
     real(oct) :: dTime
     real, parameter :: etaFac = 9
     real, parameter :: chiFac = 1
-    type(octalVector) :: distortionVec(nVec)
-    type(octalVector) :: thisVec
+    type(vector) :: distortionVec(nVec)
+    type(vector) :: thisVec
     type(vector) :: thisVel
-    type(octalVector) :: thisVelOc
+    type(vector) :: thisVelOc
     logical :: setAllChanged
     
     integer, parameter :: nTimes = 1000
     integer :: i, j
-    type(octalVector) :: starPos
+    type(vector) :: starPos
 
     ! if we are not undoing a previous infall, we will assume that we need to
     ! run stateq on ALL subcells
     setAllChanged = .not. alreadyDoneInfall
     
     do i = 1, nVec
-       distortionVec(i) = s2o(distortionVector(i))
+       distortionVec(i) = distortionVector(i)
     end do
 
     if (alreadyDoneInfall) then 
@@ -6294,7 +6294,7 @@ IF ( .NOT. gridConverged ) RETURN
     write(*,*) "done."
     
     do i = 1, nVec
-       distortionVector(i) = o2s(distortionVec(i))
+       distortionVector(i) = distortionVec(i)
     end do
     
     if (doDistortion) then
@@ -6312,7 +6312,7 @@ IF ( .NOT. gridConverged ) RETURN
                                               setAllChanged)
 
       type(octal), pointer :: thisOctal
-      type(octalVector), intent(in) :: distortionVec(nVec)
+      type(vector), intent(in) :: distortionVec(nVec)
       logical, intent(in) :: undoPrevious
       logical, intent(in) :: setAllChanged
       
@@ -6323,8 +6323,8 @@ IF ( .NOT. gridConverged ) RETURN
       real :: deltaRho
       integer :: iSubcell, iChild
       type(octal), pointer :: child
-      type(octalVector) :: trueVector
-      type(octalVector) :: thisVec, thisVec2
+      type(vector) :: trueVector
+      type(vector) :: thisVec, thisVec2
  
       do iSubcell = 1, thisOctal%maxChildren, 1
         if (thisOctal%hasChild(iSubcell)) then
@@ -6772,14 +6772,14 @@ IF ( .NOT. gridConverged ) RETURN
       ! 1 is the inner fieldline, 5 is the outer fieldline
     real(oct), INTENT(IN) :: RAD 
       ! RAD is projection of radius onto z=0 plane (in units of R_star)
-    REAL, INTENT(IN)                 :: phi    ! azimuth angle (radians)
+    REAL(double), INTENT(IN)                 :: phi    ! azimuth angle (radians)
     TYPE(gridtype), INTENT(IN)       :: grid
-    TYPE(octalVector), INTENT(OUT)   :: point  ! coordinates returned
+    TYPE(vector), INTENT(OUT)   :: point  ! coordinates returned
     TYPE(vector), INTENT(OUT)        :: azVec  ! azimuth vector
     TYPE(vector), INTENT(OUT)        :: polVec ! poloidal vector
     LOGICAL, INTENT(OUT)             :: ok     ! coordinates are valid
     
-    TYPE(octalVector) :: starPosn
+    TYPE(vector) :: starPosn
     REAL              :: rM, theta, radius
     REAL              :: swap, y
 
@@ -6805,7 +6805,7 @@ IF ( .NOT. gridConverged ) RETURN
     theta = ASIN(SQRT(y))
 
     ! set up vector in x-z plane
-    point = octalVector(RAD, 0., radius*cos(theta))
+    point = vector(RAD, 0., radius*cos(theta))
     azVec = yHat
 
     ! test if the point lies too close to the disk
@@ -6867,10 +6867,10 @@ IF ( .NOT. gridConverged ) RETURN
     
     INTEGER           :: iBin, iRadius, iSample, iFieldLine
     REAL              :: rand
-    REAL              :: phi
+    REAL(double)              :: phi
     real(oct) :: radius
     LOGICAL           :: ok
-    TYPE(octalVector) :: point 
+    TYPE(vector) :: point 
     REAL              :: value
     real(double) :: valueDouble
     TYPE(vector)      :: velocityValue
@@ -7095,7 +7095,7 @@ IF ( .NOT. gridConverged ) RETURN
 !    grid%diskRadius = TTauriDiskRin*rStar  ! [10^10cm]
     grid%diskRadius = ThinDiskRin*rStar  ! [10^10cm]
     grid%diskNormal = VECTOR(0.,0.,1.)
-    grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
+    grid%diskNormal = rotateX(grid%diskNormal,dble(grid%dipoleOffSet))
     grid%starPos1 = VECTOR(0.,0.,0.) ! in units of 1.e-10 cm
     grid%starPos2 = VECTOR(9.e9,9.e9,9.e9) ! in units of 1.e-10 cm
 
@@ -7169,7 +7169,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
@@ -7211,7 +7211,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     real(double) :: ethermal, gamma
     integer,save :: it
     real :: fac
@@ -7301,7 +7301,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
 
     rVec = subcellCentre(thisOctal,subcell)
 
@@ -7336,7 +7336,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     real(double) :: r, v, mdot
 
 
@@ -7344,7 +7344,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     rVec = subcellCentre(thisOctal, subcell)
 
-    r = modulus(rVec - OCTALVECTOR(-250.d0*rSol/1.d10,0.d0,0.d0))
+    r = modulus(rVec - VECTOR(-250.d0*rSol/1.d10,0.d0,0.d0))
     v = 10.e5 ! 10 km/s
     thisOctal%rho(subcell) = mDot/(fourPi * r**2 * 1.d20 * v)
 
@@ -7397,7 +7397,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
@@ -7437,7 +7437,7 @@ IF ( .NOT. gridConverged ) RETURN
     real :: ydist(nSteps), xDist(nSteps)
     real :: d1, d2, curlyR, dx, dybydx, ddash1, ddash2
     type(VECTOR) :: direction(nSteps), stagVec, shockdirection
-    type(OCTALVECTOR) :: rvec,direction2
+    type(VECTOR) :: rvec,direction2
     real :: stagpoint
     real :: v, r
     integer :: i, j
@@ -7486,9 +7486,9 @@ IF ( .NOT. gridConverged ) RETURN
     if (rVec%z > xDist(1)) then
        call locate(xDist, nSteps, real(rVec%z), i)
        if (rvec%x > ydist(i)) then
-          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          direction2 = (rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
           call normalize(direction2)
-          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          r = modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
           if (r > rStar1) then
              v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
              thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
@@ -7499,9 +7499,9 @@ IF ( .NOT. gridConverged ) RETURN
 !             thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
           endif
        else
-          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          direction2 = (rVec - VECTOR(0.d0, 0.d0, dble(d2)))
           call normalize(direction2)
-          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          r = modulus(rVec - VECTOR(0.d0, 0.d0, dble(d2)))
           if (r > rStar2) then
              v = vNought2 + (vterm2-vNought2)*(1.d0 - rstar2/r)**beta2
              thisOctal%rho(subcell) = mdot2 / (fourPi * (r*1.d10)**2 * v)
@@ -7513,9 +7513,9 @@ IF ( .NOT. gridConverged ) RETURN
           endif
        endif
     else
-       direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       direction2 = (rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
        call normalize(direction2)
-       r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       r = modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
        if (r > rStar1) then
           v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
           thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
@@ -7537,8 +7537,8 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only : vnought1, vnought2, vterm1, vterm2, beta1, beta2
     use input_variables, only : rstar1, rstar2, mass1, mass2, mdot1, mdot2, binarySep
 
-    type(octalvector), intent(in) :: point
-    type(octalvector) :: rvec
+    type(vector), intent(in) :: point
+    type(vector) :: rvec
     type(GRIDTYPE), intent(in) :: grid
     real(double) :: v, r
     real :: massRatio
@@ -7547,14 +7547,14 @@ IF ( .NOT. gridConverged ) RETURN
     real :: d1, d2, curlyR, dx, dybydx, ddash1, ddash2
     real(double) :: momRatio
     type(VECTOR) :: direction(nSteps), stagVec, shockdirection
-    type(OCTALVECTOR) :: direction2
+    type(VECTOR) :: direction2
     real :: stagpoint
     integer :: i, j
 
 
     rVec = point
 
-    gammaVelVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+    gammaVelVelocity = VECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
 
     massRatio = mass1/mass2
@@ -7597,26 +7597,26 @@ IF ( .NOT. gridConverged ) RETURN
     if (rVec%z > xDist(1)) then
        call locate(xDist, nSteps, real(rVec%z), i)
        if (rvec%x > ydist(i)) then
-          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          direction2 = (rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
           call normalize(direction2)
-          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          r = modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
           if (r > rStar1) then
              v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
              gammaVelVelocity = dble(v/cspeed) * direction2
           endif
        else
-          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          direction2 = (rVec - VECTOR(0.d0, 0.d0, dble(d2)))
           call normalize(direction2)
-          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          r = modulus(rVec - VECTOR(0.d0, 0.d0, dble(d2)))
           if (r > rStar2) then
              v = vNought2 + (vterm2-vNought2)*(1.d0 - rstar2/r)**beta2
              gammaVelVelocity = dble(v/cspeed) * direction2
           endif
        endif
     else
-       direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       direction2 = (rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
        call normalize(direction2)
-       r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       r = modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
        if (r > rStar1) then
           v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
           gammaVelVelocity = dble(v/cspeed) * direction2
@@ -7636,7 +7636,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     real(double) :: v
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -7659,7 +7659,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%velocity(subcell) = rVec
        thisOctal%inFlow(subcell) = .true.
        call normalize(thisOctal%velocity(subcell))
-       thisOctal%velocity(subcell) = thisOctal%velocity(subcell) * real(v/cSpeed)
+       thisOctal%velocity(subcell) = thisOctal%velocity(subcell) * v/cSpeed
 
     endif
     CALL fillVelocityCorners(thisOctal,grid,wrshellVelocity,thisOctal%threed)
@@ -7683,7 +7683,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     real(double) :: gd, xmid, x, z, r , zprime
 
 
@@ -7693,9 +7693,9 @@ IF ( .NOT. gridConverged ) RETURN
     z = rVec%z
     gd = 0.05d0 * (x2 - x1)
     if (thisOctal%twod) then
-       r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.5d0))
+       r = modulus(rVec - VECTOR(0.5d0, 0.d0, 0.5d0))
     else
-       r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.0d0))
+       r = modulus(rVec - VECTOR(0.5d0, 0.d0, 0.0d0))
     endif
     thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-r**2/gd**2)
     thisOctal%energy(subcell) = 2.5d0
@@ -7763,7 +7763,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     real :: u1 !, u2
     real(double), parameter :: gamma = 5.d0/3.d0
 
@@ -7790,7 +7790,7 @@ IF ( .NOT. gridConverged ) RETURN
        u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
     endif
     thisOctal%pressure_i(subcell) = 2.5d0
-    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0., 0., u1))/real(cSpeed)
+    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
 
      thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (gamma-1.d0) * thisOctal%rho(subcell))
     thisOctal%boundaryCondition(subcell) = 2
@@ -7804,7 +7804,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    type(OCTALVECTOR) :: rVec, cVec
+    type(VECTOR) :: rVec, cVec
     real(double) :: gamma, ethermal
     logical :: blast
     type(VECTOR) :: lVec, offset
@@ -7819,7 +7819,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     gamma = 7.d0/3.d0
     rVec = subcellCentre(thisOctal, subcell)
-    cVec = OCTALVECTOR(0.d0, 0.0d0, -0.d0)
+    cVec = VECTOR(0.d0, 0.0d0, -0.d0)
     blast = .false.
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
@@ -7849,7 +7849,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     real(double) :: gamma, ethermal
     real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
     real(double) :: inertia, beta, rCloud, mCloud, eGrav
@@ -7944,7 +7944,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r, hr, rd
     real(double), parameter :: min_rho = 1.0d-33 ! minimum density
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
 
     real :: rInnerGap, rOuterGap
     logical :: gap
@@ -7997,7 +7997,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 !    real :: costheta ! used for angular dependence of density - HPC proposal
 !    real :: btherm
-    type(OCTALVECTOR) :: vel
+    type(VECTOR) :: vel
 
     if (firsttime) then
        open(31, file="model_1.dat", status="old", form="formatted") ! Model 2 in the Hogerheijde 2000 paper. 
@@ -8010,7 +8010,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
-!    if(amr2d) costheta = (subcellCentre(thisOctal,subcell) .dot. OCTALVECTOR(1.d0, 0.d0, 0.d0)) / r1
+!    if(amr2d) costheta = (subcellCentre(thisOctal,subcell) .dot. VECTOR(1.d0, 0.d0, 0.d0)) / r1
 
     thisOctal%temperature(subcell) = tcbr
 !    thisOctal%rho(subcell) = 1.e-30
@@ -8171,7 +8171,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: v1 !, vDopp
     integer :: i
 
-    type(OCTALVECTOR) :: vel
+    type(VECTOR) :: vel
 
     if (firsttime) then
        open(31, file="mc_100.dat", status="old", form="formatted")
@@ -8240,7 +8240,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(GRIDTYPE), intent(in) :: grid
     INTEGER, INTENT(IN) :: subcell
     real :: r
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     character(len=10) :: out
 
     rvec = subcellCentre(thisOctal,subcell)
@@ -8282,7 +8282,7 @@ IF ( .NOT. gridConverged ) RETURN
  
  function readparameterfrom2dmap(point,output,dologint) result(out)
    
-   TYPE(octalVector), INTENT(IN) :: point
+   TYPE(vector), INTENT(IN) :: point
    logical, save :: firsttime = .true.
    integer, parameter :: nr = 140, nz = 60
    real,save :: rgrid(nr), zgrid(nr,nz), nh2(nr,nz), td(nr,nz), abundance(nr,nz)
@@ -8474,12 +8474,12 @@ end function readparameterfrom2dmap
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r0, r1
-    TYPE(OCTALVECTOR) :: cellCentre
+    TYPE(VECTOR) :: cellCentre
 
     r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
 
     cellCentre = subcellCentre(thisOctal, subcell)
-    r1 = modulus(OCTALVECTOR(cellCentre%x, cellCentre%y, 0.d0))
+    r1 = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
 
     thisOctal%molAbundance(subcell) = molAbundance
     thisOctal%microTurb(subcell) = 1.e5/cspeed
@@ -8501,7 +8501,7 @@ end function readparameterfrom2dmap
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r,t0,nh20,v0,H0,H,z
-    TYPE(OCTALVECTOR) :: cellCentre
+    TYPE(VECTOR) :: cellCentre
 
     CellCentre = subcellCentre(thisOctal, subcell)
 !    r = modulus(cellCentre) ! spherical
@@ -8560,13 +8560,13 @@ end function readparameterfrom2dmap
 
   TYPE(vector)  function wrshellVelocity(point, grid)
     use input_variables, only : vterm, beta
-    type(octalvector), intent(in) :: point
-    type(octalvector) :: rvec
+    type(vector), intent(in) :: point
+    type(vector) :: rvec
     type(GRIDTYPE), intent(in) :: grid
     real(double) :: v, r
     rVec = point
 
-    wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+    wrShellVelocity = VECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
     If ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
        v = 0.001d5+(vterm-0.001d5)*(1.d0 - grid%rinner/r)**beta
@@ -8578,7 +8578,7 @@ end function readparameterfrom2dmap
 
   TYPE(vector) FUNCTION moleBenchVelocity(point, grid)
 
-    type(OCTALVECTOR), intent(in) :: point
+    type(VECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
@@ -8612,7 +8612,7 @@ end function readparameterfrom2dmap
 
   TYPE(vector) FUNCTION WaterBenchmarkVelocity(point, grid)
 
-    type(OCTALVECTOR), intent(in) :: point
+    type(VECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     real :: v1, r1
     type(VECTOR) :: vel
@@ -8631,7 +8631,7 @@ end function readparameterfrom2dmap
 
   TYPE(vector) FUNCTION AGBStarVelocity(point,grid)
 
-    type(OCTALVECTOR), intent(in) :: point
+    type(VECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 100
@@ -8664,9 +8664,9 @@ end function readparameterfrom2dmap
 
   TYPE(vector)  function keplerianVelocity(point, grid)
     use input_variables, only : mcore
-    type(octalvector), intent(in) :: point
+    type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
-    type(octalvector) :: rvec
+    type(vector) :: rvec
     real(double) :: v, r
     rVec = point
 
@@ -8690,9 +8690,9 @@ end function readparameterfrom2dmap
 
   TYPE(vector)  function ggtauVelocity(point, grid)
 
-    type(octalvector), intent(in) :: point
+    type(vector), intent(in) :: point
     TYPE(gridtype), INTENT(IN) :: grid
-    type(octalvector) :: rvec
+    type(vector) :: rvec
     real  :: v, r,v0
 
     rvec = point
@@ -8716,9 +8716,9 @@ end function readparameterfrom2dmap
 
   TYPE(vector)  function noddyVelocity(point, grid)
 
-    type(octalvector), intent(in) :: point
+    type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
-    type(octalvector) :: posvec
+    type(vector) :: posvec
     type(octal), pointer :: thisOctal
     integer :: subcell
     posVec = point
@@ -8737,7 +8737,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = melvinDensity(rVec, grid)
@@ -8758,7 +8758,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = whitneyDensity(rVec, grid)
@@ -8775,7 +8775,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = planetgapDensity(rVec, grid)
@@ -8793,7 +8793,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = toruslogoDensity(rVec)
@@ -8813,7 +8813,7 @@ end function readparameterfrom2dmap
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r, h, rd
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
     logical,save :: firsttime = .true.
@@ -8899,7 +8899,7 @@ end function readparameterfrom2dmap
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r, h, rd
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
@@ -8936,7 +8936,7 @@ end function readparameterfrom2dmap
     integer, intent(in) :: subcell
     type(gridtype), intent(in) :: grid
 
-    type(octalVector) :: rVec
+    type(vector) :: rVec
 
     rVec = subcellCentre(thisOctal,subcell)
 
@@ -8959,7 +8959,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     real :: r
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -9235,9 +9235,9 @@ end function readparameterfrom2dmap
 
   subroutine spiralWindSubcell(thisOctal, subcell, grid)
     use input_variables
-    real :: v, r, rhoOut
+    real(double) :: v, r, rhoOut
     type(VECTOR) :: rVec, rHat
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: octVec
     integer :: subcell
     type(OCTAL) :: thisOctal
     type(GRIDTYPE) :: grid
@@ -9278,7 +9278,7 @@ end function readparameterfrom2dmap
     r = modulus(rVec)
 
     thisOctal%inFlow(subcell) = .false.
-    thisOctal%velocity(subcell) = OCTALVECTOR(0., 0., 0.)
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     if (r > grid%rCore) then
        r = modulus(rVec)
        v = v0 + (vTerm - v0) * (1. - grid%rCore/r)**beta
@@ -9289,10 +9289,10 @@ end function readparameterfrom2dmap
        thisOctal%temperature(subcell) = Teff
        thisOctal%velocity(subcell)  = (v/cSpeed) * rHat
        thisOctal%inFlow(subcell) = .true.
-       thisOctal%etaLine(subcell) =  logInterp(etal, nr, rgrid, r)
+       thisOctal%etaLine(subcell) =  logInterp(etal, nr, rgrid, real(r))
        thisOctal%etaCont(subcell) =  1.e-30
-       thisOctal%chiLine(subcell) =  logInterp(chil, nr, rgrid, r)
-       thisOctal%kappaSca(subcell,1) = logInterp(etal, nr, rgrid, r)/1.e10
+       thisOctal%chiLine(subcell) =  logInterp(chil, nr, rgrid, real(r))
+       thisOctal%kappaSca(subcell,1) = logInterp(etal, nr, rgrid,  real(r))/1.e10
        thisOctal%kappaAbs(subcell,1) = 1.e-30
     endif
 
@@ -9303,8 +9303,8 @@ end function readparameterfrom2dmap
 
   TYPE(vector) FUNCTION ostarVelocity(point,grid)
     real(double) :: r1
-    type(OCTALVECTOR), intent(in) :: point
-!    type(OCTALVECTOR) rHat
+    type(VECTOR), intent(in) :: point
+!    type(VECTOR) rHat
     type(GRIDTYPE), intent(in) :: grid
     real :: v, v0, vterm, beta
     v0 = 100.e5
@@ -9322,19 +9322,6 @@ end function readparameterfrom2dmap
     endif
   end FUNCTION ostarVelocity
 
-  subroutine cameraPositions(point, nPoints, cameraPos, cameraDirection, nScene, nFrames)
-    integer :: nPoints, nScene, nFrames
-    type(VECTOR) point(nPoints), cameraPos(:), cameraDirection(:)
-    integer :: i
-    real :: t
-    do i = 1, nScene
-       t = real(i-1)/real(nScene-1)
-       nFrames = nFrames + 1
-       call bezier(point(1), point(2), point(3), point(4), t, cameraPos(nFrames))
-       cameraDirection(nFrames) = (-1.)*cameraPos(nFrames)
-       call normalize(cameraDirection(nFrames))
-    enddo
-  end subroutine cameraPositions
 
   SUBROUTINE deleteOctreeBranch(thisOctal,onlyChildren,deletedBranch,&
                                 adjustParent, grid, adjustGridInfo)
@@ -10073,12 +10060,12 @@ end function readparameterfrom2dmap
     TYPE(romanova), optional, INTENT(IN)   :: romData  ! used for "romanova" geometry
 
     INTEGER              :: i, ilam
-    TYPE(octalVector)    :: thisSubcellCentre
+    TYPE(vector)    :: thisSubcellCentre
     REAL(oct) :: dSubcellCentre
     real(double) :: kappaAbs, kappaSca
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
-    TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
+    TYPE(vector), ALLOCATABLE, DIMENSION(:) :: locator
     INTEGER              :: subcell
     INTEGER              :: thisSubcell
     REAL                 :: thisTau, thatTau !, tauDiff
@@ -10317,14 +10304,14 @@ end function readparameterfrom2dmap
     real(double) :: dens
     type(octal), pointer   :: thisOctal
     integer :: subcell
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
 
     open(30, file="polardump.dat", status="unknown", form="formatted")
     do j = 1, nt
        do i = 1, nr
           r = grid%rInner + (grid%rOuter-grid%rInner)*(real(i-1)/real(nr-1))**3
           theta = pi*real(j-1)/real(nt-1)
-          rVec = OCTALVECTOR(dble(r*sin(theta)),0.d0,dble(r*cos(theta)))
+          rVec = VECTOR(dble(r*sin(theta)),0.d0,dble(r*cos(theta)))
           call amrGridValues(grid%octreeRoot, rVec,temperature=t, rho=dens, foundoctal=thisOctal, foundsubcell=subcell)
           if (thisOCtal%inFlow(subcell)) then
              write(30,*) r/1.5e3, t, dens
@@ -10343,7 +10330,7 @@ end function readparameterfrom2dmap
     open(30,file="radial.dat",status="unknown",form="formatted")
     do i = 1, nr
        r = grid%rInner + (grid%rOuter-grid%rInner)*(real(i-1)/real(nr-1))**3
-       rVec = OCTALVECTOR(dble(r), 0.d0, 0.d0)
+       rVec = VECTOR(dble(r), 0.d0, 0.d0)
        call amrGridValues(grid%octreeRoot, rVec,temperature=t, rho=dens, foundoctal=thisOctal, foundsubcell=subcell)
        write(30,*) r/1496., t, dens
     enddo
@@ -10356,7 +10343,7 @@ end function readparameterfrom2dmap
 
   recursive subroutine verticalDump(thisOctal, xPos)
     real :: xPos
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -10850,7 +10837,7 @@ end function readparameterfrom2dmap
 
   recursive subroutine biasCentreVolume(thisOctal, boxSize)
     real :: boxSize
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -10908,7 +10895,7 @@ end function readparameterfrom2dmap
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: tau, kappaAbs, kappaSca !, thisTau
-!  type(octalvector) :: rVec, direction
+!  type(vector) :: rVec, direction
   logical :: ross
   integer :: subcell, i, ilam !, ntau
 !  real :: r
@@ -11032,7 +11019,7 @@ end function readparameterfrom2dmap
   integer :: subcell, i
   real(double) :: d, dV, r, nu0, tauSob, escProb
 !  real(double) :: tauSob_tmp, tauSob_sum, theta, phi, sin_theta
-  type(octalvector)  :: rvec, rhat !, rvec_sample
+  type(vector)  :: rvec, rhat !, rvec_sample
 !  integer :: nsample
   type(VECTOR) :: outVec
   real(double):: dtau_cont, dtau_line, rho
@@ -11056,7 +11043,7 @@ end function readparameterfrom2dmap
              if (r /= 0.0d0) then
                 rhat = rvec/r
              else
-                rhat = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+                rhat = VECTOR(0.0d0, 0.0d0, 1.0d0)
              end if
 
              if (thisOctal%threed) then
@@ -11075,7 +11062,7 @@ end function readparameterfrom2dmap
 !             do i = 1, nsample
 !                phi = 2.0d0*PIdouble*dble(i-1)/dble(nsample-1)
 !                theta = ACOS(rhat%z); sin_theta = SIN(theta)
-!                rvec_sample = OCTALVECTOR(r*cos(phi)*sin_theta, r*sin(phi)*sin_theta,  rvec%z)
+!                rvec_sample = VECTOR(r*cos(phi)*sin_theta, r*sin(phi)*sin_theta,  rvec%z)
 !                tauSob_tmp = tauSob / amrGridDirectionalDeriv(grid, rvec_sample, outVec, &
 !                  startOctal=thisOctal)
 !                tauSob_sum = tauSob_sum + tauSob_tmp
@@ -11086,7 +11073,7 @@ end function readparameterfrom2dmap
 !             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, outVec, &
 !                  startOctal=thisOctal)
              ! in a radial direction
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, rhat, &
                   startOctal=thisOctal)
            
              if (tauSob < 0.01) then
@@ -11135,7 +11122,7 @@ end function readparameterfrom2dmap
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: r
-    type(octalvector)  :: rvec
+    type(vector)  :: rvec
     real(double)::  rM, theta,  h, rM_center
   
     do subcell = 1, thisOctal%maxChildren
@@ -11196,7 +11183,7 @@ end function readparameterfrom2dmap
   real, intent(in)          :: lambda0                ! rest wavelength of line
   integer :: subcell, i
   real(double) :: d, dV, r, tauSob, escProb
-  type(octalvector)  :: rvec, rhat
+  type(vector)  :: rvec, rhat
   real(double):: dtau_cont, dtau_line, nu0, xc, xl, nr, dr, dA
   
   do subcell = 1, thisOctal%maxChildren
@@ -11219,7 +11206,7 @@ end function readparameterfrom2dmap
              if (r /= 0.0d0) then
                 rhat = rvec/r
              else
-                rhat = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+                rhat = VECTOR(0.0d0, 0.0d0, 1.0d0)
              end if
 
              if (thisOctal%threed) then
@@ -11233,7 +11220,7 @@ end function readparameterfrom2dmap
              nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
               ! in a radial direction
              tauSob = thisOctal%chiline(subcell)  / nu0
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, rhat, &
                   startOctal=thisOctal)
            
              if (tauSob < 0.01) then
@@ -11276,7 +11263,7 @@ end function readparameterfrom2dmap
   recursive subroutine setBiasPpdisk(thisOctal, grid)
 !  use input_variables, only: rInner
   type(gridtype) :: grid
-  type(OCTALVECTOR) :: rVec
+  type(VECTOR) :: rVec
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
 !  real(double) :: r
@@ -11313,7 +11300,7 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine massInAnn(thisOctal, r1, r2, mass)
-  type(OCTALVECTOR) :: rVec
+  type(VECTOR) :: rVec
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: mass, r1, r2, r
@@ -11385,11 +11372,11 @@ end function readparameterfrom2dmap
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(INOUT) :: grid
 
-    TYPE(octalVector) :: point
+    TYPE(vector) :: point
 
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
-    TYPE(octalVector) :: pointVecNorm
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
+    TYPE(vector) :: pointVecNorm
     TYPE(Vector)      :: pointVecNormSingle
 
     REAL :: r, rStar
@@ -11445,12 +11432,12 @@ end function readparameterfrom2dmap
 
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
-    TYPE(octalVector) :: pointVecNorm
+    TYPE(vector) :: starPosn
+    TYPE(vector) :: pointVec
+    TYPE(vector) :: pointVecNorm
     TYPE(Vector)      :: pointVecNormSingle
 
     REAL :: r, rStar
@@ -11499,19 +11486,19 @@ end function readparameterfrom2dmap
     LOGICAL, INTENT(IN), OPTIONAL   :: onlyChanged
     
     LOGICAL               :: octalAdded
-    TYPE(octalVector)     :: centrePoint
-    TYPE(octalVector)     :: lineOrigin
-    TYPE(octalVector)     :: starPos
-    TYPE(octalVector)     :: nearestPlanePoint
+    TYPE(vector)     :: centrePoint
+    TYPE(vector)     :: lineOrigin
+    TYPE(vector)     :: starPos
+    TYPE(vector)     :: nearestPlanePoint
     TYPE(octal), POINTER  :: child
     INTEGER               :: i, iSubcell, subIndex
-    TYPE(octalVector)     :: planeVec
+    TYPE(vector)     :: planeVec
     TYPE(octalListElement), POINTER :: newElement
     
     octalAdded = .FALSE.
     starPos = grid%starPos1
     lineOrigin = starPos
-    planeVec = octalVector(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
+    planeVec = vector(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
 
     DO iSubcell = 1, thisOctal%maxChildren, 1 
     
@@ -11595,8 +11582,8 @@ end function readparameterfrom2dmap
     LOGICAL, INTENT(IN), OPTIONAL   :: onlyChanged
     
     LOGICAL               :: octalAdded
-    TYPE(octalVector)     :: centrePoint
-    TYPE(octalVector)     :: starPos
+    TYPE(vector)     :: centrePoint
+    TYPE(vector)     :: starPos
     TYPE(octal), POINTER  :: child
     INTEGER               :: i, iSubcell, subIndex
     TYPE(octalListElement), POINTER :: newElement
@@ -12067,9 +12054,9 @@ end function readparameterfrom2dmap
      integer :: i
      real :: temp, meanTemp
      integer :: nTemp
-     type(OCTALVECTOR), allocatable :: locator(:)
+     type(VECTOR), allocatable :: locator(:)
      real(double) :: dSubcellcentre
-     type(OCTALVECTOR) :: thisSubcellCentre
+     type(VECTOR) :: thisSubcellCentre
      integer :: nlocator, j
      meanTemp = 0.
      meanRho = 0.d0
@@ -12206,7 +12193,7 @@ end function readparameterfrom2dmap
     real :: temp
     real(double) :: rho, rho_tmp
     integer :: subcell, i, np
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     real(double), allocatable, save :: recip_sm(:)
     real(double)  :: udist
     logical, save :: first_time = .true.
@@ -12257,7 +12244,7 @@ end function readparameterfrom2dmap
     implicit none
 
     type(sph_data), intent(in)    :: sphData
-    type(OCTALVECTOR), intent(in) :: rVec
+    type(VECTOR), intent(in) :: rVec
     real, intent(out)             :: temp
     real(double), intent(out)     :: rho
     real(double), intent(in)      :: recip_sm(sphData%npart)
@@ -12349,20 +12336,20 @@ end function readparameterfrom2dmap
 
     TYPE(gridtype), INTENT(IN)     :: grid 
     REAL                           :: amrGridDirectionalDeriv
-    TYPE(octalVector), INTENT(IN)  :: position
+    TYPE(vector), INTENT(IN)  :: position
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
     TYPE(octal),  POINTER         :: thisOctal !, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
 
-    TYPE(octalVector)              :: octalDirection
+    TYPE(vector)              :: octalDirection
     TYPE(octal), POINTER           :: firstOctal
     real(oct)           :: dr, dx, dphi
     real(oct)           :: r
     real(oct)           :: phi1, phi2
-    TYPE(octalVector)              :: position1
-    TYPE(octalVector)              :: position2
+    TYPE(vector)              :: position1
+    TYPE(vector)              :: position2
     INTEGER                        :: subcell
 
     
@@ -12443,7 +12430,7 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) kappaSca, kappaAbs
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: octVec
 
     write(*,*) "Setting disc photosphere bias..."
     nx = 0
@@ -12452,7 +12439,7 @@ end function readparameterfrom2dmap
 
     tau(1) = 0.
     do i = 2, nx
-       octVec = OCTALVECTOR(xAxis(i), 0.d0, 0.d0)
+       octVec = VECTOR(xAxis(i), 0.d0, 0.d0)
        CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
             kappaSca=kappaSca, kappaAbs=kappaAbs)
@@ -12469,7 +12456,7 @@ end function readparameterfrom2dmap
 
     tau(i+1) = 0.
     do i = iGap, 1, -1
-       octVec = OCTALVECTOR(xAxis(i), 0.d0, 0.d0)
+       octVec = VECTOR(xAxis(i), 0.d0, 0.d0)
        CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
             kappaSca=kappaSca, kappaAbs=kappaAbs)
@@ -12489,7 +12476,7 @@ end function readparameterfrom2dmap
 
     tau(i-1) = 0.
     do i = iGap, nx
-       octVec = OCTALVECTOR(xAxis(i), 0.d0, 0.d0)
+       octVec = VECTOR(xAxis(i), 0.d0, 0.d0)
        CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
        tau(i) = tau(i-1) + (xAxis(i)-xAxis(i-1)) * (kappaAbs + kappaSca)
        call setVerticalBias(grid, xAxis(i), 0., ilam, thisTau=tau(i))
@@ -12521,7 +12508,7 @@ end function readparameterfrom2dmap
 
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(octalvector) :: rVec
+    type(vector) :: rVec
     integer :: nx, subcell, i
     real :: xAxis(:)
 
@@ -12557,7 +12544,7 @@ end function readparameterfrom2dmap
     real(double) :: rhotemp
     real :: temptemp
     integer :: iLam
-    type(OCTALVECTOR) :: currentPos, temp
+    type(VECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
     real(double) :: kappaSca, kappaAbs
 
@@ -12567,7 +12554,7 @@ end function readparameterfrom2dmap
 
     ! bottom up
 
-    currentPos = OCTALVECTOR(xpos, yPos, -1.*grid%octreeRoot%subcellsize)
+    currentPos = VECTOR(xpos, yPos, -1.*grid%octreeRoot%subcellsize)
     do while(currentPos%z < 0.)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
@@ -12588,12 +12575,12 @@ end function readparameterfrom2dmap
           thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-thistau))
        endif
              
-       currentPos = OCTALVECTOR(xpos, yPos, zAxis(nz)+0.5*thisOctal%subcellsize+halfSmallestSubcell)
+       currentPos = VECTOR(xpos, yPos, zAxis(nz)+0.5*thisOctal%subcellsize+halfSmallestSubcell)
     end do
     
     tau = 0.
     nz = 0
-    currentPos = OCTALVECTOR(xpos, yPos, grid%octreeRoot%subcellsize)
+    currentPos = VECTOR(xpos, yPos, grid%octreeRoot%subcellsize)
     do while(currentPos%z > 0.)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
@@ -12607,7 +12594,7 @@ end function readparameterfrom2dmap
           tau = tau + thisOctal%subcellsize*(kappaAbs+kappaSca)
        endif
        thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
-       currentPos = OCTALVECTOR(xpos, yPos, zAxis(nz)-0.5*thisOctal%subcellsize-halfSmallestSubcell)
+       currentPos = VECTOR(xpos, yPos, zAxis(nz)-0.5*thisOctal%subcellsize-halfSmallestSubcell)
     end do
     
   end subroutine setVerticalBias
@@ -12621,7 +12608,7 @@ end function readparameterfrom2dmap
     real(double), allocatable :: tdusttype(:,:)
     real(double), allocatable :: rho(:)
     real, allocatable :: temp(:)
-    type(OCTALVECTOR) :: centre, octVec
+    type(VECTOR) :: centre, octVec
     real(double) :: r
     integer :: j
 
@@ -12636,37 +12623,37 @@ end function readparameterfrom2dmap
        allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
        allocate(rho(1:j), temp(1:j))
 
-       octVec = centre + r * OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       octVec = centre + r * VECTOR(1.d0, 0.d0, 0.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:))
        
-       octVec = centre + r * OCTALVECTOR(-1.d0,0.d0,0.d0)
+       octVec = centre + r * VECTOR(-1.d0,0.d0,0.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:))
        
-       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,-1.d0)
+       octVec = centre + r * VECTOR(0.d0,0.d0,-1.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:))
        
-       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,+1.d0)
+       octVec = centre + r * VECTOR(0.d0,0.d0,+1.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:))
     else
        j = 6
        allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
        allocate(rho(1:j), temp(1:j))
-       octVec = centre + r * OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       octVec = centre + r * VECTOR(1.d0, 0.d0, 0.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:))
        
-       octVec = centre + r * OCTALVECTOR(-1.d0,0.d0,0.d0)
+       octVec = centre + r * VECTOR(-1.d0,0.d0,0.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:))
        
-       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,-1.d0)
+       octVec = centre + r * VECTOR(0.d0,0.d0,-1.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:))
        
-       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,+1.d0)
+       octVec = centre + r * VECTOR(0.d0,0.d0,+1.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:))
 
-       octVec = centre + r * OCTALVECTOR(0.d0,+1.d0,0.d0)
+       octVec = centre + r * VECTOR(0.d0,+1.d0,0.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(5), rho=rho(5), dusttypeFraction=tdusttype(5,:))
 
-       octVec = centre + r * OCTALVECTOR(0.d0,-1.d0,0.d0)
+       octVec = centre + r * VECTOR(0.d0,-1.d0,0.d0)
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:))
 
     endif
@@ -12741,7 +12728,7 @@ end function readparameterfrom2dmap
     integer :: subcell, i, ilambda
     logical :: converged
     real(double) :: kabs, ksca, r
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, rVec
+    type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
     logical :: split
@@ -12769,24 +12756,24 @@ end function readparameterfrom2dmap
 
           r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1d0
           centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+0.9d0,+0.8d0,+0.7d0)
+               (0.01d0*grid%halfSmallestsubcell)*VECTOR(+0.9d0,+0.8d0,+0.7d0)
           if (.not.thisOctal%cylindrical) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 4
-             aHat = OCTALVECTOR(centre%x, centre%y, 0.d0)
+             aHat = VECTOR(centre%x, centre%y, 0.d0)
              call normalize(aHat)
 
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
              dirVec(2) = aHat
              dirVec(3) = (-1.d0)*aHat
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
           endif
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
@@ -12850,7 +12837,7 @@ end function readparameterfrom2dmap
     integer :: subcell, i
     logical :: converged
     real(double) :: r
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
+    type(VECTOR) :: dirVec(6), centre, octVec, aHat
     integer :: neighbourSubcell, j, nDir
 
 
@@ -12870,24 +12857,24 @@ end function readparameterfrom2dmap
 
           r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+0.9d0,+0.8d0,+0.7d0)
+               (0.01d0*grid%halfSmallestsubcell)*VECTOR(+0.9d0,+0.8d0,+0.7d0)
           if (.not.thisOctal%cylindrical) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 4
-             aHat = OCTALVECTOR(centre%x*0.99d0, centre%y, 0.d0)
+             aHat = VECTOR(centre%x*0.99d0, centre%y, 0.d0)
              call normalize(aHat)
 
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
              dirVec(2) = aHat
              dirVec(3) = (-1.d0)*aHat
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
           endif
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
@@ -12920,17 +12907,17 @@ end function readparameterfrom2dmap
 
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(in) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(in) :: direction
    type(OCTAL), pointer, optional :: sOctal
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6), rDirection
+   type(VECTOR) :: norm(6), p3(6), rDirection
    type(OCTAL),pointer :: thisOctal
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: phi, distToZboundary, ang1, ang2
-   type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec, rplane, rnorm
+   type(VECTOR) :: subcen, point, xHat, zHat, rVec, rplane, rnorm
    integer :: subcell
    real(double) :: distToSide1, distToSide2, distToSide
    real(double) ::  compx,disttoxBoundary
@@ -12991,19 +12978,19 @@ end function readparameterfrom2dmap
       if (.not.thisOctal%cylindrical) then
          ok = .true.
          
-         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
          
-         p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-         p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-         p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-         p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+         p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+         p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+         p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+         p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+         p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+         p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
 
          thisOk = .true.
          
@@ -13067,7 +13054,7 @@ end function readparameterfrom2dmap
          d = sqrt(point%x**2+point%y**2)
          xHat = VECTOR(point%x, point%y,0.d0)
          call normalize(xHat)
-         rDirection = OCTALVECTOR(direction%x, direction%y,0.d0)
+         rDirection = VECTOR(direction%x, direction%y,0.d0)
          compX = modulus(rDirection)
          call normalize(rDirection)
          
@@ -13137,8 +13124,8 @@ end function readparameterfrom2dmap
          if (phi < 0.d0) phi = phi + twoPi
 
          ang1 = phi - returndPhi(thisOctal)
-         rPlane = OCTALVECTOR(cos(ang1),sin(ang1),0.d0)
-         rnorm = rplane .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
+         rPlane = VECTOR(cos(ang1),sin(ang1),0.d0)
+         rnorm = rplane .cross. VECTOR(0.d0, 0.d0, 1.d0)
          call normalize(rnorm)
          distToSide1 = 1.d30
          if ((rnorm .dot. direction) /= 0.d0) then
@@ -13147,8 +13134,8 @@ end function readparameterfrom2dmap
          endif
 
          ang2 = phi + returndPhi(thisOctal)
-         rPlane = OCTALVECTOR(cos(ang2),sin(ang2),0.d0)
-         rnorm = rplane .cross.  OCTALVECTOR(0.d0, 0.d0, 1.d0)
+         rPlane = VECTOR(cos(ang2),sin(ang2),0.d0)
+         rnorm = rplane .cross.  VECTOR(0.d0, 0.d0, 1.d0)
          call normalize(rnorm)
          distToSide2 = 1.d30
          if ((rnorm .dot. direction) /= 0.d0) then
@@ -13186,7 +13173,7 @@ end function readparameterfrom2dmap
       d = sqrt(point%x**2+point%y**2)
       xHat = VECTOR(point%x, point%y,0.d0)
       call normalize(xHat)
-      rDirection = OCTALVECTOR(direction%x, direction%y,0.d0)
+      rDirection = VECTOR(direction%x, direction%y,0.d0)
       compX = modulus(rDirection)
       call normalize(rDirection)
 
@@ -13271,15 +13258,15 @@ end function readparameterfrom2dmap
 
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(in) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(in) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6) !, thisNorm
+   type(VECTOR) :: norm(6), p3(6) !, thisNorm
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: distToZboundary !, ang1, ang2 , phi
-   type(OCTALVECTOR) :: subcen, point, xHat, zHat !, rVec
+   type(VECTOR) :: subcen, point, xHat, zHat !, rVec
    real(double) :: distToSide  !, distToSide1, distToSide2
    real(double) :: disttoxBoundary, subcellsize
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
@@ -13297,19 +13284,19 @@ end function readparameterfrom2dmap
       if (.not.grid%octreeRoot%cylindrical) then
          ok = .true.
          
-         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
          
-         p3(1) = OCTALVECTOR(subcen%x+subcellsize/2.0d0, subcen%y, subcen%z)
-         p3(2) = OCTALVECTOR(subcen%x, subcen%y+subcellsize/2.0d0 ,subcen%z)
-         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+subcellsize/2.0d0)
-         p3(4) = OCTALVECTOR(subcen%x-subcellsize/2.0d0, subcen%y,  subcen%z)
-         p3(5) = OCTALVECTOR(subcen%x,subcen%y-subcellsize/2.0d0, subcen%z)
-         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-subcellsize/2.0d0)
+         p3(1) = VECTOR(subcen%x+subcellsize/2.0d0, subcen%y, subcen%z)
+         p3(2) = VECTOR(subcen%x, subcen%y+subcellsize/2.0d0 ,subcen%z)
+         p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+subcellsize/2.0d0)
+         p3(4) = VECTOR(subcen%x-subcellsize/2.0d0, subcen%y,  subcen%z)
+         p3(5) = VECTOR(subcen%x,subcen%y-subcellsize/2.0d0, subcen%z)
+         p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-subcellsize/2.0d0)
 
          thisOk = .true.
          
@@ -13419,7 +13406,7 @@ end function readparameterfrom2dmap
 !         phi = atan2(posVec%y,posVec%x)
 !         if (phi < 0.d0) phi = phi + twoPi
 !
-!         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!         rVec = VECTOR(r, 0.d0, 0.d0)
 !         if (grid%octreeRoot%splitAzimuthally) then
 !            if (phi < grid%octreeRoot%phi) then
 !               ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
@@ -13433,7 +13420,7 @@ end function readparameterfrom2dmap
 !            ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
 !         endif
 !
-!         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!         rVec = VECTOR(r, 0.d0, 0.d0)
 !         rVec = rotateZ(rVec, -ang1)
 !         thisnorm = rVec .cross. zHat
 !         call normalize(thisnorm)
@@ -13442,7 +13429,7 @@ end function readparameterfrom2dmap
 !            if (distToSide1 < 0.d0) distToSide1 = 1.d30
 !         endif
 !
-!         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!         rVec = VECTOR(r, 0.d0, 0.d0)
 !         rVec = rotateZ(rVec, -ang2)
 !         thisnorm = rVec .cross. zHat
 !         call normalize(thisnorm)
@@ -13542,7 +13529,7 @@ end function readparameterfrom2dmap
   subroutine writeCylindrical(thisOctal, subcell)
     type(OCTAL) :: thisOctal
     integer :: subcell
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: octVec
     real(double) :: r, phi
 
     octVec = subcellCentre(thisoctal,subcell)
@@ -13558,10 +13545,10 @@ end function readparameterfrom2dmap
   end subroutine writeCylindrical
 
 
-  type(OCTALVECTOR) function randomPositionInCell(thisOctal, subcell)
+  type(VECTOR) function randomPositionInCell(thisOctal, subcell)
     type(OCTAL) :: thisOctal
     integer :: subcell
-    type(OCTALVECTOR) :: octalCentre
+    type(VECTOR) :: octalCentre
     real(double) :: r1, r2, r3, r
     real(double) :: xOctal, yOctal, zOctal
     real(double) :: ang, ang1, ang2, phi
@@ -13687,8 +13674,8 @@ end function readparameterfrom2dmap
  
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(INOUT)   :: startPoint ! photon start point
-    TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
+    TYPE(vector), INTENT(INOUT)   :: startPoint ! photon start point
+    TYPE(vector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
     REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
 !    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
@@ -13719,29 +13706,29 @@ end function readparameterfrom2dmap
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
 
-    TYPE(octalVector)       :: locator 
+    TYPE(vector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
                        !   *next* cell of the octree that the ray will interesect.
                        !   initially this will be the same as the startPoint
       
-    TYPE(octalVector)       :: currentPoint ! current position of ray 
+    TYPE(vector)       :: currentPoint ! current position of ray 
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
     TYPE(octal)             :: octree       ! the octree structure within 'grid'
-    TYPE(octalVector)       :: directionNormalized
+    TYPE(vector)       :: directionNormalized
     real(oct)    :: distanceLimit ! max length of ray before aborting
     ! margin is the size of the region around the edge of a subcell
     !   where numerical inaccuracies may cause problems.
     real(oct)    :: margin
  
     ! variables for testing special cases (stellar intersections etc.)
-    TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
-    TYPE(octalVector)       :: diskNormal         ! disk normal vector
+    TYPE(vector)       :: starPosition       ! position vector of stellar centre
+    TYPE(vector)       :: diskNormal         ! disk normal vector
     real(oct)    :: rStar              ! stellar radius
     real(oct)    :: endLength          ! max path length of photon
-    TYPE(octalVector)       :: endPoint           ! where photon leaves grid
+    TYPE(vector)       :: endPoint           ! where photon leaves grid
     LOGICAL                 :: absorbPhoton       ! photon will be absorbed
     real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
-    TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
+    TYPE(vector)       :: diskIntersection   ! point of photon intersection with disk
     real(oct)    :: starIntersectionDistance1 ! distance to first  intersection
     real(oct)    :: starIntersectionDistance2 ! distance to second intersection
     LOGICAL                 :: starIntersectionFound1 ! 1st star intersection takes place      
@@ -13750,7 +13737,7 @@ end function readparameterfrom2dmap
     real(oct)    :: intersectionRadius ! disk radius when photon intersects
     real(oct)    :: diskDistance       ! distance to disk intersection
     real(oct)    :: distanceThroughStar! distance of chord through star
-    TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
+    TYPE(vector)       :: dummyStartPoint    ! modified start point 
 !    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     real(oct), PARAMETER :: fudgefactor = 1.000001 ! overestimates stellar size
     
@@ -13760,8 +13747,8 @@ end function readparameterfrom2dmap
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
 
     ! used internally
-    TYPE(octalVector)       ::startPointNew       ! 
-!    TYPE(octalVector)       ::entryPoint       ! 
+    TYPE(vector)       ::startPointNew       ! 
+!    TYPE(vector)       ::entryPoint       ! 
  
     
     ! we will abort tracking any rays which are too close to 
@@ -13988,8 +13975,8 @@ end function readparameterfrom2dmap
  
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN)      :: startPoint ! photon start point
-    TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
+    TYPE(vector), INTENT(IN)      :: startPoint ! photon start point
+    TYPE(vector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
     REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
 !    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
@@ -14021,22 +14008,22 @@ end function readparameterfrom2dmap
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
 
-    TYPE(octalVector)       :: locator 
+    TYPE(vector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
                        !   *next* cell of the octree that the ray will interesect.
                        !   initially this will be the same as the startPoint
       
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
-    TYPE(octalVector)       :: directionNormalized
+    TYPE(vector)       :: directionNormalized
  
     ! variables for testing special cases (stellar intersections etc.)
-    TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
-    TYPE(octalVector)       :: diskNormal         ! disk normal vector
+    TYPE(vector)       :: starPosition       ! position vector of stellar centre
+    TYPE(vector)       :: diskNormal         ! disk normal vector
     real(oct)    :: rStar              ! stellar radius
     real(oct)    :: endLength          ! max path length of photon
     LOGICAL                 :: absorbPhoton       ! photon will be absorbed
     real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
-    TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
+    TYPE(vector)       :: diskIntersection   ! point of photon intersection with disk
     real(oct)    :: starIntersectionDistance1 ! distance to first  intersection
     real(oct)    :: starIntersectionDistance2 ! distance to second intersection
     LOGICAL                 :: starIntersectionFound1 ! 1st star intersection takes place      
@@ -14046,7 +14033,7 @@ end function readparameterfrom2dmap
     real(oct)    :: diskDistance       ! distance to disk intersection
     real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     
-    type(octalvector) :: currentPosition
+    type(vector) :: currentPosition
     type(octal), pointer :: sOctal, thisOctal
     integer :: subcell
     real(double) :: length, distToNextCell
@@ -14055,8 +14042,8 @@ end function readparameterfrom2dmap
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
     real(double) :: fudgeFac = 0.1d0
     integer :: nSource_local
-    TYPE(octalVector)       :: vectorToIntersectionXYZ ! intersection with disk (cartesian)
-    TYPE(spVectorOctal)    :: vectorToIntersectionSP ! intersection with disk (sph. polar)
+    TYPE(vector)       :: vectorToIntersectionXYZ ! intersection with disk (cartesian)
+    TYPE(spVector)    :: vectorToIntersectionSP ! intersection with disk (sph. polar)
     REAL(KIND=oct)    :: intersectionPhi ! disk azimuth angle where photon intersects
     INTEGER                 :: lowerBound ! index returned from 'hunt' with lower bound of phi bin
     INTEGER                 :: upperBound ! usually lowerBound+1
@@ -14144,7 +14131,7 @@ end function readparameterfrom2dmap
          ELSE ! grid%geometry == "magstream"
            vectorToIntersectionXYZ = diskIntersection - starPosition
            ! convert to spherical polars
-           vectorToIntersectionSP = vectorToIntersectionXYZ
+            call XYZtoSPvector(vectorToIntersectionSP, vectorToIntersectionXYZ)
            intersectionPhi = vectorToIntersectionSP%phi
            
            ! need to find the appropriate disk truncation radius at this azimuth
@@ -14387,14 +14374,14 @@ end function readparameterfrom2dmap
 
   function distanceToGridFromOutside(grid, posVec, direction) result (tval)
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
+    type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
     real(double) :: tval
-   type(OCTALVECTOR) :: norm(6), p3(6)
+   type(VECTOR) :: norm(6), p3(6)
    real(double) :: distTor1, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: distToZboundary
-   type(OCTALVECTOR) ::  zHat, rhat
+   type(VECTOR) ::  zHat, rhat
    real(double) ::  compx, gridRadius
    real(oct) :: t(6),denom(6), r, r1, d, cosmu,x1,x2
    integer :: i,j
@@ -14438,19 +14425,19 @@ end function readparameterfrom2dmap
 
          ok = .true.
          
-         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
          
-         p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize, subcen%y, subcen%z)
-         p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize ,subcen%z)
-         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize)
-         p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize, subcen%y,  subcen%z)
-         p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize, subcen%z)
-         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize)
+         p3(1) = VECTOR(subcen%x+thisOctal%subcellsize, subcen%y, subcen%z)
+         p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize ,subcen%z)
+         p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize)
+         p3(4) = VECTOR(subcen%x-thisOctal%subcellsize, subcen%y,  subcen%z)
+         p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize, subcen%z)
+         p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize)
 
          thisOk = .true.
          
@@ -14514,7 +14501,7 @@ end function readparameterfrom2dmap
 
 
          d = sqrt(point%x**2+point%y**2)
-         xHat = (-1.)*VECTOR(point%x, point%y,0.d0)
+         xHat = (-1.d0)*VECTOR(point%x, point%y,0.d0)
          call normalize(xHat)
          rDirection = VECTOR(direction%x, direction%y, 0.d0)
          compX = modulus(rDirection)
@@ -14602,9 +14589,9 @@ end function readparameterfrom2dmap
   function hydroWarpTemperature(point, grid) result (tempOut)
     use input_variables, only : warpFracHeight, warpRadius, warpSigma, warpAngle
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     real(double) :: tempOut
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     real(double) :: r, phi, warpHeight
     real :: thisTemp
 
@@ -14625,9 +14612,9 @@ end function readparameterfrom2dmap
   function hydroWarpDensity(point, grid) result (rhoOut)
     use input_variables, only : warpFracHeight, warpRadius, warpSigma, warpAngle
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(vector), INTENT(IN) :: point
     real(double) :: rhoOut
-    TYPE(octalVector) :: rVec
+    TYPE(vector) :: rVec
     real(double) :: r, phi, warpHeight
 
     integer :: nx, thisX
@@ -14751,13 +14738,13 @@ end function readparameterfrom2dmap
     integer :: subcell
     real(double) :: rhotemp 
     real :: direction
-    type(OCTALVECTOR) :: currentPos, temp
+    type(VECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
 
     nz = 0
     halfSmallestSubcell = grid%halfSmallestSubcell
 
-    currentPos = OCTALVECTOR(xPos, yPos, direction*halfSmallestSubcell)
+    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
 
     do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
@@ -14769,7 +14756,7 @@ end function readparameterfrom2dmap
           zAxis(nz) = temp%z
           subcellsize(nz) = thisOctal%subcellsize
 !       endif
-          currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+          currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
     end do
     zAxis(1:nz) = abs(zAxis(1:nz)) !* 1.d10  ! convert to cm
   end subroutine getDensityRun
@@ -14997,7 +14984,7 @@ end function readparameterfrom2dmap
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    type(OCTALVECTOR) :: rVec !, corner
+    type(VECTOR) :: rVec !, corner
     integer :: i, j, subcell
     logical :: converged, converged_tmp
     logical :: split
@@ -15060,7 +15047,7 @@ end function readparameterfrom2dmap
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     integer :: i, j, subcell
     logical :: childrenAdded
     logical :: split
@@ -15254,7 +15241,7 @@ end function readparameterfrom2dmap
     integer :: i, j
     real(double) :: r, theta, phi, v, rho
     real(double) :: tot
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
     nStream = 0
 
@@ -15277,7 +15264,7 @@ end function readparameterfrom2dmap
           phi = phi ! * degtorad
           rho = rho * 1.d-3
           r = r * 2.d0 * rsol / 1.d10
-          rVec = r * OCTALVECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
+          rVec = r * VECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
           
           thisStream(nStream)%nSamples = thisStream(nStream)%nSamples + 1
           
@@ -15311,7 +15298,7 @@ end function readparameterfrom2dmap
                      modulus(thisStream(i)%position(j) - thisStream(i)%position(j-1))
              endif
           ! direction is outward so need to use -speed...
-          thisStream(i)%velocity(j) = (-1.d0*thisStream(i)%speed(j)) * o2s(thisStream(i)%direction(j))
+          thisStream(i)%velocity(j) = (-1.d0*thisStream(i)%speed(j)) * thisStream(i)%direction(j)
        enddo
     enddo
 
@@ -15392,7 +15379,7 @@ end function readparameterfrom2dmap
 
 
   function  closestCorner(thisOctal, subcell, posVec) result (closeCorner)
-    type(OCTALVECTOR) :: closeCorner, posVec, cen, thisCorner
+    type(VECTOR) :: closeCorner, posVec, cen, thisCorner
     type(OCTAL), pointer :: thisOctal
     real(double) :: minDist, r, dist
     integer :: subcell
@@ -15401,49 +15388,49 @@ end function readparameterfrom2dmap
     r = thisOctal%subcellSize/2.d0
     cen = subcellCentre(thisOctal, subcell)
 
-    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, 1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, -1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, 1.d0, -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, -1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, -1.d0, -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, -1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0,  -1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, -1.d0,  -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, -1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, 1.d0, -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, -1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
        closeCorner = thisCorner
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, 1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
@@ -15452,7 +15439,7 @@ end function readparameterfrom2dmap
   end function closestCorner
 
   function  dist_from_closestCorner(thisOctal, subcell, posVec) result (minDist)
-    type(OCTALVECTOR) :: posVec, cen, thisCorner
+    type(VECTOR) :: posVec, cen, thisCorner
     type(OCTAL), pointer :: thisOctal
     real(double) :: minDist, r, dist
     integer :: subcell
@@ -15461,42 +15448,42 @@ end function readparameterfrom2dmap
     r = thisOctal%subcellSize/2.d0
     cen = subcellCentre(thisOctal, subcell)
 
-    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, 1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, -1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, 1.d0, -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, -1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, -1.d0, -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(1.d0, -1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0,  -1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, -1.d0,  -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, -1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, 1.d0, -1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, -1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
     endif
-    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    thisCorner = cen + r * VECTOR(-1.d0, 1.d0, 1.d0)
     dist  =  modulus(posVec - thisCorner)
     if (dist < minDist) then
        minDist = dist
@@ -15504,7 +15491,7 @@ end function readparameterfrom2dmap
   end function dist_from_closestCorner
 
   function  dist_from_closestEdge(thisOctal, subcell, posVec) result (minDist)
-    type(OCTALVECTOR) :: posVec, cen, corner1, corner2
+    type(VECTOR) :: posVec, cen, corner1, corner2
     type(OCTAL), pointer :: thisOctal
     real(double) :: minDist, r, dist
     integer :: subcell
@@ -15514,85 +15501,85 @@ end function readparameterfrom2dmap
     cen = subcellCentre(thisOctal, subcell)
 
 !1
-    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    corner1 = cen + r * VECTOR(-1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * VECTOR(-1.d0, 1.d0, 1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !2
-    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0,-1.d0, 1.d0)
+    corner1 = cen + r * VECTOR(-1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * VECTOR( 1.d0,-1.d0, 1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !3
-    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR(-1.d0,-1.d0,-1.d0)
+    corner1 = cen + r * VECTOR(-1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * VECTOR(-1.d0,-1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !4
-    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0, 1.d0)
+    corner1 = cen + r * VECTOR(-1.d0, 1.d0, 1.d0)
+    corner2 = cen + r * VECTOR( 1.d0, 1.d0, 1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !5
-    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR(-1.d0, 1.d0,-1.d0)
+    corner1 = cen + r * VECTOR(-1.d0, 1.d0, 1.d0)
+    corner2 = cen + r * VECTOR(-1.d0, 1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !6
-    corner1 = cen + r * OCTALVECTOR( 1.d0,-1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0, 1.d0)
+    corner1 = cen + r * VECTOR( 1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * VECTOR( 1.d0, 1.d0, 1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !7
-    corner1 = cen + r * OCTALVECTOR( 1.d0,-1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0,-1.d0,-1.d0)
+    corner1 = cen + r * VECTOR( 1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * VECTOR( 1.d0,-1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !8
-    corner1 = cen + r * OCTALVECTOR( 1.d0, 1.d0, 1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0,-1.d0)
+    corner1 = cen + r * VECTOR( 1.d0, 1.d0, 1.d0)
+    corner2 = cen + r * VECTOR( 1.d0, 1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !9
-    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0,-1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0,-1.d0)
+    corner1 = cen + r * VECTOR(-1.d0, 1.d0,-1.d0)
+    corner2 = cen + r * VECTOR( 1.d0, 1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !10
-    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0,-1.d0)
-    corner2 = cen + r * OCTALVECTOR(-1.d0,-1.d0,-1.d0)
+    corner1 = cen + r * VECTOR(-1.d0, 1.d0,-1.d0)
+    corner2 = cen + r * VECTOR(-1.d0,-1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !11
-    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0,-1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0,-1.d0,-1.d0)
+    corner1 = cen + r * VECTOR(-1.d0,-1.d0,-1.d0)
+    corner2 = cen + r * VECTOR( 1.d0,-1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
     endif
 !12
-    corner1 = cen + r * OCTALVECTOR( 1.d0,-1.d0,-1.d0)
-    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0,-1.d0)
+    corner1 = cen + r * VECTOR( 1.d0,-1.d0,-1.d0)
+    corner2 = cen + r * VECTOR( 1.d0, 1.d0,-1.d0)
     dist  =  distancePointLineSegment(corner1, corner2, posVec)
     if (dist < minDist) then
        minDist = dist
@@ -15605,7 +15592,7 @@ end function readparameterfrom2dmap
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross)
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     integer :: iLambda
     real(double) :: tau, distToNextCell
     real(double), optional :: tauMax
@@ -15637,9 +15624,9 @@ end function readparameterfrom2dmap
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   
-       beforeVec = OCTALVECTOR(currentPosition%x, currentPosition%y,0.d0)
+       beforeVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
-       afterVec = OCTALVECTOR(currentPosition%x, currentPosition%y,0.d0)
+       afterVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
        
        if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit
 
@@ -15665,7 +15652,7 @@ end function readparameterfrom2dmap
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
-    type(OCTALVECTOR) :: rVec, direction, currentPosition
+    type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
@@ -15701,7 +15688,7 @@ end function readparameterfrom2dmap
     type(STREAMTYPE) :: thisStream
     type(GRIDTYPE) :: grid
     integer :: iSample
-    type(OCTALVECTOR) :: point
+    type(VECTOR) :: point
     real(double) :: t, thisR
     real(double),optional :: rho
     real,optional :: temperature
@@ -15769,7 +15756,7 @@ end function readparameterfrom2dmap
 
     temperature = 0.
     rho = 0.d0
-    vel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+    vel = VECTOR(0.d0, 0.d0, 0.d0)
     
     n = 0
     do i = 1, stream%nSamples
@@ -15789,7 +15776,7 @@ end function readparameterfrom2dmap
        thisOctal%inFlow(subcell) = .true.
        thisOctal%rho(subcell) = rho / dble(n)
        thisOctal%temperature(subcell) = temperature/real(n)
-       thisOctal%velocity(subcell) = vel / real(n)
+       thisOctal%velocity(subcell) = vel / dble(n)
        thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
        if (subcell == thisOctal%maxchildren) then
           call fillVelocityCorners(thisOctal,grid,magstreamvelocity, .true.)
@@ -15811,7 +15798,7 @@ end function readparameterfrom2dmap
 
   type(VECTOR)  function magStreamVelocity(point, grid) result(vel)
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: point
+    type(VECTOR) :: point
     real(double) :: minDist, dist, dist1, dist2, t
     integer :: i, j, isample, istream
     minDist = 1.d30
@@ -15837,7 +15824,7 @@ end function readparameterfrom2dmap
 
   subroutine findNearestSample(thisStream, position, iSample, t, outsideStream)
     type(STREAMTYPE) :: thisStream
-    type(OCTALVECTOR) :: rVec, position
+    type(VECTOR) :: rVec, position
     real(double) :: minDist, dist
     integer :: iSample
     real(double) :: t
@@ -15905,7 +15892,7 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     integer subcell
     real(double) :: distToNextCell, r, x1
-    type(OCTALVECTOR) :: direction, rVec, sVec, posVec, thisDirection
+    type(VECTOR) :: direction, rVec, sVec, posVec, thisDirection
     type(VECTOR) :: v1,  outVec
     integer :: neighbourSubcell
 
@@ -15955,7 +15942,7 @@ end function readparameterfrom2dmap
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     integer :: subcell
     real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
     integer :: i
@@ -15969,7 +15956,7 @@ end function readparameterfrom2dmap
     totalmdot = 0.d0
 
     do i = 1, surface%nElements
-       rVec = s2o(surface%element(i)%position) + grid%halfSmallestSubcell * s2o(surface%element(i)%norm)
+       rVec = surface%element(i)%position + grid%halfSmallestSubcell * surface%element(i)%norm
        CALL findSubcellTD(rVec,grid%octreeRoot,thisOctal,subcell)
 
 
@@ -16030,7 +16017,7 @@ end function readparameterfrom2dmap
     real(double) :: kabs
     real(double) :: d
     logical :: use_this_subcell, update
-    type(octalvector) :: rvec, rhat
+    type(vector) :: rvec, rhat
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -16116,7 +16103,7 @@ end function readparameterfrom2dmap
                 ! The directional derivative the velocity field in radial direction.
                 rhat = rvec
                 call normalize(rhat)
-                value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
+                value = amrGridDirectionalDeriv(grid,rvec, rhat, thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
                 call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
                 value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10

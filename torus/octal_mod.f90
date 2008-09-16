@@ -70,8 +70,8 @@ MODULE octal_mod
      module procedure deallocateAttributeDouble
      module procedure deallocateAttributeReal
      module procedure deallocateAttributeInteger
+     module procedure deallocateAttributeVector
      module procedure deallocateAttributeLogical
-     module procedure deallocateAttributeOctalVector
   end interface
 
   interface copyAttribute
@@ -81,7 +81,6 @@ MODULE octal_mod
      module procedure copyAttributeRealPointer
      module procedure copyAttributeIntegerPointer
      module procedure copyAttributeLogicalPointer
-     module procedure copyAttributeOctVecPointer
      module procedure copyAttributeVectorPointer
   end interface
 
@@ -90,7 +89,6 @@ MODULE octal_mod
      module procedure readAttributeRealPointer
      module procedure readAttributeIntegerPointer
      module procedure readAttributeVectorPointer
-     module procedure readAttributeOctalVectorPointer
   end interface
 
   interface writeAttributePointer
@@ -98,7 +96,6 @@ MODULE octal_mod
      module procedure writeAttributeRealPointer
      module procedure writeAttributeIntegerPointer
      module procedure writeAttributeVectorPointer
-     module procedure writeAttributeOctalVectorPointer
   end interface
 
   interface readAttributeStatic
@@ -110,8 +107,7 @@ MODULE octal_mod
      module procedure readAttributeStaticLogical
      module procedure readAttributeStaticLogicalSingle
      module procedure readAttributeStaticVector
-     module procedure readAttributeStaticOctalVector
-     module procedure readAttributeStaticOctalVectorSingle
+     module procedure readAttributeStaticVectorSingle
   end interface
 
   interface writeAttributeStatic
@@ -123,8 +119,7 @@ MODULE octal_mod
      module procedure writeAttributeStaticLogical
      module procedure writeAttributeStaticLogicalSingle
      module procedure writeAttributeStaticVector
-     module procedure writeAttributeStaticOctalVector
-     module procedure writeAttributeStaticOctalVectorSingle
+     module procedure writeAttributeStaticVectorSingle
   end interface
 
 
@@ -159,7 +154,7 @@ MODULE octal_mod
     TYPE(octal), DIMENSION(:), POINTER :: child => NULL()
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent => null()         
-    TYPE(octalVector)                  :: centre
+    TYPE(vector)                  :: centre
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
@@ -269,7 +264,7 @@ MODULE octal_mod
     real(double), pointer :: rhou(:) => null(),  rhov(:) => null(), rhow(:) => null(), rhoE(:) => null(), energy(:) => null()
     real(double), pointer :: pressure_i(:) => null(), pressure_i_plus_1(:) => null(), pressure_i_minus_1(:) => null()
     real(double), pointer :: tempStorage(:,:) => null()
-    type(OCTALVECTOR), pointer :: boundaryPartner(:) => null()
+    type(vECTOR), pointer :: boundaryPartner(:) => null()
     real(double), pointer :: phi_i(:) => null(), phi_i_plus_1(:) => null(), phi_i_minus_1(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
     integer, pointer :: boundaryCondition(:) => null()
@@ -278,14 +273,14 @@ MODULE octal_mod
  
 CONTAINS 
  
-  TYPE(octalVector) FUNCTION subcellCentre(thisOctal,nChild)
+  TYPE(Vector) FUNCTION subcellCentre(thisOctal,nChild)
     ! returns the centre of one of the subcells of the current octal 
 
     IMPLICIT NONE
 
     TYPE(octal), INTENT(IN) :: thisOctal 
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     real(oct)    :: d
 
     d = thisOctal%subcellSize * 0.5_oc
@@ -293,9 +288,9 @@ CONTAINS
     if (thisOctal%oneD) then
        select case (nchild)
           case(1)
-             subcellCentre = thisOctal%centre - d * xHatOctal
+             subcellCentre = thisOctal%centre - d * xHat
           case(2)
-             subcellCentre = thisOctal%centre + d * xHatOctal
+             subcellCentre = thisOctal%centre + d * xHat
           case DEFAULT
              write(*,*) "bug - one-d cell has more than 3 children"
        end select
@@ -306,53 +301,53 @@ CONTAINS
        if (.not.thisOctal%cylindrical) then
           SELECT CASE (nChild)
           CASE (1)    
-             subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
+             subcellCentre = thisOctal%centre - (d * xHat) - (d * yHat) - (d * zHat)
           CASE (2)    
-             subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
+             subcellCentre = thisOctal%centre + (d * xHat) - (d * yHat) - (d * zHat)
           CASE (3)    
-             subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
+             subcellCentre = thisOctal%centre - (d * xHat) + (d * yHat) - (d * zHat)
           CASE (4)    
-             subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
+             subcellCentre = thisOctal%centre + (d * xHat) + (d * yHat) - (d * zHat)
           CASE (5)    
-             subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
+             subcellCentre = thisOctal%centre - (d * xHat) - (d * yHat) + (d * zHat)
           CASE (6)    
-             subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
+             subcellCentre = thisOctal%centre + (d * xHat) - (d * yHat) + (d * zHat)
           CASE (7)    
-             subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
+             subcellCentre = thisOctal%centre - (d * xHat) + (d * yHat) + (d * zHat)
           CASE (8)    
-             subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
+             subcellCentre = thisOctal%centre + (d * xHat) + (d * yHat) + (d * zHat)
           CASE DEFAULT
              PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
              PRINT *, "        nChild = ", nChild 
              STOP
           END SELECT
        else
-          rVec = OCTALVECTOR(thisOctal%r,0.d0,thisOctal%centre%z)
+          rVec = VECTOR(thisOctal%r,0.d0,thisOctal%centre%z)
           if (thisOctal%splitAzimuthally) then
              SELECT CASE (nChild)
              CASE (1)    
-                subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rVec - (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (2)    
-                subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (3)    
-                subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rVec - (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (4)    
-                subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (5)    
-                subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rVec - (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE (6)    
-                subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE (7)    
-                subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rVec - (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE (8)    
-                subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 1"
@@ -363,16 +358,16 @@ CONTAINS
           else
              SELECT CASE (nChild)
              CASE (1)    
-                subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rVec - (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
              CASE (2)    
-                subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
              CASE (3)    
-                subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rVec - (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
              CASE (4)    
-                subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 2"
@@ -385,13 +380,13 @@ CONTAINS
  else
     SELECT CASE (nChild)
     CASE (1)    
-       subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * zHatOctal)
+       subcellCentre = thisOctal%centre - (d * xHat) - (d * zHat)
     CASE (2)    
-       subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * zHatOctal)
+       subcellCentre = thisOctal%centre + (d * xHat) - (d * zHat)
     CASE (3)    
-       subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * zHatOctal)
+       subcellCentre = thisOctal%centre - (d * xHat) + (d * zHat)
     CASE (4)    
-       subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * zHatOctal)
+       subcellCentre = thisOctal%centre + (d * xHat) + (d * zHat)
     CASE DEFAULT
        PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 3"
        PRINT *, "        nChild = ", nChild 
@@ -485,7 +480,7 @@ CONTAINS
     integer, intent(in) :: subcell   
     real(double), intent(in) :: x, y, z
     !
-    TYPE(octalVector)     :: cellCenter
+    TYPE(Vector)     :: cellCenter
     real(double) :: x0, y0, z0  ! cell center
     real(double) :: d, dp, dm, r, phi, r0, phi0, dphi
     real(double), parameter :: eps = 0.0d0
@@ -569,7 +564,7 @@ CONTAINS
     type(OCTAL) :: thisOctal
     integer :: subcell
     real(double) :: r1, r2, dphi
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
   
     if (thisOctal%oneD) then
        rVec = subcellCentre(thisOctal, subcell)
@@ -726,15 +721,6 @@ CONTAINS
 
   end subroutine copyAttributeLogicalPointer
 
-  subroutine copyAttributeOctVEcPointer(dest, source)
-    type(OCTALVECTOR) , pointer :: dest(:), source(:)
-    if (associated(source)) then
-       allocate(dest(SIZE(source)))
-       dest = source
-    endif
-
-  end subroutine copyAttributeOctVecPointer
-
   subroutine copyAttributeVectorPointer(dest, source)
     type(VECTOR) , pointer :: dest(:), source(:)
     if (associated(source)) then
@@ -752,6 +738,16 @@ CONTAINS
        nullify(array)
     endif
   end subroutine deallocateAttributeDouble
+
+
+  subroutine deallocateAttributeVector(array)
+    type(vector), pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeVector
 
   subroutine deallocateAttributeReal(array)
     real, pointer :: array(:)
@@ -779,15 +775,6 @@ CONTAINS
        nullify(array)
     endif
   end subroutine deallocateAttributeLogical
-
-  subroutine deallocateAttributeOctalVector(array)
-    type(OCTALVECTOR), pointer :: array(:)
-
-    if (associated(array)) then
-       deallocate(array)
-       nullify(array)
-    endif
-  end subroutine deallocateAttributeOctalVector
 
 
 
@@ -899,32 +886,6 @@ CONTAINS
 
   end subroutine readAttributeVectorPointer
 
-  subroutine readAttributeOctalVectorPointer(lUnit, array, fileFormatted)
-    integer :: lUnit
-    integer :: nSize
-    logical :: valPresent
-    TYPE(OCTALVECTOR) , pointer :: array(:)
-    logical :: fileFormatted
-    
-    if (fileFormatted) then
-       read(lUnit,*) valPresent
-    else
-       read(lUnit) valPresent
-    endif
-
-    if (valPresent) then
-       if (fileFormatted) then
-          read(lunit,*) nSize
-          allocate(array(1:nSize))
-          read(lUnit,*) array(1:nSize)
-       else
-          read(lunit) nSize
-          allocate(array(1:nSize))
-          read(lUnit) array(1:nSize)
-       endif
-    endif
-
-  end subroutine readAttributeOctalVectorPointer
 
 
   subroutine readAttributeStaticDouble(lUnit, array, fileFormatted)
@@ -939,6 +900,18 @@ CONTAINS
     endif
   end subroutine readAttributeStaticDouble
 
+  subroutine readAttributeStaticVector(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticVector
+
   subroutine readAttributeStaticDoubleSingle(lUnit, array, fileFormatted)
     integer :: lUnit
     real(double) :: array
@@ -950,6 +923,18 @@ CONTAINS
        read(lUnit) array
     endif
   end subroutine readAttributeStaticDoubleSingle
+
+  subroutine readAttributeStaticVectorSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR) :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticVectorSingle
 
   subroutine readAttributeStaticIntegerSingle(lUnit, array, fileFormatted)
     integer :: lUnit
@@ -975,17 +960,6 @@ CONTAINS
     endif
   end subroutine readAttributeStaticLogicalSingle
 
-  subroutine readAttributeStaticOctalVectorSingle(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(OCTALVECTOR) :: array
-    logical :: fileFormatted
-
-    if (fileFormatted) then
-       read(lUnit, *) array
-    else
-       read(lUnit) array
-    endif
-  end subroutine readAttributeStaticOctalVectorSingle
 
   subroutine readAttributeStaticReal(lUnit, array, fileFormatted)
     integer :: lUnit
@@ -1022,30 +996,6 @@ CONTAINS
        read(lUnit) array
     endif
   end subroutine readAttributeStaticLogical
-
-  subroutine readAttributeStaticVector(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(VECTOR) :: array(:)
-    logical :: fileFormatted
-
-    if (fileFormatted) then
-       read(lUnit, *) array
-    else
-       read(lUnit) array
-    endif
-  end subroutine readAttributeStaticVector
-
-  subroutine readAttributeStaticOctalVector(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(OCTALVECTOR) :: array(:)
-    logical :: fileFormatted
-
-    if (fileFormatted) then
-       read(lUnit, *) array
-    else
-       read(lUnit) array
-    endif
-  end subroutine readAttributeStaticOctalVector
 
 
   subroutine writeAttributeDoublePointer(lUnit, array, fileFormatted)
@@ -1189,34 +1139,6 @@ CONTAINS
     endif
   end subroutine writeAttributeVectorPointer
 
-  subroutine writeAttributeOctalVectorPointer(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(OCTALVECTOR), pointer :: array(:)
-    logical :: fileFormatted
-
-    if (associated(array)) then
-       if (fileFormatted) then
-          write(lUnit,*) .true.
-       else
-          write(lUnit) .true.
-       endif
-
-       if (fileFormatted) then
-          write(lunit,*) SIZE(array)
-          write(lUnit,*) array(1:SIZE(array))
-       else
-          write(lunit) SIZE(array)
-          write(lUnit) array(1:SIZE(array))
-       endif
-    else
-       if (fileFormatted) then
-          write(lUnit,*) .false.
-       else
-          write(lUnit) .false.
-       endif
-    endif
-  end subroutine writeAttributeOctalVectorPointer
-
 
   subroutine writeAttributeStaticDouble(lUnit, array, fileFormatted)
     integer :: lUnit
@@ -1229,6 +1151,18 @@ CONTAINS
        write(lUnit) array(1:SIZE(array))
     endif
   end subroutine writeAttributeStaticDouble
+
+  subroutine writeAttributeStaticVector(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticVector
 
  subroutine writeAttributeStaticReal(lUnit, array, fileFormatted)
     integer :: lUnit
@@ -1290,17 +1224,6 @@ CONTAINS
     endif
   end subroutine writeAttributeStaticVectorSingle
 
- subroutine writeAttributeStaticOctalVectorSingle(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(OCTALVECTOR) :: array
-    logical :: fileFormatted
-
-    if (fileFormatted) then
-       write(lUnit,*) array
-    else
-       write(lUnit) array
-    endif
-  end subroutine writeAttributeStaticOctalVectorSingle
 
  subroutine writeAttributeStaticDoubleSingle(lUnit, array, fileFormatted)
     integer :: lUnit
@@ -1314,6 +1237,7 @@ CONTAINS
     endif
   end subroutine writeAttributeStaticDoubleSingle
 
+
  subroutine writeAttributeStaticLogical(lUnit, array, fileFormatted)
     integer :: lUnit
     logical :: array(:)
@@ -1326,30 +1250,6 @@ CONTAINS
     endif
   end subroutine writeAttributeStaticLogical
 
- subroutine writeAttributeStaticVector(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(VECTOR) :: array(:)
-    logical :: fileFormatted
-
-    if (fileFormatted) then
-       write(lUnit,*) array(1:SIZE(array))
-    else
-       write(lUnit) array(1:SIZE(array))
-    endif
-  end subroutine writeAttributeStaticVector
-
-
- subroutine writeAttributeStaticOctalVector(lUnit, array, fileFormatted)
-    integer :: lUnit
-    type(OCTALVECTOR) :: array(:)
-    logical :: fileFormatted
-
-    if (fileFormatted) then
-       write(lUnit,*) array(1:SIZE(array))
-    else
-       write(lUnit) array(1:SIZE(array))
-    endif
-  end subroutine writeAttributeStaticOCTALVector
 
 
 END MODULE octal_mod

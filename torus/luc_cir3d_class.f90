@@ -163,7 +163,7 @@ contains
     
     IMPLICIT NONE
 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(Vector), INTENT(IN) :: point
     real(double), intent(out) :: r, theta, phi ! r in R*, theta and phi are in rad, 
     real(double), optional, intent(out) :: phi_original ! Original phi value in rad, 
     ! Point in cartisian coordinates
@@ -226,7 +226,7 @@ contains
     IMPLICIT NONE
 
     REAL(double)                  :: out
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(Vector), INTENT(IN) :: point
 
     !
     real(double), parameter ::  rho_min = 1.0e-18 ! [g/cm^3]     
@@ -273,7 +273,7 @@ contains
     IMPLICIT NONE
 
     type(vector)                  :: out   ! [c]
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(Vector), INTENT(IN) :: point
     type(vector) :: v
 
 !    real(double) :: Vr, Vtheta, Vphi
@@ -302,13 +302,13 @@ contains
     phi_rot = phi_original - phi
     ! using a routine in vector_mod
     ! (pass rotation around z axis thus minus sign)
-    out = rotateZ(v, REAL(-phi_rot))
+    out = rotateZ(v, -phi_rot)
 
 
     
 
     ! changing units to speed of light
-    out = out/real(cSpeed)                                  ! [c]
+    out = out/cSpeed                                  ! [c]
 
 
     ! Vz flips sign if z is negative.
@@ -332,7 +332,7 @@ contains
     
     IMPLICIT NONE
     REAL                          :: out 
-    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(Vector), INTENT(IN) :: point
     !
     real(double) :: r, theta, phi
     
@@ -362,7 +362,7 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     !    
-    TYPE(octalVector) :: point
+    TYPE(vector) :: point
     
     REAL(oct) :: r    
         
@@ -406,7 +406,7 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     
-    TYPE(octalVector) :: point 
+    TYPE(vector) :: point 
 
     point = subcellCentre(thisOctal,subcell)
 
@@ -449,39 +449,39 @@ contains
 
     ! now store the 'base level' values
     
-    thisOctal%cornerVelocity(1) = Luc_cir3d_velocity(octalVector(x1,y1,z1))
-    thisOctal%cornerVelocity(2) = Luc_cir3d_velocity(octalVector(x2,y1,z1))
-    thisOctal%cornerVelocity(3) = Luc_cir3d_velocity(octalVector(x3,y1,z1))
-    thisOctal%cornerVelocity(4) = Luc_cir3d_velocity(octalVector(x1,y2,z1))
-    thisOctal%cornerVelocity(5) = Luc_cir3d_velocity(octalVector(x2,y2,z1))
-    thisOctal%cornerVelocity(6) = Luc_cir3d_velocity(octalVector(x3,y2,z1))
-    thisOctal%cornerVelocity(7) = Luc_cir3d_velocity(octalVector(x1,y3,z1))
-    thisOctal%cornerVelocity(8) = Luc_cir3d_velocity(octalVector(x2,y3,z1))
-    thisOctal%cornerVelocity(9) = Luc_cir3d_velocity(octalVector(x3,y3,z1))
+    thisOctal%cornerVelocity(1) = Luc_cir3d_velocity(vector(x1,y1,z1))
+    thisOctal%cornerVelocity(2) = Luc_cir3d_velocity(vector(x2,y1,z1))
+    thisOctal%cornerVelocity(3) = Luc_cir3d_velocity(vector(x3,y1,z1))
+    thisOctal%cornerVelocity(4) = Luc_cir3d_velocity(vector(x1,y2,z1))
+    thisOctal%cornerVelocity(5) = Luc_cir3d_velocity(vector(x2,y2,z1))
+    thisOctal%cornerVelocity(6) = Luc_cir3d_velocity(vector(x3,y2,z1))
+    thisOctal%cornerVelocity(7) = Luc_cir3d_velocity(vector(x1,y3,z1))
+    thisOctal%cornerVelocity(8) = Luc_cir3d_velocity(vector(x2,y3,z1))
+    thisOctal%cornerVelocity(9) = Luc_cir3d_velocity(vector(x3,y3,z1))
 
     ! middle level
   
-    thisOctal%cornerVelocity(10) = Luc_cir3d_velocity(octalVector(x1,y1,z2))
-    thisOctal%cornerVelocity(11) = Luc_cir3d_velocity(octalVector(x2,y1,z2))
-    thisOctal%cornerVelocity(12) = Luc_cir3d_velocity(octalVector(x3,y1,z2))
-    thisOctal%cornerVelocity(13) = Luc_cir3d_velocity(octalVector(x1,y2,z2))
-    thisOctal%cornerVelocity(14) = Luc_cir3d_velocity(octalVector(x2,y2,z2))
-    thisOctal%cornerVelocity(15) = Luc_cir3d_velocity(octalVector(x3,y2,z2))
-    thisOctal%cornerVelocity(16) = Luc_cir3d_velocity(octalVector(x1,y3,z2))
-    thisOctal%cornerVelocity(17) = Luc_cir3d_velocity(octalVector(x2,y3,z2))
-    thisOctal%cornerVelocity(18) = Luc_cir3d_velocity(octalVector(x3,y3,z2))
+    thisOctal%cornerVelocity(10) = Luc_cir3d_velocity(vector(x1,y1,z2))
+    thisOctal%cornerVelocity(11) = Luc_cir3d_velocity(vector(x2,y1,z2))
+    thisOctal%cornerVelocity(12) = Luc_cir3d_velocity(vector(x3,y1,z2))
+    thisOctal%cornerVelocity(13) = Luc_cir3d_velocity(vector(x1,y2,z2))
+    thisOctal%cornerVelocity(14) = Luc_cir3d_velocity(vector(x2,y2,z2))
+    thisOctal%cornerVelocity(15) = Luc_cir3d_velocity(vector(x3,y2,z2))
+    thisOctal%cornerVelocity(16) = Luc_cir3d_velocity(vector(x1,y3,z2))
+    thisOctal%cornerVelocity(17) = Luc_cir3d_velocity(vector(x2,y3,z2))
+    thisOctal%cornerVelocity(18) = Luc_cir3d_velocity(vector(x3,y3,z2))
 
     ! top level
     
-    thisOctal%cornerVelocity(19) = Luc_cir3d_velocity(octalVector(x1,y1,z3))
-    thisOctal%cornerVelocity(20) = Luc_cir3d_velocity(octalVector(x2,y1,z3))
-    thisOctal%cornerVelocity(21) = Luc_cir3d_velocity(octalVector(x3,y1,z3))
-    thisOctal%cornerVelocity(22) = Luc_cir3d_velocity(octalVector(x1,y2,z3))
-    thisOctal%cornerVelocity(23) = Luc_cir3d_velocity(octalVector(x2,y2,z3))
-    thisOctal%cornerVelocity(24) = Luc_cir3d_velocity(octalVector(x3,y2,z3))
-    thisOctal%cornerVelocity(25) = Luc_cir3d_velocity(octalVector(x1,y3,z3))
-    thisOctal%cornerVelocity(26) = Luc_cir3d_velocity(octalVector(x2,y3,z3))
-    thisOctal%cornerVelocity(27) = Luc_cir3d_velocity(octalVector(x3,y3,z3))
+    thisOctal%cornerVelocity(19) = Luc_cir3d_velocity(vector(x1,y1,z3))
+    thisOctal%cornerVelocity(20) = Luc_cir3d_velocity(vector(x2,y1,z3))
+    thisOctal%cornerVelocity(21) = Luc_cir3d_velocity(vector(x3,y1,z3))
+    thisOctal%cornerVelocity(22) = Luc_cir3d_velocity(vector(x1,y2,z3))
+    thisOctal%cornerVelocity(23) = Luc_cir3d_velocity(vector(x2,y2,z3))
+    thisOctal%cornerVelocity(24) = Luc_cir3d_velocity(vector(x3,y2,z3))
+    thisOctal%cornerVelocity(25) = Luc_cir3d_velocity(vector(x1,y3,z3))
+    thisOctal%cornerVelocity(26) = Luc_cir3d_velocity(vector(x2,y3,z3))
+    thisOctal%cornerVelocity(27) = Luc_cir3d_velocity(vector(x3,y3,z3))
     
   END SUBROUTINE VelocityCorners
 

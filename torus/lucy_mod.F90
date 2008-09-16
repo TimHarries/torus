@@ -23,8 +23,8 @@ contains
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
 
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: uHat, uNew
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: uHat, uNew
+    type(VECTOR) :: rVec
     integer :: nlucy
     integer :: nDustType
     integer,intent(in) :: nLambda, nMuMie
@@ -105,7 +105,7 @@ contains
                (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
 
 
-          rVec  = real(grid%rCore, kind=oct) * randomUnitOctalVector()
+          rVec  = real(grid%rCore, kind=oct) * randomUnitVECTOR()
 !          uHat = fromPhotosphereVector(rVec)
           ! -- using a new routine in source_mod.f90 (RK)
           uHat = random_direction_from_sphere(rVec)
@@ -253,7 +253,7 @@ contains
        nT = 0
        do j = 1, 100
           ang = twoPi * real(j-1)/100.
-          rVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
+          rVec = VECTOR(r*cos(ang), r*sin(ang),0.)
           call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
           if (grid%inUse(i1,i2,i3)) then
              nT = nT + 1
@@ -303,8 +303,8 @@ contains
     logical :: twoD
     ! threshold value for undersampled cell in percent (for stopping iteration).
     real, intent(in) :: percent_undersampled_min  
-    type(OCTALVECTOR) ::  uHat, uNew, rVec, rHat, olduHat
-    type(OCTALVECTOR) :: octVec,avedirection
+    type(VECTOR) ::  uHat, uNew, rVec, rHat, olduHat
+    type(VECTOR) :: octVec,avedirection
     type(OCTAL), pointer :: thisOctal, sOctal, tempOctal
     integer :: tempSubcell
     integer, intent(in)  :: nLambda, nMuMie
@@ -608,7 +608,7 @@ contains
       if (rankComplete) exit mpiBlockLoop  
 #endif    
 
-       avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+       avedirection = VECTOR(0.d0, 0.d0, 0.d0)
 
 
 !$OMP DO SCHEDULE(runtime)
@@ -1152,7 +1152,7 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec, uHat
+   type(VECTOR) :: rVec, uHat
    integer :: i1, i2, i3
    real(oct) :: t1, t2, t3
    real(oct) :: tval, tau, r
@@ -1268,8 +1268,8 @@ contains
    use grid_mod
    implicit none
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: direction
-   type(OCTALVECTOR) :: posVec, norm(6), p3(6)
+   type(VECTOR) :: direction
+   type(VECTOR) :: posVec, norm(6), p3(6)
    real(oct) :: t(6),tval,denom(6)
    integer :: i,j
    logical :: ok, thisOk(6)
@@ -1546,13 +1546,13 @@ contains
   subroutine intersectCubeAMR(grid, posVec, direction, tval)
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(in) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(in) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
+   type(VECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
-   type(OCTALVECTOR) :: subcen, point
+   type(VECTOR) :: subcen, point
    integer :: subcell
    
    real(oct) :: t(6),denom(6)
@@ -1566,19 +1566,19 @@ contains
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
 
-   norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
-   norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-   norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
-   norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
-   norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-   norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+   norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+   norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+   norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+   norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+   norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+   norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
 
-   p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-   p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-   p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-   p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-   p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-   p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+   p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+   p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+   p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+   p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+   p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+   p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
 
    thisOk = .true.
 
@@ -1641,18 +1641,18 @@ contains
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
    type(OCTAL), pointer :: sOctal
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(inout) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
    type(OCTAL),pointer :: thisOctal
-   type(OCTALVECTOR) :: subcen, point
+   type(VECTOR) :: subcen, point
    integer :: subcell
    real(double) :: compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    logical :: ok
-   type(OCTALVECTOR) :: xHat, zHAt
+   type(VECTOR) :: xHat, zHAt
 
    point = posVec
 
@@ -1732,18 +1732,18 @@ contains
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
    type(OCTAL), pointer :: sOctal
-   type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(inout) :: direction
+   type(VECTOR), intent(in) :: posVec
+   type(VECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
    type(OCTAL),pointer :: thisOctal
-   type(OCTALVECTOR) :: subcen, point
+   type(VECTOR) :: subcen, point
    integer :: subcell
    real(double) ::  compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    logical :: ok
-   type(OCTALVECTOR) :: xHat, zHAt
+   type(VECTOR) :: xHat, zHAt
 
    point = posVec
 
@@ -1821,7 +1821,7 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal
@@ -2317,7 +2317,7 @@ contains
 
   subroutine find2Doctal(rVec, grid, foundOctal, subcell)
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: rVec, rotVec
+    type(VECTOR) :: rVec, rotVec
     type(OCTAL), pointer :: foundOctal, resultOctal
     integer :: subcell
     real(oct) :: r
@@ -2345,7 +2345,7 @@ contains
   recursive subroutine remapDistanceGrid(thisOctal, grid)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
-    type(OCTALVECTOR) :: rVec, rotVec
+    type(VECTOR) :: rVec, rotVec
     real(oct) :: r
     integer :: subcell, j, isub
 
@@ -2398,7 +2398,7 @@ contains
   recursive subroutine setupCellVolumes(thisOctal, grid)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
-    type(OCTALVECTOR) :: rVec, rotVec
+    type(VECTOR) :: rVec, rotVec
     real(oct) :: r
     integer :: subcell, j, isub
 
@@ -2445,7 +2445,7 @@ contains
   recursive subroutine normCellVolumes(thisOctal, grid)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
-    type(OCTALVECTOR) :: rVec, rotVec
+    type(VECTOR) :: rVec, rotVec
     real(oct) :: r
     integer :: subcell, j, isub
 
@@ -2620,15 +2620,15 @@ contains
     integer :: subcell, i
     logical :: converged
     real(double) :: r
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec
+    type(VECTOR) :: dirVec(6), centre, octVec
     real :: thisFac, neighbourFac
     integer :: neighbourSubcell, j
-    dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-    dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-    dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-    dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-    dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-    dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+    dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+    dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+    dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+    dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+    dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+    dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
 
 !    do subcell = 1, thisOctal%maxChildren
     subcell = 1
@@ -2808,7 +2808,7 @@ subroutine setBiasOnTau(grid, iLambda)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: tau, thisTau
-  type(octalvector) :: rVec, direction
+  type(VECTOR) :: rVec, direction
   integer :: i
     integer :: subcell
     integer :: iLambda
@@ -2818,7 +2818,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal_beg, iOctal_end
     real(double), parameter :: underCorrect = 0.8d0
     real(double) :: kappaSca, kappaAbs, kappaExt
-    type(OCTALVECTOR) :: arrayVec(6)
+    type(VECTOR) :: arrayVec(6)
      integer :: nDir
 #ifdef MPI
 ! Only declared in MPI case
@@ -2837,10 +2837,10 @@ subroutine setBiasOnTau(grid, iLambda)
      endif
 
      if (nDir == 4) then
-        arrayVec(1) = OCTALVECTOR(1.d0, 1.d-10, 1.d-10)
-        arrayVec(2) = OCTALVECTOR(-1.d0, 1.d-10, 1.d-10)
-        arrayVec(3) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
-        arrayVec(4) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
+        arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
+        arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
+        arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
+        arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
      endif
 
     allocate(octalArray(grid%nOctals))
@@ -2897,9 +2897,9 @@ subroutine setBiasOnTau(grid, iLambda)
                 tau = 1.d30
                 if (cylindrical) then
                    ndir = 6
-                   arrayVec(1) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
-                   arrayVec(2) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
-                   arrayVec(3) = OCTALVECTOR(rVec%x+1.d-10, rVec%y*1.0001d0,1.d-10)
+                   arrayVec(1) = VECTOR(1.d-10, 1.d-10, 1.d0)
+                   arrayVec(2) = VECTOR(1.d-10, 1.d-10,-1.d0)
+                   arrayVec(3) = VECTOR(rVec%x+1.d-10, rVec%y*1.0001d0,1.d-10)
                    call normalize(arrayVec(3))
                    arrayVec(4) = (-1.d0)*arrayVec(3)
                    arrayVec(5) = arrayVec(3).cross.arrayVec(1)

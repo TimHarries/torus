@@ -447,7 +447,7 @@ contains
 
        rp = modulus(rp_vec)  ! normalizetion
        if (rp /=0.0d0) then
-          dir_vec = rp_vec/real(rp)
+          dir_vec = rp_vec/rp
        else
           ! this could happen at the poles
           dir_vec = VECTOR(0.0, 0.0, 1.0)
@@ -653,7 +653,7 @@ contains
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
     logical :: splitThis
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     integer :: n
 
     splitThis = .false.
@@ -717,7 +717,7 @@ contains
     
     real(oct)  :: cellSize
     real(double) :: rho_discwind,  mass
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
 
     ! get the size and the position of the centre of the current cell
     cellSize = thisOctal%subcellSize*2.0d0
@@ -748,7 +748,7 @@ contains
     type(discwind), intent(in) :: this
     
     real(oct)  :: cellSize, d
-    TYPE(octalVector)     :: cellCentre
+    TYPE(VECTOR)     :: cellCentre
 !    integer, parameter :: nr = 150  ! normal resolution
     integer, parameter :: nr = 180  ! normal resolution
 !    integer, parameter :: nr = 40  ! low resolution
@@ -759,7 +759,7 @@ contains
     logical, save :: first_time = .true.
     real(double) , save:: rGrid(nr)
     real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
-    TYPE(octalVector)     :: VecInnerEdge
+    TYPE(VECTOR)     :: VecInnerEdge
     real(double) :: wi
 
     need_to_split2 = .false.
@@ -787,7 +787,7 @@ contains
        ! get the size and the position of the centre of the current cell
 !       r = modulus(cellCentre)  ! used in the paper
        wi = sqrt(cellCentre%x*cellCentre%x + cellCentre%y*cellCentre%y)
-       VecInnerEdge = OctalVector(cellCentre%x, cellCentre%y, 0.0d0)* (this%Rmin/wi)
+       VecInnerEdge = VECTOR(cellCentre%x, cellCentre%y, 0.0d0)* (this%Rmin/wi)
        r = modulus(cellCentre-VecInnerEdge)  ! shift it to the inner edge of the disc
 !       r = ABS(wi-this%Rmin)  ! just a cylindical radius
        call locate(rGrid,nr,r,i)
@@ -907,7 +907,7 @@ contains
           rho =ave_discwind_density(childPointer, subcell, this)
           parent%child(newChildIndex)%rho(subcell) = rho 
           parent%child(newChildIndex)%velocity(subcell)  &
-               = discwind_velocity(this, o2s(childPointer%Centre))
+               = discwind_velocity(this, childPointer%Centre)
           if (subcell == parent%maxChildren) call fill_velocity_corners(this, childPointer)
           parent%child(newChildIndex)%label(subcell) = counter
           counter = counter + 1
@@ -937,7 +937,7 @@ contains
     type(discwind), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     real(double) :: xc, yc, zc, d, r, rho_sum, rho_sample
     integer, parameter :: nsample = 200
     integer :: i
@@ -998,7 +998,7 @@ contains
     type(discwind), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d
 
     ! get the size and the position of the centre of the current cell
@@ -1052,7 +1052,7 @@ contains
     type(discwind), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
-    TYPE(octalVector)     :: cellCentre 
+    TYPE(VECTOR)     :: cellCentre 
     real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d
 
     ! get the size and the position of the centre of the current cell

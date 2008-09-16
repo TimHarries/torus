@@ -12,7 +12,7 @@ contains
     use input_variables
     real :: v, r, rhoOut
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     
     r = modulus(rVec)
     if (r < grid%rCore) then
@@ -29,7 +29,7 @@ contains
     real :: alpha, fac, r, rSpiral1, rSpiral2, theta
     real ::  mu, x
     integer :: n
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
     type(GRIDTYPE) :: grid
     fac  = 1.
 

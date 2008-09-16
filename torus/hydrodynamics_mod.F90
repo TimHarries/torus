@@ -297,7 +297,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -320,7 +320,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, n
-    type(OCTALVECTOR) :: locator
+    type(VECTOR) :: locator
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -353,7 +353,7 @@ contains
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
     integer :: nd
-    type(OCTALVECTOR) :: direction, locator, reverseDirection
+    type(VECTOR) :: direction, locator, reverseDirection
   
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -425,7 +425,7 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator, reverseDirection
+    type(VECTOR) :: direction, locator, reverseDirection
     integer :: nd
   
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -480,7 +480,7 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
   
@@ -538,7 +538,7 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
 
@@ -595,7 +595,7 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
   
@@ -654,7 +654,7 @@ contains
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi
     integer :: nd
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -704,7 +704,7 @@ contains
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     integer :: nd
   
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -754,7 +754,7 @@ contains
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
     integer :: nd
   
@@ -803,7 +803,7 @@ contains
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
     integer :: nd
   
@@ -852,7 +852,7 @@ contains
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    type(VECTOR) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
     integer :: nd
   
@@ -901,7 +901,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: gamma, bigGamma,eta
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     integer :: iEquationOfState
     logical :: useViscosity
 
@@ -967,7 +967,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: gamma, bigGamma,eta
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     integer ::  iEquationOfState
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1026,7 +1026,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: gamma, bigGamma,eta
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     integer :: iEquationOfState
 
 
@@ -1510,7 +1510,7 @@ contains
   end subroutine copyQtoRhoW
 
   recursive subroutine copyQtoRho(thisOctal, direction)
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1614,7 +1614,7 @@ contains
     integer :: group(:), nGroup
     type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
     call copyRhoToQ(grid%octreeRoot)
     call advectQ(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
@@ -1628,7 +1628,7 @@ contains
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
     call copyRhoEToQ(grid%octreeRoot)
     call advectQ(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
@@ -1642,7 +1642,7 @@ contains
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
     call copyRhoUToQ(grid%octreeRoot)
     call advectQ(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
@@ -1656,7 +1656,7 @@ contains
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
     call copyRhoVToQ(grid%octreeRoot)
     call advectQ(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
@@ -1670,7 +1670,7 @@ contains
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
     call copyRhoWToQ(grid%octreeRoot)
     call advectQ(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
@@ -1684,7 +1684,7 @@ contains
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
     call setupX(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1702,16 +1702,16 @@ contains
   subroutine  hydroStep(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     type(GRIDTYPE) :: grid
     real(double) :: gamma, dt
-!    type(OCTALVECTOR) :: direction
+!    type(VECTOR) :: direction
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
 
-!    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+!    direction = VECTOR(1.d0, 0.d0, 0.d0)
 !
 !    call imposeBoundary(grid%octreeRoot)
 !    call periodBoundary(grid)
 !    call transferTempStorage(grid%octreeRoot)
 !
-!    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+!    direction = VECTOR(1.d0, 0.d0, 0.d0)
 !    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 !    call setupUi(grid%octreeRoot, grid, direction)
 !    call setupUpm(grid%octreeRoot, grid, direction)
@@ -1783,9 +1783,9 @@ contains
     integer :: group(:), nGroup
     integer :: iEquationOfState
     real(double) :: gamma, dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     integer :: minDepth, maxDepth
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
@@ -1796,7 +1796,7 @@ contains
 
     call minMaxDepth(grid%octreeRoot, minDepth, maxDepth)
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1822,7 +1822,7 @@ contains
 !    call writeVtkFile(grid, "usweep1.vtk", "vtk.txt")
 
 
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1847,7 +1847,7 @@ contains
 
 !    call writeVtkFile(grid, "vsweep.vtk", "vtk.txt")
 
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1873,7 +1873,7 @@ contains
 !    call writeVtkFile(grid, "wsweep.vtk", "vtk.txt")
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1922,10 +1922,10 @@ contains
     integer :: iEquationOfState
 
     real(double) :: gamma, dt
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
@@ -1933,7 +1933,7 @@ contains
 
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1951,7 +1951,7 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, iEquationOfState)
 
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWi(grid%octreeRoot, grid, direction)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1970,7 +1970,7 @@ contains
     call pressureForceW(grid%octreeRoot, dt, iEquationOfState)
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2095,7 +2095,7 @@ contains
     real(double) :: dt,  gamma, mu
     real(double) :: currentTime
     integer :: i
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
     logical :: gridConverged
     integer :: iEquationOfState = 0
     logical :: globalConverged(10)
@@ -2109,13 +2109,13 @@ contains
     real(double) :: nextDumpTime, tdump, temptc(10)
     character(len=80) :: plotfile
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
     mu = 2.d0
     nHydroThreads = nThreadsGlobal - 1
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 5.d0 / 3.d0
 
     mu = 2.d0
@@ -2137,11 +2137,11 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call writeInfo("Done", TRIVIAL)
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call calculateRhoV(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
     call calculateEnergy(grid%octreeRoot, gamma, mu)
@@ -2194,16 +2194,16 @@ contains
 
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
     call calculateEnergy(grid%octreeRoot, gamma, mu)
     call calculateRhoE(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call calculateRhoV(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
     currentTime = 0.d0
@@ -2231,7 +2231,7 @@ contains
 
        call hydroStep(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
-!       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+!       direction = VECTOR(1.d0, 0.d0, 0.d0)
 !       call roeSolver(grid, direction, gamma, dt, nPairs, thread1, thread2, nBound, group, ngroup)
 
        if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -2302,7 +2302,7 @@ contains
     integer :: myRank, ierr
     character(len=20) :: plotfile
     real(double) :: tDump, nextDumpTime, tff !, ang
-    type(OCTALVECTOR) :: direction, viewVec
+    type(VECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: nSource = 0
     integer :: nUnrefine
@@ -2317,12 +2317,12 @@ contains
 
     nHydroThreads = nThreadsGlobal - 1
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
 
     mu = 2.d0
 
-    viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
+    viewVec = VECTOR(-1.d0,0.d0,0.d0)
 !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
     viewVec = rotateY(viewVec, 25.d0*degtorad)
     
@@ -2350,11 +2350,11 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call writeInfo("Done", TRIVIAL)
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call calculateRhoV(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
 !    call calculateEnergy(grid%octreeRoot, gamma, mu)
@@ -2411,16 +2411,16 @@ contains
 
 !    call writeVtkFile(grid, "afterrefine.vtk")
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
 !    call calculateEnergy(grid%octreeRoot, gamma, mu)
     call calculateRhoE(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call calculateRhoV(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
 
@@ -2548,7 +2548,7 @@ contains
     integer :: myRank, ierr
     character(len=20) :: plotfile, titleString
     real(double) :: tDump, nextDumpTime, tff !, ang
-    type(OCTALVECTOR) :: direction, viewVec
+    type(VECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: nSource = 0
     integer :: thread1(100), thread2(100), nBound(100), nPairs
@@ -2565,12 +2565,12 @@ contains
     nHydroThreads = nThreadsGlobal - 1
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 5.d0 / 3.d0
 
     mu = 2.d0
 
-    viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
+    viewVec = VECTOR(-1.d0,0.d0,0.d0)
 !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
     viewVec = rotateY(viewVec, 25.d0*degtorad)
     
@@ -2601,11 +2601,11 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call writeInfo("Done", TRIVIAL)
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call calculateRhoV(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
 !    call calculateEnergy(grid%octreeRoot, gamma, mu)
@@ -2657,18 +2657,18 @@ contains
 
 
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
 !    call calculateEnergy(grid%octreeRoot, gamma, mu)
 
 
     call calculateRhoE(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
     call calculateRhoV(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
     currentTime = 0.d0
@@ -2868,7 +2868,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2891,7 +2891,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2915,7 +2915,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2938,7 +2938,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
+    type(VECTOR) :: direction
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2963,7 +2963,7 @@ contains
     integer :: subcell, i
     real(double) :: x(:), rho(:), v(:), rhou(:)
     integer :: n
-    type(OCTALVECTOR) :: rVec
+    type(VECTOR) :: rVec
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3068,7 +3068,7 @@ contains
     type(octal), pointer   :: thisOctal, bOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, bSubcell
-    type(OCTALVECTOR) :: locator, dir
+    type(VECTOR) :: locator, dir
     real(double) :: gamma, machNumber, Pr, rhor
 
     machNumber = 2.d0
@@ -3253,9 +3253,9 @@ contains
     type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell, tempSubcell
-    type(OCTALVECTOR) :: locator, rVec
+    type(VECTOR) :: locator, rVec
     integer :: nProbes, iProbe
-    type(OCTALVECTOR) :: probe(6), direction
+    type(VECTOR) :: probe(6), direction
     real(double) :: dx
     integer :: nProbeOutside
     logical :: corner
@@ -3283,24 +3283,24 @@ contains
 
           if (thisOctal%oned) then
              nProbes = 2
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
           if (thisOctal%twod) then
              nProbes = 4
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             probe(4) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(4) = VECTOR(0.d0, 0.d0, -1.d0)
           endif
           if (thisOctal%threeD) then
              nProbes = 6
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-             probe(4) = OCTALVECTOR(0.d0, -1.d0, 0.d0)
-             probe(5) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             probe(6) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+             probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+             probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
           endif
           rVec = subcellCentre(thisOctal, subcell)
           nProbeOutside = 0
@@ -3522,9 +3522,9 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: locator, rVec
+    type(VECTOR) :: locator, rVec
     integer :: nProbes, iProbe
-    type(OCTALVECTOR) :: probe(6)
+    type(VECTOR) :: probe(6)
     integer :: nProbeOutside
     integer :: myRank, ierr
 
@@ -3549,24 +3549,24 @@ contains
           thisOctal%edgeCell(subcell) = .false.
           if (thisOctal%oned) then
              nProbes = 2
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
           if (thisOctal%twod) then
              nProbes = 4
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             probe(4) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(4) = VECTOR(0.d0, 0.d0, -1.d0)
           endif
           if (thisOctal%threeD) then
              nProbes = 6
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-             probe(4) = OCTALVECTOR(0.d0, -1.d0, 0.d0)
-             probe(5) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             probe(6) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+             probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+             probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
           endif
           rVec = subcellCentre(thisOctal, subcell)
           nProbeOutside = 0
@@ -3630,7 +3630,7 @@ contains
     logical :: split
     character(len=*) :: criterion
     integer :: nProbes
-    type(OCTALVECTOR) :: locator, probe(6)
+    type(VECTOR) :: locator, probe(6)
     integer :: i, nd
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi
     real(double) :: grad, maxGradient
@@ -3638,24 +3638,24 @@ contains
     split = .false.
     if (thisOctal%oned) then
        nProbes = 2
-       probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-       probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+       probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
     endif
     if (thisOctal%twod) then
        nProbes = 4
-       probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-       probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-       probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-       probe(4) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+       probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       probe(4) = VECTOR(0.d0, 0.d0, -1.d0)
     endif
     if (thisOctal%threeD) then
        nProbes = 6
-       probe(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-       probe(2) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
-       probe(3) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-       probe(4) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-       probe(5) = OCTALVECTOR( 0.d0, 1.d0,  0.d0)
-       probe(6) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
+       probe(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+       probe(2) = VECTOR( 0.d0, 0.d0, -1.d0)
+       probe(3) = VECTOR(-1.d0, 0.d0,  0.d0)
+       probe(4) = VECTOR(+1.d0, 0.d0,  0.d0)
+       probe(5) = VECTOR( 0.d0, 1.d0,  0.d0)
+       probe(6) = VECTOR( 0.d0,-1.d0,  0.d0)
     endif
 
     maxGradient = 1.d-30
@@ -3700,7 +3700,7 @@ contains
     !
     integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, locator
+    type(VECTOR) :: dirVec(6), centre, locator
     logical :: split
     integer :: neighbourSubcell, nDir
     real(double) :: r , grad, maxGradient
@@ -3742,22 +3742,22 @@ contains
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
-             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 2
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
 
 
@@ -3983,7 +3983,7 @@ end subroutine refineGridGeneric2
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, tempOctal
     integer :: subcell, tempSubcell, i, nCells
-    type(OCTALVECTOR) :: direction, locator, rVec
+    type(VECTOR) :: direction, locator, rVec
     tempOctal => thisOctal
     tempSubcell = subcell
     do i = 1, nCells
@@ -4165,7 +4165,7 @@ end subroutine refineGridGeneric2
     include 'mpif.h'  
     integer :: ierr
     logical :: globalConverged, localChanged(64)
-    type(OCTALVECTOR) :: locs(200000), eLocs(200000)
+    type(VECTOR) :: locs(200000), eLocs(200000)
     integer :: nLocs(64), tempNlocs(20000)
     integer :: thread(100000), nLocsGlobal,i, depth(200000)
 
@@ -4292,7 +4292,7 @@ end subroutine refineGridGeneric2
     !
     integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec
+    type(VECTOR) :: dirVec(6), centre, octVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -4326,22 +4326,22 @@ end subroutine refineGridGeneric2
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)  
-             dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
-             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)  
+             dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 2
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
 
              do j = 1, nDir
@@ -4387,7 +4387,7 @@ end subroutine refineGridGeneric2
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
-    type(OCTALVECTOR) :: locator
+    type(VECTOR) :: locator
     logical, optional :: inherit
     integer :: depth
     integer :: subcell
@@ -4421,7 +4421,7 @@ end subroutine refineGridGeneric2
     !
     integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, loc(:)
+    type(VECTOR) :: dirVec(6), centre, octVec, loc(:)
     integer :: thread(:), depth(:)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
@@ -4453,22 +4453,22 @@ end subroutine refineGridGeneric2
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
-             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 2
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
 
              do j = 1, nDir
@@ -4502,7 +4502,7 @@ end subroutine refineGridGeneric2
     !
     integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec
+    type(VECTOR) :: dirVec(6), centre, octVec
     integer :: dependentThread(:)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
@@ -4536,22 +4536,22 @@ end subroutine refineGridGeneric2
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
-             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
-             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 2
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
 
              do j = 1, nDir
@@ -4629,7 +4629,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: locator, dir(6)
+    type(VECTOR) :: locator, dir(6)
     integer :: n, ndir, nd
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
@@ -4654,18 +4654,18 @@ end subroutine refineGridGeneric2
 
           if (thisOctal%twoD) then
              nDir = 4
-             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
+             dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
           else if (thisOctal%threed) then
              nDir = 6
-             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
-             dir(5) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-             dir(6) = OCTALVECTOR(0.d0,-1.d0, 0.d0)
+             dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
+             dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+             dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
           endif
 
 
@@ -4732,7 +4732,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: locator, dir(6), probe(6)
+    type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
     real(double) ::  g(6), dx
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
@@ -4758,28 +4758,28 @@ end subroutine refineGridGeneric2
 
           if (thisOctal%twoD) then
              nDir = 4
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             probe(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
-             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(2) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(4) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(4) = VECTOR(0.d0, 0.d0,-1.d0)
+             dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = VECTOR(0.d0, 0.d0, 1.d0)
           else if (thisOctal%threed) then
              nDir = 6
-             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             probe(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
-             probe(5) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-             probe(6) = OCTALVECTOR(0.d0,-1.d0, 0.d0)
-             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(2) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(4) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(5) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-             dir(6) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(4) = VECTOR(0.d0, 0.d0,-1.d0)
+             probe(5) = VECTOR(0.d0, 1.d0, 0.d0)
+             probe(6) = VECTOR(0.d0,-1.d0, 0.d0)
+             dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+             dir(6) = VECTOR(0.d0, 1.d0, 0.d0)
           endif
 
 
@@ -4867,7 +4867,7 @@ end subroutine refineGridGeneric2
     integer :: nDepth
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: locator, dir(6)
+    type(VECTOR) :: locator, dir(6)
     integer :: n, ndir
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
@@ -4888,18 +4888,18 @@ end subroutine refineGridGeneric2
 
           if (thisOctal%twoD) then
              nDir = 4
-             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
+             dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
           else if (thisOctal%threed) then
              nDir = 6
-             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-             dir(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
-             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-             dir(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
-             dir(5) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-             dir(6) = OCTALVECTOR(0.d0,-1.d0, 0.d0)
+             dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
+             dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+             dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
           endif
           
 
@@ -5108,7 +5108,7 @@ end subroutine minMaxDepth
 
   function phiInterp(rVec, thisOctal, subcell, direction) result(phi)
     real(double) :: phi
-    type(OCTALVECTOR) :: rVec, direction
+    type(VECTOR) :: rVec, direction
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
 

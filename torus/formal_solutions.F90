@@ -80,19 +80,19 @@ contains
     real(double), intent(in)  ::  tau0  ! optical depth at the initial point 
 
     real(double), intent(in)          :: wavelength        ! the wavelength [A]
-    type(OCTALVECTOR), intent(in)  :: aVec          ! starting position vector
-    type(OCTALVECTOR), intent(in)  :: uHat          ! direction
+    type(VECTOR), intent(in)  :: aVec          ! starting position vector
+    type(VECTOR), intent(in)  :: uHat          ! direction
     type(GRIDTYPE), intent(in)     :: grid          ! the opacity grid
     logical, intent(in)            :: contPhoton    ! is this a continuum photon?
     real(double), intent(in) :: offset     ! offset scale factor
     real(double), optional, intent(inout) :: tau_inf ! offset scale factor
     
     
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: octVec
     integer :: subcell
     real(double) :: tval
     integer               :: nTau                   ! size of optical depth arrays
-    type(octalvector)     :: rVec                   ! position vector
+    type(VECTOR)     :: rVec                   ! position vector
 !    real :: kappaScaReal, kappaAbsReal
     real(double) :: kappaSca, kappaAbs
     real(double) :: etaCont
@@ -259,10 +259,10 @@ contains
     integer, intent(in)                :: nr_core       ! number of radial points for integration (core rays)
     integer, intent(in)                :: nphi          ! number of angle  points for integration 
 
-    type(OCTALVECTOR), intent(in)      :: pos_star      ! position of the star
+    type(VECTOR), intent(in)      :: pos_star      ! position of the star
     type(SURFACETYPE),intent(in)       :: surface       ! surface elemet of the core
     real(double), intent(in)           :: dist_obs      ! [cm] distance to the observer
-    type(OCTALVECTOR), intent(in)      :: dir_obs       ! direction to the observer
+    type(VECTOR), intent(in)      :: dir_obs       ! direction to the observer
     type(GRIDTYPE), intent(in)         :: grid          ! the opacity grid
     real, intent(in)                   :: sampleFreq    ! max. samples per grid cell
     logical, intent(in)                :: opaqueCore    ! T if the core is opaque
@@ -287,20 +287,20 @@ contains
     !
     !
     real(double)                       :: dphi            !increment of the angle points
-    type(OCTALVECTOR), allocatable     :: p_core(:)       ! integration grids
-    type(OCTALVECTOR), allocatable     :: p_core_orig(:)  ! integration grids
+    type(VECTOR), allocatable     :: p_core(:)       ! integration grids
+    type(VECTOR), allocatable     :: p_core_orig(:)  ! integration grids
     real(double), allocatable          :: dA_core(:)      ! surface elements at p
     real(double), allocatable          :: dr_core(:)      ! increment for radial grid
-    type(OCTALVECTOR), allocatable     :: p_acc(:)        ! integration grids
-    type(OCTALVECTOR), allocatable     :: p_acc_orig(:)   ! integration grids
+    type(VECTOR), allocatable     :: p_acc(:)        ! integration grids
+    type(VECTOR), allocatable     :: p_acc_orig(:)   ! integration grids
     real(double), allocatable          :: dA_acc(:)       ! surface elements at p
     real(double), allocatable          :: dr_acc(:)       ! increment for radial grid
-    type(OCTALVECTOR), allocatable     :: p_wind(:)       ! integration grids
-    type(OCTALVECTOR), allocatable     :: p_wind_orig(:)  ! integration grids
+    type(VECTOR), allocatable     :: p_wind(:)       ! integration grids
+    type(VECTOR), allocatable     :: p_wind_orig(:)  ! integration grids
     real(double), allocatable          :: dA_wind(:)      ! surface elements at p
     real(double), allocatable          :: dr_wind(:)      ! increment for radial grid
     !----------------------------------------------------------------------------
-    type(OCTALVECTOR), allocatable     :: p_orig(:)       ! integration grids
+    type(VECTOR), allocatable     :: p_orig(:)       ! integration grids
     real(double), allocatable          :: dA(:)           ! surface elements at p
     real(double), allocatable          :: dr(:)           ! increment for radial grid
     real(double)                       :: R_max           ! max radius for the plot.
@@ -493,7 +493,7 @@ contains
           ! first check if the beginning of the ray is at hot surface.
           ! -- using the routines in surface_mod.f90
           !
-          ielement = whichElement(surface, o2s(p_core(i)))           
+          ielement = whichElement(surface, p_core(i))           
 
 !          !need to get intensity from the surface element of the star.
 !          TTauriMdotSurface = TTauriVariableMdot(p_core(i),grid) ! g s^-1
@@ -519,7 +519,7 @@ contains
 
           tau0 = 0.0d0
           call integrate_formal(I0, I1,  tau0, lambda_j,  lambda0,  mass_ion, &
-               o2s(p_core(i)), o2s(dir_obs),  continuum, grid, &
+               p_core(i), dir_obs,  continuum, grid, &
                hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
                do_alphadisc_check, alphadisc_par, thinLine, emissOff)
           if (error == -10 .or. hitcore) then
@@ -570,7 +570,7 @@ contains
           I0  = 1.0d-100  ! [erg cm^-2 s^-2 cm^-1 sr^-1] should be zero at the outer boundary
           tau0 = 0.0d0
           call integrate_formal(I0, I1,  tau0,  lambda_j,  lambda0, mass_ion,  &
-               o2s(p_acc(i)), o2s(dir_obs), continuum, grid, &
+               p_acc(i), dir_obs, continuum, grid, &
                hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
                do_alphadisc_check, alphadisc_par,thinLine, emissOff)       
           if (error == -10 .or. hitcore) then
@@ -624,7 +624,7 @@ contains
              I0  = 1.0d-100  ! [erg cm^-2 s^-2 cm^-1 sr^-1] should be zero at the outer boundary
              tau0 = 0.0d0
              call integrate_formal(I0, I1,  tau0,  lambda_j,  lambda0, mass_ion,  &
-                  o2s(p_wind(i)), o2s(dir_obs), continuum, grid, &
+                  p_wind(i), dir_obs, continuum, grid, &
                   hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
                   do_alphadisc_check, alphadisc_par,thinLine, emissOff)
              if (error == -10 .or. hitcore) then
@@ -852,36 +852,36 @@ contains
     integer, intent(in)                :: nray          ! number of rays
     integer, intent(in)                :: nr            ! number of radial points for integration
     integer, intent(in)                :: nphi          ! number of angle  points for integration
-    type(OCTALVECTOR), intent(inout)   :: p(nray)       ! integration grids
+    type(VECTOR), intent(inout)   :: p(nray)       ! integration grids
     real(double), intent(inout)        :: dA(nray)      ! [10^20 cm^2] surface elements at p
     real(double), intent(inout)        :: dr(nray)      ! [10^10 cm] radial increments
     real(double), intent(out)          :: dphi          ! [rad] angle incrment 
     real(double), intent(in)  :: R_min                  ! [10^10cm] minimum radius 
     real(double), intent(in)  :: R_max                  ! [10^10cm] the wavelength 
     
-    type(OCTALVECTOR), intent(in)      :: pos_star      ! position of the sta
-    type(OCTALVECTOR), intent(in)      :: dir_obs       ! direction
+    type(VECTOR), intent(in)      :: pos_star      ! position of the sta
+    type(VECTOR), intent(in)      :: dir_obs       ! direction
     logical, intent(in)                :: logscale      ! if T, r is spaced in log scale
     logical, intent(in)                :: coreray       ! if T,  core rays are to be created
     logical, intent(in)                :: magray        ! if T,  this is for rays in magneosphere zone
     real(double), intent(in)           :: halfboxsize   ! [10^10cm] a half of a whole simulation space.
     ! integration grids before rotated to the direction of the observer
-    type(OCTALVECTOR), intent(inout)   :: p_orig(nray)  
+    type(VECTOR), intent(inout)   :: p_orig(nray)  
                                                   
     
     integer :: i , j , k
-    type(OCTALVECTOR)                  :: q             ! 
+    type(VECTOR)                  :: q             ! 
     real(double)              :: r, phi, drad, rp
     real(double)              :: log_r, log_R_max, log_R_min
     real(oct)              :: x, y, z
     real(double) :: mu, psi
     !
-    type(octalvector) :: refaxis, xhat, zhat, nobs
+    type(VECTOR) :: refaxis, xhat, zhat, nobs
     
     nobs = dir_obs
     call normalize(nobs)  ! just in case..
-    xhat = OCTALVECTOR(1.0d0, 0.0d0, 0.0d0)
-    zhat = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+    xhat = VECTOR(1.0d0, 0.0d0, 0.0d0)
+    zhat = VECTOR(0.0d0, 0.0d0, 1.0d0)
 
 !    open(unit=301, file="p.dat", status="replace")
     ! ===============================================================
@@ -953,7 +953,7 @@ contains
           call normalize(refaxis)  ! just in case...
           
           ! Another rotation here.
-          p(i) = arbitraryRotate(p(i), REAL(mu), refaxis) 
+          p(i) = arbitraryRotate(p(i), mu, refaxis) 
 
 
        end do
@@ -1019,8 +1019,8 @@ contains
 
     !    
     integer                   :: nTau                   ! size of optical depth arrays
-    type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
-    type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
+    type(VECTOR)         :: aVecOctal              ! VECTOR version of 'aVec'
+    type(VECTOR)         :: uHatOctal              ! VECTOR version of 'uHat'
     type(VECTOR)              :: rVec                   ! position vector
     real(double) :: nu, nu_p, nu0, nu0_p           ! frequencies   
 !    real :: thisVel
@@ -1483,13 +1483,13 @@ contains
     integer, intent(in) :: nphi  ! number of angle points
     real(double), intent(in) :: flux_ray(nray) ! Flux map  array dimension= nlam x #of integration points  
     ! integration grids (original ray in setup_grid and setup_core_grid program before roatation.)
-    type(OCTALVECTOR), intent(in) :: ray(nray)      
+    type(VECTOR), intent(in) :: ray(nray)      
     real(double), intent(in)   ::  dA(nray)  ! [10^20 cm]  surface element used for flux integration
     real(double), intent(in)   ::  dr(nray)    ! [10^10 cm]  radial increments
     real(double), intent(in)   ::  dphi      ! [rad]       anglular increment
     real(double), intent(in)   ::  R_star    ! [10^10 cm]  radius of sta
     real(double), intent(in)   ::  R_max     ! [10^10 cm]  max radius for plot
-    type(OCTALVECTOR),intent(in)  :: dir_obs   ! direction of observer (unitvector)
+    type(VECTOR),intent(in)  :: dir_obs   ! direction of observer (unitvector)
     character(LEN=*),intent(in)   :: filename  ! output filename
     integer, intent(in)           :: npix ! image size = 2*npix +1 should be an even number
     !
@@ -1565,13 +1565,13 @@ contains
     integer, intent(in) :: nphi  ! number of angle points
     real(double), intent(in) :: flux_map(nlam, nray) ! Flux map  array dimension= nlam x #of integration points  
     ! integration grids (original ray in setup_grid and setup_core_grid program before roatation.)
-    type(OCTALVECTOR), intent(in) :: ray(nray)      
+    type(VECTOR), intent(in) :: ray(nray)      
     real(double), intent(in)   ::  dA(nray)  ! [10^20 cm]  surface element used for flux integration
     real(double), intent(in)   ::  dr(nray)    ! [10^10 cm]  radial increments
     real(double), intent(in)   ::  dphi      ! [rad]       anglular increment
     real(double), intent(in)   ::  R_star    ! [10^10 cm]  radius of sta
     real(double), intent(in)   ::  R_max     ! [10^10 cm]  max radius for plot
-    type(OCTALVECTOR),intent(in)  :: dir_obs   ! direction of observer (unitvector)
+    type(VECTOR),intent(in)  :: dir_obs   ! direction of observer (unitvector)
     character(LEN=*),intent(in)   :: filename  ! output filename
     integer, intent(in)           :: npix    ! image size = 2*npix +1 should be an even number
     real(double), intent(in)   :: dist_obj   ! physical distance to the object in [cm]
@@ -1719,13 +1719,13 @@ contains
   logical function in_this_area(test_px, test_py, p, dA, dr, dphi, dir_obs)
     implicit none
     real(double), intent(in) :: test_px, test_py  ! [10^10] test point coordinates
-    type(OCTALVECTOR), intent(in)   ::  p        ! integration grids
+    type(VECTOR), intent(in)   ::  p        ! integration grids
     real(double),      intent(in)   ::  dA       ! [10^20 cm]  surface element used for flux integration
     real(double),      intent(in)   ::  dr       ! [10^10 cm]  radial increments
     real(double),      intent(in)   ::  dphi     ! [rad]       anglular increment
-    type(OCTALVECTOR) ::  dir_obs                ! unit vector on the project plane coordinates
+    type(VECTOR) ::  dir_obs                ! unit vector on the project plane coordinates
     !
-!    type(OCTALVECTOR) ::  px, py        ! unit vector on the project plane coordinates
+!    type(VECTOR) ::  px, py        ! unit vector on the project plane coordinates
     real(double) :: p_phi, p_r, pxx, pyy, r_min, r_max, phi_min, phi_max
     real(double) :: test_r, test_phi, pi
     
@@ -1734,8 +1734,8 @@ contains
     pi = 2.0d0*ACOS(0.0d0)
 
 !     ! Defining the reference axis (Everthing will be projected on this plane.)
-!     px = (OCTALVECTOR(0.0d0, 0.0d0, 1.0d0) .cross. dir_obs)
-! !    px = dir_obs .cross. OCTALVECTOR(1.0d0, 0.0d0, 0.0d0) 
+!     px = (VECTOR(0.0d0, 0.0d0, 1.0d0) .cross. dir_obs)
+! !    px = dir_obs .cross. VECTOR(1.0d0, 0.0d0, 0.0d0) 
 !     call normalize(px)  ! just in case...
 !     py = dir_obs .cross. px
 !     call normalize(py)  ! just in case...
@@ -1819,10 +1819,10 @@ contains
       logical, intent(inout)  :: newInFlow(maxtau)
       logical, intent(in) :: do_alphadisc_check      ! if T the disc check will be done
       type(alpha_disc), intent(in) :: alphadisc_par  ! parameters for alpha disc
-      type(octalvector), intent(in) :: pos_start     ! startingpoint
-      type(octalvector), intent(in) :: dir_ray       ! direction of ray
+      type(VECTOR), intent(in) :: pos_start     ! startingpoint
+      type(VECTOR), intent(in) :: dir_ray       ! direction of ray
       !
-      type(octalvector) :: pos     
+      type(VECTOR) :: pos     
       logical :: unsafe_position, ray_starts_inside_disc
       real :: dtau  ! 
       integer :: nAdd 
@@ -1903,8 +1903,8 @@ contains
       logical, intent(inout)  :: newInFlow(maxtau)
       logical, intent(in) :: do_alphadisc_check      ! if T the disc check will be done
       type(alpha_disc), intent(in) :: alphadisc_par  ! parameters for alpha disc
-      type(octalvector), intent(in) :: pos_start     ! startingpoint
-      type(octalvector), intent(in) :: dir_ray       ! direction of ray
+      type(VECTOR), intent(in) :: pos_start     ! startingpoint
+      type(VECTOR), intent(in) :: dir_ray       ! direction of ray
       !
       real(double) :: dProjVel  ! automatic array
       real(double) :: dlam
@@ -1913,7 +1913,7 @@ contains
 !      real, parameter :: dvel  = 10.e5/cSpeed
       real :: dvel
       logical :: unsafe_position
-      type(octalvector) :: pos     
+      type(VECTOR) :: pos     
 
 
       ! the projected speed increment is smaller than dvel
@@ -1979,8 +1979,8 @@ contains
 !     character(LEN=*),intent(in) :: filename               ! output filename
 !     !    
 !     integer                   :: nTau                   ! size of optical depth arrays
-!     type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
-!     type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
+!     type(VECTOR)         :: aVecOctal              ! VECTOR version of 'aVec'
+!     type(VECTOR)         :: uHatOctal              ! VECTOR version of 'uHat'
 !     type(VECTOR)              :: rVec                   ! position vector
 !     real(double) :: nu, nu_p, nu0, nu0_p           ! frequencies   
 ! !    real :: thisVel

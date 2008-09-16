@@ -808,8 +808,8 @@ module molecular_mod
      integer :: subcell
      real(double) :: ds, phi, i0(:), r
      integer :: iTrans,nTrans
-     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
-     type(OCTALVECTOR) :: startVel, endVel, endPosition
+     type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
+     type(VECTOR) :: startVel, endVel, endPosition
      real(double) :: alphanu(2), alpha, alphatemp, snu, jnu
      integer :: iLower(50) , iUpper(50)
      real(double) :: dv, deltaV
@@ -825,7 +825,7 @@ module molecular_mod
      integer :: ilambda
      integer :: iCount
 
-     real,save :: r1(5) !! quasi random number generators
+     real(double),save :: r1(5) !! quasi random number generators
      logical,save :: firsttime = .true.
      logical :: quasi = .false.
 
@@ -1013,7 +1013,7 @@ module molecular_mod
 
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
-   type(OCTALVECTOR) :: unitvec, posvec, centrevec, viewvec
+   type(VECTOR) :: unitvec, posvec, centrevec, viewvec
    type(DATACUBE) ::  cube
 
    character (len=80) :: filename
@@ -1074,7 +1074,7 @@ module molecular_mod
      integer :: subcell
      integer :: j
      real(double) :: x, z
-     type(OCTALVECTOR) :: posvec
+     type(VECTOR) :: posvec
      integer :: nRay, iter
      character(len=30) :: resultfile, resultfile2
      integer :: minlevels
@@ -1099,7 +1099,7 @@ module molecular_mod
            ang = ang * pi
            z = r*cos(ang)
            x = r*sin(ang)
-           posVec = OCTALVECTOR(x, 0.d0, z) ! get put in octal on grid
+           posVec = VECTOR(x, 0.d0, z) ! get put in octal on grid
            thisOctal => grid%octreeroot
            call findSubcellLocal(posVec, thisOctal,subcell) 
            pops = pops + thisOctal%molecularLevel(subcell,1:minlevels) ! interested in first 8 levels
@@ -1129,7 +1129,7 @@ module molecular_mod
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
-     type(OCTALVECTOR) :: position, direction
+     type(VECTOR) :: position, direction
      integer :: nOctal, iOctal, subcell
      real(double), allocatable :: ds(:), phi(:), i0(:,:)
      integer :: nRay !, tempray
@@ -1305,9 +1305,9 @@ module molecular_mod
       if(.not. grid%octreeroot%threed) call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
      
       if(usedust) then 
-!         call continuumIntensityAlongRay(octalvector(1.d0,0.d0,0.d0),octalvector(1.0,1d-20,1d-20), grid, 1e-4, 0.d0, dummy, &
+!         call continuumIntensityAlongRay(VECTOR(1.d0,0.d0,0.d0),VECTOR(1.0,1d-20,1d-20), grid, 1e-4, 0.d0, dummy, &
 !              tau, .true.)
-         call continuumIntensityAlongRay(octalvector(1d10,0.d0,0.d0),octalvector(-1.d0,1d-20,1d-20), grid, 1e4, 0.d0, dummy, &
+         call continuumIntensityAlongRay(VECTOR(1d10,0.d0,0.d0),VECTOR(-1.d0,1d-20,1d-20), grid, 1e4, 0.d0, dummy, &
               tau, .true.)
          if(writeoutput) write(*,*) "TAU", tau
       endif
@@ -1679,7 +1679,7 @@ module molecular_mod
                  open(143,file="tauhalf.dat",status="unknown",position="append")
 
                  do itrans = 1, lst
-                    call intensityAlongRay(octalvector(1d-20,1d-20,1d10),octalvector(-1d-20,-1d-20,-1.d0), grid, thisMolecule, &
+                    call intensityAlongRay(VECTOR(1d-20,1d-20,1d10),VECTOR(-1d-20,-1d-20,-1.d0), grid, thisMolecule, &
                          iTrans, 0.d0, dummy, tau, .true.)
                     tauarray(itrans) = tau
                  enddo
@@ -1687,7 +1687,7 @@ module molecular_mod
                  write(142,'(i2,tr3,8(f9.4,tr3))') grand_iter, tauarray
 
                  do itrans = 1, lst
-                    call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, iTrans, &
+                    call intensityAlongRay(VECTOR(0.d0,0.d0,0.d0),VECTOR(1d-20,1d-20,1.d0), grid, thisMolecule, iTrans, &
                          0.d0, dummy, tau, .true.)
                     tauarray(itrans) = tau
                  enddo
@@ -1865,7 +1865,7 @@ module molecular_mod
    subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
 
      use input_variables, only : useDust
-     type(OCTALVECTOR) :: position, direction, dsvector
+     type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: disttoGrid
@@ -1874,8 +1874,8 @@ module molecular_mod
      real(double), intent(out) :: i0
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
-     type(OCTALVECTOR) :: currentPosition, thisPosition, endPosition
-     type(OCTALVECTOR) :: startVel, endVel, thisVel, veldiff
+     type(VECTOR) :: currentPosition, thisPosition, endPosition
+     type(VECTOR) :: startVel, endVel, thisVel, veldiff
      real(double) :: alphanu(2), jnu, snu
      real(double) :: alpha
      real(double)  :: dv, deltaV, dVacrossCell
@@ -2048,7 +2048,7 @@ module molecular_mod
         currentPosition = currentPosition + (tval + 1d-3 * grid%halfSmallestSubcell) * direction
 
 !        if((grid%geometry .eq. 'IRAS04158') .and. (modulus(currentposition) < 0.5*rinner)) then
-!           currentPosition = currentPosition + (rinner/(OCTALVECTOR(1d-20,1d-20,1.d0) .dot. direction)) * direction
+!           currentPosition = currentPosition + (rinner/(VECTOR(1d-20,1d-20,1.d0) .dot. direction)) * direction
 !        endif
         
 !        if(debug) write(*,*) i0,tau
@@ -2071,7 +2071,7 @@ module molecular_mod
    subroutine lteintensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
 
      use input_variables, only : useDust
-     type(OCTALVECTOR) :: position, direction, dsvector
+     type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: disttoGrid
@@ -2080,8 +2080,8 @@ module molecular_mod
      real(double), intent(out) :: i0
      type(OCTAL), pointer :: thisOctal, startOctal
      integer :: subcell
-     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
-     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
+     type(VECTOR) :: currentPosition, thisPosition, thisVel
+     type(VECTOR) :: rayVel, startVel, endVel, endPosition
      real(double) :: alphanu(2), jnu, snu
      real(double) :: alpha
      integer, save :: iLower , iUpper
@@ -2141,7 +2141,7 @@ module molecular_mod
  !    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
      i0 = 0.d0
      tau = 0.d0
-     rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+     rayVel = VECTOR(0.d0, 0.d0, 0.d0)
 
      thisOctal => grid%octreeRoot
      icount = 0
@@ -2272,7 +2272,7 @@ module molecular_mod
         currentPosition = currentPosition + (tval+1d-3*grid%halfSmallestSubcell) * direction
 
 !        if((grid%geometry .eq. 'IRAS04158') .and. (modulus(currentposition) < 0.5*rinner)) then
-!           currentPosition = currentPosition + (rinner/(OCTALVECTOR(1d-20,1d-20,1.d0) .dot. direction)) * direction
+!           currentPosition = currentPosition + (rinner/(VECTOR(1d-20,1d-20,1.d0) .dot. direction)) * direction
 !        endif
         
 !        if(debug) write(*,*) i0,tau
@@ -2294,14 +2294,14 @@ module molecular_mod
 
    subroutine continuumIntensityAlongRay(position, direction, grid, wavelength, deltaV, i0, tau, tautest)
 
-     type(OCTALVECTOR) :: position, direction
+     type(VECTOR) :: position, direction
      type(GRIDTYPE) :: grid
      real(double) :: disttoGrid
      real(double), intent(out) :: i0
      type(OCTAL), pointer :: thisOctal, startOctal
      integer :: subcell
-     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
-     type(OCTALVECTOR) :: startVel, endVel, endPosition
+     type(VECTOR) :: currentPosition, thisPosition, thisVel
+     type(VECTOR) :: startVel, endVel, endPosition
      real(double) :: alphanu(2), jnu, snu
      real(double) :: alpha
      real(double) :: dv, deltaV
@@ -2435,8 +2435,8 @@ module molecular_mod
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      integer :: itrans
-     type(OCTALVECTOR) :: unitvec, viewVec, posvec
-     type(OCTALVECTOR) :: imagebasis(2), pixelcorner
+     type(VECTOR) :: unitvec, viewVec, posvec
+     type(VECTOR) :: imagebasis(2), pixelcorner
      integer :: nsubpixels, subpixels
      real :: imagegrid(npixels,npixels)
      integer :: ipixels, jpixels
@@ -2449,7 +2449,7 @@ module molecular_mod
 
      if(firsttime) then
 
-        imagebasis(2) = unitVec .cross. OCTALVECTOR(1d-20,1d-20,1d0) ! gridvector
+        imagebasis(2) = unitVec .cross. VECTOR(1d-20,1d-20,1d0) ! gridvector
         imagebasis(1) = imagebasis(2) .cross. unitVec ! gridvector perp
 
         !    write(*,*) unitvec, "HELP"
@@ -2501,10 +2501,10 @@ module molecular_mod
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      integer :: itrans
-     type(OCTALVECTOR) :: viewVec
+     type(VECTOR) :: viewVec
      real(double) :: i0, opticaldepth
      real(double) :: totalPixelIntensity, oldTotalPixelIntensity
-     type(OCTALVECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner, newposvec
+     type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner, newposvec
 
      integer :: nsubpixels, subpixels
      real(double) :: OneOverSubPixelsSquared
@@ -2597,10 +2597,10 @@ module molecular_mod
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    integer :: itrans
-   type(OCTALVECTOR) :: viewVec
+   type(VECTOR) :: viewVec
    real(double) :: i0, opticaldepth
 
-   type(OCTALVECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner, rayposition
+   type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner, rayposition
    
    integer :: subpixels, minrays
    integer :: i, iray
@@ -2610,7 +2610,7 @@ module molecular_mod
    real(double) :: avgIntensityNew, avgIntensityOld
    real(double) :: varIntensityNew, varIntensityOld
    real(double) :: PixelIntensity
-   real :: rtemp(2)
+   real(double) :: rtemp(2)
    real(double), save ::  r(10000,2)
 
    logical :: converged
@@ -2703,7 +2703,7 @@ module molecular_mod
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
-     type(OCTALVECTOR) :: unitvec, posvec
+     type(VECTOR) :: unitvec, posvec
      real(double) :: minVel
      real(double) :: deltaV
      integer :: iTrans
@@ -3130,7 +3130,7 @@ endif
    type(datacube) :: cube
    integer :: npixels, i, j
  ! real(double),pointer :: PixelWeight(:,:)
- ! type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
+ ! type(VECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
    real(double) :: ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
    real :: FWHM
    real(double) :: beamsize,beamsizeInRadians,sigma2,Int,rr
@@ -3176,7 +3176,7 @@ endif
    type(datacube) :: cube
    integer :: npixels, i, j,k,l
  ! real(double),pointer :: PixelWeight(:,:)
- ! type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
+ ! type(VECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
    real(double) :: ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
    real :: FWHM
    real(double) :: beamsize,beamsizeInRadians,sigma2,Int,rr,deltax, deltay,x,y,f,weight(:,:)
@@ -3292,7 +3292,7 @@ endif
          SUBROUTINE sobseq(x,init)
          USE nrtype; USE nrutil, ONLY : nrerror
          IMPLICIT NONE
-         REAL(SP), DIMENSION(:), INTENT(OUT) :: x
+         REAL(double), DIMENSION(:), INTENT(OUT) :: x
          INTEGER(I4B), OPTIONAL, INTENT(IN) :: init
          INTEGER(I4B), PARAMETER :: MAXBIT=30,MAXDIM=6
          REAL(SP), SAVE :: fac
@@ -3344,20 +3344,20 @@ endif
 
      subroutine setObserverVectors(inc, viewvec, unitvec, posvec, centreVec, gridsize)
 
-       type(OCTALVECTOR) :: unitvec, viewvec, posvec, centreVec
+       type(VECTOR) :: unitvec, viewvec, posvec, centreVec
        real(double) :: farAway, gridsize
        real :: inc
 
        farAway = 500.0 * gridsize
 
        if(inc .le. 0. .or. inc .ge. 360.) then
-          unitvec = OCTALVECTOR(sin(inc*degtorad),1.d-10,cos(inc*degtorad))
+          unitvec = VECTOR(sin(inc*degtorad),1.d-10,cos(inc*degtorad))
        else
           unitvec = randomunitVector()
        endif
 
        posvec = faraway * unitvec
-       centrevec = OCTALVECTOR(0d7,0d7,0d7)
+       centrevec = VECTOR(0d7,0d7,0d7)
        viewvec = centrevec - posvec
        call normalize(viewvec)
        unitvec = (-1.d0) * viewvec
@@ -3373,7 +3373,7 @@ endif
      integer :: subcell, i
      integer :: icount
      real(double) :: mean(6),r
-     type(OCTALVECTOR) :: rvec
+     type(VECTOR) :: rvec
      character(len=10) :: out
 
      do subcell = 1, thisOctal%maxChildren
@@ -3450,7 +3450,7 @@ subroutine testOpticalDepth(grid,thisMolecule)
   type(GRIDTYPE) :: grid
   type(MOLECULETYPE) :: thisMolecule
   type(octal), pointer   :: thisOctal
-  type(OCTALVECTOR) :: currentposition(3), posvec, viewvec, unitvec
+  type(VECTOR) :: currentposition(3), posvec, viewvec, unitvec
   integer :: subcell, i, itrans
   integer :: ilamb, nlamb=500
   real(double) :: xmidplane
@@ -3475,8 +3475,8 @@ subroutine testOpticalDepth(grid,thisMolecule)
   
   do i = 1, 100
      
-     unitvec = OCTALVECTOR(1.d-20,1.d-20,1.d0)
-     posvec = OCTALVECTOR(real(i) * grid%octreeroot%subcellsize * 0.01,0d7,2.d0 * grid%octreeroot%subcellsize)
+     unitvec = VECTOR(1.d-20,1.d-20,1.d0)
+     posvec = VECTOR(real(i) * grid%octreeroot%subcellsize * 0.01,0d7,2.d0 * grid%octreeroot%subcellsize)
      viewvec = (-1.d0) * unitvec
      
      call intensityAlongRay(posvec, viewvec, grid, thisMolecule, iTrans, 0.d0, i0, tau)
@@ -3489,8 +3489,8 @@ subroutine testOpticalDepth(grid,thisMolecule)
   call writeinfo(message, FORINFO)
   
   do i = 1, 100
-     unitvec = OCTALVECTOR(1.d0,0.d0,0.d0)
-     posvec = OCTALVECTOR(2.d0 * grid%octreeroot%subcellsize,0.d0, real(i) * grid%octreeroot%subcellsize * 0.01)
+     unitvec = VECTOR(1.d0,0.d0,0.d0)
+     posvec = VECTOR(2.d0 * grid%octreeroot%subcellsize,0.d0, real(i) * grid%octreeroot%subcellsize * 0.01)
      viewvec = (-1.d0) * unitvec
      call intensityAlongRay(posvec, viewvec, grid, thisMolecule, iTrans, 0.d0, i0, tau)
      
@@ -3498,13 +3498,13 @@ subroutine testOpticalDepth(grid,thisMolecule)
      call writeinfo(message, FORINFO)
   enddo
 
-call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1, 0.d0, dummy, tau, .true.)
+call intensityAlongRay(VECTOR(0.d0,0.d0,0.d0),VECTOR(1d-20,1d-20,1.d0), grid, thisMolecule, 1, 0.d0, dummy, tau, .true.)
 
 xmidplane = rinner + (router-rinner) * 0.5
 
 if(writeoutput) write(*,*) "Midplane tau!"
 open(50, file = 'dustcheck.dat', status="unknown", form = "formatted") 
-currentposition(1) = octalvector(xmidplane,0.d0,0.d0)
+currentposition(1) = VECTOR(xmidplane,0.d0,0.d0)
 
 call findSubcellTD(currentPosition(1), grid%octreeroot, thisOctal, subcell)
 
@@ -3512,7 +3512,7 @@ do i = 0, nlamb
    
    lamb = (10.0**(real(i) * log10(lamend/lamstart) / 500.0)) * lamstart
    
-   call continuumIntensityAlongRay(octalvector(1.d-10,1d-10,1d-10),octalvector(1.0,1d-20,1.d-20), grid, lamb, 0.d0, dummy, &
+   call continuumIntensityAlongRay(VECTOR(1.d-10,1d-10,1d-10),VECTOR(1.0,1d-20,1.d-20), grid, lamb, 0.d0, dummy, &
         tau, .true.)
    call locate(grid%lamArray, size(grid%lamArray), lamb, ilamb)
    call returnKappa(grid, thisOctal, subcell, ilambda = ilamb, lambda = lamb, kappaAbs = kappaAbs, kappaSca = kappaSca)
@@ -3524,9 +3524,9 @@ close(50)
 
 if(debug) then
    
-   currentposition(1) =  OCTALVECTOR(xmidplane,0.d0,0.d0)
-   currentposition(2) =  OCTALVECTOR(xmidplane,0.d0,xmidplane)
-   currentposition(3) = OCTALVECTOR(xmidplane/sqrt(2.),xmidplane/sqrt(2.),2. * xmidplane)
+   currentposition(1) =  VECTOR(xmidplane,0.d0,0.d0)
+   currentposition(2) =  VECTOR(xmidplane,0.d0,xmidplane)
+   currentposition(3) = VECTOR(xmidplane/sqrt(2.),xmidplane/sqrt(2.),2. * xmidplane)
    
    do i = 1,3
       
@@ -3546,7 +3546,7 @@ if(debug) then
    
 endif
 
-call continuumIntensityAlongRay(octalvector(-1.d10,1.d-10,1.d-10),octalvector(1.d0,-1d-10,-1d-10), grid, 1e4,&
+call continuumIntensityAlongRay(VECTOR(-1.d10,1.d-10,1.d-10),VECTOR(1.d0,-1d-10,-1d-10), grid, 1e4,&
      0.d0, dummy, tau, .true.)
 write(message,*) "TAU @ 1micron", tau
 call writeinfo(message, FORINFO)
@@ -3581,7 +3581,7 @@ end subroutine plotdiscValues
 
        implicit none
        type(VECTOR) :: out
-       type(octalVector), intent(in) :: position
+       type(VECTOR), intent(in) :: position
        type(gridtype), intent(in) :: grid
        type(octal), pointer, optional :: startOctal
        integer, optional :: subcell
