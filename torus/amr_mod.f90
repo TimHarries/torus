@@ -9534,61 +9534,7 @@ end function readparameterfrom2dmap
       IF ( error /= 0 ) CALL deallocationError(error,location=7) 
       NULLIFY(thisOctal%dustTypeFraction)
 
-      call deallocateAttribute(thisOctal%x_i)
-      call deallocateAttribute(thisOctal%x_i_plus_1)
-      call deallocateAttribute(thisOctal%x_i_minus_1)
-
-      call deallocateAttribute(thisOctal%q_i)
-      call deallocateAttribute(thisOctal%q_i_plus_1)
-      call deallocateAttribute(thisOctal%q_i_minus_1)
-      call deallocateAttribute(thisOctal%q_i_minus_2)
-
-
-      call deallocateAttribute(thisOctal%u_interface)
-      call deallocateAttribute(thisOctal%u_i_plus_1)
-      call deallocateAttribute(thisOctal%u_i_minus_1)
-
-      call deallocateAttribute(thisOctal%flux_i)
-      call deallocateAttribute(thisOctal%flux_i_plus_1)
-      call deallocateAttribute(thisOctal%flux_i_minus_1)
-
-      call deallocateAttribute(thisOctal%phiLimit)
-      call deallocateAttribute(thisOctal%rLimit)
-
-
-      call deallocateAttribute(thisOctal%ghostCell)
-      call deallocateAttribute(thisOctal%feederCell)
-      call deallocateAttribute(thisOctal%edgeCell)
-      call deallocateAttribute(thisOctal%refinedLastTime)
-
-
-      call deallocateAttribute(thisOctal%rhou)
-      call deallocateAttribute(thisOctal%rhov)
-      call deallocateAttribute(thisOctal%rhow)
-      call deallocateAttribute(thisOctal%rhoe)
-      call deallocateAttribute(thisOctal%energy)
-
-
-      call deallocateAttribute(thisOctal%x_i)
-      call deallocateAttribute(thisOctal%pressure_i_plus_1)
-      call deallocateAttribute(thisOctal%pressure_i_minus_1)
-
-      call deallocateAttribute(thisOctal%boundaryPartner)
-      call deallocateAttribute(thisOctal%boundaryCondition)
-
-      call deallocateAttribute(thisOctal%phi_i)
-      call deallocateAttribute(thisOctal%phi_i_plus_1)
-      call deallocateAttribute(thisOctal%phi_i_minus_1)
-
-      call deallocateAttribute(thisOctal%rho_i_plus_1)
-      call deallocateAttribute(thisOctal%rho_i_minus_1)
-
-
-      call deallocateAttribute(thisOctal%temperaturedust)
-      call deallocateAttribute(thisOctal%temperaturegas)
-      call deallocateAttribute(thisOctal%nh2)
-      call deallocateAttribute(thisOctal%microturb)
-      call deallocateAttribute(thisOctal%molmicroturb)
+      call deallocateOctalDynamicAttributes(thisOctal)
 
     END SUBROUTINE deleteOctalPrivate
       
@@ -16253,5 +16199,115 @@ end function readparameterfrom2dmap
   end  subroutine allocateOctalAttributes
 
 
+    subroutine deallocateOctalDynamicAttributes(thisOctal)
+      type(OCTAL):: thisOctal
+
+       call deAllocateAttribute(thisOctal%oldFrac)
+       call deAllocateAttribute(thisOctal%dustType)
+       call deAllocateAttribute(thisOctal%dustTypeFraction)
+
+       call deAllocateAttribute(thisOctal%diffusionApprox)
+       call deAllocateAttribute(thisOctal%nDiffusion)
+       call deAllocateAttribute(thisOctal%eDens)
+       call deAllocateAttribute(thisOctal%diffusionCoeff)
+       call deAllocateAttribute(thisOctal%oldeDens)
+       call deAllocateAttribute(thisOctal%nDirectPhotons)
+       
+       call deAllocateAttribute(thisOctal%underSampled)
+       call deAllocateAttribute(thisOctal%oldTemperature)
+       call deAllocateAttribute(thisOctal%kappaRoss)
+       call deAllocateAttribute(thisOctal%distanceGrid)
+       call deAllocateAttribute(thisOctal%nCrossings)
+       call deAllocateAttribute(thisOctal%nTot)
+       call deAllocateAttribute(thisOctal%etaCont)
+       call deAllocateAttribute(thisOctal%etaLine)
+       call deAllocateAttribute(thisOctal%chiLine)
+       call deAllocateAttribute(thisOctal%biasCont3D)
+       call deAllocateAttribute(thisOctal%biasLine3D)
+
+       call deAllocateAttribute(thisOctal%probDistLine)
+       call deAllocateAttribute(thisOctal%probDistCont)
+
+       call deAllocateAttribute(thisOctal%N)
+       call deAllocateAttribute(thisOctal%atomAbundance)
+
+       call deAllocateAttribute(thisOctal%molAbundance)
+       call deAllocateAttribute(thisOctal%temperatureGas)
+       call deAllocateAttribute(thisOctal%temperatureDust)
+       call deAllocateAttribute(thisOctal%nh2)
+       call deAllocateAttribute(thisOctal%microturb)
+       call deAllocateAttribute(thisOctal%molmicroturb)
+
+       call deAllocateAttribute(thisOctal%ionFrac)
+       call deAllocateAttribute(thisOctal%PhotoIonCoeff)
+       
+
+       call deAllocateAttribute(thisOctal%q_i)
+       call deAllocateAttribute(thisOctal%q_i_plus_1)
+       call deAllocateAttribute(thisOctal%q_i_minus_1)
+       call deAllocateAttribute(thisOctal%q_i_minus_2)
+
+       call deAllocateAttribute(thisOctal%x_i)
+       call deAllocateAttribute(thisOctal%x_i_plus_1)
+       call deAllocateAttribute(thisOctal%x_i_minus_1)
+
+       call deAllocateAttribute(thisOctal%u_interface)
+       call deAllocateAttribute(thisOctal%u_i_plus_1)
+       call deAllocateAttribute(thisOctal%u_i_minus_1)
+
+       call deAllocateAttribute(thisOctal%flux_i)
+       call deAllocateAttribute(thisOctal%flux_i_plus_1)
+       call deAllocateAttribute(thisOctal%flux_i_minus_1)
+
+       call deAllocateAttribute(thisOctal%phiLimit)
+
+       call deAllocateAttribute(thisOctal%ghostCell)
+       call deAllocateAttribute(thisOctal%feederCell)
+       call deAllocateAttribute(thisOctal%edgeCell)
+       call deAllocateAttribute(thisOctal%refinedLastTime)
+
+       call deAllocateAttribute(thisOctal%pressure_i)
+       call deAllocateAttribute(thisOctal%pressure_i_plus_1)
+       call deAllocateAttribute(thisOctal%pressure_i_minus_1)
+
+       call deAllocateAttribute(thisOctal%rhou)
+       call deAllocateAttribute(thisOctal%rhov)
+       call deAllocateAttribute(thisOctal%rhow)
+
+       call deAllocateAttribute(thisOctal%rhoe)
+       call deAllocateAttribute(thisOctal%energy)
+
+
+       call deAllocateAttribute(thisOctal%phi_i)
+       call deAllocateAttribute(thisOctal%phi_i_plus_1)
+       call deAllocateAttribute(thisOctal%phi_i_minus_1)
+
+       call deAllocateAttribute(thisOctal%rho_i_plus_1)
+       call deAllocateAttribute(thisOctal%rho_i_minus_1)
+
+       call deAllocateAttribute(thisOctal%boundaryCondition)
+
+     end subroutine deallocateOctalDynamicAttributes
+
+
+  RECURSIVE SUBROUTINE cleanupAMRgrid(thisOctal)
+      
+        TYPE(OCTAL), POINTER  :: thisOctal 
+        TYPE(OCTAL), POINTER  :: child
+        INTEGER :: i
+        
+        if (thisOctal%nChildren == thisOctal%maxChildren) then
+           call deallocateOctalDynamicAttributes(thisOctal)
+        endif
+
+        IF ( thisOctal%nChildren > 0 ) THEN
+           ! call this subroutine recursively on each of its children
+           DO i = 1, thisOctal%nChildren, 1
+              child => thisOctal%child(i)
+              CALL cleanupAMRgrid(child)
+           END DO
+        END IF
+        
+  END SUBROUTINE cleanupAMRgrid
    
 END MODULE amr_mod

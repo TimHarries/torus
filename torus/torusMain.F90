@@ -1678,6 +1678,10 @@ CONTAINS
            call finishGrid(grid%octreeRoot,grid,gridConverged,romData=romData)
            if (gridConverged) exit
         end do        
+        call writeInfo("...cleaning up dynamic memory",TRIVIAL)
+        call cleanupAMRgrid(grid%octreeRoot)
+
+
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
