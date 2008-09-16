@@ -1224,8 +1224,8 @@ contains
 
     if (secondSource) then
        secondSourcePosition = VECTOR(0.,0.,0.)
-       call getReal("secondpos", secondSourcePosition%x, cLine, nLines, &
-            "Second source distance: ","(a,e7.1,1x,a)", 1.e14, ok, .true.)
+       call getDouble("secondpos", secondSourcePosition%x, cLine, nLines, &
+            "Second source distance: ","(a,e7.1,1x,a)", 1.d14, ok, .true.)
     endif
 
     call getLogical("coreline", coreEmissionLine, cLine, nLines, &
@@ -1994,15 +1994,15 @@ endif
          "Size of PV image in p: ","(a,i3,a)", 1, ok, .true.)
     call getInteger("pvnv", nv, cLine, nLines, &
          "Size of PV image in v: ","(a,i3,a)", 1, ok, .true.)
-    call getReal("slitposx1", slitPosition1%x, cLine, nLines, &
-     "Slit start position x (arcsec): ", "(a,f7.1,1x,a)", 0., ok, .true.)
-    call getReal("slitposy1", slitPosition1%y, cLine, nLines, &
-     "Slit start position y (arcsec): ", "(a,f7.1,1x,a)", 0., ok, .true.)
+    call getdouble("slitposx1", slitPosition1%x, cLine, nLines, &
+     "Slit start position x (arcsec): ", "(a,f7.1,1x,a)", 0.d0, ok, .true.)
+    call getdouble("slitposy1", slitPosition1%y, cLine, nLines, &
+     "Slit start position y (arcsec): ", "(a,f7.1,1x,a)", 0.d0, ok, .true.)
     if (nSlit > 1) then
-       call getReal("slitposx2", slitPosition2%x, cLine, nLines, &
-            "Slit end position x (arcsec): ", "(a,f7.1,1x,a)", 0., ok, .true.)
-       call getReal("slitposy2", slitPosition2%y, cLine, nLines, &
-            "Slit end position y (arcsec): ", "(a,f7.1,1x,a)", 0., ok, .true.)
+       call getDouble("slitposx2", slitPosition2%x, cLine, nLines, &
+            "Slit end position x (arcsec): ", "(a,f7.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("slitposy2", slitPosition2%y, cLine, nLines, &
+            "Slit end position y (arcsec): ", "(a,f7.1,1x,a)", 0.d0, ok, .true.)
     endif
     call getReal("slitpa", slitPA, cLine, nLines, &
      "Slit position angle (degrees): ", "(a,f7.1,1x,a)", 0., ok, .true.)

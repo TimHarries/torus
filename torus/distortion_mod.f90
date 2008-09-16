@@ -516,9 +516,9 @@ contains
              rVec = rVec + coolStarPosition
              call normalize(dr)
              if (insideGrid(grid, rVec)) then
-                call hunt(grid%xAxis,grid%nx,rvec%x, i1)
-                call hunt(grid%yAxis,grid%ny,rvec%y, i2)
-                call hunt(grid%zAxis,grid%nz,rvec%z, i3)
+                call hunt(grid%xAxis,grid%nx,real(rvec%x), i1)
+                call hunt(grid%yAxis,grid%ny,real(rvec%y), i2)
+                call hunt(grid%zAxis,grid%nz,real(rvec%z), i3)
                 if (.not.done(i1,i2,i3)) then
                    rho = 1.e11
                    grid%kappaSca(i1,i2,i3,1) = grid%kappaSca(i1,i2,i3,1) * 100.
@@ -552,9 +552,9 @@ contains
              dr = rVec .cross. zAxis
              rVec = hotSourcePosition - rVec
              call normalize(dr)
-             call hunt(grid%xAxis,grid%nx,rvec%x, i1)
-             call hunt(grid%yAxis,grid%ny,rvec%y, i2)
-             call hunt(grid%zAxis,grid%nz,rvec%z, i3)
+             call hunt(grid%xAxis,grid%nx,real(rvec%x), i1)
+             call hunt(grid%yAxis,grid%ny,real(rvec%y), i2)
+             call hunt(grid%zAxis,grid%nz,real(rvec%z), i3)
              if (.not.done(i1,i2,i3)) then
                 rho = 1.e10
                 grid%kappaSca(i1,i2,i3,1) = rho * sigmaE * (34. + 6.6)
@@ -591,9 +591,9 @@ contains
              if (modulus(vHat) /= 0.) call normalize(vHat)
              rVec = hotSourcePosition + rVec
              call normalize(dr)
-             call hunt(grid%xAxis,grid%nx,rvec%x, i1)
-             call hunt(grid%yAxis,grid%ny,rvec%y, i2)
-             call hunt(grid%zAxis,grid%nz,rvec%z, i3)
+             call hunt(grid%xAxis,grid%nx,real(rvec%x), i1)
+             call hunt(grid%yAxis,grid%ny,real(rvec%y), i2)
+             call hunt(grid%zAxis,grid%nz,real(rvec%z), i3)
              if (.not.done(i1,i2,i3)) then
                 rho = 1.e10
                 grid%kappaSca(i1,i2,i3,1) = rho * sigmaE * (34. + 6.6)

@@ -894,9 +894,9 @@ contains
              rVec%y = r*sin(theta)*sin(phi)
              rVec%z = r*cos(theta)
              w = cos(theta)
-             call locate(thisGrid%xAxis,thisGrid%nx,rVec%x, i1)
-             call locate(thisGrid%yAxis,thisGrid%ny,rVec%y, i2)
-             call locate(thisGrid%zAxis,thisGrid%nz,rVec%z, i3)
+             call locate(thisGrid%xAxis,thisGrid%nx,real(rVec%x), i1)
+             call locate(thisGrid%yAxis,thisGrid%ny,real(rVec%y), i2)
+             call locate(thisGrid%zAxis,thisGrid%nz,real(rVec%z), i3)
 
              ! set up density grid
 
@@ -1260,10 +1260,10 @@ contains
           bVec = router * (sin(phi) * torusAxis)
           rUp = r0Vec + (aVec + bVec)
           rDown = r0Vec + (aVec - bVec)
-          call locate(grid%xAxis,grid%nx,rUp%x, i1)
-          call locate(grid%yAxis,grid%ny,rUp%y, i2)
-          call locate(grid%zAxis,grid%nz,rUp%z, i3)
-          call locate(grid%zAxis,grid%nz,rDown%z, i4)
+          call locate(grid%xAxis,grid%nx,real(rUp%x), i1)
+          call locate(grid%yAxis,grid%ny,real(rUp%y), i2)
+          call locate(grid%zAxis,grid%nz,real(rUp%z), i3)
+          call locate(grid%zAxis,grid%nz,real(rDown%z), i4)
 
           do k = min(i3,i4),max(i3,i4)
              Grid%rho(i1,i2,k) = rho
@@ -1396,9 +1396,9 @@ contains
              rVec%z = 0.
              rVec = rotateX(rVec, rotAng)
              rVec%x = rVec%x + binarySep  - stagPoint
-             call locate(grid%xAxis,Grid%nx, rVec%x, i1)
-             call locate(grid%yAxis,Grid%ny, rVec%y, i2)
-             call locate(grid%zAxis,Grid%nz, rVec%z, i3)
+             call locate(grid%xAxis,Grid%nx, real(rVec%x), i1)
+             call locate(grid%yAxis,Grid%ny, real(rVec%y), i2)
+             call locate(grid%zAxis,Grid%nz, real(rVec%z), i3)
              r = modulus(rVec)
              rho = mdot / (4. * pi * r**2 * v)
              if (.not.done(i1,i2,i3)) then
@@ -2596,9 +2596,9 @@ contains
        !       endif
 
 
-       call hunt(grid%xAxis, grid%nx, rvec%x, i1)
-       call hunt(grid%yAxis, grid%ny, rvec%y, i2)
-       call hunt(grid%zAxis, grid%nz, rvec%z, i3)
+       call hunt(grid%xAxis, grid%nx, real(rvec%x), i1)
+       call hunt(grid%yAxis, grid%ny, real(rvec%y), i2)
+       call hunt(grid%zAxis, grid%nz, real(rvec%z), i3)
        if (i1 == grid%nx) i1 = i1 - 1
        if (i2 == grid%ny) i2 = i2 - 1
        if (i3 == grid%nz) i3 = i3 - 1

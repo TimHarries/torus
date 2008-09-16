@@ -193,7 +193,7 @@ MODULE octal_mod
 
 
     REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients
-    LOGICAL, DIMENSION(:), pointer :: inStar      ! point lies within star
+    LOGICAL, DIMENSION(8) :: inStar      ! point lies within star
     REAL(double), DIMENSION(:,:), POINTER      :: kappaAbs => null() ! cont absorption opacities
     REAL(double), DIMENSION(:,:), POINTER      :: kappaSca => null() ! scattering opacities
 

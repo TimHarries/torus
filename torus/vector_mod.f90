@@ -55,9 +55,9 @@ module vector_mod
   ! The definition of the vector type
 
   type VECTOR
-     real(single) :: x
-     real(single) :: y
-     real(single) :: z
+     real(double) :: x
+     real(double) :: y
+     real(double) :: z
   end type VECTOR
 
   type doubleVector

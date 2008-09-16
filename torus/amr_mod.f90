@@ -9711,7 +9711,7 @@ end function readparameterfrom2dmap
     dest%gasOpacity =  source%gasOpacity 
     dest%cornerVelocity =  source%cornerVelocity
 
-    call copyAttribute(dest%inStar, source%inStar)
+    dest%inStar = source%inStar
     call copyAttribute(dest%nCrossings, source%nCrossings)
     call copyAttribute(dest%chiLine, source%chiLine)
     call copyAttribute(dest%etaLine, source%etaLine)
@@ -9740,6 +9740,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%temperaturegas, source%temperaturegas)
     call copyAttribute(dest%dustType, source%dustType)
     call copyAttribute(dest%oldFrac, source%oldFrac)
+    call copyAttribute(dest%diffusionApprox, source%diffusionApprox)
 
     call copyAttribute(dest%nh2, source%nh2)
     call copyAttribute(dest%microturb, source%microturb)
