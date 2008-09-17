@@ -304,7 +304,7 @@ CONTAINS
 !       thisOctal%microturb(subcell) = (20.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
 
     CASE DEFAULT
-      WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
+      WRITE(*,*) "! Unrecognised grid geometry in calcValuesAMR: ",TRIM(grid%geometry)
       STOP
 
     END SELECT
@@ -5065,14 +5065,14 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-!      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
-!         if ((abs(cellcentre%z)/hr < 5.)) then
-!            if (cellsize > 1.e-3 * grid%rInner) split = .true.
-!         endif
-!      endif
+      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
+         if ((abs(cellcentre%z)/hr < 5.)) then
+            if (cellsize > 1.e-3 * grid%rInner) split = .true.
+         endif
+      endif
 
-!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-!           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
       if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
       if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
@@ -8414,12 +8414,21 @@ IF ( .NOT. gridConverged ) RETURN
         v = (z - zminint) / d
 
      elseif(z .gt. z1max .or. z .lt. z2min) then ! possible for v to be greater than 1 so limit it
-        gradmin = (z2min - z1min) / (rmax - rmin)
-        gradmax = (z2max - z1max) / (rmax - rmin)
+        if (rmax /= rMin) then
+           gradmin = (z2min - z1min) / (rmax - rmin)
+           gradmax = (z2max - z1max) / (rmax - rmin)
+        else
+           gradmin = 0.
+           gradmax = 0.
+        endif
         zminint = z1min + (r - rmin) * gradmin
         zmaxint = z1max + (r - rmin) * gradmax
         d = zmaxint - zminint
-        v = max(min((z - zminint) / d,2.),-1.)
+        if (d /= 0.) then
+           v = max(min((z - zminint) / d,2.d0),-1.d0)
+        else
+           v = 0.d0
+        endif
 
      else
 
@@ -8984,8 +8993,10 @@ end function readparameterfrom2dmap
     rd = rOuter / 2.
 
     thisOctal%rho(subcell) = 1.d-30
-    thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
+    if (associated(thisOctal%nh)) &
+         thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
+    if (associated(thisOctal%ne)) &
+         thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
     if (photoionization) then
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
@@ -16239,12 +16250,13 @@ end function readparameterfrom2dmap
 
     if (mie) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+       thisOctal%oldFrac = 1.d-30
        call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
        thisOctal%dustTypeFraction = 0.d0
        thisOctal%dustTypeFraction(:,1) = 1.d0
-
+       thisOctal%inflow = .true.
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)

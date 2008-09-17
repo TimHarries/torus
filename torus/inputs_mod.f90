@@ -2145,6 +2145,8 @@ endif
 
  if (geometry .eq. "shakara" .or. (geometry .eq. "iras04158")) then
 
+    oneKappa = .true.
+
     call getLogical("noscat", noScattering, cLine, nLines, &
          "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -2197,7 +2199,6 @@ endif
    rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
         * (rInner*1.d10)**alphaDisc * &
         (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
-   write(*,*) "RHO0: ", rho0, mdisc, alphadisc,betadisc,height,rinner,router
 
 endif
 

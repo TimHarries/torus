@@ -616,6 +616,7 @@ CONTAINS
 
     if (.not.associated(array)) then
        allocate(array(1:nSize))
+       array = TINY(array)
     endif
   end subroutine allocateAttributeDouble
   
@@ -625,6 +626,7 @@ CONTAINS
 
     if (.not.associated(array)) then
        allocate(array(1:nSize))
+       array = TINY(array)
     endif
   end subroutine allocateAttributeReal
 
@@ -634,6 +636,7 @@ CONTAINS
 
     if (.not.associated(array)) then
        allocate(array(1:nSize))
+       array = 0
     endif
   end subroutine allocateAttributeInteger
 
@@ -643,6 +646,7 @@ CONTAINS
 
     if (.not.associated(array)) then
        allocate(array(1:nSize))
+       array = .false.
     endif
   end subroutine allocateAttributeLogical
 
@@ -652,6 +656,7 @@ CONTAINS
 
     if (.not.associated(array)) then
        allocate(array(1:nSize))
+       array = zeroVector
     endif
   end subroutine allocateAttributeVector
 

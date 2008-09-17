@@ -636,7 +636,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      ! Performs various optical depth tests here...
      !
 
-     if ( (.not. hydrodynamics) .and. (.not. formalsol) .and. myRankIsZero ) then
+     if ( (.not. hydrodynamics) .and. (.not. formalsol)) then
         call test_optical_depth(gridUsesAMR, VoigtProf, &
              amrGridCentre, sphericityTest,  &
              outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &

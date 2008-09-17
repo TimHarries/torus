@@ -1008,7 +1008,6 @@ CONTAINS
 333       continue
           read(77,*,end=334) junk
           xArray(nLambda) = junk
-          if (writeoutput) write(*,*) nlambda,xArray(nlambda)
           nLambda = nLambda + 1
           goto 333
 334       continue
@@ -1225,7 +1224,7 @@ CONTAINS
            call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp1)
 
         case DEFAULT
-           if (writeoutput) write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
+           if (writeoutput) write(*,*) "! Unrecognised grid geometry in fill_opacities_noamr: ",trim(geometry)
            ok = .false.
            return
         end select
@@ -1680,8 +1679,8 @@ CONTAINS
            call finishGrid(grid%octreeRoot,grid,gridConverged,romData=romData)
            if (gridConverged) exit
         end do        
-        call writeInfo("...cleaning up dynamic memory",TRIVIAL)
-        call cleanupAMRgrid(grid%octreeRoot)
+!        call writeInfo("...cleaning up dynamic memory",TRIVIAL)
+!        call cleanupAMRgrid(grid%octreeRoot)
 
 
 
@@ -2087,7 +2086,6 @@ subroutine set_up_sources
        source(1)%radius = grid%rCore
        source(1)%teff = teff   
        source(1)%position = VECTOR(0.,0.,0.)
-       write(*,*) "a"
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
