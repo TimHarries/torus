@@ -568,43 +568,29 @@ contains
     integer :: iNu, i
 
     surfaceArea = fourPi * surface%radius**2. ! 1.e20 cm^2
-    write(*,*) "ea"
 
     if (.not. associated(surface%totalPhotosphere)) &
       allocate(surface%totalPhotosphere(surface%nNuHotFlux))    
     if (.not. associated(surface%totalAccretion)) &
       allocate(surface%totalAccretion(surface%nNuHotFlux))    
-    write(*,*) "eb"
     do iNu = 1, SIZE(surface%hnuArray)-1, 1
        surface%totalPhotosphere(iNu) = 0.5*ABS((surface%hnuArray(iNu+1)+surface%hnuArray(iNu)) &
                                        * (surface%nuarray(iNu+1)-surface%nuarray(iNu))) &
                                        * SUM(surface%element%area)*1.e20
     enddo
-    write(*,*) "ec"
     surface%totalPhotosphere(SIZE(surface%hnuArray)) = 0.0
-    write(*,*) "ec1"
-    do i = 1, size(surface%hnuArray)
-       write(*,*) i , surface%totalPhotosphere(i)
-    enddo
 
     ! just checking ..
     if (writeoutput) write(*,*) "SUM(surface%totalPhotosphere(:)", SUM(surface%totalPhotosphere(:))
-    write(*,*) "ed"
     if (PRESENT(luminosity)) luminosity =  SUM(surface%totalPhotosphere(:))
-    write(*,*) "ee"
     surface%totalAccretion = 0.0
-    write(*,*) "ef"
     do iElement = 1, SIZE(surface%element), 1
-    write(*,*) "eg"
       if (surface%element(iElement)%hot) then
-    write(*,*) "eh"
         do iNu = 1, SIZE(surface%hnuArray)-1, 1
-    write(*,*) "ei"
           surface%totalAccretion(iNu) = surface%totalAccretion(iNu) + ABS( &
             0.5*SUM(surface%element(iElement)%hotFlux(iNu:iNu+1)) &
             * (surface%nuarray(iNu+1)-surface%nuarray(iNu)) &
             * surface%element(iElement)%area*1.e20)
-    write(*,*) "ej"
         enddo
       end if 
     end do
