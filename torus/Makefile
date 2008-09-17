@@ -39,18 +39,24 @@ ifeq ($(SYSTEM), intelmac)
 endif
 
 ifeq ($(SYSTEM), davesmac)
-    F95COMP  = ifort -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers
+#    F95COMP  = g95
+#    F77COMP  = g95
+#    F77FLAG  = -w -fno-second-underscore -g
+#    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
+    F95COMP  = ifort #-L/Library/Frameworks/Intel_MKL.framework/Versions/10.1.012/Libraries -I/Library/Frameworks/Intel_MKL.framework/Versions/10.1.012/Headers
     F77COMP  = ifort
-    F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG = -warn -g -no-ipo -debug full# -fbounds-check -ftrace=full                                      
-    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto -ipo-jobs2
-#    FASTFLAG = -parallel -xT -O3 -ip -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic       
-#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math                             
+    F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
+#   DEBUGFLAG = -warn -g -no-ipo  # 
+    DEBUGFLAG=-g -O0 -warn nounused -warn -traceback -fpe0 -debug full -check pointer -CB
+#    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
+    FASTFLAG = -g -mtune=core2 -xT -O3 -mdynamic-no-pic -ftz -no-prec-div -fp-model fast=2 -no-prec-sqrt
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    CFITSIOLIBS = -L/star/lib/ -lcfitsio #-lmkl_core -lmkl_intel
+    CFITSIOLIBS = -L/scisoft/i386/Packages/cfitsio/lib -lcfitsio #-lmkl_core -lmkl_intel
+#    CFITSIOLIBS = -L/star/lib/ -lcfitsio #-lmkl_core -lmkl_intel
+
 #    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 
 #    STARLIBS = -L/star/lib `ndf_link`                                                                   
@@ -654,8 +660,9 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ)
 #
 # Compilers and compiler flags
 #
-F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG)
-F77 = $(F77COMP) $(F77FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC)
+
+F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG)
+F77 = $(F77COMP) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG) $(MPI_INC)
 
 #
 # Special targets

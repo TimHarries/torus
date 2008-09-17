@@ -8,6 +8,8 @@ module utils_mod
   use constants_mod       ! physical constants
   use messages_mod
   use unix_mod
+  use nrutil
+  use nrtype
   
   implicit none
 
@@ -22,6 +24,12 @@ module utils_mod
      module procedure locate_single
 !     module procedure locate_octal
      module procedure locate_double
+  end interface
+
+  interface locate_f90
+     module procedure locate_single_f90
+!     module procedure locate_octal
+     module procedure locate_double_f90
   end interface
 
   interface hunt
@@ -50,6 +58,7 @@ module utils_mod
   end interface
 
   interface indexx
+     module procedure indexx_int
      module procedure indexx_single
      module procedure indexx_double
   end interface
@@ -248,8 +257,103 @@ contains
     LOGINT_dble=EXP(ANS)
   END FUNCTION LOGINT_DBLE
 
+  	SUBROUTINE dswap(a,b)
+	REAL(DP), INTENT(INOUT) :: a,b
+	REAL(DP) :: dum
+	dum=a
+	a=b
+	b=dum
+	END SUBROUTINE dswap
+
+        SUBROUTINE dmasked_swap(a,b,mask)
+	REAL(DP), INTENT(INOUT) :: a,b
+	LOGICAL(LGT), INTENT(IN) :: mask
+	REAL(DP) :: swp
+	if (mask) then
+		swp=a
+		a=b
+		b=swp
+	end if
+      END SUBROUTINE dmasked_swap
+
 
   ! sort an array
+
+  	SUBROUTINE dquicksort(arr)
+	USE nrtype; USE nrutil, ONLY : nrerror
+	IMPLICIT NONE
+	REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr
+	INTEGER(I4B), PARAMETER :: NN=15, NSTACK=50
+	REAL(DP) :: a
+	INTEGER(I4B) :: n,k,i,j,jstack,l,r
+	INTEGER(I4B), DIMENSION(NSTACK) :: istack
+	n=size(arr)
+	jstack=0
+	l=1
+	r=n
+	do
+		if (r-l < NN) then
+			do j=l+1,r
+				a=arr(j)
+				do i=j-1,l,-1
+					if (arr(i) <= a) exit
+					arr(i+1)=arr(i)
+				end do
+				arr(i+1)=a
+			end do
+			if (jstack == 0) RETURN
+			r=istack(jstack)
+			l=istack(jstack-1)
+			jstack=jstack-2
+		else
+			k=(l+r)/2
+			call dswap(arr(k),arr(l+1))
+			call dmasked_swap(arr(l),arr(r),arr(l)>arr(r))
+			call dmasked_swap(arr(l+1),arr(r),arr(l+1)>arr(r))
+			call dmasked_swap(arr(l),arr(l+1),arr(l)>arr(l+1))
+			i=l+1
+			j=r
+			a=arr(l+1)
+			do
+				do
+					i=i+1
+					if (arr(i) >= a) exit
+				end do
+				do
+					j=j-1
+					if (arr(j) <= a) exit
+				end do
+				if (j < i) exit
+				call dswap(arr(i),arr(j))
+			end do
+			arr(l+1)=arr(j)
+			arr(j)=a
+			jstack=jstack+2
+			if (jstack > NSTACK) call nrerror('sort: NSTACK too small')
+			if (r-i+1 >= j-l) then
+				istack(jstack)=r
+				istack(jstack-1)=i
+				r=j-1
+			else
+				istack(jstack)=j-1
+				istack(jstack-1)=l
+				l=i
+			end if
+		end if
+	end do
+      END SUBROUTINE dquicksort
+
+	SUBROUTINE dquicksort2(arr,slave)
+	USE nrtype; USE nrutil, ONLY : assert_eq
+	IMPLICIT NONE
+	REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr,slave
+	INTEGER(I4B) :: ndum
+	INTEGER(I4B), DIMENSION(size(arr)) :: index
+	ndum=assert_eq(size(arr),size(slave),'sort2')
+	call indexx(size(arr), arr,index)
+	arr=arr(index)
+	slave=slave(index)
+	END SUBROUTINE dquicksort2
 
   SUBROUTINE SORTsingle(N,RA)
     INTEGER N, L, IR, I, J
@@ -370,6 +474,51 @@ contains
     rb(i) = rrb
     GO TO 10
   END subroutine sortdouble2
+
+  SUBROUTINE SORTdouble2index(N,RA,rb)
+    INTEGER N, L, IR, I, J
+    real(double) RRA
+    integer :: rrb,rb(n)
+    real(double) RA(N)
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       RRA=RA(L)
+       rrb = rb(L)
+    ELSE
+       RRA=RA(IR)
+       rrb=rb(ir)
+       RA(IR)=RA(1)
+       rb(ir) = rb(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          RA(1)=RRA
+          rb(1) = rrb
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(RA(J).LT.RA(J+1))J=J+1
+       ENDIF
+       IF(RRA.LT.RA(J))THEN
+          RA(I)=RA(J)
+          rb(i)=rb(j)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    RA(I)=RRA
+    rb(i) = rrb
+    GO TO 10
+  END subroutine sortdouble2index
 
 
 
@@ -904,6 +1053,65 @@ contains
 
     END SUBROUTINE LOCATE_OCTAL
 
+    pure subroutine locate_single_f90(xx,x,locate)
+      IMPLICIT NONE
+      REAL, DIMENSION(:), INTENT(IN) :: xx
+      REAL, INTENT(IN) :: x
+      INTEGER,intent(OUT) :: locate
+      INTEGER :: n,jl,jm,ju
+      LOGICAL :: ascnd
+
+      n=size(xx)
+      ascnd = (xx(n) >= xx(1))
+      jl=0
+      ju=n+1
+      do
+         if (ju-jl <= 1) exit
+         jm=(ju+jl)/2
+         if (ascnd .eqv. (x >= xx(jm))) then
+            jl=jm
+         else
+            ju=jm
+         end if
+      end do
+      if (x == xx(1)) then
+         locate=1
+      else if (x == xx(n)) then
+         locate=n-1
+      else
+         locate=jl
+      end if
+    END subroutine locate_single_f90
+
+    pure subroutine locate_double_f90(xx,x,locate)
+      IMPLICIT NONE
+      REAL(double), DIMENSION(:), INTENT(IN) :: xx
+      REAL(double), INTENT(IN) :: x
+      INTEGER, intent(OUT) :: locate
+      INTEGER :: n,jl,jm,ju
+      LOGICAL :: ascnd
+      n=size(xx)
+      ascnd = (xx(n) >= xx(1))
+      jl=0
+      ju=n+1
+      do
+         if (ju-jl <= 1) exit
+         jm=(ju+jl)/2
+         if (ascnd .eqv. (x >= xx(jm))) then
+            jl=jm
+         else
+            ju=jm
+         end if
+      end do
+      if (x == xx(1)) then
+         locate=1
+      else if (x == xx(n)) then
+         locate=n-1
+      else
+         locate=jl
+      end if
+    END subroutine locate_double_f90
+
     real function gasdev()
       implicit none
       integer :: iset
@@ -929,12 +1137,41 @@ contains
       endif
     end function gasdev
 
-    real function gauss(sigma, dx)
-      real :: sigma, dx, fac
+    real(double) function GaussianComplementRand()
+
+      real(double) :: x,y, ytest
+      logical :: done
+
+      done = .false.
+
+      do while(.not. done)
+         call random_number(x)
+         x = 6. * (x - 0.5d0) 
+         y = 1. - 0.5 * unNormalizedGauss(1.d0,x)
+         
+         call random_number(ytest)
+         
+         if(ytest .lt. y) then
+            GaussianComplementRand = x
+            done = .true.
+         else
+            done = .false.
+         endif
+      end do
+
+    end function GaussianComplementRand
+
+    pure real function gauss(sigma, dx)
+      real, intent(in) :: sigma, dx
+      real :: fac
       fac = 1./(sigma*sqrt(twoPi))
       gauss = fac * exp(-(dx**2)/(2.*sigma**2))
     end function gauss
 
+    pure real(double) function unNormalizedGauss(sigma, dx)
+      real(double), intent(in) :: sigma, dx
+      unNormalizedGauss = exp(-(dx**2)/(2.*sigma**2))
+    end function unNormalizedGauss
 
     subroutine timeString(iTime,time)
       character(len=*) :: time
@@ -951,8 +1188,7 @@ contains
       iSec = ir
 
       write(time,'(i2,a,i2.2,a,i2.2)') iHour,":",iMin,":",iSec
-    end subroutine timeString
-      
+    end subroutine timeString      
 
     subroutine systemInfo(startTime,nPhotons)
       integer :: nPhotons
@@ -2106,36 +2342,36 @@ contains
     end subroutine quadraticResample_dble
 
 
-
+!already in nrutil.f90
  
-  FUNCTION arth(first,increment,n)
-    ! Array function returning an arithmetic progression. 
-    REAL, INTENT(IN) :: first,increment 
-    INTEGER, INTENT(IN) :: n 
-    REAL, DIMENSION(n) :: arth 
-    INTEGER :: k,k2 
-    REAL :: temp 
-    INTEGER, PARAMETER :: NPAR_ARTH=16,NPAR2_ARTH=8
-    if (n > 0) arth(1)=first 
-    if (n <= NPAR_ARTH) then 
-      do k=2,n
-        arth(k)=arth(k-1)+increment 
-      end do
-    else
-      do k=2,NPAR2_ARTH 
-        arth(k)=arth(k-1)+increment 
-      end do 
-      temp=increment*NPAR2_ARTH 
-      k=NPAR2_ARTH
-      do
-        if (k >= n) exit 
-        k2=k+k 
-        arth(k+1:min(k2,n))=temp+arth(1:min(k,n-k))
-        temp=temp+temp 
-        k=k2
-      end do 
-    end if
-  END FUNCTION arth 
+!  FUNCTION arth(first,increment,n)
+!    ! Array function returning an arithmetic progression. 
+!    REAL, INTENT(IN) :: first,increment 
+!    INTEGER, INTENT(IN) :: n 
+!    REAL, DIMENSION(n) :: arth 
+!    INTEGER :: k,k2 
+!    REAL :: temp 
+!    INTEGER, PARAMETER :: NPAR_ARTH=16,NPAR2_ARTH=8
+!    if (n > 0) arth(1)=first 
+!    if (n <= NPAR_ARTH) then 
+!      do k=2,n
+!        arth(k)=arth(k-1)+increment 
+!      end do
+!    else
+!      do k=2,NPAR2_ARTH 
+!        arth(k)=arth(k-1)+increment 
+!      end do 
+!      temp=increment*NPAR2_ARTH 
+!      k=NPAR2_ARTH
+!      do
+!        if (k >= n) exit 
+!        k2=k+k 
+!        arth(k+1:min(k2,n))=temp+arth(1:min(k,n-k))
+!        temp=temp+temp 
+!        k=k2
+!      end do 
+!    end if
+!  END FUNCTION arth 
   
   SUBROUTINE trapzd(func,a,b,s,n) 
     IMPLICIT NONE 
@@ -3901,6 +4137,52 @@ END SUBROUTINE GAUSSJ
 14    continue
       return
       end subroutine svbksb
+
+  PURE SUBROUTINE INDEXX_int(N,ARRIN,INDX)
+    INTEGER, INTENT(IN)  :: N
+    INTEGER, INTENT(IN)     :: ARRIN(:)
+    INTEGER, INTENT(OUT) :: INDX(:)
+    INTEGER              :: J, L, IR, I, INDXT
+    REAL                 :: Q
+    DO  J=1,N
+       INDX(J)=J
+    ENDDO
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       INDXT=INDX(L)
+       Q=ARRIN(INDXT)
+    ELSE
+       INDXT=INDX(IR)
+       Q=ARRIN(INDXT)
+       INDX(IR)=INDX(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          INDX(1)=INDXT
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(ARRIN(INDX(J)).LT.ARRIN(INDX(J+1)))J=J+1
+       ENDIF
+       IF(Q.LT.ARRIN(INDX(J)))THEN
+          INDX(I)=INDX(J)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    INDX(I)=INDXT
+    GO TO 10
+  END subroutine indexx_int
+
   PURE SUBROUTINE INDEXX_single(N,ARRIN,INDX)
     INTEGER, INTENT(IN)  :: N
     REAL, INTENT(IN)     :: ARRIN(:)

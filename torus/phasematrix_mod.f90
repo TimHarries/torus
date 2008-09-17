@@ -363,16 +363,15 @@ contains
 
     perpVec%x =  tVec%y
     perpVec%y = -tVec%x
-    perpVec%z = 0.
+    perpVec%z = 1.d-20
     call normalize(perpVec)
+
 
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
     newVec = arbitraryRotate(newVec, phi, oldDirection)
-
-
     call normalize(newvec)
+
     newDirectionMie = newVec
-    
 
   end function newDirectionMie
 

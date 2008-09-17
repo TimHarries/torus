@@ -90,7 +90,6 @@ contains
     call getLogical("blockhandout", blockHandout, cLine, nLines, &
          "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
 
-
     call getReal("distance", gridDistance, cLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
@@ -128,7 +127,6 @@ contains
     call getLogical("dustysed", dustysed, cLine, nLines, &
          "Write spectrum as normalized lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
 
-
     call getLogical("sised", sised, cLine, nLines, &
          "Write spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2):","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -143,17 +141,14 @@ contains
             "Image size in arcseconds: ","(a,f10.3,1x,a)", 0.130, ok, .true.)
     endif
 
-
     call getLogical("sed", sed, cLine, nLines, &
          "Write spectrum as normalized lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("jansky", jansky, cLine, nLines, &
          "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
-
     call getInteger("npix", npix, cLine, nLines, &
          "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .false.)
-
 
     call getString("distortion", distortionType, cLine, nLines, &
          "Distortion type: ","(a,a,1x,a)","none", ok, .false.)
@@ -181,7 +176,6 @@ contains
 !    call getReal("scale", scale, cLine, nLines, &
 !         "Scale (rsolar): ","(a,f6.1,1x,a)", 1000., ok, .false.) 
 
-
     call getString("gridtype", gridcoords, cLine, nLines, &
          "Grid type: ","(a,a,a)","cartesian",ok, .true.)
 
@@ -205,7 +199,6 @@ contains
 
     call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Maximum cell depth of AMR grid: ", &
          & "(a,i3,a)",30,ok,.false.)
-
 
     if (gridUsesAMR) then
        call getReal("amrgridsize", amrGridSize, cLine, nLines, &
@@ -1262,13 +1255,14 @@ contains
     call getReal("molAbundance", molAbundance, cLine, nLines, &
          "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
     call getLogical("useDust", useDust, cLine, nLines, &
-         "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .false.)
+         "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
     call getLogical("isinLTE", isinlte, cLine, nLines, &
          "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
     call getReal("dusttogas", dusttoGas, cLine, nLines, &
          "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+   call getLogical("plotlevels", plotlevels, cLine, nLines, &
+        "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
     
-
 ! Image parameters
     if(readmol) then
 

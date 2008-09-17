@@ -13,6 +13,7 @@ module cluster_class
   use isochrone_class
   use messages_mod
   use vector_mod
+  use math_mod2
   use constants_mod, only: mSol, secsToYears
   use input_variables, only: rCore
   
@@ -63,8 +64,6 @@ module cluster_class
      logical :: disc_on  
   end type cluster
   
-  
-
   ! overloading functions and creating the interface
   interface new
      module procedure int_cluster
@@ -322,13 +321,14 @@ contains
     
 !    thisOctal%temperature(subcell) = 3.0e0
 !    thisOctal%temperature(subcell) = 10.0
-!    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%velocity = VECTOR(1.d-10,1.d-10,1.d-10)
     thisOctal%etaLine(subcell) = 1.e-30
     thisOctal%etaCont(subcell) = 1.e-30
 
     if(grid%geometry .eq. 'molcluster') then
        thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
-       thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) / density_crit)**(0.4)))
+!       thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) / density_crit)**(0.4)))
+
        thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
             (28.0 * amu)) + modulus(thisOctal%velocity(subcell))**2) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
     endif
@@ -356,6 +356,9 @@ contains
     type(VECTOR) :: velocity_ave
     real :: tem_ave
     integer :: nparticle     
+
+    logical :: dosmoothing
+    real(double), parameter :: density_crit = 1d-13
     !
     !
     ! assign density to the subcell
@@ -364,6 +367,7 @@ contains
        case ("cluster")
           call find_temp_in_subcell(nparticle, tem_ave, sphData, &
                thisOctal, subcell)
+
           thisOctal%temperature(subcell)  = tem_ave
           call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
                thisOctal, subcell)
@@ -427,18 +431,25 @@ contains
        case ("molcluster")
 !          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
 !               thisOctal, subcell)
+
 !          thisOctal%temperature(subcell)  = tem_ave
+
 !          call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
-!               thisOctal, subcell)
+!               thisOctal, subcell, dosmoothing = .true.)
+
           call find_density(nparticle, density_ave, sphData, &
                thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
 
-                thisOctal%rho(subcell) = density_ave
+          thisOctal%rho(subcell) = density_ave
+          thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) / density_crit)**(0.4)))
 
-          call find_velocity(nparticle, velocity_ave, sphData, &
-               thisOctal, subcell) ! DAR routine basedon average momentum
 
-          thisOctal%velocity(subcell) = velocity_ave
+!          thisOctal%rho(subcell) = density_ave
+
+!          call find_density2(nparticle, density_ave, sphData, &
+!               thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
+
+!          thisOctal%rho(subcell) = density_ave
 
        case("wr104")
           call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
@@ -517,7 +528,7 @@ contains
   ! function returns the number of gas particles which belongs to a subcell this
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
-  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell, rho_min, rho_max)
+  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell, rho_min, rho_max, dosmoothing)
     implicit none
     integer, intent(out) :: n                ! number of particles in the subcell
     real(double), intent(out) :: rho_ave ! average density of the subcell
@@ -533,9 +544,20 @@ contains
     !
     !
     real(double), save :: umass, udist, udent  ! for units conversion  
+    real(double), save :: OneOverHcrit
+    real(double), save :: rtest, qtest, weight, sumweight
+    type(VECTOR) :: cellcentre
     logical, save  :: first_time = .true.
+    logical, optional :: dosmoothing
+    logical :: smoothing
     !
     real(double), parameter    :: rho_null = 1.0e-30_db
+
+    if(present(dosmoothing)) then
+       smoothing = dosmoothing
+    else
+       smoothing = .false.
+    endif
 
     ! Carry out the initial calculations
     if (first_time) then       
@@ -546,8 +568,10 @@ contains
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
+       OneOverHCrit = 1./ 205836.37494
 
        first_time = .false.
+
     end if
 
     if (associated(node%gas_particle_list)) then
@@ -561,11 +585,17 @@ contains
        rho_ave = 0.0d0
        if ( present(rho_min) ) rho_min = 1.0d30
        if ( present(rho_max) ) rho_max = 0.0d0
+
+       if(smoothing) then
+          cellcentre = subcellcentre(node, subcell)
+          sumweight = 0.d0
+       endif
+
        do i=1, npart
           ! Retriving the sph data index for this particle
           j = node%gas_particle_list(i)
           
-          ! retriving this posisiton of the gas particle.
+          ! retriving this posiiton of the gas particle.
           call get_position_gas_particle(sphData, j, x, y, z)
           
           ! convert units
@@ -573,25 +603,45 @@ contains
           ! quick check to see if this gas particle is
           ! belongs to this cell.
           if ( within_subcell(node, subcell, x, y, z) ) then
+
+             if(smoothing) then
+                rtest = sqrt((x - cellcentre%x)**2 + (y - cellcentre%y)**2 + (z - cellcentre%z)**2)
+                qtest = rtest * OneOverHcrit
+                
+                if(qtest .lt. 2.0) then 
+                   weight = SmoothingKernel(qtest)
+                   write(*,*) qtest, weight
+                else
+                   weight = 1d-30
+                endif
+             else
+                weight = 1.d0
+             endif
+             
              counter = counter + 1
+!             sumweight = sumweight + weight
              this_rho = get_rhon(sphData, j) 
-             rho_ave = rho_ave + this_rho
+             !         rho_ave = rho_ave + this_rho
+             
+             rho_ave = rho_ave + this_rho * weight
              if ( present(rho_min) ) rho_min = min(this_rho, rho_min)
              if ( present(rho_max) ) rho_max = max(this_rho, rho_max)
           end if
           
        end do
-       
        n = counter
-       
     else
-
        n = 0
-
     endif
     
     if (n>0) then
-       rho_ave = rho_ave/dble(n)
+       if(smoothing) then
+ !         rho_ave = rho_ave/sumweight
+          rho_ave = rho_ave
+       else
+          rho_ave = rho_ave/dble(n)
+       endif
+
        rho_ave = rho_ave*udent  ! [g/cm^3]
        if ( present(rho_min) ) rho_min = rho_min * udent
        if ( present(rho_max) ) rho_max = rho_max * udent
@@ -601,7 +651,6 @@ contains
        if ( present(rho_max) ) rho_max = rho_null
     end if
     
-
   end subroutine find_n_particle_in_subcell
 
   subroutine find_density(n, dens_ave, sphData, node, subcell)
@@ -630,7 +679,7 @@ contains
        ! units of sphData
        umass = get_umass(sphData)  ! [g]
        udist = get_udist(sphData)  ! [cm]
-       udens = umass/udist**3
+       udens = umass/(udist**3)
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
@@ -648,6 +697,7 @@ contains
        
        counter = 0
        dens_ave = 0.0d0
+
        do i=1, npart
           ! Retriving the sph data index for this paritcle
           j = node%gas_particle_list(i)
@@ -665,23 +715,17 @@ contains
           end if
           
        end do
-       
        n = counter
-       
     else
-
        n = 0
-
     endif
     
     if (n>0) then
-!       dens_ave = dens_ave/dble(n)
        dens_ave = dens_ave*umass/(1e30*cellVolume(node, subcell))  ! [g/cm^3]
     else
        dens_ave = 1.d-30
     end if
     
-
   end subroutine find_density
 
   subroutine find_velocity(n, vel_ave, sphData, node, subcell) ! technically finding average momentum?
@@ -696,7 +740,6 @@ contains
     integer :: i, j, counter
     real(double) :: x, y, z
     real(double) :: mass, mass_sum
-
 
     real(double), save :: umass, udist, utime  ! for units conversion  
     real(double), save :: dens_min
@@ -760,7 +803,7 @@ contains
        vel_ave = ((1./(utime*3.1556926e7))*udist*1d10) * vel_ave  ! [cm/s]
        vel_ave = (1./cspeed) * vel_ave  ! fraction of c
     else
-       vel_ave = VECTOR(1.d-30,1.d-30,1d-30)
+       vel_ave = VECTOR(-7.d0,-7.d0,-7.d0)
     end if
     
   end subroutine find_velocity

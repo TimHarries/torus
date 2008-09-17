@@ -27,6 +27,8 @@ MODULE amr_mod
   USE mpi_global_mod
   USE parallel_mod, ONLY: torus_abort
 
+  USE sph_data_class
+
   IMPLICIT NONE
 
   type STREAMTYPE
@@ -1231,7 +1233,7 @@ CONTAINS
       CASE ("cluster","wr104","molcluster")
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
-        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
+!        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
 
       CASE ("ppdisk","wrshell","toruslogo","planetgap")
         gridConverged = .TRUE.
@@ -4897,7 +4899,7 @@ IF ( .NOT. gridConverged ) RETURN
 
       if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen)/4.0d0)  split=.true.
 
-   case ("cluster")
+   case ("cluster","molcluster")
 
       call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
            thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity)
@@ -4911,17 +4913,17 @@ IF ( .NOT. gridConverged ) RETURN
 
       if (total_mass > amrlimitscalar) split = .true.
 
-   case ("molcluster")
+!   case ("molcluster")
+!
+!      ! Find number of particles and total mass in this cell
+!      call find_density(nparticle, ave_density, sphData, thisOctal, subcell)
+!      total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 ) ! in [g]
 
-      ! Find number of particles and total mass in this cell
-      call find_density(nparticle, ave_density, sphData, thisOctal, subcell)
-      total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 ) ! in [g]
-
-      ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
-      split = .false.
-      if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
-      if (nparticle > 20) split = .true.
-      
+!      ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
+!      split = .false.
+!      if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
+!      if (nparticle > 20) split = .true.
+!      
    case ("wr104")
       ! Splits if the number of particle is more than a critical value (~3).
       limit = nint(amrLimitScalar)
@@ -8583,29 +8585,41 @@ end function readparameterfrom2dmap
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
     integer :: i
-    real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
-    real :: v1, t1, r1
+    real(double), save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr), rdiff(nr)
+    real(double) :: v1, t1
+    real(double) :: r1
     type(VECTOR) :: vel
+
     if (firsttime) then
        open(31, file="model_1.dat", status="old", form="formatted")
        do i = nr,1,-1
           read(31,*) r(i), nh2(i), junk,t(i), v(i) , mu(i)
        enddo
-       r = r / 1.e10
+       r = r * 1.e-10
        close(31)
        firsttime = .false.
+
+       rdiff(nr) = 1d30
+       do i = 1, nr-1
+          rdiff(i) = 1.d0 / (r(i+1)-r(i))
+       enddo
     endif
 
+
+
     r1 = modulus(point)
-    moleBenchVelocity = VECTOR(0.,0.,0.)
+    moleBenchVelocity = VECTOR(1d-30,1d-30,1d-30)
+
+    if(r1 .gt. 1d7) return
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
+!       call locate_f90(r, r1, i)
        call locate(r, nr, r1, i)
-       t1 = (r1 - r(i))/(r(i+1)-r(i))
+!       t1 = (r1 - r(i))/(r(i+1)-r(i))
+       t1 = (r1 - r(i)) * rdiff(i)
        v1 = (v(i) + t1 * (v(i+1)-v(i)))*1.d5
        vel = point
-       call normalize(vel)
-       moleBenchVelocity = (v1/cSpeed) * vel
+       moleBenchVelocity = (v1 * OneOvercSpeed / r1) * vel
     endif
 
   end FUNCTION moleBenchVelocity
@@ -8714,23 +8728,162 @@ end function readparameterfrom2dmap
 
   end function ggtauVelocity
 
-  TYPE(vector)  function noddyVelocity(point, grid)
+  TYPE(vector)  function molClusterVelocity(point, grid, done)
 
+    type(sph_data) :: tempsphdata
     type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     type(vector) :: posvec
     type(octal), pointer :: thisOctal
+    type(octal), pointer, save :: previousOctal
+    type(vector) :: bodyvelocity
+
     integer :: subcell
+    logical, save :: firsttime = .true.
+    logical, optional :: done
+    
+    integer, save :: npart
+    
+    real(double), allocatable, save :: PositionArray(:,:), VelocityArray(:,:), MassArray(:), Harray(:)
+    integer, allocatable, save :: ind(:)
+    integer :: closestXindex, testIndex, i, nupper, nlower, counter
+    real(double), save :: hcrit, rcrit, OneOverHcrit
+    real(double) :: rtest, qtest
+    real(double) :: codeVelocitytoTORUS, codeLengthtoTORUS, udist, umass, utime
+    real(double) :: x,y,z
+    real(double) :: mvx,mvy,mvz
+    real(double) :: Weight, SumWeight, SumMass, SumArray, fac
+    
+    character(len=100) :: message
+
+    if(firsttime) then
+!       open(60,file='vel.dat', status="unknown", form="formatted")
+       call new_read_sph_data(tempsphdata, "newsph.dat.ascii") ! read in sphdata
+
+       udist = get_udist(tempsphdata)
+       utime = get_utime(tempsphdata)
+       umass = get_umass(tempsphdata)
+       codeLengthtoTORUS = udist * 1d-10
+       codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed ! velocity unit is derived from distance and time unit (converted to seconds from years)
+
+       npart = get_npart(tempsphdata) ! total gas particles
+
+       allocate(PositionArray(npart,3)) ! allocate memory
+       allocate(VelocityArray(npart,3))
+       allocate(MassArray(npart))
+       allocate(harray(npart))
+       allocate(ind(npart))
+
+       PositionArray = 0.d0; VelocityArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
+
+       harray(:) = tempsphdata%h(:) ! fill h array
+
+       PositionArray(:,1) = tempsphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+
+       call sortbyx(PositionArray(:,1),ind(:)) ! sort the x's and recall their indices
+
+       PositionArray(:,2) = tempsphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
+       PositionArray(:,3) = tempsphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
+
+       VelocityArray(:,1) = tempsphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
+       VelocityArray(:,2) = tempsphdata%vyn(ind(:)) * codeVelocitytoTORUS 
+       VelocityArray(:,3) = tempsphdata%vzn(ind(:)) * codeVelocitytoTORUS
+
+       MassArray(:) = tempsphdata%gasmass(ind(:)) * umass! in case of unequal mass
+
+       call FindCriticalValue(harray, hcrit, 0.90d0) ! find hcrit = 95th percentile of total h
+       write(message, *) "Smoothing Length in code units", hcrit
+       call writeinfo(message, FORINFO)
+
+       hcrit = hcrit * codeLengthtoTORUS
+       OneOverHcrit = 1.d0 / hcrit
+
+       write(message,*) "Smoothing Length in 10^10cm", hcrit
+       call writeinfo(message, FORINFO)
+
+       rcrit = 2.d0 * hcrit ! edge of smoothing sphere
+
+       call kill(tempsphdata) ! don't need harray anymore
+       deallocate(harray)
+
+       firsttime = .false.
+
+       previousOctal => grid%OctreeRoot
+    endif
+
+    if(done) then
+       deallocate(PositionArray, VelocityArray, MassArray, harray, ind)
+       firsttime = .true.
+       return
+    endif
+
     posVec = point
 
-    thisOctal => grid%octreeroot
+    call findSubcelllocal(posvec, previousOctal, subcell)
 
-    CALL findSubcellTD(posvec,grid%octreeRoot,thisOctal,subcell)    
+    x = posvec%x
+    y = posvec%y
+    z = posvec%z
 
-    noddyVelocity = thisOctal%velocity(subcell)
+    call locate(PositionArray(:,1), size(Positionarray(:,1)), x, closestXindex) ! find the nearest particle to your point
 
-  end function noddyVelocity
+    nupper = 0
+    nlower = 0
 
+    do while(abs(PositionArray(closestXindex + nupper,1) - x) .le. rcrit) ! search in X to find all particles near point from above
+       nupper = nupper + 1
+    enddo
+
+    do while(abs(PositionArray(closestXindex + nlower,1) - x) .le. rcrit) ! search in X to find all particles near point from below
+       nlower = nlower - 1 ! nlower is negative
+    enddo
+
+    mvx = 0.d0
+    mvy = 0.d0
+    mvz = 0.d0
+    sumMass = 0.d0
+    sumWeight = 0.d0
+    counter = 0
+
+    do i = nlower, nupper ! search over all those particles we just found
+
+       testIndex = closestXindex + i
+
+       if(abs(PositionArray(testIndex, 2) - y) .le. rcrit) then ! if it's near in y then
+          if(abs(PositionArray(testIndex, 3) - z) .le. rcrit) then !only if it's near in z as well then work out contribution
+             rtest = sqrt((PositionArray(testIndex, 1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
+                          (PositionArray(testIndex, 2) - y)**2 + &
+                          (PositionArray(testIndex, 3) - z)**2)
+
+             qtest = rtest * OneOverHcrit ! dimensionless parameter that we're interested in
+
+             Weight = SmoothingKernel(qtest) ! normalised contribution from this particle
+             
+                sumWeight = sumWeight + Weight
+
+                mvx = mvx + Weight * VelocityArray(testIndex,1)
+                mvy = mvy + Weight * VelocityArray(testIndex,2)
+                mvz = mvz + Weight * VelocityArray(testIndex,3)
+
+                counter = counter + 1                
+
+             endif
+          endif
+       enddo
+
+       if(counter .gt. 0) then
+          fac = 1.d0 / sumWeight
+          molClustervelocity = VECTOR(mvx * fac, mvy * fac, mvz * fac)
+       else      
+          molClusterVelocity = VECTOR(1d-20,1d-20,1d-20)
+       endif
+
+!    BodyVelocity = previousOctal%velocity(subcell)
+
+!    write(60,'(9(e12.6,tr1),i7,tr1,i7,tr1,es12.6,tr1,f7.5)') x,y,z,NoddyVelocity%x,NoddyVelocity%y,NoddyVelocity%z,BodyVelocity%x,BodyVelocity%y,BodyVelocity%z, nupper - nlower, counter, real(nupper-nlower)/real(counter), sumWeight
+
+     end function molClusterVelocity
+  
   subroutine assign_melvin(thisOctal,subcell,grid)
 
     use input_variables
@@ -13184,6 +13337,10 @@ end function readparameterfrom2dmap
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
          write(*,*) "z", currentZ
+
+      write(*,*) "TVAL", tval
+      write(*,*) "direction", direction
+      stop
       endif
       if (tval < 0.) then
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary

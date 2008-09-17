@@ -159,6 +159,7 @@ contains
     integer :: nage , nmass, i, j
     !
     filename(1:30) = " "
+
     select case (this%data_type)
     case ("dam98_0215")
        filename(1:13) = "iso0215.tot98"
@@ -243,6 +244,7 @@ contains
 
     !
     !  --- Using the routine in this module.
+
     call interpol_log_L_log_T(this, real(mass), real(age), log_L, log_T)
 
     temperature = (10.0**log_T)                   ! Kelvins    
@@ -283,7 +285,7 @@ contains
 
     integer :: i, im, ia, nmass, nage
     real :: tmp, f1, f2
-    
+
     nmass = this%nmass; nage = this%nage
 
     ! do simple linear interpolarions.
@@ -325,6 +327,7 @@ contains
     ! Interpolation of log(T)
     ! 
     ! interpolartes in mass first
+
     tmp = ( this%log_T(im+1, ia) - this%log_T(im, ia) )   &
          &                     /                          &
          &       (this%mass(im+1) - this%mass(im))

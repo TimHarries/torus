@@ -282,11 +282,33 @@ contains
 
             select case (valueType)
                case("rho")
-                  write(lunit, *) real(thisOctal%rho(subcell))
+
+                  if(thisOctal%rho(subcell) .lt. 1.d-37) then
+                     write(lunit, *) -1e-30 ! floating underflow warning
+                  else
+                     write(lunit, *) real(thisOctal%rho(subcell))
+                  endif
+
+               case("J=0")
+                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-10) then
+                     write(lunit, *) 1e-10
+                  else
+                     write(lunit, *) real(thisOctal%molecularlevel(subcell,1))
+                  endif
+
+               case("J=1")
+                  if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-10) then
+                     write(lunit, *) 1e-10
+                  else
+                     write(lunit, *) real(thisOctal%molecularlevel(subcell,2))
+                  endif
+
                case("dust1")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))
+
                case("bias")
                   write(lunit, *) real(thisOctal%biasCont3d(subcell))
+
                case("hydrovelocity")
                   write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
                        real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &

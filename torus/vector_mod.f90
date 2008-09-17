@@ -141,17 +141,18 @@ contains
 
   subroutine normalize(a)
     type(VECTOR), intent(inout) :: a
-    real(double) :: m
+    real(double) :: m, oneOverM
 
     m = modulus(a)
+    OneOverm = 1.d0 / m
 
     if (m == 0.d0) then
        write(*,'(a)') "! Attempt to normalize the zero vector single"
        a = VECTOR(1.d0,0.d0,0.d0)
     else
-       a%x = a%x / m
-       a%y = a%y / m
-       a%z = a%z / m
+       a%x = a%x * OneOverM
+       a%y = a%y * OneOverM
+       a%z = a%z * OneOverM
     endif
 
   end subroutine normalize
@@ -176,7 +177,6 @@ contains
     rmult%z = a * b%z
 
   end function rmult
-
 
   type(VECTOR) pure function rmultReversed(b,a)
     real(double), intent(in) :: a
@@ -277,7 +277,6 @@ contains
 
   end function rotateX
   
-
   ! rotate a vector "a" about the y-axis by angle b - ANTI-CLOCKWISE!
 
   type(VECTOR) pure function rotateY(a,b)
@@ -293,8 +292,6 @@ contains
     rotateY%z =-sinb * a%x + cosb * a%z
 
   end function rotateY
-  
-
 
   type(VECTOR) function randomUnitVector()
     real(double) :: r1, r2, u, v, w, t, ang
@@ -320,7 +317,6 @@ contains
 
     specificUnitVector = VECTOR(u,v,w)
   end function specificUnitVector
-
 
   type (VECTOR) function intersectionLinePlane(r0, rHat, nHat, d, ok)
 
@@ -351,7 +347,6 @@ contains
 
   end function intersectionLinePlane
   
-
   pure subroutine intersectionLineSphere(r0, rHat, length, s0, sR, found1,&
                               found2,intersectionDistance1,intersectionDistance2)
     ! finds the intersection(s) between a line segment and a sphere
@@ -421,7 +416,6 @@ contains
     
   end subroutine intersectionLineSphere
   
-
   type(VECTOR) pure function arbitraryRotate(p, theta, r)
     type(VECTOR),intent(in) :: p      ! position vector
     real(double),intent(in)         :: theta  ! angle in radians

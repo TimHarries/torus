@@ -2050,11 +2050,11 @@ contains
 
     call writeInfo("Deallocating grid structure", TRIVIAL)
     
-!    if (associated(grid%octreeRoot)) then
+    if (associated(grid%octreeRoot)) then
 !      call deleteOctreeBranch(grid%octreeRoot,grid)   
-!      deallocate(grid%octreeRoot)
-!      nullify(grid%octreeRoot)
-!    end if
+      deallocate(grid%octreeRoot)
+      nullify(grid%octreeRoot)
+    end if
       
     if (associated(grid%oneKappaAbs)) deallocate(grid%oneKappaAbs)
        nullify(grid%oneKappaAbs)
@@ -2911,20 +2911,13 @@ contains
           call writeDouble2D(thisOctal%jnu,fileFormatted)
           call writeDouble2D(thisOctal%bnu,fileFormatted)
           call writeReal1D(thisOctal%molAbundance,fileFormatted)
-
-          if (fileformatted) then
-             write(unit=20,iostat=error,fmt=*) thisOctal%nh2
-             write(unit=20,iostat=error,fmt=*) thisOctal%microturb
-          else
-             write(unit=20,iostat=error) thisOctal%nh2
-             write(unit=20,iostat=error) thisOctal%microturb
-          endif
+          call writeDouble1D(thisOctal%nh2,fileFormatted)
+          call writeDouble1D(thisOctal%microturb,fileFormatted)
        endif
+
        call writeDouble2D(thisOctal%N,fileFormatted)
        call writeReal2D(thisOctal%departCoeff,fileFormatted)
        call writeDouble2D(thisOctal%dustTypeFraction, fileFormatted)
-
-
 
        if (cmf) then
           call writeDouble2D(thisOctal%atomAbundance, fileFormatted)
@@ -3344,7 +3337,7 @@ contains
     call readReal2D(junk2,fileFormatted)
     call readReal2D(junk3,fileFormatted)
 
-    deallocate(junk, junk2, junk3)
+!    deallocate(junk, junk2, junk3)
    
     Call readClumps(fileFormatted)
     

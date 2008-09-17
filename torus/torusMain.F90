@@ -456,7 +456,7 @@ program torus
       ! Finding the inclinations of discs seen from +z directions...
      if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
 
-  elseif (geometry .eq. "molcluster") then
+  elseif (geometry .eq. "molcluster" .and. .not. readmol) then
 
      ! read in the sph data from a file
 
@@ -886,6 +886,7 @@ program torus
 
   if (molecular) then
      if (writemol) call molecularLoop(grid, co)
+     if(writeoutput) call writeinfo('Calculating Image', TRIVIAL)
      if (readmol) call calculateMoleculeSpectrum(grid, co)
 !        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
 
@@ -1427,6 +1428,7 @@ CONTAINS
           call writeInfo(message, TRIVIAL)
 
        case("molcluster")
+          if(.not. readmol) then
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
           call writeInfo("Done. Splitting grid...", TRIVIAL)
@@ -1443,7 +1445,7 @@ CONTAINS
              if (gridConverged) exit
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
-
+       endif
        case("wr104")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,sphData)
@@ -2085,15 +2087,19 @@ subroutine set_up_sources
        source(1)%radius = grid%rCore
        source(1)%teff = teff   
        source(1)%position = VECTOR(0.,0.,0.)
+       write(*,*) "a"
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
+          call normalizedSpectrum(source(1)%spectrum)
+          tmp = source(1)%radius * 1.e10  ! [cm]
+          source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
        else
           call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, contFluxFile)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
+          call normalizedSpectrum(source(1)%spectrum)
+          call sumSurface(source(1)%surface, source(1)%luminosity)
        endif
-       call normalizedSpectrum(source(1)%spectrum)
-       call sumSurface(source(1)%surface, source(1)%luminosity)
 
        tmp = source(1)%radius * 1.e10  ! [cm]
        fac = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4

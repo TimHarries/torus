@@ -395,13 +395,21 @@ contains
     thisCube%ny = ny
     thisCube%nv = nv
     allocate(thisCube%xAxis(1:nx))
+     call writeinfo("x",TRIVIAL)
     allocate(thisCube%yAxis(1:ny))
+     call writeinfo("y",TRIVIAL)
     allocate(thisCube%vAxis(1:nv))
+     call writeinfo("v",TRIVIAL)
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
+     call writeinfo("i",TRIVIAL)
     allocate(thisCube%flux(1:nx,1:ny,1:nv))
+     call writeinfo("f",TRIVIAL)
     allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
+     call writeinfo("n",TRIVIAL)
     allocate(thisCube%converged(1:nx,1:ny,1:nv))
+     call writeinfo("c",TRIVIAL)
     allocate(thisCube%weight(1:nx,1:ny))
+     call writeinfo("w",TRIVIAL)
 
     thisCube%intensity = 0.d0
     thisCube%flux = 0.d0

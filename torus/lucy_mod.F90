@@ -104,16 +104,16 @@ contains
           thisFreq = freq(j) + (freq(j+1) - freq(j))* &
                (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
 
-
           rVec  = real(grid%rCore, kind=oct) * randomUnitVECTOR()
 !          uHat = fromPhotosphereVector(rVec)
           ! -- using a new routine in source_mod.f90 (RK)
           uHat = random_direction_from_sphere(rVec)
+
           if ( (rVec .dot. uHat) < 0.) uHat = (-1.d0) * uHat
 
           do while(.not.escaped)
+
              call toNextEvent(grid, rVec, uHat, escaped, distanceGrid, thisFreq, nLambda, lamArray)
-                
              if (escaped) nInf = nInf + 1
 
              if (.not. escaped) then
@@ -127,20 +127,23 @@ contains
                 else
                    albedo = grid%oneKappaSca(1,iLam) / (grid%oneKappaSca(1,iLam)+grid%oneKappaAbs(1,iLam))
                 endif
+
                 call random_number(r)
                 if (r < albedo) then
+
                    vec_tmp=uhat 
                    uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, dummy)
-
                    nScat = nScat + 1
                    uHat = uNew
-
                 else
+
                    nAbs = nAbs + 1
                    probDistJnu(1) = 0.d0
                    do i = 2, nFreq
+
                       thisLam = (cSpeed / freq(i)) * 1.e8
                       call hunt(lamArray, nLambda, real(thisLam), iLam)
+
                       if ((ilam >=1).and.(ilam <= nlambda)) then
                          if (.not.grid%oneKappa) then
                             kabs = grid%kappaAbs(i1,i2,i3,iLam)
@@ -148,10 +151,11 @@ contains
                             kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
                          endif
                          probDistJnu(i) = probDistJnu(i-1) + &
-                             (bnu(freq(i),dble(grid%temperature(i1,i2,i3)))) &
-                                                     * kabs * dnu(i)
+                              (bnu(freq(i),dble(grid%temperature(i1,i2,i3)))) &
+                              * kabs * dnu(i)
                       endif
                    enddo
+
                    probDistJnu(1:nFreq) = probDistJnu(1:nFreq) / probDistJnu(nFreq)
                    call random_number(r)
                    call locate(probDistJnu, nFreq, r, j)
@@ -164,19 +168,17 @@ contains
              endif
           enddo
        enddo
+
        write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
        write(*,'(a,f7.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
        write(*,'(a,f7.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
 
-
        V = (dble(grid%xAxis(2)-grid%xAxis(1))*dble(grid%yAxis(2)-grid%yAxis(1))*dble(grid%zAxis(2)-grid%zAxis(1)))
-
 
        epsOverDeltaT = (dble(grid%lCore)) / dble(nInf)
 
        meanDeltaT = 0.
        nDT = 0
-
 
        totalEmission = 0.
        do i1 = 1, grid%nx
@@ -619,10 +621,10 @@ contains
  !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
           thisPhotonAbs = 0
-
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
+
           directPhoton = .true.
           scatteredPhoton = .false.
 
@@ -630,6 +632,7 @@ contains
             foundSubcell=tempsubcell)
 
           if (tempOctal%diffusionApprox(tempsubcell)) then
+
              call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
              if (.not.ok) cycle photonLoop ! abort photon if random walk has failed
              directPhoton = .false.
@@ -641,12 +644,10 @@ contains
           call getWavelength(thisSource%spectrum, wavelength)
           thisFreq = cSpeed/(wavelength / 1.e8)
 
-
           do while(.not.escaped)
 
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
                   photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton)
-
 
              If (escaped) nInf_sub = nInf_sub + 1
 
@@ -654,8 +655,6 @@ contains
                 nDiffusion_sub = nDiffusion_sub + 1
              endif
                 
-
-
              if (.not. escaped) then
 
                 thisLam = (cSpeed / thisFreq) * 1.e8
@@ -679,7 +678,6 @@ contains
                 
                 ! photon is always absorbed/reprocessed if it has come from diffusion zone
 
-
                 if (PhotonInDiffusionZone) albedo = 0. 
 
 	        albedo = min(albedo,0.9999d0)
@@ -688,11 +686,11 @@ contains
 
                 ! scattering case
                 if (r < albedo) then 
-
-
+                   
                    vec_tmp = uhat
                    uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
                         thisOctal%dustTypeFraction(subcell, 1:nDusttype))
+
                    nScat_sub = nScat_sub + 1
                    uHat = uNew
                    scatteredPhoton = .true.
@@ -759,7 +757,6 @@ contains
                            (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
 !                      write(*,*) cSpeed/thisFreq/angstromtocm
                    endif
-
 
                    oldUhat = uHat
                    uHat = randomUnitVector()
@@ -1561,8 +1558,9 @@ contains
 
 
    point = posVec
-
+   write(*,*) "in"
    call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+   write(*,*) "out"
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
 
@@ -1655,11 +1653,10 @@ contains
    type(VECTOR) :: xHat, zHAt
 
    point = posVec
-
+   write(*,*) 
    call amrGridValues(grid%octreeRoot, point, startOctal=sOctal,foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
-
 
    r1 = subcen%x - thisOctal%subcellSize/2.d0
    r2 = subcen%x + thisOctal%subcellSize/2.d0
@@ -1852,8 +1849,6 @@ contains
     stillinGrid = .true.
     escaped = .false.
     photonInDiffusionZone = .false.
-       
-
 
     thisLam = (cSpeed / thisFreq) * 1.e8
     call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -1862,10 +1857,8 @@ contains
     endif
 
 ! select an initial random tau and find distance to next cell
-
     call random_number(r)
     tau = -log(1.0-r)
-
 
     octVec = rVec
     thisOctVec = rVec
@@ -1873,19 +1866,21 @@ contains
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
+
     oldOctal => thisOctal
     sOctal => thisOctal
 
 ! moved from before call to amrgridvalues - th 16/11/05
 
     call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
+
     tval = tval + fudgeFac * grid%halfSmallestSubcell
+
 !    if (grid%octreeRoot%threed) then
 !       call intersectCubeAMR(grid, rVec, uHat, tVal)
 !    else
 !       call intersectCubeAMR2D(grid, rVec, uHat, tVal, sOctal)
 !    endif
-
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
@@ -1898,9 +1893,7 @@ contains
     do while(stillinGrid .and. (tau > thisTau)) 
 
 ! add on the distance to the next cell
-
        rVec = rVec + tVal * uHat
-
        octVec = rVec
 
 ! It is here that the photon path has potentially entered a cell
@@ -1918,17 +1911,22 @@ contains
 
        call amrGridValues(grid%octreeRoot, octVec,  foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+
        sOctal => tempOctal
+
        if (tempOctal%diffusionApprox(tempsubcell)) then
 
           call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
+
           if (.not.ok) goto 666
           photonInDiffusionZone = .true.
           directPhoton = .false.
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
+
           call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+
           sOctal => tempOctal
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "moved to cell with diffapprox",tempOctal%diffusionApprox(tempsubcell)
@@ -2001,15 +1999,17 @@ contains
 !$OMP CRITICAL (changegrid)
 
        if (.not.twoD) then
-
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
                + tVal * dble(kappaAbsdb)
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+
        else
-          
+
           thisOctVec = subcellCentre(thisOctal,subcell)
+
           call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
+
           foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
                + tVal * dble(kappaAbsdb)
           foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
@@ -2031,6 +2031,7 @@ contains
        if (stillinGrid) then
           call random_number(r)
           tau = -log(1.0-r)
+
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
@@ -2076,8 +2077,6 @@ contains
     if (.not.inOctal(grid%octreeRoot, octVec))  escaped = .true.
 
  ! if not the photon must interact in this cell
-       
-
     if (.not.escaped) then
        octVec = rVec
 !       if (.not.inOctal(grid%octreeRoot, octVec)) then

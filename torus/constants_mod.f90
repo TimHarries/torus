@@ -28,6 +28,7 @@ module constants_mod
   real(double), parameter :: oneOverrootTwo = 1.d0/1.4142136d0
   real(double), parameter :: sqrtPi = 1.77245385090551602730
   real(double), parameter :: OneOversqrtPi = 1.d0/1.77245385090551602730
+  real(double), parameter :: OneOverPi = 1.d0 / Pi
   ! times
 
   real(double), parameter :: secsToYears = 1.d0/(365.25d0*24.d0*3600.d0)
@@ -70,6 +71,7 @@ module constants_mod
   ! speeds
 
   real(double), parameter :: cSpeed = 2.99792458d10  ! cm/s
+  real(double), parameter :: OneOvercSpeed = 3.33564095d-11  ! s/cm
   real, parameter :: cSpeed_sgl = 2.99792458e10  ! cm/s
   real(double), parameter :: cSpeed_dbl = 2.99792458d10  ! cm/s
 

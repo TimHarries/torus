@@ -3,6 +3,8 @@ module sph_data_class
   use kind_mod
   use vector_mod
   use messages_mod
+  use utils_mod
+  use timing
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -61,6 +63,9 @@ module sph_data_class
      real(double), pointer, dimension(:) :: rhon
      ! Temperature of the gas particles
      real(double), pointer, dimension(:) :: temperature
+     ! Smoothing lengths of the gas/sink particles
+     real(double), pointer, dimension(:) :: h
+     real(double), pointer, dimension(:) :: hpt
      ! Positions of stars
      real(double), pointer, dimension(:) :: x,y,z
      real(double), pointer, dimension(:) :: vx,vy,vz
@@ -126,6 +131,7 @@ contains
     ALLOCATE(sphdata%rhon(npart))
     ALLOCATE(sphdata%temperature(npart))
     ALLOCATE(sphdata%gasmass(npart))
+    ALLOCATE(sphdata%h(npart))
 
     ! -- for star positions
     ALLOCATE(sphdata%x(nptmass))
@@ -135,6 +141,7 @@ contains
     ALLOCATE(sphdata%vx(nptmass))
     ALLOCATE(sphdata%vy(nptmass))
     ALLOCATE(sphdata%vz(nptmass))
+    ALLOCATE(sphdata%hpt(nptmass))
     
     ! -- for mass of stars
     ALLOCATE(sphdata%ptmass(nptmass))
@@ -319,12 +326,15 @@ contains
 !    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
 !    integer*4 :: npart,  nsph, nptmass
     real(double) :: udist, umass, utime,  time
-    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter, u
+    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter, u, h
+    real(double), allocatable :: xarray(:), harray(:)
+    INTEGER, allocatable :: ind(:)
     integer :: itype, ipart, icount, iptmass, igas, idead
-    integer :: npart, nptmass, n1, n2
+    integer :: npart, nptmass, n1, n2, nlines, i
     real(double) junk
     character(LEN=1)  :: junkchar
-    character(LEN=100) :: message
+    character(LEN=150) :: message
+    real(double) :: hcrit
 
     open(unit=LUIN, file=TRIM(filename), form="formatted")
 
@@ -335,16 +345,19 @@ contains
     read(LUIN,*)
     read(LUIN,*)
     read(LUIN,*) junkchar, npart, n1, nptmass, n2
-    npart = npart + n1 ! no. of particles we're interested in
+    npart = npart ! no. of particles we're interested in
     read(LUIN,*)
+!    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, urho, uvel, junk, junk
     read(LUIN,*) junkchar, udist, junk, junk, umass
     read(LUIN,*)
     read(LUIN,*)
     read(LUIN,*)
 
+    write(*,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
+
     call init_sph_data(sphdata, udist, umass, utime, npart, time, nptmass)
 
-    npart = npart + n2 + nptmass ! npart now equal to no. lines - 12 = sum of particles dead or alive
+    nlines = npart + n2 + nptmass + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
 
     write(message,*) "Reading SPH data from ASCII...."
     call writeinfo(message, TRIVIAL)
@@ -355,15 +368,10 @@ contains
     idead = 0
     masscounter = 0.d0
 
-    do ipart=1, npart
+    do ipart=1, nlines
 
-       read(LUIN,*) xn, yn, zn, gaspartmass, junk, rhon, vx, vy, vz, u, junk, junk, junk, itype
+       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, vx, vy, vz, u, junk, junk, junk, itype
        icount = icount + 1
-
-       if(mod(icount,10000) .eq. 1) then
-          write(message,*) "Reading", icount,"th particle"
-          call writeinfo(message, TRIVIAL)
-       endif
 
        if(itype .eq. 1) then ! .or. itype .eq. 4) then
           igas = igas + 1
@@ -380,8 +388,10 @@ contains
           sphdata%vzn(igas) = vz
 
 !         sphdata%temperature = 2. * 2.46 * (u * 1d-7) / (3. * 8.314472) ! 8.31 is gas constant
-          sphdata%temperature = 1.9725e-8 * u
-          
+          sphdata%temperature(igas) = 1.9725e-8 * u
+
+          sphdata%h(igas) = h
+
           masscounter = masscounter + gaspartmass
           
        Elseif(itype .eq. 3) then
@@ -397,10 +407,11 @@ contains
           sphdata%vz(iptmass) = vz
 
           sphdata%ptmass(iptmass) = gaspartmass 
+          sphdata%hpt(iptmass) = h
 
           masscounter = masscounter + gaspartmass
 
-          write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol"
+          write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas, h
           call writeinfo(message, TRIVIAL)
        else
 
@@ -413,13 +424,16 @@ contains
     write(message,*) "Read ",icount, " lines"
     call writeinfo(message, TRIVIAL)
 
-    write(message,*)  iptmass,"are sink particles and ",igas,"are gas particles and", idead, "are dead"
+    write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are dead"
     call writeinfo(message, TRIVIAL)
 
-    write(message,*) "Total Mass in all particles, ", masscounter, "Msol"
+    write(message,*) "Total Mass in all particles, ", masscounter, " Msol"
     call writeinfo(message, TRIVIAL)
-
+    
+    close(LUIN)
+   
   end subroutine new_read_sph_data
+
 
   !
   !
@@ -920,6 +934,74 @@ contains
     type(sph_data), intent(in) :: this
     out = this%inUse
   end function isAlive
+
+  subroutine sortbyx(xarray,ind)
+    real(double) :: xarray(:)
+    integer :: ind(:)
+    integer :: i, npart
+    
+    npart = size(xarray)
+    
+    do i=1,npart
+       ind(i) = i
+    enddo
+    
+    write(*,*) "Start sort by x "
+    call tune(6, "Sort")  ! start a stopwatch
+    call sortdouble2index(npart,xarray,ind)
+    call tune(6, "Sort")  ! stop a stopwatch
+    write(*,*) "End sort by x "
+
+    open(unit=50, file='xsortunsort.dat', status="replace")
+    open(unit=49, file='thex.dat', status="replace")
+    
+    do i=1,npart
+       write(50,*) xarray(i), ind(i)
+    enddo
+
+  end subroutine sortbyx
+
+  subroutine FindCriticalValue(array,critval,percentile,output)
+
+    real(double) :: array(:), critval
+    real(double), intent(in) :: percentile
+    integer :: i, npart
+    logical, optional :: output 
+
+    character(len=100) :: message
+
+    npart = size(array)
+
+    if(output .and. writeoutput) then
+    
+       call writeinfo("Start sort", TRIVIAL)
+       call tune(6, "Sort")  ! start a stopwatch
+       call dquicksort(array)
+       call tune(6, "Sort")  ! stop a stopwatch
+       call writeinfo("Start sort", TRIVIAL)
+
+       open(unit=50, file='sortedarray.dat', status="replace")
+       open(unit=49, file='percentiles.dat', status="replace")
+    
+       do i=1,npart
+          write(50,*) array(i)
+       enddo
+
+       do i=100,1,-1
+          write(49,*) i,"%",array(nint((npart*i/100.)))
+       enddo
+    else
+       call dquicksort(array)
+    endif
+
+    write(message,*) "Maximum Value",array(npart)
+    call writeinfo(message, FORINFO)
+    write(message,*) "Minimum Value",array(1)
+    call writeinfo(message, FORINFO)
+
+    critval = array(nint(percentile*npart))
+
+  end subroutine FindCriticalValue
 
 end module sph_data_class
     

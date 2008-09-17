@@ -166,6 +166,7 @@ module input_variables
   logical :: show_value_3rd_dim    ! If T, the value of the third dimension will be shown.
   real :: zoomFactor
   character(len=20) :: pgplotDevice
+  logical :: plotlevels
 
   ! output arrays
 

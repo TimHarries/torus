@@ -32,32 +32,48 @@ c     .  set the complex index of refraction  .
 c     .    for an exp(-iwt) time variation    .
 c     .........................................
       cm = cmplx(cmr,cmi)
-
         
         nDist = 100
         logamin = log(aMin)
         logamax = log(aMax)
+
         do i = 1, nDist
+
           aDist(i) = logAmin+(logAmax-logAmin)*real(i-1)/real(nDist-1)
           aDist(i) = exp(aDist(i))
           nsd(i) = aDist(i)**(-qDist) * exp(-(aDist(i)/a0)**pDist)
 c     For safty (R. Kurosawa fixed this.)
           if (nsd(i) .lt. 1.0e-30) nsd(i) = 1.0e-30
-        enddo
-        call PowerInt(nDist,1,nDist,aDist,nsd,normFac)
 
+        enddo
+
+
+        call PowerInt(nDist,1,nDist,aDist,nsd,normFac)
 !        open(unit=54, file='g_scat.dat', status='unknown')
+
+!        refrel = cmplx(0.d0, 0.d0)
+!        s1 = cmplx(0.d0, 0.d0)
+!        s2 = cmplx(0.d0, 0.d0)
+!        QEXT = 0.d0
+!        QSCA = 0.d0
+!        QBACK =0.d0
+!        GSCA = 0.d0
+
         do i = 1, nDist
+
           a = aDist(i) 
           x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
           x = max(x, 1.e-5)
           refrel = cmplx(cmr, cmi)
+
           call BHMIE(X,REFREL,NANG ,S1,S2,QEXT(i),QSCA(i),QBACK(i),
      &       GSCA(i))
+
           qExt(i) = qExt(i) * nsd(i) * pi * (a * micronsToCm)**2
           qSca(i) = qSca(i) * nsd(i) * pi * (a * micronsToCm)**2
 !          write(54, *) x, gsca(i)
         enddo
+
 !        close(54)
 
          call powerInt(nDist, 1, nDist, aDist, qExt, kappaExt)
@@ -68,7 +84,6 @@ c     For safty (R. Kurosawa fixed this.)
 c     ..........................................
 c     .   calculate the absorption efficiency  .
 c     ..........................................
-        
 
         kappaabs = kappaext-kappasca                     
       END

@@ -472,6 +472,7 @@ contains
        do j = 1, ngrain
           call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
                mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+
           ! Weighting the cross section according to their abundance...            
           sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
           sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
