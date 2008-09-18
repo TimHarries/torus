@@ -1560,10 +1560,11 @@ module molecular_mod
                        enddo
 
                        call solveLevels(thisOctal%newMolecularLevel(subcell,1:maxLevel), &
-                            thisOctal%jnu(subcell,1:maxtrans), dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
+                            thisOctal%jnu(subcell,1:maxtrans), dble(thisOctal%temperature(subcell)), &
+                            thisMolecule, thisOctal%nh2(subcell))
 
                        fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:minlevel) - oldpops(1:minlevel)) &
-                            / oldpops(1:mintrans+1))) ! convergence criterion ! 6 or 8?
+                            / oldpops(1:minlevel))) ! convergence criterion ! 6 or 8?
                        
                        if (fac < 1.d-6) then
                           popsConverged = .true.

@@ -8267,8 +8267,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
 
        out='td'
-       thisOctal%temperaturedust(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-!       thisOctal%temperaturedust(subcell) = 75.
+!       thisOctal%temperaturedust(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+       thisOctal%temperaturedust(subcell) = 75.
        thisOctal%temperaturegas(subcell) = thisOctal%temperaturedust(subcell)
        thisOctal%temperature(subcell) = thisOctal%temperaturedust(subcell)
        
