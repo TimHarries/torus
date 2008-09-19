@@ -71,7 +71,6 @@ for a summary.
 \hline
     Option    & Description & Default \\
 \hline
-      pgplot  & link with pgplot libraries  & yes \\
       cfitsio & link with cfitsio libraries & yes \\
       debug   & switch on debugging flags   & no  \\
       profile & enable profiling            & no  \\
@@ -85,10 +84,10 @@ for a summary.
 \end{center}
 \end{table}
 
-For example to build torus without linking to the pgplot libraries and
+For example to build torus without linking to the cfitsio libraries and
 with debug flags enabled use
 \begin{verbatim}
-$ make pgplot=no debug=yes 
+$ make cfitsio=no debug=yes 
 \end{verbatim}
 
 You may wish to remove all files from a previous build and start from

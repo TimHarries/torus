@@ -2949,8 +2949,8 @@ subroutine setBiasOnTau(grid, iLambda)
 #endif
 
     deallocate(octalArray)
-    call writeVtkFile(grid, "bias.vtk", &
-            valueTypeString=(/"bias"/))
+!    call writeVtkFile(grid, "bias.vtk", &
+!            valueTypeString=(/"bias"/))
 
   end subroutine setBiasOnTau
 

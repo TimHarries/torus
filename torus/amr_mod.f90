@@ -136,8 +136,10 @@ CONTAINS
        if (associated(thisOctal%ionFrac)) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
-       thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
-       thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
+       if (associated(thisOctal%nh)) &
+            thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
+       if (associated(thisOctal%ne)) &
+            thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
 
        parentOctal%hasChild(parentsubcell) = .false.
        call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
@@ -9838,7 +9840,15 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%dustType, source%dustType)
     call copyAttribute(dest%oldFrac, source%oldFrac)
     call copyAttribute(dest%diffusionApprox, source%diffusionApprox)
-
+    call copyAttribute(dest%diffusionCoeff, source%diffusionCoeff)
+    call copyAttribute(dest%undersampled, source%undersampled)
+    call copyAttribute(dest%nDiffusion, source%nDiffusion)
+    call copyAttribute(dest%nDirectPhotons, source%nDirectPhotons)
+    call copyAttribute(dest%oldtemperature, source%oldtemperature)
+    call copyAttribute(dest%eDens, source%eDens)
+    call copyAttribute(dest%oldeDens, source%oldeDens)
+    call copyAttribute(dest%kappaRoss, source%kappaRoss)
+ 
     call copyAttribute(dest%nh2, source%nh2)
     call copyAttribute(dest%microturb, source%microturb)
     call copyAttribute(dest%molmicroturb, source%molmicroturb)
@@ -16258,6 +16268,7 @@ end function readparameterfrom2dmap
        thisOctal%dustTypeFraction(:,1) = 1.d0
        thisOctal%inflow = .true.
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)

@@ -261,15 +261,16 @@ contains
   subroutine throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
 
     type(GRIDTYPE) :: grid
-    real(double) :: zAxis(10000)
-    real(double) :: rho(10000)
-    real :: temperature(10000)
-    real(double) :: subcellsize(10000)
+    integer, parameter :: maxvals = 100000
+    real(double) :: zAxis(maxVals)
+    real(double) :: rho(maxVals)
+    real :: temperature(maxVals)
+    real(double) :: subcellsize(maxvals)
     real :: mStar, sigma0, rDisk
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: converged 
-    real(double) :: xAxis(1000000)
+    real(double) :: xAxis(maxVals*10)
     integer :: nx, i
 
     nx = 0
@@ -277,7 +278,6 @@ contains
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
-    write(*,*) "getxvalues after strip",nx
     xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
     smallestSubcell = 2. * grid%halfSmallestSubcell
     
@@ -397,7 +397,7 @@ contains
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
 
-       call torus_mpi_barrier('waiting to do lucy.')
+       call torus_mpi_barrier()
 
        if (nIter == 1) then
           maxIter = 2
@@ -440,7 +440,7 @@ contains
 
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
-       write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
+       if (myRankisZero) write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
 
 
@@ -511,10 +511,8 @@ contains
           write(*,*) "Maximum number of iterations exceeded. Aborting."
           converged = .true.
        else
-          write(*,*) "calling set temperature..."
           temp = 20.
           call setTemperature(grid%octreeRoot, temp)
-          write(*,*) "done."
        endif
        
     enddo
