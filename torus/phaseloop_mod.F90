@@ -1069,7 +1069,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      end if
 
-     write(message,'(a,f6.3,f6.3,f6.3)') "Viewing vector: ",viewVec%x, viewVec%y, viewVec%z
+     write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Viewing vector: (",viewVec%x,",",viewVec%y,",", viewVec%z,")"
      call writeInfo(message, TRIVIAL)
 
      ! zero the output arrays
@@ -1203,7 +1203,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      call writeInfo(message, TRIVIAL)
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
-     
      ntot = 0
 
      ! now we loop 10 times over a tenth of the photons - this will be used
@@ -1296,7 +1295,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(yArray, statArray, stokesImage, obsImageSet, doPvimage) &
 !$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
 !$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, maxScat, mie) &
-!$OMP SHARED(miePhase, zeroVec, theta1, theta2, chanceHotRing) &
+!$OMP SHARED(miePhase, zero Vec, theta1, theta2, chanceHotRing) &
 !$OMP SHARED(nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, chanceDust) &
 !$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
 !$OMP SHARED(sampleFreq, useInterp, photLine,tooFewSamples,boundaryProbs) &
@@ -1305,6 +1304,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat)
+
 
 
         if (mie) then
@@ -2522,32 +2522,34 @@ endif ! (doPvimage)
 !        if (wtot0_cont /=0.) write(*,*) "Mean radius of cont zero",meanr0_cont/wtot0_cont/grid%rCore
 !     endif
 
+ 
+ write(*,*) "rank ", myRankGlobal, " zero ", myRankisZero
  if (myRankIsZero) then 
-     if (nPhase == 1) then
+    if (nPhase == 1) then
 
-        call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
-     .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
-
-        if (velocitySpace) then
-           specFile = trim(outfile)//"_v"
-           call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
-             .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
-        endif
-
-     else
-        write(tempChar,'(i3.3)') iPhase
-        specFile = trim(outfile)//trim(tempChar)
-
+       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
+            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+       
+       if (velocitySpace) then
+          specFile = trim(outfile)//"_v"
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
+               .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+       endif
+       
+    else
+       write(tempChar,'(i3.3)') iPhase
+       specFile = trim(outfile)//trim(tempChar)
+       
         call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
-      .false., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
-
+             .false., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+        
         if (velocitySpace) then
            tempChar = trim(specFile)//"_v"
            call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
-             .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+                .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         endif
-
-
+        
+        
         if (doRaman) then
            write(tempChar,'(i3.3)') iPhase
            o6filename = trim(outfile)//"_o6_"//trim(tempChar)//".dat"
@@ -2560,8 +2562,7 @@ endif ! (doPvimage)
         endif
      endif
 
-     close(22)
-
+     write(*,*) "rank ",myrankGlobal, " is here with ", stokesimage, trim(outfile)
      if (stokesimage) then
         do i = 1, nImage
            name_filter = get_filter_name(filters, i)

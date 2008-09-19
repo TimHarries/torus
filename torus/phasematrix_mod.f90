@@ -477,9 +477,6 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 
   enddo
   deallocate(tarray)
-  do i = 1, nLambda
-     write(79,*) xArray(i), ymedian(i)
-  enddo
 
 
   do i = 1, nLambda
