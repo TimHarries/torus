@@ -21,7 +21,7 @@ use particle_pos_mod, only: particle_pos
   integer, parameter :: db = selected_real_kind(15,307)
 
 ! Cylindrical polar co-ordinates
-  real(db), allocatable :: r(:), z(:)
+  real(db), allocatable :: r(:), z(:), r_all(:), z_all(:)
   real(db) :: theta
 
 ! Cartesian co-ordinates used with z above
@@ -67,6 +67,8 @@ use particle_pos_mod, only: particle_pos
   real :: ran_num
 
   integer :: ierr, my_rank, nproc
+  integer :: isize
+  integer, allocatable :: iseed(:)
 
   character(len=4)  :: char_nproc
 
@@ -83,7 +85,20 @@ use particle_pos_mod, only: particle_pos
   nproc   = 1
 #endif
 
+
+! Set up the random number generator  
   call random_seed
+
+#ifdef MPI
+! Make sure MPI processes all have the same random seed
+  call random_seed(size=iSize)
+  allocate(iSeed(1:iSize))
+  call random_seed(get=iSeed)
+  call mpi_barrier(MPI_COMM_WORLD, ierr)
+  call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call random_seed(put=iseed)
+  deallocate(iSeed)
+#endif
 
   total_gas_mass = total_disc_mass / real(nproc) 
   b_num_gas      = npart / nproc  ! number of gas particles for this MPI process
@@ -96,14 +111,25 @@ use particle_pos_mod, only: particle_pos
      b_idim = b_num_gas
   end if
 
+
+  allocate ( r_all (npart) )
+  allocate ( z_all (npart) ) 
+
+  call particle_pos( npart, r_all, z_all)
+
+  allocate ( r(b_num_gas) )
+  allocate ( z(b_num_gas) )
+
+  r(:) = r_all( ( my_rank*b_num_gas + 1) : ( (my_rank+1) * b_num_gas ) )
+  z(:) = z_all( ( my_rank*b_num_gas + 1) : ( (my_rank+1) * b_num_gas ) )
+
+  deallocate ( r_all ) 
+  deallocate ( z_all )
+
   allocate ( b_xyzmh(5,b_idim) )
   allocate ( b_rho(b_idim)     )
   allocate ( b_iphase(b_idim)  )
   allocate ( b_temp(b_num_gas) )
-  allocate ( r(b_num_gas)      )
-  allocate ( z(b_num_gas)      )
-
-  call particle_pos( b_num_gas, r, z)
 
   r(:) = r(:) * auToCm
   z(:) = z(:) * auToCm
