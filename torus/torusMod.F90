@@ -99,7 +99,7 @@ contains
   type(SURFACETYPE) :: starSurface
 
   ! adaptive grid stuff
-  type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
+  type(VECTOR)      :: amrGridCentre ! central coordinates of grid
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
@@ -259,7 +259,7 @@ contains
   grid%resonanceLine = resonanceLine
 
 
-  amrGridCentre = OCTALVECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+  amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
 
   if (doRaman) screened = .true.
@@ -510,7 +510,7 @@ CONTAINS
 
     else  ! not reading a population file
 
-       amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
+       amrGridCentre = Vector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        
        call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
@@ -642,7 +642,7 @@ end module torus_mod
 
   subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
 
-    USE vector_mod, only:     octalVector
+    USE vector_mod, only:     vector
     USE amr_mod, only:        amrGridValues
     USE gridtype_mod, only:   gridType
     USE sph_data_class, only: sph_data, get_udist
@@ -672,7 +672,7 @@ end module torus_mod
     real(double) :: sphDistFac
     real         :: tgas
     real         :: deltaT, sum_deltaT, mean_deltaT, max_deltaT
-    type(OCTALVECTOR) :: octVec
+    type(VECTOR) :: positionVec
 
 ! Begin executable statements
 
@@ -691,8 +691,8 @@ end module torus_mod
              xgas = b_xyzmh(1,i) * sphDistFac
              ygas = b_xyzmh(2,i) * sphDistFac
              zgas = b_xyzmh(3,i) * sphDistFac
-             octVec = OCTALVECTOR(xgas,ygas,zgas)
-             call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
+             positionVec = VECTOR(xgas,ygas,zgas)
+             call amrGridValues(grid%octreeRoot, positionVec, temperature=tgas, grid=grid)
 ! 2.2 Calculate statistics of temperature change
              deltaT     = tgas - b_temp(iiigas)
              sum_deltaT = sum_deltaT + deltaT
