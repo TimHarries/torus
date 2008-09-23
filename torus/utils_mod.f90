@@ -1191,7 +1191,7 @@ contains
     end subroutine timeString      
 
     subroutine systemInfo(startTime,nPhotons)
-      integer :: nPhotons
+      integer(kind=bigInt) :: nPhotons
       character(len=80) :: time, login, hostname, message
       integer :: cpuTime, endTime, startTime, i
 
