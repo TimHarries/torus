@@ -1106,7 +1106,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !!
         ! number of images = number of filters
         nImage = get_nfilter(filters)
-
         ! Allocate the image array
         if (allocated(obsImageSet)) deallocate(obsImageSet)
         allocate(obsImageSet(nImage))
@@ -1312,10 +1311,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            iLambdaPhoton = iOuterLoop
 
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, grid%lamArray, iLambdaPhoton)
-
+           
+           if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
-
-
+           if (doTuning) call tune(6,"Calculate bias on tau")
 !!$           if (writeoutput) &
 !!$           call plot_AMR_values(grid, "bias", plane_for_plot, val_3rd_dim,  &
 !!$                "bias.ps/vcps", .true., .false., & 
@@ -1341,9 +1340,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            
            totEnvelopeEmission = totDustContinuumEmission
            chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
-!           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-!           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
-!           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
+           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
            
 
 !           weightDust = chanceDust / probDust
@@ -2523,7 +2522,6 @@ endif ! (doPvimage)
 !     endif
 
  
- write(*,*) "rank ", myRankGlobal, " zero ", myRankisZero
  if (myRankIsZero) then 
     if (nPhase == 1) then
 
@@ -2562,7 +2560,6 @@ endif ! (doPvimage)
         endif
      endif
 
-     write(*,*) "rank ",myrankGlobal, " is here with ", stokesimage, trim(outfile)
      if (stokesimage) then
         do i = 1, nImage
            name_filter = get_filter_name(filters, i)

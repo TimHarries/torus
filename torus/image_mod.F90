@@ -322,14 +322,12 @@ module image_mod
 
        scale = 1.d0 ! energyperphoton scaling factor
 
-       write(*,*) "OBJECT DISTANCE ",objectDistance
        scale = scale * (1.d0 / objectDistance**2) ! erg/s/pix/cm^2
 
        scale = scale * 1.d-4 ! erg/s/pix/m^2
 
        scale = scale * 1.d-7 ! W/m^2/pix
 
-       write(*,*) "Scaling factor ", scale
 !       !
 !       write(*,*) " "
 !       write(*,*) "================================================================="
@@ -662,7 +660,6 @@ module image_mod
 
        
 
-       write(*,*) "objectdist, scale ",objectDistance,scale
        select case(type)
           case("intensity")
              array = image%pixel%i * scale
@@ -671,7 +668,11 @@ module image_mod
           case("stokesu")
              array = image%pixel%u * scale
           case("pol")
-             array = 100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i
+             array = 1.d-30
+             where (image%pixel%i /= 0.) 
+                array = 100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i
+             end where
+          
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type
        end select

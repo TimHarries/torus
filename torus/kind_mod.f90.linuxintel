@@ -5,6 +5,7 @@ module kind_mod
   implicit none
 
   integer, parameter :: single = 4
+  integer, parameter :: bigInt = 8
   integer, parameter :: si = single
   integer, parameter :: double = 8
   integer, parameter :: db = double

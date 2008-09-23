@@ -479,7 +479,7 @@ module input_variables
   logical :: statEq1stOctant ! T if do stateqAMR routine for the octals in first octant
                              ! then later values are mapped to other octants.
 
-  integer :: nPhotons
+  integer(kind=bigInt) :: nPhotons
   integer :: maxScat
   logical :: noScattering
   

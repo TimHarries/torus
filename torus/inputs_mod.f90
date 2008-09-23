@@ -81,7 +81,8 @@ contains
          "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
 
 
-    call getInteger("nphotons", nPhotons, cLine, nLines, &
+
+    call getBigInteger("nphotons", nPhotons, cLine, nLines, &
          "Number of photons: ", "(a,i10,1x,a)", 100000, ok, .true.)
 
     call getInteger("idump", idump, cLine, nLines, &
@@ -2725,6 +2726,26 @@ subroutine findInteger(name, value, cLine, nLines, ok)
  end do
  end subroutine findInteger
 
+subroutine findBigInteger(name, value, cLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ integer(kind=bigInt) :: value
+ character(len=80) :: cLine(*)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j, k
+
+ ok = .false.
+ do i = 1, nLines
+  j = len_trim(name)
+  k = index(cline(i)," ")-1
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+       ok = .true.
+       read(cLine(i)(j+1:),*) value
+  endif
+ end do
+end subroutine findBigInteger
+
 subroutine findLogical(name, value, cLine, nLines, ok)
  implicit none
  character(len=*) :: name
@@ -2814,6 +2835,35 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
      call writeInfo(output, TRIVIAL)
   endif
  end subroutine getInteger
+
+ subroutine getBigInteger(name, ival, cLine, nLines, message, format, idef, ok, &
+                       musthave)
+  character(len=*) :: name
+  integer(kind=bigInt) :: ival
+  character(len=80) :: cLine(*)
+  character(len=100) :: output
+  integer :: nLines
+  character(len=*) :: message, format
+  character(len=10) :: default
+  logical :: musthave
+  integer :: idef
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findBigInteger(name, ival, cLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
+       stop
+    endif
+    ival = idef
+    default = " (default)"
+  endif
+  if (musthave.or.(ival /= idef)) then
+     write(output,format) trim(message),ival,default
+     call writeInfo(output, TRIVIAL)
+  endif
+end subroutine getBigInteger
 
  subroutine getReal(name, rval, cLine, nLines, message, format, rdef, ok, &
                     musthave)

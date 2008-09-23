@@ -115,7 +115,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nMuMie = 1000
+  integer, parameter :: nMuMie = 2000
   type(PHASEMATRIX), allocatable :: miePhase(:,:, :)
 
   ! variables for clumped wind models
@@ -609,23 +609,16 @@ program torus
 
 
 
-!  tempArray(1) = 1.d0
-!  call testMiePhase(xarray(1), xArray, nLambda, miePhase, nDustType, nMuMie, temparray)
-!  if (writeoutput) then
-!     open(76, file="phasematrix.dat",status="unknown",form="formatted")
-!     ilambda = findIlambda(10000.0, xArray, nLambda, ok)
-!     do i = 1, nMuMie
-!        ang =  pi*real(i-1)/real(nMuMie-1)
-!        write(76,*) 180.*ang/pi, miephase(1, ilambda, i)%element(1,1)
-!     enddo
-!     close(76)
-!     tempArray(1) = 0.
-!     do i = 1, nMumie
-!        tempArray(1) = tempArray(1) + miePhase(1, ilambda, i)%element(1,1)/real(nMuMie)
-!     enddo
-!
-!  endif
-!  stop
+  if (writeoutput) then
+     open(76, file="phasematrix.dat",status="unknown",form="formatted")
+     ilambda = findIlambda(10000.0, xArray, nLambda, ok)
+     do i = 1, nMuMie
+        ang =  pi*real(i-1)/real(nMuMie-1)
+        write(76,*) 180.*ang/pi, miephase(1, ilambda, i)%element(1,1)
+     enddo
+     close(76)
+
+  endif
 
   if (includeGasOpacity) then
 
