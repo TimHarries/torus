@@ -5111,9 +5111,8 @@ IF ( .NOT. gridConverged ) RETURN
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
-!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 2.)) split = .true.
-
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
+!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -5122,17 +5121,19 @@ IF ( .NOT. gridConverged ) RETURN
 
 
       splitInAzimuth = .false.
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 91.)) then
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
          splitInAzimuth = .true.
          split = .true.
       endif
 
-      if (abs(cellCentre%z) < rinner/5.) then
+      if (abs(cellCentre%z) < rinner/2.) then
          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
             splitInAzimuth = .true.
             split = .true.
          endif
-         if ((r < rinner).and.(thisOctal%subcellSize > (0.1*rinner))) split = .true.
+      endif
+      if (abs(cellCentre%z) < rinner/5.) then
+         if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
       endif
 
       if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
@@ -9703,7 +9704,7 @@ end function readparameterfrom2dmap
       call deallocateOctalDynamicAttributes(thisOctal)
 
     END SUBROUTINE deleteOctalPrivate
-      
+
     SUBROUTINE deallocationError(error,location)
       INTEGER, INTENT(IN) :: error, location
       PRINT *, "DEALLOCATE error in deleteOctal"
@@ -16382,31 +16383,33 @@ end function readparameterfrom2dmap
     subroutine deallocateOctalDynamicAttributes(thisOctal)
       type(OCTAL):: thisOctal
 
-       call deAllocateAttribute(thisOctal%oldFrac)
-       call deAllocateAttribute(thisOctal%dustType)
-       call deAllocateAttribute(thisOctal%dustTypeFraction)
-
-       call deAllocateAttribute(thisOctal%diffusionApprox)
-       call deAllocateAttribute(thisOctal%nDiffusion)
-       call deAllocateAttribute(thisOctal%eDens)
-       call deAllocateAttribute(thisOctal%diffusionCoeff)
-       call deAllocateAttribute(thisOctal%oldeDens)
-       call deAllocateAttribute(thisOctal%nDirectPhotons)
+       call deallocateAttribute(thisOctal%oldFrac)
+       call deallocateAttribute(thisOctal%dustType)
+       call deallocateAttribute(thisOctal%dusttypefraction)
+       call deallocateAttribute(thisOctal%diffusionApprox)
+       call deallocateAttribute(thisOctal%changed)
+       call deallocateAttribute(thisOctal%nDiffusion)
+       call deallocateAttribute(thisOctal%eDens)
+       call deallocateAttribute(thisOctal%diffusionCoeff)
+       call deallocateAttribute(thisOctal%oldeDens)
+       call deallocateAttribute(thisOctal%nDirectPhotons)
        
-       call deAllocateAttribute(thisOctal%underSampled)
-       call deAllocateAttribute(thisOctal%oldTemperature)
-       call deAllocateAttribute(thisOctal%kappaRoss)
-       call deAllocateAttribute(thisOctal%distanceGrid)
-       call deAllocateAttribute(thisOctal%nCrossings)
-       call deAllocateAttribute(thisOctal%nTot)
-       call deAllocateAttribute(thisOctal%etaCont)
-       call deAllocateAttribute(thisOctal%etaLine)
-       call deAllocateAttribute(thisOctal%chiLine)
-       call deAllocateAttribute(thisOctal%biasCont3D)
-       call deAllocateAttribute(thisOctal%biasLine3D)
+       call deallocateAttribute(thisOctal%underSampled)
+       call deallocateAttribute(thisOctal%oldTemperature)
+       call deallocateAttribute(thisOctal%kappaRoss)
+       call deallocateAttribute(thisOctal%distanceGrid)
+       call deallocateAttribute(thisOctal%nCrossings)
+       call deallocateAttribute(thisOctal%nTot)
+       call deallocateAttribute(thisOctal%etaCont)
+       call deallocateAttribute(thisOctal%etaLine)
+       call deallocateAttribute(thisOctal%chiLine)
+       call deallocateAttribute(thisOctal%biasCont3D)
+       call deallocateAttribute(thisOctal%biasLine3D)
 
-       call deAllocateAttribute(thisOctal%probDistLine)
-       call deAllocateAttribute(thisOctal%probDistCont)
+       call deallocateAttribute(thisOctal%probDistLine)
+       call deallocateAttribute(thisOctal%probDistCont)
+
+
 
        call deAllocateAttribute(thisOctal%N)
        call deAllocateAttribute(thisOctal%atomAbundance)
