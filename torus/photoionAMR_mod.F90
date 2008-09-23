@@ -383,7 +383,6 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein, maxIter)
-!    use input_variables, only : zoomFactor
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
@@ -725,18 +724,12 @@ contains
     if (myrank == 1) call tune(6, "Temperature/ion corrections")
 
 !       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
-!       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-!            "crossings.ps/vcps", .true., .false., &
-!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 !       call tune(6, "Gauss-Seidel sweeps")
 
 
 !       nCellsInDiffusion = 0
 !       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
-!       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-!            "rho_temp_zoom.ps/vcps", .true., .false., &
-!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
 
 !       call solveArbitraryDiffusionZones(grid)
 !       call defneDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)

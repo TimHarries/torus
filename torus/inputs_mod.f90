@@ -289,9 +289,6 @@ contains
             "Populations output file will be formatted: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("forcelinechange", forceLineChange, cLine, nLines, &
             "Recalculate opacities for different line transition: ","(a,1l,1x,a)", .false., ok, .false.)
-! Set the default PGPLOT device to be used by plot_AMR_values
-       call getString( "pgplotdevice", pgplotDevice, cline, nlines, &
-            "Default PGPLOT device for plot_AMR_values: ", "(a,a,1x,a)", "ps/vcps", ok, .false. )
 
     else    
 
@@ -1928,28 +1925,11 @@ endif
  call getLogical("ndf", useNdf, cLine, nLines, &
   "Use NDF format files: ","(a,1l,a)",.true., ok, .false.)
 
-! Use plot_maps parameter instead (it already exists).
-! call getLogical("doplots", doplots, cLine, nLines, &
-!  "Plot outputs: ","(a,1l,a)",.true., ok, .false.)
-
- call getString("device", device, cLine, nLines, &
-  "Plot device: ","(a,a,1x,a)","/xs", ok, .false.)
-
  call getLogical("plot_maps", plot_maps, cLine, nLines, &
   "Plot values on specified plane?: ","(a,1l,a)",.true., ok, .false.)
 
- call getString("plane_for_plot", plane_for_plot, cLine, nLines, &
-  "Plane(s) for plotting: ","(a,a,1x,a)","x-z", ok, .false.)
-
- call getLogical("show_value_3rd_dim", show_value_3rd_dim, cLine, nLines, &
-  "Display the third dimension on plot_AMR_value: ","(a,1l,a)",.false., ok, .false.)
-
- call getReal("zoomfactor", zoomFactor, cLine, nLines, &
-      "Image zoom factor: ", "(a,1pe7.4,1x,a)", 0.01, ok, .false.)
-
  call getString("misc", misc, cLine, nLines, &
   "Miscallenous rubbish: ","(a,a,1x,a)","junk", ok, .false.)
-
 
  call getLogical("movie", movie, cLine, nLines, &
   "Make a movie: ","(a,1l,a)",.false., ok, .false.)

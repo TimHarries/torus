@@ -2071,8 +2071,6 @@ contains
     return
 
 !    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-!    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
-!         "etaline.ps/vcps", .true., .false.)
     
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)

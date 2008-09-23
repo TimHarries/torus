@@ -672,7 +672,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol, zoomfactor !, tauforce
+    use input_variables, only : eDensTol !, tauforce
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid

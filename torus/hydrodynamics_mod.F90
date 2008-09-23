@@ -2271,11 +2271,6 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-!     call plot_AMR_values(grid, "rho", "x-y", 0., &
- !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
-
-
-
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
        if (currentTime .gt. nextDumpTime) then
@@ -2293,7 +2288,6 @@ contains
 
 
   subroutine doHydrodynamics3d(grid)
-    use input_variables, only : zoomFactor
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), gamma, mu
@@ -2581,12 +2575,6 @@ contains
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
-!    call writeInfo("Plotting grid", TRIVIAL)    
-!    write(plotfile,'(a,i2.2,a)') "test",myRank,".png/png"
-!    call plot_AMR_values(grid, "rho", "x-z", 0., &
-!           plotfile,.false., .true.)
-
-
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2756,9 +2744,6 @@ contains
        call evenUpGridMPI(grid, .true., dorefine)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
-!     call plot_AMR_values(grid, "rho", "x-y", 0., &
- !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
 
 
 

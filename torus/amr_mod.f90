@@ -905,11 +905,6 @@ CONTAINS
     INTEGER              :: iSubcell, iIndex ! loop counters
     INTEGER              :: i, j, k
     logical :: splitInAzimuth
-    !
-    integer, save        :: split_iter = 0
-
-!    real :: dummy(1)
-!    character(len=40) :: filename
 
     !
     ! For "romanova" geometry
@@ -982,24 +977,6 @@ CONTAINS
       CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
                      sphData, stellar_cluster, setChanged, romData=romData)
       
-!!      if(writeoutput) then
-!!         if(split_iter .lt. 10) then
-!!            write(filename,'(a,i1,a)') "./splitting/split00",split_iter,".ps/vcps"
-!!         elseif(split_iter .lt. 100) then
-!!            write(filename,'(a,i2,a)') "./splitting/split0",split_iter,".ps/vcps"
-!!         else
-!!            write(filename,'(a,i3,a)') "./splitting/split",split_iter,".ps/vcps"
-!!         endif
-!!         
-!!         if(iIndex .eq. thisOctal%nChildren) then
-!!            call fudge_plot_AMR_values(grid, "Area", "x-z", real(grid%octreeRoot%centre%y), &
-!!                 filename, .true., .false., &
-!!                 0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., fixValMin=1d4, fixValMax=1d8) 
-!!            
-!!            split_iter = split_iter + 1
-!!            write(*,*) split_iter
-!!         endif
-!!      endif
    END DO
 
 !    if (associated(thisOctal%gas_particle_list)) then
@@ -16124,133 +16101,6 @@ end function readparameterfrom2dmap
     CALL sumSurface(surface)
 
   end subroutine genericAccretionSurface
-
-  recursive subroutine fudge_minMaxValue(thisOctal, name, plane, valueMin, valueMax, grid, ilam)
-    implicit none
-    type(octal), pointer   :: thisOctal
-    type(gridtype) :: grid
-    character(LEN=*), intent(in) :: name ! See the options in plot_AMR_values
-    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x' 
-    real(double), intent(inout) :: valueMin, valueMax
-    !
-    type(octal), pointer  :: child 
-    integer :: subcell, i
-    integer, intent(in), optional :: ilam
-    real(double) :: value
-    !
-    real :: xp, yp, xm, ym, zp, zm
-    real(double) :: kabs
-    real(double) :: d
-    logical :: use_this_subcell, update
-    type(vector) :: rvec, rhat
-    
-  
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call fudge_minMaxValue(child, name, plane, valueMin, valueMax, grid, ilam)
-                exit
-             end if
-          end do
-       else
-          rVec = subcellCentre(thisOctal,subcell)
-          d = thisOctal%subcellSize/2.d0
-          xp = REAL(rVec%x + d)
-          xm = REAL(rVec%x - d)
-          yp = REAL(rVec%y + d)
-          ym = REAL(rVec%y - d)
-          zp = REAL(rVec%z + d)
-          zm = REAL(rVec%z - d)          
-
-          use_this_subcell = .false.
-          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < d*2.0d0) then
-             use_this_subcell = .true.
-          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < d*2.0d0) then
-             use_this_subcell = .true.
-          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < d*2.0d0) then
-             use_this_subcell = .true.
-          else
-             use_this_subcell = .false.
-          end if
-
-          use_this_subcell = .true.
-
-          if (use_this_subcell) then
-             update =.true.
-             select case (name)
-             case("rho")
-                value = thisOctal%rho(subcell)
-                if (value < 1.e-25) update = .false.
-             case("ionization")
-                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
-             case("photocoeff")
-                value = thisOctal%photoIonCoeff(subcell,1)
-             case("temperature")
-                value = thisOctal%temperature(subcell)
-                if (value < 3.)  update = .false.
-             case("dusttype")
-                value = thisOctal%dustTypeFraction(subcell,1)
-             case("dusttype1")
-                value = thisOctal%dustTypeFraction(subcell,1)
-             case("dusttype2")
-                value = thisOctal%dustTypeFraction(subcell,2)
-             case("dusttype3")
-                value = thisOctal%dustTypeFraction(subcell,3)
-             case("dusttype4")
-                value = thisOctal%dustTypeFraction(subcell,4)
-             case("chiLine")
-                value = thisOctal%chiLine(subcell)
-             case("etaLine")
-                value = thisOctal%etaLine(subcell)
-             case("n=3")
-                value = thisOctal%atomLevel(subcell, 1, 3)
-             case("etaCont")
-                value = thisOctal%etaCont(subcell)
-             case("crossings")
-                value = thisOctal%ncrossings(subcell)
-                if (thisOctal%diffusionApprox(subcell)) value = 1.e6
-             case("direct")
-                if (thisOctal%ncrossings(subcell) > 0) then
-                   value = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%nCrossings(subcell))
-                else
-                   value = 0.
-                endif
-             case("Vx")
-                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
-             case("Vy")
-                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
-             case("Vz")
-                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
-             case("dV_dR")
-                ! The directional derivative the velocity field in radial direction.
-                rhat = rvec
-                call normalize(rhat)
-                value = amrGridDirectionalDeriv(grid,rvec, rhat, thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
-             case("tau")
-                call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
-                value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
-                if (thisOctal%diffusionApprox(subcell)) update = .false.
-             case("J")
-                value = thisOctal%molecularlevel(subcell,ilam)
-             case("Area")
-                value = thisOctal%subcellsize
-
-             case default
-                write(*,*) "Error:: unknow name passed to MinMaxValue.",trim(name)
-                stop
-             end select
-             if (update) then
-                valueMax = MAX(valueMax, value)
-                valueMin = Min(valueMin, value)
-             endif
-          end if
-       end if
-    enddo
-
-  end subroutine fudge_minMaxValue
 
 
   subroutine allocateOctalAttributes(grid, thisOctal)

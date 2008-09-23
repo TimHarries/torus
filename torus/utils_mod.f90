@@ -2147,68 +2147,6 @@ contains
 
 
 
-! These subroutines are never called so they have been commented out (D. Acreman 29/11/07)
-!!$    subroutine log_linear_resample(xArray, yArray, nX, nx_max, newXarray, newNx)
-!!$      implicit none
-!!$      real, intent(in)    :: xArray(:)
-!!$      real, intent(inout) :: yArray(:)
-!!$      integer, intent(in) :: nx, newNx
-!!$      real, intent(in)    :: newXarray(:)
-!!$      integer :: nx_max
-!!$      !
-!!$      real :: newYarray(newNx) ! automatic array
-!!$      integer :: i, j
-!!$      real:: log_y2, log_y1, x2, x1, T1
-!!$
-!!$      do i = 1, newNx
-!!$         call hunt(xArray, nx, newXarray(i), j)
-!!$         if (j >= Nx) j = j -1
-!!$         x1 = xArray(j); x2 = xArray(j+1)
-!!$         if (x1 /= x2) then
-!!$            log_y1 = LOG(yArray(j))
-!!$            log_y2 = LOG(yArray(j+1))
-!!$            T1 = (log_y2-log_y1)/(x2-x1)
-!!$            newYarray(i) = log_y1 + T1*(newXarray(i)-x1)
-!!$            newYarray(i) = EXP(newYarray(i))
-!!$         else
-!!$            newYarray(i) = yArray(j)
-!!$         endif
-!!$      enddo
-!!$      yArray(1:newNx) = newYArray(1:newNx)
-!!$    end subroutine log_linear_resample
-!!$
-!!$
-!!$
-!!$    subroutine log_linear_resample_dble(xArray, yArray, nX, nx_max, newXarray, newNx)
-!!$      implicit none      
-!!$      real, intent(in)            :: xArray(:)
-!!$      real(double), intent(inout) :: yArray(:)
-!!$      integer, intent(in)         :: nx, newNx
-!!$      real, intent(in)            :: newXarray(:)
-!!$      integer :: nx_max
-!!$      !
-!!$      real(double) :: newYarray(newNx) ! automatic array
-!!$      integer      :: i, j
-!!$      real(double) :: log_y2, log_y1, x2, x1, T1
-!!$
-!!$      do i = 1, newNx
-!!$         call hunt(xArray, nx, newXarray(i), j)
-!!$         if (j >= Nx) j = j -1
-!!$         x1 = xArray(j); x2 = xArray(j+1)
-!!$         if (x2 /= x1) then
-!!$            log_y1 = LOG(yArray(j))
-!!$            log_y2 = LOG(yArray(j+1))
-!!$            T1 = (log_y2-log_y1)/(x2-x1)
-!!$            newYarray(i) = log_y1 + T1*(newXarray(i)-x1)
-!!$            newYarray(i) = EXP(newYarray(i))
-!!$         else
-!!$            newYarray(i) = yArray(j)
-!!$         endif
-!!$      enddo
-!!$      yArray(1:newNx) = newYArray(1:newNx)
-!!$    end subroutine log_linear_resample_dble
-
-
     subroutine log_log_resample(xArray, yArray, nX, newXarray, newNx)
       implicit none
       real, intent(in)    :: xArray(:)

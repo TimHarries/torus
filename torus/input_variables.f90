@@ -154,18 +154,12 @@ module input_variables
   character(len=80) :: outFile
   character(len=80) :: intProFilename
   character(len=80) :: intProFilename2
-  character(len=80) :: device, opacityDataFile
+  character(len=80) :: opacityDataFile
   character(len=80) :: dustfilename(10)
   logical :: useNdf 
   
-  ! plane to be plotted by plot_AMR_planes and plot_AMR_values
-  ! Choose one of the following: "x-y", "y-z", "z-x" or "x-z"
+
   logical :: plot_maps
-  logical :: doplots
-  character(len=3)  :: plane_for_plot  
-  logical :: show_value_3rd_dim    ! If T, the value of the third dimension will be shown.
-  real :: zoomFactor
-  character(len=20) :: pgplotDevice
   logical :: plotlevels
 
   ! output arrays

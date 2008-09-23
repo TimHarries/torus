@@ -613,11 +613,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         call stripDustAway(grid%octreeRoot, 1.d-20, 4.d4)
      endif
 
-!     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-!          "etacont_zoom.ps/vcps", .true., .false.,  &
-!          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-!          show_value_3rd_dim, boxfac=zoomfactor)
-
 
      call writeInfo(" ", TRIVIAL)
      call writeInfo("Some basic model parameters",TRIVIAL)
@@ -1315,18 +1310,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
            if (doTuning) call tune(6,"Calculate bias on tau")
-!!$           if (writeoutput) &
-!!$           call plot_AMR_values(grid, "bias", plane_for_plot, val_3rd_dim,  &
-!!$                "bias.ps/vcps", .true., .false., & 
-!!$                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
+
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
 
-!!$           if (writeoutput) then
-!!$              call plot_AMR_values(grid, "prob", plane_for_plot, val_3rd_dim,  &
-!!$                   "prob.ps/vcps", .true., .false., & 
-!!$                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
-!!$           endif
 
            totDustContinuumEmission = totdustContinuumEmission 
            lcore = grid%lCore
