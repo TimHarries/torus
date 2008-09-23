@@ -1124,7 +1124,7 @@ subroutine setDiffOnTau(grid)
     
     if (my_rank == 0) then
        print *, ' '
-       print *, 'Tau bias  computed by ', np-1, ' processors.'
+       print *, 'Diffusion on Tau computed by ', np-1, ' processors.'
        print *, ' '
        call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
                             setDebug=.false.)
@@ -1163,11 +1163,13 @@ subroutine setDiffOnTau(grid)
                 
                 if (cylindrical) then
                    ndir = 4
-                   arrayVec(1) = VECTOR(1.d-10, 1.d-10, 1.d0)
-                   arrayVec(2) = VECTOR(1.d-10, 1.d-10,-1.d0)
-                   arrayVec(3) = VECTOR(rVec%x+1.d-10, rVec%y*1.0001d0,1.d-10)
+                   arrayVec(1) = VECTOR(0.d0, 0.d0, 1.d0)
+                   arrayVec(2) = VECTOR(0.d0, 0.d0,-1.d0)
+                   arrayVec(3) = VECTOR(rVec%x, rVec%y,0.d0)
                    call normalize(arrayVec(3))
                    arrayVec(4) = (-1.d0)*arrayVec(3)
+                   arrayVec(3) = rotateZ(arrayVec(3), 0.1d0*degtorad)
+                   arrayVec(4) = rotateZ(arrayVec(4), 0.1d0*degtorad)
 !                   arrayVec(5) = arrayVec(3).cross.arrayVec(1)
 !                   call normalize(arrayVec(5))
 !                   arrayVec(6) = (-1.d0)*arrayVec(5)

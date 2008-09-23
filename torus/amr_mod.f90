@@ -13151,11 +13151,10 @@ end function readparameterfrom2dmap
          distToR2 = 1.d30
          d = sqrt(point%x**2+point%y**2)
          xHat = VECTOR(point%x, point%y,0.d0)
-         call normalize(xHat)
+         if (modulus(xhat)/=0.d0)    call normalize(xHat)
          rDirection = VECTOR(direction%x, direction%y,0.d0)
          compX = modulus(rDirection)
-         call normalize(rDirection)
-         
+         if (modulus(rDirection) /= 0.d0) call normalize(rDirection)
          if (compX /= 0.d0) then
             cosmu =((-1.d0)*xHat).dot.rdirection
             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)

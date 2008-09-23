@@ -926,15 +926,14 @@ contains
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
-       fac = 1.d0
-       if (grid%geometry == "circumbin") then
-          if (r < rInner) then
-             fac = ((rInner - r)/(0.01*rInner))**2
-             fac = exp(-fac)
-          endif
-       endif
+    endif
 
-       rhoOut = rhoOut * fac
+
+    if (grid%geometry == "circumbin") then
+       if (r < rInner) then
+          fac = ((rInner - r)/(0.01*rInner))**2
+          rhoOut = rho0 *exp(-fac)
+       endif
     endif
 
     if ((r < rInner).and.(grid%geometry == "circumbin")) then
