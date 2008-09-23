@@ -1,22 +1,16 @@
 #!/bin/ksh
-
-# Purpose: run the Torus daily benchmark suite
-# Author: D. Acreman
-
-build_and_prepare()
-
+# Build the Torus executable for the system defined by the 
+# SYSTEM environment variable
+make_build()
 {
-this_system=$1
+mkdir build
+cd    build 
 
-log_file=compile_log_${this_system}.txt
-echo "Building executable for ${this_system}"
-cd build_${this_system}
-ln -s ../torus/* .
-export SYSTEM=${this_system}
-echo Making dependancies...
-/usr/bin/make depends > ${log_file} 2>&1
-echo Making torus...
-/usr/bin/make debug=yes >> ${log_file} 2>&1
+echo "Building Torus for ${SYSTEM}"
+log_file=compile_log.txt
+ln -s ${TEST_DIR}/torus/* .
+/usr/bin/make depends > ${log_file} 2>&1 
+/usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1
 if [[ $? -eq 0 ]]; then
 # Count number of warnings. Subtract 2 because there are always warnings
 # about include files from the make depends step (run twice).
@@ -26,43 +20,80 @@ else
     echo "Compilation failed."
 fi
 
-# Prepare disc benchmark run directory
-cd ../run_${this_system}
-ln -s ../build_${this_system}/torus.${this_system}
-cp -r ../torus/benchmarks/disc/* .
+cd ..
+}
 
-# Prepare molebench run directory
-cd ../run_${this_system}_molebench
-mkdir J
-ln -s ../build_${this_system}/torus.${this_system}
-cp -r ../torus/benchmarks/molebench/* .
-cp ../torus/data/hco_benchmark.mol .
+# Build the Torus library for the system defined by the 
+# SYSTEM environment variable
+make_lib()
+{
+mkdir lib
+cd    lib
 
-# Prepare cylindrical polar version of disc benchmark
-cd ../run_${sys}_disc_cylindrical
-ln -s ../build_${this_system}/torus.${this_system}
-cp -r ../torus/benchmarks/disc_cylindrical/parameters.dat .
-cp -r ../torus/benchmarks/disc/sed* .
-cp -r ../torus/benchmarks/disc/compare* .
-
+echo "Building Torus library for ${SYSTEM}"
+log_file=compile_log_lib.txt
+ln -s ${TEST_DIR}/torus/* .
+/usr/bin/make depends > ${log_file} 2>&1 
+/usr/bin/make lib debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1
+if [[ $? -eq 0 ]]; then
+# Count number of warnings. Subtract 2 because there are always warnings
+# about include files from the make depends step (run twice).
+    num_warn=`grep -i warning ${log_file} | wc -l | awk '{print $1 - 2}'`
+    echo "Compilation completed with ${num_warn} warnings."
+else
+    echo "Compilation failed."
+fi
 cd ..
 
 }
 
-
-check_benchmark()
-
+make_comparespec()
 {
 echo Compiling comparespec code
-/sw/bin/g95 -o comparespec comparespec.f90
+mkdir ${WORKING_DIR}/bin
+cd    ${WORKING_DIR}/bin
+cp ../benchmarks/disc/comparespec.f90 .
+g95 -o comparespec comparespec.f90
+}
+
+run_bench()
+{
+cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
+ln -s ${WORKING_DIR}/build/torus.ompi . 
+mpirun -np 4 torus.ompi > run_log_${THIS_BENCH} 2>&1 
+}
+
+run_sphbench()
+{
+cd ${WORKING_DIR}/benchmarks/sphbench
+ln -s ${WORKING_DIR}/lib/libtorus.a 
+ln -s ${WORKING_DIR}/lib/torus_mod.mod 
+ln -s ${TEST_DIR}/torus/isochrones/iso* .
+./compile
+mpirun -np 4 sphbench > run_log_sphbench 2>&1
+}
+
+check_benchmark()
+{
+
+# Check we have the required benchmark results files
+if [[ ! -e sed100_125.dat ]]; then
+    cp ../disc/sed100_125.dat .
+fi
+
+if [[ ! -e sed100_775.dat ]]; then
+    cp ../disc/sed100_775.dat .
+fi
+
+echo Comparing the 12.5 degree model...
 cp test_inc013.dat speca.dat
 cp sed100_125.dat specb.dat
+${WORKING_DIR}/bin/comparespec
+
 echo Comparing the 12.5 degree model...
-./comparespec
 cp test_inc077.dat speca.dat
 cp sed100_775.dat specb.dat
-echo Comparing the 77.5 degree model...
-./comparespec
+${WORKING_DIR}/bin/comparespec
 }
 
 check_molebench()
@@ -74,111 +105,131 @@ ln -s ${model_file} results.dat
 ./compare_molbench
 }
 
-sphbench()
+run_torus_test_suite()
 {
-rm -rf sphbench
-mkdir sphbench
-cd sphbench
+if [[ -e ${TEST_DIR} ]]; then
+    echo "Removing old ${TEST_DIR}"
+    rm -rf ${TEST_DIR}
+fi
+
+echo "Working directory is ${TEST_DIR}"
+mkdir -p ${TEST_DIR}
+cd ${TEST_DIR}
+
+echo Checking out torus from CVS archive...
+/usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
 
 echo
-echo "Making Torus library"
-mkdir build
-cd build 
-ln -s ../../torus/* .
-make depends > compile_log 2>&1
-make debug=yes lib >> compile_log 2>&1 
+echo "G95 environment variables are"
+printenv | grep G95
+echo
 
-echo "Compiling sphbench"
-cp ../../torus/benchmarks/sphbench/*.f90 .
-cp ../../torus/benchmarks/sphbench/compile .
-./compile >> compile_log 2>&1 
-cd ..
+for sys in ${SYS_TO_TEST}; do
 
-mkdir run
-cd run
-cp ../../torus/benchmarks/sphbench/*.dat . 
-cp ../../torus/benchmarks/sphbench/*.txt . 
-cp ../../torus/benchmarks/disc/comparespec.f90 . 
-cp ../../torus/benchmarks/disc/sed* .
-ln -s ../../torus/isochrones/iso* .
-ln -s ../build/sphbench .
-echo "Running sphbench"
-/usr/local/bin/mpirun -np 4 sphbench > run_log 2>&1
+    export SYSTEM=${sys}
+    export WORKING_DIR=${TEST_DIR}/benchmarks_${SYSTEM}
+    mkdir ${WORKING_DIR}
+    cd    ${WORKING_DIR} 
+    cp -r ${TEST_DIR}/torus/benchmarks . 
+
+# Build code
+    make_build
+    make_lib
+    make_comparespec
+
+# Run benchmark tests
+    echo "Running disc benchmark"
+    export THIS_BENCH=disc
+    run_bench 
+    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+
+    echo "Running molecular benchmark"
+    export THIS_BENCH=molebench 
+    run_bench
+    check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
+
+    echo "Running cylindrical polar disc benchmark"
+    export THIS_BENCH=disc_cylindrical
+    run_bench
+    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+
+    echo "Running SPH-Bench"
+    run_sphbench
+    check_benchmark > check_log_sphbench.txt 2>&1 
+
+done
 }
 
-# Main part of script starts here ------------------------------------------
+print_help()
+{
+echo ""
+echo "This script runs the torus test suite. Use the -s option to run the stable version tests."
+echo "Use the -d option to run the daily tests (default)."
+echo ""
+}
 
-# Set up 
-test_dir=${HOME}/torus_daily_test
-sys_to_test="ompi"
+########################################################################################################
+
+# Default mode is daily test
+export MODE=daily
+
+# Parse command line arguments
+while [ $# -gt 0 ]
+do
+    case "$1" in 
+	-s) export MODE=stable;;
+	-d) export MODE=daily;;
+	-h) print_help
+	    exit;;
+    esac
+shift
+done
+
+case ${MODE} in 
+
+    daily) export SYS_TO_TEST="ompi"
+	   export DEBUG_OPTS="yes"
+	   echo TORUS daily test suite started on `date`
+	   echo -------------------------------------------------------------------
+	   echo;;
+
+    stable) export SYS_TO_TEST="ompi intelmac"
+            export DEBUG_OPTS="no yes"
+	    echo TORUS stable version tests started on `date`
+	    echo -------------------------------------------------------------------
+	    echo;;
+
+    *)  echo "ERROR: unrecognised mode"
+	exit 1;;
+esac
+
 export CVSROOT=${USER}@pinky.astro.ex.ac.uk:/h/th/CVS
 export CVS_RSH=ssh
 export PATH=/sw/bin:/usr/local/bin:${PATH}
 
-# If all the required files are copied in to the working directory
-# then this line is not required. 
-export TORUS_DATA=${test_dir}/torus/data
+for opt in ${DEBUG_OPTS}; do
+    export USEDEBUGFLAGS=${opt}
 
-export G95_FPU_INVALID=true
-export G95_FPU_ZERODIV=true
-export G95_FPU_OVERFLOW=true
+# Set name of output directory
+    case ${MODE} in 
+	daily)  export TEST_DIR=${HOME}/torus_daily_test;;
+	stable) export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
+    esac
 
+    export TORUS_DATA=${TEST_DIR}/torus/data
 
-echo TORUS test harness script started
-echo ---------------------------------
-echo
+# Set floating point exception flags
+    case ${USEDEBUGFLAGS} in
+	yes) export G95_FPU_INVALID=true
+	    export G95_FPU_ZERODIV=true
+	    export G95_FPU_OVERFLOW=true;;
 
-if [[ -e ${test_dir} ]]; then
-    echo "Found ${test_dir}"
-else
-    echo "Making ${test_dir}"
-    mkdir ${test_dir}
-fi
+	no) export G95_FPU_INVALID=false
+	    export G95_FPU_ZERODIV=false
+	    export G95_FPU_OVERFLOW=false;;
+    esac
 
-cd ${test_dir}
-
-echo Checking out torus from CVS archive...
-rm -rf torus
-/usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
-
-
-for sys in ${sys_to_test}; do
-
-    rm -rf build_${sys} run_${sys} run_${sys}_molebench run_${sys}_disc_cylindrical
-    mkdir  build_${sys} run_${sys} run_${sys}_molebench run_${sys}_disc_cylindrical
-    build_and_prepare ${sys}
-
-    echo "g95 environment variables are:"
-    printenv | grep -i g95
-
-    cd run_${sys}
-    echo 
-    echo "Running torus.${sys}"
-    /usr/local/bin/mpirun -np 4 torus.${sys} > run_log_${sys}.txt 2>&1
-    check_benchmark
-    cd ..
-
-    cd run_${sys}_molebench
-    echo
-    echo "Running torus.${sys} molebench"
-    /usr/local/bin/mpirun -np 4 torus.${sys} > run_log_${sys}.txt 2>&1
-    check_molebench
-    cd ..
-
-    sphbench
-    echo "" > check_log 
-    echo "SPHBENCH RESULTS" >> check_log
-    check_benchmark >> check_log 2>&1 
-    cd ../..
-
-    cd run_${sys}_disc_cylindrical
-    echo
-    echo "Running torus.${sys} cylindrical polar disc benchmark"
-    /usr/local/bin/mpirun -np 4 torus.${sys} > run_log_${sys}.txt 2>&1
-    echo "" > check_log 
-    echo "CYLINDIRCAL POLAR DISC BENCHMARK RESULTS" >> check_log
-    check_benchmark >> check_log 2>&1 
-    cd ..
+    run_torus_test_suite
 
 done
 
