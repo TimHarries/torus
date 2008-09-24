@@ -74,6 +74,7 @@ program torus
   use hydrodynamics_mod
   use mpi_global_mod
   use parallel_mod
+  use gridio_mod
   use phaseloop_mod, only: do_phaseloop
 
   implicit none
@@ -1277,7 +1278,9 @@ CONTAINS
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
     
-
+!    call readAMRgridFlexi("test.flexi",readFileFormatted,grid)
+!    call writeVtkFile(grid, "test.vtk")
+!    stop
     if (readPops .or. readPhasePops .or. readLucy) then 
 
 
@@ -1684,6 +1687,8 @@ CONTAINS
 
         if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
 
+!        if (writeoutput) call writeAMRgridFlexi("test.flexi",.true.,grid)
+!        stop
 
 
 	if (lineEmission) then
