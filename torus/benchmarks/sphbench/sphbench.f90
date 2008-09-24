@@ -210,6 +210,12 @@ use particle_pos_mod, only: particle_pos
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
             temp_min, total_gas_mass, file_tag )
 
+  open(unit=61, file="part_out_"//trim(adjustl(char_nproc))//".dat", status='replace')
+  do ipart=1, b_num_gas
+     write(61,*)  b_xyzmh(1,ipart),  b_xyzmh(2,ipart),  b_xyzmh(3,ipart), b_rho(ipart), b_temp(ipart)
+  end do
+  close(61)
+
   deallocate ( b_xyzmh  )
   deallocate ( b_rho    )
   deallocate ( b_iphase )
