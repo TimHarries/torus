@@ -59,8 +59,17 @@ g95 -o comparespec comparespec.f90
 run_bench()
 {
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
-ln -s ${WORKING_DIR}/build/torus.ompi . 
-mpirun -np 4 torus.ompi > run_log_${THIS_BENCH} 2>&1 
+ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
+
+case ${SYSTEM} in
+    ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
+
+    intelmac) ./torus.intelmac  > run_log_${THIS_BENCH}.txt 2>&1 ;;
+
+    *) echo "Unrecognised SYSTEM type. Aborting"
+       exit 1;;
+esac
+
 }
 
 run_sphbench()
@@ -70,7 +79,16 @@ ln -s ${WORKING_DIR}/lib/libtorus.a
 ln -s ${WORKING_DIR}/lib/torus_mod.mod 
 ln -s ${TEST_DIR}/torus/isochrones/iso* .
 ./compile
-mpirun -np 4 sphbench > run_log_sphbench 2>&1
+
+case ${SYSTEM} in
+    ompi) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1;; 
+
+    intelmac) ./sphbench > run_log_sphbench.txt 2>&1;;
+
+    *) echo "Unrecognised SYSTEM type. Aborting"
+       exit 1;;
+esac
+
 }
 
 check_benchmark()
