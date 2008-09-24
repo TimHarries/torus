@@ -931,8 +931,12 @@ contains
 
     if (grid%geometry == "circumbin") then
        if (r < rInner) then
+          h = height * (rInner / (100.d0*autocm/1.d10))**betaDisc
+          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+          fac = max(-50.d0,fac)
+          rhoOut = dble(rho0) * exp(fac)
           fac = ((rInner - r)/(0.01*rInner))**2
-          rhoOut = rho0 *exp(-fac)
+          rhoOut = rhoOut *exp(-fac)
        endif
     endif
 

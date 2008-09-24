@@ -1150,7 +1150,7 @@ subroutine setDiffOnTau(grid)
 
           if (.not.thisOctal%hasChild(subcell)) then
 
-             rVec = subcellCentre(thisOctal, subcell)
+             rVec = subcellCentre(thisOctal, subcell) + 0.01d0*grid%halfSmallestSubcell*randomUnitVector()
 	
              call returnKappa(grid, thisOctal, subcell,  rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10

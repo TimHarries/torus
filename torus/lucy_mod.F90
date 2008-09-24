@@ -2885,7 +2885,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
           if (.not.thisOctal%hasChild(subcell)) then
 
-             rVec = subcellCentre(thisOctal, subcell)
+             rVec = subcellCentre(thisOctal, subcell) + 0.01d0*grid%halfSmallestSubcell*randomUnitVector()
 	
              call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
              kappaExt = kappaAbs + kappaSca
