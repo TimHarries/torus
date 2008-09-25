@@ -935,7 +935,7 @@ contains
           fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
           fac = max(-50.d0,fac)
           rhoOut = dble(rho0) * exp(fac)
-          fac = ((rInner - r)/(0.01*rInner))**2
+          fac = ((rInner - r)/(0.001*rInner))**2
           rhoOut = rhoOut *exp(-fac)
        endif
     endif
