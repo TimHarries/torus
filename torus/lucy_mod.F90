@@ -2,6 +2,7 @@ module lucy_mod
 
   use constants_mod
   use grid_mod
+  use gridio_mod
   use dust_mod
   use vector_mod
   use phasematrix_mod

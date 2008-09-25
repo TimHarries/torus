@@ -14,6 +14,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   use kind_mod
   use gridtype_mod           
+  use gridio_mod           
   use phasematrix_mod 
   use image_mod   
   use input_variables 

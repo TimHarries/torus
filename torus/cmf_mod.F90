@@ -4,6 +4,7 @@ module cmf_mod
 
 
   use kind_mod
+  use gridio_mod
   use constants_mod
   use utils_mod
   use messages_mod

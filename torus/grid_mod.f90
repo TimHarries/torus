@@ -2718,7 +2718,7 @@ contains
   end subroutine writeGridPopulations
 
   
-  subroutine writeAMRgrid(filename,fileFormatted,grid)
+  subroutine writeAMRgridOld(filename,fileFormatted,grid)
     use input_variables, only : molecular, cmf
     ! writes out the 'grid' for an adaptive mesh geometry  
 
@@ -2950,7 +2950,7 @@ contains
     end subroutine writeOctreePrivate
     
     
-  end subroutine writeAMRgrid
+  end subroutine writeAMRgridOld
 
 
   subroutine writeAMRgridMPI(filename,fileFormatted,grid,mpiFlag)
@@ -3246,7 +3246,7 @@ contains
 
 
   
-  subroutine readAMRgrid(filename,fileFormatted,grid)
+  subroutine readAMRgridOld(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
     use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
@@ -3531,7 +3531,7 @@ contains
 
     end subroutine readOctreePrivate
  
-  end subroutine readAMRgrid
+  end subroutine readAMRgridOld
 
   subroutine readAMRgridMPI(filename,fileFormatted,grid, mpiflag)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  

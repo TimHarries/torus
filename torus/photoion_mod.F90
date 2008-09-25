@@ -3,6 +3,7 @@
 module photoion_mod
 
 use parallel_mod
+use gridio_mod
 use source_mod
 use timing
 use grid_mod

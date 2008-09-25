@@ -72,7 +72,7 @@ module gridio_mod
 
 contains
 
-  subroutine writeAMRgridFlexi(filename,fileFormatted,grid)
+  subroutine writeAMRgrid(filename,fileFormatted,grid)
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -225,9 +225,9 @@ contains
      end subroutine writeOctreePrivateFlexi
     
     
-   end subroutine writeAMRgridFlexi
+   end subroutine writeAMRgrid
 
-  subroutine readAMRgridFlexi(filename,fileFormatted,grid)
+  subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
     implicit none
 
@@ -549,7 +549,7 @@ contains
 
     end subroutine readOctreePrivateFlexi
  
-  end subroutine readAMRgridFlexi
+  end subroutine readAMRgrid
 
 
 
@@ -901,14 +901,12 @@ contains
        if (fileFormatted) then
           write(lUnit,*) attributeName
           write(lUnit,*) dataType
-          write(lUnit,*) SIZE(value,1)
-          write(lUnit,*) SIZE(value,2)
+          write(lUnit,*) SIZE(value,1),SIZE(value,2)
           write(lUnit,*) value(1:SIZE(value,1),1:SIZE(value,2))
        else
           write(lUnit) attributeName
           write(lUnit) dataType
-          write(lUnit) SIZE(value,1)
-          write(lUnit) SIZE(value,2)
+          write(lUnit) SIZE(value,1),SIZE(value,2)
           write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2))
        endif
     endif
@@ -929,16 +927,12 @@ contains
        if (fileFormatted) then
           write(lUnit,*) attributeName
           write(lUnit,*) dataType
-          write(lUnit,*) SIZE(value,1)
-          write(lUnit,*) SIZE(value,2)
-          write(lUnit,*) SIZE(value,3)
+          write(lUnit,*) SIZE(value,1), SIZE(value,2), SIZE(value,3)
           write(lUnit,*) value(1:SIZE(value,1),1:SIZE(value,2),1:SIZE(value,3))
        else
           write(lUnit) attributeName
           write(lUnit) dataType
-          write(lUnit) SIZE(value,1)
-          write(lUnit) SIZE(value,2)
-          write(lUnit) SIZE(value,3)
+          write(lUnit) SIZE(value,1),SIZE(value,2), SIZE(value,3)
           write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2),1:SIZE(value,3))
        endif
     endif
@@ -959,14 +953,12 @@ contains
        if (fileFormatted) then
           write(lUnit,*) attributeName
           write(lUnit,*) dataType
-          write(lUnit,*) SIZE(value,1)
-          write(lUnit,*) SIZE(value,2)
+          write(lUnit,*) SIZE(value,1),SIZE(value,2)
           write(lUnit,*) value(1:SIZE(value,1),1:SIZE(value,2))
        else
           write(lUnit) attributeName
           write(lUnit) dataType
-          write(lUnit) SIZE(value,1)
-          write(lUnit) SIZE(value,2)
+          write(lUnit) SIZE(value,1),SIZE(value,2)
           write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2))
        endif
     endif

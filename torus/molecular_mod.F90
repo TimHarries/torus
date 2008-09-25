@@ -11,6 +11,7 @@ module molecular_mod
    use messages_mod
    use timing
    use grid_mod
+   use gridio_mod
    use math_mod
    use datacube_mod
    use nrutil
