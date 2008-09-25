@@ -9,8 +9,8 @@ cd  ${TORUS_TEST_DIR}
 
 attach_list=""
 
-for file in cvs_log.txt  build_ompi/compile_log_ompi.txt \
-            run_ompi/run_log_ompi.txt run_ompi_molebench/run_log_ompi.txt
+for file in cvs_log.txt  benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*
+ 
 do
     file_size=`du -ks ${file} | awk '{print $1}'`
     if [[ ${file_size} -gt 1000 ]]; then
@@ -22,7 +22,7 @@ do
 done
 
 # Test for success of disc benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" ${LOG_FILE} | /usr/bin/wc -l `
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc/check_log_disc.txt | /usr/bin/wc -l `
 
 if [[ ${num_success} -eq ${num_tests} ]]; then
     subject_line="Disc benchmark successful. "
@@ -31,7 +31,7 @@ else
 fi
 
 # Test for success of molebench
-num_success=`/usr/bin/grep "Test passed" ${LOG_FILE} | /usr/bin/wc -l `
+num_success=`/usr/bin/grep "Test passed" benchmarks_ompi/benchmarks/molebench/check_log_molebench.txt | /usr/bin/wc -l `
 
 if [[ ${num_success} -eq 1 ]]; then
     subject_line2="Molecular benchmark successful. "
@@ -40,7 +40,7 @@ else
 fi
 
 # Test for success of cylindrical polar disc benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" ${TORUS_TEST_DIR}/run_ompi_disc_cylindrical/check_log | /usr/bin/wc -l `
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc_cylindrical/check_log_disc_cylindrical.txt | /usr/bin/wc -l `
 
 if [[ ${num_success} -eq ${num_tests} ]]; then
     subject_line3="Cylindrical polar disc benchmark successful. "
@@ -48,15 +48,24 @@ else
     subject_line3="Cylindrical polar disc benchmark failed. "
 fi
 
+# Test for success of sphbench
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/sphbench/check_log_sphbench.txt | /usr/bin/wc -l `
+
+if [[ ${num_success} -eq ${num_tests} ]]; then
+    subject_line4="SPH-Bench successful. "
+else
+    subject_line4="SPH-Bench failed. "
+fi
+
+
 # Join the output files together and get rid of the old log file
-cat ${LOG_FILE} ${TORUS_TEST_DIR}/sphbench/run/check_log  ${TORUS_TEST_DIR}/run_ompi_disc_cylindrical/check_log > ${TORUS_TEST_DIR}/torus_daily_test_log 
-rm ${LOG_FILE}
+mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log 
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
 mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk drundle@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk"
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "${subject_line} ${subject_line2} ${subject_line3}" ${attach_list} ${user} < ${LOG_FILE}
+    /sw/bin/mutt -s "${subject_line} ${subject_line2} ${subject_line3} ${subject_line4}" ${attach_list} ${user} < ${LOG_FILE}
 done
 
 exit
