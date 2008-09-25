@@ -76,6 +76,7 @@ program torus
   use parallel_mod
   use gridio_mod
   use phaseloop_mod, only: do_phaseloop
+  use benchmark_mod, only: check_benchmark_values
 
   implicit none
 #ifdef MPI
@@ -877,6 +878,10 @@ program torus
 !     stop
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
+
+! Check benchmark results against values read in from file
+! If the file does not exist then the routine will return cleanly
+  if (myRankIsZero .and. grid%geometry == 'benchmark') call check_benchmark_values(grid, "part_out.dat")
 
   if (molecular) then
      if (writemol) call molecularLoop(grid, co)
