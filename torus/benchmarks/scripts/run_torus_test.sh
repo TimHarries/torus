@@ -161,11 +161,6 @@ for sys in ${SYS_TO_TEST}; do
     run_bench 
     check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
 
-    echo "Running molecular benchmark"
-    export THIS_BENCH=molebench 
-    run_bench
-    check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
-
     echo "Running cylindrical polar disc benchmark"
     export THIS_BENCH=disc_cylindrical
     run_bench
@@ -174,6 +169,15 @@ for sys in ${SYS_TO_TEST}; do
     echo "Running SPH-Bench"
     run_sphbench
     check_benchmark > check_log_sphbench.txt 2>&1 
+
+    echo "Running HII region benchmark"
+    export THIS_BENCH=HII_region
+    run_bench
+
+    echo "Running molecular benchmark"
+    export THIS_BENCH=molebench 
+    run_bench
+    check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
 
 done
 }
