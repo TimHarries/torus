@@ -325,6 +325,9 @@ contains
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
+               case("chiline")
+                  write(lunit, *) real(thisOctal%chiline(subcell))
+
                case("tau")
                   call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
                   value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10

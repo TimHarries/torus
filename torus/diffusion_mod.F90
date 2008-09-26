@@ -11,7 +11,7 @@ use vector_mod
 use messages_mod
 use grid_mod
 use parallel_mod
-
+use vtk_mod
 implicit none
 
 
@@ -148,7 +148,7 @@ contains
     enddo
   end subroutine checkConvergence
 
-  subroutine gaussSeidelSweep(grid,  tol, demax, converged)
+  subroutine gaussSeidelSweep(grid,  tol, demax, converged, iter)
 #ifdef MPI
     use input_variables, only : blockhandout
     use mpi_global_mod, only : myRankGlobal, nThreadsGlobal
@@ -158,6 +158,7 @@ contains
     type(GRIDTYPE) :: grid
     real(double) ::  deMax
     real :: tol
+    integer :: iter
     logical :: converged
     integer :: subcell, neighbourSubcell
     real(double) :: eDens(-1:1,-1:1,-1:1)
@@ -173,7 +174,7 @@ contains
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
     real(double) :: phi, DeltaPhi, DeltaZ, deltaR
-    real(double), parameter :: underCorrect = 0.8d0
+    real(double), parameter :: underCorrect = 1.d0
 #ifdef MPI
     integer :: my_rank, np !, isubcell
     real(double) :: globalDeMax
@@ -555,12 +556,13 @@ contains
 
                 if (.not.thisOctal%cylindrical) then
                    DeltaX = r * 1.d10
+                   DeltaX = thisOctal%subcellsize * 1.d10
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
-                   DeltaT = deltaT * 0.1
+                   DeltaT = DeltaT * 0.5
                 else
                    deltaX = min(DeltaR, deltaZ, r * DeltaPhi)
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
-                   DeltaT = deltaT * 0.1
+                   DeltaT = DeltaT * 0.5
                 endif
 
                 if (thisOctal%twoD) then
@@ -696,10 +698,12 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
+    if (writeoutput) call writeVtkFile(grid, "bias.vtk", valueTypeString=(/"chiline    ","temperature"/))
+
 !    endif
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)
-    call resetDiffusionTemp(grid%octreeRoot, 100.)
+!    call resetDiffusionTemp(grid%octreeRoot, 100.)
 
     gridconverged = .false.
     nIter = 0
@@ -707,11 +711,11 @@ end subroutine gaussSeidelSweep
         nIter = nIter + 1
         gridconverged = .true.
         deMax = -1.e30
-        call gaussSeidelSweep(grid, edenstol, demax, gridConverged)
+        call gaussSeidelSweep(grid, edenstol, demax, gridConverged, nIter)
 !        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
-        write(message,*) nIter," Maximum relative change in eDens:",deMax
-	call writeInfo(message, TRIVIAL)
+!        write(message,*) nIter," Maximum relative change in eDens:",deMax
+!	call writeInfo(message, TRIVIAL)
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
            if (myRankIsZero) write(*,*) "No solution found after ",maxIter," iterations"
@@ -1087,6 +1091,7 @@ subroutine setDiffOnTau(grid)
      logical :: rankComplete
      integer :: tag = 0
      logical, allocatable:: diffArray(:), tArray(:)
+     real(double), allocatable :: tauArray(:), trArray(:)
      integer :: nVoxels, ierr
      integer :: nDiff
      integer :: np
@@ -1183,6 +1188,7 @@ subroutine setDiffOnTau(grid)
                    call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0, ross=.true.)
                    tau = min(tau, thisTau)
                 enddo
+                thisOctal%chiLine(subcell) = tau
                 if (tau > tauForce) then
                    thisOctal%diffusionApprox(subcell) = .true.
                 else
@@ -1212,14 +1218,21 @@ subroutine setDiffOnTau(grid)
 
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
      allocate(diffArray(1:nVoxels))
+     allocate(tauArray(1:nVoxels))
      allocate(tArray(1:nVoxels))
+     allocate(trArray(1:nVoxels))
      diffArray = .false.
-     call packDiff(octalArray, nDiff, diffArray,octalsBelongRank)
+     trArray = 0.d0
+     tauArray = 0.d0
+     call packDiff(octalArray, nDiff, diffArray, tauArray, octalsBelongRank)
      call MPI_ALLREDUCE(diffArray,tArray,nDiff,MPI_LOGICAL,&
          MPI_LOR,MPI_COMM_WORLD,ierr)
+     call MPI_ALLREDUCE(tauArray,trArray,nDiff,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
      diffArray = tArray
-     call unpackDiff(octalArray, nDiff, diffArray)
-     deallocate(diffArray, tArray)
+     tauArray = trArray
+     call unpackDiff(octalArray, nDiff, diffArray, tauArray)
+     deallocate(diffArray, tArray, trArray, tauArray)
 #endif
 
     deallocate(octalArray)
@@ -1227,11 +1240,12 @@ subroutine setDiffOnTau(grid)
   end subroutine setDiffOnTau
 
 #ifdef MPI
-      subroutine packDiff(octalArray, nDiff, diffArray, octalsBelongRank)
+      subroutine packDiff(octalArray, nDiff, diffArray, tauArray, octalsBelongRank)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: octalsBelongRank(:)
         integer :: nDiff
+        real(double) :: tauArray(:)
         logical :: diffArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr
         type(OCTAL), pointer :: thisOctal
@@ -1251,6 +1265,7 @@ subroutine setDiffOnTau(grid)
                  nDiff = nDiff + 1
                  if (octalsBelongRank(iOctal) == my_rank) then
                    diffArray(nDiff) = octalArray(iOctal)%content%diffusionApprox(iSubcell)
+                   tauArray(nDiff) = octalArray(iOctal)%content%chiLine(isubcell)
                  else 
                    diffArray(nDiff) = .false.
                  endif
@@ -1260,10 +1275,11 @@ subroutine setDiffOnTau(grid)
        end do
      end subroutine packDiff
 
-      subroutine unpackDiff(octalArray, nDiff, diffArray)
+      subroutine unpackDiff(octalArray, nDiff, diffArray, tauArray)
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nDiff
         logical :: diffArray(:)
+        real(double) :: tauArray(:)
         integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
 
@@ -1280,6 +1296,7 @@ subroutine setDiffOnTau(grid)
              if (.not.thisOctal%hasChild(iSubcell)) then
                  nDiff = nDiff + 1
                  octalArray(iOctal)%content%diffusionApprox(iSubcell) = diffArray(nDiff)
+                 octalArray(iOctal)%content%chiLine(iSubcell) = tauArray(nDiff)
              endif
           end do
        end do

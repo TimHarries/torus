@@ -1105,8 +1105,8 @@ contains
 
 
        if (lucyRadiativeEq) then
-          call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
-          call getInteger("iterLucy", iterLucy, cline, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",5,ok,.false.)
+          call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",0,ok,.false.)
+          call getInteger("iterLucy", iterLucy, cline, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",3,ok,.false.)
 
           call getLogical("forceLucyConv", forceLucyConv, cLine, nLines, &
                "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1120,7 +1120,7 @@ contains
                "(a,f5.1,a)",10.0,ok,.false.)
 
           call getInteger("mincrossings", minCrossings, cLine, nLines, &
-               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
+               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",10,ok,.false.)
        endif
        call getReal("probdust", probDust, cLine, nLines, &
             "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
@@ -2022,13 +2022,13 @@ endif
   "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
  call getReal("tauforce", tauForce, cLine, nLines, &
-  "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
+  "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
 
  call getLogical("resetdiffusion", resetDiffusion, cLine, nLines, &
   "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
 
  call getReal("edenstol", eDensTol, cLine, nLines, &
-  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.05, ok, .false.) ! used for gauss-seidel sweep also
+  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.01, ok, .false.) ! used for gauss-seidel sweep also
 
 
  if (geometry(1:9) .eq. "benchmark") then

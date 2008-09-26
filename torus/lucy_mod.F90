@@ -285,7 +285,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
-    use input_variables, only : variableDustSublimation
+    use input_variables, only : variableDustSublimation, iterlucy
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 !    use input_variables, only : rinner, router
 #ifdef MPI
@@ -376,6 +376,7 @@ contains
 !    integer :: omp_get_num_threads, omp_get_thread_num
     real(double) :: this_bnu, fac2, hNuOverkT
     real(double) :: fac1(nLambda)
+    integer :: nVoxels, nOctals
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -400,7 +401,12 @@ contains
   ! ============================================================================
 #endif
 
-    nMonte = nLucy
+  if (nLucy /= 0) then
+     nMonte = nLucy
+  else
+     call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+     nMonte = nVoxels * 10
+  endif
     nFreq = nLambda
     do i = 1, nFreq
        freq(nFreq-i+1) = cSpeed / (lamArray(i)*1.e-8)
@@ -909,7 +915,7 @@ contains
        !
        ! writing the info above to a file.
 10        format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
-11        format(3x, i12, 3(2x, 1PE12.4), 4(2x, 1PE12.4), (2x, i12))
+11        format(3x, i12, 7(2x, f12.1),  (2x, i12))
           if (first_time_to_open_file) then
              open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
              first_time_to_open_file=.false.
@@ -1087,17 +1093,25 @@ contains
     !
     ! check the convergence
     !
-    if (percent_undersampled>percent_undersampled_min) then
-       converged = .false.
-       nMonte = nMonte*2  ! increases the number of iterations!
-    elseif (nRemoved > 3   &
-         .or. iIter_grand < maxIter &
-         .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then 
-       converged = .false.
+!    if (percent_undersampled>percent_undersampled_min) then
+!       converged = .false.
 !       nMonte = nMonte*2  ! increases the number of iterations!
-    else 
-       converged = .true.
-    end if
+!    elseif (nRemoved > 3   &
+!         .or. iIter_grand < maxIter &
+!         .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then 
+!       converged = .false.
+!       nMonte = nMonte*2  ! increases the number of iterations!
+!    else 
+!       converged = .true.
+!    end if
+
+    if (dt_mean_new < 1.d0) converged = .true. ! mean temperature change is less than 1 degree
+    if (percent_undersampled > percent_undersampled_min) then
+       nMonte  = nMonte * 2
+       converged = .false.
+    endif
+
+    if (iIter_grand < iterlucy) converged = .false.
 
     if (variableDustSublimation) then
        if (iIter_grand < 4) then
