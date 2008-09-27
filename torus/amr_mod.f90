@@ -7272,11 +7272,11 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
 
 
-    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
-    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%boundaryCondition(subcell) = 4
+!    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
+!    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+!    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+!    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+!    thisOctal%boundaryCondition(subcell) = 4
 !
 
   end subroutine calcLexington
@@ -16172,6 +16172,43 @@ end function readparameterfrom2dmap
 
 
     if (photoionization) then
+       call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+       thisOctal%oldFrac = 1.d-30
+       call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
+       thisOctal%dustType = 1
+       ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
+       thisOctal%dustTypeFraction = 0.d0
+       thisOctal%dustTypeFraction(:,1) = 1.d0
+
+       call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
+       
+       call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+
+       call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nh, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nhi, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nhei, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nhii, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+
+       call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
+
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
     endif

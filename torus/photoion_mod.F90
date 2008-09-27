@@ -248,7 +248,6 @@ contains
 #endif
 
        mainloop: do iMonte = iMonte_beg, iMonte_end
-
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)

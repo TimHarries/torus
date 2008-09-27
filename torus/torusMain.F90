@@ -877,6 +877,11 @@ program torus
 !     if (writeoutput) call  writeVtkFile(grid, "test.vtk", "rho")
 !     stop
 
+  if (photoionization) then 
+     call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
+       lucyfileNameout, lucyfileNamein)
+  end if
+
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
 ! Check benchmark results against values read in from file
@@ -963,23 +968,23 @@ CONTAINS
           xArray(i) = 10.**xArray(i)
        enddo
 
-!     if (photoionization) then
-!        xArray(1) = lamStart
-!        xArray(2) = lamEnd
-!        nCurrent = 2
-!        call refineLambdaArray(xArray, nCurrent, grid)
-!        nt = nLambda - nCurrent
-!        do i = 1, nt
-!           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-!           fac = 10.**fac
-!           nCurrent=nCurrent + 1
-!           xArray(nCurrent) = fac
-!           call sort(nCurrent, xArray)
+     if (photoionization) then
+        xArray(1) = lamStart
+        xArray(2) = lamEnd
+        nCurrent = 2
+        call refineLambdaArray(xArray, nCurrent, grid)
+        nt = nLambda - nCurrent
+        do i = 1, nt
+           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+           fac = 10.**fac
+           nCurrent=nCurrent + 1
+           xArray(nCurrent) = fac
+           call sort(nCurrent, xArray)
+        enddo
+!        do i = 1, nlambda
+!           write(*,*) xArray(i)
 !        enddo
-!!        do i = 1, nlambda
-!!           write(*,*) xArray(i)
-!!        enddo
-!     endif
+     endif
 
 !       if (mie) then
 !          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
