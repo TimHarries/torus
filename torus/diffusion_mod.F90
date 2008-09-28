@@ -1066,7 +1066,7 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use input_variables, only : tauForce, cylindrical
+    use input_variables, only : tauForce, cylindrical, minCrossings
 #ifdef MPI
     use input_variables, only : blockHandout
     include 'mpif.h'
@@ -1154,7 +1154,6 @@ subroutine setDiffOnTau(grid)
        do subcell = 1, thisOctal%maxChildren
 
           if (.not.thisOctal%hasChild(subcell)) then
-
              rVec = subcellCentre(thisOctal, subcell) + 0.01d0*grid%halfSmallestSubcell*randomUnitVector()
 	
              call returnKappa(grid, thisOctal, subcell,  rosselandKappa = kappaAbs)

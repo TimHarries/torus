@@ -570,7 +570,6 @@ program torus
 
 #ifdef MPI
  if (hydrodynamics) grid%splitOverMpi = .true.
- if (photoionization) grid%splitOverMpi = .true.
 #endif
 
   grid%resonanceLine = resonanceLine
@@ -840,7 +839,7 @@ program torus
      endif
 
 #ifdef MPI
-     if (photoIonization) then
+     if (photoIonization.and.hydrodynamics) then
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &

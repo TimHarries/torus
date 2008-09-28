@@ -898,9 +898,13 @@ contains
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
-       percent_undersampled  = 100.*real(nUndersampled-nCellsInDiffusion)/real(nDt)
-
        call solveArbitraryDiffusionZones(grid)
+
+
+       nCellsInDiffusion = 0
+       nUndersampled = 0
+       call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
+       percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
 
 
        call calculateEtaCont(grid, grid%octreeRoot, nFreq, freq, dnu, lamarray, nLambda, kAbsArray)
@@ -924,7 +928,7 @@ contains
           call writeInfo(message, TRIVIAL)
           write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
           call writeInfo(message, TRIVIAL)
-          write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled-nCellsinDiffusion
+          write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled
           call writeInfo(message, TRIVIAL)
           write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
           call writeInfo(message, TRIVIAL)
@@ -948,7 +952,7 @@ contains
           end if
 
           write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
-               100.*real(nUndersampled-nCellsInDiffusion)/real(nDt), totalEmission /lCore *1.e30, &
+               percent_undersampled, totalEmission /lCore *1.e30, &
                totalEmission, dT_over_T_max, nMonte
        
           close(LU_OUT)
@@ -1394,6 +1398,35 @@ contains
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine checkUndersampled(thisOctal, nUndersampled, nCellsInDiffusion)
+    use input_variables, only : minCrossings
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: nUndersampled, nCellsinDiffusion
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkUndersampled(child, nUndersampled, nCellsInDiffusion)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%diffusionApprox(subcell)) then
+             nCellsInDiffusion = nCellsInDiffusion + 1
+          else
+             if (thisOctal%nCrossings(subcell) < minCrossings) then
+                nUnderSampled = nUndersampled + 1
+             endif
+          endif
+       endif
+    enddo
+  end subroutine checkUndersampled
 
 
   recursive subroutine calculateTemperatureCorrections(this_is_root, thisOctal, totalEmission, &
@@ -2642,7 +2675,7 @@ contains
                      actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
              endif
 
-             do i = j, nFreq
+             do j = 1, nFreq
                 thisLam = (cSpeed / freq(j)) * 1.e8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
                 if ((iLam >=1) .and. (iLam <= nLambda)) then

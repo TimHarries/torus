@@ -114,6 +114,7 @@ contains
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
 
     integer, parameter :: nFreq = 1000
+    integer :: nUndersampled
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
@@ -132,7 +133,7 @@ contains
     integer, dimension(:), allocatable :: octalsBelongRank
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
-    integer ::  nVoxels
+    integer ::  nVoxels, nOctals
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -183,9 +184,15 @@ contains
        lCore = lCore + source(i)%luminosity
     enddo
 
-    write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
+    write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
+    call writeInfo(message, TRIVIAL)
 
-    nMonte = nlucy
+    call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
+    if (nLucy == 0) then
+       nMonte = nVoxels * 10
+    else
+       nMonte = nlucy
+    endif
 
     nIter = 0
     
