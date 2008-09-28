@@ -309,6 +309,9 @@ contains
                case("bias")
                   write(lunit, *) real(thisOctal%biasCont3d(subcell))
 
+               case("deltaT")
+                  write(lunit, *) real(thisOctal%oldtemperature(subcell))
+
                case("hydrovelocity")
                   write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
                        real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &

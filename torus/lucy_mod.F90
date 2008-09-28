@@ -522,7 +522,7 @@ contains
        
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                              "dust1      "/))
+                              "dust1      ", "deltaT     "/))
        
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
@@ -877,7 +877,6 @@ contains
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
 
-
        if (twoD) then
           write(*,*) "! Remapping the distance grid attributes..."
           call remapDistanceGrid(grid%octreeRoot, grid)
@@ -886,7 +885,30 @@ contains
        endif
 
 
+
+
+!       do i = 1, 1
+!          call estimateTempofUndersampled(grid, grid%octreeRoot)
+!          call updateTemps(grid, grid%octreeRoot)
+!       enddo
+       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
+
+
+       nCellsInDiffusion = 0
+       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+
        percent_undersampled  = 100.*real(nUndersampled-nCellsInDiffusion)/real(nDt)
+
+       call solveArbitraryDiffusionZones(grid)
+
+
+       call calculateEtaCont(grid, grid%octreeRoot, nFreq, freq, dnu, lamarray, nLambda, kAbsArray)
+       dt_min = 1.d10
+       dt_max = -1.d10
+       dt_sum = 0.d0
+       totalEmission = 0.d0
+       call calculateDeltaTStats(grid%octreeRoot, dt_min, dt_max, dt_sum, dt_over_t_max, totalEmission, nDt)
        dT_mean_old = dT_mean_new  ! save this for the next iteration
        dT_mean_new = dT_sum/real(nDt)
 
@@ -932,22 +954,10 @@ contains
           close(LU_OUT)
 
        end if
-
+       
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
-!       do i = 1, 1
-!          call estimateTempofUndersampled(grid, grid%octreeRoot)
-!          call updateTemps(grid, grid%octreeRoot)
-!       enddo
-       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
-
-
-       nCellsInDiffusion = 0
-       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
-
-       call solveArbitraryDiffusionZones(grid)
 
 
        call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
@@ -1442,6 +1452,9 @@ contains
              end if
           end do
        else
+
+          thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
+
           if (thisOctal%inFlow(subcell)) then
              v = cellVolume(thisOctal, subcell)
              adot = epsoverDeltaT * (thisOctal%distancegrid(subcell)/v) / 1.d30
@@ -1504,7 +1517,6 @@ contains
                 !                write(*,*) deltaT, thisOctal%temperature(subcell), newT
                 !                write(*,*) adot,kappap,thisOctal%rho(subcell)
              endif
-             thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
 
 
              if (thisOctal%nCrossings(subcell) .ge. 10) then
@@ -1516,6 +1528,7 @@ contains
                 nUnderSampled = nUndersampled + 1
                 thisOctal%undersampled(subcell) = .true.
              endif
+
 
              kappaP = 0.d0
              norm = 0.d0
@@ -2569,6 +2582,85 @@ contains
        endif
     enddo
   end subroutine recountDiffusionCells
+
+  recursive subroutine calculateDeltaTStats(thisOctal, dt_min, dt_max, dt_sum, dt_over_t_max, totalEmission, nDt)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    integer :: nDt
+    real(double) :: dt_min, dt_max, dt_sum, dt_over_t_max, dt, totalEmission
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  calculateDeltaTStats(child, dt_min, dt_max, dt_sum, dt_over_t_max, totalEmission, nDt)
+                exit
+             end if
+          end do
+       else
+          dt = thisOctal%temperature(subcell) - thisOctal%oldTemperature(subcell)
+          dt_min = MIN(dt_min, dt)
+          dt_max = MAX(dt_max, dt)
+          dt_sum = dt_sum + abs(dt)
+          if (thisOctal%temperature(subcell)>0.0) dT_over_T_max = &
+               MAX(ABS(dT)/thisOctal%temperature(subcell), dT_over_T_max)
+          totalEmission = totalEmission + thisOctal%etacont(subcell) * cellVolume(thisOctal, subcell)
+          ndt = ndt + 1
+       endif
+    enddo
+  end subroutine calculateDeltaTStats
+
+  recursive subroutine calculateEtaCont(grid, thisOctal, nFreq, freq, dnu, lamarray, nLambda, kabsArray)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real :: lamArray(:)
+    real(double) :: kappap, norm, freq(:), dnu(:), kabsArray(:), thisLam
+    integer :: j, iLam, nLambda, nFreq
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  calculateEtaCont(grid, child, nFreq, freq, dnu, lamarray, nLambda, kabsArray)
+                exit
+             end if
+          end do
+       else
+             kappaP = 0.d0
+             norm = 0.d0
+             if (.not.grid%oneKappa) then
+                kabsArray(1:nlambda) = thisOctal%kappaAbs(subcell,1:nlambda)
+             else
+                call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                     actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
+             endif
+
+             do i = j, nFreq
+                thisLam = (cSpeed / freq(j)) * 1.e8
+                call hunt(lamArray, nLambda, real(thisLam), iLam)
+                if ((iLam >=1) .and. (iLam <= nLambda)) then
+                   kappaP = kappaP + dble(kabsArray(ilam)) * &
+                        dble(bnu(dble(freq(j)),dble(thisOctal%temperature(subcell)))) * dble(dnu(j)) 
+                   norm = norm + dble(bnu(dble(freq(j)),dble(thisOctal%temperature(subcell)))) * dble(dnu(j)) 
+                endif
+             enddo
+             if (norm /= 0.d0) then
+                kappaP = kappaP / norm / 1.d10
+             else
+                kappaP = TINY(kappaP)
+             endif
+             thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * &
+                  (thisOctal%temperature(subcell)**4)
+       endif
+    enddo
+  end subroutine calculateEtaCont
 
   recursive subroutine packvalues(thisOctal,nIndex,distanceGrid,nCrossings, nDiffusion)
   type(octal), pointer   :: thisOctal
