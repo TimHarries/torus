@@ -119,6 +119,7 @@ contains
     integer :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
+    integer ::  nVoxels, nOctals
 
 #ifdef MPI
     ! For MPI implementations
@@ -133,7 +134,6 @@ contains
     integer, dimension(:), allocatable :: octalsBelongRank
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
-    integer ::  nVoxels, nOctals
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -443,7 +443,7 @@ contains
 
        do i = 1 , 3
           call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+!          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
        enddo
 
     enddo
