@@ -724,6 +724,7 @@ end subroutine gaussSeidelSweep
      enddo
      write(message,*) "Gauss-seidel took ",niter, " iterations"
      call writeInfo(message,TRIVIAL)
+666  continue
    end subroutine solveArbitraryDiffusionZones
 
 

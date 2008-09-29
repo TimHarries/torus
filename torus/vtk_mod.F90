@@ -7,6 +7,7 @@ module vtk_mod
 ! http://public.kitware.com/VTK/pdf/file-formats.pdf
 
   use kind_mod
+  use ion_mod
   use constants_mod
   use utils_mod
   use amr_mod
@@ -324,6 +325,9 @@ contains
                      write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
                            thisOctal%velocity(subcell)%z*cspeed/1.e5, 0.
                      endif
+
+               case("HI")
+                  write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
 
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
