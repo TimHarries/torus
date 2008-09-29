@@ -1,4 +1,5 @@
 module molecular_mod
+
  ! written by tjh
  ! 21/11/06
 
@@ -10,7 +11,7 @@ module molecular_mod
    use utils_mod
    use messages_mod
    use timing
-   use grid_mod
+!   use grid_mod
    use gridio_mod
    use math_mod
    use datacube_mod
@@ -18,13 +19,16 @@ module molecular_mod
    use nrtype
    use parallel_mod
    use vtk_mod
- !  use mkl_vsl_type
- !  use mkl_vsl
+!   use mkl_vsl_type
+!   use mkl_vsl
 
    implicit none
 
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels
    integer :: grand_iter
+   logical :: molebench
+
+!   include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
 
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
@@ -42,9 +46,12 @@ module molecular_mod
       real(double), pointer :: g(:)
       real(double), pointer :: j(:)
       integer :: nTrans
-      real(double), pointer :: einsteinA(:)
-      real(double), pointer :: einsteinBlu(:)
-      real(double), pointer :: einsteinBul(:)
+      real(double), allocatable :: einsteinA(:)
+      real(double), allocatable :: einsteinBlu(:)
+      real(double), allocatable :: einsteinBul(:)
+!      real(double), pointer:: einsteinBul(:)
+!      real(double), pointer:: einsteinBlu(:)
+!      real(double), pointer:: einsteinA(:)
       real(double), pointer :: transfreq(:)
       integer, pointer :: itransUpper(:)
       integer, pointer :: itransLower(:)
@@ -58,7 +65,7 @@ module molecular_mod
       real(double), pointer :: collTemps(:,:)
       real(double), pointer :: collRates(:,:,:)
    end type MOLECULETYPE
-
+   
  contains
    ! Read in molecular parameters from file - note: abundance hard-coded here
 
@@ -108,8 +115,7 @@ module molecular_mod
         
         read(30,*) junk
         read(30,*) thisMolecule%nTrans
-        
-        
+                
         allocate(thisMolecule%einsteinA(1:thisMolecule%nTrans))
         allocate(thisMolecule%einsteinBul(1:thisMolecule%nTrans))
         allocate(thisMolecule%einsteinBlu(1:thisMolecule%nTrans))
@@ -321,9 +327,9 @@ module molecular_mod
 
            if(dorestart) then
 
-              allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:maxlevel))
+              allocate(thisOctal%newmolecularLevel(1:maxlevel,1:thisOctal%maxChildren))
               thisOctal%newmolecularLevel = 1.d-20
-              allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren, 1:maxlevel))
+              allocate(thisOctal%oldmolecularLevel(1:maxlevel,1:thisOctal%maxChildren))
               thisOctal%oldmolecularLevel = 1.d-20
 
               if (.not.associated(thisOctal%bnu)) then
@@ -334,28 +340,28 @@ module molecular_mod
            else
 
               if (.not. associated(thisOctal%newmolecularLevel)) then
-                 allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:maxlevel))
+                 allocate(thisOctal%newmolecularLevel(1:maxlevel, 1:thisOctal%maxChildren))
               endif
               thisOctal%newmolecularLevel = 1.d-20
 
               if (.not.associated(thisOctal%oldmolecularLevel)) then
-                 allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren, 1:maxlevel))
+                 allocate(thisOctal%oldmolecularLevel(1:maxlevel,1:thisOctal%maxChildren))
               endif
               thisOctal%oldmolecularLevel = 1.d-20
 
               if (.not.associated(thisOctal%molecularLevel)) then
-                 allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren, 1:maxlevel))
+                 allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
               endif
 
               if(lte) then           
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
-                              thisOctal%molecularLevel(subcell,1:maxlevel))
+                              thisOctal%molecularLevel(1:maxlevel,subcell))
               else      
-                 call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(subcell,1:maxlevel))
+                 call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(1:maxlevel,subcell))
 
                  if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
-                    thisOctal%molecularLevel(subcell,1) = 1.0
-                    thisOctal%molecularLevel(subcell,2) = 0.0000
+                    thisOctal%molecularLevel(1,subcell) = 1.0
+                    thisOctal%molecularLevel(2,subcell) = 0.0000
                  endif
               endif
 
@@ -398,852 +404,11 @@ module molecular_mod
           endif
 
           thisOctal%molmicroturb(subcell) = 1. / thisOctal%microturb(subcell)
-
+!          if (grid%geometry .eq. "molcluster") CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
        endif
     enddo
 
    end subroutine allocateMolecularLevels
-
- ! solves rate equation in matrix format - equation 10
-   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2)
-     real(double) :: nPops(:)
-     real(double) :: temperature
-     real(double) :: jnu(:)
-     real(double) :: nh2
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1), collMatrix(maxlevel+1,maxlevel+1), cTot(maxlevel)
-     real(double) :: boltzFac
-     integer :: nLevels
-     integer :: i, j
-     integer :: itrans, l, k, iPart
-     real(double) :: collEx, colldeEx
-
-     character(len=80) :: message
-
-     matrixA = 1.d-30 ! Initialise rates to negligible to avoid divisions by zero ! used to be 1d-10
-     matrixB = 1.d-30 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
-
-     matrixB(maxLevel+1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
-
- ! This do loop calculates the contribution to transition rates of each level from every other level. NB emission is +ve here
-     do iTrans = 1, maxtrans
-
-        k = thisMolecule%iTransUpper(iTrans)
-        l = thisMolecule%iTransLower(iTrans)
-
-        matrixA(k,k) = matrixA(k,k) + thisMolecule%einsteinBul(iTrans) * jnu(iTrans) + thisMolecule%einsteinA(iTrans)
-        matrixA(l,l) = matrixA(l,l) + thisMolecule%einsteinBlu(iTrans) * jnu(iTrans)
-        matrixA(k,l) = matrixA(k,l) - thisMolecule%einsteinBlu(iTrans) * jnu(iTrans)
-        matrixA(l,k) = matrixA(l,k) - thisMolecule%einsteinBul(iTrans) * jnu(iTrans) - thisMolecule%einsteinA(iTrans)
-
-     enddo
-
-     collMatrix = 1.d-30 ! used to be 1.d-10
-
- ! Calculate contribution from collisions - loop over all collision partners and all molecular levels
-
-     do iPart = 1, thisMolecule%nCollPart
-        do iTrans = 1, maxtrans !thisMolecule%nCollTrans(iPart)
-
-           k = thisMolecule%iCollUpper(iPart, iTrans)
-           l = thisMolecule%iCollLower(iPart, iTrans)
-
-           boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
-           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
-           collEx = colldeEx * boltzFac * thisMolecule%g(k) / thisMolecule%g(l)
-
-           collMatrix(l, k) = collMatrix(l, k) + collEx
-           collMatrix(k, l) = collMatrix(k, l) + colldeEx
-
-        enddo
-     enddo
-
-     cTot = 0.d0
-
-     do k = 1, maxlevel
-        do l = 1, maxlevel
-           cTot(k) = cTot(k) + collMatrix(k,l) ! sum over all collisional rates out of each level
-        enddo
-     enddo
-
-     do i = 1, maxlevel
-           matrixA(i,i) = matrixA(i,i) + cTot(i)
-        do j = 1, maxlevel
-           if (i .ne. j) then
-              matrixA(i,j) = matrixA(i,j) - collMatrix(j, i)
-           endif
-        enddo
-     enddo
-
-     matrixA(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
-     matrixA(1:maxlevel+1,maxlevel+1) = 1.d-30 ! fix highest population to small non-zero value
-     
-!     do i = 1, thisMolecule%nlevels
-!        do j = 1, thisMolecule%nlevels
-!           if( i .eq. j ) then
-!              matrixA(i,j) = matrixA(i,j)
-!           else
-!              matrixA(i,j) = 1.d-10
-!           endif
-!        enddo
-!     enddo
-
- ! finished creating equation 10, now solve it to find new level populations
-   call luSlv(matrixA, matrixB, maxlevel+1)
-
-   matrixB = abs(matrixB) ! stops negative level populations causing problems
-
-   if(.not.isnan(matrixB(1))) then
-      nPops(1:maxLevel) = matrixB(1:maxLevel)
-   else
-      nPops(1:maxLevel) = matrixB(1:maxLevel)
-
-      write(message, *) "bad",temperature,npops(:)
-      call writeinfo(message, IMPORTANT)
-!      stop
-   endif
-   
- end subroutine solveLevels
-
- subroutine LTEpops(thisMolecule, temperature, levelpops)
-
-   type(MOLECULETYPE) :: thisMolecule
-   real(double) :: temperature, nsum
-   real(double) :: levelpops(:), fac
-   integer :: i
-
-   levelpops(1) = 1.d0
-   nsum = 1.d0
-
-   do i=2,size(levelpops)
-      fac = abs(thisMolecule%energy(i)-thisMolecule%energy(i-1)) / (kev*temperature)
-      levelpops(i) = max(1d-30,levelpops(i-1) * thisMolecule%g(i)/thisMolecule%g(i-1) * exp(-fac))
-      nsum = nsum + levelpops(i)
-   enddo
-
-   levelpops = levelpops / nsum
-
- end subroutine LTEpops
-
- ! Calculate collision rates between partners for given temperature
-   real(double) function collRate(thisMolecule, temperature, iPart, iTrans)
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: temperature, r
-     integer :: iTrans, k, iPart
-
-     collRate = 0.d0
-
-!     call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), temperature, k)
-     call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), &
-          thisMolecule%nCollTemps(iPart), temperature, k)
-
-
-     r = (temperature - thisMolecule%collTemps(iPart,k)) / &
-          (thisMolecule%collTemps(iPart,k+1) - thisMolecule%collTemps(iPart, k))
-
-     collRate = collRate + thisMolecule%collRates(iPart, iTrans, k) + &
-          r * ( thisMolecule%collRates(iPart, iTrans, k+1) -  thisMolecule%collRates(iPart, iTrans, k))
-
-   end function collRate
-
-   recursive subroutine  solveAllPops(grid, thisOctal, thisMolecule)
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     integer :: subcell, i
-
-     do subcell = 1, thisOctal%maxChildren
-        if (thisOctal%hasChild(subcell)) then
-           ! find the child
-           do i = 1, thisOctal%nChildren ! What's this?
-              if (thisOctal%indexChild(i) .eq. subcell) then
-                 child => thisOctal%child(i)
-                 call solveAllpops(grid, child, thisMolecule)
-                 exit
-              end if
-           end do
-        else ! once octal has no more children, solve for current parameter set
-           call solveLevels(thisOctal%molecularLevel(subcell,1:maxlevel), &
-                thisOctal%jnu(subcell,1:maxtrans),  &
-                dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-        endif
-     enddo
-   end subroutine solveAllPops
-
- ! this subroutine calculates the maximum fractional change in the first 6 energy levels
-   recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
-                          iter, nVoxels,itransdone,fixedrays)
-
-     use input_variables, only : tolerance
-
-     type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     integer :: subcell, i
-     real(double) :: maxFracChangePerLevel(:), printmaxFracChange, globalmaxFracChange, avgFracChange(:,:)
-     real(double) :: diff(minlevel), newFracChangePerLevel(minlevel), temp(minlevel)
-     integer :: counter(:,:),j
-
-     integer :: iter
-     integer :: nVoxels
-
-     logical :: itransDone(:),fixedrays
-     integer :: ntrans
-
-     do subcell = 1, thisOctal%maxChildren
-        if (thisOctal%hasChild(subcell)) then
-           ! find the child
-           do i = 1, thisOctal%nChildren
-              if (thisOctal%indexChild(i) == subcell) then
-                 child => thisOctal%child(i)
-                 call swapPops(child, maxFracChangePerLevel, avgFracChange, counter, iter, &
-                      nVoxels, itransdone, fixedrays)
-                 exit
-              end if
-           end do
-        else
-           
-           thisOctal%molecularLevel(subcell,:) = thisOctal%oldmolecularLevel(subcell,:) 
-
-           globalMaxFracChange = MAXVAL(maxFracChangePerLevel(:)) 
-           printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel),mask = (.not. itransdone(1:minlevel)))
-
-           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(subcell,1:mintrans) - &
-                thisOctal%molecularLevel(subcell,1:mintrans)) / &
-                thisOctal%newmolecularLevel(subcell,1:mintrans)))
-
-           temp = newFracChangePerLevel(1:mintrans)
-
-           do j=1, mintrans
-              if(.not. itransdone(j)) then
-                 if(newFracChangePerLevel(j) < 0.5 * tolerance) counter(4,j) = counter(4,j) + 1 ! used for itransdone
-                 if(newFracChangePerLevel(j) < tolerance) counter(1,j) = counter(1,j) + 1
-                 if(newFracChangePerLevel(j) < 2. * tolerance) counter(2,j) = counter(2,j) + 1
-                 if(newFracChangePerLevel(j) < 5. * tolerance) counter(3,j) = counter(3,j) + 1
-              else
-                 counter(:,j) = counter(:,j) + 1
-              endif
-           enddo
-
-              if(maxval(temp) .lt. 5. * tolerance) then
-                 counter(3,mintrans + 1) = counter(3,mintrans + 1) + 1
-                 if(maxval(temp) .lt. 2. * tolerance) then
-                    counter(2,mintrans + 1) = counter(2,mintrans + 1) + 1
-                    if(maxval(temp) .lt. tolerance) then
-                       counter(1,mintrans + 1) = counter(1,mintrans + 1) + 1
-                    endif
-                 endif
-              endif
-
-              avgFracChange(:,1) = avgFracChange(:,1) + temp
-              avgFracChange(:,2) = avgFracChange(:,2) + temp**2
-
-           If (maxval(temp) > printmaxFracChange) then
-              maxFracChangePerLevel = newFracChangePerLevel ! update maxFracChange if fractional change is great => not converged yet
-           endif
-
-!           allocate(diff(size(thisOctal%molecularlevel(subcell,:))))
-
-           diff = thisOctal%molecularLevel(subcell,:) - &
-                  thisOctal%newmolecularLevel(subcell,:)
-
- !          if(fixedrays .and. modulus(SubcellCentre(thisOctal,subcell)) .lt. 1e7 .and. modulus(SubcellCentre(thisOctal,subcell)) .gt. 3e6) then
-           if(.not. fixedrays) then
-              if (maxval(temp, mask = (.not. itransdone(1:6))) .gt. tolerance * 6.) then
-                 thisOctal%molecularLevel(subcell,:) = &
-                      thisOctal%newmolecularLevel(subcell,:) - (0.0)*diff! (enhanced) update molecular levels
-              else
-                 thisOctal%molecularLevel(subcell,:) = &
-                      thisOctal%newmolecularLevel(subcell,:) - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
-
-              if(maxval(temp, mask = (.not. itransdone(1:6))) .lt. tolerance * 2.)then
-                 thisOctal%molecularLevel(subcell,:) = &
-                      thisOctal%newmolecularLevel(subcell,:) - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
-
-           else
-
-              if (maxval(temp, mask = (.not. itransdone(1:6))) .gt. tolerance * 10.) then
-                 thisOctal%molecularLevel(subcell,:) = &
-                      thisOctal%newmolecularLevel(subcell,:) - (0.0)*diff! (enhanced) update molecular levels
-              else
-                 thisOctal%molecularLevel(subcell,:) = &
-                      thisOctal%newmolecularLevel(subcell,:) - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
-
-              if(maxval(temp, mask = (.not. itransdone(1:6))) .lt. tolerance * 2.)then
-                 thisOctal%molecularLevel(subcell,:) = &
-                      thisOctal%newmolecularLevel(subcell,:) - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
-           endif
-
-!           deallocate(diff)
-
-        endif
-     enddo
- !    deallocate(newFracChangePerLevel,temp)
-   end subroutine swapPops
-
-   recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV, firsttime)
-
-     use input_variables, only : useDust, iTrans
-
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     type(VECTOR)  :: rvec
-     integer :: subcell, i
-     integer :: iupper, ilower
-     integer, save :: ilambda = 1
-     real(double) :: nmol, nlower, nupper, etaline, kappaAbs, deltaV
-     real :: lambda
-     logical,save :: onetime = .true.
-     logical :: firsttime
-     character(len=10) :: out
-
-     do subcell = 1, thisOctal%maxChildren
-        if (thisOctal%hasChild(subcell)) then
-           ! find the child
-           do i = 1, thisOctal%nChildren, 1
-              if (thisOctal%indexChild(i) == subcell) then
-                 child => thisOctal%child(i)
-                 call calculateOctalParams(grid, child, thisMolecule, deltaV, firsttime)
-                 exit
-              end if
-           end do
-        else
-          if(firsttime) then
-
-             if(grid%geometry .eq. "iras04158") then
-                 thisOctal%microturb(subcell) = max(3d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                      (28.0 * amu)) + 0.3**2 ) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-
-                 thisOctal%velocity(subcell) = keplerianVelocity(subcellcentre(thisOctal,subcell), grid)
-                 CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
-
-                 out = 'abundance'
-                 rvec = subcellCentre(thisOctal,subcell)
-                 thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-!                 thisOctal%molabundance(subcell) = 1d-4
-!                 thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * 1.05
-!                 thisOctal%rho(subcell) = thisOctal%rho(subcell) * 1.05
-              endif
-!              else
-!                 thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-!                      (29.0 * amu)) + 0.3**2) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-!                 thisOctal%velocity(subcell) = keplerianVelocity(subcellcentre(thisOctal,subcell), grid)
-!                 CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
-!              endif
-
-              thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
-
-              if (.not.associated(thisOctal%molcellparam)) then
-                 allocate(thisOctal%molcellparam(1:thisOctal%maxChildren,8))
-              endif
-
-              thisOctal%molcellparam(subcell,1) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-              
-              nMol = thisOctal%molcellparam(subcell,1)
-
-              iUpper = thisMolecule%iTransUpper(iTrans)
-              iLower = thisMolecule%iTransLower(iTrans)
-
-              thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(subcell,iLower) * nMol
-              thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(subcell,iUpper) * nMol
-              
-              nLower = thisOctal%molcellparam(subcell,2)
-              nUpper = thisOctal%molcellparam(subcell,3)
-              thisOctal%molcellparam(subcell,4) = nLower * thisMolecule%einsteinBlu(iTrans) &
-                                                - nUpper * thisMolecule%einsteinBul(iTrans)
-              
-              etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
-              
-              thisOctal%molcellparam(subcell,5) = etaLine * nUpper
-              thisOctal%molcellparam(subcell,6) = hCgsOverFourPi * thisOctal%molcellparam(subcell,4)! balance
-           endif
-
-           if(usedust) then
-
-              lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
-              lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter
-              if(onetime) then
-                 call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-                 onetime = .false.
-              endif
-              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
-              thisOctal%molcellparam(subcell,7) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)
-              thisOctal%molcellparam(subcell,8) = thisOctal%molcellparam(subcell,7) * thisOctal%bnu(subcell,itrans)
-           endif
-        endif
-
-     end do
-
-   end subroutine calculateOctalParams
-
- ! Equation 9 - calculating the doppler broadening due to a turbulent velocity field (b - constant locally)
- ! NB b here = b*nu0/c in the paper ! actually since April 2008 b = 1/old b to speed up code
-
-   real(double) pure function phiProf(dv, b) result (phi)
-     real(double), intent(in):: dv, b
-     real(double) :: fac
-
-     fac = min((dv * b)**2,200.d0) ! avoid floating point underflows
-     phi = exp(-fac) * (b * OneOversqrtPi)
-   end function phiProf
-
- ! Make a 'ray' with a random position - then use it to update intensity and opacity
-   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays, itransdone)
-
-     use input_variables, only : useDust, amrgridsize
-
-     type(MOLECULETYPE) :: thisMolecule
-     type(GRIDTYPE) :: grid
-     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
-
-     integer, parameter :: maxSamplePoints = 100
-
-     logical, optional :: fixedrays
-     logical :: stage1
-     integer :: fromSubcell
-     integer :: subcell
-!     real(double) :: ds, phi, i0(:), r, di0
-     real(double) :: ds, phi, i0(:), r, di0(maxtrans)
-     integer :: iTrans,nTrans
-     type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
-     type(VECTOR) :: startVel, endVel, endPosition
-
-     real(double) :: alphanu(maxtrans,2), alpha(maxtrans), alphatemp(maxtrans), snu(maxtrans), jnu(maxtrans)
-     integer :: iLower(maxtrans) , iUpper(maxtrans)
-     real(double) :: dv, deltaV
-     integer :: i
-     real(double) :: dist, dds, tval
-     integer :: nTau
-     real(double) :: nLower(maxtrans), nUpper(maxtrans)
-!     real(double) :: dTau, etaline(maxtrans), kappaAbs 
-     real(double) :: dTau(maxtrans), etaline(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
-!     real(double), allocatable :: tau(:)
-     real(double) :: tau(maxtrans)
-     real(double) :: dvAcrossCell, projVel, endprojVel
-     real(double) :: CellEdgeInterval, phiProfVal
-!     real :: lambda
-     real, allocatable, save :: lambda(:)
-     integer :: ilambda
-     integer :: iCount
-
-     real(double), save :: r1(5) !! quasi random number generators
-     real(double), save :: OneOverNTauArray(maxsamplePoints)
-
-     logical,save :: firsttime = .true.
-     logical :: quasi = .false.
-
-     logical :: itransdone(maxtrans)
-     logical :: realdust
-     real(double),save :: BnuBckGrnd(128)
-     real(double) :: balance(maxtrans), spontaneous(maxtrans), snugas(maxtrans)
-     real(double) :: nMol
-     integer :: done(maxtrans)
- !    real(double) :: z,t
-     real(double), save, allocatable :: OneArray(:)
-
-     realdust = .true.
-
-     if(present(fixedrays)) then
-        stage1 = fixedrays
-     else
-        stage1 = .false.
-     endif
-
-     nTrans = thisMolecule%nTrans
-
-!     allocate(tau(1:maxTrans))
-
-     position = randomPositionInCell(fromOctal, fromsubcell)
-
-     icount = 1
-     thisOctal => fromOctal!grid%octreeRoot
-     subcell = fromSubcell
-
-     rayVel = Velocity(position, grid, thisOctal, subcell)
-
- !!! quasi random code!!!
-
-     if(firsttime) then
-        allocate(OneArray(maxtrans))
-        OneArray = 1.d0
-
-        do itrans = 1, maxtrans
-           BnuBckGrnd(itrans) = Bnu(thisMolecule%transfreq(itrans), Tcbr)
-!          Bnudust(itrans) = Bnu(thisMolecule%transfreq(itrans), thisOctal%dusttemperature(subcell))
-        enddo
-
-       do ntau = 2,maxsamplepoints
-          OneOverNtauArray(ntau) = 1.d0 / (dble(nTau) - 1.d0)
-       enddo
-
-       allocate(lambda(1:maxTrans))
-       lambda(:) = (cspeed_sgl / thisMolecule%transfreq(1:maxtrans)) * 1e8 ! cm to Angstroms
-
-       firsttime =.false.
-       if (quasi) call sobseq(r1,-1)
-    endif
-
-     if(quasi) then     
-        call sobseq(r1)    
-        direction = specificUnitVector(r1(1),r1(2))
- !       r = (r1(3)+r1(4)+r1(5)) / 3.
-        deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line centre
-     else
-        call random_number(r)
-
-        direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
-
-!       randompointingrid = randompointinRegion(amrgridsize * 0.5)
-!       randompointingrid = 1d7 * randomUnitVECTOR()
-!       call normalize(randompointingrid)
-!       unitposition = position
-!       call normalize(unitposition)
-!       write(*,*) "unitposition",unitposition
-!       write(*,*) "randompointingrid",randompointingrid
-!       direction = UnitVECTORBetweenTwoPoints(randompointingrid,position)
-!       write(*,*) "direction", direction
-
-        deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
-
-!        r = GaussianComplementRand()
-!        deltaV = thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak. 
-
-!        write(55,*) r
-
-     endif
-
-!!! SCIENCE LINES
-
-!     deltaV = deltaV + (rayVel .dot. direction) ! transform to take account of grid velocity
-!     projVel = deltaV - (rayVel .dot. direction) ! transform back to velocity relative to local flow
-
-!!! COMPUTATIONALLY QUICKER TO DO THIS
-
-     projvel = deltaV
-     deltaV =  deltaV + (rayVel .dot. direction)
-
-     call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
-
-     currentPosition = position + ds * direction
-
-     if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid
-        thisVel = velocity(currentposition, grid) 
-        endprojVel = deltaV - (thisVel.dot.direction)
-        phi = phiProf((endprojVel+projvel)*0.5d0, thisOctal%molmicroturb(subcell))
-     else
-        phi = phiProf(projVel, thisOctal%molmicroturb(subcell)) ! if fell off grid then assume phi is unchanged
-     endif
-
-!     currentPosition = position !This line is wrong because the source function does not apply locally
-     ds = ds * 1.d10 ! convert from cm to torus units
-
-     i0 = 0.d0
-     tau = 0.d0
-
-     iUpper(:)  = thisMolecule%iTransUpper(:)
-     iLower(:)  = thisMolecule%iTransLower(:)
-
-     do while(inOctal(grid%octreeRoot, currentPosition))
-
-        call findSubcellLocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-        if(useDust) then             
-           do itrans = 1,maxtrans
-              if(realdust) then
-                 call locate(grid%lamArray, size(grid%lamArray), lambda(itrans), ilambda)
-                 call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda(itrans), kappaAbs = kappaAbs)
-              else
-!             kappaAbs = thisOctal%rho(subcell) * 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d10 !multiplied by density !cm -> torus
-                 kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10 !multiplied by density !cm -> torus
-              endif
-              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right    !kappa already multiplied by density in amr_mod
-           enddo
-        endif
-
-        nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-
-        nLower(:)  = thisOctal%molecularLevel(subcell,iLower(:)) * nMol
-        nUpper(:)  = thisOctal%molecularLevel(subcell,iUpper(:)) * nMol
-        balance(:) = (nLower(:) * thisMolecule%einsteinBlu(:) - &
-                     nUpper(:) * thisMolecule%einsteinBul(:))
-
-        spontaneous(:) = thisMolecule%einsteinA(:) * nUpper(:)
-
-        snuGas(:) = spontaneous(:) / balance(:) ! Source function 
-
-        etaLine(:) = hCgsOverfourPi * spontaneous(:) 
-        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
-          
-        startVel = velocity(currentposition, grid) 
-        endPosition = currentPosition + tval * direction
-        endVel = velocity(endposition, grid)
-
-        dvAcrossCell = ((startVel - endvel) .dot. direction) ! start - end
-        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
-
-        nTau = min(max(2, nint(dvAcrossCell * 5.d0)), maxSamplePoints) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
-
-        CellEdgeInterval = OneOverNtauArray(ntau)
-        dds = tval * cellEdgeInterval
-
-        dist = 0.d0
-        done = 0
-
-        do i = 2, nTau
-
-           dist = dist + dds ! increment along distance counter
-              
-           thisPosition = currentPosition + dist * direction
-
-           thisVel = velocity(thisPosition, grid)
-           dv = deltaV - (thisVel .dot. direction)
-           PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
-           
-           if(usedust) then
-              alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
-              alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)
-              jnu(1:maxtrans) = etaLine(1:maxtrans) * phiProfVal + &
-                   alphanu(1:maxtrans,2) * thisOctal%bnu(subcell,1:maxtrans) ! jnu, emission coefficient - equation 7
-              
-              do itrans = 1,maxtrans
-                 if(alpha(itrans) .ne. 0.d0) then 
-                    snu(itrans) = jnu(itrans) / alpha(itrans)
-                 else
-                    snu(itrans) = tiny(snu)
-                    alpha(itrans) = tiny(alpha)
-                 endif
-              enddo
-           else
-              snu(:) = snugas(:)
-              alpha(:) = alphaTemp(:) * phiprofVal 
-           endif
-
-           dTau(:) = alpha(:) * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
-           attenuation(:) = exp(-tau(:))
-           localradiationfield(:) = exp(-dtau(:)) 
-           localradiationfield(:) = OneArray(:) - localradiationfield(:)
-           di0(:) = attenuation(:) * localradiationfield(:) * snu(:) ! 2nd term is local radiation field from this cell 
-              
-           do itrans = 1, maxtrans
-
-              if(di0(itrans) .gt. 1d-6 * i0(itrans)) then
-!                 if(tau(itrans) .lt. 10.d0) then
-                 i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
-                 tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
-              else
-                 done(itrans) = 1
-                 i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
-                 tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
-                 if(sum(done) .ge. mintrans) then
-                    goto 118 
-                 endif
-              endif
-              
-           enddo
-           
-        enddo
-        
-        currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
-     enddo
-     
-118  continue
-     
-     i0(1:maxtrans) = i0(1:maxtrans) + BnuBckGrnd(1:maxtrans) * exp(-tau(1:maxtrans))
-
-   end subroutine getRay
-
- subroutine calculateMoleculeSpectrum(grid, thisMolecule)
-   use input_variables, only : itrans, nSubpixels, inc, usedust
-
-#ifdef MPI
-       include 'mpif.h'
-#endif
-
-   type(GRIDTYPE) :: grid
-   type(MOLECULETYPE) :: thisMolecule
-   type(VECTOR) :: unitvec, posvec, centrevec, viewvec
-   type(DATACUBE) ::  cube
-
-   character (len=80) :: filename
-
-   real(double) :: mean(6) = 0.d0
-   integer :: icount = 0
-
-
-#ifdef MPI
-     ! For MPI implementations
-     integer       ::   my_rank        ! my processor rank
-     integer       ::   np             ! The number of processes
-     integer       ::   ierr           ! error flag
-
-     ! FOR MPI IMPLEMENTATION=======================================================
-     !  Get my process rank # 
-     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-
-     ! Find the total # of precessor being used in this run
-     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-#endif
-
-!     if(grid%geometry .eq. "iras04158") call plotdiscvalues(grid, thisMolecule)
-
-!     call readAMRgrid("molecular_tmp.grid",.false.,grid)
-
-    !if(usedust .and. grid%geometry .eq. "iras04158") call testOpticalDepth(grid, thisMolecule)
-!call testOpticalDepth(grid, thisMolecule)
-    
-     if(writeoutput) call writeinfo('Setting observer parameters', TRIVIAL)
-     call setObserverVectors(inc, viewvec, unitvec, posvec, centreVec, grid%octreeroot%subcellsize)
-     if(writeoutput) call writeinfo('Creating Image', TRIVIAL)
-!     write(*,*)"posvec",posvec,"inc", inc
-     Call createimage(cube, grid, unitvec, posvec, thismolecule, itrans, nSubpixels) ! create an image using the supplied parameters (also calculate spectra)
-     
-     call cubeIntensityToFlux(cube, thismolecule, itrans) ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)
-
-     !Commented out lines are for removing background intensity - will want to do this one day
-
-     !   call TranslateCubeIntensity(cube,1.d0*Tcbr) ! 
-     !   call cubeIntensityToFlux(cube, thismolecule, itrans) ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)
-     
-     call createFluxSpectra(cube, thismolecule, itrans)
-
-     if(writeoutput) call writedatacube(cube, 'MolRT.fits')
-
-     write(filename,'(a,a,i1,a,i1,a)') trim(cube%telescope%label),'fluxcubeJ', &
-          thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
-     stop
-
-    end subroutine calculateMoleculeSpectrum
-
-    ! sample level populations at logarithmically spaced annuli
-   subroutine dumpResults(grid, thisMolecule, nRay, convtestarray)
-     use input_variables, only : rinner, router
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: r, ang
-     real(double), save :: logrinner, logrouter, OneOverNradiusMinusOne, OneOverNangle
-     integer :: i
-     real(double) :: pops(minlevel), fracChange(minlevel), convtestarray(:,:,:), tauarray(40)
-     type(OCTAL), pointer :: thisOctal
-     integer :: subcell
-     integer :: j
-     real(double) :: x, z
-     type(VECTOR) :: posvec
-     integer :: nRay, iter
-     integer, save :: nradius, nangle
-     character(len=30) :: resultfile, resultfile2
-     logical, save :: firsttime = .true.
-
-     iter = grand_iter
-
-     write(resultfile,'(a,I7.7)') "results.", nRay
-     write(resultfile2,'(a,I2)') "fracChangeGraph.", iter
-     
-     open(31,file=resultfile,status="unknown",form="formatted")
-     open(32,file=resultfile2,status="unknown",form="formatted")
-     open(33,file="tau.dat",status="unknown",form="formatted")
-     call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
-
-     if(firsttime) then
-        nradius = 100! number of radii used to sample distribution
-        nangle = 360 ! number of rays used to sample distribution
-        
-        logrinner = log10(rinner)
-        logrouter = log10(router)
-        OneOverNradiusMinusOne = 1.d0/dble(nradius - 1)
-        OneOverNangle = 1.d0 / dble(nangle)
-        
-        firsttime = .false.
-     endif
-
-     thisOctal => grid%octreeroot
-
-     do i = 1, nradius
-        r = logrinner + dble(i - 1) * OneOverNradiusMinusOne * (logrouter - logrinner)
-        r = 10.d0**r
-        pops = 0.d0
-        fracChange = 0.d0
-
-        do j = 1 , nangle
-           ang = dble(j + 0.5d0) * OneOverNangle - OneOverNangle
-           ang = ang * twopi 
-           z = r * cos(ang)
-           x = r * sin(ang)
-           posVec = VECTOR(x, 0.d0, z) ! get put in octal on grid
-           call findSubcellLocal(posVec, thisOctal,subcell) 
-           pops = pops + thisOctal%molecularLevel(subcell,1:minlevel) ! interested in first 8 levels
-           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:minlevel) - &
-                        thisOctal%oldmolecularLevel(subcell,1:minlevel)) / thisOctal%molecularlevel(subcell,1:minlevel))           
-        enddo
-
-        pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
-        fracChange = fracChange * OneOverNangle
-
-        if(iter .gt. 0) convtestarray(iter,i,:) = fracChange
-
-        write(31,'(es11.5e2,4x,12(es14.6e2,tr2))') r*1.e10, pops(1:minlevel)
-        write(32,'(es11.5e2,4x,12(f7.5,tr2))') r*1.e10, fracChange(1:minlevel)
-     enddo
-
-     write(33,'(i2,tr3,12(f11.6,tr3))') grand_iter, tauarray(1:mintrans)
-     
-     close(31)
-     close(32)
-   end subroutine dumpResults
-
-   recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel)
-
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     integer :: subcell, i, nlevels
-     real(double) :: mollevels(nlevels)
-     integer :: maxinterestinglevel, nVoxel
-     integer, save :: icount = 0
-     real(double) :: maxtemp = 0.d0
-     character(len = 80) :: message
-         
-     do subcell = 1, thisOctal%maxChildren
-        if (thisOctal%hasChild(subcell)) then
-           ! find the child
-           do i = 1, thisOctal%nChildren
-              if (thisOctal%indexChild(i) == subcell) then
-                 child => thisOctal%child(i)
-                 call findmaxlevel(grid, child, thisMolecule, maxinterestinglevel, nlevels, nVoxel)
-                 exit
-              end if
-           end do
-        else
-           
-           maxtemp = max(maxtemp, thisOctal%temperature(subcell))     
-           icount = icount + 1
-        endif
-     end do
-
-     if(icount .eq. nVoxel) then
-
-        write(message, *)  "Maximum Global Temperature", maxtemp
-        call writeinfo(message, FORINFO)
-
-        call LTEpops(thisMolecule, maxtemp, mollevels(1:thisMolecule%nlevels))
-                
-        do i = thisMolecule%nlevels, 1, -1
-           maxinterestinglevel = i
-!           write(*,*) i, mollevels(i)
-           if(mollevels(i) .gt. 1d-8) exit
-        enddo
-        
-        maxinterestinglevel = maxinterestinglevel
-     endif
-     
-   End subroutine findmaxlevel
 
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
@@ -1307,13 +472,14 @@ module molecular_mod
       
       real :: tol
       real(double) :: dummy, tau, tauarray(40) = -1.d0    
-
+      logical :: quasi = .true.
 
  ! blockhandout must be off for fixed ray case, otherwise setting the
  ! seed is not enough to ensure the same directions are done for
  ! each cell every iteration
 
       nlevels = thisMolecule%nlevels
+      if(grid%geometry .eq. 'molebench') molebench = .true.
 
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 
@@ -1442,7 +608,7 @@ module molecular_mod
                if(tauarray(i) .gt. 0.01) exit
             enddo
 
-            write(*,*) mintrans
+!            write(*,*) mintrans
 
             mintrans = mintrans + 1 ! next important transition into it
       
@@ -1453,7 +619,7 @@ module molecular_mod
             minlevel = min(minlevel, maxlevel)
             mintrans = minlevel - 1
 
-            write(*,*) "Minlevel", minlevel
+!            write(*,*) "Minlevel", minlevel
 
             write(message,*) "Iteration ",grand_iter
             call writeinfo(message, FORINFO)
@@ -1465,7 +631,6 @@ module molecular_mod
                write(filename, *) "./plots/data_",grand_iter
                call  writeVtkFile(grid, filename)
             endif
-
 
             allocate(ds(1:nRay))
             allocate(phi(1:nRay))
@@ -1541,30 +706,30 @@ module molecular_mod
                     iter = 0
                     popsConverged = .false.
 
-                    thisOctal%oldMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:) ! Store previous level so can use updated one in future
-                    thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:) ! Store previous level so can use it for testing convergence at end
+                    thisOctal%oldMolecularLevel(:,subcell) = thisOctal%molecularLevel(:,subcell) ! Store previous level so can use updated one in future
+                    thisOctal%newMolecularLevel(:,subcell) = thisOctal%molecularLevel(:,subcell) ! Store previous level so can use it for testing convergence at end
 
                     do while (.not. popsConverged)
                        iter = iter + 1
 
-                       oldpops = thisOctal%newmolecularLevel(subcell,1:maxlevel) ! retain old pops before calculating new one
+                       oldpops = thisOctal%newmolecularLevel(1:maxlevel,subcell) ! retain old pops before calculating new one
 
                        do iTrans = 1, maxtrans
 
                           if(.not. itransdone(itrans)) then
                              call calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
                                   phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
-                                  thisOctal%newMolecularLevel(subcell,1:maxlevel)) ! calculate updated Jbar
+                                  thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
 
                           endif
 
                        enddo
 
-                       call solveLevels(thisOctal%newMolecularLevel(subcell,1:maxLevel), &
+                       call solveLevels(thisOctal%newMolecularLevel(1:maxLevel,subcell), &
                             thisOctal%jnu(subcell,1:maxtrans), dble(thisOctal%temperature(subcell)), &
                             thisMolecule, thisOctal%nh2(subcell))
 
-                       fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:minlevel) - oldpops(1:minlevel)) &
+                       fac = abs(maxval((thisOctal%newMolecularLevel(1:minlevel,subcell) - oldpops(1:minlevel)) &
                             / oldpops(1:minlevel))) ! convergence criterion ! 6 or 8?
                        
                        if (fac < 1.d-6) then
@@ -1577,8 +742,8 @@ module molecular_mod
                        endif
                     enddo
 
-                    thisOctal%oldmolecularlevel(subcell, 1:maxlevel) = thisOctal%molecularlevel(subcell, 1:maxlevel) ! Store previous iteration levels for convergence
-                    thisOctal%molecularlevel(subcell, 1:maxlevel) = thisOctal%newmolecularlevel(subcell, 1:maxlevel) ! Store new levels as good current ones. Should improve convergence?
+                    thisOctal%oldmolecularlevel(1:maxlevel,subcell) = thisOctal%molecularlevel(1:maxlevel,subcell) ! Store previous iteration levels for convergence
+                    thisOctal%molecularlevel(1:maxlevel,subcell) = thisOctal%newmolecularlevel(1:maxlevel,subcell) ! Store new levels as good current ones. Should improve convergence?
 
                  endif
               enddo
@@ -1625,6 +790,8 @@ module molecular_mod
       
       maxRMSFracChange = -1.d30
 
+!      call solveAllPops(grid, grid%octreeroot, thisMolecule)
+
       call calculateConvergenceData(grid, nvoxels, nray, fixedrays, maxRMSFracChange)
 
  ! If you think it's converged then test with the same number of rays to make sure
@@ -1634,8 +801,6 @@ module molecular_mod
         else
            tol = tolerance
         endif
-
-        write(*,*) "maxRMS", maxRMSFracChange, "tol", tol ** 2 * real(nvoxels)
 
         if(maxRMSFracChange < (tol ** 2) * real(nvoxels)) then
            if (gridConvergedTest) gridConverged = .true.
@@ -1704,6 +869,275 @@ module molecular_mod
   stop
 end subroutine molecularLoop
 
+   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays, itransdone)
+
+     use input_variables, only : useDust, amrgridsize
+
+     type(MOLECULETYPE) :: thisMolecule
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+
+     integer, parameter :: maxSamplePoints = 100
+
+     logical, optional :: fixedrays
+     logical :: stage1
+     integer :: fromSubcell
+     integer :: subcell
+!     real(double) :: ds, phi, i0(:), r, di0
+     real(double) :: ds, phi, i0(:), r, di0(maxtrans)
+     integer :: iTrans,nTrans
+     type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
+     type(VECTOR) :: startVel, endVel, endPosition
+
+     real(double) :: alphanu(maxtrans,2), alpha(maxtrans), alphatemp(maxtrans), snu(maxtrans), jnu(maxtrans)
+     integer :: iLower(maxtrans) , iUpper(maxtrans)
+     real(double) :: dv, deltaV
+     integer :: i
+     real(double) :: dist, dds, tval
+     integer :: nTau
+     real(double) :: nLower(maxtrans)
+!     real(double),pointer :: nLower(:)
+     real(double) :: nUpper(maxtrans)
+!     real(double),pointer :: nupper(:)
+!     real(double) :: dTau, etaline(maxtrans), kappaAbs 
+     real(double) :: dTau(maxtrans), etaline(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
+!     real(double), allocatable :: tau(:)
+     real(double) :: tau(maxtrans)
+     real(double) :: dvAcrossCell, projVel, endprojVel
+     real(double) :: CellEdgeInterval, phiProfVal
+!     real :: lambda
+     real(double), allocatable, save :: lambda(:), OneArray(:)
+     integer :: ilambda
+     integer :: iCount
+
+     real(double), save :: r1(5) !! quasi random number generators
+     real(double), save :: OneOverNTauArray(maxsamplePoints)
+
+     logical,save :: firsttime = .true.
+     logical :: quasi = .false.
+
+     logical :: itransdone(maxtrans)
+     logical :: realdust
+     real(double),save :: BnuBckGrnd(128)
+     real(double) :: balance(maxtrans), spontaneous(maxtrans), snugas(maxtrans)
+     real(double) :: nMol
+     integer :: done(maxtrans)
+ !    real(double) :: z,
+
+     realdust = .true.
+
+     if(present(fixedrays)) then
+        stage1 = fixedrays
+     else
+        stage1 = .false.
+     endif
+
+     nTrans = thisMolecule%nTrans
+
+!     allocate(tau(1:maxTrans))
+
+     position = randomPositionInCell(fromOctal, fromsubcell)
+
+     icount = 1
+     thisOctal => fromOctal!grid%octreeRoot
+     subcell = fromSubcell
+
+     rayVel = Velocity(position, grid, thisOctal, subcell)
+
+ !!! quasi random code!!!
+
+     if(firsttime) then
+
+        allocate(lambda(maxtrans))
+        allocate(OneArray(maxtrans))
+        OneArray = 1.0d0
+       
+        do itrans = 1, maxtrans
+           BnuBckGrnd(itrans) = Bnu(thisMolecule%transfreq(itrans), Tcbr)
+!          Bnudust(itrans) = Bnu(thisMolecule%transfreq(itrans), thisOctal%dusttemperature(subcell))
+        enddo
+
+       do ntau = 2,maxsamplepoints
+          OneOverNtauArray(ntau) = 1.d0 / (dble(nTau) - 1.d0)
+       enddo
+
+       lambda(:) = (cspeed / thisMolecule%transfreq(1:maxtrans)) * 1d8 ! cm to Angstroms
+
+       firsttime =.false.
+       if (quasi) call sobseq(r1,-1)
+    endif
+
+     if(quasi) then     
+        call sobseq(r1)    
+        direction = specificUnitVector(r1(1),r1(2))
+ !       r = (r1(3)+r1(4)+r1(5)) / 3.
+        deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line centre
+     else
+        call random_number(r)
+
+        direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
+
+!       randompointingrid = randompointinRegion(amrgridsize * 0.5)
+!       randompointingrid = 1d7 * randomUnitVECTOR()
+!       call normalize(randompointingrid)
+!       unitposition = position
+!       call normalize(unitposition)
+!       write(*,*) "unitposition",unitposition
+!       write(*,*) "randompointingrid",randompointingrid
+!       direction = UnitVECTORBetweenTwoPoints(randompointingrid,position)
+!       write(*,*) "direction", direction
+
+        deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+
+!        r = GaussianComplementRand()
+!        deltaV = thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak. 
+
+!        write(55,*) r
+
+     endif
+
+!!! SCIENCE LINES
+
+!     deltaV = deltaV + (rayVel .dot. direction) ! transform to take account of grid velocity
+!     projVel = deltaV - (rayVel .dot. direction) ! transform back to velocity relative to local flow
+
+!!! COMPUTATIONALLY QUICKER TO DO THIS
+
+     projvel = deltaV
+     deltaV =  deltaV + (rayVel .dot. direction)
+
+     call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
+
+     currentPosition = position + ds * direction
+
+     if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid
+        thisVel = velocity(currentposition, grid) 
+        endprojVel = deltaV - (thisVel.dot.direction)
+        phi = phiProf((endprojVel+projvel)*0.5d0, thisOctal%molmicroturb(subcell))
+     else
+        phi = phiProf(projVel, thisOctal%molmicroturb(subcell)) ! if fell off grid then assume phi is unchanged
+     endif
+
+!     currentPosition = position !This line is wrong because the source function does not apply locally
+     ds = ds * 1.d10 ! convert from cm to torus units
+
+     i0 = 0.d0
+     tau = 0.d0
+
+     iUpper(:) = thisMolecule%iTransUpper(:)
+     iLower(:) = thisMolecule%iTransLower(:)
+
+     do while(inOctal(grid%octreeRoot, currentPosition))
+
+        call findSubcellLocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+        if(useDust) then             
+           do itrans = 1,maxtrans
+              if(realdust) then
+                 call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
+                 call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), kappaAbs = kappaAbs)
+              else
+!             kappaAbs = thisOctal%rho(subcell) * 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d10 !multiplied by density !cm -> torus
+                 kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10 !multiplied by density !cm -> torus
+              endif
+              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right    !kappa already multiplied by density in amr_mod
+           enddo
+        endif
+
+        nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+
+        nlower(:) = thisOctal%molecularLevel(ilower(:),subcell) * nMol
+        nUpper(:) = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
+        balance(:) = nLower(:) * thisMolecule%einsteinBlu(:) - &
+                     nUpper(:) * thisMolecule%einsteinBul(:)
+
+        spontaneous(:) = thisMolecule%einsteinA(:) * nUpper(:)
+
+        snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
+
+        etaLine(:) = hCgsOverfourPi * spontaneous(:) 
+        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
+          
+        startVel = velocity(currentposition, grid) 
+        endPosition = currentPosition + tval * direction
+        endVel = velocity(endposition, grid)
+
+        dvAcrossCell = ((startVel - endvel) .dot. direction) ! start - end
+        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+
+        nTau = min(max(2, nint(dvAcrossCell * 5.d0)), maxSamplePoints) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
+
+        CellEdgeInterval = OneOverNtauArray(ntau)
+        dds = tval * cellEdgeInterval
+
+        dist = 0.d0
+        done = 0
+
+        do i = 2, nTau
+
+           dist = dist + dds ! increment along distance counter
+              
+           thisPosition = currentPosition + dist * direction
+
+           thisVel = velocity(thisPosition, grid)
+           dv = deltaV - (thisVel .dot. direction)
+           PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
+           
+           if(usedust) then
+              alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
+              alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)
+              jnu(1:maxtrans) = etaLine(1:maxtrans) * phiProfVal + &
+                   alphanu(1:maxtrans,2) * thisOctal%bnu(subcell,1:maxtrans) ! jnu, emission coefficient - equation 7
+              
+              do itrans = 1,maxtrans
+                 if(alpha(itrans) .ne. 0.d0) then 
+                    snu(itrans) = jnu(itrans) / alpha(itrans)
+                 else
+                    snu(itrans) = tiny(snu)
+                    alpha(itrans) = tiny(alpha)
+                 endif
+              enddo
+           else
+              alpha(:) = alphaTemp(:) * phiprofVal 
+           endif
+
+           dTau(:) = alpha(:) * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
+           attenuation(:) = exp(-tau(:))
+!           call vdexp(maxtrans, -tau, attenuation)
+           localradiationfield(:) = exp(-dtau(:)) 
+           localradiationfield(:) = OneArray(:) - localradiationfield(:)
+           di0(:) = attenuation(:) * localradiationfield(:) * snu(:) ! 2nd term is local radiation field from this cell 
+              
+           do itrans = 1, maxtrans
+
+              if(di0(itrans) .gt. 1d-6 * i0(itrans)) then
+!                 if(tau(itrans) .lt. 10.d0) then
+                 i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
+                 tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
+              else
+                 done(itrans) = 1
+                 i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
+                 tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
+!                 if(sum(done(1:mintrans)) .eq. mintrans) then
+                 if(sum(done) .ge. mintrans) then
+                    goto 118 
+                 endif
+              endif
+              
+           enddo
+           
+        enddo
+        
+        currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
+     enddo
+     
+118  continue
+     
+     i0(:) = i0(:) + BnuBckGrnd(:) * attenuation(:)
+
+   end subroutine getRay
+
    subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds, phi, i0, iTrans, jbar, nPops)
 
      use input_variables, only : useDust
@@ -1748,7 +1182,7 @@ end subroutine molecularLoop
                   nUpper * thisMolecule%einsteinBul(iTrans))
 
      if(useDust) then
-        lambda = cspeed_sgl / thisMolecule%transfreq(iTrans) * 1d8
+        lambda = cspeed / thisMolecule%transfreq(iTrans) * 1d8
         call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
 
         if(realdust) then
@@ -1813,634 +1247,306 @@ end subroutine molecularLoop
    
    end subroutine calculateJbar
 
-   real(double) pure function DustModel1(freq) result (kappa) !! GGTAU paper
-      
-     real(double), intent(in) :: freq
-     real(double) :: lambda
-
-     lambda = cspeed * 1d-2 / freq
-
-     if(lambda .gt. 250e-6) then
-        kappa = 1.6e8 * lambda**2
-     else
-        kappa = 4.8159e5 * lambda**1.3
-     endif
-      
-   end function DustModel1
-!sub intensity
-   subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
-
-     use input_variables, only : useDust
-     type(VECTOR) :: position, direction, dsvector
-     type(GRIDTYPE) :: grid
+ ! solves rate equation in matrix format - equation 10
+   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2)
+     real(double) :: nPops(:)
+     real(double) :: temperature
+     real(double) :: jnu(:)
+     real(double) :: nh2
      type(MOLECULETYPE) :: thisMolecule
-     real(double) :: disttoGrid
-     integer :: itrans
-     real(double) :: nMol
-     real(double), intent(out) :: i0
-     type(OCTAL), pointer :: thisOctal
-     integer :: subcell
-     type(VECTOR) :: currentPosition, thisPosition, endPosition
-     type(VECTOR) :: startVel, endVel, thisVel, veldiff
-     real(double) :: alphanu1, alphanu2, jnu, snu
-     real(double) :: alpha
-     real(double)  :: dv, deltaV, dVacrossCell
-     integer :: i, icount
-     real(double) :: distArray(2000), tval
-     integer :: nTau
-     real(double) ::  OneOvernTauMinusOne, ds
-     real(double) :: nLower, nUpper, balance
-     real(double) :: dTau, etaline, dustjnu
-     real(double), intent(out), optional :: tau
-     real(double),save :: BnuBckGrnd
+     real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1), collMatrix(maxlevel+1,maxlevel+1), cTot(maxlevel)
+     real(double) :: boltzFac
+     integer :: nLevels
+     integer :: i, j
+     integer :: itrans, l, k, iPart
+     real(double) :: collEx, colldeEx
 
-     real(double) :: phiProfVal
+     character(len=80) :: message
 
-     logical,save :: firsttime = .true.
-     logical, optional :: tautest
-     logical :: dotautest
-     logical :: lowvelgrad = .false.
-     logical :: realdust = .true.
+     matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero ! used to be 1d-10
+     matrixB = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
 
-     if(present(tautest)) then
-        dotautest = tautest
-     else
-        dotautest = .false.
-     endif
+     matrixB(maxLevel+1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
 
-     if(firsttime .or. dotautest) then
-        BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
-        if(.not. dotautest) firsttime = .false.
-     endif
+ ! This do loop calculates the contribution to transition rates of each level from every other level. NB emission is +ve here
+     do iTrans = 1, maxtrans
 
-     if(inOctal(grid%octreeRoot, Position)) then
-!        if( dotautest) write(*,*) "inside"
-        disttogrid = 0.
-     else
-        distToGrid = distanceToGridFromOutside(grid, position, direction) 
-!        if( dotautest) write(*,*) "outside", disttogrid
-     endif
+        k = thisMolecule%iTransUpper(iTrans)
+        l = thisMolecule%iTransLower(iTrans)
 
-     if (distToGrid > 1.e29) then
-        write(*,*) "ray does not intersect grid",position,direction
-        i0 = 1.d-60
-        tau = 1.d-60
-        goto 666
-     endif
+        matrixA(k,k) = matrixA(k,k) + thisMolecule%einsteinBul(iTrans) * jnu(iTrans) + thisMolecule%einsteinA(iTrans)
+        matrixA(l,l) = matrixA(l,l) + thisMolecule%einsteinBlu(iTrans) * jnu(iTrans)
+        matrixA(k,l) = matrixA(k,l) - thisMolecule%einsteinBlu(iTrans) * jnu(iTrans)
+        matrixA(l,k) = matrixA(l,k) - thisMolecule%einsteinBul(iTrans) * jnu(iTrans) - thisMolecule%einsteinA(iTrans)
 
-     currentPosition = position + (distToGrid + 5.d-4*grid%halfSmallestSubcell) * direction
-    if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid + 2500.d0*Grid%halfsmallestsubcell) * direction
-!     if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid * (1.+1d-5)) * direction
-
-     i0 = 0.d0
-     tau = 0.d0
-
-     thisOctal => grid%octreeRoot
-     icount = 0
-
-        if(.not. inOctal(grid%octreeRoot, currentPosition) .and. icount .eq. 0) stop
-
-        do while(inOctal(grid%octreeRoot, currentPosition))
-           icount = icount + 1
-
-        call findSubcelllocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-        nMol = thisOctal%molcellparam(subcell,1)
-        nLower = thisOctal%molcellparam(subcell,2)
-        nUpper = thisOctal%molcellparam(subcell,3)
-        balance = thisOctal%molcellparam(subcell,4)
-        etaline = thisOctal%molcellparam(subcell,5)
-        alphanu1 = thisOctal%molcellparam(subcell,6)
-        alphanu2 = thisOctal%molcellparam(subcell,7)
-        dustjnu = thisOctal%molcellparam(subcell,8)
-
-        thisPosition = currentPosition
-
-        if(grid%geometry .eq. 'iras04158') then
-           startVel = keplerianVelocity(currentposition, grid)
-           endPosition = currentPosition + tval * direction
-           endVel = keplerianVelocity(endposition, grid)
-        else
-           startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
-           endPosition = currentPosition + tval * direction
-           endVel = amrGridVelocity(grid%octreeRoot, endPosition, startOctal = thisOctal, actualSubcell = subcell)
-        endif
-
-        Veldiff = endVel - startVel
-
-        dvAcrossCell = (veldiff.dot.direction)
-        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
-
-        nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
-
-        distArray(1) = 0.d0
-        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
-
-        ds = tval * OneOvernTauMinusOne
-
-        dsvector = ds * direction
-
-        do i = 2, nTau 
-
-           thisPosition = thisPosition + dsvector
-           thisvel = startvel + real(i-1) * OneOvernTauMinusOne * Veldiff
-           dv = (thisVel .dot. direction) - deltaV
-
-           phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
-           alphanu1 = thisOctal%molcellparam(subcell, 6) * phiprofval
-
-           alpha = alphanu1 + alphanu2
-           dTau = alpha * ds * 1.d10
-
-           jnu = etaLine * phiProfVal
-
-           if(useDust) jnu = jnu + dustjnu
-
-           if (alpha .ne. 0.d0) then
-
-              snu = jnu/alpha
-           else
-
-              snu = tiny(snu)
-              i0 = i0 + tiny(i0)
-           endif
-
-           if(tau .lt. 500. .and. dtau .lt. 500.) then
-              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-           else
-              i0 = i0
-           endif
-
-           tau = tau + dtau
-
-        enddo
-
-        currentPosition = currentPosition + (tval + 1d-3 * grid%halfSmallestSubcell) * direction
      enddo
 
- 666 continue
+     collMatrix = 1.d-60 ! used to be 1.d-10
 
-           if(tau .lt. 500.) then
-              i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side
-           else
-              i0 = i0
-           endif
-   end subroutine intensityAlongRay
+ ! Calculate contribution from collisions - loop over all collision partners and all molecular levels
 
-   subroutine tauAlongRay(position, direction, grid, thisMolecule, deltaV, tau)
+     do iPart = 1, thisMolecule%nCollPart
+        do iTrans = 1, maxtrans !thisMolecule%nCollTrans(iPart)
 
-     use input_variables, only : useDust
-     type(VECTOR) :: position, direction
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: nMol
-     type(OCTAL), pointer :: thisOctal
-     integer :: subcell
+           k = thisMolecule%iCollUpper(iPart, iTrans)
+           l = thisMolecule%iCollLower(iPart, iTrans)
 
-     type(VECTOR) :: currentPosition, thisPosition, endPosition
-     type(VECTOR) :: startVel, endVel, thisVel, veldiff
-     real(double) :: alphanu(maxtrans, 2), alpha(maxtrans)
-     real(double)  :: dv, deltaV, dVacrossCell
-     integer :: i
-     real(double) :: dist, tval
-     integer :: nTau
-     real(double) :: dds, celledgeinterval
-     real(double) :: nLower(maxtrans), nUpper(maxtrans), balance(maxtrans), alphatemp(maxtrans)
-     integer :: iLower(maxtrans), iUpper(maxtrans)
-     real(double) :: dTau(maxtrans)
-     real(double), intent(out) :: tau(maxtrans)
+           boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
+           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
+           collEx = colldeEx * boltzFac * thisMolecule%g(k) / thisMolecule%g(l)
 
-     real(double) :: phiProfVal
+           collMatrix(l, k) = collMatrix(l, k) + collEx
+           collMatrix(k, l) = collMatrix(k, l) + colldeEx
 
-     currentPosition = position
-     
-     tau = 0.d0
-     thisOctal => grid%octreeRoot
-
-     iUpper(:)  = thisMolecule%iTransUpper(:)
-     iLower(:)  = thisMolecule%iTransLower(:)
-     
-     do while(inOctal(grid%octreeRoot, currentPosition))
-        
-        call findSubcelllocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-        nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-        nLower(:)  = thisOctal%molecularLevel(subcell,iLower(:)) * nMol
-        nUpper(:)  = thisOctal%molecularLevel(subcell,iUpper(:)) * nMol
-        balance(:) = (nLower(:) * thisMolecule%einsteinBlu(:) - &
-                     nUpper(:) * thisMolecule%einsteinBul(:))
-        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
-!write(*,*) "nmol", nmol
-!write(*,*) "nlower", nlower
-!write(*,*) "nupper", nupper
-!write(*,*) "balance", balance
-
-        thisPosition = currentPosition
-        startVel = Velocity(currentposition, grid)
-!        write(*,*) "startvel", startvel
-        endPosition = currentPosition + tval * direction
-        endVel = Velocity(endposition, grid)
-!        write(*,*) "endvel", endvel
-        Veldiff = endVel - startVel
-!        write(*,*) "veldiff", veldiff
-        dvAcrossCell = (veldiff .dot. direction)
-!        write(*,*) "dvacrosscell", dvacrosscell
-        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
-
-        nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
-
-        CellEdgeInterval = 1.d0 / (dble(ntau) - 1.0)
-        dds = tval * cellEdgeInterval
-
-        dist = 0.d0
-
-        do i = 2, nTau
-
-           dist = dist + dds ! increment along distance counter
-              
-           thisPosition = currentPosition + dist * direction
-
-           thisVel = velocity(thisPosition, grid)
-           dv = deltaV - (thisVel .dot. direction)
-           PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
-           
-           alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
-           alpha(1:maxtrans) = alphanu(1:maxtrans,1) !+ alphanu(1:maxtrans,2)              
-!        write(*,*) "alpha", alpha
-!        write(*,*) dds
-           dTau(:) = alpha(:) * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
-              
-           tau(:) = tau(:) + dtau(:) ! contribution to optical depth from this line integral
-           
         enddo
-        
-        currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
      enddo
 
-   end subroutine tauAlongRay
+     cTot = 0.d0
 
-   subroutine lteintensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
+     do k = 1, maxlevel
+        do l = 1, maxlevel
+           cTot(k) = cTot(k) + collMatrix(k,l) ! sum over all collisional rates out of each level
+        enddo
+     enddo
 
-     use input_variables, only : useDust
-     type(VECTOR) :: position, direction, dsvector
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: disttoGrid
-     integer :: itrans
-     real(double) :: nMol
-     real(double), intent(out) :: i0
-     type(OCTAL), pointer :: thisOctal, startOctal
-     integer :: subcell
-     type(VECTOR) :: currentPosition, thisPosition, thisVel
-     type(VECTOR) :: rayVel, startVel, endVel, endPosition
-     real(double) :: alphanu(2), jnu, snu
-     real(double) :: alpha
-     integer, save :: iLower , iUpper
-     real(double) :: dv, deltaV, dvAcrossCell
-     integer :: i, icount
-     real(double) :: distArray(200), tval
-     integer :: nTau
-     real(double) ::  OneOvernTauMinusOne, ds
-     real(double) :: nLower, nUpper, balance, phiProfVal
-     real(double) :: dTau, etaline, kappaAbs
-     real(double), intent(out), optional :: tau
-     real(double),save :: BnuBckGrnd
-     real :: lambda
-     integer :: ilambda
+     do i = 1, maxlevel
+           matrixA(i,i) = matrixA(i,i) + cTot(i)
+        do j = 1, maxlevel
+           if (i .ne. j) then
+              matrixA(i,j) = matrixA(i,j) - collMatrix(j, i)
+           endif
+        enddo
+     enddo
 
-     logical,save :: firsttime = .true.
-     logical, optional :: tautest
-     logical :: dotautest
-     logical :: lowvelgrad = .false.
-     logical :: realdust = .true.
-
-     if(present(tautest)) then
-        dotautest = tautest
-     else
-        dotautest = .false.
-     endif
-
-     if(firsttime .or. dotautest) then
-        BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
-        iUpper = thisMolecule%iTransUpper(iTrans)
-        iLower = thisMolecule%iTransLower(iTrans)
- !       write(*,*) iupper,ilower
-        if(.not. dotautest) firsttime = .false.
-     endif
-
-     if(useDust) then
-        lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
-        lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter!
-        call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-!        write(*,*) lambda,ilambda
-     endif
-
-     if(inOctal(grid%octreeRoot, Position)) then
-        disttogrid = 0.
-     else
-        distToGrid = distanceToGridFromOutside(grid, position, direction) 
-     endif
-
-     if (distToGrid > 1.e29) then
-        write(*,*) "ray does not intersect grid",position,direction
-        i0 = 1.d-60
-        tau = 1.d-60
-        goto 666
-     endif
-
-    currentPosition = position + (distToGrid + 5000.d0*grid%halfSmallestSubcell) * direction
- !    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
-     i0 = 0.d0
-     tau = 0.d0
-     rayVel = VECTOR(0.d0, 0.d0, 0.d0)
-
-     thisOctal => grid%octreeRoot
-     icount = 0
-
-     if(.not. inOctal(grid%octreeRoot, currentPosition) .and. icount .eq. 0) stop
-
-     do while(inOctal(grid%octreeRoot, currentPosition))
-        icount = icount + 1
-
-        call findSubcelllocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-!        if(.not. thisOctal%done) then
-
-!           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
-
-!           allocate(thisOctal%molcellparam(subcell,8))
-!           thisOctal%molcellparam(subcell,1) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-           
-!           nMol = thisOctal%molcellparam(subcell,1)
-
-!           thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(subcell,iLower) * nMol
-!           thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(subcell,iUpper) * nMol
-           
-!           nLower = thisOctal%molcellparam(subcell,2)
-!           nUpper = thisOctal%molcellparam(subcell,3)
-!           thisOctal%molcellparam(subcell,4) = nLower * thisMolecule%einsteinBlu(iTrans) - nUpper * thisMolecule%einsteinBul(iTrans)
-
-!           etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
-!           thisOctal%molcellparam(subcell,5) = etaLine * nUpper
-        
-!           thisOctal%done = .true.
-
-!           thisOctal%molcellparam(subcell,6) = nTau
-!           thisOctal%molcellparam(subcell,7) = OneOvernTauMinusOne
-!        endif
-
-        nMol = thisOctal%molcellparam(subcell,1)
-        nLower = thisOctal%molcellparam(subcell,2)
-        nUpper = thisOctal%molcellparam(subcell,3)
-        balance = thisOctal%molcellparam(subcell,4)
-        etaline = thisOctal%molcellparam(subcell,5)
-       
-!        write(*,*) thisOctal%molmicroturb(subcell), thisOctal%microturb(subcell)
-
-
- !       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)                                                                                                                                                                                
-
-        if(usedust) then
-!           if(realdust) then
-              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
+     matrixA(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
+     matrixA(1:maxlevel+1,maxlevel+1) = 1.d-60 ! fix highest population to small non-zero value
+     
+!     do i = 1, thisMolecule%nlevels
+!        do j = 1, thisMolecule%nlevels
+!           if( i .eq. j ) then
+!              matrixA(i,j) = matrixA(i,j)
 !           else
-!             kappaAbs = thisOctal%rho(subcell) * 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d20 !multiplied by density !cm -> torus
-!              kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10 !multiplied by density !cm -> torus
+!              matrixA(i,j) = 1.d-10
 !           endif
-           alphanu(2) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)
+!        enddo
+!     enddo
+
+ ! finished creating equation 10, now solve it to find new level populations
+   call luSlv(matrixA, matrixB, maxlevel+1)
+
+   matrixB = abs(matrixB) ! stops negative level populations causing problems
+
+   if(.not.isnan(matrixB(1))) then
+      nPops(1:maxLevel) = matrixB(1:maxLevel)
+   else
+      nPops(1:maxLevel) = matrixB(1:maxLevel)
+
+      write(message, *) "bad",temperature,npops(:)
+      call writeinfo(message, IMPORTANT)
+!      stop
+   endif
+   
+ end subroutine solveLevels
+
+
+ ! Calculate collision rates between partners for given temperature
+   real(double) function collRate(thisMolecule, temperature, iPart, iTrans)
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: temperature, r
+     integer :: iTrans, k, iPart
+
+     collRate = 0.d0
+
+!     call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), temperature, k)
+     call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), &
+          thisMolecule%nCollTemps(iPart), temperature, k)
+
+
+     r = (temperature - thisMolecule%collTemps(iPart,k)) / &
+          (thisMolecule%collTemps(iPart,k+1) - thisMolecule%collTemps(iPart, k))
+
+     collRate = collRate + thisMolecule%collRates(iPart, iTrans, k) + &
+          r * ( thisMolecule%collRates(iPart, iTrans, k+1) -  thisMolecule%collRates(iPart, iTrans, k))
+
+   end function collRate
+
+ ! this subroutine calculates the maximum fractional change in the first 6 energy levels
+   recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
+                          iter, nVoxels,itransdone,fixedrays)
+
+     use input_variables, only : tolerance
+
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child 
+     integer :: subcell, i
+     real(double) :: maxFracChangePerLevel(:), printmaxFracChange, globalmaxFracChange, avgFracChange(:,:)
+     real(double) :: diff(minlevel), newFracChangePerLevel(minlevel), temp(minlevel)
+     integer :: counter(:,:),j
+
+     integer :: iter
+     integer :: nVoxels
+
+     logical :: itransDone(:),fixedrays
+     integer :: ntrans
+
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren
+              if (thisOctal%indexChild(i) == subcell) then
+                 child => thisOctal%child(i)
+                 call swapPops(child, maxFracChangePerLevel, avgFracChange, counter, iter, &
+                      nVoxels, itransdone, fixedrays)
+                 exit
+              end if
+           end do
         else
-           alphanu(2) = 0.d0
-        endif
+           
+           thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
 
-        ds = tval * OneOvernTauMinusOne
-        dsvector = ds * direction
-        thisPosition = currentPosition
+           globalMaxFracChange = MAXVAL(maxFracChangePerLevel(:)) 
+           printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel),mask = (.not. itransdone(1:minlevel)))
 
-        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
-        endPosition = currentPosition + tval * direction
-        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:mintrans,subcell) - &
+                thisOctal%molecularLevel(1:mintrans,subcell)) / &
+                thisOctal%newmolecularLevel(1:mintrans,subcell)))
 
-        dvAcrossCell = ((startVel - endvel).dot.direction)
+           temp = newFracChangePerLevel(1:mintrans)
 
-!        write(*,*) "before",dvAcrossCell
+           do j=1, mintrans
+              if(.not. itransdone(j)) then
+                 if(newFracChangePerLevel(j) < 0.5 * tolerance) counter(4,j) = counter(4,j) + 1 ! used for itransdone
+                 if(newFracChangePerLevel(j) < tolerance) counter(1,j) = counter(1,j) + 1
+                 if(newFracChangePerLevel(j) < 2. * tolerance) counter(2,j) = counter(2,j) + 1
+                 if(newFracChangePerLevel(j) < 5. * tolerance) counter(3,j) = counter(3,j) + 1
+              else
+                 counter(:,j) = counter(:,j) + 1
+              endif
+           enddo
 
-        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+              if(maxval(temp) .lt. 5. * tolerance) then
+                 counter(3,mintrans + 1) = counter(3,mintrans + 1) + 1
+                 if(maxval(temp) .lt. 2. * tolerance) then
+                    counter(2,mintrans + 1) = counter(2,mintrans + 1) + 1
+                    if(maxval(temp) .lt. tolerance) then
+                       counter(1,mintrans + 1) = counter(1,mintrans + 1) + 1
+                    endif
+                 endif
+              endif
 
-!        write(*,*) "afeter",dvAcrossCell
+              avgFracChange(:,1) = avgFracChange(:,1) + temp
+              avgFracChange(:,2) = avgFracChange(:,2) + temp**2
 
-        nTau = min(max(2, nint(dvAcrossCell * 20.d0)), 100) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
-
-        distArray(1) = 0.d0
-        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
-
-        do i = 2, nTau 
-
-           startOctal => thisOctal
-           thisPosition = thisPosition + dsvector
-
-!           if(lowvelgrad) then 
-              thisvel = startvel + (i-1) * OneOvernTauMinusOne * (endVel - startVel)
-!           else
-!              thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell)
-!           endif
-
-!              write(*,*) modulus(altthisvel-thisvel),thisvel%x-altthisvel%x,thisvel%y-altthisvel%y,thisvel%z-altthisvel%z
-
-           dv = (thisVel .dot. direction) - deltaV
-
-           phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
-
-!           write(*,*) phiProfVal
-
-           alphanu(1) = hCgsOverfourPi * phiprofval
-           alphanu(1) = alphanu(1) * balance
-
-           alpha = alphanu(1) + alphanu(2)
-           dTau = alpha * ds * 1.d10
-
-           jnu = etaLine * phiProfVal
-
-           if(useDust) jnu = jnu + alphanu(2) * thisOctal%bnu(subcell,itrans)
-
-           if (alpha .ne. 0.d0) then
-
- !             snu = jnu/alpha
-              snu = thisOctal%bnu(subcell,itrans)
-!              if((i0 .eq. 0.) .or. tau .lt. 10. .or. exp(-tau) * (1.d0-exp(-dtau))*snu .gt. i0*(1d-5)) then
-                 i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-!              else
-!                 write(*,*) "i0", i0, "tau", tau, "skipping"
-!                 goto 666
-!              endif
-           else
-              snu = tiny(snu)
-              i0 = i0 + tiny(i0)
+           If (maxval(temp) > printmaxFracChange) then
+              maxFracChangePerLevel = newFracChangePerLevel ! update maxFracChange if fractional change is great => not converged yet
            endif
-           tau = tau + dtau
-        enddo
-        
-        currentPosition = currentPosition + (tval+1d-3*grid%halfSmallestSubcell) * direction
 
-!        if((grid%geometry .eq. 'IRAS04158') .and. (modulus(currentposition) < 0.5*rinner)) then
-!           currentPosition = currentPosition + (rinner/(VECTOR(1d-20,1d-20,1.d0) .dot. direction)) * direction
-!        endif
-        
-!        if(debug) write(*,*) i0,tau
+!           allocate(diff(size(thisOctal%molecularlevel(subcell,:))))
+
+           diff = thisOctal%molecularLevel(:,subcell) - &
+                  thisOctal%newmolecularLevel(:,subcell)
+
+ !          if(fixedrays .and. modulus(SubcellCentre(thisOctal,subcell)) .lt. 1e7 .and. modulus(SubcellCentre(thisOctal,subcell)) .gt. 3e6) then
+           if(.not. fixedrays) then
+              if (maxval(temp, mask = (.not. itransdone(1:6))) .gt. tolerance * 6.) then
+                 thisOctal%molecularLevel(:,subcell) = &
+                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (enhanced) update molecular levels
+              else
+                 thisOctal%molecularLevel(:,subcell) = &
+                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+              endif
+
+              if(maxval(temp, mask = (.not. itransdone(1:6))) .lt. tolerance * 2.)then
+                 thisOctal%molecularLevel(:,subcell) = &
+                      thisOctal%newmolecularLevel(:,subcell) - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+              endif
+
+           else
+
+              if (maxval(temp, mask = (.not. itransdone(1:6))) .gt. tolerance * 10.) then
+                 thisOctal%molecularLevel(:,subcell) = &
+                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (enhanced) update molecular levels
+              else
+                 thisOctal%molecularLevel(:,subcell) = &
+                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+              endif
+
+              if(maxval(temp, mask = (.not. itransdone(1:6))) .lt. tolerance * 2.)then
+                 thisOctal%molecularLevel(:,subcell) = &
+                      thisOctal%newmolecularLevel(:,subcell) - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+              endif
+           endif
+
+!           deallocate(diff)
+
+        endif
      enddo
+ !    deallocate(newFracChangePerLevel,temp)
+   end subroutine swapPops
 
- 666 continue
+!!!!READ ROUTINES!!!!
 
-     i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side                                                                                                                                                                                                                                
-!     if(debug) write(*,*) i0,tau
- !    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)                                                                                                                                                                                                                            
+ subroutine calculateMoleculeSpectrum(grid, thisMolecule)
+   use input_variables, only : itrans, nSubpixels, inc, usedust
 
- !    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)                                                                                                                                                                               
+#ifdef MPI
+       include 'mpif.h'
+#endif
 
-     ! convert to brightness T                                                                                                                                                                                                                                                       
+   type(GRIDTYPE) :: grid
+   type(MOLECULETYPE) :: thisMolecule
+   type(VECTOR) :: unitvec, posvec, centrevec, viewvec
+   type(DATACUBE) ::  cube
 
- !    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))                                                                                                                                                                                                      
+   character (len=80) :: filename
 
-   end subroutine lteintensityAlongRay
+   real(double) :: mean(6) = 0.d0
+   integer :: icount = 0
 
-   subroutine continuumIntensityAlongRay(position, direction, grid, wavelength, deltaV, i0, tau, tautest)
 
-     type(VECTOR) :: position, direction
-     type(GRIDTYPE) :: grid
-     real(double) :: disttoGrid
-     real(double), intent(out) :: i0
-     type(OCTAL), pointer :: thisOctal, startOctal
-     integer :: subcell
-     type(VECTOR) :: currentPosition, thisPosition, thisVel
-     type(VECTOR) :: startVel, endVel, endPosition
-     real(double) :: alphanu(2), jnu, snu
-     real(double) :: alpha
-     real(double) :: dv, deltaV
-     integer :: i, icount
-     real(double) :: distArray(20000), tval
-     integer :: nTau
-     real(double) ::  OneOvernTauMinusOne
-     real(double) :: dTau, kappaAbs, kappaSca
-     real(double), intent(out), optional :: tau
+#ifdef MPI
+     ! For MPI implementations
+     integer       ::   my_rank        ! my processor rank
+     integer       ::   np             ! The number of processes
+     integer       ::   ierr           ! error flag
 
-     real(double) :: dvAcrossCell
-     real :: lambda, wavelength
-     integer :: ilambda
+     ! FOR MPI IMPLEMENTATION=======================================================
+     !  Get my process rank # 
+     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
 
-     logical, optional :: tautest
-     logical :: dotautest
-     logical :: lowvelgrad = .false.
+     ! Find the total # of precessor being used in this run
+     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+#endif
 
-     if(present(tautest)) then
-        dotautest = tautest
-     else
-        dotautest = .false.
-     endif
+!     if(grid%geometry .eq. "iras04158") call plotdiscvalues(grid, thisMolecule)
 
-     lambda = wavelength * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter!
-!     write(*,*) "lambda", lambda
-     
-     call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-     
-     if(inOctal(grid%octreeRoot, Position)) then
-        disttogrid = 0.
-!        write(*,*) "inside"
-     else
-        distToGrid = distanceToGridFromOutside(grid, position, direction) 
-       ! write(*,*) "outside", position
-       ! write(*,*) "outside", direction
-       ! write(*,*) "disttogrid", disttogrid
-     endif
+!     call readAMRgrid("molecular_tmp.grid",.false.,grid)
 
-     if (distToGrid > 1.e29) then
-        write(*,*) "ray does not intersect grid",position,direction
-        i0 = 1.d-60
-        tau = 1.d-60
-        goto 666
-     endif
-
-    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
-    if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid + 2500.d0*Grid%halfsmallestsubcell) * direction
-     !   write(*,*) "outside", position
-     !   write(*,*) "outside", direction
-     !   write(*,*) "disttogrid", disttogrid
- !    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
-     i0 = 0.d0
-     tau = 0.d0
+    !if(usedust .and. grid%geometry .eq. "iras04158") call testOpticalDepth(grid, thisMolecule)
+!call testOpticalDepth(grid, thisMolecule)
     
-     thisOctal => grid%octreeRoot
-     icount = 0
+     if(writeoutput) call writeinfo('Setting observer parameters', TRIVIAL)
+     call setObserverVectors(inc, viewvec, unitvec, posvec, centreVec, grid%octreeroot%subcellsize)
+     if(writeoutput) call writeinfo('Creating Image', TRIVIAL)
+!     write(*,*)"posvec",posvec,"inc", inc
+     Call createimage(cube, grid, unitvec, posvec, thismolecule, itrans, nSubpixels) ! create an image using the supplied parameters (also calculate spectra)
+     
+     call cubeIntensityToFlux(cube, thismolecule, itrans) ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)
 
-     do while(inOctal(grid%octreeRoot, currentPosition))
-        icount = icount + 1
+     !Commented out lines are for removing background intensity - will want to do this one day
 
-        call findSubcelllocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+     !   call TranslateCubeIntensity(cube,1.d0*Tcbr) ! 
+     !   call cubeIntensityToFlux(cube, thismolecule, itrans) ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)
+     
+     call createFluxSpectra(cube, thismolecule, itrans)
 
-        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
-        endPosition = currentPosition + tval * direction
-        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+     if(writeoutput) call writedatacube(cube, 'MolRT.fits')
 
- !       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
-         dvAcrossCell = ((startVel - endvel).dot.direction)
-        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
+     write(filename,'(a,a,i1,a,i1,a)') trim(cube%telescope%label),'fluxcubeJ', &
+          thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
+     stop
 
-        !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK                                                                                                                                                                                                                           
-        nTau = min(max(2, nint(dvAcrossCell * 20.d0)), 200) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)                                                                                                             
-!        ntau = 100
-
-        distArray(1) = 0.d0
-        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
- !       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)                                                                                                                                                                                
-        do i = 2, nTau
-
-           distArray(i) = tval * dble(i-1) * OneOvernTauMinusOne
-
-           startOctal => thisOctal
-           thisPosition = currentPosition + distArray(i)*direction
-
-        if(grid%geometry .eq. 'iras04158') then
-           thisVel = keplerianVelocity(thisPosition, grid)
-        else
-           thisvel = startvel + (i-1) * OneOvernTauMinusOne * (endvel - startvel)
-        endif
-
-           dv = (thisVel .dot. direction) - deltaV
-
-           call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
-
-           alphanu(2) = (kappaSca + kappaAbs) * 1.d-10  !* thisOctal%rho(subcell)
-
-           alpha = alphanu(2)
-           dTau = alpha * distArray(2) * 1.d10
-
-           jnu = alphanu(2) * bnu(cspeed/lambda, dble(thisOctal%temperaturedust(subcell)))
-
-           if (alpha .ne. 0.d0) then
-
-              snu = jnu/alpha
- !             snu = thisOctal%bnu(subcell,itrans)
-              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-
-           else
-              snu = tiny(snu)
-              i0 = i0 + tiny(i0)
-           endif
-           tau = tau + dtau
-!           if(writeoutput) write(*,*) "i",i,"tau at",thisposition%x,"is",tau
-        enddo
-
-        currentPosition = currentPosition + (tval+1.d-6*grid%halfSmallestSubcell) * direction
-
-     enddo
-
- 666 continue
-
-     i0 = i0 + bnu(cspeed/lambda, dble(tcbr))  * exp(-tau) ! from far side                                                                                                                                                                                                                                
-
-   end subroutine continuumIntensityAlongRay
+    end subroutine calculateMoleculeSpectrum
 
    function makeImageGrid(cube, unitvec, posvec, grid, thisMolecule, iTrans, deltaV, nsubpixels) result (imagegrid)
 
@@ -2972,79 +2078,6 @@ end subroutine molecularLoop
 
    end subroutine createimage
 
-   real function nextStep(cube, ivplusone) result (step)
-
-     type(DATACUBE) :: cube
-     integer :: iv,i,j,ivplusone
-     real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
-     real(double) :: xquad(3),yquad(3),xa(3)
-     real(double) :: sumx(4),sumxy(4)
-     real(double) :: a(3,3),b(3)
-     real(double) :: fac
-     real(double), save :: alty2 !, ydash
-     real(double), save :: oldstep = 4.d0
-
-     iv = ivplusone - 1
-
-     allocate(x(iv))
-     allocate(y(iv))
-     allocate(y2(iv))
-     allocate(intensitysum(iv))
-
-     do i = 1,iv
-        intensitysum(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
-     enddo
-
-     fac = intensitysum(1)
-     x = cube%vAxis(1:iv)
-     y =  intensitysum / fac 
-
- !    ydash = ((y(iv) - y(iv-1)) / (x(iv) - x(iv-1))) + (y2(iv-1) * (x(iv) - x(iv-1)))
-
- !    write(*,*) "x",x
- !    write(*,*) "y",y
-
-     call spline(x,y,iv,1.d31,1.d31,y2)
-
- !    write(*,*) y2
-
-     xquad = x(iv-3:iv-1)
-     yquad = y2(iv-3:iv-1)
-     xa = xquad
-
-     do i=1,4
-        sumx(i) = sum(xa)
-        sumxy(i) = sum(xa * yquad)
-
-        xa = xa*xquad
-     enddo
-
-     do i = 1,3
-       do j = 1,3
-          if(6-i-j .ne. 0) then 
-             a(i,j) = sumx(6-i-j)
-          else
-             a(i,j) = 3.d0
-          endif
-       enddo; enddo
-
-       b = (/sumxy(2),sumxy(1),sum(yquad)/)
-       call luSlv(a,b,3)
-
-         write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
-
-         alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
-
-          step = (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
-          oldstep = step
-
- !      write(*,*) "x",xquad,"y2",yquad
- !      write(*,*) "quad", alty2, min(max(25.d0/abs(alty2),0.5),4.d0), oldstep, (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
-
-
-   end function nextStep
-
-
  subroutine createFluxSpectra(cube,thismolecule,itrans)
 
    use input_variables, only : gridDistance, molAbundance
@@ -3250,6 +2283,941 @@ endif
 
  end subroutine fineGaussianWeighting
 
+!sub intensity
+   subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
+
+     use input_variables, only : useDust
+     type(VECTOR) :: position, direction, dsvector
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: disttoGrid
+     integer :: itrans
+     real(double) :: nMol
+     real(double), intent(out) :: i0
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+     type(VECTOR) :: currentPosition, thisPosition, endPosition
+     type(VECTOR) :: startVel, endVel, thisVel, veldiff
+     real(double) :: alphanu1, alphanu2, jnu, snu
+     real(double) :: alpha
+     real(double)  :: dv, deltaV, dVacrossCell
+     integer :: i, icount
+     real(double) :: distArray(2000), tval
+     integer :: nTau
+     real(double) ::  OneOvernTauMinusOne, ds
+     real(double) :: nLower, nUpper, balance
+     real(double) :: dTau, etaline, dustjnu
+     real(double), intent(out), optional :: tau
+     real(double),save :: BnuBckGrnd
+
+     real(double) :: phiProfVal
+
+     logical,save :: firsttime = .true.
+     logical, optional :: tautest
+     logical :: dotautest
+     logical :: lowvelgrad = .false.
+     logical :: realdust = .true.
+
+     if(present(tautest)) then
+        dotautest = tautest
+     else
+        dotautest = .false.
+     endif
+
+     if(firsttime .or. dotautest) then
+        BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
+        if(.not. dotautest) firsttime = .false.
+     endif
+
+     if(inOctal(grid%octreeRoot, Position)) then
+!        if( dotautest) write(*,*) "inside"
+        disttogrid = 0.
+     else
+        distToGrid = distanceToGridFromOutside(grid, position, direction) 
+!        if( dotautest) write(*,*) "outside", disttogrid
+     endif
+
+     if (distToGrid > 1.e29) then
+        write(*,*) "ray does not intersect grid",position,direction
+        i0 = 1.d-60
+        tau = 1.d-60
+        goto 666
+     endif
+
+     currentPosition = position + (distToGrid + 5.d-4*grid%halfSmallestSubcell) * direction
+    if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid + 2500.d0*Grid%halfsmallestsubcell) * direction
+!     if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid * (1.+1d-5)) * direction
+
+     i0 = 0.d0
+     tau = 0.d0
+
+     thisOctal => grid%octreeRoot
+     icount = 0
+
+        if(.not. inOctal(grid%octreeRoot, currentPosition) .and. icount .eq. 0) stop
+
+        do while(inOctal(grid%octreeRoot, currentPosition))
+           icount = icount + 1
+
+        call findSubcelllocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+        nMol = thisOctal%molcellparam(subcell,1)
+        nLower = thisOctal%molcellparam(subcell,2)
+        nUpper = thisOctal%molcellparam(subcell,3)
+        balance = thisOctal%molcellparam(subcell,4)
+        etaline = thisOctal%molcellparam(subcell,5)
+        alphanu1 = thisOctal%molcellparam(subcell,6)
+        alphanu2 = thisOctal%molcellparam(subcell,7)
+        dustjnu = thisOctal%molcellparam(subcell,8)
+
+        thisPosition = currentPosition
+
+        if(grid%geometry .eq. 'iras04158') then
+           startVel = keplerianVelocity(currentposition, grid)
+           endPosition = currentPosition + tval * direction
+           endVel = keplerianVelocity(endposition, grid)
+        else
+           startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
+           endPosition = currentPosition + tval * direction
+           endVel = amrGridVelocity(grid%octreeRoot, endPosition, startOctal = thisOctal, actualSubcell = subcell)
+        endif
+
+        Veldiff = endVel - startVel
+
+        dvAcrossCell = (veldiff.dot.direction)
+        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+
+        nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
+
+        distArray(1) = 0.d0
+        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
+
+        ds = tval * OneOvernTauMinusOne
+
+        dsvector = ds * direction
+
+        do i = 2, nTau 
+
+           thisPosition = thisPosition + dsvector
+           thisvel = startvel + real(i-1) * OneOvernTauMinusOne * Veldiff
+           dv = (thisVel .dot. direction) - deltaV
+
+           phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+           alphanu1 = thisOctal%molcellparam(subcell, 6) * phiprofval
+
+           alpha = alphanu1 + alphanu2
+           dTau = alpha * ds * 1.d10
+
+           jnu = etaLine * phiProfVal
+
+           if(useDust) jnu = jnu + dustjnu
+
+           if (alpha .ne. 0.d0) then
+
+              snu = jnu/alpha
+           else
+
+              snu = tiny(snu)
+              i0 = i0 + tiny(i0)
+           endif
+
+           if(tau .lt. 500. .and. dtau .lt. 500.) then
+              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+           else
+              i0 = i0
+           endif
+
+           tau = tau + dtau
+
+        enddo
+
+        currentPosition = currentPosition + (tval + 1d-3 * grid%halfSmallestSubcell) * direction
+     enddo
+
+ 666 continue
+
+           if(tau .lt. 500.) then
+              i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side
+           else
+              i0 = i0
+           endif
+   end subroutine intensityAlongRay
+
+   subroutine tauAlongRay(position, direction, grid, thisMolecule, deltaV, tau)
+
+     use input_variables, only : useDust
+     type(VECTOR) :: position, direction
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: nMol
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+
+     type(VECTOR) :: currentPosition, thisPosition, endPosition
+     type(VECTOR) :: startVel, endVel, thisVel, veldiff
+     real(double) :: alphanu(maxtrans, 2), alpha(maxtrans)
+     real(double)  :: dv, deltaV, dVacrossCell
+     integer :: i
+     real(double) :: dist, tval
+     integer :: nTau
+     real(double) :: dds, celledgeinterval
+     real(double) :: nLower(maxtrans), nUpper(maxtrans), balance(maxtrans), alphatemp(maxtrans)
+     integer :: iLower(maxtrans), iUpper(maxtrans)
+     real(double) :: dTau(maxtrans)
+     real(double), intent(out) :: tau(maxtrans)
+
+     real(double) :: phiProfVal
+
+     currentPosition = position
+     
+     tau = 0.d0
+     thisOctal => grid%octreeRoot
+
+     iUpper(:)  = thisMolecule%iTransUpper(:)
+     iLower(:)  = thisMolecule%iTransLower(:)
+     
+     do while(inOctal(grid%octreeRoot, currentPosition))
+        
+        call findSubcelllocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+        nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+        nLower(:)  = thisOctal%molecularLevel(iLower(:),subcell) * nMol
+        nUpper(:)  = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
+        balance(:) = (nLower(:) * thisMolecule%einsteinBlu(:) - &
+                     nUpper(:) * thisMolecule%einsteinBul(:))
+        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
+!write(*,*) "nmol", nmol
+!write(*,*) "nlower", nlower
+!write(*,*) "nupper", nupper
+!write(*,*) "balance", balance
+
+        thisPosition = currentPosition
+        startVel = Velocity(currentposition, grid)
+!        write(*,*) "startvel", startvel
+        endPosition = currentPosition + tval * direction
+        endVel = Velocity(endposition, grid)
+!        write(*,*) "endvel", endvel
+        Veldiff = endVel - startVel
+!        write(*,*) "veldiff", veldiff
+        dvAcrossCell = (veldiff .dot. direction)
+!        write(*,*) "dvacrosscell", dvacrosscell
+        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+
+        nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
+
+        CellEdgeInterval = 1.d0 / (dble(ntau) - 1.0)
+        dds = tval * cellEdgeInterval
+
+        dist = 0.d0
+
+        do i = 2, nTau
+
+           dist = dist + dds ! increment along distance counter
+              
+           thisPosition = currentPosition + dist * direction
+
+           thisVel = velocity(thisPosition, grid)
+           dv = deltaV - (thisVel .dot. direction)
+           PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
+           
+           alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
+           alpha(1:maxtrans) = alphanu(1:maxtrans,1) !+ alphanu(1:maxtrans,2)              
+!        write(*,*) "alpha", alpha
+!        write(*,*) dds
+           dTau(:) = alpha(:) * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
+              
+           tau(:) = tau(:) + dtau(:) ! contribution to optical depth from this line integral
+           
+        enddo
+        
+        currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
+     enddo
+
+   end subroutine tauAlongRay
+
+   subroutine lteintensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
+
+     use input_variables, only : useDust
+     type(VECTOR) :: position, direction, dsvector
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: disttoGrid
+     integer :: itrans
+     real(double) :: nMol
+     real(double), intent(out) :: i0
+     type(OCTAL), pointer :: thisOctal, startOctal
+     integer :: subcell
+     type(VECTOR) :: currentPosition, thisPosition, thisVel
+     type(VECTOR) :: rayVel, startVel, endVel, endPosition
+     real(double) :: alphanu(2), jnu, snu
+     real(double) :: alpha
+     integer, save :: iLower , iUpper
+     real(double) :: dv, deltaV, dvAcrossCell
+     integer :: i, icount
+     real(double) :: distArray(200), tval
+     integer :: nTau
+     real(double) ::  OneOvernTauMinusOne, ds
+     real(double) :: nLower, nUpper, balance, phiProfVal
+     real(double) :: dTau, etaline, kappaAbs
+     real(double), intent(out), optional :: tau
+     real(double),save :: BnuBckGrnd
+     real :: lambda
+     integer :: ilambda
+
+     logical,save :: firsttime = .true.
+     logical, optional :: tautest
+     logical :: dotautest
+     logical :: lowvelgrad = .false.
+     logical :: realdust = .true.
+
+     if(present(tautest)) then
+        dotautest = tautest
+     else
+        dotautest = .false.
+     endif
+
+     if(firsttime .or. dotautest) then
+        BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
+        iUpper = thisMolecule%iTransUpper(iTrans)
+        iLower = thisMolecule%iTransLower(iTrans)
+ !       write(*,*) iupper,ilower
+        if(.not. dotautest) firsttime = .false.
+     endif
+
+     if(useDust) then
+        lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
+        lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter!
+        call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
+!        write(*,*) lambda,ilambda
+     endif
+
+     if(inOctal(grid%octreeRoot, Position)) then
+        disttogrid = 0.
+     else
+        distToGrid = distanceToGridFromOutside(grid, position, direction) 
+     endif
+
+     if (distToGrid > 1.e29) then
+        write(*,*) "ray does not intersect grid",position,direction
+        i0 = 1.d-60
+        tau = 1.d-60
+        goto 666
+     endif
+
+    currentPosition = position + (distToGrid + 5000.d0*grid%halfSmallestSubcell) * direction
+ !    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
+     i0 = 0.d0
+     tau = 0.d0
+     rayVel = VECTOR(0.d0, 0.d0, 0.d0)
+
+     thisOctal => grid%octreeRoot
+     icount = 0
+
+     if(.not. inOctal(grid%octreeRoot, currentPosition) .and. icount .eq. 0) stop
+
+     do while(inOctal(grid%octreeRoot, currentPosition))
+        icount = icount + 1
+
+        call findSubcelllocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+!        if(.not. thisOctal%done) then
+
+!           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+
+!           allocate(thisOctal%molcellparam(subcell,8))
+!           thisOctal%molcellparam(subcell,1) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+           
+!           nMol = thisOctal%molcellparam(subcell,1)
+
+!           thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(subcell,iLower) * nMol
+!           thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(subcell,iUpper) * nMol
+           
+!           nLower = thisOctal%molcellparam(subcell,2)
+!           nUpper = thisOctal%molcellparam(subcell,3)
+!           thisOctal%molcellparam(subcell,4) = nLower * thisMolecule%einsteinBlu(iTrans) - nUpper * thisMolecule%einsteinBul(iTrans)
+
+!           etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
+!           thisOctal%molcellparam(subcell,5) = etaLine * nUpper
+        
+!           thisOctal%done = .true.
+
+!           thisOctal%molcellparam(subcell,6) = nTau
+!           thisOctal%molcellparam(subcell,7) = OneOvernTauMinusOne
+!        endif
+
+        nMol = thisOctal%molcellparam(subcell,1)
+        nLower = thisOctal%molcellparam(subcell,2)
+        nUpper = thisOctal%molcellparam(subcell,3)
+        balance = thisOctal%molcellparam(subcell,4)
+        etaline = thisOctal%molcellparam(subcell,5)
+       
+!        write(*,*) thisOctal%molmicroturb(subcell), thisOctal%microturb(subcell)
+
+
+ !       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)                                                                                                                                                                                
+
+        if(usedust) then
+!           if(realdust) then
+              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
+!           else
+!             kappaAbs = thisOctal%rho(subcell) * 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d20 !multiplied by density !cm -> torus
+!              kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10 !multiplied by density !cm -> torus
+!           endif
+           alphanu(2) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)
+        else
+           alphanu(2) = 0.d0
+        endif
+
+        ds = tval * OneOvernTauMinusOne
+        dsvector = ds * direction
+        thisPosition = currentPosition
+
+        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
+        endPosition = currentPosition + tval * direction
+        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+
+        dvAcrossCell = ((startVel - endvel).dot.direction)
+
+!        write(*,*) "before",dvAcrossCell
+
+        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+
+!        write(*,*) "afeter",dvAcrossCell
+
+        nTau = min(max(2, nint(dvAcrossCell * 20.d0)), 100) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
+
+        distArray(1) = 0.d0
+        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
+
+        do i = 2, nTau 
+
+           startOctal => thisOctal
+           thisPosition = thisPosition + dsvector
+
+!           if(lowvelgrad) then 
+              thisvel = startvel + (i-1) * OneOvernTauMinusOne * (endVel - startVel)
+!           else
+!              thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell)
+!           endif
+
+!              write(*,*) modulus(altthisvel-thisvel),thisvel%x-altthisvel%x,thisvel%y-altthisvel%y,thisvel%z-altthisvel%z
+
+           dv = (thisVel .dot. direction) - deltaV
+
+           phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+
+!           write(*,*) phiProfVal
+
+           alphanu(1) = hCgsOverfourPi * phiprofval
+           alphanu(1) = alphanu(1) * balance
+
+           alpha = alphanu(1) + alphanu(2)
+           dTau = alpha * ds * 1.d10
+
+           jnu = etaLine * phiProfVal
+
+           if(useDust) jnu = jnu + alphanu(2) * thisOctal%bnu(subcell,itrans)
+
+           if (alpha .ne. 0.d0) then
+
+ !             snu = jnu/alpha
+              snu = thisOctal%bnu(subcell,itrans)
+!              if((i0 .eq. 0.) .or. tau .lt. 10. .or. exp(-tau) * (1.d0-exp(-dtau))*snu .gt. i0*(1d-5)) then
+                 i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+!              else
+!                 write(*,*) "i0", i0, "tau", tau, "skipping"
+!                 goto 666
+!              endif
+           else
+              snu = tiny(snu)
+              i0 = i0 + tiny(i0)
+           endif
+           tau = tau + dtau
+        enddo
+        
+        currentPosition = currentPosition + (tval+1d-3*grid%halfSmallestSubcell) * direction
+
+!        if((grid%geometry .eq. 'IRAS04158') .and. (modulus(currentposition) < 0.5*rinner)) then
+!           currentPosition = currentPosition + (rinner/(VECTOR(1d-20,1d-20,1.d0) .dot. direction)) * direction
+!        endif
+        
+!        if(debug) write(*,*) i0,tau
+     enddo
+
+ 666 continue
+
+     i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side                                                                                                                                                                                                                                
+!     if(debug) write(*,*) i0,tau
+ !    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)                                                                                                                                                                                                                            
+
+ !    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)                                                                                                                                                                               
+
+     ! convert to brightness T                                                                                                                                                                                                                                                       
+
+ !    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))                                                                                                                                                                                                      
+
+   end subroutine lteintensityAlongRay
+
+   subroutine continuumIntensityAlongRay(position, direction, grid, wavelength, deltaV, i0, tau, tautest)
+
+     type(VECTOR) :: position, direction
+     type(GRIDTYPE) :: grid
+     real(double) :: disttoGrid
+     real(double), intent(out) :: i0
+     type(OCTAL), pointer :: thisOctal, startOctal
+     integer :: subcell
+     type(VECTOR) :: currentPosition, thisPosition, thisVel
+     type(VECTOR) :: startVel, endVel, endPosition
+     real(double) :: alphanu(2), jnu, snu
+     real(double) :: alpha
+     real(double) :: dv, deltaV
+     integer :: i, icount
+     real(double) :: distArray(20000), tval
+     integer :: nTau
+     real(double) ::  OneOvernTauMinusOne
+     real(double) :: dTau, kappaAbs, kappaSca
+     real(double), intent(out), optional :: tau
+
+     real(double) :: dvAcrossCell
+     real :: lambda, wavelength
+     integer :: ilambda
+
+     logical, optional :: tautest
+     logical :: dotautest
+     logical :: lowvelgrad = .false.
+
+     if(present(tautest)) then
+        dotautest = tautest
+     else
+        dotautest = .false.
+     endif
+
+     lambda = wavelength * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter!
+!     write(*,*) "lambda", lambda
+     
+     call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
+     
+     if(inOctal(grid%octreeRoot, Position)) then
+        disttogrid = 0.
+!        write(*,*) "inside"
+     else
+        distToGrid = distanceToGridFromOutside(grid, position, direction) 
+       ! write(*,*) "outside", position
+       ! write(*,*) "outside", direction
+       ! write(*,*) "disttogrid", disttogrid
+     endif
+
+     if (distToGrid > 1.e29) then
+        write(*,*) "ray does not intersect grid",position,direction
+        i0 = 1.d-60
+        tau = 1.d-60
+        goto 666
+     endif
+
+    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
+    if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid + 2500.d0*Grid%halfsmallestsubcell) * direction
+     !   write(*,*) "outside", position
+     !   write(*,*) "outside", direction
+     !   write(*,*) "disttogrid", disttogrid
+ !    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
+     i0 = 0.d0
+     tau = 0.d0
+    
+     thisOctal => grid%octreeRoot
+     icount = 0
+
+     do while(inOctal(grid%octreeRoot, currentPosition))
+        icount = icount + 1
+
+        call findSubcelllocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
+        endPosition = currentPosition + tval * direction
+        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+
+ !       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
+         dvAcrossCell = ((startVel - endvel).dot.direction)
+        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
+
+        !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK                                                                                                                                                                                                                           
+        nTau = min(max(2, nint(dvAcrossCell * 20.d0)), 200) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)                                                                                                             
+!        ntau = 100
+
+        distArray(1) = 0.d0
+        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
+ !       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)                                                                                                                                                                                
+        do i = 2, nTau
+
+           distArray(i) = tval * dble(i-1) * OneOvernTauMinusOne
+
+           startOctal => thisOctal
+           thisPosition = currentPosition + distArray(i)*direction
+
+        if(grid%geometry .eq. 'iras04158') then
+           thisVel = keplerianVelocity(thisPosition, grid)
+        else
+           thisvel = startvel + (i-1) * OneOvernTauMinusOne * (endvel - startvel)
+        endif
+
+           dv = (thisVel .dot. direction) - deltaV
+
+           call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
+
+           alphanu(2) = (kappaSca + kappaAbs) * 1.d-10  !* thisOctal%rho(subcell)
+
+           alpha = alphanu(2)
+           dTau = alpha * distArray(2) * 1.d10
+
+           jnu = alphanu(2) * bnu(cspeed/lambda, dble(thisOctal%temperaturedust(subcell)))
+
+           if (alpha .ne. 0.d0) then
+
+              snu = jnu/alpha
+ !             snu = thisOctal%bnu(subcell,itrans)
+              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+
+           else
+              snu = tiny(snu)
+              i0 = i0 + tiny(i0)
+           endif
+           tau = tau + dtau
+!           if(writeoutput) write(*,*) "i",i,"tau at",thisposition%x,"is",tau
+        enddo
+
+        currentPosition = currentPosition + (tval+1.d-6*grid%halfSmallestSubcell) * direction
+
+     enddo
+
+ 666 continue
+
+     i0 = i0 + bnu(cspeed/lambda, dble(tcbr))  * exp(-tau) ! from far side                                                                                                                                                                                                                                
+
+   end subroutine continuumIntensityAlongRay
+
+   recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV, firsttime)
+
+     use input_variables, only : useDust, iTrans
+
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child 
+     type(VECTOR)  :: rvec
+     integer :: subcell, i
+     integer :: iupper, ilower
+     integer, save :: ilambda = 1
+     real(double) :: nmol, nlower, nupper, etaline, kappaAbs, deltaV
+     real :: lambda
+     logical,save :: onetime = .true.
+     logical :: firsttime
+     character(len=10) :: out
+
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren, 1
+              if (thisOctal%indexChild(i) == subcell) then
+                 child => thisOctal%child(i)
+                 call calculateOctalParams(grid, child, thisMolecule, deltaV, firsttime)
+                 exit
+              end if
+           end do
+        else
+          if(firsttime) then
+
+             if(grid%geometry .eq. "iras04158") then
+                 thisOctal%microturb(subcell) = max(3d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+                      (28.0 * amu)) + 0.3**2 ) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
+
+                 thisOctal%velocity(subcell) = keplerianVelocity(subcellcentre(thisOctal,subcell), grid)
+                 CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+
+                 out = 'abundance'
+                 rvec = subcellCentre(thisOctal,subcell)
+                 thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+!                 thisOctal%molabundance(subcell) = 1d-4
+!                 thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * 1.05
+!                 thisOctal%rho(subcell) = thisOctal%rho(subcell) * 1.05
+              endif
+!              else
+!                 thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+!                      (29.0 * amu)) + 0.3**2) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
+!                 thisOctal%velocity(subcell) = keplerianVelocity(subcellcentre(thisOctal,subcell), grid)
+!                 CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+!              endif
+
+              thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+
+              if (.not.associated(thisOctal%molcellparam)) then
+                 allocate(thisOctal%molcellparam(1:thisOctal%maxChildren,8))
+              endif
+
+              thisOctal%molcellparam(subcell,1) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+              
+              nMol = thisOctal%molcellparam(subcell,1)
+
+              iUpper = thisMolecule%iTransUpper(iTrans)
+              iLower = thisMolecule%iTransLower(iTrans)
+
+              thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(iLower,subcell) * nMol
+              thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(iUpper,subcell) * nMol
+              
+              nLower = thisOctal%molcellparam(subcell,2)
+              nUpper = thisOctal%molcellparam(subcell,3)
+              thisOctal%molcellparam(subcell,4) = nLower * thisMolecule%einsteinBlu(iTrans) &
+                                                - nUpper * thisMolecule%einsteinBul(iTrans)
+              
+              etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
+              
+              thisOctal%molcellparam(subcell,5) = etaLine * nUpper
+              thisOctal%molcellparam(subcell,6) = hCgsOverFourPi * thisOctal%molcellparam(subcell,4)! balance
+           endif
+
+           if(usedust) then
+
+              lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
+              lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter
+              if(onetime) then
+                 call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
+                 onetime = .false.
+              endif
+              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
+              thisOctal%molcellparam(subcell,7) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)
+              thisOctal%molcellparam(subcell,8) = thisOctal%molcellparam(subcell,7) * thisOctal%bnu(subcell,itrans)
+           endif
+        endif
+
+     end do
+
+   end subroutine calculateOctalParams
+
+
+ ! Equation 9 - calculating the doppler broadening due to a turbulent velocity field (b - constant locally)
+ ! NB b here = b*nu0/c in the paper ! actually since April 2008 b = 1/old b to speed up code
+
+   real(double) pure function phiProf(dv, b) result (phi)
+     real(double), intent(in):: dv, b
+     real(double) :: fac
+
+     fac = min((dv * b)**2,200.d0) ! avoid floating point underflows
+     phi = exp(-fac) * (b * OneOversqrtPi)
+   end function phiProf
+
+    ! sample level populations at logarithmically spaced annuli
+   subroutine dumpResults(grid, thisMolecule, nRay, convtestarray)
+     use input_variables, only : rinner, router
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: r, ang
+     real(double), save :: logrinner, logrouter, OneOverNradiusMinusOne, OneOverNangle
+     integer :: i
+     real(double) :: pops(minlevel), fracChange(minlevel), convtestarray(:,:,:), tauarray(40)
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+     integer :: j
+     real(double) :: x, z
+     type(VECTOR) :: posvec
+     integer :: nRay, iter
+     integer, save :: nradius, nangle
+     character(len=30) :: resultfile, resultfile2
+     logical, save :: firsttime = .true.
+
+     iter = grand_iter
+
+     write(resultfile,'(a,I7.7)') "results.", nRay
+     write(resultfile2,'(a,I2)') "fracChangeGraph.", iter
+     
+     open(31,file=resultfile,status="unknown",form="formatted")
+     open(32,file=resultfile2,status="unknown",form="formatted")
+     open(33,file="tau.dat",status="unknown",form="formatted")
+     call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
+
+     if(firsttime) then
+        nradius = 100! number of radii used to sample distribution
+        nangle = 360 ! number of rays used to sample distribution
+        
+        logrinner = log10(rinner)
+        logrouter = log10(router)
+        OneOverNradiusMinusOne = 1.d0/dble(nradius - 1)
+        OneOverNangle = 1.d0 / dble(nangle)
+        
+        firsttime = .false.
+     endif
+
+     thisOctal => grid%octreeroot
+
+     do i = 1, nradius
+        r = logrinner + dble(i - 1) * OneOverNradiusMinusOne * (logrouter - logrinner)
+        r = 10.d0**r
+        pops = 0.d0
+        fracChange = 0.d0
+
+        do j = 1 , nangle
+           ang = dble(j + 0.5d0) * OneOverNangle - OneOverNangle
+           ang = ang * twopi 
+           z = r * cos(ang)
+           x = r * sin(ang)
+           posVec = VECTOR(x, 0.d0, z) ! get put in octal on grid
+           call findSubcellLocal(posVec, thisOctal,subcell) 
+           pops = pops + thisOctal%molecularLevel(1:minlevel,subcell) ! interested in first 8 levels
+           fracChange = fracChange + abs((thisOctal%molecularLevel(1:minlevel,subcell) - &
+                        thisOctal%oldmolecularLevel(1:minlevel,subcell)) / thisOctal%molecularlevel(1:minlevel,subcell))           
+        enddo
+
+        pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
+        fracChange = fracChange * OneOverNangle
+
+        if(iter .gt. 0) convtestarray(iter,i,:) = fracChange
+
+        write(31,'(es11.5e2,4x,12(es14.6e2,tr2))') r*1.e10, pops(1:minlevel)
+        write(32,'(es11.5e2,4x,12(f7.5,tr2))') r*1.e10, fracChange(1:minlevel)
+     enddo
+
+     write(33,'(i2,tr3,12(f11.6,tr3))') grand_iter, tauarray(1:mintrans)
+     
+     close(31)
+     close(32)
+   end subroutine dumpResults
+
+   recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel)
+
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child 
+     integer :: subcell, i, nlevels
+     real(double) :: mollevels(nlevels)
+     integer :: maxinterestinglevel, nVoxel
+     integer, save :: icount = 0
+     real(double) :: maxtemp = 0.d0
+     character(len = 80) :: message
+         
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren
+              if (thisOctal%indexChild(i) == subcell) then
+                 child => thisOctal%child(i)
+                 call findmaxlevel(grid, child, thisMolecule, maxinterestinglevel, nlevels, nVoxel)
+                 exit
+              end if
+           end do
+        else
+           
+           maxtemp = max(maxtemp, thisOctal%temperature(subcell))     
+           icount = icount + 1
+        endif
+     end do
+
+     if(icount .eq. nVoxel) then
+
+        write(message, *)  "Maximum Global Temperature", maxtemp
+        call writeinfo(message, FORINFO)
+
+        call LTEpops(thisMolecule, maxtemp, mollevels(1:thisMolecule%nlevels))
+                
+        do i = thisMolecule%nlevels, 1, -1
+           maxinterestinglevel = i
+!           write(*,*) i, mollevels(i)
+           if(mollevels(i) .gt. 1d-8) exit
+        enddo
+        
+        maxinterestinglevel = maxinterestinglevel
+     endif
+     
+   End subroutine findmaxlevel
+
+   real(double) pure function DustModel1(freq) result (kappa) !! GGTAU paper
+      
+     real(double), intent(in) :: freq
+     real(double) :: lambda
+
+     lambda = cspeed * 1d-2 / freq
+
+     if(lambda .gt. 250e-6) then
+        kappa = 1.6e8 * lambda**2
+     else
+        kappa = 4.8159e5 * lambda**1.3
+     endif
+      
+   end function DustModel1
+
+   real function nextStep(cube, ivplusone) result (step)
+
+     type(DATACUBE) :: cube
+     integer :: iv,i,j,ivplusone
+     real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
+     real(double) :: xquad(3),yquad(3),xa(3)
+     real(double) :: sumx(4),sumxy(4)
+     real(double) :: a(3,3),b(3)
+     real(double) :: fac
+     real(double), save :: alty2 !, ydash
+     real(double), save :: oldstep = 4.d0
+
+     iv = ivplusone - 1
+
+     allocate(x(iv))
+     allocate(y(iv))
+     allocate(y2(iv))
+     allocate(intensitysum(iv))
+
+     do i = 1,iv
+        intensitysum(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
+     enddo
+
+     fac = intensitysum(1)
+     x = cube%vAxis(1:iv)
+     y =  intensitysum / fac 
+
+ !    ydash = ((y(iv) - y(iv-1)) / (x(iv) - x(iv-1))) + (y2(iv-1) * (x(iv) - x(iv-1)))
+
+ !    write(*,*) "x",x
+ !    write(*,*) "y",y
+
+     call spline(x,y,iv,1.d31,1.d31,y2)
+
+ !    write(*,*) y2
+
+     xquad = x(iv-3:iv-1)
+     yquad = y2(iv-3:iv-1)
+     xa = xquad
+
+     do i=1,4
+        sumx(i) = sum(xa)
+        sumxy(i) = sum(xa * yquad)
+
+        xa = xa*xquad
+     enddo
+
+     do i = 1,3
+       do j = 1,3
+          if(6-i-j .ne. 0) then 
+             a(i,j) = sumx(6-i-j)
+          else
+             a(i,j) = 3.d0
+          endif
+       enddo; enddo
+
+       b = (/sumxy(2),sumxy(1),sum(yquad)/)
+       call luSlv(a,b,3)
+
+         write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
+
+         alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
+
+          step = (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
+          oldstep = step
+
+ !      write(*,*) "x",xquad,"y2",yquad
+ !      write(*,*) "quad", alty2, min(max(25.d0/abs(alty2),0.5),4.d0), oldstep, (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
+
+
+   end function nextStep
+
 #ifdef MPI 
        subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
      include 'mpif.h'
@@ -3274,7 +3242,7 @@ endif
                if (.not.thisOctal%hasChild(iSubcell)) then
                   nTemps = nTemps + 1
                   if (octalsBelongRank(iOctal) == my_rank) then
-                    tArray(nTemps) = thisOctal%newMolecularLevel(isubcell, iLevel)
+                    tArray(nTemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
                   else 
                     tArray(nTemps) = 0.d0
                   endif
@@ -3283,204 +3251,206 @@ endif
         end do
       end subroutine packMoleLevel
 
-       subroutine unpackMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
-     include 'mpif.h'
-         type(OCTALWRAPPER) :: octalArray(:)
-         integer :: octalsBelongRank(:)
-         integer :: nTemps
-         real(double) :: tArray(:)
-         integer :: iOctal, iSubcell, my_rank, ierr
-         integer :: iLevel
-         type(OCTAL), pointer :: thisOctal
-
+      subroutine unpackMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
+        include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iLevel
+        type(OCTAL), pointer :: thisOctal
+        
         call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !
         nTemps = 0
         do iOctal = 1, SIZE(octalArray)
-
+           
            thisOctal => octalArray(iOctal)%content
-
+           
            do iSubcell = 1, thisOctal%maxChildren
-               if (.not.thisOctal%hasChild(iSubcell)) then
-                  nTemps = nTemps + 1
-                  thisOctal%newMolecularLevel(isubcell, iLevel) = tArray(nTemps) 
-               endif
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 thisOctal%newMolecularLevel(iLevel,isubcell) = tArray(nTemps) 
+              endif
            end do
         end do
       end subroutine unpackMoleLevel
 #endif
-
-         SUBROUTINE sobseq(x,init)
-         USE nrtype; USE nrutil, ONLY : nrerror
-         IMPLICIT NONE
-         REAL(double), DIMENSION(:), INTENT(OUT) :: x
-         INTEGER(I4B), OPTIONAL, INTENT(IN) :: init
-         INTEGER(I4B), PARAMETER :: MAXBIT=30,MAXDIM=6
-         REAL(SP), SAVE :: fac
-         INTEGER(I4B) :: i,im,ipp,j,k,l
-         INTEGER(I4B), DIMENSION(:,:), ALLOCATABLE:: iu
-         INTEGER(I4B), SAVE :: in
-         INTEGER(I4B), DIMENSION(MAXDIM), SAVE :: ip,ix,mdeg
-         INTEGER(I4B), DIMENSION(MAXDIM*MAXBIT), SAVE :: iv
-         DATA ip /0,1,1,2,1,4/, mdeg /1,2,3,3,4,4/, ix /6*0/
-         DATA iv /6*1,3,1,3,3,1,1,5,7,7,3,3,5,15,11,5,15,13,9,156*0/
-         if (present(init)) then
-                 ix=0
-                 in=0
-                 if (iv(1) /= 1) RETURN
-                 fac=1.0_sp/2.0_sp**MAXBIT
-                 allocate(iu(MAXDIM,MAXBIT))
-                 iu=reshape(iv,shape(iu))
-                 do k=1,MAXDIM
-                         do j=1,mdeg(k)
-                                 iu(k,j)=iu(k,j)*2**(MAXBIT-j)
-                         end do
-                         do j=mdeg(k)+1,MAXBIT
-                                 ipp=ip(k)
-                                 i=iu(k,j-mdeg(k))
-                                 i=ieor(i,i/2**mdeg(k))
-                                 do l=mdeg(k)-1,1,-1
-                                         if (btest(ipp,0)) i=ieor(i,iu(k,j-l))
-                                         ipp=ipp/2
-                                 end do
-                                 iu(k,j)=i
-                         end do
+      
+      
+      
+      SUBROUTINE sobseq(x,init)
+        USE nrtype; USE nrutil, ONLY : nrerror
+        IMPLICIT NONE
+        REAL(double), DIMENSION(:), INTENT(OUT) :: x
+        INTEGER(I4B), OPTIONAL, INTENT(IN) :: init
+        INTEGER(I4B), PARAMETER :: MAXBIT=30,MAXDIM=6
+        REAL(SP), SAVE :: fac
+        INTEGER(I4B) :: i,im,ipp,j,k,l
+        INTEGER(I4B), DIMENSION(:,:), ALLOCATABLE:: iu
+        INTEGER(I4B), SAVE :: in
+        INTEGER(I4B), DIMENSION(MAXDIM), SAVE :: ip,ix,mdeg
+        INTEGER(I4B), DIMENSION(MAXDIM*MAXBIT), SAVE :: iv
+        DATA ip /0,1,1,2,1,4/, mdeg /1,2,3,3,4,4/, ix /6*0/
+        DATA iv /6*1,3,1,3,3,1,1,5,7,7,3,3,5,15,11,5,15,13,9,156*0/
+        if (present(init)) then
+           ix=0
+           in=0
+           if (iv(1) /= 1) RETURN
+           fac=1.0_sp/2.0_sp**MAXBIT
+           allocate(iu(MAXDIM,MAXBIT))
+           iu=reshape(iv,shape(iu))
+           do k=1,MAXDIM
+              do j=1,mdeg(k)
+                 iu(k,j)=iu(k,j)*2**(MAXBIT-j)
+              end do
+              do j=mdeg(k)+1,MAXBIT
+                 ipp=ip(k)
+                 i=iu(k,j-mdeg(k))
+                 i=ieor(i,i/2**mdeg(k))
+                 do l=mdeg(k)-1,1,-1
+                    if (btest(ipp,0)) i=ieor(i,iu(k,j-l))
+                    ipp=ipp/2
                  end do
-                 iv=reshape(iu,shape(iv))
-                 deallocate(iu)
-         else
-                 im=in
-                 do j=1,MAXBIT 
-                        if (.not. btest(im,0)) exit
-                         im=im/2
-                 end do
-                 if (j > MAXBIT) call nrerror('MAXBIT too small in sobseq')
-                 im=(j-1)*MAXDIM
-                 j=min(size(x),MAXDIM)
-                 ix(1:j)=ieor(ix(1:j),iv(1+im:j+im))
-                 x(1:j)=ix(1:j)*fac
-                 in=in+1
-         end if
-         END SUBROUTINE sobseq
-
-     subroutine setObserverVectors(inc, viewvec, unitvec, posvec, centreVec, gridsize)
-
-       type(VECTOR) :: unitvec, viewvec, posvec, centreVec
-       real(double) :: farAway, gridsize
-       real :: inc
-
-       farAway = 500.0 * gridsize
-
-
-       if(inc .ge. 0. .and. inc .le. 360.) then
-          unitvec = VECTOR(sin(inc*degtorad),1.d-10,cos(inc*degtorad))
-       else
-          unitvec = randomunitVector()
-       endif
-
-       posvec = faraway * unitvec
-       centrevec = VECTOR(0d7,0d7,0d7)
-       viewvec = centrevec - posvec
-       call normalize(viewvec)
-       unitvec = (-1.d0) * viewvec
-
-     end subroutine setObserverVectors
-
-   recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
-     use input_variables, only : rinner, router
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     integer :: subcell, i
-     integer :: icount
-     real(double) :: mean(6),r
-     type(VECTOR) :: rvec
-     character(len=10) :: out
-
-     do subcell = 1, thisOctal%maxChildren
-        if (thisOctal%hasChild(subcell)) then
-           ! find the child
-           do i = 1, thisOctal%nChildren, 1
-              if (thisOctal%indexChild(i) == subcell) then
-                 child => thisOctal%child(i)
-                 call findtempdiff(grid, child, thisMolecule, mean, icount)
-                 exit
-              end if
+                 iu(k,j)=i
+              end do
            end do
+           iv=reshape(iu,shape(iv))
+           deallocate(iu)
         else
-           rvec = subcellcentre(thisOctal, subcell)
-           r = sqrt(rvec%x**2 + rvec%y**2)
-           if(icount .ge.  1) then
-              if(r .lt. router .and. r .gt. rinner) then
-                 if(icount .eq. 2) then 
-                    out='td'
-                    thisOctal%temperature(subcell) = readparameterfrom2dmap(rvec,out,.false.)
-                    out = 'nh2'           
-                    thisOctal%rho(subcell) = readparameterfrom2dmap(rvec,out,.true.) * 2. * mHydrogen
-                    out = 'abundance'
-                    thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+           im=in
+           do j=1,MAXBIT 
+              if (.not. btest(im,0)) exit
+              im=im/2
+           end do
+           if (j > MAXBIT) call nrerror('MAXBIT too small in sobseq')
+           im=(j-1)*MAXDIM
+           j=min(size(x),MAXDIM)
+           ix(1:j)=ieor(ix(1:j),iv(1+im:j+im))
+           x(1:j)=ix(1:j)*fac
+           in=in+1
+        end if
+      END SUBROUTINE sobseq
+
+      subroutine setObserverVectors(inc, viewvec, unitvec, posvec, centreVec, gridsize)
+        
+        type(VECTOR) :: unitvec, viewvec, posvec, centreVec
+        real(double) :: farAway, gridsize
+        real :: inc
+        
+        farAway = 500.0 * gridsize
+        
+        
+        if(inc .ge. 0. .and. inc .le. 360.) then
+           unitvec = VECTOR(sin(inc*degtorad),1.d-10,cos(inc*degtorad))
+        else
+           unitvec = randomunitVector()
+        endif
+        
+        posvec = faraway * unitvec
+        centrevec = VECTOR(0d7,0d7,0d7)
+        viewvec = centrevec - posvec
+        call normalize(viewvec)
+        unitvec = (-1.d0) * viewvec
+        
+      end subroutine setObserverVectors
+      
+      recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
+        use input_variables, only : rinner, router
+        type(GRIDTYPE) :: grid
+        type(MOLECULETYPE) :: thisMolecule
+        type(octal), pointer   :: thisOctal
+        type(octal), pointer  :: child 
+        integer :: subcell, i
+        integer :: icount
+        real(double) :: mean(6),r
+        type(VECTOR) :: rvec
+        character(len=10) :: out
+        
+        do subcell = 1, thisOctal%maxChildren
+           if (thisOctal%hasChild(subcell)) then
+              ! find the child
+              do i = 1, thisOctal%nChildren, 1
+                 if (thisOctal%indexChild(i) == subcell) then
+                    child => thisOctal%child(i)
+                    call findtempdiff(grid, child, thisMolecule, mean, icount)
+                    exit
+                 end if
+              end do
+           else
+              rvec = subcellcentre(thisOctal, subcell)
+              r = sqrt(rvec%x**2 + rvec%y**2)
+              if(icount .ge.  1) then
+                 if(r .lt. router .and. r .gt. rinner) then
+                    if(icount .eq. 2) then 
+                       out='td'
+                       thisOctal%temperature(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+                       out = 'nh2'           
+                       thisOctal%rho(subcell) = readparameterfrom2dmap(rvec,out,.true.) * 2. * mHydrogen
+                       out = 'abundance'
+                       thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+                    else
+                       out = 'abundance'
+                       thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+                    endif
                  else
-                    out = 'abundance'
-                    thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+                    thisOctal%temperature(subcell) = tcbr
+                    thisOctal%rho(subcell) = 1d-20
+                    thisOctal%molAbundance(subcell) = 1d-20
                  endif
               else
-                 thisOctal%temperature(subcell) = tcbr
-                 thisOctal%rho(subcell) = 1d-20
-                 thisOctal%molAbundance(subcell) = 1d-20
-              endif
-           else
-
-           out='td'
-           thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.false.)
-           thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
-           thisOctal%temperature(subcell) = thisOctal%temperaturegas(subcell) / thisOctal%temperaturedust(subcell)
-           
+                 
+                 out='td'
+                 thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+                 thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
+                 thisOctal%temperature(subcell) = thisOctal%temperaturegas(subcell) / thisOctal%temperaturedust(subcell)
+                 
 !           mean(1) = mean(1) + thisOctal%temperaturegas(subcell)
 !           mean(2) = mean(2) + thisOctal%temperaturedust(subcell)
 !           mean(3) = mean(3) + thisOctal%temperature(subcell)
-           out = 'nh2'
-           
-           thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-           
+                 out = 'nh2'
+                 
+                 thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+                 
 !           mean(4) = mean(4) + thisOctal%rho(subcell)
        
-           thisOctal%nh2(subcell) = (thisOctal%temperaturegas(subcell) * 2. *mhydrogen) / thisOctal%rho(subcell)
-           thisOctal%rho(subcell) = thisOctal%nh2(subcell)
+                 thisOctal%nh2(subcell) = (thisOctal%temperaturegas(subcell) * 2. *mhydrogen) / thisOctal%rho(subcell)
+                 thisOctal%rho(subcell) = thisOctal%nh2(subcell)
 !           mean(5) = mean(5) + thisOctal%temperaturegas(subcell)* 2. *mhydrogen
 !           mean(6) = mean(6) + thisOctal%nh2(subcell)
        
 !           icount = icount+1
 
-           out = 'abundance'
-           thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+                 out = 'abundance'
+                 thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.false.)
 
 !           thisOctal%velocity(subcell) = keplerianvelocity(rvec,grid)
 !           CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
 !           write(*,*) thisOctal%nh2(subcell)
 
-        end if
-     endif
-  end do
+              end if
+           endif
+        end do
 
-end subroutine findtempdiff
+      end subroutine findtempdiff
 
 !!!subroutine testOpticalDepth
-subroutine testOpticalDepth(grid,thisMolecule)
+      subroutine testOpticalDepth(grid,thisMolecule)
 
-  use input_variables, only : lamstart, lamend, rinner, router, debug
-  type(GRIDTYPE) :: grid
-  type(MOLECULETYPE) :: thisMolecule
-  type(octal), pointer   :: thisOctal
-  type(VECTOR) :: currentposition(3), posvec, viewvec, unitvec, centrevec
-  integer :: subcell, i, itrans
-  integer :: ilamb, nlamb
-  real(double) :: xmidplane, gridsize
-  real :: lamb
-  real(double) :: tau, dummy, kappaAbs, kappaSca, i0
-  character(len=50) :: message
+        use input_variables, only : lamstart, lamend, rinner, router, debug
+        type(GRIDTYPE) :: grid
+        type(MOLECULETYPE) :: thisMolecule
+        type(octal), pointer   :: thisOctal
+        type(VECTOR) :: currentposition(3), posvec, viewvec, unitvec, centrevec
+        integer :: subcell, i, itrans
+        integer :: ilamb, nlamb
+        real(double) :: xmidplane, gridsize
+        real :: lamb
+        real(double) :: tau, dummy, kappaAbs, kappaSca, i0
+        character(len=50) :: message
   
   call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
   
@@ -3583,7 +3553,6 @@ call writeinfo(message, FORINFO)
 end subroutine testOpticalDepth
 
 subroutine plotdiscValues(grid, thisMolecule)
-  
 
   type(GRIDTYPE) :: grid
   type(MOLECULETYPE) :: thisMolecule
@@ -3613,21 +3582,21 @@ end subroutine plotdiscValues
        type(octal), pointer, optional :: startOctal
        integer, optional :: subcell
 
-    select case (grid%geometry)
+!    select case (grid%geometry)
+       if(molebench)          Out = Molebenchvelocity(Position, grid)
+!       case("molebench")
 
-       case("molebench")
-          out = molebenchVelocity(position, grid)
           
-       case("iras04158","shakara")
-          out = keplerianVelocity(position, grid)
+!       case("iras04158","shakara")
+!          out = keplerianVelocity(position, grid)
 
-       case default
-          if(present(startOctal) .and. present(subcell)) then
-             out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)
-          else
-             out = amrGridVelocity(grid%octreeRoot, position)
-          endif
-    end select
+!       case default
+!          if(present(startOctal) .and. present(subcell)) then
+!             out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)
+!          else
+!             out = amrGridVelocity(grid%octreeRoot, position)
+!          endif
+!    end select
 
   end function velocity
 
@@ -3775,6 +3744,69 @@ end subroutine plotdiscValues
     close(140)
   
   end subroutine calculateConvergenceData
+
+    real(double) function bNum(nu,T)
+    
+    real(double) :: fac1, fac2, fac3, nu
+    real :: T
+    real(double), parameter :: twoHOverCSquared = 1.4745d-43 
+
+    fac1 = twoHOverCSquared * nu**3
+    fac3 =  (hCgs*nu)/ (kErg * T) 
+    if (fac3 > 100.d0) then
+       fac2 = 0.d0
+    else
+       fac2 = 1.d0/(exp(fac3) - 1.d0)
+    endif
+
+    bNum = fac1 * fac2
+  end function bNum
+
+   recursive subroutine  solveAllPops(grid, thisOctal, thisMolecule)
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child 
+     integer :: subcell, i
+
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren ! What's this?
+              if (thisOctal%indexChild(i) .eq. subcell) then
+                 child => thisOctal%child(i)
+                 call solveAllpops(grid, child, thisMolecule)
+                 exit
+              end if
+           end do
+        else ! once octal has no more children, solve for current parameter set
+           call solveLevels(thisOctal%molecularLevel(1:maxlevel,subcell), &
+                thisOctal%jnu(subcell,1:maxtrans),  &
+                dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
+        endif
+     enddo
+   end subroutine solveAllPops
+
+ subroutine LTEpops(thisMolecule, temperature, levelpops)
+
+   type(MOLECULETYPE) :: thisMolecule
+   real(double) :: temperature, nsum
+   real(double) :: levelpops(:), fac
+   integer :: i
+
+   levelpops(1) = 1.d0
+   nsum = 1.d0
+
+   do i=2,size(levelpops)
+      fac = abs(thisMolecule%energy(i)-thisMolecule%energy(i-1)) / (kev*temperature)
+      levelpops(i) = max(1d-30,levelpops(i-1) * thisMolecule%g(i)/thisMolecule%g(i-1) * exp(-fac))
+      nsum = nsum + levelpops(i)
+   enddo
+
+   levelpops = levelpops / nsum
+
+ end subroutine LTEpops
+
 
 end module molecular_mod
     
