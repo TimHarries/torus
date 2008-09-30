@@ -2125,7 +2125,7 @@ subroutine set_up_sources
        massRatio = mstar2/mstar1
        source(1)%radius = rStar1
        source(1)%teff = teff1  
-       source(1)%position = VECTOR(binarySep/(1.+massRatio), 0., 0.)
+       source(1)%position = VECTOR(dble(1.-eccentricity)*binarySep/(1.+massRatio), 0., 0.)
        tmp = rstar1 * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
        if (contFluxfile1 .eq. "blackbody") then
@@ -2139,7 +2139,7 @@ subroutine set_up_sources
 
        source(2)%radius = rStar2
        source(2)%teff = teff2  
-       source(2)%position = VECTOR(-binarySep*(1.-1./(1.+massratio)), 0., 0.)
+       source(2)%position = VECTOR(-dble(1.-eccentricity)*binarySep*(1.-1./(1.+massratio)), 0., 0.)
        tmp = rstar2 * 1.e10  ! [cm]
        source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
        if (contFluxfile2 .eq. "blackbody") then

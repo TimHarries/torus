@@ -27,6 +27,7 @@ module input_variables
   logical :: photoionization
   logical :: molecular
   real :: beamSize
+  real :: eccentricity
   real :: inc
   logical :: cmf
   integer :: iTransLine, iTransAtom

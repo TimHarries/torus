@@ -244,8 +244,8 @@ contains
     LX=LOG(X)
     LX1=LOG(X1)
     LX2=LOG(X2)
-    LY1=LOG(MAX(Y1,1.d-90))
-    LY2=LOG(MAX(Y2,1.d-90))
+    LY1=LOG(MAX(Y1,1.d-30))
+    LY2=LOG(MAX(Y2,1.d-30))
     if (lx1.eq.lx2) then
        write(*,*) 'Error:: Bad x in logint_dble.'
        write(*,*) 'lx1 =', lx1

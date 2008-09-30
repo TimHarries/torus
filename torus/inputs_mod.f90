@@ -1120,7 +1120,7 @@ contains
                "(a,f5.1,a)",10.0,ok,.false.)
 
           call getInteger("mincrossings", minCrossings, cLine, nLines, &
-               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",10,ok,.false.)
+               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",1000,ok,.false.)
        endif
        call getReal("probdust", probDust, cLine, nLines, &
             "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
@@ -2190,6 +2190,9 @@ endif
 
     call getReal("rinner", rInner, cLine, nLines, &
          "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("eccentricity", eccentricity, cLine, nLines, &
+         "Eccentricity: ","(a,f5.3,a)", 12., ok, .true.)
 
     call getReal("router", rOuter, cLine, nLines, &
          "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)

@@ -61,7 +61,7 @@ contains
        lucyfileout, lucyfilein)
     use input_variables, only : nlucy, taudiff !, smoothFactor
 #ifdef MPI
-    use input_variables, only : blockHandout
+    use input_variables, only : blockHandout, nDusttype
 #endif
     use messages_mod, only : myRankIsZero
     implicit none
@@ -290,6 +290,9 @@ contains
                 thisLam = (cSpeed / thisFreq) * 1.e8
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
+                write(*,*) "calling with ", real(thisLam), iLam, lamarray(1), lamArray(nLambda)
+                write(*,*) "ndusttype ",nDustType
+                write(*,*) "kappaabs ",grid%oneKappaAbs(1,1:nLambda)
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
                      lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
 
