@@ -397,251 +397,254 @@ contains
     enddo
   end subroutine fixMiePhase
 
-subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
-     normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
+  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+       normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
 
-  implicit none
-  integer, intent(in) :: nLambda
-  character(len=*), intent(in) :: outFile
-!  character(len=80) :: tfile
-  real, intent(in) :: xArray(nLambda)
-  logical, intent(in) :: useNdf
-  logical, intent(in) :: jansky
-  integer, intent(in) :: nOuterLoop
-  logical, intent(in) :: normalizeSpectrum, sed, velocitySpace
-  real(double), intent(in) :: objectDistance
-  real(double) :: area
-  real, intent(in) :: lamLine
-  type(STOKESVECTOR), intent(in) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
-  type(STOKESVECTOR), allocatable :: ytmpArray(:), tmpErrorArray(:,:), ymedian(:)
-  real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
-  real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
-  real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:), tArray(:)
-  real, allocatable, dimension(:) :: tmpXarray
-!  real :: tot
-  real :: x
-  integer :: i,j
-  logical :: SI
-  character(len=80) :: message
+    implicit none
+    integer, intent(in) :: nLambda
+    character(len=*), intent(in) :: outFile
+    !  character(len=80) :: tfile
+    real, intent(in) :: xArray(nLambda)
+    logical, intent(in) :: useNdf
+    logical, intent(in) :: jansky
+    integer, intent(in) :: nOuterLoop
+    logical, intent(in) :: normalizeSpectrum, sed, velocitySpace
+    real(double), intent(in) :: objectDistance
+    real(double) :: area
+    real, intent(in) :: lamLine
+    type(STOKESVECTOR), intent(in) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
+    type(STOKESVECTOR), allocatable :: ytmpArray(:), tmpErrorArray(:,:), ymedian(:)
+    real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
+    real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
+    real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:), tArray(:)
+    real, allocatable, dimension(:) :: tmpXarray
+    !  real :: tot
+    real :: x
+    integer :: i,j
+    logical :: SI
+    character(len=80) :: message
 
-  allocate(ytmpArray(1:nLambda))
-  allocate(tmpXarray(1:nLambda))
-  allocate(tmpErrorArray(nOuterloop,nLambda))
+    allocate(ytmpArray(1:nLambda))
+    allocate(tmpXarray(1:nLambda))
+    allocate(tmpErrorArray(nOuterloop,nLambda))
 
-  allocate(meanQ(1:nLambda))
-  allocate(meanU(1:nLambda))
-  allocate(sigQ(1:nLambda))
-  allocate(sigU(1:nLambda))
+    allocate(meanQ(1:nLambda))
+    allocate(meanU(1:nLambda))
+    allocate(sigQ(1:nLambda))
+    allocate(sigU(1:nLambda))
 
-  allocate(dlam(1:nLambda))
-  allocate(stokes_i(1:nLambda))
-  allocate(stokes_q(1:nLambda))
-  allocate(stokes_qv(1:nLambda))
-  allocate(stokes_u(1:nLambda))
-  allocate(stokes_uv(1:nLambda))
+    allocate(dlam(1:nLambda))
+    allocate(stokes_i(1:nLambda))
+    allocate(stokes_q(1:nLambda))
+    allocate(stokes_qv(1:nLambda))
+    allocate(stokes_u(1:nLambda))
+    allocate(stokes_uv(1:nLambda))
 
-  allocate(yMedian(1:nLambda))
+    allocate(yMedian(1:nLambda))
 
-!  do j = 1, nOuterloop
-!     write(tfile,'(a,i3.3,a)') "errorarray",j,".dat"
-!     open(55,file=tfile,status="unknown",form="formatted")
-!     do i = 1, nLambda
-!        write(55,*) xarray(i),errorArray(j,i)%i
-!     enddo
-!    close(55)
-!  enddo
+    !  do j = 1, nOuterloop
+    !     write(tfile,'(a,i3.3,a)') "errorarray",j,".dat"
+    !     open(55,file=tfile,status="unknown",form="formatted")
+    !     do i = 1, nLambda
+    !        write(55,*) xarray(i),errorArray(j,i)%i
+    !     enddo
+    !    close(55)
+    !  enddo
 
-  allocate(tArray(1:nOuterLoop))
-  do i = 1,nLambda
-     do j = 1, nOuterLoop
-        tarray(j) = errorArray(j,i)%i
-     enddo
-     yMedian(i)%i = median(tArray, nOuterLoop)
-     do j = 1, nOuterLoop
-        tarray(j) = errorArray(j,i)%q
-     enddo
-     yMedian(i)%q = median(tArray, nOuterLoop)
-     do j = 1, nOuterLoop
-        tarray(j) = errorArray(j,i)%u
-     enddo
-     yMedian(i)%u = median(tArray, nOuterLoop)
-     do j = 1, nOuterLoop
-        tarray(j) = errorArray(j,i)%v
-     enddo
-     yMedian(i)%v = median(tArray, nOuterLoop)
-!
-     yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
-     yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
-     yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
-     yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
+    allocate(tArray(1:nOuterLoop))
+    do i = 1,nLambda
+       do j = 1, nOuterLoop
+          tarray(j) = errorArray(j,i)%i
+       enddo
+       yMedian(i)%i = median(tArray, nOuterLoop)
+       do j = 1, nOuterLoop
+          tarray(j) = errorArray(j,i)%q
+       enddo
+       yMedian(i)%q = median(tArray, nOuterLoop)
+       do j = 1, nOuterLoop
+          tarray(j) = errorArray(j,i)%u
+       enddo
+       yMedian(i)%u = median(tArray, nOuterLoop)
+       do j = 1, nOuterLoop
+          tarray(j) = errorArray(j,i)%v
+       enddo
+       yMedian(i)%v = median(tArray, nOuterLoop)
+       !
+       yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
+       yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
+       yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
+       yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
 
-  enddo
-  deallocate(tarray)
-
-
-  do i = 1, nLambda
-     yMedian(i) = yMedian(i) * dble(nouterloop)
-  enddo
-
-!  x = SUM(yArray(1:min(10,nLambda))%i)/real(min(10,nLambda))
-
-!  x = 1./x
-
-!  x = 
-
-  if (normalizeSpectrum) then
-     if (yMedian(1)%i /= 0.) then
-        x = 1.d0/yMedian(1)%i
-!        x = 1.d0/yArray(nLambda)%i
-     else
-       x  = 1.d0
-     endif
-  else
-     x = 1.d0
-  endif
-
-!  
-  do i = 1, nLambda
-     ytmpArray(i) = yMedian(i) * x !!!!!!!!!!!!!
-  enddo
+    enddo
+    deallocate(tarray)
 
 
-  where(errorArray%i /= 0.)
-     tmpErrorArray%q = errorArray%q / errorArray%i
-     tmpErrorArray%u = errorArray%u / errorArray%i
-  elsewhere 
-     tmpErrorArray%q = errorArray%q 
-     tmpErrorArray%u = errorArray%u
-  end where
+    do i = 1, nLambda
+       yMedian(i) = yMedian(i) * dble(nouterloop)
+    enddo
 
-  do i = 1, nLambda
-     meanQ(i) = sum(tmpErrorArray(1:nOuterLoop,i)%q) / real(nOuterLoop)
-     meanU(i) = sum(tmpErrorArray(1:nOuterLoop,i)%u) / real(nOuterLoop)
-  enddo
+    !  x = SUM(yArray(1:min(10,nLambda))%i)/real(min(10,nLambda))
 
-  do i = 1, nLambda
-     sigQ(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%q-meanQ(i))**2)/real(nOuterLoop-1))
-     sigU(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
-  enddo
+    !  x = 1./x
 
+    !  x = 
 
-  stokes_i = ytmpArray%i
-  stokes_q = ytmpArray%q
-  stokes_u = ytmpArray%u
-  stokes_qv = (ytmpArray%i * sigQ)**2
-  stokes_uv = (ytmpArray%i * sigU)**2
+    if (normalizeSpectrum) then
+       if (yMedian(1)%i /= 0.) then
+          x = 1.d0/yMedian(1)%i
+          !        x = 1.d0/yArray(nLambda)%i
+       else
+          x  = 1.d0
+       endif
+    else
+       x = 1.d0
+    endif
 
-  dlam(1) = (xArray(2)-xArray(1))
-  dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
-  do i = 2, nLambda-1
-     dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
-  enddo
-
-  if (.not.normalizeSpectrum) then
-!     ! convert from erg/s to erg/s/A
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
-     
-     ! convert to erg/s/A to erg/s/cm^2/A
-     
-     area =  objectDistance**2  ! (nb flux is alread per sterad)
-     !
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) / area
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) / area
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) / area
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area**2
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area**2
-  
-
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) * 1.d20
-     stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
-     stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
-     
-  if (jansky) then
-     do i = 1, nLambda
-        stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
-        stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
-        stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
-        stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))**2
-        stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))**2
-     enddo
-  endif
-endif
-
-  if (sed) then
-     write(message,'(a)') "Writing spectrum as lambda F_lambda"
-     call writeInfo(message, TRIVIAL)
+    !  
+    do i = 1, nLambda
+       ytmpArray(i) = yMedian(i) * x !!!!!!!!!!!!!
+    enddo
 
 
-!     tot = 0.
-!     do i = 1, nLambda
-!        tot = tot + stokes_i(i)* dlam(i)
-!     enddo
+    where(errorArray%i /= 0.)
+       tmpErrorArray%q = errorArray%q / errorArray%i
+       tmpErrorArray%u = errorArray%u / errorArray%i
+    elsewhere 
+       tmpErrorArray%q = errorArray%q 
+       tmpErrorArray%u = errorArray%u
+    end where
 
-!     stokes_i = stokes_i / tot
-!     stokes_q = stokes_q / tot
-!     stokes_u = stokes_u / tot
-!     stokes_qv = stokes_qv / tot**2
-!     stokes_uv = stokes_uv / tot**2
-     
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
-  endif
+    do i = 1, nLambda
+       meanQ(i) = sum(tmpErrorArray(1:nOuterLoop,i)%q) / real(nOuterLoop)
+       meanU(i) = sum(tmpErrorArray(1:nOuterLoop,i)%u) / real(nOuterLoop)
+    enddo
 
-  if (SI) then
-     write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
-     call writeInfo(message, TRIVIAL)
+    do i = 1, nLambda
+       sigQ(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%q-meanQ(i))**2)/real(nOuterLoop-1))
+       sigU(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
+    enddo
 
-     tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
-     
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) * tmpxArray(1:nLambda) * 10.
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda)**2  * 100.
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda)**2 * 100.
-  else 
-    tmpXarray = xArray
-  endif
 
-  if (velocitySpace) then
-     tmpXarray(1:nLambda) = cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5 ! wavelength to km/s
-  endif
+    stokes_i = ytmpArray%i
+    stokes_q = ytmpArray%q
+    stokes_u = ytmpArray%u
+    stokes_qv = (ytmpArray%i * sigQ)**2
+    stokes_uv = (ytmpArray%i * sigU)**2
 
-  if (useNdf) then
-     write(message,*) "Writing spectrum to ",trim(outfile),".sdf"
-     call writeInfo(message, TRIVIAL)
-     call wrtsp(nLambda,real(stokes_i),real(stokes_q),real(stokes_qv), &
-          real(stokes_u), &
-          real(stokes_uv),tmpXarray,outFile)
-  else
-     write(message,*) "Writing spectrum to ",trim(outfile),".dat"
-     call writeInfo(message, TRIVIAL)
+    dlam(1) = (xArray(2)-xArray(1))
+    dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
+    do i = 2, nLambda-1
+       dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
+    enddo
 
-     open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
-33   format(6(1x, 1PE14.5))
-!34   format(a1, a14, 5(a6))
-     ! You should always put a header!
-!     write(20, "(a)") "# Writteng by writeSpectrum."
-!     write(20,34)  "#", "xaxis", "I", "Q", "QV", "U", "UV"
-     do i = 1, nLambda
-        write(20,33) tmpXarray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
-             stokes_u(i), stokes_uv(i)
-     enddo
-     close(20)
-  endif
+    if (.not.normalizeSpectrum) then
+       !     ! convert from erg/s to erg/s/A
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
 
-  deallocate(ytmpArray,meanQ,meanU,sigQ,sigU,tmpErrorArray)
-  deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
+       ! convert to erg/s/A to erg/s/cm^2/A
 
-end subroutine writeSpectrum
+       area =  objectDistance**2  ! (nb flux is alread per sterad)
+       !
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) / area
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) / area
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) / area
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area**2
+
+
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) * 1.d20
+       stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
+       stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
+
+       if (jansky) then
+          do i = 1, nLambda
+             stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+             stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+             stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+             stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))**2
+             stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))**2
+          enddo
+       endif
+    endif
+
+    if (sed) then
+       write(message,'(a)') "Writing spectrum as lambda F_lambda"
+       call writeInfo(message, TRIVIAL)
+
+
+       !     tot = 0.
+       !     do i = 1, nLambda
+       !        tot = tot + stokes_i(i)* dlam(i)
+       !     enddo
+
+       !     stokes_i = stokes_i / tot
+       !     stokes_q = stokes_q / tot
+       !     stokes_u = stokes_u / tot
+       !     stokes_qv = stokes_qv / tot**2
+       !     stokes_uv = stokes_uv / tot**2
+
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
+    endif
+
+    if (SI) then
+       write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
+       call writeInfo(message, TRIVIAL)
+
+       tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
+
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda)**2  * 100.
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda)**2 * 100.
+    else 
+       tmpXarray = xArray
+    endif
+
+    if (velocitySpace) then
+       tmpXarray(1:nLambda) = cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5 ! wavelength to km/s
+    endif
+
+    if (useNdf) then
+       write(message,*) "Writing spectrum to ",trim(outfile),".sdf"
+       call writeInfo(message, TRIVIAL)
+       call wrtsp(nLambda,real(stokes_i),real(stokes_q),real(stokes_qv), &
+            real(stokes_u), &
+            real(stokes_uv),tmpXarray,outFile)
+    else
+       write(message,*) "Writing spectrum to ",trim(outfile),".dat"
+       call writeInfo(message, TRIVIAL)
+
+       open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+       if (sed) write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
+       if (SI) write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
+
+33     format(6(1x, 1PE14.5))
+       !34   format(a1, a14, 5(a6))
+       ! You should always put a header!
+       !     write(20, "(a)") "# Writteng by writeSpectrum."
+       !     write(20,34)  "#", "xaxis", "I", "Q", "QV", "U", "UV"
+       do i = 1, nLambda
+          write(20,33) tmpXarray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
+               stokes_u(i), stokes_uv(i)
+       enddo
+       close(20)
+    endif
+
+    deallocate(ytmpArray,meanQ,meanU,sigQ,sigU,tmpErrorArray)
+    deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
+
+  end subroutine writeSpectrum
 
 end module phasematrix_mod
 

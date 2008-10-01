@@ -2150,10 +2150,10 @@ endif
          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
 
    call getReal("mcore", mCore, cLine, nLines, &
-       "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
+       "Core mass (solar masses): ","(a,f6.4,a)", 0.5, ok, .true.)
 
    call getReal("mdisc", mDisc, cLine, nLines, &
-       "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
+       "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
 
    call getReal("alphadisc", alphaDisc, cLine, nLines, &
        "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
