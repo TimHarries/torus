@@ -2269,17 +2269,21 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                              if (obsPhoton%stellar) then
                                 if (obsPhoton%scattered) then
-                                   yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                                   yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + &
+                                        (obsPhoton%stokes * obs_weight)
                                 else
-                                   yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + (obsPhoton%stokes * obs_weight)
+                                   yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + &
+                                        (obsPhoton%stokes * obs_weight)
                                 endif
                              endif
 
                              if (obsPhoton%thermal) then
                                 if (obsPhoton%scattered) then
-                                   yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                                   yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + &
+                                        (obsPhoton%stokes * obs_weight)
                                 else
-                                   yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (obsPhoton%stokes * obs_weight)
+                                   yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + &
+                                        (obsPhoton%stokes * obs_weight)
                                 endif
                              endif
                           else 
