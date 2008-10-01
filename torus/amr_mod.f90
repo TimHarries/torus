@@ -4888,7 +4888,14 @@ IF ( .NOT. gridConverged ) RETURN
       split = .false.
 
       ! Split in order to capture density gradients. 
-      if (  (maxDensity-minDensity) / (0.5*(maxDensity+minDensity)) > 0.5 ) split = .true. 
+
+! Use sign of amrlimitscalar2 to determine which condition to use.
+! This allows testing of the grid generation method without recompiling the code
+      if ( amrlimitscalar2 > 0.0 ) then 
+         if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) split = .true. 
+      elseif (amrlimitscalar2 < 0.0 ) then
+         if (  (maxDensity / minDensity) > abs(amrlimitscalar2) ) split = .true. 
+      end if
 
       if (total_mass > amrlimitscalar) split = .true.
 
