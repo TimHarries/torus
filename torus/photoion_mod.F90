@@ -189,7 +189,7 @@ contains
 
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
     if (nLucy == 0) then
-       nMonte = nVoxels * 100
+       nMonte = nVoxels * 10
     else
        nMonte = nlucy
     endif
@@ -290,9 +290,6 @@ contains
                 thisLam = (cSpeed / thisFreq) * 1.e8
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
-                write(*,*) "calling with ", real(thisLam), iLam, lamarray(1), lamArray(nLambda)
-                write(*,*) "ndusttype ",nDustType
-                write(*,*) "kappaabs ",grid%oneKappaAbs(1,1:nLambda)
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
                      lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
 
@@ -622,10 +619,10 @@ if (writeoutput) then
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
-!       nMonte = nMonte * 2
+       nMonte = nMonte * 2
 
 
-    call writeAmrGrid("photo_tmp.grid",.false.,grid)
+    if (writeoutput) call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
     if (niter == 6) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -2070,7 +2067,7 @@ subroutine dumpLexington(grid, epsoverdt)
      t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
 
      oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
-     heating = 0.d0; cooling = 0.d0
+     heating = 0.d0; cooling = 0.d0; netot = 0.d0
      do j = 1, 100
         call random_number(theta)
         theta = theta * Pi

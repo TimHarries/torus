@@ -530,6 +530,7 @@ contains
     if (oneKappa) then
        allocate(grid%oneKappaAbs(nDustType,1:nLambda))
        allocate(grid%oneKappaSca(nDustType,1:nLambda))
+       grid%oneKappaAbs = 0.d0; grid%oneKappaSca = 0.d0
        grid%nTempRossArray = 1000
        allocate(grid%kappaRossArray(nDustType,1:grid%nTempRossArray))
        allocate(grid%tempRossArray(1:grid%nTempRossArray))

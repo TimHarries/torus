@@ -139,7 +139,7 @@ contains
 
     if (imageInArcSec) then
        call getReal("imagearcsec", imageSizeinArcsec, cLine, nLines, &
-            "Image size in arcseconds: ","(a,f10.3,1x,a)", 0.130, ok, .true.)
+            "Image size in arcseconds: ","(a,f10.3,1x,a)", 0., ok, .false.)
     endif
 
     call getLogical("sed", sed, cLine, nLines, &

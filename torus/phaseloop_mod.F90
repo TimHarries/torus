@@ -1125,7 +1125,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            imageSize = setImageSize / 1.e10
         endif
 
-        if (imageInArcsec) then
+        if (imageInArcsec.and.(imageSizeInArcSec /= 0.)) then
            imagesize = objectdistance * (imageSizeInArcsec / 3600.) * degtorad / 1.e10
         endif
 

@@ -599,7 +599,7 @@ module image_mod
 
 ! Arguments
 
-       use input_variables, only: lamStart, lamEnd
+       use input_variables, only: lamStart, lamEnd, ImageinArcSec
        type(IMAGETYPE), intent(in)   :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
@@ -609,9 +609,19 @@ module image_mod
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       real(double) :: scale, dlam, lamCen
+       real(double) :: scale, dlam, lamCen, dx, dy
 
        logical :: simple,extend
+
+       dx = image%xAxisCentre(2) - image%xAxisCentre(1)
+       dy = image%yAxisCentre(2) - image%yAxisCentre(1)
+
+
+       if (imageinarcsec) then
+          dx = (dx * 1.d10)/objectDistance
+          dy = (dy * 1.d10)/objectDistance
+       endif
+      
 
        allocate(array(1:image%nx, 1:image%ny))
        call writeInfo("Writing fits image",TRIVIAL)
@@ -682,10 +692,12 @@ module image_mod
        !  Write another optional keyword to the header.
        !
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
-       call ftpkye(unit,'CDELT1',4.848137e-10,6,' ',status)
-       call ftpkye(unit,'CDELT2',4.848137e-10,6,' ',status)
-       call ftpkye(unit,'CRVAL1',4.721411605,10,' ',status)
-       call ftpkye(unit,'CRVAL2',-0.412388335,10,' ',status)
+
+
+       call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+       call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+       call ftpkyd(unit,'CRVAL1',0.d0,10,' ',status)
+       call ftpkyd(unit,'CRVAL2',0.d0,10,' ',status)
        call ftpkyj(unit,'CRPIX1',image%nx/2,' ',status)
        call ftpkyj(unit,'CRPIX2',image%ny/2,' ',status)
        !

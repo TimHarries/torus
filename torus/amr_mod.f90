@@ -5091,8 +5091,8 @@ IF ( .NOT. gridConverged ) RETURN
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
-!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -5102,21 +5102,21 @@ IF ( .NOT. gridConverged ) RETURN
       if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
            (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
-      splitInAzimuth = .false.
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
-         splitInAzimuth = .true.
-         split = .true.
-      endif
+!      splitInAzimuth = .false.
+!      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
+!         splitInAzimuth = .true.
+!         split = .true.
+!      endif
 
-      if (abs(cellCentre%z) < rinner/2.) then
-         if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
-            splitInAzimuth = .true.
-            split = .true.
-         endif
-      endif
-      if (abs(cellCentre%z) < rinner/5.) then
-         if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
-      endif
+!      if (abs(cellCentre%z) < rinner/2.) then
+!         if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
+!            splitInAzimuth = .true.
+!            split = .true.
+!         endif
+!      endif
+!      if (abs(cellCentre%z) < rinner/5.) then
+!         if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
+!      endif
 
       if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
          split = .false.

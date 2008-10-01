@@ -244,7 +244,7 @@ contains
           if (j < nMuMie) then
              fac = (cosTheta - cosArray(j))/(cosArray(j+1)-cosArray(j))
           else
-             j = nMumie
+             j = nMumie-1
              fac =1.
           endif
           
