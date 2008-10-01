@@ -376,7 +376,7 @@ contains
     type(GRIDTYPE) :: grid
     character(len=*) :: vtkFilename
     integer :: nValueType
-    character(len=20) :: valueType(50)
+    character(len=20) :: valueType(50), message
     character(len=*), optional ::  valueTypeFilename
     character(len=*), optional ::  valueTypeString(:)
     integer :: nCells, nPoints

@@ -526,8 +526,7 @@ end if ! (my_rank /= 0)
 
 
 
-!       if (writeoutput) then
-if (writeoutput) then
+       if (writeoutput) then
        call dumpLexington(grid, epsoverdeltat)
 
        fac = 2.06e37

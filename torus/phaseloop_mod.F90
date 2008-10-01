@@ -157,6 +157,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   type(STOKESVECTOR), allocatable  :: errorArray(:,:)
   type(STOKESVECTOR) :: yArray(nLambda)
+  type(STOKESVECTOR) :: yArrayStellarDirect(nLambda)
+  type(STOKESVECTOR) :: yArrayStellarScattered(nLambda)
+  type(STOKESVECTOR) :: yArrayThermalDirect(nLambda)
+  type(STOKESVECTOR) :: yArrayThermalScattered(nLambda)
 
   logical :: rotateView
   logical :: tiltView
@@ -1082,6 +1086,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         yArray(i)%v = 0.
      enddo
 
+     yArrayStellarDirect(:) = STOKESVECTOR(0., 0., 0., 0.)
+     yArrayThermalDirect(:) = STOKESVECTOR(0., 0., 0., 0.)
+     yArrayStellarScattered(:) = STOKESVECTOR(0., 0., 0., 0.)
+     yArrayThermalScattered(:) = STOKESVECTOR(0., 0., 0., 0.)
+
      if (doRaman) then
         yArray(1:nLambda)%i = 1.e-20
         errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
@@ -1259,7 +1268,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
 
-     if (mie) then
+     if (mie.or.photoionization) then
         nInnerLoop = nPhotons / nOuterLoop
      endif
 
@@ -1333,13 +1342,19 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
            
 
-!           weightDust = chanceDust / probDust
-!           weightPhoto = (1. - chanceDust) / (1. - probDust)
+
 
 
            probDust = chanceDust
            weightDust = 1.
            weightPhoto = 1.
+
+           if (chanceDust > 0.99) then
+              probDust = 0.9
+              weightDust = chanceDust / probDust
+              weightPhoto = (1. - chanceDust) / (1. - probDust)
+           endif
+
 
            energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
 !           if (writeoutput) write(*,*) "WeightDust",weightDust
@@ -1628,6 +1643,23 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                     yArray(iLambda) = yArray(iLambda) + &
                          (thisPhoton%stokes * obs_weight)
                     statArray(iLambda) = statArray(iLambda) + 1.
+
+                    if (thisPhoton%stellar) then
+                       if (thisPhoton%scattered) then
+                          yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + (thisPhoton%stokes * obs_weight)
+                       else
+                          yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + (thisPhoton%stokes * obs_weight)
+                       endif
+                    endif
+
+                    if (thisPhoton%thermal) then
+                       if (thisPhoton%scattered) then
+                          yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (thisPhoton%stokes * obs_weight)
+                       else
+                          yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (thisPhoton%stokes * obs_weight)
+                       endif
+                    endif
+
                  endif
                  if (stokesImage) then
                     thisVel = 0. ! no velocity for dust continuum
@@ -1713,6 +1745,25 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        obs_weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
                        yArray(iLambda) = yArray(iLambda) + &
                                            (thisPhoton%stokes * obs_weight)
+
+                       if (thisPhoton%stellar) then
+                          if (thisPhoton%scattered) then
+                             yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + (thisPhoton%stokes * obs_weight)
+                          else
+                             yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + (thisPhoton%stokes * obs_weight)
+                          endif
+                       endif
+                       
+                       if (thisPhoton%thermal) then
+                          if (thisPhoton%scattered) then
+                             yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (thisPhoton%stokes * obs_weight)
+                          else
+                             yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (thisPhoton%stokes * obs_weight)
+                          endif
+                       endif
+
+
+
                        statArray(iLambda) = statArray(iLambda) + 1.
 
                        meanr0_cont = meanr0_cont + modulus(thisPhoton%position) &
@@ -2101,6 +2152,22 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                     if (ok) then
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
 
+
+                       if (obsPhoton%stellar) then
+                          if (obsPhoton%scattered) then
+                             yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                          else
+                             yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + (obsPhoton%stokes * obs_weight)
+                          endif
+                       endif
+
+                       if (obsPhoton%thermal) then
+                          if (obsPhoton%scattered) then
+                             yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                          else
+                             yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (obsPhoton%stokes * obs_weight)
+                          endif
+                       endif
 !                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
@@ -2199,9 +2266,45 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                           if (ok) then
                              yArray(iLambda) = yArray(iLambda) + &
                                   (obsPhoton%stokes*obs_weight)
+
+                             if (obsPhoton%stellar) then
+                                if (obsPhoton%scattered) then
+                                   yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                                else
+                                   yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + (obsPhoton%stokes * obs_weight)
+                                endif
+                             endif
+
+                             if (obsPhoton%thermal) then
+                                if (obsPhoton%scattered) then
+                                   yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                                else
+                                   yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (obsPhoton%stokes * obs_weight)
+                                endif
+                             endif
                           else 
                              yarray(ilambda) = yArray(ilambda) + &
                                   obsPhoton%stokes*(oneOnFourpi* directionalweight * exp(-tauExt(ntau)))
+                             if (obsPhoton%stellar) then
+                                if (obsPhoton%scattered) then
+                                   yArrayStellarScattered(iLambda) = yArrayStellarScattered(iLambda) + &
+                                        (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
+                                else
+                                   yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + &
+                                        (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
+                                endif
+                             endif
+                             
+                             if (obsPhoton%thermal) then
+                                if (obsPhoton%scattered) then
+                                   yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + &
+                                        (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
+                                else
+                                   yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + &
+                                        (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
+                                endif
+                             endif
+
                           endif
 
 
@@ -2354,6 +2457,85 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      yArray%v = tempDoubleArray 
      deallocate(tempDoubleArray)
+
+     allocate(tempDoubleArray(SIZE(yArrayStellarDirect)))
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarDirect%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarDirect%i = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarDirect%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarDirect%q = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarDirect%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarDirect%u = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarDirect%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarDirect%v = tempDoubleArray 
+     deallocate(tempDoubleArray)
+
+     allocate(tempDoubleArray(SIZE(yArrayStellarScattered)))
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarScattered%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarScattered%i = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarScattered%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarScattered%q = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarScattered%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarScattered%u = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayStellarScattered%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayStellarScattered%v = tempDoubleArray 
+     deallocate(tempDoubleArray)
+
+     allocate(tempDoubleArray(SIZE(yArrayThermalDirect)))
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalDirect%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalDirect%i = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalDirect%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermaldirect%q = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalDirect%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalDirect%u = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalDirect%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalDirect%v = tempDoubleArray 
+     deallocate(tempDoubleArray)
+
+     allocate(tempDoubleArray(SIZE(yArrayThermalScattered)))
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalScattered%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalScattered%i = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalScattered%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalScattered%q = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalScattered%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalScattered%u = tempDoubleArray 
+     tempDoubleArray = 0.0_db
+     call MPI_REDUCE(yArrayThermalScattered%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     yArrayThermalScattered%v = tempDoubleArray 
+     deallocate(tempDoubleArray)
+
+
+
 #endif
      call torus_mpi_barrier !('finished syncing output. Waiting to continue...') 
      write(message,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
@@ -2515,6 +2697,23 @@ endif ! (doPvimage)
 
        call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
             .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+
+       specFile = trim(outfile)//"_stellar_direct"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect,  errorArray, nOuterLoop, &
+            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+
+       specFile = trim(outfile)//"_stellar_scattered"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered,  errorArray, nOuterLoop, &
+            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+
+       specFile = trim(outfile)//"_thermal_direct"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect,  errorArray, nOuterLoop, &
+            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+
+       specFile = trim(outfile)//"_thermal_scattered"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered,  errorArray, nOuterLoop, &
+            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
        
        if (velocitySpace) then
           specFile = trim(outfile)//"_v"

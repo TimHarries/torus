@@ -148,6 +148,7 @@ contains
     ! initialize variables
 
     outPhoton = thisPhoton 
+    outPhoton%scattered = .true.
     pointOctalVec = outPhoton%position
     incoming = outPhoton%direction
 
@@ -180,7 +181,7 @@ contains
 
     if (modulus(outgoing) == 0.) then
 
-       if (.not.mie) then
+!       if (.not.mie) then
           randomDirection = .true.
           call random_number(r1)
           
@@ -195,15 +196,15 @@ contains
           outgoing%x = u
           outgoing%y = v
           outgoing%z = w
-       else
-
-          outgoing = newDirectionMie(incoming, thisPhoton%lambda, lamArray, nLambda, &
-               miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
-          outPhoton%stokes = outPhoton%stokes * (1./weight)
+!       else
+!
+!          outgoing = newDirectionMie(incoming, thisPhoton%lambda, lamArray, nLambda, &
+!               miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
+!          outPhoton%stokes = outPhoton%stokes * (1./weight)
 
 !          outgoing = randomUnitVector()
+!       endif
        endif
-    endif
 
 
     ! set up the scattering normals (see Hillier 1991)
