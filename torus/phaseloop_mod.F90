@@ -1478,6 +1478,16 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               nFromEnv = nFromEnv + 1
            endif
 
+           if (thisPhoton%thermal.and.thisPhoton%stellar) then
+              write(*,*) "error both thermal and stellar set"
+              stop
+           endif
+
+           if (thisPhoton%scattered) then
+              write(*,*) "error not direct produced", thisPhoton%scattered
+              stop
+           endif
+
 
 !           write(*,*) "after init",thisPhoton%stokes%i,contwindphoton
            observedLambda = thisPhoton%lambda
@@ -2545,13 +2555,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      write(message,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
      call writeInfo(message, TRIVIAL)
 
-        errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
+!        errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
         call torus_mpi_barrier
 
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
-        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
+!        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
 
 
 

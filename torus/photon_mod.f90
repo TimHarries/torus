@@ -616,6 +616,7 @@ contains
           if (photonFromEnvelope) then
              thisPhoton%direction = randomUnitVector()
              thisPhoton%thermal = .true.
+             thisPhoton%stellar = .false.
              if (grid%adaptive) then 
 
                 do  ! dummy loop, in case we pick a position inside a star

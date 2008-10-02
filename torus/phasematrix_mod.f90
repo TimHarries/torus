@@ -451,43 +451,46 @@ contains
     !    close(55)
     !  enddo
 
-    allocate(tArray(1:nOuterLoop))
-    do i = 1,nLambda
-       do j = 1, nOuterLoop
-          tarray(j) = errorArray(j,i)%i
-       enddo
-       yMedian(i)%i = median(tArray, nOuterLoop)
-       do j = 1, nOuterLoop
-          tarray(j) = errorArray(j,i)%q
-       enddo
-       yMedian(i)%q = median(tArray, nOuterLoop)
-       do j = 1, nOuterLoop
-          tarray(j) = errorArray(j,i)%u
-       enddo
-       yMedian(i)%u = median(tArray, nOuterLoop)
-       do j = 1, nOuterLoop
-          tarray(j) = errorArray(j,i)%v
-       enddo
-       yMedian(i)%v = median(tArray, nOuterLoop)
-       !
-       yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
-       yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
-       yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
-       yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
+!    allocate(tArray(1:nOuterLoop))
+!    do i = 1,nLambda
+!       do j = 1, nOuterLoop
+!          tarray(j) = errorArray(j,i)%i
+!       enddo
+!       yMedian(i)%i = median(tArray, nOuterLoop)
+!       do j = 1, nOuterLoop
+!          tarray(j) = errorArray(j,i)%q
+!       enddo
+!       yMedian(i)%q = median(tArray, nOuterLoop)
+!       do j = 1, nOuterLoop
+!          tarray(j) = errorArray(j,i)%u
+!       enddo
+!       yMedian(i)%u = median(tArray, nOuterLoop)
+!       do j = 1, nOuterLoop
+!          tarray(j) = errorArray(j,i)%v
+!       enddo
+!       yMedian(i)%v = median(tArray, nOuterLoop)
+!       !
+!       yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
+!       yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
+!       yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
+!       yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
+!
+!    enddo
+!    deallocate(tarray)
 
-    enddo
-    deallocate(tarray)
-
-
-    do i = 1, nLambda
-       yMedian(i) = yMedian(i) * dble(nouterloop)
-    enddo
+!
+!    do i = 1, nLambda
+!       yMedian(i) = yMedian(i) * dble(nouterloop)
+!    enddo
 
     !  x = SUM(yArray(1:min(10,nLambda))%i)/real(min(10,nLambda))
 
     !  x = 1./x
 
     !  x = 
+
+    yMedian = yArray
+
 
     if (normalizeSpectrum) then
        if (yMedian(1)%i /= 0.) then

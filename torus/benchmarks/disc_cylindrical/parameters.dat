@@ -1,5 +1,3 @@
-iterLucy 5
-mincrossings 5
 usebias F
 nphotons 500000
 amrgridcentrex 2.e6
@@ -55,7 +53,6 @@ mie T
 line F                                   
 opaquecore T
 lucyrad T
-nlucy 1000000
 lucyfilein lucy.dat
 lucyfileout lucy.dat
 writelucy T
@@ -67,7 +64,6 @@ amax1 0.1201
 qdist1 0.01
 tthresh 2000.
 imagesize 0.
-lucy_undersampled 0.0
 hydro F
 iso_scatter T
 ndf F
