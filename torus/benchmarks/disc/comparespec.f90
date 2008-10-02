@@ -4,8 +4,10 @@ program comparespec
   real :: thisVal
   real :: loginterp,fac,mean
   integer :: n1, n2,i,nzero
+  character(len=100) :: header
 
   open(20,file="speca.dat", form="formatted", status="old",err=666)
+  read(20,*) header
   n1 = 200
   do i = 1, n1
      read(20,*) x1(i), y1(i)
