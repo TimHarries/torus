@@ -1,6 +1,5 @@
 2 !verbosity
 forceLucyConv F
-iterLucy 5
 tminglobal 3.0
 taudiff 1000.
 amrgridcentrex 0.0
@@ -36,7 +35,6 @@ router 800.
 height 10.18
 rho 1.83e-10
 maxscat 1000000
-device "/xs"                             
 stokesimage F
 vmin -100000.                            
 vmax +100000.                            
@@ -49,8 +47,6 @@ opaquecore T
 lucyrad T
 usebias F
 twod F
-nlucy 100000
-lucy_undersampled 0.
 lucyfile lucy.dat
 writelucy F
 readlucy F
@@ -70,7 +66,6 @@ mcore 0.5
 mdisc 1.e-4
 imagearcsec 10.
 disc_on F
-pgplotdevice  "gif/gif"
 
 filename test
 ninc 2
@@ -87,7 +82,6 @@ distance 2.25558e-8
 taumax 0.5
 taumin 0.001
 nphotons 500000
-mincrossings 50
 forceFirstScat F
 tthresh 2000.
 
