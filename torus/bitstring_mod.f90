@@ -76,10 +76,6 @@ module bitstring_mod
             thisOctal%iZbitstring(subcell) = ibset(thisOctal%iZbitstring(subcell), 0)
          endif
 
-         if (thisOctal%nDepth == 10) then
-            write(*,*) "x ",charBitstring(thisOctal%ixBitstring(subcell), thisOctal%nDepth), &
-                 " z ", charBitString(thisOctal%izBitstring(subcell), thisOctal%nDepth)
-         endif
       end do
 
 
