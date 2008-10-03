@@ -9782,6 +9782,9 @@ end function readparameterfrom2dmap
     dest%threeD =   source%threeD 
     dest%twod = source%twoD  
     dest%oneD = source%oneD   
+    dest%iXbitString = source%iXbitString
+    dest%iYbitString = source%iYbitString
+    dest%iZbitString = source%iZbitString
     dest%cylindrical = source%cylindrical
     dest%splitAzimuthally = source%splitAzimuthally
     dest%maxChildren =  source%maxChildren
@@ -16390,5 +16393,33 @@ end function readparameterfrom2dmap
         END IF
         
   END SUBROUTINE cleanupAMRgrid
+
+
+  recursive subroutine setupNeighbourPointers(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: centre, rVec
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  setupNeighbourPointers(child)
+                exit
+             end if
+          end do
+       else
+
+          ! top face
+
+          centre = subcellCentre(thisOctal, subcell)
+          
+
+       endif
+    enddo
+  end subroutine setupNeighbourPointers
    
 END MODULE amr_mod

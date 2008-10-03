@@ -164,6 +164,7 @@ MODULE octal_mod
 
     LOGICAL, DIMENSION(8)              :: inFlow
 
+    INTEGER(KIND=BIGINT) :: iXbitstring(8), iYbitstring(8), iZbitstring(8)
 
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells

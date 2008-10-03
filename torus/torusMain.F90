@@ -75,6 +75,7 @@ program torus
   use mpi_global_mod
   use parallel_mod
   use gridio_mod
+  use bitstring_mod
   use phaseloop_mod, only: do_phaseloop
   use benchmark_mod, only: check_benchmark_values
 
@@ -1693,6 +1694,9 @@ CONTAINS
 !        call writeInfo("...cleaning up dynamic memory",TRIVIAL)
 !        call cleanupAMRgrid(grid%octreeRoot)
 
+        call writeInfo("Constructing bitstrings...",TRIVIAL)
+        call constructBitstrings(grid%octreeRoot)
+        call writeInfo("Done.",TRIVIAL)
 
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)

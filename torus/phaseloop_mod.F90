@@ -2037,6 +2037,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  absorbed = .true.
               endif
 
+
 !              thisPhoton%stokes = thisPhoton%stokes * albedo  ! weight adjusted here!!!
 
               if (thisPhoton%stokes%i < reallySmall) then
@@ -2340,7 +2341,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        enddo
                     endif
                  endif
-
+                 
                  call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
                        miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc)
                  thisPhoton = outPhoton

@@ -632,7 +632,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            mpi_global_mod.f90 nrtype.f90 nrutil.f90 gridio_mod.f90 benchmark_mod.f90 
+            mpi_global_mod.f90 nrtype.f90 nrutil.f90 gridio_mod.f90 benchmark_mod.f90 bitstring_mod.f90
 
 F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f \
             spec_f77.f image_f77.f 
