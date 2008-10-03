@@ -1908,7 +1908,6 @@ endif
  if (maxscat == 1) then
     if (writeoutput) write(*,*) "maxscat: USEAGE CHANGED, now limits maximum no of scatterings"
     if (writeoutput) write(*,*) "maxscat: You don't want to set this to 1."
-    stop
  endif
 
 

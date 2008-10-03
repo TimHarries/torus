@@ -1263,7 +1263,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      if (doTuning) call tune(6, "All Photon Loops")  ! Start a stopwatch
      
-     call random_seed
+     call init_random_seed()
 
 
      call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
@@ -1867,7 +1867,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            ! scattering loop !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
            ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
            lineResAbs = .true.
-           do while (.not.escaped .and. .not.absorbed .and. &
+           do while ((.not.escaped) .and. (.not.absorbed) .and. &
                      (nScat < maxScat)   )
               ! Now we do not force the scattering exept for the first scattering.
               ! maxScat specifies the max number of scattering ALLOWED, but 
@@ -2378,7 +2378,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                   else
                      escaped = .false.  
                   endif
-
+!                  write(*,*) myrankGlobal," Second scatter tauext, thisTau, escaped ",tauExt(ntau), thisTau, escaped
 
 
 !                  if (maxScat == 1) then
@@ -2414,7 +2414,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
             enddo
             
-            if ((nscat >= maxScat).and.(maxScat .ne. 0)) then
+            if ((nscat >= maxScat).and.(maxScat > 1)) then
                write(*,*) "Photon aborted after ",maxScat, " scatterings"
             endif
            nTot = nTot + nScat

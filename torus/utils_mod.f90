@@ -10,7 +10,8 @@ module utils_mod
   use unix_mod
   use nrutil
   use nrtype
-  
+  use mpi_global_mod
+
   implicit none
 
   public
@@ -4238,6 +4239,23 @@ END SUBROUTINE GAUSSJ
 !       stop
     endif
   end subroutine convertToFnu
+
+
+
+  SUBROUTINE init_random_seed()
+    INTEGER :: i, n, clock
+    INTEGER, DIMENSION(:), ALLOCATABLE :: seed
+
+    CALL RANDOM_SEED(size = n)
+    ALLOCATE(seed(n))
+
+    CALL SYSTEM_CLOCK(COUNT=clock)
+
+    seed = clock + 37 * (/ (i - 1, i = 1, n) /) + myRankGlobal
+    CALL RANDOM_SEED(PUT = seed)
+
+    DEALLOCATE(seed)
+  END SUBROUTINE init_random_seed
 
 end module utils_mod
 

@@ -180,7 +180,7 @@ contains
 
   ! set up a random seed
   
-  call random_seed
+  call init_random_seed()
 
   call random_seed(size=iSize)
   allocate(iSeed(1:iSize))
@@ -390,7 +390,7 @@ contains
 
   call torus_mpi_barrier
 
-  call random_seed
+  call init_random_seed()
 
   filename = trim ( "torus_in_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
   if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")

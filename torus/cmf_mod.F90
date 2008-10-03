@@ -1075,7 +1075,7 @@ contains
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
-    call random_seed
+    call init_random_seed()
 
     call random_seed(size=iSize)
     allocate(iSeed(1:iSize))
@@ -1130,7 +1130,7 @@ contains
           if (fixedRays) then
              call random_seed(put=iseed)   ! same seed for fixed rays
           else
-             call random_seed
+             call init_random_seed()
           endif
 
 

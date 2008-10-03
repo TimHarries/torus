@@ -243,8 +243,14 @@ program torus
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
   integer ::   tempInt        !
+#endif
   
 ! Begin executable statements --------------------------------------------------
+
+  myRankGlobal = 0 ! set rank to zero for single processor job
+
+#ifdef MPI
+
 
   ! FOR MPI IMPLEMENTATION=======================================================
   !  initialize the system for running MPI
@@ -257,8 +263,8 @@ program torus
   print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
 
   !===============================================================================
-
 #endif
+
 
   writeoutput    = .true.
   outputwarnings = .true.
@@ -276,7 +282,7 @@ program torus
 
   ! set up a random seed
   
-  call random_seed
+  call init_random_seed()
 
   allocate(distortionVec(1:1))
 
@@ -823,7 +829,7 @@ program torus
      call torus_mpi_barrier
 
 667 continue
-     call random_seed
+     call init_random_seed()
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
@@ -2012,7 +2018,7 @@ subroutine set_up_sources
 
        allocate(source(1:10000))
        call createSources(nSource, source, "instantaneous", 1.d6, 1.d3, 1.d0)
-       call random_seed
+       call init_random_seed()
 
 
     case("wr104")

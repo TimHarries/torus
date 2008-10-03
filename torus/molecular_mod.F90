@@ -568,7 +568,7 @@ module molecular_mod
 
       allocate(oldPops(1:maxtrans))
 
-      call random_seed
+      call init_random_seed()
 
      !       if (myRankIsZero) &
  !    call writeAmrGrid("molecular_tmp.grid",.false.,grid)
@@ -639,7 +639,7 @@ module molecular_mod
             if (fixedRays) then
                call random_seed(put=iseed)   ! same seed for fixed rays
             else
-               call random_seed
+               call init_random_seed()
             endif
             
             ! default loop indicies
