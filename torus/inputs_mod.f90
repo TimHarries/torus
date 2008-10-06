@@ -1120,7 +1120,7 @@ contains
                "(a,f5.1,a)",10.0,ok,.false.)
 
           call getInteger("mincrossings", minCrossings, cLine, nLines, &
-               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",1000,ok,.false.)
+               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
        endif
        call getReal("probdust", probDust, cLine, nLines, &
             "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
@@ -2027,7 +2027,7 @@ endif
   "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
 
  call getReal("edenstol", eDensTol, cLine, nLines, &
-  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.01, ok, .false.) ! used for gauss-seidel sweep also
+  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
 
 
  if (geometry(1:9) .eq. "benchmark") then

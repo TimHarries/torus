@@ -1046,14 +1046,15 @@ contains
 
     endif
 
-    if (percent_undersampled > percent_undersampled_min) then
-       nMonte  = nMonte * 2
-       converged = .false.
-    endif
 
     if (abs(totalEmission-oldTotalEmission)/totalEmission < 1.d-2) converged = .true.
 
     oldTotalEmission = totalEmission
+
+    if (percent_undersampled > percent_undersampled_min) then
+       nMonte  = nMonte * 2
+       converged = .false.
+    endif
 
 
     if (iIter_grand < iterlucy) converged = .false.
