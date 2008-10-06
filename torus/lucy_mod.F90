@@ -1046,9 +1046,6 @@ contains
 
     endif
 
-!    if (dt_mean_new < 1.d0) converged = .true. ! mean temperature change is less than 1 degree
-
-
     if (percent_undersampled > percent_undersampled_min) then
        nMonte  = nMonte * 2
        converged = .false.
