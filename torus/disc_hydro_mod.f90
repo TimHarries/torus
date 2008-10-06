@@ -407,7 +407,7 @@ contains
 
 
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-            nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
+            nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
 
 
 
@@ -520,7 +520,7 @@ contains
     ! final call to sort out temperature
 
     call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-         nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
+         nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
 
     ! chris
     if(myRankIsZero) then

@@ -284,7 +284,7 @@ contains
   end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
+       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
     use input_variables, only : variableDustSublimation, iterlucy
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 !    use input_variables, only : rinner, router
@@ -303,12 +303,12 @@ contains
     integer :: nDustType
     type(SOURCETYPE) :: source(nsource), thisSource
     integer :: nLucy
-    logical :: twoD
     ! threshold value for undersampled cell in percent (for stopping iteration).
     real, intent(in) :: percent_undersampled_min  
     type(VECTOR) ::  uHat, uNew, rVec, rHat, olduHat
     type(VECTOR) :: octVec,avedirection
-    type(OCTAL), pointer :: thisOctal, sOctal, tempOctal
+    type(OCTAL), pointer :: thisOctal, sOctal, tempOctal, foundOctal
+    integer :: foundSubcell
     integer :: tempSubcell
     integer, intent(in)  :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
@@ -401,10 +401,10 @@ contains
   ! ============================================================================
 #endif
 
+  call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
   if (nLucy /= 0) then
      nMonte = nLucy
   else
-     call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
      nMonte = nVoxels * 10
   endif
     nFreq = nLambda
@@ -421,18 +421,6 @@ contains
     dnu(1) = freq(2)-freq(1)
     dnu(nFreq) = freq(nFreq)-freq(nFreq-1)
 
-! if we are in two-D then we make a quick remap of the density grid
-! to ensure that we don't have numerical effects due to sampling
-! differences as a function of azimuth
-
-    if (twoD) then
-       call remapDistanceGrid(grid%octreeRoot, grid)
-       call zeroDistanceGrid(grid%octreeRoot)       ! distance grid in the first instance is used to store the total cell
-                                                    ! volume corresponding to the mapping of the 3d -> 2d
-       call setupCellVolumes(grid%octreeRoot,grid)  ! these volumes are set up here
-       call normCellVolumes(grid%octreeRoot,grid)   ! etaLine is used as a placeholder for a fractional volume in the
-                                                    ! 3d to 2d mapping
-    endif
 
 
     if (grid%geometry.eq."wr104") then
@@ -442,8 +430,6 @@ contains
        if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
     endif
-
-    if (myRankIsZero) call writeAMRgrid("lucy_first_grid.dat", .false., grid)
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
@@ -541,7 +527,7 @@ contains
 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
 !$OMP PRIVATE(kabs,i, j, T1) &
 !$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
-!$OMP PRIVATE(twoD, photonInDiffusionZone, leftHandBoundary, directPhoton) &
+!$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
 !$OMP PRIVATE(oldUHat) &
 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
@@ -637,6 +623,8 @@ contains
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+          thisOctal => tempOctal
+          subcell = tempSubcell
 
           if (tempOctal%diffusionApprox(tempsubcell)) then
 
@@ -645,6 +633,7 @@ contains
              directPhoton = .false.
              rVec = subcellCentre(thisOctal, subcell)
           endif
+          sOctal => thisOctal
 
           avedirection = avedirection + uHat
           escaped = .false.
@@ -653,8 +642,9 @@ contains
 
           do while(.not.escaped)
 
-             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton)
+             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
+                  sOctal, foundOctal, foundSubcell)
 
              If (escaped) nInf_sub = nInf_sub + 1
 
@@ -664,10 +654,12 @@ contains
                 
              if (.not. escaped) then
 
+                thisOctal => foundOctal
+                subcell = foundSubcell
                 thisLam = (cSpeed / thisFreq) * 1.e8
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
-                call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
+                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
                      kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                 sOctal => thisOctal
 
@@ -704,8 +696,8 @@ contains
 
                 else
 
-                   call amrGridValues(grid%octreeRoot, octVec, startOctal=sOctal, foundOctal=thisOctal, &
-                        foundSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
+                   call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+                        actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
                    t1 = dble(treal)
 
                    ! if the photon has come from the diffusion zone then it has to be
@@ -864,33 +856,13 @@ contains
 ! If we are doing the computation in 2D then we need to remap the distancegrid before
 ! calculating the temperature corrections
 
-       if (twoD) then
-          write(*,*) "! Remapping the distance grid attributes..."
-          call remapDistanceGrid(grid%octreeRoot, grid)
-          call resetDistanceGrid(grid%octreeRoot)
-          write(*,*) "done."
-       endif
-
 
        call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
 
-       if (twoD) then
-          write(*,*) "! Remapping the distance grid attributes..."
-          call remapDistanceGrid(grid%octreeRoot, grid)
-          call resetDistanceGrid(grid%octreeRoot)
-          write(*,*) "done."
-       endif
 
-
-
-
-!       do i = 1, 1
-!          call estimateTempofUndersampled(grid, grid%octreeRoot)
-!          call updateTemps(grid, grid%octreeRoot)
-!       enddo
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
 
@@ -999,22 +971,6 @@ contains
 
     enddo
 
-!       if (.not.(variableDustSublimation)) then
-!          if (grid%octreeRoot%twoD) then
-!             call defineDiffusionZone(grid, myRankIsZero, .false.)
-!          endif
-!       endif
-
-
-!       call writeInfo("Getting temperatures in diffusion zone", TRIVIAL)
-!       call throughoutMidplanediff(grid, epsOverDeltat, myRankIsZero)
-!       call writeInfo("Done.", TRIVIAL)
-
-
-!       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
-!          call fillDustShakara(grid, grid%octreeRoot)
-!       endif
-
        if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
           call fillDustUniform(grid, grid%octreeRoot)
        endif
@@ -1074,24 +1030,6 @@ contains
        endif
 
 
-!          if (grid%octreeRoot%twoD) then
-!             call defineDiffusionZone(grid, myRankIsZero, .false.)
-!          endif
-
-
-
-
-!    nRemoved = 0
-!    if (iIter_Grand > 3) then
-! if (myRankIsZero) & 
-!       write(*,*) "Removing dust with T > Tthresh: ",Tthresh
-!       call removeDust(grid%octreeRoot, Tthresh, nRemoved)
-!    endif
-!
-! if (myRankIsZero) & 
-!    write(message,*) "Number of cells removed: ",nRemoved
-!    call writeInfo(message, TRIVIAL)
-
 
     if (grid%geometry == "wr104") then
 
@@ -1102,22 +1040,6 @@ contains
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
 
     endif
-
-
-    !
-    ! check the convergence
-    !
-!    if (percent_undersampled>percent_undersampled_min) then
-!       converged = .false.
-!       nMonte = nMonte*2  ! increases the number of iterations!
-!    elseif (nRemoved > 3   &
-!         .or. iIter_grand < maxIter &
-!         .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then 
-!       converged = .false.
-!       nMonte = nMonte*2  ! increases the number of iterations!
-!    else 
-!       converged = .true.
-!    end if
 
     if (dt_mean_new < 1.d0) converged = .true. ! mean temperature change is less than 1 degree
     if (percent_undersampled > percent_undersampled_min) then
@@ -1874,15 +1796,17 @@ contains
 
 
 
- subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte, &
-      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton)
+ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  imonte, &
+      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
+      startOctal, foundOctal, foundSubcell)
 
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
-   type(OCTAL),pointer :: foundOctal, endOctal
+   type(OCTAL),pointer :: foundOctal, endOctal, startOctal
+   integer :: foundSubcell
    integer :: endSubcell
    integer :: subcell, isubcell, tempSubcell!, sourceSubcell
    logical :: directPhoton
@@ -1891,7 +1815,6 @@ contains
    integer :: nLambda
    logical :: stillinGrid, ok
    logical :: escaped
-   logical :: twoD
    real(double) :: kappaScaDb, kappaAbsDb
    real(oct) :: thisTau
    real(oct) :: thisFreq
@@ -1924,7 +1847,7 @@ contains
     octVec = rVec
     thisOctVec = rVec
 
-    call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
+    call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  startOctal=startOctal, foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
 
@@ -1957,6 +1880,11 @@ contains
        rVec = rVec + tVal * uHat
        octVec = rVec
 
+       if (.not.inOctal(grid%octreeRoot, octVec)) then
+          stillinGrid = .false.
+          escaped = .true.
+       endif
+
 ! It is here that the photon path has potentially entered a cell
 ! in the diffusion approximation zone. In this case we have to return
 ! a position _before_ the photon enters the cell, and we need to
@@ -1970,7 +1898,8 @@ contains
 !       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
 !            foundSubcell=tempsubcell)
 
-       call amrGridValues(grid%octreeRoot, octVec,  foundOctal=tempOctal, &
+       if (.not.escaped) then
+       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
 
        sOctal => tempOctal
@@ -2044,13 +1973,8 @@ contains
 !          endif
 !       endif
 
-
+    endif
 ! check whether the photon has escaped from the grid
-
-       if (.not.inOctal(grid%octreeRoot, octVec)) then
-          stillinGrid = .false.
-          escaped = .true.
-       endif
 
 
 ! two cases here now. in the 2D case we only update the distance grid in a single plane (y=0, x>=0)
@@ -2059,23 +1983,11 @@ contains
 
 !$OMP CRITICAL (changegrid)
 
-       if (.not.twoD) then
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
                + tVal * dble(kappaAbsdb)
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
 
-       else
-
-          thisOctVec = subcellCentre(thisOctal,subcell)
-
-          call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
-
-          foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
-               + tVal * dble(kappaAbsdb)
-          foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
-          if (directPhoton) foundOctal%nDirectPhotons(isubcell) = foundOctal%nDirectPhotons(isubcell)+1
-       endif
 
 !$OMP END CRITICAL (changegrid)
 
@@ -2176,24 +2088,12 @@ contains
 !$OMP CRITICAL (changegrid2)
 
           
-          if (.not.twoD) then
 
              thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
                   + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
 
-          
-          else
-          
-             thisOctVec = subcellCentre(thisOctal,subcell)
-             call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
-             foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
-                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
-             foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
-             if (directPhoton) foundOctal%nDirectPhotons(isubcell) = foundOctal%nDirectPhotons(isubcell)+1
-
-          endif
 
 !$OMP END CRITICAL (changegrid2)
 
@@ -2232,7 +2132,8 @@ contains
              write(*,*) Tau,thistau,tval
           endif
        endif
-
+       foundSubcell = tempSubcell
+       foundOctal => tempOctal
 
     endif
 
@@ -2402,153 +2303,6 @@ contains
 
   end subroutine find2Doctal
 
-  recursive subroutine remapDistanceGrid(thisOctal, grid)
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
-    type(VECTOR) :: rVec, rotVec
-    real(oct) :: r
-    integer :: subcell, j, isub
-
-! this routine remaps the distance grid attribute of a two-D plane
-! (which is y=0, x>=0) onto a three-D grid
-
-    do isub = 1, thisOctal%maxChildren, 1
-      if ( thisOctal%hasChild(isub) ) then
-        ! if the current subcell has a child, call this subroutine on
-        !   each of its children
-        do j = 1, thisOctal%nchildren
-          if ( thisOctal%indexchild(j) == isub ) then
-            child => thisoctal%child(j)
-            call remapdistancegrid(child, grid)
-            exit
-          end if
-        end do
-      else
-        ! if the current subcell does not have a child, then do the remap
-
-        rVec = subcellCentre(thisOctal, isub)
-
-        rotVec%z = rVec%z     ! the new vector has the same "z" value
-    
-        r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
-    
-        rotVec%y = 0.
-
-        rotVec%x = r
-
-        ! now we find the octal and subcell that rotVec lies in
-
-        call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
-        foundOctal=>resultOctal
-
-! we have added the path lengths over all cells in 3d to a 2d plane. we therefore need to correct
-! the path length summation by the fractional volume that this cell in the 2d plane corresponds
-! to. ncrossings we keep as is - it is used in a statistical sense here.
-
-        thisOctal%chiLine(isub) = foundOctal%distanceGrid(subcell) * foundOctal%etaLine(subcell)
-        thisOctal%nCrossings(isub) = foundOctal%nCrossings(subcell)
-
-        thisOctal%rho(isub) = foundOctal%rho(subcell)
-        thisOctal%temperature(isub) = foundOctal%temperature(subcell)
-
-      end if
-    end do
-  end subroutine remapDistanceGrid
-
-  recursive subroutine setupCellVolumes(thisOctal, grid)
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
-    type(VECTOR) :: rVec, rotVec
-    real(oct) :: r
-    integer :: subcell, j, isub
-
-! this routine remaps the distance grid attribute of a two-D plane
-! (which is y=0, x>=0) onto a three-D grid
-
-    do isub = 1, thisOctal%maxChildren, 1
-      if ( thisOctal%hasChild(isub) ) then
-        ! if the current subcell has a child, call this subroutine on
-        !   each of its children
-        do j = 1, thisOctal%nchildren
-          if ( thisOctal%indexchild(j) == isub ) then
-            child => thisoctal%child(j)
-            call setupCellVolumes(child, grid)
-            exit
-          end if
-        end do
-      else
-        ! if the current subcell does not have a child, then do the remap
-
-        rVec = subcellCentre(thisOctal, isub)
-
-        rotVec%z = rVec%z     ! the new vector has the same "z" value
-    
-        r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
-    
-        rotVec%y = 0.
-
-        rotVec%x = r
-
-        ! now we find the octal and subcell that rotVec lies in
-
-        call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
-        foundOctal=>resultOctal
-
-        foundOctal%distanceGrid(subcell) = foundOctal%distanceGrid(subcell) + thisOctal%subcellsize**3
-        foundOctal%nCrossings(subcell) = foundOctal%nCrossings(subcell) + 1
-
-      end if
-    end do
-  end subroutine setupCellVolumes
-
-
-  recursive subroutine normCellVolumes(thisOctal, grid)
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
-    type(VECTOR) :: rVec, rotVec
-    real(oct) :: r
-    integer :: subcell, j, isub
-
-! this routine remaps the distance grid attribute of a two-D plane
-! (which is y=0, x>=0) onto a three-D grid
-
-    do isub = 1, thisOctal%maxChildren, 1
-      if ( thisOctal%hasChild(isub) ) then
-        ! if the current subcell has a child, call this subroutine on
-        !   each of its children
-        do j = 1, thisOctal%nchildren
-          if ( thisOctal%indexchild(j) == isub ) then
-            child => thisoctal%child(j)
-            call normCellVolumes(child, grid)
-            exit
-          end if
-        end do
-      else
-        ! if the current subcell does not have a child, then do the remap
-
-        rVec = subcellCentre(thisOctal, isub)
-
-        rotVec%z = rVec%z     ! the new vector has the same "z" value
-    
-        r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
-    
-        rotVec%y = 0.
-
-        rotVec%x = r
-
-        ! now we find the octal and subcell that rotVec lies in
-
-        call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
-        foundOctal=>resultOctal
-
-! etaline is used as a placeholder here. it corresponds to the fractional volume occupied by the cell in
-! the 2d plane compared to the total volume of the 3d space
-
-        thisOctal%etaLine(isub) = thisOctal%subcellsize**3 / foundOctal%distanceGrid(subcell)
-
-      end if
-    end do
-  end subroutine normCellVolumes
 
   recursive subroutine resetDistanceGrid(thisOctal)
   type(octal), pointer   :: thisOctal

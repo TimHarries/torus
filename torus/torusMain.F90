@@ -1704,10 +1704,6 @@ CONTAINS
 !        call grid_info(grid, "*")
         if (myRankIsZero) call grid_info(grid, "info_grid.dat")
 
-        if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
-
-!        if (writeoutput) call writeAMRgridFlexi("test.flexi",.true.,grid)
-!        stop
 
 
 	if (lineEmission) then
@@ -2271,7 +2267,7 @@ subroutine do_lucyRadiativeEq
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
                    nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, &
-                   lucy_undersampled, .false., IterLucy )
+                   lucy_undersampled, IterLucy )
            endif
 
         endif
