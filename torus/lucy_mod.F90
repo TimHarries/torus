@@ -341,7 +341,7 @@ contains
     integer :: iIter, nIter
     real(oct) ::   epsOverDeltaT
     integer :: nDT, nUndersampled
-    real(oct) :: totalEmission
+    real(oct) :: totalEmission, oldTotalEmission
     integer :: subcell
     logical :: leftHandBoundary
     real :: treal
@@ -400,6 +400,9 @@ contains
     
   ! ============================================================================
 #endif
+
+
+  oldTotalEmission = 1.d30
 
   call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
   if (nLucy /= 0) then
@@ -900,6 +903,8 @@ contains
           call writeInfo(message, TRIVIAL)
           write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
           call writeInfo(message, TRIVIAL)
+          write(message,*) "Fractional change in emissivity : ", abs(totalEmission-oldTotalEmission)/totalEmission
+          call writeInfo(message, TRIVIAL)
           write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled
           call writeInfo(message, TRIVIAL)
           write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
@@ -913,7 +918,7 @@ contains
        !
        ! writing the info above to a file.
 10        format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
-11        format(3x, i12, 7(2x, f12.1),  (2x, i12))
+11        format(3x, i12, 6(2x, f12.2), (2x,f12.4), (2x, i12))
           if (first_time_to_open_file) then
              open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
              first_time_to_open_file=.false.
@@ -1041,11 +1046,18 @@ contains
 
     endif
 
-    if (dt_mean_new < 1.d0) converged = .true. ! mean temperature change is less than 1 degree
+!    if (dt_mean_new < 1.d0) converged = .true. ! mean temperature change is less than 1 degree
+
+
     if (percent_undersampled > percent_undersampled_min) then
        nMonte  = nMonte * 2
        converged = .false.
     endif
+
+    if (abs(totalEmission-oldTotalEmission)/totalEmission < 1.d-2) converged = .true.
+
+    oldTotalEmission = totalEmission
+
 
     if (iIter_grand < iterlucy) converged = .false.
 
@@ -1479,7 +1491,6 @@ contains
              endif
  
              if (thisOctal%nCrossings(subcell) .lt. minCrossings) then
-                deltaT = 0.
                 nUnderSampled = nUndersampled + 1
                 thisOctal%undersampled(subcell) = .true.
              endif
