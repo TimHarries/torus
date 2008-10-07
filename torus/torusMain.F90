@@ -857,10 +857,10 @@ program torus
 
         if (idump /= 1) then
            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-           write(plotfile,'(a,i4.4,a)') "dump",idump,".grid"
-           write(*,*) myrankglobal, " calling read ",trim(plotfile)
-           call readAMRgridMpiALL(plotfile,.false.,grid)
-           write(*,*) myrankglobal, " done reading ",trim(plotfile)
+           write(message,'(a,i4.4,a)') "dump",idump,".grid"
+           write(*,*) myrankglobal, " calling read ",trim(message)
+           call readAMRgridMpiALL(message,.false.,grid)
+           write(*,*) myrankglobal, " done reading ",trim(message)
         endif
 
 
