@@ -119,7 +119,7 @@ program torus
 
   integer :: itestlam, ismoothlam
   integer, parameter :: nMuMie = 2000
-  type(PHASEMATRIX), allocatable :: miePhase(:,:, :)
+  type(PHASEMATRIX), pointer :: miePhase(:,:,:)
 
   ! variables for clumped wind models
   
@@ -144,7 +144,9 @@ program torus
   ! output arrays
 
   integer :: iLambda
-  real, allocatable :: xArray(:)
+  real, allocatable :: xArray(:), tArray(:)
+  real :: testlam
+
 
   ! model flags
 
@@ -582,11 +584,6 @@ program torus
   grid%resonanceLine = resonanceLine
   grid%lambda2 = lamline
 
-  ! Note: the first index should be either lambda or mu
-  !       in order to speedup the array operations!!!  (RK) 
-  allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
-
-  allocate(xArray(1:nLambda))
 
   grid%doRaman = doRaman
 
@@ -923,6 +920,10 @@ program torus
      if (writeoutput) write(*,'(a)') "THERMAL ELECTRON BROADENING IS OFF!!!!!!!!!!!!!!!!!!!!!!!!!!"
   endif
 
+  lucyRadiativeEq = .false.
+  call set_up_lambda_array
+  
+
   call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, newContFluxFile, sigmaExt0, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
@@ -956,41 +957,102 @@ CONTAINS
     real :: deltaLambda
     real :: loglamStart, logLamEnd
 
-    if (lamLinear) then
-       deltaLambda = (lamEnd - lamStart) / real(nLambda)
-     
-       xArray(1) = lamStart + deltaLambda/2.
-       do i = 2, nLambda
-          xArray(i) = xArray(i-1) + deltaLambda
-       enddo
 
-    else
+    if (allocated(xArray)) then
+       deallocate(xArray)
+    endif
 
-       logLamStart = log10(lamStart)
-       logLamEnd   = log10(lamEnd)
-       
-       do i = 1, nLambda
-          xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-          xArray(i) = 10.**xArray(i)
-       enddo
-
-     if (photoionization) then
-        xArray(1) = lamStart
-        xArray(2) = lamEnd
-        nCurrent = 2
-        call refineLambdaArray(xArray, nCurrent, grid)
-        nt = nLambda - nCurrent
-        do i = 1, nt
-           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           nCurrent=nCurrent + 1
-           xArray(nCurrent) = fac
-           call sort(nCurrent, xArray)
-        enddo
-!        do i = 1, nlambda
-!           write(*,*) xArray(i)
-!        enddo
+     if (lucyradiativeEq) then
+        call writeInfo("Doing radiative equilibrium so setting own wavelength arrays", TRIVIAL)
+        lamStart = 1200.
+        lamEnd = 2.e7
+        nLambda = 200
+        lamLinear = .false.
      endif
+
+
+     if (nLambda == 0) then
+        call writeInfo("Basing SED wavelength grid on input photospheric spectrum",TRIVIAL)
+        nLambda = SIZE(source(1)%spectrum%lambda)
+        allocate(xArray(1:nLambda))
+        xArray = source(1)%spectrum%lambda
+
+
+        lamStart = 1200.
+        lamEnd = 2.e7
+        logLamStart = log10(lamStart)
+        logLamEnd   = log10(lamEnd)
+        
+        do i = 1, 200
+           testLam = logLamStart + real(i-1)/real(200-1)*(logLamEnd - logLamStart)
+           if (testLam < xArray(1)) then
+              allocate(tArray(1:nLambda))
+              tArray = xArray
+              nLambda = nLambda + 1
+              deallocate(xArray)
+              allocate(xArray(1:nLambda))
+              xArray(1) = testLam
+              xArray(2:nLambda) = tArray
+              deallocate(tArray)
+           endif
+           if (testLam > xArray(nLambda)) then
+              allocate(tArray(1:nLambda))
+              tArray = xArray
+              nLambda = nLambda + 1
+              deallocate(xArray)
+              allocate(xArray(1:nLambda))
+              xArray(nLambda) = testLam
+              xArray(1:nLambda-1) = tArray
+              deallocate(tArray)
+           endif
+        enddo
+
+     else
+        allocate(xArray(1:nLambda))
+        
+        if (lamLinear) then
+           deltaLambda = (lamEnd - lamStart) / real(nLambda)
+           
+           xArray(1) = lamStart + deltaLambda/2.
+           do i = 2, nLambda
+              xArray(i) = xArray(i-1) + deltaLambda
+           enddo
+           
+        else
+           
+           logLamStart = log10(lamStart)
+           logLamEnd   = log10(lamEnd)
+           
+           do i = 1, nLambda
+              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+              xArray(i) = 10.**xArray(i)
+           enddo
+           
+           if (photoionization) then
+              xArray(1) = lamStart
+              xArray(2) = lamEnd
+              nCurrent = 2
+              call refineLambdaArray(xArray, nCurrent, grid)
+              nt = nLambda - nCurrent
+              do i = 1, nt
+                 fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+                 fac = 10.**fac
+                 nCurrent=nCurrent + 1
+                 xArray(nCurrent) = fac
+                 call sort(nCurrent, xArray)
+              enddo
+           endif
+
+        endif
+
+
+
+
+
+
+
+        
+
 
 !       if (mie) then
 !          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then

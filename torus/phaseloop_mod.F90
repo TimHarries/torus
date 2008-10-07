@@ -60,7 +60,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double) :: objectDistance
   real :: inclination
   integer, intent(in) :: maxTau
-  type(PHASEMATRIX) :: miePhase(:,:, :)
+  type(PHASEMATRIX),pointer :: miePhase(:,:, :)
   integer :: nsource
   type(SOURCETYPE) :: source(:)
   type(BLOBTYPE) :: blobs(:)

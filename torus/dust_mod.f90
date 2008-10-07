@@ -1368,7 +1368,7 @@ contains
          ttau_disc_on
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
-    type(PHASEMATRIX) :: miePhase(1:nDustType,1:nLambda,1:nMumie)
+    type(PHASEMATRIX),pointer :: miePhase(:,:,:)
     integer :: nMuMie
     real :: mu, total_dust_abundance
     integer :: i, j, k
@@ -1378,6 +1378,16 @@ contains
     type(GRIDTYPE) :: grid
     real :: xArray(:)
     integer :: nLambda
+
+    ! Note: the first index should be either lambda or mu
+    !       in order to speedup the array operations!!!  (RK) 
+    if (associated(miePhase)) then
+       deallocate(miePhase)
+       nullify(miePhase)
+    endif
+
+    allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
+
 
 
     if (mie .or. useDust) then

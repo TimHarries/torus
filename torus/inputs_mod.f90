@@ -98,10 +98,10 @@ contains
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
 
     call getReal("lamstart", lamstart, cLine, nLines, &
-         "X-array start (angs or kms): ", "(a,f7.1,1x,a)", 2000., ok, .true.)
+         "X-array start (angs or kms): ", "(a,f7.1,1x,a)", 1200., ok, .false.)
 
     call getReal("lamend", lamend, cLine, nLines, &
-         "X-array end (angs or kms): ", "(a,f12.1,1x,a)", 10000., ok, .true.)
+         "X-array end (angs or kms): ", "(a,f12.1,1x,a)", 1.e7, ok, .false.)
 
 
     call getLogical("wavlin", lamLinear, cLine, nLines, &
@@ -116,7 +116,7 @@ contains
     endif
 
     call getInteger("nlambda", nlambda, cLine, nLines, &
-         "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 20, ok, .true.)
+         "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 0, ok, .false.)
 
 
     call getReal("lambdatau", lambdatau, cLine, nLines, &
