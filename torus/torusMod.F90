@@ -81,7 +81,7 @@ contains
   ! variables to do with dust
   integer :: itestlam, ismoothlam
   integer, parameter :: nMuMie = 1000
-  type(PHASEMATRIX), allocatable :: miePhase(:,:,:)
+  type(PHASEMATRIX), pointer :: miePhase(:,:,:)
 
   ! filenames
   character(len=80) :: phasePopFilename
@@ -399,7 +399,7 @@ contains
   
   call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
        nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope, tthresh, &
-       lucy_undersampled, .false., IterLucy )
+       lucy_undersampled, IterLucy )
 
   if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
 
