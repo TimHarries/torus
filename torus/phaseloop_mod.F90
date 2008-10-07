@@ -155,7 +155,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer :: ntau, j
   real(double), allocatable        :: flux(:)
 
-  type(STOKESVECTOR), allocatable  :: errorArray(:,:)
   type(STOKESVECTOR) :: yArray(nLambda)
   type(STOKESVECTOR) :: yArrayStellarDirect(nLambda)
   type(STOKESVECTOR) :: yArrayStellarScattered(nLambda)
@@ -291,7 +290,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   allocate(statArray(1:nLambda))
   allocate(sourceSpectrum(1:nLambda))
   allocate(sourceSpectrum2(1:nLambda))
-  allocate(errorArray(1:nOuterLoop,1:nLambda))
 
   statArray = 0.
   sourceSpectrum = 1.
@@ -607,7 +605,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      allocate(tauAbsObs(1:maxTau))
      allocate(tauScaObs(1:maxTau))
      allocate(linePhotonalbedo(1:maxTau))
-     allocate(contTau(1:maxTau,1:nLambda))
+     if (grid%lineEmission) allocate(contTau(1:maxTau,1:nLambda))
      allocate(contWeightArray(1:nLambda))
 
 
@@ -994,7 +992,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         deallocate(tauScaObs)
         deallocate(tauExtObs)
         deallocate(tauAbsObs)
-        deallocate(contTau)
+        if (allocated(contTau)) deallocate(contTau)
         deallocate(linePhotonAlbedo)
         deallocate(contWeightArray)
      end if
@@ -1074,7 +1072,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      ! zero the output arrays
 
-     errorArray(1:nOuterLoop,1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
      yArray(1)%i = 0.
      yArray(1)%q = 0.
      yArray(1)%u = 0.
@@ -1093,7 +1090,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      if (doRaman) then
         yArray(1:nLambda)%i = 1.e-20
-        errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
      endif
      
      if (stokesimage .and. .not. formalsol) then
@@ -1337,9 +1333,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            
            totEnvelopeEmission = totDustContinuumEmission
            chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
-           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
-           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
+!           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+!           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+!           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
            
 
 
@@ -2556,7 +2552,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      write(message,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
      call writeInfo(message, TRIVIAL)
 
-!        errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
         call torus_mpi_barrier
 
@@ -2710,29 +2705,29 @@ endif ! (doPvimage)
  if (myRankIsZero) then 
     if (nPhase == 1) then
 
-       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
+       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
             .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect,  errorArray, nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, nOuterLoop, &
             .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered,  errorArray, nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered,  nOuterLoop, &
             .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect,  errorArray, nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect,  nOuterLoop, &
             .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered,  errorArray, nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, nOuterLoop, &
             .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
           
        
        if (velocitySpace) then
           specFile = trim(outfile)//"_v"
-          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
                .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
        endif
        
@@ -2740,12 +2735,12 @@ endif ! (doPvimage)
        write(tempChar,'(i3.3)') iPhase
        specFile = trim(outfile)//trim(tempChar)
        
-        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
+        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
              .false., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         
         if (velocitySpace) then
            tempChar = trim(specFile)//"_v"
-           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray,  errorArray, nOuterLoop, &
+           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, nOuterLoop, &
                 .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         endif
         
@@ -2828,7 +2823,6 @@ endif ! (doPvimage)
   deallocate(statArray)
   deallocate(sourceSpectrum)
   deallocate(sourceSpectrum2)
-  deallocate(errorArray)
 
 CONTAINS
 

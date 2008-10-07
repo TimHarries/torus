@@ -204,7 +204,7 @@ module spectrum_mod
          goto 10
       endif
       xtemp(nLambda) = x
-      fTemp(nLambda) = f
+      fTemp(nLambda) = max(f,1.e-30)
       nLambda = nLambda + 1
       goto 10
 20    continue

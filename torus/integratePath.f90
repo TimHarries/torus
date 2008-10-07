@@ -188,7 +188,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
   real :: tauExt(:), tauAbs(:), tauSca(:)           ! optical depth
   real, intent(inout)       :: linePhotonAlbedo(1:maxTau) ! the line photon albedo along the ray
 
-  real, dimension(maxTau, nLambda) :: tauCont
+  real, dimension(:, :) :: tauCont
 
 
   real :: fudgeFactor = 1.00001                     ! fudge factor
@@ -1008,7 +1008,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
               ! initialize array
 
-              tauCont(1:nTau,1:nLambda) = 0.
+              tauCont = 0.
 
 
               ! we can ignore this if the line is very thin
@@ -1163,7 +1163,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real, intent(out)         :: escProb                ! the escape probability
   real, intent(in)          :: lamStart, lamEnd
   integer, intent(in)       :: nLambda
-  real,intent(inout),dimension(maxtau, nLambda) :: tauCont
+  real,intent(inout),dimension(: , :) :: tauCont
   logical, intent(out)      :: hitcore                ! has the photon hit the core
   logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
   logical, intent(in)       :: lineResAbs       ! T if you want to include absorption
@@ -1558,7 +1558,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
               ! initialize array
 
-              tauCont(1:nTau,:) = 0.
+              tauCont = 0.
 
 
               ! we can ignore this if the line is very thin
@@ -2611,7 +2611,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   allocate(lambda(maxTau), tauExt(maxTau), tauAbs(maxTau), tauSca(maxTau), linePhotonAlbedo(maxtau))
   
   nlambda = grid%nlambda
-  allocate(tauCont(maxTau,nLambda))
+  if (grid%lineEmission) allocate(tauCont(maxTau,nLambda))
 
   ! chuck out some useful information to the user
     

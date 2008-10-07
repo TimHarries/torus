@@ -397,7 +397,7 @@ contains
     enddo
   end subroutine fixMiePhase
 
-  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, nOuterLoop, &
        normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
 
     implicit none
@@ -412,8 +412,8 @@ contains
     real(double), intent(in) :: objectDistance
     real(double) :: area
     real, intent(in) :: lamLine
-    type(STOKESVECTOR), intent(in) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
-    type(STOKESVECTOR), allocatable :: ytmpArray(:), tmpErrorArray(:,:), ymedian(:)
+    type(STOKESVECTOR), intent(in) :: yArray(nLambda)
+    type(STOKESVECTOR), allocatable :: ytmpArray(:),  ymedian(:)
     real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
     real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
     real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:), tArray(:)
@@ -426,7 +426,6 @@ contains
 
     allocate(ytmpArray(1:nLambda))
     allocate(tmpXarray(1:nLambda))
-    allocate(tmpErrorArray(nOuterloop,nLambda))
 
     allocate(meanQ(1:nLambda))
     allocate(meanU(1:nLambda))
@@ -441,53 +440,6 @@ contains
     allocate(stokes_uv(1:nLambda))
 
     allocate(yMedian(1:nLambda))
-
-    !  do j = 1, nOuterloop
-    !     write(tfile,'(a,i3.3,a)') "errorarray",j,".dat"
-    !     open(55,file=tfile,status="unknown",form="formatted")
-    !     do i = 1, nLambda
-    !        write(55,*) xarray(i),errorArray(j,i)%i
-    !     enddo
-    !    close(55)
-    !  enddo
-
-!    allocate(tArray(1:nOuterLoop))
-!    do i = 1,nLambda
-!       do j = 1, nOuterLoop
-!          tarray(j) = errorArray(j,i)%i
-!       enddo
-!       yMedian(i)%i = median(tArray, nOuterLoop)
-!       do j = 1, nOuterLoop
-!          tarray(j) = errorArray(j,i)%q
-!       enddo
-!       yMedian(i)%q = median(tArray, nOuterLoop)
-!       do j = 1, nOuterLoop
-!          tarray(j) = errorArray(j,i)%u
-!       enddo
-!       yMedian(i)%u = median(tArray, nOuterLoop)
-!       do j = 1, nOuterLoop
-!          tarray(j) = errorArray(j,i)%v
-!       enddo
-!       yMedian(i)%v = median(tArray, nOuterLoop)
-!       !
-!       yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
-!       yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
-!       yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
-!       yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
-!
-!    enddo
-!    deallocate(tarray)
-
-!
-!    do i = 1, nLambda
-!       yMedian(i) = yMedian(i) * dble(nouterloop)
-!    enddo
-
-    !  x = SUM(yArray(1:min(10,nLambda))%i)/real(min(10,nLambda))
-
-    !  x = 1./x
-
-    !  x = 
 
     yMedian = yArray
 
@@ -509,30 +461,12 @@ contains
     enddo
 
 
-    where(errorArray%i /= 0.)
-       tmpErrorArray%q = errorArray%q / errorArray%i
-       tmpErrorArray%u = errorArray%u / errorArray%i
-    elsewhere 
-       tmpErrorArray%q = errorArray%q 
-       tmpErrorArray%u = errorArray%u
-    end where
-
-    do i = 1, nLambda
-       meanQ(i) = sum(tmpErrorArray(1:nOuterLoop,i)%q) / real(nOuterLoop)
-       meanU(i) = sum(tmpErrorArray(1:nOuterLoop,i)%u) / real(nOuterLoop)
-    enddo
-
-    do i = 1, nLambda
-       sigQ(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%q-meanQ(i))**2)/real(nOuterLoop-1))
-       sigU(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
-    enddo
-
 
     stokes_i = ytmpArray%i
     stokes_q = ytmpArray%q
     stokes_u = ytmpArray%u
-    stokes_qv = (ytmpArray%i * sigQ)**2
-    stokes_uv = (ytmpArray%i * sigU)**2
+    stokes_qv = (ytmpArray%i)**2
+    stokes_uv = (ytmpArray%i)**2
 
     dlam(1) = (xArray(2)-xArray(1))
     dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
@@ -644,7 +578,7 @@ contains
        close(20)
     endif
 
-    deallocate(ytmpArray,meanQ,meanU,sigQ,sigU,tmpErrorArray)
+    deallocate(ytmpArray,meanQ,meanU,sigQ,sigU)
     deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
 
   end subroutine writeSpectrum

@@ -88,7 +88,6 @@ program torus
   type(SOURCETYPE), allocatable :: source(:)
   type(SOURCETYPE) a_star
   real :: inclination
-  character(len=80) :: plotfile
   real(double) :: objectDistance
 
   ! variables for the grid
@@ -231,7 +230,6 @@ program torus
 
 ! molecular line stuff
   type(MOLECULETYPE) :: co
-  type(DATACUBE) :: cube
 
   type(isochrone)       :: isochrone_data
   type(modelatom), allocatable :: thisAtom(:)
@@ -331,6 +329,7 @@ program torus
   if (.not.inputOK) goto 666
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
+  nLambda = nLambdaInput
 
   if(geometry == "planetgap") then
      ! takes the gapWidth and calculates what mPlanet should be
@@ -964,50 +963,68 @@ CONTAINS
 
      if (lucyradiativeEq) then
         call writeInfo("Doing radiative equilibrium so setting own wavelength arrays", TRIVIAL)
-        lamStart = 1200.
-        lamEnd = 2.e7
         nLambda = 200
-        lamLinear = .false.
+        allocate(xArray(1:nLambda))
+        logLamStart = log10(1200.)
+        logLamEnd   = log10(2.e7)
+        do i = 1, nLambda
+           xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+           xArray(i) = 10.**xArray(i)
+        enddo
      endif
 
 
-     if (nLambda == 0) then
-        call writeInfo("Basing SED wavelength grid on input photospheric spectrum",TRIVIAL)
-        nLambda = SIZE(source(1)%spectrum%lambda)
-        allocate(xArray(1:nLambda))
-        xArray = source(1)%spectrum%lambda
 
-
-        lamStart = 1200.
-        lamEnd = 2.e7
-        logLamStart = log10(lamStart)
-        logLamEnd   = log10(lamEnd)
-        
-        do i = 1, 200
-           testLam = logLamStart + real(i-1)/real(200-1)*(logLamEnd - logLamStart)
-           if (testLam < xArray(1)) then
-              allocate(tArray(1:nLambda))
-              tArray = xArray
-              nLambda = nLambda + 1
-              deallocate(xArray)
-              allocate(xArray(1:nLambda))
-              xArray(1) = testLam
-              xArray(2:nLambda) = tArray
-              deallocate(tArray)
-           endif
-           if (testLam > xArray(nLambda)) then
-              allocate(tArray(1:nLambda))
-              tArray = xArray
-              nLambda = nLambda + 1
-              deallocate(xArray)
-              allocate(xArray(1:nLambda))
-              xArray(nLambda) = testLam
-              xArray(1:nLambda-1) = tArray
-              deallocate(tArray)
-           endif
-        enddo
-
+     if (nLambdaInput == 0) then
+        if (allocated(source)) then
+           call writeInfo("Basing SED wavelength grid on input photospheric spectrum",TRIVIAL)
+           nLambda = SIZE(source(1)%spectrum%lambda)
+           allocate(xArray(1:nLambda))
+           xArray = source(1)%spectrum%lambda
+           
+           
+           lamStart = 1200.
+           lamEnd = 2.e7
+           logLamStart = log10(lamStart)
+           logLamEnd   = log10(lamEnd)
+           
+           do i = 1, 200
+              testLam = logLamStart + real(i-1)/real(200-1)*(logLamEnd - logLamStart)
+              if (testLam < xArray(1)) then
+                 allocate(tArray(1:nLambda))
+                 tArray = xArray
+                 nLambda = nLambda + 1
+                 deallocate(xArray)
+                 allocate(xArray(1:nLambda))
+                 xArray(1) = testLam
+                 xArray(2:nLambda) = tArray
+                 deallocate(tArray)
+              endif
+              if (testLam > xArray(nLambda)) then
+                 allocate(tArray(1:nLambda))
+                 tArray = xArray
+                 nLambda = nLambda + 1
+                 deallocate(xArray)
+                 allocate(xArray(1:nLambda))
+                 xArray(nLambda) = testLam
+                 xArray(1:nLambda-1) = tArray
+                 deallocate(tArray)
+              endif
+           enddo
+        else
+           nLambda = 200
+           allocate(xArray(1:nLambda))
+           lamStart = 1200.
+           lamEnd = 2.e7
+           logLamStart = log10(lamStart)
+           logLamEnd   = log10(lamEnd)
+           do i = 1, nLambda
+              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+              xArray(i) = 10.**xArray(i)
+           enddo
+        endif
      else
+        nLambda = nLambdaInput
         allocate(xArray(1:nLambda))
         
         if (lamLinear) then
@@ -1046,14 +1063,6 @@ CONTAINS
         endif
 
 
-
-
-
-
-
-        
-
-
 !       if (mie) then
 !          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
 !             call locate(xArray, nLambda, lambdaTau, i)
@@ -1070,7 +1079,7 @@ CONTAINS
 !          endif
 !       endif
 
-    endif
+     endif
 
 
        if (lamFile) then
@@ -1089,6 +1098,8 @@ CONTAINS
 
     !
     ! Copying the wavelength array to the grid
+       if (associated(grid%lamArray)) deallocate(grid%lamArray)
+       allocate(grid%lamArray(1:nLambda))
     do i = 1, nLambda
        grid%lamArray(i) = xArray(i)
     enddo

@@ -165,7 +165,7 @@ module input_variables
 
   ! output arrays
 
-  integer :: nLambda
+  integer :: nLambda, nLambdaInput
   real :: lamStart, lamEnd
   logical :: lamLinear
   logical :: oneKappa

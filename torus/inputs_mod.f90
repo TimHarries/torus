@@ -115,7 +115,7 @@ contains
             "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
-    call getInteger("nlambda", nlambda, cLine, nLines, &
+    call getInteger("nlambda", nlambdaInput, cLine, nLines, &
          "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 0, ok, .false.)
 
 
