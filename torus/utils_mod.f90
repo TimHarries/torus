@@ -69,6 +69,16 @@ contains
 
   ! solve a quadratic equation
 
+  real(double) function myExp(x) result(y)
+    real(double) :: x
+
+    if (abs(x) < 1.d-2) then
+       y = 1.d0  - x
+    else
+       y = exp(x)
+    endif
+  end function myExp
+
 
   subroutine solveQuad(a, b, c, x1, x2,ok)
     implicit none

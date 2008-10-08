@@ -400,6 +400,12 @@ CONTAINS
        grid%octreeRoot%centre%y = 0.d0
        grid%octreeRoot%centre%z = 0.d0
     endif
+    grid%octreeRoot%xMin = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+    grid%octreeRoot%yMin = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
+    grid%octreeRoot%zMin = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+    grid%octreeRoot%xMax = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
+    grid%octreeRoot%yMax = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
+    grid%octreeRoot%zMax = grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize
     grid%octreeRoot%indexChild = -999 ! values are undefined
     NULLIFY(grid%octreeRoot%parent)   ! tree root does not have a parent
     NULLIFY(grid%octreeRoot%child)    ! tree root does not yet have children
@@ -713,6 +719,14 @@ CONTAINS
     if (parent%cylindrical) then
        parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
     endif
+
+    parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
+
+    parent%child(newChildIndex)%xMax = parent%child(newChildIndex)%centre%x + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMax = parent%child(newChildIndex)%centre%y + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMax = parent%child(newChildIndex)%centre%z + parent%child(newChildIndex)%subcellSize
 
 
     thisOctal => parent%child(newChildIndex)
@@ -3725,27 +3739,16 @@ CONTAINS
     doRotate = .false.
     if (PRESENT(alreadyRotated)) doRotate = alreadyRotated
 
-    if (thisOctal%oneD) then
-       r = modulus(point)
-       if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
-       else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
-       else
-          inOctal = .true.
-       endif
-       goto 666
-    endif
-
-
     
 
     if (thisOctal%threeD) then
        if (.not.thisOctal%cylindrical) then
-          IF (point%x < thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
-          ELSEIF (point%x > thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-          ELSEIF (point%y < thisOctal%centre%y - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-          ELSEIF (point%y > thisOctal%centre%y + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          IF (point%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
+          ELSEIF (point%x > thisOctal%xMax) THEN ; inOctal = .FALSE.
+          ELSEIF (point%y < thisOctal%yMin) THEN ; inOctal = .FALSE.
+          ELSEIF (point%y > thisOctal%yMax) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
           ELSE  
              inOctal = .TRUE.
           ENDIF
@@ -3758,8 +3761,8 @@ CONTAINS
           IF     (r < thisOctal%r - thisOctal%subcellSize - eps) THEN ; inOctal = .FALSE. 
           ELSEIF (r > thisOctal%r + thisOctal%subcellSize + eps) THEN ; inOctal = .FALSE.
           ELSEIF (dphi > thisOctal%dphi/2.d0) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
           ELSE  
              inOctal = .TRUE.
           ENDIF
@@ -3770,14 +3773,28 @@ CONTAINS
        else
           octVec2D = point
        endif
-           IF (octVec2D%x <  thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
-       ELSEIF (octVec2D%x > thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (octVec2D%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (octVec2D%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+           IF (octVec2D%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
+       ELSEIF (octVec2D%x > thisOctal%xMax) THEN ; inOctal = .FALSE.
+       ELSEIF (octVec2D%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
+       ELSEIF (octVec2D%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
        ELSE  
           inOctal = .TRUE.
        ENDIF
     endif
+
+    if (thisOctal%oneD) then
+       r = modulus(point)
+       if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
+       else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
+       else
+          inOctal = .true.
+       endif
+       goto 666
+    endif
+
+
+
+
 666 continue
   END FUNCTION inOctal
 
@@ -4172,7 +4189,9 @@ IF ( .NOT. gridConverged ) RETURN
            write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
            write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
-           
+           write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
+           write(*,*) "cen ",thisOctal%centre
+           write(*,*) "size ",thisOctal%subcellsize
 !           rVec = subcellCentre(thisOctal,subcell)
 !           write(*,*) rVec%x+thisOctal%subcellSize/2.
 !           write(*,*) rVec%x-thisOctal%subcellSize/2.
@@ -9803,6 +9822,16 @@ end function readparameterfrom2dmap
     dest%gasOpacity =  source%gasOpacity 
     dest%cornerVelocity =  source%cornerVelocity
 
+
+    dest%xMax = source%xMax
+    dest%yMax = source%yMax
+    dest%zMax = source%zMax
+
+
+    dest%xMin = source%xMin
+    dest%yMin = source%yMin
+    dest%zMin = source%zMin
+
     dest%inStar = source%inStar
     call copyAttribute(dest%nCrossings, source%nCrossings)
     call copyAttribute(dest%chiLine, source%chiLine)
@@ -9811,7 +9840,6 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%biasCont3d, source%biasCont3d)
     call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
-
 
     call copyAttribute(dest%probDistLine, source%probDistLine)
     call copyAttribute(dest%probDistCont,  source%probDistCont)
@@ -16166,6 +16194,11 @@ end function readparameterfrom2dmap
        if (nAtom > 1) then
           thisOctal%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
        endif
+       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
+
     endif
 
     if (molecular) then

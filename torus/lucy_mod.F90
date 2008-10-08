@@ -2013,8 +2013,8 @@ contains
        if (stillinGrid) then
           call random_number(r)
           tau = -log(1.0-r)
-
-          call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
+          sOctal => thisOctal
+          call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, startOctal=sOctal,&
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
           sOctal => thisOctal

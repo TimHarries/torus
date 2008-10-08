@@ -25,13 +25,14 @@ module cmf_mod
 contains
 
   subroutine solveLevels(thisOctal, subcell, nPops, jnuLine,  &
-       temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, nfreq)
+       temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, dfreq, nfreq)
 !    use input_variables, only : debug
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: nFreq
     integer :: num(100)
-    real(double) :: freq(:), jnuCont(:)
+    real(double) :: freq(:), dfreq(:), jnuCont(:)
+    real(double), allocatable :: hCgsFreq(:)
     real(double) :: nPops(:,:)
     real(double) :: temperature, ne
     real(double) :: jnuLine(:)
@@ -77,6 +78,8 @@ contains
     allocate(nOffset(1:nAtom))
     allocate(nCons(1:nAtom))
     allocate(continuumGround(1:nAtom))
+    allocate(hCgsFreq(1:nFreq))
+    hCgsFreq(1:nFreq) = hCgs * freq(1:nFreq)
     continuumGround = .false.
 
     nMatrix = 0
@@ -274,8 +277,8 @@ contains
                 do i = istart+1, nFreq
                    xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i-1))
                    xSection2 = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
-                   photoRatelk = photoRatelk + 0.5d0 * ((jnuCont(i-1)/(hCgs*freq(i-1)))*xSection &
-                        + (jnuCont(i)/(hCgs*freq(i)))*xSection2) * (freq(i)-freq(i-1))
+                   photoRatelk = photoRatelk + 0.5d0 * ((jnuCont(i-1)/(hCgsfreq(i-1)))*xSection &
+                        + (jnuCont(i)/(hCgsfreq(i)))*xSection2) * dfreq(i)
 !                   if (iAtom == 1) write(*,*) i,l,freq(i),photoratelk,xsection,jnucont(i)
                 enddo
                 photoRatelk = photoRatelk * fourPi
@@ -370,7 +373,7 @@ contains
 !       enddo
 !       write(*,*) "Ne",ne,rho/mhydrogen
 !    endif
-
+    deallocate(hCgsFreq)
   end subroutine solveLevels
 
 
@@ -426,7 +429,7 @@ contains
     logical, save :: first = .true.
     real(double) :: nStar(5,40), t1
     logical :: passThroughResonance, velocityIncreasing
-    real(double) :: x1, x2, fac
+    real(double) :: x1, x2, fac, deltaDist
 
     allocate(tauCont(1:nFreq))
     allocate(jnuCont(1:nFreq))
@@ -434,14 +437,14 @@ contains
     allocate(snuCont(1:nFreq))
 
     allocate(tau(1:nRBBTrans))
-    
+
     position = randomPositionInCell(fromOctal, fromsubcell)
 
     icount = 1
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
 
-    call randomRayDirection(0.5d0, position, source, nSource, direction, weight)
+    call randomRayDirection(0.9d0, position, source, nSource, direction, weight)
 
 
 
@@ -450,26 +453,26 @@ contains
     totDist = 0.d0
     call distanceToSource(source, nSource, position, direction, hitSource, disttoSource, sourcenumber)
 
-   if (hitSource) then
-      pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
-      call normalize(pVec)
-      cosTheta = -1.d0*(pVec.dot.direction)
-      photoDirection = pVec
-      call normalize(PhotoDirection)
-   endif
+    if (hitSource) then
+       pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
+       call normalize(pVec)
+       cosTheta = -1.d0*(pVec.dot.direction)
+       photoDirection = pVec
+       call normalize(PhotoDirection)
+    endif
 
 
     rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
 
-!   rayVel = getVel(grid, thisOctal, subcell, position, direction)
+    !   rayVel = getVel(grid, thisOctal, subcell, position, direction)
 
 
     call random_number(r)
 
-!    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
+    !    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
 
-! assume microturb is gaussian
-!    deltaV = gasdev()*thisOctal%microturb(subcell)
+    ! assume microturb is gaussian
+    !    deltaV = gasdev()*thisOctal%microturb(subcell)
 
 
     deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
@@ -517,11 +520,11 @@ contains
 
 
        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
-!       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
+       !       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
 
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
-!       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
+       !       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
 
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
@@ -534,12 +537,12 @@ contains
        nTau = 2
 
        passThroughResonance =.false.
-       
-       
+
+
        if (dv1*dv2 < 0.d0) passThroughResonance = .true.
-       
+
        if (modulus(endVel)==0.d0) passThroughResonance = .false.
-       
+
        if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
 
           if (dv1 <= dv2) then
@@ -584,20 +587,17 @@ contains
 
 
        do i = 2, nTau
-          
+
           distArray(i) = tval * dble(i-1)/dble(nTau-1)
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
 
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-!          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
+          !          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
 
 
-          alphanuCont = 0.d0
-          jnuCont = 0.d0
-
-! only need to calc continuum opacities once per cell
+          ! only need to calc continuum opacities once per cell
 
           if (opticallyThickContinuum.and.(i==2)) then
 
@@ -611,10 +611,10 @@ contains
 
 
              do iFreq = 1, nFreq
-                
+
                 alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
                      thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)), ifreq=ifreq)
-                
+
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                      nStar, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
                      thisOctal%jnuCont(subcell,ifreq), ifreq=ifreq)/fourpi
@@ -629,13 +629,14 @@ contains
           endif
 
           if (opticallyThickContinuum) then
+             deltaDist = (distArray(i)-distArray(i-1)) * 1.d10
              do iFreq = 1, nFreq
-                dTau = alphaNuCont(iFreq) *  (distArray(i)-distArray(i-1)) * 1.d10
-                iCont(iFreq) = iCont(ifreq) +  exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snuCont(iFreq)
+                dTau = alphaNuCont(iFreq) *  deltaDist
+                iCont(iFreq) = iCont(ifreq) +  myexp(-tauCont(iFreq)) * (1.d0-myexp(-dtau))*snuCont(iFreq)
                 tauCont(iFreq) = tauCont(iFreq) + dtau
              enddo
           endif
-!          write(*,*) tauCont(48),iCont(48),snuCont(48)
+          !          write(*,*) tauCont(48),iCont(48),snuCont(48)
 
           dv = deltaV - (thisVel .dot. direction)
 
@@ -645,73 +646,69 @@ contains
              iAtom = indexAtom(iRBB)
              iTrans = indexRBBTrans(iRBB)
 
-             if (thisAtom(iAtom)%transType(iTrans) == "RBB") then
+
+             call locate(freq, nfreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
+
+             call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
 
-                call locate(freq, nfreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
-
-                call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
+             alphanu = hCgsOverFourPi * phiProf(dv, thisOctal%microturb(subcell))
 
 
-                alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
-                     phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
-                
-
-                if (firstSubcell) then
-                   phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
-                        (distArray(i)-distArray(i-1)) * 1.d10
-                   phiNorm = phiNorm + (distArray(i)-distArray(i-1)) * 1.d10
-                endif
-
-
-                iUpper = thisAtom(iAtom)%iUpper(iTrans)
-                iLower = thisAtom(iAtom)%iLower(iTrans)
-                
-                nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
-                nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-
-                alphanu = alphanu * (nLower * Blu - nUpper * Bul)
-
-!                if (isnan(alphanu)) then
-!                   write(*,*) "alphanu isnan",nlower,nupper
-!                   stop
-!                endif
-
-                alphanu = alphanu + alphaNuCont(iFreq)
-
-                
-                if (alphanu < 0.d0) then
-                   alphanu = 0.d0
-                   if (first) then
-                      write(*,*) "negative opacity warning in getray",iUpper,iLower,nLower,nUpper,thisAtom%name
-                      first = .false.
-                   endif
-                endif
-
-
-
-                dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-                
-
-                etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
-                etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
-
-                jnu = jnu + jnuCont(iFreq) 
-
-
-                if (alphanu > 1.d-30) then
-                   snu = jnu/alphanu
-                else
-                   snu = tiny(snu)
-                endif
-
-
-                i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
-!                if (dtau > 1.d10) write(*,*) dtau
-
-                tau(iRBB) = tau(iRBB) + dtau
+             if (firstSubcell) then
+                phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
+                     (distArray(i)-distArray(i-1)) * 1.d10
+                phiNorm = phiNorm + (distArray(i)-distArray(i-1)) * 1.d10
              endif
+
+
+             iUpper = thisAtom(iAtom)%iUpper(iTrans)
+             iLower = thisAtom(iAtom)%iLower(iTrans)
+
+             nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+             nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+
+             alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+
+             !                if (isnan(alphanu)) then
+             !                   write(*,*) "alphanu isnan",nlower,nupper
+             !                   stop
+             !                endif
+
+             if (opticallyThickContinuum) alphanu = alphanu + alphaNuCont(iFreq)
+
+
+             if (alphanu < 0.d0) then
+                alphanu = 0.d0
+                if (first) then
+                   write(*,*) "negative opacity warning in getray",iUpper,iLower,nLower,nUpper,thisAtom%name
+                   first = .false.
+                endif
+             endif
+
+
+
+             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+
+
+             etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
+             etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
+             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
+
+             if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreq) 
+
+
+             if (alphanu > 1.d-30) then
+                snu = jnu/alphanu
+             else
+                snu = tiny(snu)
+             endif
+
+
+             i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
+             !                if (dtau > 1.d10) write(*,*) dtau
+
+             tau(iRBB) = tau(iRBB) + dtau
           enddo
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
@@ -730,25 +727,25 @@ contains
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
        do iFreq = 1, nFreq
-!          write(*,*) freq(ifreq),iCont(ifreq),i_nu(source(sourceNumber), &
-!               freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq)),taucont(ifreq)
-!          write(*,*) freq(ifreq),i_nu(source(sourcenumber),freq(ifreq),ielement)
-!          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
+          !          write(*,*) freq(ifreq),iCont(ifreq),i_nu(source(sourceNumber), &
+          !               freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq)),taucont(ifreq)
+          !          write(*,*) freq(ifreq),i_nu(source(sourcenumber),freq(ifreq),ielement)
+          !          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
           iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*exp(-tauCont(iFreq))
        enddo
     endif
 
-!    call locate(freq, nfreq, cspeed/6562.8d-8,iFreq)
-!    write(*,*) "icont ",icont(ifreq)
+    !    call locate(freq, nfreq, cspeed/6562.8d-8,iFreq)
+    !    write(*,*) "icont ",icont(ifreq)
 
 
-    
+
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
        do iRBB = 1, nRBBTrans
           iAtom = indexAtom(iRBB)
           iTrans = indexRBBTrans(iRBB)
-!          i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau(iRBB))
+          !          i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau(iRBB))
           i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*exp(-tau(iRBB))
        enddo
     endif
@@ -758,9 +755,14 @@ contains
   function phiProf(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
-    phi = 1.d0 / (b * sqrt(Pi))
-    fac = dv**2 / b**2
+    integer :: i
+    logical, save :: firstTime = .true.
+    real(double) :: phiArray(-100:100)
+
+    phi = 1.d0 / (b * sqrtPi)
+    fac = (dv/b)**2
     phi = phi * exp(-fac)
+
   end function phiProf
 
   subroutine calculateJbar(thisOctal, subcell, thisAtom, nRay, ds, phi, i0, iTrans, jbar, nPops, &
@@ -772,7 +774,7 @@ contains
     integer :: subcell
     type(MODELATOM) :: thisAtom
     integer :: nRay
-    real(double) :: ds(:), phi(:), i0(:), nPops(:)
+    Real(double) :: ds(:), phi(:), i0(:), nPops(:)
     integer :: iTrans
     real(double) :: jbar
     integer :: iRay
@@ -962,7 +964,7 @@ contains
     real(double), allocatable :: iCont(:,:)
     logical, allocatable :: hitPhotosphere(:)
     integer, parameter :: maxFreq = 2000
-    real(double) :: freq(maxFreq)
+    real(double) :: freq(maxFreq), dFreq(maxFreq)
     real(double), allocatable :: jnuCont(:)
     integer :: nFreq, nhit, iRBB
     integer :: nRBBTrans
@@ -1008,6 +1010,11 @@ contains
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
      call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
+
+     dfreq(1) = freq(2)-freq(1)
+     do i = 2, nFreq
+        dfreq(i) = freq(i) - freq(i-1)
+     enddo
 
      allocate(jnuCont(1:nFreq)) 
      ionized = .false.
@@ -1260,7 +1267,7 @@ contains
                                  thisOctal%jnuLine(subcell,1:nRBBTrans),  &
                                  dble(thisOctal%temperature(subcell)), nAtom, thisAtom, ne, &
                                  thisOctal%rho(subcell),&
-                                 jnuCont, freq, nfreq)
+                                 jnuCont, freq, dfreq, nfreq)
                             
                             dPops = newPops - thisOctal%newAtomLevel(subcell,1:nAtom,:) 
                             

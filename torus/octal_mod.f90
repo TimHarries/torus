@@ -156,6 +156,7 @@ MODULE octal_mod
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent => null()         
     TYPE(vector)                  :: centre
+    real(double)                       :: xMax, xMin, yMax, yMin, zMax, zMin
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
