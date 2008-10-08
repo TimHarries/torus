@@ -72,6 +72,8 @@ use particle_pos_mod, only: particle_pos
 
   character(len=4)  :: char_nproc
 
+  logical, parameter :: use_random_particles=.false.
+
 ! Begin executable statments -------------
 
 ! 1. Set up gas particles 
@@ -85,20 +87,33 @@ use particle_pos_mod, only: particle_pos
   nproc   = 1
 #endif
 
+  if ( use_random_particles ) then 
 
 ! Set up the random number generator  
-  call random_seed
+     call random_seed
 
 #ifdef MPI
 ! Make sure MPI processes all have the same random seed
-  call random_seed(size=iSize)
-  allocate(iSeed(1:iSize))
-  call random_seed(get=iSeed)
-  call mpi_barrier(MPI_COMM_WORLD, ierr)
-  call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call random_seed(put=iseed)
-  deallocate(iSeed)
+     call random_seed(size=iSize)
+     allocate(iSeed(1:iSize))
+     call random_seed(get=iSeed)
+     call mpi_barrier(MPI_COMM_WORLD, ierr)
+     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     call random_seed(put=iseed)
+     deallocate(iSeed)
 #endif
+
+  else
+
+     allocate(iseed(4))
+     iseed(1) = 1314213889
+     iseed(2) =  918101083
+     iseed(3) = -1939753504 
+     iseed(4) = 1942228244 
+     call random_seed(put=iseed)
+     deallocate(iSeed)
+
+  end if
 
   total_gas_mass = total_disc_mass / real(nproc) 
   b_num_gas      = npart / nproc  ! number of gas particles for this MPI process
