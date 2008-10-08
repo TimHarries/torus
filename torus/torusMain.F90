@@ -971,11 +971,12 @@ CONTAINS
            xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
            xArray(i) = 10.**xArray(i)
         enddo
+        goto 777
      endif
 
 
 
-     if (nLambdaInput == 0) then
+     if(nLambdaInput == 0)  then
         if (allocated(source)) then
            call writeInfo("Basing SED wavelength grid on input photospheric spectrum",TRIVIAL)
            nLambda = SIZE(source(1)%spectrum%lambda)
@@ -1096,6 +1097,7 @@ CONTAINS
           close(77)
        endif
 
+777 continue
     !
     ! Copying the wavelength array to the grid
        if (associated(grid%lamArray)) deallocate(grid%lamArray)
@@ -1104,7 +1106,6 @@ CONTAINS
        grid%lamArray(i) = xArray(i)
     enddo
     grid%nLambda = nLambda
-
   end subroutine set_up_lambda_array
 
 !-----------------------------------------------------------------------------------------------------------------------
