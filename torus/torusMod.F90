@@ -67,6 +67,11 @@ contains
    include 'mpif.h'  
 #endif
 
+   real, allocatable :: xArray(:), tArray(:)
+   real :: testlam, junk
+   real(double) :: fac
+   integer :: nCurrent, nt
+
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
   type(SOURCETYPE) a_star
@@ -349,7 +354,7 @@ contains
      grid%nopacity = nLambda
   end if
 
-  call  createDustCrossSectionPhaseMatrix(grid, grid%lamArray, nLambda, miePhase, nMuMie)
+  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
   if (noScattering) then
      if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
@@ -436,61 +441,167 @@ call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.fals
 call freeGrid(grid)
 
 deallocate(miePhase) 
-
+deallocate(xArray)
 
 call torus_mpi_barrier
 
 CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------
-
   subroutine set_up_lambda_array
 
     real :: deltaLambda
     real :: loglamStart, logLamEnd
-    real :: xarray(nLambda)
 
-    if (lamLinear) then
-       deltaLambda = (lamEnd - lamStart) / real(nLambda)
-     
-       xArray(1) = lamStart + deltaLambda/2.
-       do i = 2, nLambda
-          xArray(i) = xArray(i-1) + deltaLambda
-       enddo
 
-    else
-
-       logLamStart = log10(lamStart)
-       logLamEnd   = log10(lamEnd)
-       
-       do i = 1, nLambda
-          xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-          xArray(i) = 10.**xArray(i)
-       enddo
-
+    if (allocated(xArray)) then
+       deallocate(xArray)
     endif
+
+     if (lucyradiativeEq) then
+        call writeInfo("Doing radiative equilibrium so setting own wavelength arrays", TRIVIAL)
+        nLambda = 200
+        allocate(xArray(1:nLambda))
+        logLamStart = log10(1200.)
+        logLamEnd   = log10(2.e7)
+        do i = 1, nLambda
+           xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+           xArray(i) = 10.**xArray(i)
+        enddo
+        goto 777
+     endif
+
+
+
+     if(nLambdaInput == 0)  then
+        if (allocated(source)) then
+           call writeInfo("Basing SED wavelength grid on input photospheric spectrum",TRIVIAL)
+           nLambda = SIZE(source(1)%spectrum%lambda)
+           allocate(xArray(1:nLambda))
+           xArray = source(1)%spectrum%lambda
+           
+           
+           lamStart = 1200.
+           lamEnd = 2.e7
+           logLamStart = log10(lamStart)
+           logLamEnd   = log10(lamEnd)
+           
+           do i = 1, 200
+              testLam = logLamStart + real(i-1)/real(200-1)*(logLamEnd - logLamStart)
+              if (testLam < xArray(1)) then
+                 allocate(tArray(1:nLambda))
+                 tArray = xArray
+                 nLambda = nLambda + 1
+                 deallocate(xArray)
+                 allocate(xArray(1:nLambda))
+                 xArray(1) = testLam
+                 xArray(2:nLambda) = tArray
+                 deallocate(tArray)
+              endif
+              if (testLam > xArray(nLambda)) then
+                 allocate(tArray(1:nLambda))
+                 tArray = xArray
+                 nLambda = nLambda + 1
+                 deallocate(xArray)
+                 allocate(xArray(1:nLambda))
+                 xArray(nLambda) = testLam
+                 xArray(1:nLambda-1) = tArray
+                 deallocate(tArray)
+              endif
+           enddo
+        else
+           nLambda = 200
+           allocate(xArray(1:nLambda))
+           lamStart = 1200.
+           lamEnd = 2.e7
+           logLamStart = log10(lamStart)
+           logLamEnd   = log10(lamEnd)
+           do i = 1, nLambda
+              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+              xArray(i) = 10.**xArray(i)
+           enddo
+        endif
+     else
+        nLambda = nLambdaInput
+        allocate(xArray(1:nLambda))
+        
+        if (lamLinear) then
+           deltaLambda = (lamEnd - lamStart) / real(nLambda)
+           
+           xArray(1) = lamStart + deltaLambda/2.
+           do i = 2, nLambda
+              xArray(i) = xArray(i-1) + deltaLambda
+           enddo
+           
+        else
+           
+           logLamStart = log10(lamStart)
+           logLamEnd   = log10(lamEnd)
+           
+           do i = 1, nLambda
+              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+              xArray(i) = 10.**xArray(i)
+           enddo
+           
+           if (photoionization) then
+              xArray(1) = lamStart
+              xArray(2) = lamEnd
+              nCurrent = 2
+              call refineLambdaArray(xArray, nCurrent, grid)
+              nt = nLambda - nCurrent
+              do i = 1, nt
+                 fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+                 fac = 10.**fac
+                 nCurrent=nCurrent + 1
+                 xArray(nCurrent) = fac
+                 call sort(nCurrent, xArray)
+              enddo
+           endif
+
+        endif
+
+
+!       if (mie) then
+!          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
+!             call locate(xArray, nLambda, lambdaTau, i)
+!             t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
+!             if (t1 > 0.5) then
+!                write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+!                call writeInfo(message, TRIVIAL)
+!                xArray(i+1) = lambdaTau
+!             else
+!                write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+!                call writeInfo(message, TRIVIAL)
+!                xArray(i) = lambdaTau
+!             endif
+!          endif
+!       endif
+
+     endif
 
 
        if (lamFile) then
           call writeInfo("Reading wavelength points from file.", TRIVIAL)
           open(77, file=lamfilename, status="old", form="formatted")
-          nLambda = 0
+          nLambda = 1
 333       continue
+          read(77,*,end=334) junk
+          xArray(nLambda) = junk
           nLambda = nLambda + 1
-          read(77,*,end=334) xArray(nLambda)
-          if (writeoutput) write(*,*) nlambda,xArray(nlambda)
           goto 333
 334       continue
-          nLambda = nLambda - 1
+          nlambda = nlambda - 1
           close(77)
        endif
 
+777 continue
     !
     ! Copying the wavelength array to the grid
+       if (associated(grid%lamArray)) deallocate(grid%lamArray)
+       allocate(grid%lamArray(1:nLambda))
     do i = 1, nLambda
        grid%lamArray(i) = xArray(i)
     enddo
     grid%nLambda = nLambda
-
   end subroutine set_up_lambda_array
 
 !-----------------------------------------------------------------------------------------------------------------------
