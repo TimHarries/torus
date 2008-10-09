@@ -3161,6 +3161,7 @@ contains
           thisOctal => octalArray(iOctal)%content
           do iSubcell = 1, thisOctal%maxChildren
              if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then 
+
                 call LTElevels(thisOctal%temperature(iSubcell),  &
                                thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
                                thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))

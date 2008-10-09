@@ -29,7 +29,7 @@ module input_variables
   real :: beamSize
   real :: eccentricity
   real :: inc
-  logical :: cmf
+  logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom
   character(len=20) :: atomFilename(10)

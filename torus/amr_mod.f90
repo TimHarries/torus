@@ -5980,9 +5980,7 @@ IF ( .NOT. gridConverged ) RETURN
   thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
      
-  thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
-
-
+  if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
   IF ((thisoctal%threed).and.(subcell == 8)) &
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
   
@@ -9844,6 +9842,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%probDistLine, source%probDistLine)
     call copyAttribute(dest%probDistCont,  source%probDistCont)
     call copyAttribute(dest%Ne,  source%Ne)
+    call copyAttribute(dest%Ntot,  source%Ntot)
     call copyAttribute(dest%NH,  source%NH)
     call copyAttribute(dest%NHI,  source%NHI)
     call copyAttribute(dest%boundaryCondition,  source%boundaryCondition)
@@ -16147,7 +16146,7 @@ end function readparameterfrom2dmap
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics
+         photoionization, hydrodynamics, sobolev
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 
@@ -16199,6 +16198,15 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
 
+    endif
+
+    if (sobolev) then
+       call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
+       ALLOCATE(thisOctal%N(8,1:stateqMaxLevels))
     endif
 
     if (molecular) then

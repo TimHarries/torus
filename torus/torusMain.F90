@@ -330,6 +330,7 @@ program torus
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
   nLambda = nLambdaInput
+  sobolev = lineEmission .and. (.not.cmf)
 
   if(geometry == "planetgap") then
      ! takes the gapWidth and calculates what mPlanet should be
@@ -1814,7 +1815,7 @@ CONTAINS
 
 
 ! ttauri source  / central star creation code moved from here to set_up_sources by th (18/7/08)
-        if (lineEmission.and.(.not.cmf)) then
+        if (sobolev) then
            !  calculate the statistical equilibrium (and hence the emissivities 
            !  and the opacities) for all of the subcells in an
            !  adaptive octal grid.
