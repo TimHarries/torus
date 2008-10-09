@@ -1100,9 +1100,9 @@ contains
      endif
 
 
-    nRay = 100
+    nRay = 1000
     write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    do iStage = 1, 1
+    do iStage = 1, 2
 
 
        if (iStage == 1) then
