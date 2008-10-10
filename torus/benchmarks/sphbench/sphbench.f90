@@ -62,6 +62,9 @@ use particle_pos_mod, only: particle_pos
   real(db), parameter :: rho_zero = 0.81614E-17_db
   real(db), parameter :: rho_bg   = 1.001e-30_db ! Background density
 
+! Smoothing length factor. See Price and Bate, 2007
+  real, parameter :: eta_smooth = 1.2
+
   real(db) :: f1, f2, hr, z_over_h
 
   real :: ran_num
@@ -181,7 +184,7 @@ use particle_pos_mod, only: particle_pos
 ! Set particle mass assuming equal mass for all particles 
      b_xyzmh(4,ipart) = msol * total_gas_mass / real(b_num_gas, kind=db)
 ! Smoothing length based on particle mass and density
-     b_xyzmh(5,ipart) = ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
+     b_xyzmh(5,ipart) = eta_smooth * ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
 
      write(60,*) x,y,z(ipart), b_rho(ipart)
 
