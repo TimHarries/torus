@@ -105,7 +105,7 @@ module molecular_mod
         allocate(thisMolecule%energy(1:thisMolecule%nLevels))
         allocate(thisMolecule%g(1:thisMolecule%nLevels))
         allocate(thisMolecule%j(1:thisMolecule%nLevels))
-           
+
         read(30,*) junk
         do i = 1, thisMolecule%nLevels
            read(30,*) j, thisMolecule%energy(i), thisMolecule%g(i), thisMolecule%j(i)
@@ -352,17 +352,18 @@ module molecular_mod
               if (.not.associated(thisOctal%molecularLevel)) then
                  allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
               endif
+              thisOctal%molecularLevel = 1.d-20
 
               if(lte) then           
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
                               thisOctal%molecularLevel(1:maxlevel,subcell))
               else      
                  call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(1:maxlevel,subcell))
+              endif
 
-                 if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
-                    thisOctal%molecularLevel(1,subcell) = 1.0
-                    thisOctal%molecularLevel(2,subcell) = 0.0000
-                 endif
+              if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
+                 thisOctal%molecularLevel(1,subcell) = 1.0
+                 thisOctal%molecularLevel(2,subcell) = 0.0000
               endif
 
               if (.not.associated(thisOctal%bnu)) then
@@ -376,21 +377,23 @@ module molecular_mod
               if (.not.associated(thisOctal%jnu)) then
                  allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:maxtrans))
               endif
+              thisOctal%oldmolecularLevel = 1.d-20
 
               if(lte) then
                  do i = 1, maxtrans
-                    thisOctal%jnu(subcell,i) = bnu(thisMolecule%transFreq(i), tcbr)
+                    thisOctal%jnu(subcell,i) = bnu(thisMolecule%transFreq(i), dble(thisoctal%temperature(subcell)))
  !                if(thisOctal%temperature(subcell) .gt. Tcbr) then
 !                    thisOctal%jnu(subcell,i) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell) * &
 !                                               thisOctal%molecularLevel(subcell,i) * thisMolecule%einsteinA(i) * hCgsOverfourPi * &
 !                                              thisOctal%microturb(subcell) / sqrtPi
+!                    write(*,*) thisoctal%jnu(subcell,i)
                   enddo
               else
                  do i = 1, maxtrans
                     thisOctal%jnu(subcell,:) = bnu(thisMolecule%transFreq(i), tcbr)
                  enddo
               endif
-
+              thisOctal%oldmolecularLevel = 1.d-20
            endif
 
            if (.not.associated(thisOctal%molAbundance)) then
@@ -403,10 +406,15 @@ module molecular_mod
              thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
           endif
 
-          thisOctal%molmicroturb(subcell) = 1. / thisOctal%microturb(subcell)
+          thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
 !          if (grid%geometry .eq. "molcluster") CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
        endif
     enddo
+
+!    if (.not. usedust) then
+       grid%oneKappaAbs = 1e-30
+       grid%oneKappaSca = 1e-30
+!    endif
 
    end subroutine allocateMolecularLevels
 
@@ -457,7 +465,7 @@ module molecular_mod
       real(double) ::  maxavgfracChange, maxRMSfracChange
       integer :: maxavgtrans(1),maxRMStrans(1)
 
-      character(len=40) :: filename
+      character(len=30) :: filename
 
       real(double) :: convtestarray(200,200,12)
       real(double) :: r(100)
@@ -468,7 +476,7 @@ module molecular_mod
       
       integer :: ntrans , lst !least significant transition
 
-      integer, allocatable, save :: ioctalArray(:)
+!      integer, allocatable, save :: ioctalArray(:)
       
       real :: tol
       real(double) :: dummy, tau, tauarray(40) = -1.d0    
@@ -552,7 +560,6 @@ module molecular_mod
          call AllocateMolecularLevels(grid, grid%octreeRoot, thisMolecule, .false., .true.)
          call writeinfo("Done!", TRIVIAL)
          
-      
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
       endif
 
@@ -608,7 +615,7 @@ module molecular_mod
                if(tauarray(i) .gt. 0.01) exit
             enddo
 
-!            write(*,*) mintrans
+            write(*,*) mintrans
 
             mintrans = mintrans + 1 ! next important transition into it
       
@@ -619,7 +626,7 @@ module molecular_mod
             minlevel = min(minlevel, maxlevel)
             mintrans = minlevel - 1
 
-!            write(*,*) "Minlevel", minlevel
+            write(*,*) "Minlevel", minlevel
 
             write(message,*) "Iteration ",grand_iter
             call writeinfo(message, FORINFO)
@@ -628,7 +635,7 @@ module molecular_mod
             call tune(6, message)  ! start a stopwatch
 
             if(Writeoutput .and. plotlevels) then
-               write(filename, *) "./plots/data_",grand_iter
+               write(filename, *) "./plots/data_",grand_iter,".vtk"
                call  writeVtkFile(grid, filename)
             endif
 
@@ -668,11 +675,11 @@ module molecular_mod
     if (rankComplete) exit blockLoop 
 #endif
 
-    if(firsttime) then
-       allocate(iOctalArray(ioctal_end - ioctal_beg + 1))
-       call decideOctalOrder(iOctal_beg, iOctal_end, iOctalArray, shouldinterlace = .false.)
-       firsttime = .false.
-    endif
+!    if(firsttime) then
+!       allocate(iOctalArray(ioctal_end - ioctal_beg + 1))
+!       call decideOctalOrder(iOctal_beg, iOctal_end, iOctalArray, shouldinterlace = .true.)
+!       firsttime = .false.
+!    endif
 
 
  ! iterate over all octals, all rays, solving the system self-consistently
@@ -683,16 +690,18 @@ module molecular_mod
 
            do iOctal = ioctal_beg, ioctal_end
 
-              if (debug .and. writeoutput) then
-                 write(message,*) iOctal,ioctal_beg,ioctal_end,ioctalArray(ioctal)
-                 call writeInfo(message,TRIVIAL)
-              endif
+!              if (debug .and. writeoutput) then
+!                 write(message,*) iOctal,ioctal_beg,ioctal_end,ioctalArray(ioctal)
+!                 call writeInfo(message,TRIVIAL)
+!              endif
 
-              thisOctal => octalArray(iOctalArray(iOctal))%content
+ !             thisOctal => octalArray(iOctalArray(iOctal))%content
+             thisOctal => octalArray(ioctal)%content
+
               do subcell = 1, thisOctal%maxChildren
 
                  if (.not.thisOctal%hasChild(subcell)) then
- !                   if(fixedrays) call sobseq(r1,-1)                      
+!                    if(fixedrays) call sobseq(r1,-1)                     
 
                     do iRay = 1, nRay
                        itransdone = .false.
@@ -711,16 +720,15 @@ module molecular_mod
 
                     do while (.not. popsConverged)
                        iter = iter + 1
-
                        oldpops = thisOctal%newmolecularLevel(1:maxlevel,subcell) ! retain old pops before calculating new one
 
                        do iTrans = 1, maxtrans
 
                           if(.not. itransdone(itrans)) then
+
                              call calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
                                   phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
                                   thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
-
                           endif
 
                        enddo
@@ -731,7 +739,7 @@ module molecular_mod
 
                        fac = abs(maxval((thisOctal%newMolecularLevel(1:minlevel,subcell) - oldpops(1:minlevel)) &
                             / oldpops(1:minlevel))) ! convergence criterion ! 6 or 8?
-                       
+                         
                        if (fac < 1.d-6) then
                           popsConverged = .true.
                        endif
@@ -849,10 +857,10 @@ module molecular_mod
         endif
         
      enddo
-     
+
      if(writeoutput .and. (geometry .eq. 'molebench')) then
         open(141,file="convergenceprofile.dat",status="unknown",form="formatted")
-        
+
         do i=1,100
            r(i) = log10(rinner) + dble(i-1)/dble(100-1)*((log10(router) - log10(rinner))) ! log(radius) -> radius
         enddo
@@ -900,7 +908,7 @@ end subroutine molecularLoop
      real(double) :: nUpper(maxtrans)
 !     real(double),pointer :: nupper(:)
 !     real(double) :: dTau, etaline(maxtrans), kappaAbs 
-     real(double) :: dTau(maxtrans), etaline(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
+     real(double) :: dTau(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
 !     real(double), allocatable :: tau(:)
      real(double) :: tau(maxtrans)
      real(double) :: dvAcrossCell, projVel, endprojVel
@@ -1018,6 +1026,7 @@ end subroutine molecularLoop
         phi = phiProf(projVel, thisOctal%molmicroturb(subcell)) ! if fell off grid then assume phi is unchanged
      endif
 
+!     write(*,*) "phi", phi
 !     currentPosition = position !This line is wrong because the source function does not apply locally
      ds = ds * 1.d10 ! convert from cm to torus units
 
@@ -1047,17 +1056,17 @@ end subroutine molecularLoop
 
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
 
-        nlower(:) = thisOctal%molecularLevel(ilower(:),subcell) * nMol
-        nUpper(:) = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
-        balance(:) = nLower(:) * thisMolecule%einsteinBlu(:) - &
-                     nUpper(:) * thisMolecule%einsteinBul(:)
+!        nlower(:) = 
+!        nUpper(:) = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
+        balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(:) - &
+                     thisOctal%molecularLevel(iUpper(:),subcell) * thisMolecule%einsteinBul(:))
 
-        spontaneous(:) = thisMolecule%einsteinA(:) * nUpper(:)
+        spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(:) * thisOctal%molecularLevel(iUpper(:),subcell)
 
         snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
 
-        etaLine(:) = hCgsOverfourPi * spontaneous(:) 
-        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
+
+!        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
           
         startVel = velocity(currentposition, grid) 
         endPosition = currentPosition + tval * direction
@@ -1085,9 +1094,9 @@ end subroutine molecularLoop
            PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
            
            if(usedust) then
-              alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
+              alphanu(1:maxtrans,1) = phiprofval * balance(1:maxtrans) ! Equation 8
               alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)
-              jnu(1:maxtrans) = etaLine(1:maxtrans) * phiProfVal + &
+              jnu(1:maxtrans) = spontaneous(1:maxtrans) * phiProfVal + &
                    alphanu(1:maxtrans,2) * thisOctal%bnu(subcell,1:maxtrans) ! jnu, emission coefficient - equation 7
               
               do itrans = 1,maxtrans
@@ -1099,7 +1108,7 @@ end subroutine molecularLoop
                  endif
               enddo
            else
-              alpha(:) = alphaTemp(:) * phiprofVal 
+              alpha(:) = balance(:) * phiprofVal 
            endif
 
            dTau(:) = alpha(:) * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
@@ -1108,7 +1117,8 @@ end subroutine molecularLoop
            localradiationfield(:) = exp(-dtau(:)) 
            localradiationfield(:) = OneArray(:) - localradiationfield(:)
            di0(:) = attenuation(:) * localradiationfield(:) * snu(:) ! 2nd term is local radiation field from this cell 
-              
+!     write(*,*) "test",attenuation(1),localradiationfield(1), snu(1), balance(1), spontaneous(1), nlower(1), nupper(1)
+!     write(*,*) "test2",currentposition,thisoctal%temperature(subcell),thisoctal%nh2(subcell),thisoctal%molabundance(subcell)
            do itrans = 1, maxtrans
 
               if(di0(itrans) .gt. 1d-6 * i0(itrans)) then
@@ -1157,13 +1167,13 @@ end subroutine molecularLoop
      integer :: iUpper, iLower
      real(double) :: tau, opticaldepth, snu, sumPhi
      real :: lambda
-     integer :: ilambda
+     integer :: ilambda, i
      logical :: realdust = .true.
      
-     jBarExternal = 0.d0
-     jBarInternal = 0.d0
+     jBarExternal = 1.d-60
+     jBarInternal = 1.d-60
 
-     jnu = 0.d0
+     jnu = 1.d-60
 
      iUpper = thisMolecule%iTransUpper(iTrans)
      iLower = thisMolecule%iTransLower(iTrans)
@@ -1234,6 +1244,11 @@ end subroutine molecularLoop
         jBarExternalArray(1:nRay) = i0(1:nRay) * opticaldepthArray(1:nRay) * phi(1:nRay)
         jBarInternalArray(1:nRay) = snu * (1.d0 - opticaldepthArray(1:nRay)) * phi(1:nRay)
 
+!        write(*,*) "tau",opticaldepthArray
+!        write(*,*) "phi",phi
+!        write(*,*) "INT",jbarinternalarray
+!        write(*,*) "ext",jbarinternalarray
+
         sumPhi = SUM(phi(:))
         jbar = (sum(jBarExternalArray(1:nRay)) + sum(jBarInternalArray(1:nRay)))/sumPhi
 
@@ -1301,7 +1316,7 @@ end subroutine molecularLoop
         enddo
      enddo
 
-     cTot = 0.d0
+     cTot = 1d-60
 
      do k = 1, maxlevel
         do l = 1, maxlevel
@@ -1339,10 +1354,11 @@ end subroutine molecularLoop
    if(.not.isnan(matrixB(1))) then
       nPops(1:maxLevel) = matrixB(1:maxLevel)
    else
-      nPops(1:maxLevel) = matrixB(1:maxLevel)
+      call LTEpops(thisMolecule, temperature, npops(1:maxlevel))
 
-      write(message, *) "bad",temperature,npops(:)
+      write(message, *) "bad",temperature,jnu(1)
       call writeinfo(message, IMPORTANT)
+!      write(*,*) npops
 !      stop
    endif
    
@@ -3009,7 +3025,7 @@ endif
 
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule, nRay, convtestarray)
-     use input_variables, only : rinner, router
+     use input_variables, only : rinner, router,amr2d
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
@@ -3034,7 +3050,7 @@ endif
      open(31,file=resultfile,status="unknown",form="formatted")
      open(32,file=resultfile2,status="unknown",form="formatted")
      open(33,file="tau.dat",status="unknown",form="formatted")
-     call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
+     if( .not. amr2d) call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
 
      if(firsttime) then
         nradius = 100! number of radii used to sample distribution
@@ -3107,7 +3123,8 @@ endif
               end if
            end do
         else
-           
+!           write(*,*) "temp", thisoctal%temperature(subcell),subcell
+
            maxtemp = max(maxtemp, thisOctal%temperature(subcell))     
            icount = icount + 1
         endif
