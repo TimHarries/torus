@@ -3050,7 +3050,8 @@ endif
      open(31,file=resultfile,status="unknown",form="formatted")
      open(32,file=resultfile2,status="unknown",form="formatted")
      open(33,file="tau.dat",status="unknown",form="formatted")
-     if( .not. amr2d) call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
+     if( .not. amr2d) &
+          call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
 
      if(firsttime) then
         nradius = 100! number of radii used to sample distribution
