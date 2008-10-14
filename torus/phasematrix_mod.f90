@@ -563,8 +563,13 @@ contains
        call writeInfo(message, TRIVIAL)
 
        open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
-       if (sed) write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
-       if (SI) write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
+       if (sed) then
+          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
+       else if (SI) then
+          write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
+       else
+          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
+       end if
 
 33     format(6(1x, 1PE14.5))
        !34   format(a1, a14, 5(a6))
