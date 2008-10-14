@@ -528,9 +528,10 @@ contains
   ! function returns the number of gas particles which belongs to a subcell this
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
-  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell, rho_min, rho_max, dosmoothing)
+  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell, rho_min, rho_max, dosmoothing, n_pt)
     implicit none
     integer, intent(out) :: n                ! number of particles in the subcell
+    integer, intent(out), optional :: n_pt   ! number of point masses in the subcell 
     real(double), intent(out) :: rho_ave ! average density of the subcell
     real(double), intent(out), optional :: rho_min, rho_max
     real(double) :: this_rho
@@ -634,6 +635,17 @@ contains
        n = 0
     endif
     
+! Count the number of point masses if required
+    if ( present(n_pt) ) then
+       n_pt = 0
+       do i=1, sphData%nptmass
+          call get_position_pt_mass(sphData, i, x, y, z)
+          ! convert units
+          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
+          if (within_subcell(node, subcell, x, y, z)  ) n_pt = n_pt + 1
+       end do
+    end if
+
     if (n>0) then
        if(smoothing) then
  !         rho_ave = rho_ave/sumweight

@@ -4414,7 +4414,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: nr, nr1, nr2
     real(double)          :: minDensity, maxDensity
     INTEGER               :: nsample = 400
-    INTEGER               :: nparticle, limit, npart_octal(8)
+    INTEGER               :: nparticle, limit, npart_subcell
 !    real(double) :: timenow
     real(double) :: dummyDouble
     real(double) :: rho_disc_ave, scale_length
@@ -4900,7 +4900,7 @@ IF ( .NOT. gridConverged ) RETURN
    case ("cluster","molcluster")
 
       call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
-           thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity)
+           thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npart_subcell)
 
       total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 )
 
@@ -4917,6 +4917,9 @@ IF ( .NOT. gridConverged ) RETURN
       end if
 
       if (total_mass > amrlimitscalar) split = .true.
+
+! Split if the cell contains both gas particles and a point mass
+      if (npart_subcell>0 .and. nparticle >0) split = .true. 
 
 !   case ("molcluster")
 !
