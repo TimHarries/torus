@@ -198,25 +198,25 @@ module source_mod
     end subroutine distanceToSource
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat)
+      use input_variables, only : pointSource
       type(SOURCETYPE) :: source
       type(VECTOR) :: position, direction, rHat
 
 
-!      ! simply treating as a point source
-!      position = source%position
-!      direction = randomUnitDoubleVector()
 
-      !
-      ! uncomment below for a finite-size source.
-      !
-      rHat = randomUnitVector()
-      position = source%position + source%radius*rHat
-      ! A limb darkening law should be applied here for 
-      ! for general case here.....
-      direction = fromPhotoSphereVector(rHat)
-      ! -- using a new routine in this module (RK)
-!      direction = random_direction_from_sphere(rHat)
-    end subroutine getPhotonPositionDirection
+      if (pointSource) then
+         !      ! simply treating as a point source
+         position = source%position
+         direction = randomUnitVector()
+         
+      else
+         rHat = randomUnitVector()
+         position = source%position + source%radius*rHat
+         ! A limb darkening law should be applied here for 
+         ! for general case here.....
+         direction = fromPhotoSphereVector(rHat)
+      endif
+       end subroutine getPhotonPositionDirection
 
 
 

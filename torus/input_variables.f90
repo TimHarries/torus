@@ -360,6 +360,7 @@ module input_variables
   logical :: ttau_turn_off_jet
   logical :: ttau_turn_off_acc  ! magenetoshere
 
+  logical :: pointSource
 
   !------ The disc wind parameters follows here -----------------------
   real(double) :: DW_d           ![10^10cm] displacement of souce point from the center of star

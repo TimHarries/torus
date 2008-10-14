@@ -312,7 +312,7 @@ contains
     real :: ttauriMdotLocal
     real :: theta1, theta2
     
-    print *, 'Creating T Tauri stellar surface'
+    call writeInfo("Creating T Tauri stellar surface",TRIVIAL)
     
     do iElement = 1, SIZE(surface%element)
       aboveSurface = surface%element(iElement)%position - surface%centre

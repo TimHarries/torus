@@ -24,8 +24,8 @@ subroutine contread(filename,line_freq,hnu)
      goto 999
   endif
 
-  write(*,*) "! NB TORUS now expects files in fluxes (erg/s/cm^2/hz)"
-  write(*,*) "! i.e. in dipso  (atlasrd, tofnu,xsort)"
+!  write(*,*) "! NB TORUS now expects files in fluxes (erg/s/cm^2/hz)"
+!  write(*,*) "! i.e. in dipso  (atlasrd, tofnu,xsort)"
 
 
   open(unit=11,file=filename,status='old',err=666)

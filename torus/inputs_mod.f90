@@ -2123,6 +2123,11 @@ if (geometry == "whitney") then
 
 endif
 
+
+call getLogical("pointsource", pointSource, cLine, nLines, &
+     "Assume star is a point source: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
  if (geometry .eq. "shakara" .or. (geometry .eq. "iras04158")) then
 
     oneKappa = .true.

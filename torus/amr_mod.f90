@@ -6983,7 +6983,11 @@ IF ( .NOT. gridConverged ) RETURN
 
             CASE ('hartmann_line')
               CALL amrGridValues(grid%octreeRoot,point,chiLine=chiLine,etaLine=etaLine)
-              valueDouble = etaLine / (chiLine*curtainsFill*10.) 
+              if (chiLine*curtainsFill /= 0.) then
+                 valueDouble = etaLine / (chiLine*curtainsFill*10.) 
+              else
+                 valueDouble = tiny(valueDouble)
+              endif
               logarithmic = .TRUE.
               
             CASE ('hartmann_Nelectron')
@@ -7145,10 +7149,10 @@ IF ( .NOT. gridConverged ) RETURN
     do i = 1, nnu-1
        tot = tot + 0.5*(nuArray(i+1)-nuArray(i))*(fnu(i+1)+fnu(i))
     enddo
-    write(*,*) (fourPi*TTauriRstar**2)*tot/lSol," solar luminosities"   
-
-    write(*,*) (fourPi*TTauriRstar**2)*tot/ &
-               (fourPi*TTauriRstar**2*stefanBoltz*4000.**4)
+!    write(*,*) (fourPi*TTauriRstar**2)*tot/lSol," solar luminosities"   
+!
+!    write(*,*) (fourPi*TTauriRstar**2)*tot/ &
+!               (fourPi*TTauriRstar**2*stefanBoltz*4000.**4)
 
     ! add the accretion luminosity spectrum to the stellar spectrum,
     ! write it out and pass it to the stateq routine.
@@ -16206,10 +16210,14 @@ end function readparameterfrom2dmap
     if (sobolev) then
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        ALLOCATE(thisOctal%N(8,1:stateqMaxLevels))
+       ALLOCATE(thisOctal%kappaAbs(8,1))
     endif
 
     if (molecular) then

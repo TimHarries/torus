@@ -1948,19 +1948,19 @@ CONTAINS
   if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
 
 
-  if (geometry(1:6) == "ttauri" .and. myRankIsZero) then
-     call writeHartmannValues(grid,'hartmann_logNH')
-     call writeHartmannValues(grid,'hartmann_logNe')
-     call writeHartmannValues(grid,'hartmann_temperature')
-     call writeHartmannValues(grid,'hartmann_velPol')
-     call writeHartmannValues(grid,'hartmann_velAz')
-     call writeHartmannValues(grid,'hartmann_line')
-     !call writeHartmannValues(grid,'hartmann_Nelectron')
-     call writeHartmannValues(grid,'hartmann_Nlevel2')
-     call writeHartmannValues(grid,'hartmann_NH')
-     !call writeHartmannValues(grid,'hartmann_departCoeff')
-     call writeHartmannValues(grid,'hartmann_N')
-  end if
+!  if (geometry(1:6) == "ttauri" .and. myRankIsZero) then
+!     call writeHartmannValues(grid,'hartmann_logNH')
+!     call writeHartmannValues(grid,'hartmann_logNe')
+!     call writeHartmannValues(grid,'hartmann_temperature')
+!     call writeHartmannValues(grid,'hartmann_velPol')
+!     call writeHartmannValues(grid,'hartmann_velAz')
+!     call writeHartmannValues(grid,'hartmann_line')
+!     !call writeHartmannValues(grid,'hartmann_Nelectron')
+!     call writeHartmannValues(grid,'hartmann_Nlevel2')
+!     call writeHartmannValues(grid,'hartmann_NH')
+!     !call writeHartmannValues(grid,'hartmann_departCoeff')
+!     call writeHartmannValues(grid,'hartmann_N')
+!  end if
  
 end subroutine amr_grid_setup
 
@@ -2199,6 +2199,7 @@ subroutine set_up_sources
              write(*,*) "Mass accretion rate could be ",fac/mSol/ secstoYears, " solar masses/year"
           endif
        endif
+
 
     case("circumbin")
        nSource = 2

@@ -1638,7 +1638,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  if (contWindPhoton) then
                     obs_weight = oneOnFourPi*exp(-tauExt(nTau))
                  else 
-                    obs_weight = (outVec.dot.rHatinStar)*exp(-tauExt(nTau))/pi
+                    if (.not.pointSource) then
+                       obs_weight = (outVec.dot.rHatinStar)*exp(-tauExt(nTau))/pi
+                    else
+                       obs_weight = oneOnFourPi * exp(-tauExt(nTau))
+                    endif
                     if (obs_weight < 0.) obs_weight = 0.
                  endif
                  

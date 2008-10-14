@@ -947,7 +947,7 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe, dNe
-    real(double), parameter :: underCorrect = 1.d0 !0.9d0
+    real(double), parameter :: underCorrect = 0.9d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: ioctal_beg, ioctal_end
@@ -1091,7 +1091,7 @@ contains
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
      call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 #endif
-     if (writeoutput) then
+     if (myRankisZero) then
         open(69, file="cmf_convergence.dat", status="old", form="formatted")
         write(69,'(a)') &
 !             012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
@@ -1100,8 +1100,7 @@ contains
      endif
 
 
-    nRay = 1000
-    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    nRay = 100
     do iStage = 1, 2
 
 
@@ -1174,7 +1173,6 @@ contains
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
              
-             write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
 
@@ -1199,8 +1197,8 @@ contains
                               nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom, &
                               nfreq, freq, iCont(iray,1:nFreq))
-                         if ((iray == 10).and.(iOctal==iOctal_beg).and.(subcell == 1).and.(myrankglobal==2)) &
-                              write(*,*) myrankglobal, " direction ",direction
+                         if ((iray == 50).and.(iOctal==iOctal_beg).and.(myrankglobal==2)) &
+                              write(*,*) myrankglobal, subcell, " direction ",direction
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       iter = 0
@@ -1239,7 +1237,7 @@ contains
                                if (iTrans == 4) tauHalpha = tauAv
 
                                if (iter < 10) then
-                                 if (tauAv > 1.d1) then
+                                 if (tauAv > 1.d2) then
                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
                                  else
                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
@@ -1460,7 +1458,7 @@ contains
                call writeAmrGrid("atom_tmp.grid",.false.,grid)
 
 
-          if (writeoutput) then
+          if (myRankisZero) then
              open(69, file="cmf_convergence.dat", status="old", position = "append", form="formatted")
              write(69,'(i10, 1p, 2e10.2, 2i10, 2e10.2, i10, l10)') &
                   nIter, maxFracChange, tolerance, ilab, ilev, lev1, lev2, nRay, fixedRays
