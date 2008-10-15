@@ -305,22 +305,23 @@ contains
     real, optional :: weight
     integer, intent(in) :: nMuMie, nLambda
     integer :: i, j, k, m, ilam
-    real(double) :: theta, r, phi
+    real(double) :: theta, phi
+    real :: r
     real, intent(in) :: lamArray(:)
-    real, allocatable, save :: prob(:,:)
+    real, allocatable, save :: prob(:,:), probtemp(:)
     real, allocatable, save :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
     logical,save ::firsttime = .true.
     type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     
-
     call locate(lamArray, nLambda, wavelength, ilam)
     if (ilam < 1) ilam = 1
     if (ilam > nLambda) ilam = nLambda
 
     if (firstTime) then
        allocate(cosArray(1:nMuMie))
-       allocate(prob(1:nLambda,1:nMuMie))
+       allocate(prob(1:nMuMie,1:nlambda))
+       allocate(probtemp(1:nMuMie))
        do i = 1, nMuMie
           cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
        enddo
@@ -328,27 +329,30 @@ contains
        do m = 1, nLambda
           do i = 2, nMuMie
              do k = 1, nDustType
-                prob(m,i) = prob(m,i) + max(1.d-20,dustTypeFraction(k))*miePhase(k,m,i)%element(1,1)
+                prob(i,m) = prob(i,m) + max(1.d-20,dustTypeFraction(k))*miePhase(k,m,i)%element(1,1)
              enddo
           enddo
           do i = 2, nMuMie
-             prob(m,i) = prob(m,i) + prob(m,i-1)
+             prob(i,m) = prob(i,m) + prob(i-1,m)
           enddo
-          prob(m,1:nMuMie) = prob(m,1:nMuMie)/prob(m,nMuMie)
+          prob(1:nMuMie,m) = prob(1:nMuMie,m)/prob(nMuMie,m)
        enddo
        firstTime = .false.
     endif
 
     call random_number(r)
-    call locate(prob(ilam,1:nMuMie), nMuMie, real(r), j)
+
+    probtemp(:) = prob(1:nMuMie,ilam)
+!    call locate(prob(ilam,1:nMuMie), nMuMie, r, j)
+    call locate(probtemp(:), nMuMie, r, j)
     theta = cosArray(j) + &
-         (cosArray(j+1)-cosArray(j))*(r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
+         (cosArray(j+1)-cosArray(j))*(r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam))
 
     if (present(weight)) then
        weight = SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) + & 
             (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
              SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) ) * &
-            (r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
+            (r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam))
        if (weight < 0.d0) then
           write(*,*) "weight ", weight, " ilam ", ilam, " j ",j
        endif
@@ -369,7 +373,7 @@ contains
 
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
     newVec = arbitraryRotate(newVec, phi, oldDirection)
-    call normalize(newvec)
+!    call normalize(newvec) ! perpvec is normalized so rotation shouldn't change it
 
     newDirectionMie = newVec
 
