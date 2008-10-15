@@ -8,6 +8,9 @@ case ${SYSTEM} in
 
     ompi) export MYF90="mpif90 -DMPI";;
 
+    zen)ln -s sphbench.f90 sphbench.F90
+	export MYF90="mpif90 -DMPI";;
+
 	*) echo "Unrecognised system"
 	   exit 1 ;;
 
