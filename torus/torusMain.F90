@@ -343,6 +343,7 @@ program torus
   if (molecular) then
      if (geometry .eq. "molebench") then
         call readbenchmarkMolecule(co, "hco_benchmark.mol")
+!        call readMolecule(co, "hco_plus.mol")
      elseif((geometry .eq. "h2obench1") .or. (geometry .eq. "h2obench2")) then
         call readMolecule(co, "fakewater.mol")
      elseif(geometry .eq. "agbstar") then
@@ -966,8 +967,8 @@ CONTAINS
         call writeInfo("Doing radiative equilibrium so setting own wavelength arrays", TRIVIAL)
         nLambda = 200
         allocate(xArray(1:nLambda))
-        logLamStart = log10(1200.)
-        logLamEnd   = log10(2.e7)
+        logLamStart = log10(lamstart)
+        logLamEnd   = log10(lamend)
         do i = 1, nLambda
            xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
            xArray(i) = 10.**xArray(i)
@@ -1038,7 +1039,7 @@ CONTAINS
            enddo
            
         else
-           
+           write(*,*) "TORUSMAIN lamend", lamend
            logLamStart = log10(lamStart)
            logLamEnd   = log10(lamEnd)
            
@@ -1519,18 +1520,18 @@ CONTAINS
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
           call writeInfo("Done. Splitting grid...", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
-          call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
+!         call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
           call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-          do
-             gridConverged = .true.
-             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-                  gridConverged,  inheritProps = .false., interpProps = .false., &
-                  sphData=sphData, stellar_cluster=young_cluster, romData=romData)
-             if (gridConverged) exit
-          end do
-          call writeInfo("...grid smoothing complete", TRIVIAL)
+!          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+!          do
+!             gridConverged = .true.
+!             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+!                  gridConverged,  inheritProps = .false., interpProps = .false., &
+!                  sphData=sphData, stellar_cluster=young_cluster, romData=romData)
+!             if (gridConverged) exit
+!          end do
+!          call writeInfo("...grid smoothing complete", TRIVIAL)
        endif
        case("wr104")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
@@ -1778,8 +1779,6 @@ CONTAINS
 
 !        call grid_info(grid, "*")
         if (myRankIsZero) call grid_info(grid, "info_grid.dat")
-
-
 
 	if (lineEmission) then
            nu = cSpeed / (lamLine * angstromtocm)
