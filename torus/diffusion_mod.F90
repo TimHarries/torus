@@ -174,7 +174,8 @@ contains
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
     real(double) :: phi, DeltaPhi, DeltaZ, deltaR
-    real(double), parameter :: underCorrect = 1.d0
+    real(double), parameter :: underCorrect = 0.8d0
+    real(double), save :: overCorrect = 1.d0
 #ifdef MPI
     integer :: my_rank, np !, isubcell
     real(double) :: globalDeMax
@@ -187,7 +188,6 @@ contains
 #endif
 
     firstTime = .true.
-
     deMax = -1.d30
 
     allocate(octalArray(grid%nOctals))
@@ -540,7 +540,6 @@ contains
                 lambda = (2.d0 + bigR) / (6.d0 + 3.d0*bigR + bigR**2)
 
                 lambda = 0.33333d0
-!                write(*,*) "lambda ",lambda
                 dCoeffHalf = 0.d0
 
                 dCoeffHalf(1, 0, 0) = 0.5d0 * (dCoeff(1, 0, 0) + dCoeff(0, 0, 0))
@@ -558,15 +557,15 @@ contains
                    DeltaX = r * 1.d10
                    DeltaX = thisOctal%subcellsize * 1.d10
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
-                   DeltaT = DeltaT * 0.5
+                   DeltaT = DeltaT * 0.1
                 else
                    deltaX = min(DeltaR, deltaZ, r * DeltaPhi)
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
-                   DeltaT = DeltaT * 0.5
+                   DeltaT = DeltaT * 0.1
                 endif
 
                 if (thisOctal%twoD) then
-                   enplus1 = eDens(0,0,0) + (DeltaT/DeltaX**2) * (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0)) &
+                   enplus1 = eDens(0,0,0) + (DeltaT/DeltaX**2) * OverCorrect * (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0)) &
                         - dCoeffHalf(-1,0,0)*(eDens(0,0,0)-eDens(-1,0,0)) &
                         + dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) &
                         - dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))
@@ -590,8 +589,11 @@ contains
                            dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))/deltaZ**2 )
                    endif
                 endif
+                overcorrect = min(8.d0,overcorrect + 0.1d0)
+
                 if (enPlus1 < 0.d0) then
                    if (firstTime) write(*,*) "Warning: negative energy density."
+                   overcorrect = 1.d0
 		   firstTime = .false.
                    deltaE = (enPlus1-thisOctal%oldeDens(subcell))
                    enPlus1 = enPlus1 + undercorrect * deltaE ! undercorrect here
@@ -601,7 +603,7 @@ contains
                 endif
                           thisOctal%eDens(subcell) = enPlus1
 !                thisOctal%chiline(subcell) = enPlus1
-                          thisOctal%temperature(subcell) = (enPlus1 / aRad)**0.25d0
+                          thisOctal%temperature(subcell) = sqrt(sqrt(enPlus1 * OneOveraRad))
 
                 deltaE = abs(enPlus1-thisOctal%oldeDens(subcell)) &
                      / thisOctal%oldEdens(subcell)
