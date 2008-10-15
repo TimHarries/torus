@@ -223,7 +223,7 @@ module input_variables
   real :: rSublimation
   real :: rTorus, rOuter
   real :: rho, rho0
-  real :: scale
+  real :: scale, rscale
   real :: mCore, diskTemp, mDisc
   real :: alphaDisc, betaDisc
   real :: scaleDensity
