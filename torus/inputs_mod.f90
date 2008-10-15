@@ -2123,12 +2123,7 @@ if (geometry == "whitney") then
 
 endif
 
-
-call getLogical("pointsource", pointSource, cLine, nLines, &
-     "Assume star is a point source: ","(a,1l,1x,a)", .false., ok, .false.)
-
-
- if (geometry .eq. "shakara" .or. (geometry .eq. "iras04158")) then
+ if (geometry .eq. "shakara") then
 
     oneKappa = .true.
 
@@ -2171,19 +2166,73 @@ call getLogical("pointsource", pointSource, cLine, nLines, &
    call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
 
-
-
    rCore = rCore * rSol / 1.e10
-   rInner = rInner * rCore
+   rinner = (rinner / (rCore * 1e10)) / autocm
+
+   rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
+
+   rInner = rInner * autocm / 1.e10
    rSublimation = rSublimation * rCore
    rOuter = rOuter * autoCm / 1.e10
    height = height * autoCm / 1.e10
    mCore = mCore * mSol
    mDisc = mDisc * mSol
 
-   rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
-        * (rInner*1.d10)**alphaDisc * &
-        (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+!   rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
+!        * (rInner*1.d10)**alphaDisc * &
+!        (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+
+endif
+
+ if (geometry .eq. "iras04158") then
+
+   oneKappa = .true.
+
+    call getLogical("noscat", noScattering, cLine, nLines, &
+         "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getReal("rcore", rCore, cLine, nLines, &
+         "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+    call getReal("rinner", rInner, cLine, nLines, &
+         "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
+
+    call getReal("router", rOuter, cLine, nLines, &
+         "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+    call getReal("height", height, cLine, nLines, &
+         "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+    call getReal("teff", teff, cLine, nLines, &
+         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+    call getReal("mcore", mCore, cLine, nLines, &
+       "Core mass (solar masses): ","(a,f6.4,a)", 0.5, ok, .true.)
+
+    call getReal("mdisc", mDisc, cLine, nLines, &
+         "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+    
+    call getReal("alphadisc", alphaDisc, cLine, nLines, &
+         "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+    
+    call getReal("betadisc", betaDisc, cLine, nLines, &
+         "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+    call getReal("rscale", rscale, cLine, nLines, &
+         "Radial scale length: ","(a,f5.3,a)", 100.0, ok, .false.)
+    
+    call getString("contflux", contFluxFile, cLine, nLines, &
+         "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+   rho0 = densityfrommass(mdisc, height, rinner, router, rscale, alphadisc, betadisc)
+
+   rCore = rCore * rSol / 1.e10
+   rInner = rInner * autocm / 1e10
+   rOuter = rOuter * autoCm / 1.e10
+   height = height * autoCm / 1.e10
+   mCore = mCore * mSol
+   mDisc = mDisc * mSol
+
 
 endif
 
@@ -2247,8 +2296,10 @@ endif
    call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
 
+   rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
+
    massRatio = mstar2/mstar1
-   rInner = rInner * auToCm/1.e10
+   rInner = rInner * auToCm / 1.e10
    rOuter = rOuter * autoCm / 1.e10
    height = height * autoCm / 1.e10
    mstar1 = mstar1 * mSol
@@ -2258,9 +2309,10 @@ endif
    binarySep = binarySep * auToCm/1.e10
    mCore = (mstar1 + mstar2)
    mDisc = mDisc * mSol
-   rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
-        * (rInner*1.d10)**alphaDisc * &
-        (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+
+!   rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
+!        * (rInner*1.d10)**alphaDisc * &
+!        (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
 
 endif
 
@@ -3007,4 +3059,27 @@ end subroutine getBigInteger
   call writeInfo(output, TRIVIAL)
  end subroutine getRealArray
 
+ ! Assumes all distances in AU, mass in msol
+
+ real(double) function densityfrommass(mdisc, h0, rin, rout, r0, alpha, beta) result(rho0)
+   
+   real :: mdisc, h0, rin, rout, r0, alpha, beta, fac
+
+   fac    = beta - alpha + 2.
+
+   if(fac .gt. 0) then
+      rho0 = mDisc * fac / (twoPi**1.5 * h0 * r0**(-beta) * rIn**alpha * &
+           (rOut**fac - rIn**fac))
+
+      rho0 = rho0 * msolpercAUtogpercc
+
+   else
+      rho0 = -1.
+      write(*,*) "error in rho calculation - 0 or negative"
+      stop
+   endif
+
+ end function densityfrommass
+
 end module inputs_mod
+
