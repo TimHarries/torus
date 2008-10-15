@@ -1395,7 +1395,7 @@ end subroutine molecularLoop
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
      integer :: subcell, i
-     real(double) :: maxFracChangePerLevel(:), printmaxFracChange, globalmaxFracChange, avgFracChange(:,:)
+     real(double) :: maxFracChangePerLevel(:), printmaxFracChange, avgFracChange(:,:)
      real(double) :: diff(minlevel), newFracChangePerLevel(minlevel), temp(minlevel)
      integer :: counter(:,:),j
 
@@ -1420,7 +1420,6 @@ end subroutine molecularLoop
            
            thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
 
-           globalMaxFracChange = MAXVAL(maxFracChangePerLevel(:)) 
            printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel),mask = (.not. itransdone(1:minlevel)))
 
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:mintrans,subcell) - &
