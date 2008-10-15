@@ -634,7 +634,7 @@ module molecular_mod
             write(message,*) "Done ",nray," rays"
             call tune(6, message)  ! start a stopwatch
 
-            if(Writeoutput .and. plotlevels) then
+            if(Writeoutput .and. plotlevels .and. .not.(amr1d)) then
                write(filename, *) "./plots/data_",grand_iter,".vtk"
                call  writeVtkFile(grid, filename)
             endif
@@ -1420,7 +1420,7 @@ end subroutine molecularLoop
            
            thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
 
-           printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel),mask = (.not. itransdone(1:minlevel)))
+           printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel),mask = (.not. itransdone(1:mintrans)))
 
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:mintrans,subcell) - &
                 thisOctal%molecularLevel(1:mintrans,subcell)) / &
@@ -1480,15 +1480,15 @@ end subroutine molecularLoop
 
               if (maxval(temp, mask = (.not. itransdone(1:6))) .gt. tolerance * 10.) then
                  thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (enhanced) update molecular levels
+                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (enhanced) update molecular levels
               else
                  thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
               endif
 
               if(maxval(temp, mask = (.not. itransdone(1:6))) .lt. tolerance * 2.)then
                  thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell) - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+                      thisOctal%newmolecularLevel(:,subcell)! - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
               endif
            endif
 
@@ -3087,7 +3087,7 @@ endif
         pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
         fracChange = fracChange * OneOverNangle
 
-        if(iter .gt. 0) convtestarray(iter,i,:) = fracChange
+        if(iter .gt. 0) convtestarray(iter,i,1:minlevel-1) = fracChange(1:minlevel-1)
 
         write(31,'(es11.5e2,4x,12(es14.6e2,tr2))') r*1.e10, pops(1:minlevel)
         write(32,'(es11.5e2,4x,12(f7.5,tr2))') r*1.e10, fracChange(1:minlevel)
@@ -3706,16 +3706,16 @@ end subroutine plotdiscValues
     call writeInfo(message,FORINFO)
     
     do i=3,1,-1
-       if(i .lt. 3) write(message,'(a,f6.4,a, 12(f6.4,2x))') "Individual levels converged @ ",tolerance * i," | ",&
-            real(convergenceCounter(i,1:minlevel + 1))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
-       if(i .eq. 3) write(message,'(a,f6.4,a, 12(f6.4,2x))') "Individual levels converged @ ",tolerance * (i+2)," | ", &
-            real(convergenceCounter(i,1:minlevel + 1))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+       if(i .lt. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * i," | ",&
+            real(convergenceCounter(i,1:minlevel))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+       if(i .eq. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * (i+2)," | ", &
+            real(convergenceCounter(i,1:minlevel))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
        call writeInfo(message,FORINFO)         
     enddo
   
     if(writeoutput) write(*,*) ""
     write(message,'(a,f6.4,a,12(f6.4,2x))') "Individual levels converged @ ",tolerance * 0.5," | ", &
-         real(convergenceCounter(4,1:minlevel + 1))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+         real(convergenceCounter(4,1:minlevel))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
     call writeInfo(message,FORINFO)
   
     open(138,file="fracChanges.dat",position="append",status="unknown")
@@ -3751,12 +3751,12 @@ end subroutine plotdiscValues
   
     open(139, file="avgChange.dat", position="append", status="unknown")
 20  format(i2,tr3,i6,tr3,12(f7.5,1x))
-    write(139,20) grand_iter, nray, avgFracChange(1:minlevel,1)/real(nvoxels)
+    write(139,20) grand_iter, nray, avgFracChange(1:minlevel-1,1)/real(nvoxels)
     
     close(139)
     
     open(140, file="avgRMSchange.dat", position="append", status="unknown")
-    write(140,20) grand_iter, nray, sqrt(avgFracChange(1:minlevel,2)/real(nvoxels))
+    write(140,20) grand_iter, nray, sqrt(avgFracChange(1:minlevel-1,2)/real(nvoxels))
     
     close(140)
   
