@@ -294,14 +294,14 @@ contains
                   if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-10) then
                      write(lunit, *) 1e-10
                   else
-                     write(lunit, *) real(thisOctal%molecularlevel(subcell,1))
+                     write(lunit, *) real(thisOctal%molecularlevel(1,subcell))
                   endif
 
                case("J=1")
                   if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-10) then
                      write(lunit, *) 1e-10
                   else
-                     write(lunit, *) real(thisOctal%molecularlevel(subcell,2))
+                     write(lunit, *) real(thisOctal%molecularlevel(2,subcell))
                   endif
 
                case("dust1")
