@@ -8,6 +8,7 @@
 #    6. make static=yes  : Make torus with static linking
 #-----------------------------------------------------------------
 
+USEMKL  = no
 cfitsio = yes
 debug   = no
 profile = no
@@ -43,26 +44,23 @@ ifeq ($(SYSTEM), davesmac)
 #    F77COMP  = g95
 #    F77FLAG  = -w -fno-second-underscore -g
 #    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
-    F95COMP  = ifort #-L/Library/Frameworks/Intel_MKL.framework/Versions/10.1.012/Libraries -I/Library/Frameworks/Intel_MKL.framework/Versions/10.1.012/Headers
+    F95COMP  = ifort -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries
     F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
 #   DEBUGFLAG = -warn -g -no-ipo  # 
     DEBUGFLAG=-g -O0 -warn nounused -warn -traceback -fpe0 -debug full -check pointer -CB
 #    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
-    FASTFLAG = -g -mtune=core2 -xT -O3 -mdynamic-no-pic -ftz -no-prec-div -fp-model fast=2 -no-prec-sqrt
+    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -ftz -no-prec-div -fp-model fast=2 -no-prec-sqrt -g #-ipo
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    CFITSIOLIBS = -L/scisoft/i386/Packages/cfitsio/lib -lcfitsio #-lmkl_core -lmkl_intel
-#    CFITSIOLIBS = -L/star/lib/ -lcfitsio #-lmkl_core -lmkl_intel
-
-#    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
-
+    CFITSIOLIBS = -L/scisoft/i386/Packages/cfitsio/lib -lcfitsio -lmkl_intel_thread -lmkl_core -lguide #-lmkl_intel
 #    STARLIBS = -L/star/lib `ndf_link`                                                                   
 #    F2CLIB   = -L$(PATH2G2C) -lg2c                                                                      
     EXE = torus.intelmac
     KNOWN_SYSTEM = yes
+    USEMKL  = no
 endif
 
 
@@ -582,6 +580,10 @@ else
    ETCFLAG += -DUSECFITSIO
 endif
 
+ifeq ($(USEMKL), yes)
+   ETCFLAG += -DUSEMKL
+endif
+
 ifeq ($(debug), yes)
    FASTFLAG =
    ETCFLAG += $(DEBUGFLAG)
@@ -721,9 +723,22 @@ distclean: clean
 	@/bin/rm -f unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
 
 ctags:
-	@ctags --langmap='fortran:+(*.f90.raw)' \
-	       *.f90 *.f *.f90.raw
+	@ctags --langmap='fortran:+(*.F90)' \
+	       *.f90 *.f *.F90
 
+link: depends $(ALLOBJ)
+    ifeq ($(KNOWN_SYSTEM), yes)
+	    @echo ""
+	    @echo "Linking object files and libraries..."
+	    $(F90) $(TRACEFLAG) -o $(EXE) \
+	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	    @echo "...done"
+    else
+	    @echo ""
+	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
+	    @echo "               ...setting SOURCE_VARIANT to unknown"
+    endif
 #
 # General rules to make object files
 #
