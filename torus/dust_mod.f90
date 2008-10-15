@@ -351,9 +351,9 @@ contains
        enddo
        close(20)
 
-    case("somedust")
+    case("pinteISM")
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       filename = trim(dataDirectory)//"/"//"somedust.dat"
+       filename = trim(dataDirectory)//"/"//"pinteISM.dust"
        if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
        open(20,file=filename,status="old",form="formatted")
        nRef = 38
