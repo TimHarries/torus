@@ -973,12 +973,11 @@ contains
     rhoOut = tiny(rhoOut)
     r = sqrt(point%x**2 + point%y**2)
 
-    h = height * (r / (50.d0*autocm/1.d10))**betaDisc
+    h = height * (r / (50.d0*autocm*1.d-10))**betaDisc
     
+    if ((r < rOuter).and.(r > rinner) .and. (abs(point%z) .lt. 10. * h)) then
 
-    if ((r < rOuter).and.(r>rinner) .and. (point%z .lt. 5.*h)) then
-
-       fac = -0.5d0 * (dble(point%z)/h)**2
+       fac = -0.5d0 * (point%z/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
     else

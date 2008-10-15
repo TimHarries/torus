@@ -58,7 +58,7 @@ module constants_mod
   real(double), parameter :: eCharge = 4.803242384d-10 ! 
   real(double), parameter :: hydE0eV = 13.598433       ! eV
   real(double), parameter :: rydbergtoEv = 13.605692312d0 ! ev/ry
-  real(double),parameter :: hydE0eVdb = 13.598433_db! eV
+  real(double), parameter :: hydE0eVdb = 13.598433_db! eV
 
   real(double), parameter :: ergToEv = 6.24145d11   
   real(double), parameter :: evtoerg = 1.d0/6.24145d11   
@@ -86,10 +86,16 @@ module constants_mod
   real(double), parameter :: mElectron = 9.109565D-28    ! g
 
   real(double), parameter :: aRad = 4.d0 * stefanBoltz / cSpeed
+  real(double), parameter :: OneOveraRad = cSpeed / (4.d0 * stefanBoltz)
 
   real(double), parameter :: Tcbr = 2.728d0 !K
   real(double), parameter :: Navogadro = 6.0221415d23   ! per mol
   real(double), parameter :: Rgas = Navogadro * kerg    
+
+  ! densities
+
+  real(double), parameter :: msolpercAUtogpercc = msol / (autocm**3)    
+
 end module constants_mod
 
 

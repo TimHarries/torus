@@ -75,7 +75,7 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
      density = 3.5
   case("amc_hn","amc_zb","gr1_dl","gr2_dl")
      density = 2.   ! mean density of graphite 2 g /cm^3
-  case("somedust")
+  case("pinteISM")
      density = 0.5
   case DEFAULT
      density = 3.6
