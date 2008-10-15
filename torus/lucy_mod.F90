@@ -246,8 +246,8 @@ contains
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
 
-    iseed = (/1/)! this will break. Take this out
-    Call random_seed(put=iseed)
+!    iseed = (/1/)! this will break. Take this out
+!    Call random_seed(put=iseed)
 
     do while (.not.converged)
        ! ensure we do at least three iterations
