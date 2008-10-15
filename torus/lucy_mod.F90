@@ -17,271 +17,12 @@ module lucy_mod
 
   implicit none
 
+#ifdef USEMKL
+   include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
+#endif
 
 contains
 
-
-  subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
-
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: uHat, uNew
-    type(VECTOR) :: rVec
-    integer :: nlucy
-    integer :: nDustType
-    integer,intent(in) :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
-    real :: lamArray(:)
-    real(oct), allocatable :: distanceGrid(:, :, :)
-    real(oct) :: r
-    integer, parameter :: nFreq = 100
-    integer :: i, j, k
-    real(oct) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
-    real(oct) :: temperature
-    integer :: nMonte, iMonte, nScat, nAbs
-    real(oct) :: thisFreq,  logFreqStart, logFreqEnd
-    real(oct) :: albedo
-    logical :: escaped
-    integer :: i1, i2, i3
-    real(oct) :: t1, t2, t3
-    real(oct) :: thisLam
-    integer :: iLam
-    integer :: nInf
-    real(oct) :: t
-    integer :: nt
-    real(oct) :: ang
-    integer :: iIter, nIter = 5
-    real(oct) :: kabs
-    real(oct) ::  kappaP, norm
-    real(oct) :: adot, V, epsOverDeltaT
-    real(oct) :: newT, deltaT
-    real(oct) :: meanDeltaT
-    real(double) :: dummy(1)
-    real(oct), allocatable :: tempImage(:,:)
-    integer :: nDT
-    real(oct) :: totalEmission
-    type(vector) :: vec_tmp
-
-    allocate(tempImage(1:grid%nx,1:grid%ny))
-
-
-    logFreqStart = log10((cSpeed / (lamArray(nLambda)*1.e-8)))
-    logFreqEnd =  log10((cSpeed / (lamArray(1)*1.e-8)))
-    write(*,*) logFreqStart, logFreqEnd
-    do i = 1, nFreq
-       freq(i) = logFreqStart + (dble(i-1)/dble(nFreq-1))*(logFreqEnd-logFreqStart)
-       freq(i) = 10.**freq(i)
-    enddo
-    write(*,*) "Lam",(cSpeed/freq(1))*1.e8,(cSpeed/freq(nFreq))*1.e8
-
-    do i = 2, nFreq-1
-       dnu(i) = 0.5*((freq(i+1)+freq(i))-(freq(i)+freq(i-1)))
-    enddo
-    dnu(1) = freq(2)-freq(1)
-    dnu(nFreq) = freq(nFreq)-freq(nFreq-1)
-
-
-
-    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
-
-
-    write(*,'(a)') "Computing lucy radiative equilibrium..."
-
-
-    allocate(distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz))
-
-
-    do iIter = 1, nIter
-       distanceGrid = 0.d0
-       write(*,*) "Iteration",iIter
-       nInf = 0
-       nScat = 0
-       nAbs = 0
-       nMonte = nLucy
-
-       do iMonte = 1, nMonte
-          escaped = .false.
-          call random_number(r)
-          call locate(probDistPlanck, nFreq, r, j)
-          thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-               (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
-
-          rVec  = real(grid%rCore, kind=oct) * randomUnitVECTOR()
-!          uHat = fromPhotosphereVector(rVec)
-          ! -- using a new routine in source_mod.f90 (RK)
-          uHat = random_direction_from_sphere(rVec)
-
-          if ( (rVec .dot. uHat) < 0.) uHat = (-1.d0) * uHat
-
-          do while(.not.escaped)
-
-             call toNextEvent(grid, rVec, uHat, escaped, distanceGrid, thisFreq, nLambda, lamArray)
-             if (escaped) nInf = nInf + 1
-
-             if (.not. escaped) then
-
-                thisLam = (cSpeed / thisFreq) * 1.e8
-                call locate(lamArray, nLambda, real(thisLam), iLam)
-
-                call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-                if (.not.grid%oneKappa) then
-                   albedo = grid%kappaSca(i1,i2,i3,iLam)/(grid%kappaSca(i1,i2,i3,iLam)+grid%kappaAbs(i1,i2,i3,iLam))
-                else
-                   albedo = grid%oneKappaSca(1,iLam) / (grid%oneKappaSca(1,iLam)+grid%oneKappaAbs(1,iLam))
-                endif
-
-                call random_number(r)
-                if (r < albedo) then
-
-                   vec_tmp=uhat 
-                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, dummy)
-                   nScat = nScat + 1
-                   uHat = uNew
-                else
-
-                   nAbs = nAbs + 1
-                   probDistJnu(1) = 0.d0
-                   do i = 2, nFreq
-
-                      thisLam = (cSpeed / freq(i)) * 1.e8
-                      call hunt(lamArray, nLambda, real(thisLam), iLam)
-
-                      if ((ilam >=1).and.(ilam <= nlambda)) then
-                         if (.not.grid%oneKappa) then
-                            kabs = grid%kappaAbs(i1,i2,i3,iLam)
-                         else
-                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
-                         endif
-                         probDistJnu(i) = probDistJnu(i-1) + &
-                              (bnu(freq(i),dble(grid%temperature(i1,i2,i3)))) &
-                              * kabs * dnu(i)
-                      endif
-                   enddo
-
-                   probDistJnu(1:nFreq) = probDistJnu(1:nFreq) / probDistJnu(nFreq)
-                   call random_number(r)
-                   call locate(probDistJnu, nFreq, r, j)
-                   if (j == nFreq) j = nFreq -1
-                   thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-                        (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
-                   uHat = randomUnitVector()
-                endif
-
-             endif
-          enddo
-       enddo
-
-       write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
-       write(*,'(a,f7.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
-       write(*,'(a,f7.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
-
-       V = (dble(grid%xAxis(2)-grid%xAxis(1))*dble(grid%yAxis(2)-grid%yAxis(1))*dble(grid%zAxis(2)-grid%zAxis(1)))
-
-       epsOverDeltaT = (dble(grid%lCore)) / dble(nInf)
-
-       meanDeltaT = 0.
-       nDT = 0
-
-       totalEmission = 0.
-       do i1 = 1, grid%nx
-          do i2 = 1, grid%ny
-             do i3 = 1, grid%nz
-                if (grid%inUse(i1,i2,i3)) then
-                   adot = epsoverDeltaT * (1.d0 / v) * distancegrid(i1,i2,i3) / 1.d30
-                   kappaP = 0.d0
-                   norm = 0.d0
-                   do i = 1, nFreq
-                      thisLam = (cSpeed / freq(i)) * 1.e8
-                      call hunt(lamArray, nLambda, real(thisLam), iLam)
-                      if ((iLam >=1) .and. (iLam <= nLambda)) then
-                         if (.not.grid%oneKappa) then
-                            kabs = grid%kappaAbs(i1,i2,i3,iLam)
-                         else
-                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
-                         endif
-
-                         kappaP = kappaP + kabs * &
-                              bnu(freq(i),dble(grid%temperature(i1,i2,i3)))  * dnu(i)
-                         norm = norm + bnu(freq(i),dble(grid%temperature(i1,i2,i3)))  * dnu(i)
-                      endif
-                   enddo
-                   kappaP = kappaP / norm /1.d10
-
-
-                   newT = (pi / stefanBoltz) * aDot / (fourPi * kappaP)
-                   newT = newT**0.25
-
-                   deltaT = newT - grid%temperature(i1,i2,i3)
-                   grid%temperature(i1,i2,i3) = max(1.e-3,grid%temperature(i1,i2,i3) + 0.8 * real(deltaT))
-                   nDT = nDT  + 1
-                   meanDeltaT = meanDeltaT + deltaT
-                   kappaP = 0.d0
-                   norm = 0.d0
-                   do i = 1, nFreq
-                      thisLam = (cSpeed / freq(i)) * 1.e8
-                      call hunt(lamArray, nLambda, real(thisLam), iLam)
-                      if ((iLam >=1) .and. (iLam <= nLambda)) then
-                         if (.not.grid%oneKappa) then
-                            kabs = grid%kappaAbs(i1,i2,i3,iLam)
-                         else
-                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
-                         endif
-                         kappaP = kappaP + kabs * &
-                              bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
-                         norm = norm + bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
-                      endif
-                   enddo
-                   kappaP = kappaP / norm /1.e10
-                   grid%etaCont(i1,i2,i3) = fourPi * kappaP * (stefanBoltz/pi) * (grid%temperature(i1,i2,i3)**4)
-                   totalEmission = totalEmission + grid%etaCont(i1,i2,i3) * V
-
-                endif
-             enddo
-          enddo
-       enddo
-
-       write(*,*) meanDeltaT / real(nDT)
-
-       write(*,*) "Emissivity of dust / core", totalEmission /grid%lCore * 1.e30
-
-       do i = 1, grid%nx
-          do j = 1, grid%ny
-             tempImage(i,j) = grid%temperature(i,j,grid%nz/2)
-          enddo
-       enddo
-    enddo
-    open(21,file="r.dat",status="unknown",form="formatted")
-    do i = 1, 100
-       r = grid%xAxis(grid%nx) * real(i-1)/99.
-       t = 0
-       nT = 0
-       do j = 1, 100
-          ang = twoPi * real(j-1)/100.
-          rVec = VECTOR(r*cos(ang), r*sin(ang),0.)
-          call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-          if (grid%inUse(i1,i2,i3)) then
-             nT = nT + 1
-             t = t + grid%temperature(i1,i2,i3)
-          endif
-       enddo
-       if (nt > 0) then
-          t = t / real(nt)
-          write(21,*) r / grid%rCore, t
-       endif
-    enddo
-    close(21)
-
-    open(22,file="temps.dat",status="unknown",form="unformatted")
-    do i = 1, grid%nx
-       do j = 1, grid%ny
-          do k = 1, grid%nz
-             write(22) grid%temperature(i,j,k), grid%etaCont(i,j,k)
-          enddo
-       enddo
-    enddo
-    close(22)
-
-
-  end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
@@ -319,8 +60,7 @@ contains
     real(oct) :: totalMass
     integer :: nFreq
     integer :: i, j
-    real(oct) :: freq(2000), dnu(2000), probDistJnu(2000)
-    real(oct) :: jnu_norm   ! Normalisation of probDistJnu
+    real(oct) :: freq(2000), dnu(2000), probDistJnu(2001)
 !    real(oct) :: probDistPlanck(nFreq)
     real(double) :: kappaScadb, kappaAbsdb
     integer(double) :: nDiffusion
@@ -331,7 +71,7 @@ contains
     real(oct) :: thisFreq
     real(oct) :: albedo
     logical :: escaped
-    real(oct) :: t1, recip_kt
+    real(oct) :: t1, hrecip_kt
     real(oct) :: thisLam,wavelength
     integer :: iSource
     integer :: nRemoved
@@ -366,7 +106,7 @@ contains
     integer :: nKilled
     integer :: maxIter
     integer       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
-    real(double)  :: kAbsArray(nlambda)
+    real(double)  :: kAbsArray(nlambda),kAbsArray2(nlambda)
     logical :: ok                             ! Did call to randomWalk complete OK?
     logical :: photonInDiffusionZone
     real :: diffusionZoneTemp, temp
@@ -374,9 +114,23 @@ contains
     integer :: nCellsInDiffusion
     logical :: scatteredPhoton
 !    integer :: omp_get_num_threads, omp_get_thread_num
-    real(double) :: this_bnu, fac2, hNuOverkT
-    real(double) :: fac1(nLambda)
+!    real(double) :: this_bnu, fac2, hNuOverkT
+    real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals
+
+    integer :: icritupper, icritlower
+    real(double) :: logt
+    real(double) :: logNu1, logNuN, dlogNu, scale
+    real(double) :: logNucritUpper, logNucritLower
+    real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
+
+    integer :: iseed(1)
+
+#ifdef USEMKL
+    integer :: oldmode
+    real(oct) :: hrecip_ktarray(nlambda)
+    real(double) :: OneArray(nlambda)
+#endif
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -401,10 +155,18 @@ contains
   ! ============================================================================
 #endif
 
+#ifdef USEMKL
+  call writeinfo('Using Intel MKL', TRIVIAL)
+  OneArray(1:nlambda) = 1.d0
+
+  oldmode = vmlgetmode()
+  oldmode = vmlsetmode(VML_LA)
+#endif
 
   oldTotalEmission = 1.d30
 
   call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+
   if (nLucy /= 0) then
      nMonte = nLucy
   else
@@ -416,15 +178,21 @@ contains
     enddo
 
 ! Set up factor which is used in bnu calculation
-    fac1(:) = (2.d0*dble(hCgs)*freq(:)**3)/dble(cSpeed)**2
+    fac1(:) = (2.d0*hCgs*freq(:)**3)/(cSpeed**2)
 
     do i = 2, nFreq-1
        dnu(i) = 0.5*((freq(i+1)+freq(i))-(freq(i)+freq(i-1)))
     enddo
+
     dnu(1) = freq(2)-freq(1)
     dnu(nFreq) = freq(nFreq)-freq(nFreq-1)
 
+    fac1dnu(:) = fac1(:) * dnu(:)
 
+    lognu1 = log(freq(1))
+    logNuN = log(freq(nFreq))
+    dlogNu = logNuN - lognu1
+    scale  = dble(nFreq) / dlogNu 
 
     if (grid%geometry.eq."wr104") then
        totalMass = 0.
@@ -478,6 +246,9 @@ contains
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
 
+    iseed = (/1/)! this will break. Take this out
+    Call random_seed(put=iseed)
+
     do while (.not.converged)
        ! ensure we do at least three iterations
        ! before removing the high temperature cells.
@@ -495,13 +266,9 @@ contains
 
     do iIter = 1, nIter
 
-
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
-
-
        call locate(lamArray, nLambda, 5500.,ilam)
-
 
        if (multiLucyFiles) then
           write(tfilename, '(a,i2.2,a)') "lucy",iIter_grand,".vtk"
@@ -699,9 +466,17 @@ contains
 
                 else
 
-                   call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
-                        actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
-                   t1 = dble(treal)
+                  nAbs_sub = nAbs_sub + 1
+                  thisPhotonAbs = thisPhotonAbs + 1
+                  if (thisPhotonAbs > 50000) then
+                     nKilled = nKilled + 1
+                     cycle photonLoop
+                  endif
+
+                  call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+                       actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
+
+                  t1 = dble(treal)
 
                    ! if the photon has come from the diffusion zone then it has to be
                    ! reprocessed using the appropriate temperature
@@ -709,54 +484,59 @@ contains
                   if (photonInDiffusionZone) then
                       t1 = dble(diffusionZoneTemp)
                   endif
-                  recip_kt = 1.0 / ( dble(kErg) * t1 )
 
-                   nAbs_sub = nAbs_sub + 1
-                   thisPhotonAbs = thisPhotonAbs + 1
-                   if (thisPhotonAbs > 50000) then
-                      nKilled = nKilled + 1
-                      cycle photonLoop
-                   endif
+                  hrecip_kt = hcgs / (kErg * t1 )
 
-                   probDistJnu(1) = 1.d-50
-                   do i = 2, nFreq
-                      ! Map from frequency index to wavelength index
-                      iLam = nFreq - i + 1
+                  logt = log(t1)
+                  logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
+                  logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
+                  icritupper = floor((logNucritUpper - logNu1) * scale)
+                  icritLower = floor((logNucritLower - logNu1) * scale)
+                  
+                  do i = 1, icritupper
+                     iLam = nfreq - i + 1
+                     kAbsArray2(i) = kabsArray(ilam)
+                  enddo
+                  
+!                  do i = 1, icritupper
+!                     iLam = nfreq - i + 1
+!                     write(*,*) kabsarray2(i), kabsarray(ilam)
+!                  enddo
+!stop
+                  probDistJnu(0) = 1.d-50
+#ifdef USEMKL
+                  hrecip_ktarray(1:icritupper) = hrecip_kt
+                  
+                  call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
+                  call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
+                  call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
+                  call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
 
-                         ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
-                         ! to allow implemntation of gas opacities...
+                  call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
+                  
+                  call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
+                  call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
+#else             
+                  hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
 
-!                         call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
-!                              actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+                  fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
+                  fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
+                   
+                  this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
+                  !this_bnu here is actually bnu * dnu * kabs
+#endif
 
-!                         if (.not.grid%oneKappa) then
-!                            kabs = thisOctal%kappaAbs(subcell,ilam)
-!                         else
-!                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
-!                         endif
-
-                      hNuOverkT =  (dble(hCgs)*freq(i)) * recip_kt
-                      if (hNuOverkT > 100.d0) then
-                         fac2 = 0.d0
-                      else
-                         fac2 = 1.d0/(exp(hNuOverkT) - 1.d0)
-                      endif
-                      this_bnu = fac1(i) * fac2
-
-                      probDistJnu(i) = probDistJnu(i-1) + &
-                           this_bnu * kabsArray(ilam) * dnu(i)
+                   do i = 1, icritupper
+                      probDistJnu(i) = probDistJnu(i-1) + this_bnu(i)
                    enddo
 
-                   if (probDistJnu(nFreq) /= 0.d0) then
-                      jnu_norm = 1.0 / probDistJnu(nFreq)
-                      do i = 1, nFreq
-                         probDistJnu(i) = probDistJnu(i) * jnu_norm
-                      enddo
+                   if (probDistJnu(icritupper) /= 0.d0) then
                       call random_number(r)
-                      call locate(probDistJnu, nFreq, r, j)
+                      r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
+                      call locate(probDistJnu(1:icritupper), icritupper, r, j)
                       if (j == nFreq) j = nFreq -1
                       thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-                           (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
+                           (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j)) ! note that probdistjnu(nfreq) cancels here so it's fine
 !                      write(*,*) cSpeed/thisFreq/angstromtocm
                    endif
 
@@ -1080,6 +860,267 @@ contains
 
   end subroutine lucyRadiativeEquilibriumAMR
 
+  subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
+
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: uHat, uNew
+    type(VECTOR) :: rVec
+    integer :: nlucy
+    integer :: nDustType
+    integer,intent(in) :: nLambda, nMuMie
+    type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
+    real :: lamArray(:)
+    real(oct), allocatable :: distanceGrid(:, :, :)
+    real(oct) :: r
+    integer, parameter :: nFreq = 100
+    integer :: i, j, k
+    real(oct) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
+    real(oct) :: temperature
+    integer :: nMonte, iMonte, nScat, nAbs
+    real(oct) :: thisFreq,  logFreqStart, logFreqEnd
+    real(oct) :: albedo
+    logical :: escaped
+    integer :: i1, i2, i3
+    real(oct) :: t1, t2, t3
+    real(oct) :: thisLam
+    integer :: iLam
+    integer :: nInf
+    real(oct) :: t
+    integer :: nt
+    real(oct) :: ang
+    integer :: iIter, nIter = 5
+    real(oct) :: kabs
+    real(oct) ::  kappaP, norm
+    real(oct) :: adot, V, epsOverDeltaT
+    real(oct) :: newT, deltaT
+    real(oct) :: meanDeltaT
+    real(double) :: dummy(1)
+    real(oct), allocatable :: tempImage(:,:)
+    integer :: nDT
+    real(oct) :: totalEmission
+    type(vector) :: vec_tmp
+
+    allocate(tempImage(1:grid%nx,1:grid%ny))
+
+
+    logFreqStart = log10((cSpeed / (lamArray(nLambda)*1.e-8)))
+    logFreqEnd =  log10((cSpeed / (lamArray(1)*1.e-8)))
+    write(*,*) logFreqStart, logFreqEnd
+    do i = 1, nFreq
+       freq(i) = logFreqStart + (dble(i-1)/dble(nFreq-1))*(logFreqEnd-logFreqStart)
+       freq(i) = 10.**freq(i)
+    enddo
+    write(*,*) "Lam",(cSpeed/freq(1))*1.e8,(cSpeed/freq(nFreq))*1.e8
+
+    do i = 2, nFreq-1
+       dnu(i) = 0.5*((freq(i+1)+freq(i))-(freq(i)+freq(i-1)))
+    enddo
+    dnu(1) = freq(2)-freq(1)
+    dnu(nFreq) = freq(nFreq)-freq(nFreq-1)
+
+
+
+    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
+
+
+    write(*,'(a)') "Computing lucy radiative equilibrium..."
+
+
+    allocate(distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz))
+
+
+    do iIter = 1, nIter
+       distanceGrid = 0.d0
+       write(*,*) "Iteration",iIter
+       nInf = 0
+       nScat = 0
+       nAbs = 0
+       nMonte = nLucy
+
+       do iMonte = 1, nMonte
+          escaped = .false.
+          call random_number(r)
+          call locate(probDistPlanck, nFreq, r, j)
+          thisFreq = freq(j) + (freq(j+1) - freq(j))* &
+               (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
+
+          rVec  = real(grid%rCore, kind=oct) * randomUnitVECTOR()
+!          uHat = fromPhotosphereVector(rVec)
+          ! -- using a new routine in source_mod.f90 (RK)
+          uHat = random_direction_from_sphere(rVec)
+
+          if ( (rVec .dot. uHat) < 0.) uHat = (-1.d0) * uHat
+
+          do while(.not.escaped)
+
+             call toNextEvent(grid, rVec, uHat, escaped, distanceGrid, thisFreq, nLambda, lamArray)
+             if (escaped) nInf = nInf + 1
+
+             if (.not. escaped) then
+
+                thisLam = (cSpeed / thisFreq) * 1.e8
+                call locate(lamArray, nLambda, real(thisLam), iLam)
+
+                call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+                if (.not.grid%oneKappa) then
+                   albedo = grid%kappaSca(i1,i2,i3,iLam)/(grid%kappaSca(i1,i2,i3,iLam)+grid%kappaAbs(i1,i2,i3,iLam))
+                else
+                   albedo = grid%oneKappaSca(1,iLam) / (grid%oneKappaSca(1,iLam)+grid%oneKappaAbs(1,iLam))
+                endif
+
+                call random_number(r)
+                if (r < albedo) then
+
+                   vec_tmp=uhat 
+                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, dummy)
+                   nScat = nScat + 1
+                   uHat = uNew
+                else
+
+                   nAbs = nAbs + 1
+                   probDistJnu(1) = 0.d0
+                   do i = 2, nFreq
+
+                      thisLam = (cSpeed / freq(i)) * 1.e8
+                      call hunt(lamArray, nLambda, real(thisLam), iLam)
+
+                      if ((ilam >=1).and.(ilam <= nlambda)) then
+                         if (.not.grid%oneKappa) then
+                            kabs = grid%kappaAbs(i1,i2,i3,iLam)
+                         else
+                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
+                         endif
+                         probDistJnu(i) = probDistJnu(i-1) + &
+                              (bnu(freq(i),dble(grid%temperature(i1,i2,i3)))) &
+                              * kabs * dnu(i)
+                      endif
+                   enddo
+
+                   probDistJnu(1:nFreq) = probDistJnu(1:nFreq) / probDistJnu(nFreq)
+                   call random_number(r)
+                   call locate(probDistJnu, nFreq, r, j)
+                   if (j == nFreq) j = nFreq -1
+                   thisFreq = freq(j) + (freq(j+1) - freq(j))* &
+                        (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
+                   uHat = randomUnitVector()
+                endif
+
+             endif
+          enddo
+       enddo
+
+       write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
+       write(*,'(a,f7.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
+       write(*,'(a,f7.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+
+       V = (dble(grid%xAxis(2)-grid%xAxis(1))*dble(grid%yAxis(2)-grid%yAxis(1))*dble(grid%zAxis(2)-grid%zAxis(1)))
+
+       epsOverDeltaT = (dble(grid%lCore)) / dble(nInf)
+
+       meanDeltaT = 0.
+       nDT = 0
+
+       totalEmission = 0.
+       do i1 = 1, grid%nx
+          do i2 = 1, grid%ny
+             do i3 = 1, grid%nz
+                if (grid%inUse(i1,i2,i3)) then
+                   adot = epsoverDeltaT * (1.d0 / v) * distancegrid(i1,i2,i3) / 1.d30
+                   kappaP = 0.d0
+                   norm = 0.d0
+                   do i = 1, nFreq
+                      thisLam = (cSpeed / freq(i)) * 1.e8
+                      call hunt(lamArray, nLambda, real(thisLam), iLam)
+                      if ((iLam >=1) .and. (iLam <= nLambda)) then
+                         if (.not.grid%oneKappa) then
+                            kabs = grid%kappaAbs(i1,i2,i3,iLam)
+                         else
+                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
+                         endif
+
+                         kappaP = kappaP + kabs * &
+                              bnu(freq(i),dble(grid%temperature(i1,i2,i3)))  * dnu(i)
+                         norm = norm + bnu(freq(i),dble(grid%temperature(i1,i2,i3)))  * dnu(i)
+                      endif
+                   enddo
+                   kappaP = kappaP / norm /1.d10
+
+
+                   newT = (pi / stefanBoltz) * aDot / (fourPi * kappaP)
+                   newT = newT**0.25
+
+                   deltaT = newT - grid%temperature(i1,i2,i3)
+                   grid%temperature(i1,i2,i3) = max(1.e-3,grid%temperature(i1,i2,i3) + 0.8 * real(deltaT))
+                   nDT = nDT  + 1
+                   meanDeltaT = meanDeltaT + deltaT
+                   kappaP = 0.d0
+                   norm = 0.d0
+                   do i = 1, nFreq
+                      thisLam = (cSpeed / freq(i)) * 1.e8
+                      call hunt(lamArray, nLambda, real(thisLam), iLam)
+                      if ((iLam >=1) .and. (iLam <= nLambda)) then
+                         if (.not.grid%oneKappa) then
+                            kabs = grid%kappaAbs(i1,i2,i3,iLam)
+                         else
+                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
+                         endif
+                         kappaP = kappaP + kabs * &
+                              bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
+                         norm = norm + bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
+                      endif
+                   enddo
+                   kappaP = kappaP / norm /1.e10
+                   grid%etaCont(i1,i2,i3) = fourPi * kappaP * (stefanBoltz/pi) * (grid%temperature(i1,i2,i3)**4)
+                   totalEmission = totalEmission + grid%etaCont(i1,i2,i3) * V
+
+                endif
+             enddo
+          enddo
+       enddo
+
+       write(*,*) meanDeltaT / real(nDT)
+
+       write(*,*) "Emissivity of dust / core", totalEmission /grid%lCore * 1.e30
+
+       do i = 1, grid%nx
+          do j = 1, grid%ny
+             tempImage(i,j) = grid%temperature(i,j,grid%nz/2)
+          enddo
+       enddo
+    enddo
+    open(21,file="r.dat",status="unknown",form="formatted")
+    do i = 1, 100
+       r = grid%xAxis(grid%nx) * real(i-1)/99.
+       t = 0
+       nT = 0
+       do j = 1, 100
+          ang = twoPi * real(j-1)/100.
+          rVec = VECTOR(r*cos(ang), r*sin(ang),0.)
+          call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+          if (grid%inUse(i1,i2,i3)) then
+             nT = nT + 1
+             t = t + grid%temperature(i1,i2,i3)
+          endif
+       enddo
+       if (nt > 0) then
+          t = t / real(nt)
+          write(21,*) r / grid%rCore, t
+       endif
+    enddo
+    close(21)
+
+    open(22,file="temps.dat",status="unknown",form="unformatted")
+    do i = 1, grid%nx
+       do j = 1, grid%ny
+          do k = 1, grid%nz
+             write(22) grid%temperature(i,j,k), grid%etaCont(i,j,k)
+          enddo
+       enddo
+    enddo
+    close(22)
+
+
+  end subroutine lucyRadiativeEquilibrium
 
   subroutine setupFreqProb(temperature, freq, dnu, nFreq, probDist)
 
@@ -1092,13 +1133,10 @@ contains
     real(oct) :: dnu(*)
 
     integer :: i
-
-
     
     probDist(1:nFreq) = 0.
     do i = 2, nFreq
        probDist(i) = probDist(i-1) + bnu(dble(freq(i)),dble(temperature)) * dnu(i)
-
     enddo
 
     probDist(1:nFreq) = probDist(1:nFreq) / probDist(nFreq)
