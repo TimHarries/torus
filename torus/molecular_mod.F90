@@ -750,8 +750,8 @@ module molecular_mod
                        endif
                     enddo
 
-                    thisOctal%oldmolecularlevel(1:maxlevel,subcell) = thisOctal%molecularlevel(1:maxlevel,subcell) ! Store previous iteration levels for convergence
-                    thisOctal%molecularlevel(1:maxlevel,subcell) = thisOctal%newmolecularlevel(1:maxlevel,subcell) ! Store new levels as good current ones. Should improve convergence?
+!                    thisOctal%oldmolecularlevel(1:maxlevel,subcell) = thisOctal%molecularlevel(1:maxlevel,subcell) ! Store previous iteration levels for convergence
+!                    thisOctal%molecularlevel(1:maxlevel,subcell) = thisOctal%newmolecularlevel(1:maxlevel,subcell) ! Store new levels as good current ones. Should improve convergence?
 
                  endif
               enddo
@@ -1418,7 +1418,7 @@ end subroutine molecularLoop
            end do
         else
            
-           thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
+!           thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
 
            printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel),mask = (.not. itransdone(1:mintrans)))
 
