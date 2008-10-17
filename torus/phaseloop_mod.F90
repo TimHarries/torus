@@ -2412,7 +2412,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                endif  ! (.not. absorbed)
 
-
+               
             enddo
             
             if ((nscat >= maxScat).and.(maxScat > 1)) then
@@ -2821,7 +2821,7 @@ endif ! (doPvimage)
 #ifdef MPI
  if (myRankGlobal /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
 #endif
-  call torus_mpi_barrier('waiting inside end of phase loop...')
+  call torus_mpi_barrier !('waiting inside end of phase loop...')
   enddo phaseLoop
 
   deallocate(statArray)
