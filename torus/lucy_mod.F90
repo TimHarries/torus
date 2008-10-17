@@ -503,7 +503,7 @@ contains
 !                     write(*,*) kabsarray2(i), kabsarray(ilam)
 !                  enddo
 !stop
-                  probDistJnu(0) = 1.d-50
+                  probDistJnu  = 1.d-50
 #ifdef USEMKL
                   hrecip_ktarray(1:icritupper) = hrecip_kt
                   
@@ -526,7 +526,7 @@ contains
                   !this_bnu here is actually bnu * dnu * kabs
 #endif
 
-                   do i = 1, icritupper
+                   do i = 2, icritupper
                       probDistJnu(i) = probDistJnu(i-1) + this_bnu(i)
                    enddo
 
