@@ -2167,7 +2167,7 @@ endif
         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
 
    rCore = rCore * rSol / 1.e10
-   rinner = (rinner / (rCore * 1e10)) / autocm
+   rinner = (rinner * (rCore * 1e10)) / autocm
 
    rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
 
