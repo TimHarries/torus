@@ -589,7 +589,7 @@ contains
                            dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))/deltaZ**2 )
                    endif
                 endif
-                overcorrect = min(8.d0,overcorrect + 0.1d0)
+                overcorrect = min(4.d0,overcorrect + 0.1d0)
 
                 if (enPlus1 < 0.d0) then
                    if (firstTime) write(*,*) "Warning: negative energy density."
