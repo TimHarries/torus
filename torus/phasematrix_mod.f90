@@ -373,7 +373,7 @@ contains
 
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
     newVec = arbitraryRotate(newVec, phi, oldDirection)
-!    call normalize(newvec) ! perpvec is normalized so rotation shouldn't change it
+    call normalize(newvec)
 
     newDirectionMie = newVec
 

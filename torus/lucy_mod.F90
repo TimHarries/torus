@@ -386,7 +386,7 @@ contains
           thisPhotonAbs = 0
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
-          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
+          call getPhotonPositionDirection(thisSource, rVec, uHat, rHat)
 
           directPhoton = .true.
           scatteredPhoton = .false.
@@ -429,6 +429,7 @@ contains
                 thisLam = (cSpeed / thisFreq) * 1.e8
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
+
                 call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
                      kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                 sOctal => thisOctal
@@ -1849,7 +1850,7 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec,thisOctVec
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, testVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
@@ -2157,6 +2158,7 @@ contains
 ! move the requisite distance within the cell and return. Reduce tval slightly to ensure
 ! event is within the grid if we are in the root octal.
        tVal = tVal - 2.0 * fudgeFac * grid%halfSmallestSubcell
+       testVec = rVec
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
 
@@ -2183,7 +2185,7 @@ contains
        foundOctal => tempOctal
 
     endif
-
+    
 666 continue
 
  end subroutine toNextEventAMR

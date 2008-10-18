@@ -9032,7 +9032,7 @@ end function readparameterfrom2dmap
     r = sqrt(rVec%x**2 + rVec%y**2)
     if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 75. ! tinkered from 10K - I figured the cooler bits will gently drop but a large no. of cells are close to this temp.
+       thisOctal%temperature(subcell) = 10. ! tinkered from 10K - I figured the cooler bits will gently drop but a large no. of cells are close to this temp.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 

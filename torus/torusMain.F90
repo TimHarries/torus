@@ -1039,7 +1039,7 @@ CONTAINS
            enddo
            
         else
-           write(*,*) "TORUSMAIN lamend", lamend
+
            logLamStart = log10(lamStart)
            logLamEnd   = log10(lamEnd)
            

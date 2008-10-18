@@ -641,7 +641,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
 
-      call torus_mpi_barrier
+      call torus_mpi_barrier("Waiting to do phase loop")
 
      weightLinePhoton = 0.
      weightContPhoton = 1.
