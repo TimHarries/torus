@@ -823,6 +823,9 @@ module molecular_mod
         if(writeoutput) then
            write(message,*) "Done ",nray," rays"
            call tune(6, message)  ! stop a stopwatch
+
+           write(*,*) gridConvergedTest, gridconverged, fixedrays
+
         endif
 
         if (.not.gridConvergedTest) then
@@ -830,7 +833,7 @@ module molecular_mod
               if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
               write(message,*) "Trying ",nRay," Rays"
               call writeInfo(message,FORINFO)
-              if (grid%geometry .eq. 'molebench' .and. nray .gt. 500000) then 
+              if (molebench .and. (nray .gt. 500000)) then 
                  if(writeoutput) write(*,*) "Molebench Test Ended, Exiting..."
                  gridconverged = .true.
               endif
@@ -3713,48 +3716,48 @@ end subroutine plotdiscValues
     if (writeoutput) then
        open(138,file="fracChanges.dat",position="append",status="unknown")
   
-       select case(minlevel)
-       case(6)
-          write(138,10006) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case(7)
-          write(138,10007) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case(8)
-          write(138,10008) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case(9)
-          write(138,10009) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case(10)
-          write(138,10010) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case(11)
-          write(138,10011) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case(12)
-          write(138,10012) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       case default
-          write(138,*) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-               maxFracChange, maxavgFracChange/real(nVoxels)
-       end select
+    select case(minlevel)
+    case(6)
+       write(138,10006) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),&
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case(7)
+       write(138,10007) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),&
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case(8)
+       write(138,10008) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),&
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case(9)
+       write(138,10009) nray, maxFracChangePerLevel(1:minlevel), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),&
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case(10)
+       write(138,10010) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case(11)
+       write(138,10011) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case(12)
+       write(138,10012) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    case default
+       write(138,*) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
+            maxFracChange, maxavgFracChange/real(nVoxels)
+    end select
        
-       close(138)
+    close(138)
   
-       open(139, file="avgChange.dat", position="append", status="unknown")
-20     format(i2,tr3,i6,tr3,12(f7.5,1x))
-       write(139,20) grand_iter, nray, avgFracChange(1:minlevel-1,1)/real(nvoxels)
+    open(139, file="avgChange.dat", position="append", status="unknown")
+20  format(i2,tr3,i6,tr3,12(f7.5,1x))
+    write(139,20) grand_iter, nray, avgFracChange(1:minlevel-1,1)/real(nvoxels)
     
-       close(139)
+    close(139)
     
-       open(140, file="avgRMSchange.dat", position="append", status="unknown")
-       write(140,20) grand_iter, nray, sqrt(avgFracChange(1:minlevel-1,2)/real(nvoxels))
+    open(140, file="avgRMSchange.dat", position="append", status="unknown")
+    write(140,20) grand_iter, nray, sqrt(avgFracChange(1:minlevel-1,2)/real(nvoxels))
        
-       close(140)
-    endif
+    close(140)
+ endif
 
-  end subroutine calculateConvergenceData
+end subroutine calculateConvergenceData
      
   real(double) function bNum(nu,T)
     
