@@ -2529,7 +2529,7 @@ CONTAINS
 
        ! unrotated poistion should be passed here!
 
-       IF (PRESENT(velocity))  velocity = amrGridVelocity(octalTree,point,foundOctal=resultOctal,&
+       IF (PRESENT(velocity))  velocity = amrGridVelocity(octalTree,point,startOctal=resultOctal,&
             actualSubcell=subcell) 
 
 
