@@ -555,8 +555,6 @@ contains
 
   subroutine torus_abort(message)
 
-    USE messages_mod
-
     implicit none
 
 #ifdef MPI
@@ -567,9 +565,9 @@ contains
     integer :: ierr
 
     if ( present(message) ) then
-       call writeInfo(message, IMPORTANT)
+       write(*,*) message
     else
-       call writeInfo("TORUS aborting", IMPORTANT)
+       write(*,*) "TORUS aborting"
     end if
 
 #ifdef MPI
