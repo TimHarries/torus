@@ -90,9 +90,12 @@ contains
   ! this subroutine performs a scattering
 
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
-        miePhase, nDustType, nLambda, lamArray, nMuMie, ttau_disc_on, alpha_disc_param)
+        miePhase, nDustType, nLambda, lamArray, nMuMie, ttau_disc_on, alpha_disc_param, &
+        currentOctal, currentSubcell)
 
     
+    type(OCTAL), pointer, optional :: currentOctal
+    integer, optional :: currentSubcell
     type(GRIDTYPE) :: grid                       ! the opacity grid
     type(PHOTON) :: thisPhoton, outPhoton        ! current/output photon
     type(VECTOR) :: incoming, outgoing           ! directions
@@ -173,7 +176,16 @@ contains
        mie_scattering = mie
     end if
        
-    call amrgridvalues(grid%octreeRoot, pointOctalVec, foundOctal=thisOctal, foundSubcell=subcell)
+    if (PRESENT(currentOctal)) then
+       thisOctal => currentOctal
+       subcell = currentSubcell
+!       if (.not.inOctal(thisOctal, pointOctalVec)) then
+!          write(*,*) "bug in scatter"
+!          stop
+!       endif
+    else
+       call amrgridvalues(grid%octreeRoot, pointOctalVec, foundOctal=thisOctal, foundSubcell=subcell)
+    endif
 
 
     ! if the outgoing vector is the zero vector then this flags that
@@ -384,7 +396,7 @@ contains
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
-       VoigtProf, dirObs,  photonFromEnvelope, dopShift)
+       VoigtProf, dirObs,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
     use input_variables, only : photoionization
 
     implicit none
@@ -409,7 +421,8 @@ contains
     real :: x,y,z
     real(oct) :: xOctal, yOctal, zOctal
     type(VECTOR) :: octalCentre, octVec
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal, sourceOctal
+    integer :: sourceSubcell, subcell
     type(filter_set) :: filterSet
     real :: directionalWeight
     real :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
@@ -443,9 +456,7 @@ contains
     type(VECTOR) :: ramanSourceVelocity        ! what it says
     type(VECTOR) :: rVel
     type(VECTOR) :: octalPoint            ! 
-    type(octal), pointer :: sourceOctal        ! randomly selected octal
 !    type(octal), pointer :: foundOctal       
-    integer :: subcell
     real :: probDust, weightDust, weightPhoto
 
 
@@ -607,9 +618,12 @@ contains
 
           thisPhoton%position = dble(grid%rCore) * randomUnitVector()
           
-          if (nSource > 0) then
-             call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar)
-             thisPhoton%stellar = .true.
+          if (.not.photonFromEnvelope) then
+             if (nSource > 0) then
+                call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar)
+                thisPhoton%stellar = .true.
+                call findSubcellTD(thisPhoton%position, grid%octreeRoot, sourceOctal, sourceSubcell)
+             endif
           endif
 
                   
@@ -625,14 +639,14 @@ contains
                   ! we search through the tree to find the subcell that contains the
                   !   probability value 'randomDouble'
                   sourceOctal => grid%octreeRoot
-                  call locateContProbAMR(randomDouble,sourceOctal,subcell)
-                  if (.not.sourceOctal%inFlow(subcell)) then
+                  call locateContProbAMR(randomDouble,sourceOctal,sourcesubcell)
+                  if (.not.sourceOctal%inFlow(sourcesubcell)) then
                     write(*,'(a)') "! Photon in cell that's not in flow. Screw-up in locatecontProbAmr"
                     stop
                   endif
 
 
-                  thisPhoton%position = randomPositionInCell(sourceOctal, subcell)
+                  thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
 
 !                  octalCentre = subcellCentre(sourceOctal,subcell)
 !
@@ -682,7 +696,7 @@ contains
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
                 if (useBias) then
-                   biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+                   biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(sourcesubcell)
                 else
                    biasWeight = 1.0_db
                 end if
@@ -805,7 +819,7 @@ contains
                   ! we search through the tree to find the subcell that contains the
                   !   probability value 'randomDouble'
                   sourceOctal => grid%octreeRoot
-                  call locateContProbAMR(randomDouble,sourceOctal,subcell)
+                  call locateContProbAMR(randomDouble,sourceOctal,sourcesubcell)
 
 
 !                  octalCentre = subcellCentre(sourceOctal,subcell)
@@ -861,7 +875,7 @@ contains
 !                endif
 
 
-                thisPhoton%position = randomPositionInCell(sourceOctal, subcell)
+                thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
 
 
 
@@ -880,7 +894,7 @@ contains
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
                 if (useBias) then
-                   biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+                   biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(sourcesubcell)
                 else
                    biasWeight = 1.0_db
                 end if
@@ -1397,19 +1411,19 @@ contains
              !   probability value 'randomDouble'
              call random_number(randomDouble)
              sourceOctal => grid%octreeRoot
-             call locateLineProbAMR(randomDouble,sourceOctal,subcell)
-             if (.not.sourceOctal%inFlow(subcell)) then
+             call locateLineProbAMR(randomDouble,sourceOctal,sourcesubcell)
+             if (.not.sourceOctal%inFlow(sourcesubcell)) then
                 write(*,'(a)') "Photon in cell that's not in flow. Screw-up in locateLineProbAmr!"
                 stop
              endif
 
 
-             octalCentre = subcellCentre(sourceOctal,subcell)
+             octalCentre = subcellCentre(sourceOctal,sourcesubcell)
 
             !!! need to call an interpolation routine, rather than
             !!!   use subcell central value
              if (useBias) then
-                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
+                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(sourcesubcell)
              else
                 biasWeight = 1.0_db
              end if

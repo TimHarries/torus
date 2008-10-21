@@ -218,6 +218,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   logical :: firstplot, ok
   real :: foreground = 0., background = 0.  ! plotting intensities
+  type(OCTAL), pointer :: sourceOctal, currentOctal
+  integer :: sourceSubcell, currentSubcell
 
   ! photons
 
@@ -1463,7 +1465,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
-                      outVec, photonfromEnvelope, dopShift=dopShift)
+                      outVec, photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
+!                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
+!                    write(*,*) "bug initializing photon"
+!                 endif
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = grid%lamArray(1) + r1*(grid%lamArray(nLambda)-grid%lamArray(1))
@@ -1552,7 +1557,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                          .false., nUpper, nLower, 0., 0., 0., junk,&
                          sampleFreq,intPathError, &
-                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)
+                         useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
+                         startOctal=sourceOctal, startSubcell=sourceSubcell)
 
 !              octVec = thisPhoton%position
 !              CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
@@ -1808,7 +1814,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
               .false., nUpper, nLower, 0., 0., 0., &
               junk,sampleFreq,intPathError, &
-              useInterp, grid%Rstar1, coolStarPosition, nSource, source)
+              useInterp, grid%Rstar1, coolStarPosition, nSource, source, startOctal=sourceOctal, startSubcell=sourceSubcell)
 
 
               if (intPathError == -10) then 
@@ -1977,7 +1983,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               if (grid%adaptive) then
                  positionOc = thisPhoton%position
                  call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
-                      kappaAbs = thisChi, kappaSca = thisSca)
+                      kappaAbs = thisChi, kappaSca = thisSca, foundOctal=currentOctal, foundSubcell=currentSubcell)
               else
                  call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
                  if (.not.grid%oneKappa) then
@@ -2055,7 +2061,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  tempPhoton = thisPhoton
                  
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
-                       miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc)
+                       miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc, &
+                       currentOctal, currentSubcell)
 
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
 
@@ -2113,7 +2120,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       nLambda, contTau, hitCore, &
                       thinLine, lineResAbs, redRegion, &
                       .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
-                      useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
+                      useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
+                      startOctal=currentOctal, startSubcell=currentSubcell)                 
 
                  if (intPathError == -10) then 
                     tooFewSamples = tooFewSamples + 1  
@@ -2343,7 +2351,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  endif
                  
                  call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
-                       miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc)
+                       miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc, &
+                       currentOctal, currentSubcell)
                  thisPhoton = outPhoton
 
                  call integratePath(gridUsesAMR, VoigtProf, &
@@ -2355,7 +2364,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                             nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&
                             0., 0., junk,sampleFreq,intPathError, &
-                            useInterp, grid%Rstar1, coolStarPosition, nSource, source)
+                            useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
+                            startOctal=currentOctal, startSubcell=currentSubcell)
 
 
                  if (intPathError == -10) then 

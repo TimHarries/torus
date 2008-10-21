@@ -38,9 +38,11 @@ module path_integral
          contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
          lineResAbs, redRegion, usePops, mLevel, nLevel, &
          fStrength, gM, gN, localTau,sampleFreq,error, interp, &
-         rStar, coolStarPosition, nSource, source)
+         rStar, coolStarPosition, nSource, source, startOctal, startSubcell)
       
       implicit none
+      type(OCTAL), pointer, optional :: startOctal
+      integer, optional :: startSubcell
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       logical, intent(in) :: gridUsesAMR                  ! T if AMR grid 
@@ -93,7 +95,7 @@ module path_integral
                  lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  lineResAbs, redRegion, usePops, mLevel, nLevel, &
-                 fStrength, gM, gN, localTau,sampleFreq,error, nSource, source)
+                 fStrength, gM, gN, localTau,sampleFreq,error, nSource, source, startOctal, startSubcell)
          end if
 
       else  ! grid uses a Cartisian grid
@@ -1130,7 +1132,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
      contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs,&
      redRegion, usePops, mLevel, nLevel, &
-     fStrength, gM, gN, localTau,sampleFreq,error, nSource, source)
+     fStrength, gM, gN, localTau,sampleFreq,error, nSource, source, startOctal, startSubcell)
 
   ! should we add the 'interp' argument and implement it?
 
@@ -1143,6 +1145,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
   implicit none
 
+  type(OCTAL), pointer, optional :: startOctal
+  integer, optional :: startSubcell
   integer :: nSource
   type(SOURCETYPE) :: source(:)
   real, intent(in)          :: wavelength             ! the wavelength 
@@ -1277,7 +1281,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                               lambda, nSource, source, kappaAbs=kAbs,kappaSca=kSca, velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
                               levelPop=levelPop,rho=rho, &
-                              temperature=temperature, Ne=dummy, inflow=inflow, etaCont=dummy, etaLine=dummy)
+                              temperature=temperature, Ne=dummy, inflow=inflow, etaCont=dummy, etaLine=dummy, &
+                              startOctal=startOctal, startSubcell=startSubcell)
 
      dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)        
 

@@ -14159,7 +14159,7 @@ end function readparameterfrom2dmap
   SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
              usePops,iLambda,error,lambda,nSource,source,kappaAbs,kappaSca,velocity,&
-             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow, etaCont, etaLine)
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow, etaCont, etaLine, startOctal, startSubcell)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
     !   returnSamples directly, because this checks the start and finish
@@ -14169,6 +14169,8 @@ end function readparameterfrom2dmap
  
     IMPLICIT NONE
 
+    type(octal), pointer, optional :: startOctal
+    integer, optional :: startSubcell
     TYPE(vector), INTENT(IN)      :: startPoint ! photon start point
     TYPE(vector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
@@ -14391,7 +14393,12 @@ end function readparameterfrom2dmap
     end IF
 
 
-    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    if (present(startOctal)) then
+       thisOctal => startOctal
+       subcell = startSubcell
+    else
+       CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    endif
 
     do while (inOctal(grid%octreeRoot, currentPosition).and.(length < endLength))
 
@@ -15783,7 +15790,7 @@ end function readparameterfrom2dmap
   end function dist_from_closestEdge
 
 
-  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross)
+  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
@@ -15791,6 +15798,8 @@ end function readparameterfrom2dmap
     real(double) :: tau, distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
+    type(OCTAL), pointer, optional :: startOctal
+    integer, optional :: startSubcell
     real(double) :: fudgeFac = 1.d-1
     real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
@@ -15803,7 +15812,16 @@ end function readparameterfrom2dmap
     planetGap  = .false.
     if (grid%geometry == "planetgap") planetgap = .true.
 
-    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    if (PRESENT(startOctal)) then
+       thisOctal => startOctal
+       subcell = startSubcell
+!       if (.not.inOctal(thisOctal, currentPosition)) then
+!          write(*,*) "bug in startreturnsamples2"
+!          stop
+!       endif
+    else
+       CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    endif
 
     do while (inOctal(grid%octreeRoot, currentPosition))
 

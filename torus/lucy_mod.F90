@@ -2858,7 +2858,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
                 do i = 1, ndir
                    direction = arrayVec(i)
-                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0 )
+                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0, startOctal=thisOctal, startSubcell=subcell)
                    tau = min(tau, thisTau)
                 enddo
                 thisOctal%biasCont3D(subcell) = exp(-tau)
