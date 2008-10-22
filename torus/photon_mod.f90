@@ -193,7 +193,7 @@ contains
 
     if (modulus(outgoing) == 0.) then
 
-!       if (.not.mie) then
+       if (.not.mie) then
           randomDirection = .true.
           call random_number(r1)
           
@@ -208,16 +208,15 @@ contains
           outgoing%x = u
           outgoing%y = v
           outgoing%z = w
-!       else
-!
-!          outgoing = newDirectionMie(incoming, thisPhoton%lambda, lamArray, nLambda, &
-!               miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
-!          outPhoton%stokes = outPhoton%stokes * (1./weight)
+       else
 
-!          outgoing = randomUnitVector()
-!       endif
+          outgoing = newDirectionMie(incoming, thisPhoton%lambda, lamArray, nLambda, &
+               miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
+          outPhoton%stokes = outPhoton%stokes * (1./weight)
+
+
        endif
-
+    endif
 
     ! set up the scattering normals (see Hillier 1991)
 
@@ -269,7 +268,6 @@ contains
 
           outPhoton%stokes = applyMean(miePhaseTemp(1:nDustType), &
                thisOctal%dustTypeFraction(subcell,1:nDustType), nDustType, outPhoton%stokes)
-
           
        endif
     else
@@ -1848,6 +1846,8 @@ contains
     type(VECTOR) :: givenVec
     integer :: nDustType
     integer :: nLambda
+    integer, parameter :: nTrials = 1000000
+    real :: wArray(nTrials), angArray(nTrials)
     real :: lamArray(:)
     type(ALPHA_DISC) :: disc
     integer :: nMuMie
@@ -1858,17 +1858,26 @@ contains
     do iLam = 1, nLambda
 
        thisPhoton%lambda = lamArray(iLam)
+       thisPhoton%resonanceLine = .false.
        thisPhoton%position = VECTOR(5.d5, 0.d0, 0.d0)
        thisPhoton%direction = VECTOR(1.d0, 0.d0, 0.d0)
+       thisPhoton%normal = zHAt
+       thisPhoton%oldnormal = zHAt
        thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
+       thisPhoton%weight = 1.
        givenVec = VECTOR(0.d0, 0.d0, 0.d0)
        call findSubcellTD(thisPhoton%position, grid%octreeRoot, currentOctal, currentSubcell)
 
-       do i = 1, 100000
+       do i = 1, nTrials
+!          givenVec = randomUnitVector()
           call scatterPhoton(grid, thisPhoton, givenVec, outPhoton, .true., &
                miePhase, nDustType, nLambda, lamArray, nMuMie, .false., disc, &
                currentOctal, currentSubcell)
+          wArray(i) = outPhoton%stokes%i
+          angArray(i) = acos(thisPhoton%direction.dot.outPhoton%direction)*radtodeg
        enddo
+       write(*,'(4f13.3)') lamArray(iLam),  SUM(wArray)/real(nTrials),  MINVAL(wArray), maxVal(wArray)
+ !      write(*,*) lamArray(iLam), "angle ", SUM(angArray)/real(nTrials),  MINVAL(angArray), maxVal(angArray)
     end do
     stop
 
