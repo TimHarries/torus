@@ -25,8 +25,8 @@ module molecular_mod
    implicit none
 
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels
-   integer :: grand_iter
-   logical :: molebench
+   integer :: grand_iter, nray
+   Logical :: molebench
 
 !   include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
 
@@ -433,7 +433,7 @@ module molecular_mod
      type(VECTOR) :: position, direction
      integer :: nOctal, iOctal, subcell
      real(double), allocatable :: ds(:), phi(:), i0(:,:)
-     integer :: nRay
+
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
      integer, parameter :: maxIter = 1000, maxRay = 1000000
@@ -467,7 +467,7 @@ module molecular_mod
 
       character(len=30) :: filename
 
-      real(double) :: convtestarray(200,200,12)
+!      real(double) :: convtestarray(200,200,16)
       real(double) :: r(100)
 
       logical :: restart = .false.
@@ -516,17 +516,19 @@ module molecular_mod
  ! Write Column headings for file containing level populations and convergence data
      grand_iter = 0
 
-18    format(a,tr3,8(a,tr6),a,6(tr1,a))
-      open(138,file="fracChanges.dat",status="unknown",form="formatted")
-      write(138,18) "nRays","J=0","J=1","J=2","J=3","J=4","J=5","J=6","J=7","Fixed","1% Conv","2.5% Conv","5% Conv","Max","Avg"
-      close(138)
+     if(writeoutput) then
+18      format(a,tr3,8(a,tr6),a,6(tr1,a))
+        open(138,file="fracChanges.dat",status="unknown",form="formatted")
+        write(138,18) "nRays","J=0","J=1","J=2","J=3","J=4","J=5","J=6","J=7","Fixed","1% Conv","2.5% Conv","5% Conv","Max","Avg"
+        close(138)
 
-      open(139,file="avgChange.dat",status="replace",form="formatted")
-      open(140,file="avgRMSChange.dat",status="replace",form="formatted")
-      open(141,file="tau.dat",status="replace",form="formatted")
-      close(139)
-      close(140)
-      close(141)
+        open(139,file="avgChange.dat",status="replace",form="formatted")
+        open(140,file="avgRMSChange.dat",status="replace",form="formatted")
+        open(141,file="tau.dat",status="replace",form="formatted")
+        close(139)
+        close(140)
+        close(141)
+     endif
 
       if(openlucy) then
 
@@ -562,7 +564,9 @@ module molecular_mod
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
       endif
 
-      if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule, 0, convtestarray) ! find radial pops on final grid     
+      nRay = 0 ! number of rays used to establish estimate of jnu and pops
+
+      if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
 
       if(usedust) then 
          call continuumIntensityAlongRay(vector(1d10,0.d0,0.d0),vector(-1.d0,1d-20,1d-20), grid, 1e4, 0.d0, dummy, &
@@ -604,7 +608,8 @@ module molecular_mod
 
             grand_iter = grand_iter + 1
 
-             call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
+             call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), &
+	     grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
 !            write(*,*) "tauarray", tauarray
 
@@ -716,7 +721,7 @@ module molecular_mod
 
                        do iTrans = 1, maxtrans
 
-                             call calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
+                             call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
                                   phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
                                   thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
 
@@ -788,8 +793,8 @@ module molecular_mod
       maxRMSFracChange = -1.d30
 
 !      call solveAllPops(grid, grid%octreeroot, thisMolecule)
-
-      call calculateConvergenceData(grid, nvoxels, nray, fixedrays, maxRMSFracChange)
+      call writeinfo("Calculating convergence data", FORINFO)
+      call calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
 
  ! If you think it's converged then test with the same number of rays to make sure
 
@@ -801,76 +806,90 @@ module molecular_mod
 
         if(maxRMSFracChange < (tol ** 2) * real(nvoxels)) then
            if (gridConvergedTest) gridConverged = .true.
+!           gridConverged = .true.
            gridConvergedTest = .true.
         else
            gridConvergedTest = .false.
            gridConverged = .false.
         endif
 
-       ! if (myRankIsZero) then
-        if (writeoutput) call writeAmrGrid("molecular_tmp.grid",.false.,grid)
-       ! endif
+!        if (writeoutput) then
+!           write(*,*) maxRMSFracChange, tol ** 2 * real(nvoxels)
+!           write(*,*) gridconvergedtest, gridconverged, "a"
+!        endif
+
+        if(myrankiszero) then
+           call writeAmrGrid("molecular_tmp.grid",.false.,grid)
+           call writeinfo("written grid", TRIVIAL)
+	endif
 
         call writeinfo("Dumping results", FORINFO)
-        if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule, nRay, convtestarray) ! find radial pops on final grid     
-
-
-#ifdef MPI
-        deallocate(octalsBelongRank)
-#endif
-        deallocate(ds, phi, i0)
+        if((amr1d .or. amr2d) .and. writeoutput .and. (.not. gridconvergedtest)) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
 
         if(writeoutput) then
            write(message,*) "Done ",nray," rays"
            call tune(6, message)  ! stop a stopwatch
 
-           write(*,*) gridConvergedTest, gridconverged, fixedrays
-
         endif
+        
+!        write(*,*) "fixedrays", fixedrays
+!        write(*,*) "gridconverged", gridconverged
+!        write(*,*) "gridconvergedtest", gridconvergedtest
+!        write(*,*) "molebench", molebench
+
+!	if(writeoutput) write(*,*) gridconvergedtest, gridconverged, fixedrays, molebench
 
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
               if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
               write(message,*) "Trying ",nRay," Rays"
               call writeInfo(message,FORINFO)
-              if (molebench .and. (nray .gt. 500000)) then 
+              if (molebench .and. (nray .gt. 400000)) then 
                  if(writeoutput) write(*,*) "Molebench Test Ended, Exiting..."
                  gridconverged = .true.
               endif
-              
+ 
            endif
         else
            if(.not. gridconverged) call writeinfo("Doing all rays again", FORINFO)
-           nRay = nRay
         endif
         
         if (nRay > maxRay) then
            nRay = maxRay  ! stop when it's not practical to do more rays
            call writeWarning("Maximum number of rays exceeded - capping")
         endif
-        
+
+!        if(gridconvergedtest) gridconverged = .true.
+!        write(*,*) "gridconverged", gridconverged
+
+#ifdef MPI
+        deallocate(octalsBelongRank)
+#endif
+        deallocate(ds, phi, i0)
      enddo
 
-     if(writeoutput) then
-        call writeinfo("Writing convergence profile", TRIVIAL)
-     endif
+!     if(writeoutput) then
+!        call writeinfo("Writing convergence profile", TRIVIAL)
+!     endif
 
-     if(writeoutput .and. (geometry .eq. 'molebench') .and. amr1d) then
-        open(141,file="convergenceprofile.dat",status="unknown",form="formatted")
+!     if(writeoutput .and. molebench .and. amr1d) then
+!        open(141,file="convergenceprofile.dat",status="unknown",form="formatted")
 
-        do i=1,100
-           r(i) = log10(rinner) + dble(i-1)/dble(100-1)*((log10(router) - log10(rinner))) ! log(radius) -> radius
-        enddo
+!        do i=1,100
+!           r(i) = log10(rinner) + dble(i-1)/dble(100-1)*((log10(router) - log10(rinner))) ! log(radius) -> radius
+!        enddo
         
-        write(141,'(tr3,100(es8.3e1,tr1))') 10.**r
+!        write(141,'(tr3,100(es8.3e1,tr1))') 10.**r
 
-        do i = 1,grand_iter
-           write(141,'(i2,tr1,100(f8.6,tr1))') i, convtestarray(i,:,1)
-        enddo
+!        do i = 1,grand_iter
+!           write(141,'(i2,tr1,100(f8.6,tr1))') i, convtestarray(i,:,1)
+!        enddo
 
-        close(141)
-     endif
+!        close(141)
+!     endif
   enddo
+  
+  close(33)
 
   call writeinfo("mole loop done.", FORINFO)
   stop
@@ -1146,14 +1165,14 @@ end subroutine molecularLoop
 
    end subroutine getRay
 
-   subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds, phi, i0, iTrans, jbar, nPops)
+   subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, ds, phi, i0, iTrans, jbar, nPops)
 
      use input_variables, only : useDust
      type(GRIDTYPE) :: grid
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      type(MOLECULETYPE) :: thisMolecule
-     integer :: nRay
+
      real(double) :: ds(:), phi(:), i0(:), nPops(:)
      real(double) :: phids(nray), tauArray(nray), opticaldepthArray(nray), jbarinternalArray(nray), jbarExternalArray(nray)
      integer :: iTrans
@@ -1393,8 +1412,8 @@ end subroutine molecularLoop
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
      integer :: subcell, i
-     real(double) :: maxFracChangePerLevel(:), printmaxFracChange, avgFracChange(:,:)
-     real(double) :: diff(minlevel), newFracChangePerLevel(minlevel), temp(minlevel)
+     real(double) :: maxFracChangePerLevel(:), maxFracChange, avgFracChange(:,:)
+     real(double) :: newFracChangePerLevel(minlevel), temp(minlevel)
      integer :: counter(:,:),j
 
      integer :: iter
@@ -1418,13 +1437,13 @@ end subroutine molecularLoop
            
 !           thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
 
-           printmaxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel))
+           maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel))
 
-           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:mintrans,subcell) - &
-                thisOctal%molecularLevel(1:mintrans,subcell)) / &
-                thisOctal%newmolecularLevel(1:mintrans,subcell)))
+           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel,subcell) - &
+                thisOctal%molecularLevel(1:minlevel,subcell)) / &
+                thisOctal%newmolecularLevel(1:minlevel,subcell)))
 
-           temp = newFracChangePerLevel(1:mintrans)
+           temp = newFracChangePerLevel(1:minlevel)
 
            do j=1, mintrans
                  if(newFracChangePerLevel(j) < 0.5 * tolerance) counter(4,j) = counter(4,j) + 1 ! used for itransdone
@@ -1433,64 +1452,62 @@ end subroutine molecularLoop
                  if(newFracChangePerLevel(j) < 5. * tolerance) counter(3,j) = counter(3,j) + 1
            enddo
 
-              if(maxval(temp) .lt. 5. * tolerance) then
-                 counter(3,mintrans + 1) = counter(3,mintrans + 1) + 1
-                 if(maxval(temp) .lt. 2. * tolerance) then
-                    counter(2,mintrans + 1) = counter(2,mintrans + 1) + 1
-                    if(maxval(temp) .lt. tolerance) then
-                       counter(1,mintrans + 1) = counter(1,mintrans + 1) + 1
-                    endif
+           if(maxval(temp) .lt. 5. * tolerance) then
+              counter(3,mintrans + 1) = counter(3,mintrans + 1) + 1
+              if(maxval(temp) .lt. 2. * tolerance) then
+                 counter(2,mintrans + 1) = counter(2,mintrans + 1) + 1
+                 if(maxval(temp) .lt. tolerance) then
+                    counter(1,mintrans + 1) = counter(1,mintrans + 1) + 1
                  endif
               endif
+           endif
 
               avgFracChange(:,1) = avgFracChange(:,1) + temp
               avgFracChange(:,2) = avgFracChange(:,2) + temp**2
 
-           If (maxval(temp) > printmaxFracChange) then
+           If (maxval(temp) > maxFracChange) then
               maxFracChangePerLevel = newFracChangePerLevel ! update maxFracChange if fractional change is great => not converged yet
            endif
 
-!           allocate(diff(size(thisOctal%molecularlevel(subcell,:))))
+          thisOctal%molecularLevel(:,subcell) = thisOctal%newmolecularLevel(:,subcell)
 
-           diff = thisOctal%molecularLevel(:,subcell) - &
-                  thisOctal%newmolecularLevel(:,subcell)
+!           diff = thisOctal%molecularLevel(:,subcell) - &
+!                  thisOctal%newmolecularLevel(:,subcell)
 
  !          if(fixedrays .and. modulus(SubcellCentre(thisOctal,subcell)) .lt. 1e7 .and. modulus(SubcellCentre(thisOctal,subcell)) .gt. 3e6) then
-           if(.not. fixedrays) then
-              if (maxval(temp) .gt. tolerance * 6.) then
-                 thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (enhanced) update molecular levels
-              else
-                 thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell) - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
+!           if(.not. fixedrays) then
+!              if (maxval(temp) .gt. tolerance * 6.) then
+!                 thisOctal%molecularLevel(:,subcell) = &
+!                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (enhanced) update molecular levels
+!              else
+!                 thisOctal%molecularLevel(:,subcell) = &
+!                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+!              endif
 
-              if(maxval(temp) .lt. tolerance * 2.)then
-                 thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell) - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
+!              if(maxval(temp) .lt. tolerance * 2.)then
+!                 thisOctal%molecularLevel(:,subcell) = &
+!                      thisOctal%newmolecularLevel(:,subcell)! - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+!              endif
 
-           else
+!           else
 
-              if (maxval(temp) .gt. tolerance * 10.) then
-                 thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (enhanced) update molecular levels
-              else
-                 thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
+!              if (maxval(temp) .gt. tolerance * 10.) then
+!                 thisOctal%molecularLevel(:,subcell) = &
+!                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (enhanced) update molecular levels
+!              else
+!                 thisOctal%molecularLevel(:,subcell) = &
+!                      thisOctal%newmolecularLevel(:,subcell)! - (0.0)*diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+!              endif
 
-              if(maxval(temp) .lt. tolerance * 2.)then
-                 thisOctal%molecularLevel(:,subcell) = &
-                      thisOctal%newmolecularLevel(:,subcell)! - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
-              endif
-           endif
-
-!           deallocate(diff)
+!              if(maxval(temp) .lt. tolerance * 2.)then
+!                 thisOctal%molecularLevel(:,subcell) = &
+!                      thisOctal%newmolecularLevel(:,subcell)! - 0.0 * diff! (damped) update molecular levels - reduced from 0.2 to quicken convrgnce
+!              endif
+!           endif
 
         endif
      enddo
- !    deallocate(newFracChangePerLevel,temp)
+
    end subroutine swapPops
 
 !!!!READ ROUTINES!!!!
@@ -3017,36 +3034,41 @@ endif
    end function phiProf
 
     ! sample level populations at logarithmically spaced annuli
-   subroutine dumpResults(grid, thisMolecule, nRay, convtestarray)
+   subroutine dumpResults(grid, thisMolecule)!, convtestarray)
      use input_variables, only : rinner, router,amr2d
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
      real(double), save :: logrinner, logrouter, OneOverNradiusMinusOne, OneOverNangle
      integer :: i
-     real(double) :: pops(minlevel), fracChange(minlevel), convtestarray(:,:,:), tauarray(40)
+     real(double) :: pops(minlevel), fracChange(minlevel), tauarray(40)!, convtestarray(:,:,:), tauarray(40)
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      integer :: j
      real(double) :: x, z
      type(VECTOR) :: posvec
-     integer :: nRay, iter
+     integer :: iter
      integer, save :: nradius, nangle
      character(len=30) :: resultfile, resultfile2
      logical, save :: firsttime = .true.
 
      iter = grand_iter
+     write(*,*) iter, grand_iter,nray
 
      write(resultfile,'(a,I7.7)') "results.", nRay
      write(resultfile2,'(a,I2)') "fracChangeGraph.", iter
      
      open(31,file=resultfile,status="unknown",form="formatted")
+
      open(32,file=resultfile2,status="unknown",form="formatted")
-     open(33,file="tau.dat",status="unknown",form="formatted")
-     if( .not. amr2d) &
-          call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), grid, thisMolecule, 0.d0, tauarray)
+
+!     if( .not. amr2d) &
+          call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20),&
+	  grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
      if(firsttime) then
+        open(33,file="tau.dat",status="unknown",form="formatted")	
+
         nradius = 100! number of radii used to sample distribution
         nangle = 360 ! number of rays used to sample distribution
         
@@ -3081,12 +3103,11 @@ endif
         pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
         fracChange = fracChange * OneOverNangle
 
-        if(iter .gt. 0) convtestarray(iter,i,1:minlevel-1) = fracChange(1:minlevel-1)
+!        if(iter .gt. 0) convtestarray(iter,i,1:minlevel-1) = fracChange(1:minlevel-1)
 
-        write(31,'(es11.5e2,4x,12(es14.6e2,tr2))') r*1.e10, pops(1:minlevel)
-        write(32,'(es11.5e2,4x,12(f7.5,tr2))') r*1.e10, fracChange(1:minlevel)
+        write(31,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:minlevel)
+        write(32,'(es11.5e2,4x,14(f7.5,tr2))') r*1.e10, fracChange(1:minlevel)
      enddo
-
      write(33,'(i2,tr3,12(f11.6,tr3))') grand_iter, tauarray(1:mintrans)
      
      close(31)
@@ -3644,11 +3665,11 @@ end subroutine plotdiscValues
     endif
   end subroutine DecideOctalOrder
   
-  subroutine calculateConvergenceData(grid, nvoxels, nray, fixedrays, maxRMSFracChange)
+  subroutine calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
     
     use input_variables, only : tolerance
 
-    integer :: nvoxels, nray
+    integer :: nvoxels
     logical :: fixedrays
 
     type(GRIDTYPE) :: grid
