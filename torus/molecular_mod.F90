@@ -327,9 +327,9 @@ module molecular_mod
 
            if(dorestart) then
 
-              allocate(thisOctal%newmolecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+              allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               thisOctal%newmolecularLevel = 1.d-20
-              allocate(thisOctal%oldmolecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+              allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               thisOctal%oldmolecularLevel = 1.d-20
 
               if (.not.associated(thisOctal%bnu)) then
@@ -340,34 +340,34 @@ module molecular_mod
            else
 
               if (.not. associated(thisOctal%newmolecularLevel)) then
-                 allocate(thisOctal%newmolecularLevel(1:maxlevel, 1:thisOctal%maxChildren))
+                 allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               endif
               thisOctal%newmolecularLevel = 1.d-20
 
               if (.not.associated(thisOctal%oldmolecularLevel)) then
-                 allocate(thisOctal%oldmolecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+                 allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               endif
               thisOctal%oldmolecularLevel = 1.d-20
 
               if (.not.associated(thisOctal%molecularLevel)) then
-                 allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+                 allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               endif
               thisOctal%molecularLevel = 1.d-20
 
               if(lte) then           
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
-                              thisOctal%molecularLevel(1:maxlevel,subcell))
+                              thisOctal%molecularLevel(subcell,1:maxlevel))
               else      
-                 call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(1:maxlevel,subcell))
+                 call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(subcell,1:maxlevel))
               endif
 
               if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
-                 thisOctal%molecularLevel(1,subcell) = 1.0
-                 thisOctal%molecularLevel(2,subcell) = 0.0000
+                 thisOctal%molecularLevel(subcell,1) = 1.0
+                 thisOctal%molecularLevel(subcell,2) = 0.0000
               endif
 
               if (.not.associated(thisOctal%bnu)) then
-                 allocate(thisOctal%bnu(1:thisOctal%maxChildren, 1:maxtrans))
+                 allocate(thisOctal%bnu(thisOctal%maxChildren, 1:maxtrans))
               endif
 
               do i = 1, maxtrans
@@ -390,7 +390,7 @@ module molecular_mod
                   enddo
               else
                  do i = 1, maxtrans
-                    thisOctal%jnu(subcell,:) = bnu(thisMolecule%transFreq(i), tcbr)
+                    thisOctal%jnu(subcell,i) = bnu(thisMolecule%transFreq(i), tcbr)
                  enddo
               endif
               thisOctal%oldmolecularLevel = 1.d-20
@@ -564,7 +564,7 @@ module molecular_mod
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
       endif
 
-      nRay = 0 ! number of rays used to establish estimate of jnu and pops
+      nRay = 1 ! number of rays used to establish estimate of jnu and pops
 
       if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
 
@@ -712,26 +712,26 @@ module molecular_mod
                     iter = 0
                     popsConverged = .false.
 
-                    thisOctal%oldMolecularLevel(:,subcell) = thisOctal%molecularLevel(:,subcell) ! Store previous level so can use updated one in future
-                    thisOctal%newMolecularLevel(:,subcell) = thisOctal%molecularLevel(:,subcell) ! Store previous level so can use it for testing convergence at end
+                    thisOctal%oldMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:) ! Store previous level so can use updated one in future
+                    thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:) ! Store previous level so can use it for testing convergence at end
 
                     do while (.not. popsConverged)
                        iter = iter + 1
-                       oldpops = thisOctal%newmolecularLevel(1:maxlevel,subcell) ! retain old pops before calculating new one
+                       oldpops = thisOctal%newmolecularLevel(subcell,1:maxlevel) ! retain old pops before calculating new one
 
                        do iTrans = 1, maxtrans
 
                              call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
                                   phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
-                                  thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
+                                  thisOctal%newMolecularLevel(subcell,1:maxlevel)) ! calculate updated Jbar
 
                        enddo
 
-                       call solveLevels(thisOctal%newMolecularLevel(1:maxLevel,subcell), &
+                       call solveLevels(thisOctal%newMolecularLevel(subcell,1:maxlevel), &
                             thisOctal%jnu(subcell,1:maxtrans), dble(thisOctal%temperature(subcell)), &
                             thisMolecule, thisOctal%nh2(subcell))
 
-                       fac = abs(maxval((thisOctal%newMolecularLevel(1:minlevel,subcell) - oldpops(1:minlevel)) &
+                       fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:maxlevel) - oldpops(1:minlevel)) &
                             / oldpops(1:minlevel))) ! convergence criterion ! 6 or 8?
                          
                        if (fac < 1.d-6) then
@@ -1075,10 +1075,10 @@ end subroutine molecularLoop
 
 !        nlower(:) = 
 !        nUpper(:) = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
-        balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(:) - &
-                     thisOctal%molecularLevel(iUpper(:),subcell) * thisMolecule%einsteinBul(:))
+        balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(subcell,ilower(:)) * thisMolecule%einsteinBlu(:) - &
+                     thisOctal%molecularLevel(subcell,iupper(:)) * thisMolecule%einsteinBul(:))
 
-        spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(:) * thisOctal%molecularLevel(iUpper(:),subcell)
+        spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(:) * thisOctal%molecularLevel(subcell,iupper(:))
 
         snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
 
@@ -1439,9 +1439,9 @@ end subroutine molecularLoop
 
            maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel))
 
-           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel,subcell) - &
-                thisOctal%molecularLevel(1:minlevel,subcell)) / &
-                thisOctal%newmolecularLevel(1:minlevel,subcell)))
+           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(subcell,1:minlevel) - &
+                thisOctal%molecularLevel(subcell,1:minlevel)) / &
+                thisOctal%newmolecularLevel(subcell,1:minlevel)))
 
            temp = newFracChangePerLevel(1:minlevel)
 
@@ -1469,7 +1469,7 @@ end subroutine molecularLoop
               maxFracChangePerLevel = newFracChangePerLevel ! update maxFracChange if fractional change is great => not converged yet
            endif
 
-          thisOctal%molecularLevel(:,subcell) = thisOctal%newmolecularLevel(:,subcell)
+          thisOctal%molecularLevel(subcell,:) = thisOctal%newmolecularLevel(subcell,:)
 
 !           diff = thisOctal%molecularLevel(:,subcell) - &
 !                  thisOctal%newmolecularLevel(:,subcell)
@@ -2509,8 +2509,8 @@ endif
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-        nLower(:)  = thisOctal%molecularLevel(iLower(:),subcell) * nMol
-        nUpper(:)  = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
+        nLower(:)  = thisOctal%molecularLevel(subcell,iLower(:)) * nMol
+        nUpper(:)  = thisOctal%molecularLevel(subcell,iUpper(:)) * nMol
         balance(:) = (nLower(:) * thisMolecule%einsteinBlu(:) - &
                      nUpper(:) * thisMolecule%einsteinBul(:))
         alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
@@ -2989,8 +2989,8 @@ endif
               iUpper = thisMolecule%iTransUpper(iTrans)
               iLower = thisMolecule%iTransLower(iTrans)
 
-              thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(iLower,subcell) * nMol
-              thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(iUpper,subcell) * nMol
+              thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(subcell,iLower) * nMol
+              thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(subcell,iUpper) * nMol
               
               nLower = thisOctal%molcellparam(subcell,2)
               nUpper = thisOctal%molcellparam(subcell,3)
@@ -3053,7 +3053,7 @@ endif
      logical, save :: firsttime = .true.
 
      iter = grand_iter
-     write(*,*) iter, grand_iter,nray
+!     write(*,*) iter, grand_iter,nray
 
      write(resultfile,'(a,I7.7)') "results.", nRay
      write(resultfile2,'(a,I2)') "fracChangeGraph.", iter
@@ -3095,9 +3095,9 @@ endif
            x = r * sin(ang)
            posVec = VECTOR(x, 0.d0, z) ! get put in octal on grid
            call findSubcellLocal(posVec, thisOctal,subcell) 
-           pops = pops + thisOctal%molecularLevel(1:minlevel,subcell) ! interested in first 8 levels
-           fracChange = fracChange + abs((thisOctal%molecularLevel(1:minlevel,subcell) - &
-                        thisOctal%oldmolecularLevel(1:minlevel,subcell)) / thisOctal%molecularlevel(1:minlevel,subcell))           
+           pops = pops + thisOctal%molecularLevel(subcell,1:minlevel) ! interested in first 8 levels
+           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:minlevel) - &
+                        thisOctal%oldmolecularLevel(subcell,1:minlevel)) / thisOctal%molecularlevel(subcell,1:minlevel))           
         enddo
 
         pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
@@ -3274,7 +3274,7 @@ endif
                if (.not.thisOctal%hasChild(iSubcell)) then
                   nTemps = nTemps + 1
                   if (octalsBelongRank(iOctal) == my_rank) then
-                    tArray(nTemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
+                    tArray(nTemps) = thisOctal%newMolecularLevel(isubcell,iLevel)
                   else 
                     tArray(nTemps) = 0.d0
                   endif
@@ -3305,7 +3305,7 @@ endif
            do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 thisOctal%newMolecularLevel(iLevel,isubcell) = tArray(nTemps) 
+                 thisOctal%newMolecularLevel(isubcell,iLevel) = tArray(nTemps) 
               endif
            end do
         end do
@@ -3815,7 +3815,7 @@ end subroutine calculateConvergenceData
               end if
            end do
         else ! once octal has no more children, solve for current parameter set
-           call solveLevels(thisOctal%molecularLevel(1:maxlevel,subcell), &
+           call solveLevels(thisOctal%molecularLevel(subcell,1:maxlevel), &
                 thisOctal%jnu(subcell,1:maxtrans),  &
                 dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
         endif
