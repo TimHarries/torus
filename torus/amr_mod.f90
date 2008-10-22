@@ -13210,7 +13210,7 @@ end function readparameterfrom2dmap
              write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
              write(*,*) direction%x,direction%y,direction%z
              write(*,*) t(1:6)
-             stop
+             call torus_abort
           endif
 
           tval = minval(t, mask=thisOk)
@@ -13220,7 +13220,7 @@ end function readparameterfrom2dmap
              write(*,*) posVec
              write(*,*) direction%x,direction%y,direction%z
              write(*,*) t(1:6)
-             stop
+             call torus_abort("tval==0 in distanceToCellBoundary")
           endif
 
           if (tval > sqrt(3.)*thisOctal%subcellsize) then
