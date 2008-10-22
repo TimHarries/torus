@@ -1840,6 +1840,45 @@ contains
 
   end subroutine initPlanetPhoton
 
+
+
+  subroutine testscatterPhoton(grid, miePhase, nDustType, nLambda, lamArray, nMuMie)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisPhoton, outPhoton
+    type(VECTOR) :: givenVec
+    integer :: nDustType
+    integer :: nLambda
+    real :: lamArray(:)
+    type(ALPHA_DISC) :: disc
+    integer :: nMuMie
+    type(OCTAL), pointer :: currentOctal
+    integer :: currentSubcell
+    integer :: i, iLam
+    type(PHASEMATRIX), intent(in) :: miePhase(nDustType, nLambda, nMumie) ! mie phase matrices   
+    do iLam = 1, nLambda
+
+       thisPhoton%lambda = lamArray(iLam)
+       thisPhoton%position = VECTOR(5.d5, 0.d0, 0.d0)
+       thisPhoton%direction = VECTOR(1.d0, 0.d0, 0.d0)
+       thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
+       givenVec = VECTOR(0.d0, 0.d0, 0.d0)
+       call findSubcellTD(thisPhoton%position, grid%octreeRoot, currentOctal, currentSubcell)
+
+       do i = 1, 100000
+          call scatterPhoton(grid, thisPhoton, givenVec, outPhoton, .true., &
+               miePhase, nDustType, nLambda, lamArray, nMuMie, .false., disc, &
+               currentOctal, currentSubcell)
+       enddo
+    end do
+    stop
+
+  end subroutine testscatterPhoton
+    
+
+
+
+
+
 end module photon_mod
 
    

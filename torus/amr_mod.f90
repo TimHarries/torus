@@ -13096,93 +13096,216 @@ end function readparameterfrom2dmap
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal)
 
 
-   implicit none
-   type(GRIDTYPE), intent(in)    :: grid
-   type(VECTOR), intent(in) :: posVec
-   type(VECTOR), intent(in) :: direction
-   type(OCTAL), pointer, optional :: sOctal
-   real(oct), intent(out) :: tval
-   !
-   type(VECTOR) :: norm(6), p3(6), rDirection
-   type(OCTAL),pointer :: thisOctal
-   real(double) :: distTor1, distTor2, theta, mu
-   real(double) :: distToRboundary, compz,currentZ
-   real(double) :: phi, distToZboundary, ang1, ang2
-   type(VECTOR) :: subcen, point, xHat, zHat, rVec, rplane, rnorm
-   integer :: subcell
-   real(double) :: distToSide1, distToSide2, distToSide
-   real(double) ::  compx,disttoxBoundary
-   real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
-   integer :: i,j
-   logical :: ok, thisOk(6)
+    implicit none
+    type(GRIDTYPE), intent(in)    :: grid
+    type(VECTOR), intent(in) :: posVec
+    type(VECTOR), intent(in) :: direction
+    type(OCTAL), pointer, optional :: sOctal
+    real(oct), intent(out) :: tval
+    !
+    type(VECTOR) :: norm(6), p3(6), rDirection
+    type(OCTAL),pointer :: thisOctal
+    real(double) :: distTor1, distTor2, theta, mu
+    real(double) :: distToRboundary, compz,currentZ
+    real(double) :: phi, distToZboundary, ang1, ang2
+    type(VECTOR) :: subcen, point, xHat, rVec, rplane, rnorm
+    integer :: subcell
+    real(double) :: distToSide1, distToSide2, distToSide
+    real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
+    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
+    integer :: i,j
+    logical :: ok, thisOk(6)
 
 
-   point = posVec
+    point = posVec
 
-   if (PRESENT(sOctal)) then
-      call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid, startOctal=sOctal)
-   else
-      call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
-   endif
-   subcen =  subcellCentre(thisOctal,subcell)
+    if (PRESENT(sOctal)) then
+       call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid, startOctal=sOctal)
+    else
+       call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+    endif
+    subcen =  subcellCentre(thisOctal,subcell)
 
 
 
-   if (thisOctal%oneD) then
+    if (thisOctal%oneD) then
 
-      distToR1 = 1.d30
-      distToR2 = 1.d30
+       distToR1 = 1.d30
+       distToR2 = 1.d30
 
-      rVec = posVec
-      call normalize(rVec)
-      cosmu = ((-1.d0)*direction).dot.rVec
-      d = modulus(posVec)
+       rVec = posVec
+       call normalize(rVec)
+       cosmu = ((-1.d0)*direction).dot.rVec
+       d = modulus(posVec)
 
-      ! distance to outer radius
+       ! distance to outer radius
 
-      r2 = subcen%x + thisOctal%subcellSize/2.d0
-      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-      distToR2 = max(x1,x2)
-!      write(*,*) "r2",x1,x2,disttor2
+       r2 = subcen%x + thisOctal%subcellSize/2.d0
+       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+       distToR2 = max(x1,x2)
+       !      write(*,*) "r2",x1,x2,disttor2
 
-      !   inner radius
+       !   inner radius
 
-      r1 = subcen%x - thisOctal%subcellSize/2.d0
-      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-      cosmu =((-1.d0)*rVec).dot.direction
-      mu = acos(max(-1.d0,min(1.d0,cosmu)))
-      distTor1 = 1.e30
-      if (mu  < theta ) then
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-         distTor1 = min(x1,x2)
-      endif
-!      write(*,*) "r1",x1,x2,disttor1
+       r1 = subcen%x - thisOctal%subcellSize/2.d0
+       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+       cosmu =((-1.d0)*rVec).dot.direction
+       mu = acos(max(-1.d0,min(1.d0,cosmu)))
+       distTor1 = 1.e30
+       if (mu  < theta ) then
+          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+          distTor1 = min(x1,x2)
+       endif
+       !      write(*,*) "r1",x1,x2,disttor1
 
-      tval = min(distTor1, distTor2)
-      goto 666
-   endif
+       tval = min(distTor1, distTor2)
+       goto 666
+    endif
 
-         
 
-   if (thisOctal%threed) then
 
-      if (.not.thisOctal%cylindrical) then
-         ok = .true.
-         
-         norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
-         
-         p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-         p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-         p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-         p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-         p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-         p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+    if (thisOctal%threed) then
 
+       if (.not.thisOctal%cylindrical) then
+          ok = .true.
+
+          norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+          norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+          norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+          norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+          norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+          norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
+
+          p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+          p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+          p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+          p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+          p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+          p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+
+          thisOk = .true.
+
+          do i = 1, 6
+
+             denom(i) = norm(i) .dot. direction
+             if (denom(i) /= 0.0d0) then
+                t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
+             else
+                thisOk(i) = .false.
+                t(i) = 0.0d0
+             endif
+             if (t(i) < 0.) thisOk(i) = .false.
+             !      if (denom > 0.) thisOK(i) = .false.
+          enddo
+
+
+          j = 0
+          do i = 1, 6
+             if (thisOk(i)) j=j+1
+          enddo
+
+          if (j == 0) ok = .false.
+
+          if (.not.ok) then
+             write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+             write(*,*) direction%x,direction%y,direction%z
+             write(*,*) t(1:6)
+             stop
+          endif
+
+          tval = minval(t, mask=thisOk)
+
+
+          if (tval == 0.) then
+             write(*,*) posVec
+             write(*,*) direction%x,direction%y,direction%z
+             write(*,*) t(1:6)
+             stop
+          endif
+
+          if (tval > sqrt(3.)*thisOctal%subcellsize) then
+             !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
+             !     write(*,*) "direction",direction
+             !     write(*,*) t(1:6)
+             !     write(*,*) denom(1:6)
+          endif
+
+       else
+
+          ! now look at the cylindrical case
+
+
+          rVec = subcellCentre(thisOctal,subcell)
+          r = sqrt(rVec%x**2 + rVec%y**2)
+          r1 = r - thisOctal%subcellSize/2.d0
+          r2 = r + thisOctal%subcellSize/2.d0
+
+          distToR1 = 1.d30
+          distToR2 = 1.d30
+          d = sqrt(point%x**2+point%y**2)
+          xHat = VECTOR(point%x, point%y,0.d0)
+          if (modulus(xhat)/=0.d0)    call normalize(xHat)
+          rDirection = VECTOR(direction%x, direction%y,0.d0)
+          compX = modulus(rDirection)
+          if (modulus(rDirection) /= 0.d0) call normalize(rDirection)
+          if (compX /= 0.d0) then
+             cosmu =((-1.d0)*xHat).dot.rdirection
+             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+             if (.not.ok) then
+                write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+                write(*,*) "xhat",xhat
+                write(*,*) "dir",direction
+                write(*,*) "point",point
+                do;enddo
+                endif
+                if ((x1.lt.0.d0).and.(x2.lt.0.d0)) then
+                   write(*,*) "x1, x2 ",x1,x2
+                   write(*,*) "rdirection ",rdirection
+                   write(*,*) "xhat ",xhat
+                   write(*,*) "compx ",compx
+                   write(*,*) "cosmu ",cosmu
+                endif
+                distTor2 = max(x1,x2)/compX
+
+                if ((d .ne. 0.).and.(r1 > 0.1d0*grid%halfSmallestSubcell)) then
+                   theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+                   cosmu = ((-1.d0)*xHat).dot.rdirection
+                   mu = acos(max(-1.d0,min(1.d0,cosmu)))
+                   distTor1 = 1.e30
+                   if (mu  < theta ) then
+                      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+                      if (.not.ok) then
+                         write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
+                         write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
+                         write(*,*) "direction ",direction
+                         write(*,*) "mu ",mu*radtodeg, "theta ",theta*radtodeg
+                         x1 = thisoctal%subcellSize/2.d0
+                         x2 = 0.d0
+                      endif
+                      distTor1 = min(x1,x2)/compX
+                   endif
+                else
+                   distTor1 = 1.d30
+                end if
+             endif
+             distToRboundary = min(distTor1, distTor2)
+
+             ! now do the upper and lower (z axis) surfaces
+
+             compZ = zHat.dot.direction
+             currentZ = point%z
+
+             if (compZ /= 0.d0 ) then
+                if (compZ > 0.d0) then
+                   distToZboundary = (subcen%z + halfCellSize - currentZ ) / compZ
+                else
+                   distToZboundary = abs((subcen%z - halfCellSize - currentZ ) / compZ)
+                endif
+             else
+                disttoZboundary = 1.e30
+             endif
+
+             ! ok now we have to tackle the two angled sides...
          thisOk = .true.
          
          do i = 1, 6
@@ -13215,7 +13338,6 @@ end function readparameterfrom2dmap
          
          tval = minval(t, mask=thisOk)
          
-
          if (tval == 0.) then
             write(*,*) posVec
             write(*,*) direction%x,direction%y,direction%z
@@ -13230,205 +13352,130 @@ end function readparameterfrom2dmap
             !     write(*,*) denom(1:6)
          endif
 
-      else
+             rVec = subcellCentre(thisOctal, subcell)
+             phi = atan2(rVec%y, rVec%x)
+             if (phi < 0.d0) phi = phi + twoPi
 
-! now look at the cylindrical case
+             ang1 = phi - returndPhi(thisOctal)
+             rPlane = VECTOR(cos(ang1),sin(ang1),0.d0)
+             rnorm = rplane .cross. VECTOR(0.d0, 0.d0, 1.d0)
+             call normalize(rnorm)
+             distToSide1 = 1.d30
+             if ((rnorm .dot. direction) /= 0.d0) then
+                distToSide1 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
+                if (distToSide1 < 0.d0) distToSide1 = 1.d30
+             endif
+
+             ang2 = phi + returndPhi(thisOctal)
+             rPlane = VECTOR(cos(ang2),sin(ang2),0.d0)
+             rnorm = rplane .cross.  VECTOR(0.d0, 0.d0, 1.d0)
+             call normalize(rnorm)
+             distToSide2 = 1.d30
+             if ((rnorm .dot. direction) /= 0.d0) then
+                distToSide2 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
+                if (distToSide2 < 0.d0) distToSide2 = 1.d30
+             endif
+
+             distToSide = min(distToSide1, distToSide2)
 
 
-         rVec = subcellCentre(thisOctal,subcell)
-         r = sqrt(rVec%x**2 + rVec%y**2)
-         r1 = r - thisOctal%subcellSize/2.d0
-         r2 = r + thisOctal%subcellSize/2.d0
-         
-         distToR1 = 1.d30
-         distToR2 = 1.d30
-         d = sqrt(point%x**2+point%y**2)
-         xHat = VECTOR(point%x, point%y,0.d0)
-         if (modulus(xhat)/=0.d0)    call normalize(xHat)
-         rDirection = VECTOR(direction%x, direction%y,0.d0)
-         compX = modulus(rDirection)
-         if (modulus(rDirection) /= 0.d0) call normalize(rDirection)
-         if (compX /= 0.d0) then
-            cosmu =((-1.d0)*xHat).dot.rdirection
-            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-            if (.not.ok) then
-               write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
-               write(*,*) "xhat",xhat
-               write(*,*) "dir",direction
-               write(*,*) "point",point
-               do;enddo
-            endif
-            if ((x1.lt.0.d0).and.(x2.lt.0.d0)) then
-               write(*,*) "x1, x2 ",x1,x2
-               write(*,*) "rdirection ",rdirection
-               write(*,*) "xhat ",xhat
-               write(*,*) "compx ",compx
-               write(*,*) "cosmu ",cosmu
-            endif
-            distTor2 = max(x1,x2)/compX
-               
-            if ((d .ne. 0.).and.(r1 > 0.1d0*grid%halfSmallestSubcell)) then
-               theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-               cosmu = ((-1.d0)*xHat).dot.rdirection
-               mu = acos(max(-1.d0,min(1.d0,cosmu)))
-               distTor1 = 1.e30
-               if (mu  < theta ) then
-                  call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-                  if (.not.ok) then
-                     write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
-                     write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
-                     write(*,*) "direction ",direction
-                     write(*,*) "mu ",mu*radtodeg, "theta ",theta*radtodeg
-                     x1 = thisoctal%subcellSize/2.d0
-                     x2 = 0.d0
-                  endif
-                  distTor1 = min(x1,x2)/compX
-               endif
-            else
-               distTor1 = 1.d30
-            end if
-         endif
-         distToRboundary = min(distTor1, distTor2)
-         
-         ! now do the upper and lower (z axis) surfaces
-         
-         zHat = VECTOR(0.d0, 0.d0, 1.d0)
-         compZ = zHat.dot.direction
-         currentZ = point%z
-         
-         if (compZ /= 0.d0 ) then
-            if (compZ > 0.d0) then
-               distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
-            else
-               distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
-            endif
-         else
-            disttoZboundary = 1.e30
-         endif
-         
-         ! ok now we have to tackle the two angled sides...
-                     
+             tVal = min(distToZboundary, distToRboundary, distToSide)
+             if (tVal > 1.e29) then
+                write(*,*) "Cylindrical ",tval
+                write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+                write(*,*) "subcen",subcen
+                write(*,*) "z", currentZ
+             endif
+             if (tval < 0.) then
+                write(*,*) "Cylindrical ",tval
+                write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+                write(*,*) "subcen",subcen
+                write(*,*) "z", currentZ
+                write(*,*) "disttor1, disttor2 ",disttor1,disttor2
+             endif
 
-         rVec = subcellCentre(thisOctal, subcell)
-         phi = atan2(rVec%y, rVec%x)
-         if (phi < 0.d0) phi = phi + twoPi
+          endif
 
-         ang1 = phi - returndPhi(thisOctal)
-         rPlane = VECTOR(cos(ang1),sin(ang1),0.d0)
-         rnorm = rplane .cross. VECTOR(0.d0, 0.d0, 1.d0)
-         call normalize(rnorm)
-         distToSide1 = 1.d30
-         if ((rnorm .dot. direction) /= 0.d0) then
-            distToSide1 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
-            if (distToSide1 < 0.d0) distToSide1 = 1.d30
-         endif
+       else ! two-d grid case below
 
-         ang2 = phi + returndPhi(thisOctal)
-         rPlane = VECTOR(cos(ang2),sin(ang2),0.d0)
-         rnorm = rplane .cross.  VECTOR(0.d0, 0.d0, 1.d0)
-         call normalize(rnorm)
-         distToSide2 = 1.d30
-         if ((rnorm .dot. direction) /= 0.d0) then
-            distToSide2 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
-            if (distToSide2 < 0.d0) distToSide2 = 1.d30
-         endif
+          halfCellSize = thisOctal%subcellSize/2.d0
+          r1 = subcen%x - halfCellSize
+          r2 = subcen%x + halfCellSize
 
-         distToSide = min(distToSide1, distToSide2)
+          distToR1 = 1.d30
+          distToR2 = 1.d30
+          d2 = point%x**2+point%y**2
+          d = sqrt(d2)
+          xHat = VECTOR(point%x, point%y,0.d0)
+          call normalize(xHat)
+          rDirection = VECTOR(direction%x, direction%y,0.d0)
+          compX = modulus(rDirection)
+          call normalize(rDirection)
 
-         
-         tVal = min(distToZboundary, distToRboundary, distToSide)
-         if (tVal > 1.e29) then
-            write(*,*) "Cylindrical ",tval
-            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
-            write(*,*) "subcen",subcen
-            write(*,*) "z", currentZ
-         endif
-         if (tval < 0.) then
-            write(*,*) "Cylindrical ",tval
-            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
-            write(*,*) "subcen",subcen
-            write(*,*) "z", currentZ
-            write(*,*) "disttor1, disttor2 ",disttor1,disttor2
-         endif
+          if (compX /= 0.d0) then
+             cosmu =((-1.d0)*xHat).dot.rdirection
+             call solveQuadDble(1.d0, -2.d0*d*cosmu, d2-r2**2, x1, x2, ok)
+             if (.not.ok) then
+                write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+                write(*,*) "xhat",xhat
+                write(*,*) "dir",direction
+                write(*,*) "point",point
+                do
+                enddo
+                x1 = thisoctal%subcellSize/2.d0
+                x2 = 0.d0
+             endif
+             distTor2 = max(x1,x2)/compX
 
-      endif
-      
-   else ! two-d grid case below
+             theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+             cosmu = ((-1.d0)*xHat).dot.rdirection
+             mu = acos(max(-1.d0,min(1.d0,cosmu)))
+             distTor1 = 1.e30
 
-      r1 = subcen%x - thisOctal%subcellSize/2.d0
-      r2 = subcen%x + thisOctal%subcellSize/2.d0
+             fac = (rDirection.dot.xHat)-(xHat.dot.xHat)+r1**2
+!             write(*,*) fac, mu < theta
+             if (mu  < theta ) then
+                call solveQuadDble(1.d0, -2.d0*d*cosmu,d2-r1**2, x1, x2, ok)
+                !               if(ok) then
+                !                  write(*,*) "All good",d,cosmu,r1,x1,x2
+                !                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
+                !               endif
 
-      distToR1 = 1.d30
-      distToR2 = 1.d30
-      d = sqrt(point%x**2+point%y**2)
-      xHat = VECTOR(point%x, point%y,0.d0)
-      call normalize(xHat)
-      rDirection = VECTOR(direction%x, direction%y,0.d0)
-      compX = modulus(rDirection)
-      call normalize(rDirection)
+                if (.not.ok) then
+                   write(*,*) "mu", mu, "theta", theta
+                   write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
+                   write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
+                   write(*,*) "xhat",xhat
+                   write(*,*) "dir",direction
+                   write(*,*) "point",point
 
-      if (compX /= 0.d0) then
-         cosmu =((-1.d0)*xHat).dot.rdirection
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-         if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
-            write(*,*) "xhat",xhat
-            write(*,*) "dir",direction
-            write(*,*) "point",point
-            do;enddo
-               x1 = thisoctal%subcellSize/2.d0
-               x2 = 0.d0
-            endif
-            distTor2 = max(x1,x2)/compX
-            
-            theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-            cosmu = ((-1.d0)*xHat).dot.rdirection
-            mu = acos(max(-1.d0,min(1.d0,cosmu)))
-            distTor1 = 1.e30
-            if (mu  < theta ) then
-                  call solveQuadDble(1.d0, -2.d0*d*cosmu,d**2-r1**2, x1, x2, ok)
-!               if(ok) then
-!                  write(*,*) "All good",d,cosmu,r1,x1,x2
-!                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
-!               endif
+                   x1 = thisoctal%subcellSize/2.d0
+                   x2 = 0.d0
+                endif
+                distTor1 = min(x1,x2)/compX
+             endif
+          endif
+          distToXboundary = min(distTor1, distTor2)
 
-               if (.not.ok) then
-                  write(*,*) "mu", mu, "theta", theta
-                  write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
-                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
-                  write(*,*) "xhat",xhat
-                  write(*,*) "dir",direction
-                  write(*,*) "point",point
 
-                  x1 = thisoctal%subcellSize/2.d0
-                  x2 = 0.d0
-               endif
-               distTor1 = min(x1,x2)/compX
-            endif
-         endif
-      distToXboundary = min(distTor1, distTor2)
-      
-      
-      zHat = VECTOR(0.d0, 0.d0, 1.d0)
-      compZ = zHat.dot.direction
-      currentZ = point%z
-      
-      if (compZ /= 0.d0 ) then
-         if (compZ > 0.d0) then
-            distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
-         else
-            distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
-         endif
-      else
-         disttoZboundary = 1.e30
-      endif
-      
-      tVal = min(distToZboundary, distToXboundary)
-      if (tVal > 1.e29) then
-         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-         write(*,*) "subcen",subcen
-         write(*,*) "z", currentZ
+          compZ = zHat.dot.direction
+          currentZ = point%z
 
+          if (compZ /= 0.d0 ) then
+             if (compZ > 0.d0) then
+                distToZboundary = (subcen%z + halfCellSize - currentZ ) / compZ
+             else
+                distToZboundary = abs((subcen%z - halfCellSize - currentZ ) / compZ)
+             endif
+          else
+             disttoZboundary = 1.e30
+          endif
+
+          tVal = min(distToZboundary, distToXboundary)
+          if (tVal > 1.e29) then
+             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+             write(*,*) "subcen",subcen
+             write(*,*) "z", currentZ
       write(*,*) "TVAL", tval
       write(*,*) "direction", direction
       call torus_abort
@@ -13441,12 +13488,12 @@ end function readparameterfrom2dmap
       
    endif
 
-666 continue
+666    continue
 
-   tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+       tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
 
 
- end subroutine distanceToCellBoundary
+     end subroutine distanceToCellBoundary
 
   subroutine distanceToGridEdge(grid, posVec, direction, tVal)
 

@@ -645,6 +645,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
       call torus_mpi_barrier("Waiting to do phase loop")
 
+      write(*,*) "calling scattering test"
+      call testscatterPhoton(grid, miePhase, nDustType, nLambda, grid%lamArray, nMuMie)
+
+
      weightLinePhoton = 0.
      weightContPhoton = 1.
      weightPhoto = 1.
