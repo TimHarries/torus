@@ -491,8 +491,8 @@ contains
                   logt = log(t1)
                   logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
                   logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
-                  icritupper = floor((logNucritUpper - logNu1) * scale)
-                  icritLower = floor((logNucritLower - logNu1) * scale)
+                  icritupper = min( floor((logNucritUpper - logNu1) * scale), nfreq        )
+                  icritLower = min( floor((logNucritLower - logNu1) * scale), icritupper-1 )
                   
                   do i = 1, icritupper
                      iLam = nfreq - i + 1
