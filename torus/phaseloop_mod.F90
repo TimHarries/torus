@@ -2183,6 +2183,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        if (obsPhoton%thermal) then
                           if (obsPhoton%scattered) then
                              yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (obsPhoton%stokes * obs_weight)
+                             call random_number(r)
+!                             if (obsPhoton%stokes%i*obs_weight > 1.e6) then
+!                             write(*,'(i5,6f15.4)') myrankglobal,obsPhoton%stokes%i*obs_weight,obsPhoton%stokes%i, &
+!                                  obs_weight,tauext(ntau), sqrt(obsPhoton%position%x**2+obsPhoton%position%y**2)/rinner,r
+!                             endif
                           else
                              yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (obsPhoton%stokes * obs_weight)
                           endif

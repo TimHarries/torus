@@ -4261,9 +4261,9 @@ END SUBROUTINE GAUSSJ
 
     CALL SYSTEM_CLOCK(COUNT=clock)
 
-    seed = clock + 37 * (/ (i - 1, i = 1, n) /) + myRankGlobal
+    seed = clock + 37 * (/ (i - 1, i = 1, n) /) + myRankGlobal*1000
     CALL RANDOM_SEED(PUT = seed)
-
+!    write(*,*) "Setting random seed for rank ",myrankglobal, " to: ",seed(1:n)
     DEALLOCATE(seed)
   END SUBROUTINE init_random_seed
 
