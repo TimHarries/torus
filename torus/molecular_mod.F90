@@ -731,7 +731,7 @@ module molecular_mod
                             thisOctal%jnu(subcell,1:maxtrans), dble(thisOctal%temperature(subcell)), &
                             thisMolecule, thisOctal%nh2(subcell))
 
-                       fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:maxlevel) - oldpops(1:minlevel)) &
+                       fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:minlevel) - oldpops(1:minlevel)) &
                             / oldpops(1:minlevel))) ! convergence criterion ! 6 or 8?
                          
                        if (fac < 1.d-6) then
