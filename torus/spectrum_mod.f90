@@ -263,7 +263,7 @@ module spectrum_mod
       allocate(spectrum%normflux(1:spectrum%nLambda))
       spectrum%normflux(1:spectrum%nLambda) = spectrum%flux(1:spectrum%nLambda) &
            / SUM(spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda))
-    end subroutine normalizedSpectrum
+    end subroutine
 
     real(double) function returnNormValue2(spectrum, lambda, lam1, lam2)
       type(SPECTRUMTYPE) :: spectrum

@@ -210,6 +210,7 @@ module input_variables
   ! model parameters
   
   real :: height
+  real :: heightSplitFac
   real :: sigma0
   real :: rMin, rMaj
   real :: shellFrac

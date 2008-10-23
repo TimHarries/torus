@@ -1796,7 +1796,13 @@ CONTAINS
         endif
 
         if ((geometry == "shakara").and.(nDustType>1)) then
-           call fillDustShakara(grid, grid%octreeRoot)
+           if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
+              call writeInfo("Filling dust with large dust in midplane", FORINFO)
+              call fillDustShakara(grid, grid%octreeRoot)
+           else
+              call writeInfo("Filling disc with uniform dust fractions", FORINFO)
+           call fillDustUniform(grid, grid%octreeRoot)
+        endif
         endif
 
         if ((geometry == "whitney").and.(nDustType ==4)) then
@@ -2187,6 +2193,7 @@ subroutine set_up_sources
        endif
 
        tmp = source(1)%radius * 1.e10  ! [cm]
+       write(*,*) "Stellar radius ",tmp/rsol
        fac = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
        if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
           if (writeoutput) then

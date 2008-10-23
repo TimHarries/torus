@@ -4393,7 +4393,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr , maxdepthamr
-    use input_variables, only: planetgap
+    use input_variables, only: planetgap, heightSplitFac
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
@@ -5076,7 +5076,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.1)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 

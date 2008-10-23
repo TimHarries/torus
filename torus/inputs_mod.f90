@@ -2166,6 +2166,11 @@ endif
    call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
 
+
+
+   call getReal("heightsplitfac", heightSplitFac, cLine, nLines, &
+         "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
+
    rCore = rCore * rSol / 1.e10
    rinner = (rinner * (rCore * 1e10)) / autocm
 

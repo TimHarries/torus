@@ -466,8 +466,8 @@ contains
     ! finding the cross sections
     sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
 
-    if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
-    if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
+!    if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
+!    if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
     do i = 1, grid%nLambda
        do j = 1, ngrain
           call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
@@ -482,12 +482,12 @@ contains
        sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
        sigmaSca(i) =    sigmaSca(i)/total_abundance 
 
-       if (writeoutput) write(21,*) grid%lamArray(i), gsca
-       if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
+!       if (writeoutput) write(21,*) grid%lamArray(i), gsca
+!       if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
     end do
 
-    if (writeoutput) close(20)
-    if (writeoutput) close(21)
+!    if (writeoutput) close(20)
+!    if (writeoutput) close(21)
 
     if (.not.grid%oneKappa) then
        if (grid%adaptive) then
@@ -545,12 +545,17 @@ contains
 
        write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
        if (writeoutput) open(20,file=albedoFilename,form="formatted",status="unknown")
+       if (writeoutput) write(20,'(a100)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
+               kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
+       if (writeoutput) write(20,*) "# Note that the opacities are per gram of dust"
+
        do i = 1, grid%nLambda
           rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
                aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
           rayleigh = rayleigh / meanParticleMass
           if (writeoutput) &
-               write(20,*) grid%lamArray(i),(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
+               write(20,*) grid%lamArray(i)*angstomicrons,&
+               (grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
                grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
                grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))
        enddo
@@ -1365,12 +1370,13 @@ contains
     use input_variables, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
-         ttau_disc_on
+         ttau_disc_on, grainFrac
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
     integer :: nMuMie
     real :: mu, total_dust_abundance
+    real :: kAbs, kSca
     integer :: i, j, k
     character(len=80) :: message
 
@@ -1411,6 +1417,21 @@ contains
                   grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda))
           enddo
        endif
+       if (writeoutput) then
+          open(20, file="albedo.dat", status="unknown", form="formatted")
+          write(20,'(a100)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
+               kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
+          write(20,*) "# Note that the opacities are per gram of dust"
+          do i = 1, nLambda
+             kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
+             kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
+             write(20,*) xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
+          enddo
+          close(20)
+       endif
+
+
+
        call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
        call createRossArray(grid)
        call writeInfo("Done.",TRIVIAL)
