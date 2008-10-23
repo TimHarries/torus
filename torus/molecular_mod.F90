@@ -891,8 +891,7 @@ module molecular_mod
   
   close(33)
 
-  call writeinfo("mole loop done.", FORINFO)
-  stop
+  call torus_abort("mole loop done")
 end subroutine molecularLoop
 
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
@@ -1435,7 +1434,8 @@ end subroutine molecularLoop
            end do
         else
            
-!           thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
+           thisOctal%oldmolecularLevel(:,subcell) = thisOctal%molecularLevel(:,subcell) 
+!          thisOctal%molecularLevel(:,subcell) = thisOctal%oldmolecularLevel(:,subcell) 
 
            maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel))
 
@@ -3089,15 +3089,15 @@ endif
         fracChange = 0.d0
 
         do j = 1 , nangle
-           ang = dble(j + 0.5d0) * OneOverNangle - OneOverNangle
+           ang = dble(j-1) * OneOverNangle
            ang = ang * twopi 
            z = r * cos(ang)
            x = r * sin(ang)
-           posVec = VECTOR(x, 0.d0, z) ! get put in octal on grid
+           posVec = VECTOR(x, 1.d-20, z) ! get put in octal on grid
            call findSubcellLocal(posVec, thisOctal,subcell) 
            pops = pops + thisOctal%molecularLevel(subcell,1:minlevel) ! interested in first 8 levels
-           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:minlevel) - &
-                        thisOctal%oldmolecularLevel(subcell,1:minlevel)) / thisOctal%molecularlevel(subcell,1:minlevel))           
+           fracChange = fracChange + abs(((thisOctal%molecularLevel(subcell,1:minlevel) - &
+                        thisOctal%oldmolecularLevel(subcell,1:minlevel)) / thisOctal%molecularlevel(subcell,1:minlevel)))
         enddo
 
         pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
