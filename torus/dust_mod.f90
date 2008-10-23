@@ -545,7 +545,7 @@ contains
 
        write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
        if (writeoutput) open(20,file=albedoFilename,form="formatted",status="unknown")
-       if (writeoutput) write(20,'(a100)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
+       if (writeoutput) write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
                kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
        if (writeoutput) write(20,*) "# Note that the opacities are per gram of dust"
 
@@ -1419,7 +1419,7 @@ contains
        endif
        if (writeoutput) then
           open(20, file="albedo.dat", status="unknown", form="formatted")
-          write(20,'(a100)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
+          write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
                kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
           write(20,*) "# Note that the opacities are per gram of dust"
           do i = 1, nLambda

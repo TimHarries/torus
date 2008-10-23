@@ -30,7 +30,7 @@ contains
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 !    use input_variables, only : rinner, router
 #ifdef MPI
-    use input_variables, only : blockhandout
+    use input_variables, only : blockhandout, amax
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
 #endif
     implicit none
@@ -215,12 +215,13 @@ contains
     call writeInfo(message, TRIVIAL)
 
     if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
-	if (nDustType > 1) then
-           call fillDustShakara(grid, grid%octreeRoot)
-        endif
-	if (variableDustsublimation) then
-           call stripDustAway(grid%octreeRoot,1.d-10, 1.d30)
-        endif
+       if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
+          call writeInfo("Filling dust with large dust in midplane", FORINFO)
+          call fillDustShakara(grid, grid%octreeRoot)
+       else
+          call writeInfo("Filling disc with uniform dust fractions", FORINFO)
+          call fillDustUniform(grid, grid%octreeRoot)
+       endif
     endif
 
     if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then

@@ -12024,11 +12024,11 @@ end function readparameterfrom2dmap
 
     if (PRESENT(kappaAbsArray)) then
 
-!      kappaAbsArray(1:grid%nLambda) = 0.
 
        if (nDustType .eq. 1) then
             kappaAbsArray(1:nLambda) = dustFractionDensity * oneKappaAbsT(1:nlambda,1)
          else
+            kappaAbsArray  = 0.
             do i = 1, nDustType
                kappaAbsArray(1:nLambda) = kappaAbsArray(1:nLambda) + & 
                     oneKappaAbsT(1:nLambda,i)*thisOctal%rho(subcell) * frac
@@ -12045,11 +12045,11 @@ end function readparameterfrom2dmap
        
     if (PRESENT(kappaScaArray)) then
 
-!       kappaScaArray(1:grid%nLambda) = 0.
 
        if (nDustType .eq. 1) then
           kappaScaArray(1:nLambda) = dustFractionDensity * oneKappaScaT(1:nlambda,1)
        else
+          kappaScaArray = 0.
           do i = 1, nDustType
              kappaScaArray(1:nLambda) = kappaScaArray(1:nLambda) + & 
                   oneKappaScaT(1:nLambda,i)*thisOctal%rho(subcell) * frac
