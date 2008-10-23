@@ -13103,7 +13103,13 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer, optional :: sOctal
     real(oct), intent(out) :: tval
     !
-    type(VECTOR) :: norm(6), p3(6), rDirection
+    type(VECTOR), parameter :: norm(6) = (/ VECTOR( 1.0d0,  0.d0,   0.0d0),  &
+                                            VECTOR( 0.0d0,  1.0d0,  0.0d0),  &
+                                            VECTOR( 0.0d0,  0.0d0,  1.0d0),  &
+                                            VECTOR(-1.0d0,  0.0d0,  0.0d0),  &
+                                            VECTOR( 0.0d0, -1.0d0,  0.0d0),  &
+                                            VECTOR( 0.0d0,  0.0d0, -1.0d0) /)
+    type(VECTOR) :: p3(6), rDirection
     type(OCTAL),pointer :: thisOctal
     real(double) :: distTor1, distTor2, theta, mu
     real(double) :: distToRboundary, compz,currentZ
@@ -13112,7 +13118,7 @@ end function readparameterfrom2dmap
     integer :: subcell
     real(double) :: distToSide1, distToSide2, distToSide
     real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
-    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
+    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCell
     integer :: i,j
     logical :: ok, thisOk(6)
 
@@ -13169,19 +13175,13 @@ end function readparameterfrom2dmap
        if (.not.thisOctal%cylindrical) then
           ok = .true.
 
-          norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
-          norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
-          norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
-          norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
-          norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
-          norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
-
-          p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-          p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-          p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-          p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-          p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-          p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+          halfSubCell = thisOctal%subcellsize/2.0d0
+          p3(1) = VECTOR(subcen%x+halfSubCell, subcen%y,             subcen%z)
+          p3(2) = VECTOR(subcen%x,             subcen%y+halfSubCell ,subcen%z)
+          p3(3) = VECTOR(subcen%x,             subcen%y,             subcen%z+halfSubCell)
+          p3(4) = VECTOR(subcen%x-halfSubCell, subcen%y,             subcen%z)
+          p3(5) = VECTOR(subcen%x,             subcen%y-halfSubCell, subcen%z)
+          p3(6) = VECTOR(subcen%x,             subcen%y,             subcen%z-halfSubCell)
 
           thisOk = .true.
 
@@ -13215,20 +13215,21 @@ end function readparameterfrom2dmap
 
           tval = minval(t, mask=thisOk)
 
+! Commented out by Dave Acreman, October 2008
+! tval == 0 is handled at the end of this subroutine    
+!          if (tval == 0.) then
+!             write(*,*) posVec
+!             write(*,*) direction%x,direction%y,direction%z
+!             write(*,*) t(1:6)
+!             call torus_abort("tval==0 in distanceToCellBoundary")
+!          endif
 
-          if (tval == 0.) then
-             write(*,*) posVec
-             write(*,*) direction%x,direction%y,direction%z
-             write(*,*) t(1:6)
-             call torus_abort("tval==0 in distanceToCellBoundary")
-          endif
-
-          if (tval > sqrt(3.)*thisOctal%subcellsize) then
+          !if (tval > sqrt(3.)*thisOctal%subcellsize) then
              !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
              !     write(*,*) "direction",direction
              !     write(*,*) t(1:6)
              !     write(*,*) denom(1:6)
-          endif
+          !endif
 
        else
 
@@ -13337,20 +13338,22 @@ end function readparameterfrom2dmap
          endif
          
          tval = minval(t, mask=thisOk)
+
+! Commented out by Dave Acreman, October 2008
+! tval == 0 is handled at the end of this subroutine         
+!         if (tval == 0.) then
+!            write(*,*) posVec
+!            write(*,*) direction%x,direction%y,direction%z
+!            write(*,*) t(1:6)
+!            call torus_abort("tval==0 in distanceToCellBoundary")
+!         endif
          
-         if (tval == 0.) then
-            write(*,*) posVec
-            write(*,*) direction%x,direction%y,direction%z
-            write(*,*) t(1:6)
-            call torus_abort("tval==0 in distanceToCellBoundary")
-         endif
-         
-         if (tval > sqrt(3.)*thisOctal%subcellsize) then
+         !if (tval > sqrt(3.)*thisOctal%subcellsize) then
             !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
             !     write(*,*) "direction",direction
             !     write(*,*) t(1:6)
             !     write(*,*) denom(1:6)
-         endif
+         !endif
 
              rVec = subcellCentre(thisOctal, subcell)
              phi = atan2(rVec%y, rVec%x)
