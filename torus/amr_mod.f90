@@ -323,7 +323,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical, photoionization, molecular, cmf, nAtom
+    use input_variables, only : cylindrical
 
     IMPLICIT NONE
     type(OCTAL), pointer :: thisOctal
@@ -506,9 +506,8 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : cylindrical, &
-         photoionization, molecular, cmf, nAtom,  &
-                                TMinGlobal, hydrodynamics, mie, nDustType
+    USE input_variables, ONLY : cylindrical
+
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -2449,12 +2448,12 @@ CONTAINS
     TYPE(vector),INTENT(OUT),OPTIONAL :: velocity
     REAL,INTENT(OUT),OPTIONAL         :: velocityDeriv
     REAL,INTENT(OUT),OPTIONAL         :: temperature
-    REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbs
-    REAL(double),INTENT(OUT),OPTIONAL         :: kappaSca
-    REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbsArray(nLambda)
-    REAL(double),INTENT(OUT),OPTIONAL         :: kappaScaArray(nLambda)
-    REAL(double),INTENT(OUT), OPTIONAL        :: rosselandKappa
-    REAL,INTENT(OUT), OPTIONAL        :: kappap
+    REAL(double),OPTIONAL         :: kappaAbs
+    REAL(double),OPTIONAL         :: kappaSca
+    REAL(double),OPTIONAL         :: kappaAbsArray(nLambda)
+    REAL(double),OPTIONAL         :: kappaScaArray(nLambda)
+    REAL(double),OPTIONAL        :: rosselandKappa
+    REAL, OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
     REAL(double),INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
@@ -4424,7 +4423,6 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: nparticle, limit, npart_subcell
 !    real(double) :: timenow
     real(double) :: dummyDouble
-    real(double) :: rho_disc_ave, scale_length
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double),allocatable, save  :: R_cmfgen(:)  ! [10^10cm]
     real(double),save  :: Rmin_cmfgen  ! [10^10cm]
@@ -6662,7 +6660,8 @@ IF ( .NOT. gridConverged ) RETURN
     logical, save :: warned_already_02 = .false.
     real:: T(5), R(5), dT, R_ip
     integer :: indx_T(5)
-    
+
+    dt = 0.; hartmanntemp2 = 0.
 
     IF (.NOT. alreadyLoaded) THEN
       ! if this is the first time the function has been called, need
@@ -7237,7 +7236,7 @@ IF ( .NOT. gridConverged ) RETURN
     real,save :: radius(400),temp(400)
     integer :: i
     logical,save :: firsttime = .true.
-
+    ethermal  = 0.;
     gamma = 5.d0/3.d0
 
     if (firsttime) then
@@ -8614,7 +8613,6 @@ end function readparameterfrom2dmap
     real(double), save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr), OneOverrdiff(nr)
     real(double) :: v1, t1
     real(double) :: r1
-    type(VECTOR) :: vel
 
     if (firsttime) then
        open(31, file="model_1.dat", status="old", form="formatted")
@@ -8757,9 +8755,8 @@ end function readparameterfrom2dmap
     type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     type(vector) :: posvec
-    type(octal), pointer :: thisOctal
     type(octal), pointer, save :: previousOctal
-    type(vector) :: bodyvelocity
+!    type(vector) :: bodyvelocity
 
     integer :: subcell
     logical, save :: firsttime = .true.
@@ -8775,7 +8772,7 @@ end function readparameterfrom2dmap
     real(double) :: codeVelocitytoTORUS, codeLengthtoTORUS, udist, umass, utime
     real(double) :: x,y,z
     real(double) :: mvx,mvy,mvz
-    real(double) :: Weight, SumWeight, SumMass, SumArray, fac
+    real(double) :: Weight, SumWeight, SumMass, fac
     
     character(len=100) :: message
 
@@ -10216,7 +10213,8 @@ end function readparameterfrom2dmap
     REAL                 :: thisTau, thatTau !, tauDiff
     INTEGER              :: nLocator
     LOGICAL              :: prob
-    
+
+    kappaAbs = 0.d0; kappaSca = 0.d0
     ! For each subcell, we find the coordinates of at least one point in every
     ! neighbouring subcell. The optical depths are compared and if one cell is
     ! optically thick while the other is optically thin with an optical depth
@@ -10525,7 +10523,7 @@ end function readparameterfrom2dmap
     integer :: subcell, i
     logical :: unrefine, converged
     integer :: nc
-
+    kappaAbs = 0.d0; kappaSca = 0.d0
     unrefine = .true.
     nc = 0
     do subcell = 1, thisOctal%maxChildren
@@ -10569,7 +10567,7 @@ end function readparameterfrom2dmap
     real(double) :: kappaAbs, kappaSca, tau
     integer :: subcell, i
     logical :: unrefine, converged
-
+    kappaAbs =0.d0; kappaSca = 0.d0
     unrefine = .true.
 
     do subcell = 1, thisOctal%maxChildren
@@ -11044,7 +11042,7 @@ end function readparameterfrom2dmap
   logical :: ross
   integer :: subcell, i, ilam !, ntau
 !  real :: r
-  
+  kappaAbs = 0.d0; kappaSca = 0.d0
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -11085,7 +11083,7 @@ end function readparameterfrom2dmap
   type(octal), pointer  :: child 
   real(double) :: tau, kappaAbs
   integer :: subcell, i, ilam
-  
+  ilam = 0; kappaAbs = 0.d0
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -11135,7 +11133,7 @@ end function readparameterfrom2dmap
   real(double) :: tau, kappaAbs
   integer :: subcell, i, ilam
   real(double) :: r
-  
+  kappaAbs = 0.d0; ilam = 0
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -12622,9 +12620,10 @@ end function readparameterfrom2dmap
     integer :: subcell
     real(double) kappaSca, kappaAbs
     type(VECTOR) :: octVec
-
+    kappaAbs = 0.d0; kappaSca = 0.d0
     write(*,*) "Setting disc photosphere bias..."
     nx = 0
+    xAxis = 0
     call getxValuesAMR(grid%octreeRoot, nx, xAxis)
     call stripSimilarValues(xAxis,nx,real(1.d-5*grid%halfSmallestSubcell))
 
@@ -12738,7 +12737,7 @@ end function readparameterfrom2dmap
     type(VECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
     real(double) :: kappaSca, kappaAbs
-
+    kappaSca = 0.d0; kappaAbs = 0.d0
     nz = 0
     tau = 0.
     halfSmallestSubcell = grid%halfSmallestSubcell
@@ -12925,6 +12924,7 @@ end function readparameterfrom2dmap
     logical :: split
     logical, save :: firsttime = .true.
     character(len=30) :: message
+    kabs = 0.d0; ksca = 0.d0
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -14928,8 +14928,10 @@ end function readparameterfrom2dmap
 
     real(double) :: newrho(10000), newzAxis(10000), newrhodd(10000)
     integer :: newnz
-
+    zAxis = 0
     nx = 0
+    nz = 0
+    newrhodd = 0.d0 ; rho = 0.d0; subcellSize = 0.d0
     call getxValuesAMR(grid%octreeRoot, nx, xAxis)
     call stripSimilarValues(xAxis,nx,real(1.d-5*grid%halfSmallestSubcell))
     do while (xAxis(nx) > rOuter)
@@ -15188,6 +15190,7 @@ end function readparameterfrom2dmap
     integer :: nsteps
     nsteps = 100
 
+    rho_test = 0.d0
     ! desnity is log(10) density, so we need a very low value here
     rho_max = -350.
     rho_max_i = 0
@@ -15855,7 +15858,7 @@ end function readparameterfrom2dmap
     integer :: subcell
     logical, optional :: ross
     logical :: planetGap
-
+    kappaAbs = 0.d0; kappaSca = 0.d0
     tau = 0.d0
     currentPosition = rVec
     
@@ -15922,6 +15925,8 @@ end function readparameterfrom2dmap
     real(double) :: distToSource, totDist
     logical :: hitSource
 
+    distTosource = 0.d0
+    hitSource = .false.
     sigma = 0.d0
     currentPosition = rVec
     totDist = 0.d0
@@ -15957,6 +15962,9 @@ end function readparameterfrom2dmap
     type(VECTOR), optional :: velocity
     logical(kind=logic), optional :: inFlow
     logical :: outsideStream
+    outsideStream = .false.
+    iSample = 0
+    t = 0.d0
 
     call findNearestSample(thisStream, point, iSample, t, outsideStream)
 
@@ -16565,7 +16573,7 @@ end function readparameterfrom2dmap
   recursive subroutine setupNeighbourPointers(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  type(VECTOR) :: centre, rVec
+  type(VECTOR) :: centre
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren

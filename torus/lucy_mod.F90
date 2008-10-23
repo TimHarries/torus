@@ -26,11 +26,11 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
-    use input_variables, only : variableDustSublimation, iterlucy
+    use input_variables, only : variableDustSublimation, iterlucy, amax
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 !    use input_variables, only : rinner, router
 #ifdef MPI
-    use input_variables, only : blockhandout, amax
+    use input_variables, only : blockhandout
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
 #endif
     implicit none
@@ -164,7 +164,11 @@ contains
 #endif
 
   oldTotalEmission = 1.d30
-
+  kappaScaDb = 0.d0; kappaAbsDb = 0.d0
+  diffusionZoneTemp = 0.d0; foundSubcell = 0; iSource = 0 ; iSeed = 0
+  kAbsArray = 0.; kAbsArray2 = 0.; leftHandBoundary = .true.; ok = .true.
+  photonInDiffusionZone = .false.; rHat = VECTOR(0.d0, 0.d0, 0.d0);temp = 0.
+  wavelength = 0.;  nfreq = 0
   call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
 
   if (nLucy /= 0) then
@@ -903,7 +907,7 @@ contains
     type(vector) :: vec_tmp
 
     allocate(tempImage(1:grid%nx,1:grid%ny))
-
+    dummy = 0.d0; probDistPlanck = 0.
 
     logFreqStart = log10((cSpeed / (lamArray(nLambda)*1.e-8)))
     logFreqEnd =  log10((cSpeed / (lamArray(1)*1.e-8)))
@@ -1165,6 +1169,7 @@ contains
    real(oct) :: thisLam
    integer :: iLam
 
+   tVal = 0.d0
     stillinGrid = .true.
     escaped = .false.
 
@@ -1879,10 +1884,12 @@ contains
    real(double), parameter :: fudgeFac = 1.d-2
    logical :: scatteredPhoton
 
-    stillinGrid = .true.
-    escaped = .false.
-    photonInDiffusionZone = .false.
-
+   isubcell = 0; endSubcell = 0
+   stillinGrid = .true.
+   escaped = .false.
+   ok = .true.
+   photonInDiffusionZone = .false.
+   kappaAbsDb = 0.d0; kappaScaDb = 0.d0
     thisLam = (cSpeed / thisFreq) * 1.e8
     call hunt(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
@@ -2728,7 +2735,7 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray,
   integer :: iPhotonLambda
   real :: lamArray(:)
   real(double) :: kappaAbs
-
+  kappaAbs = 0.d0
   thisOctal%etaCont(subcell) = 1.d-30
 
   call returnKappa(grid, thisOctal, subcell, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
@@ -2772,6 +2779,7 @@ subroutine setBiasOnTau(grid, iLambda)
      integer :: nVoxels, ierr
      integer :: nBias
 #endif
+     kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
 
      if (cylindrical) then
         nDir = 6
@@ -2966,7 +2974,6 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unpackBias
 
   recursive subroutine allocateMemoryForLucy(thisOctal)
-    use input_variables, only : nDustType
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i

@@ -1206,6 +1206,9 @@ contains
       character(len=80) :: time, login, hostname, message
       integer :: cpuTime, endTime, startTime, i
 
+      cpuTime = 0; endTime =0 ; hostname = " "; login = " "
+      i = 0; time = " " 
+
       call unixTimes(cpuTime, endTime)
       call unixGethostname(hostname,i)
       call unixGetlogin(login,i)
@@ -1431,6 +1434,8 @@ contains
       real :: x, t
       integer :: n, i
       logical :: ok
+      ok = .false.
+
       i = findIlambda(x, xArray, n, ok)
       if (i == 1) then
          t = (x - xArray(i))/(xArray(i+1)-xArray(i))
@@ -1454,6 +1459,7 @@ contains
       real(double) :: x, t
       integer :: n, i
       logical :: ok
+      ok = .false.
       i = findIlambda(real(x), real(xArray), n, ok)
       if (i == 1) then
          t = (x - xArray(i))/(xArray(i+1)-xArray(i))
@@ -1477,6 +1483,7 @@ contains
       real(double) :: x, t
       integer :: n, i
       logical :: ok
+      ok = .false.
       i = findIlambda(real(x), real(xArray), n, ok)
       if (i == 1) then
          t = (x - xArray(i))/(xArray(i+1)-xArray(i))
@@ -2229,7 +2236,8 @@ contains
       real :: dy  ! error estimate
       real, save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       logical, save :: first_time = .true.
-
+       y = 0.
+       dy = 0.
       if (first_time) then
          first_time=.false.
          ALLOCATE(newYarray(nx_max))
@@ -2266,6 +2274,7 @@ contains
       real(double) :: y
       real(double), save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       logical, save :: first_time = .true.
+      dy = 0.; y = 0.
 
       if (first_time) then
          first_time=.false.
@@ -2975,6 +2984,7 @@ subroutine DPOLFT (N, X, Y, W, MAXDEG, NDEG, EPS, R, IERR, A)
             -3.3381146D0,-1.7812271D0,-3.2578406D0,-1.6589279D0, &
             -1.6282703D0,-1.3152745D0,-3.2640179D0,-1.9829776D0/
 !***FIRST EXECUTABLE STATEMENT  DPOLFT
+  yp =0.
   M = ABS(N)
   if (M  ==  0) go to 30
   if (MAXDEG  <  0) go to 30

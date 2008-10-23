@@ -211,7 +211,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer :: negativeOpacity ! number of errors from integratePathAMR
 
   character(len=80) :: tempChar
-  character(len=80) :: phasePopFilename, plotfile
+  character(len=80) :: phasePopFilename
   character(len=80) :: originalOutFile, filename
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   character(len=80) :: specfile, obsfluxfile
@@ -263,6 +263,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
+
+  chanceHotRing = 0.
+  cpuTime = 0; dopshift = 0.
+  outPhoton%lambda = 0.; obsPhoton%lambda = 0.
+  ok = .true.; photonFromEnvelope = .true.
+  rhatinStar = VECTOR(0.d0, 0.d0, 0.d0)
+  sourcesubcell = 0; spotPhoton = .false.
+  startTime = 0
   call define_rotation_axis
 
   probLinePhoton = 1. - probContPhoton

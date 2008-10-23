@@ -258,7 +258,7 @@ contains
     character(len=*), intent(in) :: graintype
     character(len=200) :: filename, dataDirectory
     real :: mReal(*), mImg(*)
-
+    dataDirectory = " "
     select case(graintype)
     case("sil_ow")
        allocate(tempIm(1:npLnk))
@@ -868,8 +868,8 @@ contains
     real :: x, z
     real :: height
     real(double) :: fac
-
     integer :: subcell, i
+    height = 0.d0
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -973,9 +973,9 @@ contains
     real :: underCorrect = 1.
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
-
     integer :: subcell, i
 
+    kappaSca = 0.d0; kappaAbs = 0.d0
     subrange = 1.
 
     do subcell = 1, thisOctal%maxChildren
@@ -1046,7 +1046,8 @@ contains
     real(double) :: rho(10000)
     real(double) :: rho_over_e
     integer :: i, j
-
+    nz  = 0
+    temperature = 0.; subcellSize = 0.; rho = 0.0; z=0.d0
     call getTemperatureDensityRundust(grid, z, subcellsize, rho, temperature, x, 0., nz, 1.)
 
 
@@ -1293,6 +1294,7 @@ contains
     integer :: jmax, j
     real ::  dx, f, df
     parameter (jmax=20)
+    df =0.; f = 0.; dx = 0.
     junk = 0.5 * (x1+x2)
     do j=1,jmax
        call equation2dust(junk,f,df,p1,p2)

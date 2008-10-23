@@ -148,7 +148,7 @@ contains
   subroutine writeIndices(grid, vtkFilename, nPoints, nCells, iOffset)
     type(GRIDTYPE) :: grid
     integer :: lunit = 69
-    integer :: nCells, nPoints, iOffset, i, nCount
+    integer :: nCells, nPoints, iOffset, nCount
     character(len=*) :: vtkFilename
 
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
@@ -264,7 +264,7 @@ contains
       real :: value
       real(double) :: kAbs
       character(len=*) :: valueType
-
+      kabs = 0.d0
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
             ! find the child
@@ -376,15 +376,16 @@ contains
     type(GRIDTYPE) :: grid
     character(len=*) :: vtkFilename
     integer :: nValueType
-    character(len=20) :: valueType(50), message
+    character(len=20) :: valueType(50)
     character(len=*), optional ::  valueTypeFilename
     character(len=*), optional ::  valueTypeString(:)
     integer :: nCells, nPoints
     integer :: lunit = 69
-    integer :: nOctals, nVoxels, ierr, iOffset, i, iType
+    integer :: nOctals, nVoxels, i, iType
     integer :: nPointOffset
 #ifdef MPI
     integer :: nPointsArray(64)
+    integer :: ierr
     integer, allocatable :: iOffsetArray(:)
     integer :: myRank, nThreads, iThread
 #endif
@@ -528,7 +529,6 @@ contains
 
     enddo
 
-666 continue
 
   end subroutine writeVtkFile
 

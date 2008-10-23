@@ -272,6 +272,7 @@ contains
     logical :: converged 
     real(double) :: xAxis(maxVals*10)
     integer :: nx, i
+    converged = .false.; nz = 0; temperature = 0.; zAxis = 0.; subcellSize = 0.
 
     nx = 0
     call getxValues(grid%octreeRoot,nx,xAxis)
@@ -367,7 +368,6 @@ contains
     real :: tthresh, drho
     integer :: maxIter
     integer :: nIter, j, ilamsmooth
-    character(len=40) :: plotfile
     real(double) totalMass
     logical :: twoD, gridConverged
     real :: temp

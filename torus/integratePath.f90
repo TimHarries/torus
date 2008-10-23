@@ -159,7 +159,6 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
   real :: distToDisk
 
   real(double) :: t1, t2, t3                                ! interpolation factors
-  real(double) :: rt1, rt2, rt3                                ! interpolation factors
 
   real, parameter :: precision = 1.e-4              ! relative precision
 

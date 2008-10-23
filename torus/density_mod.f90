@@ -869,7 +869,7 @@ contains
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
-    real(double) :: phi, dist, rhofac
+    real(double) :: phi, dist
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
@@ -1085,6 +1085,8 @@ contains
     real ::  dx, f, df
     parameter (jmax=20)
     junk = 0.5 * (x1+x2)
+
+    f = 0.; df = 0.
     do j=1,jmax
        call equation2(junk,f,df,p1,p2)
        dx=f/df

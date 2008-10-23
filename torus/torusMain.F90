@@ -118,7 +118,7 @@ program torus
 
   integer :: itestlam, ismoothlam
   integer, parameter :: nMuMie = 4000
-  type(PHASEMATRIX), pointer :: miePhase(:,:,:)
+  type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
 
   ! variables for clumped wind models
   
@@ -284,6 +284,14 @@ program torus
   ! set up a random seed
   
   call init_random_seed()
+
+
+  co%molecule = " "
+  indexAtom = 0
+  indexRBBTrans = 0; nRBBTrans = 0
+  kabs = 0.; laccretion = 0.; meanDustParticlemass = 0.
+  nStreams = 0; taccretion = 0.; saccretion  = 0.; vel = 0.
+  
 
   allocate(distortionVec(1:1))
 

@@ -74,7 +74,7 @@ module molecular_mod
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=80) :: junk
-     character(len=200):: dataDirectory, filename
+     character(len=200):: dataDirectory =" ", filename
      integer :: i, j, iLow, iUp, iPart
      real(double) :: a, freq, eu, c(20)
      logical :: preprocess1 = .true.
@@ -208,7 +208,7 @@ module molecular_mod
      use input_variables, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
-     character(len=200):: dataDirectory, filename
+     character(len=200):: dataDirectory = " ", filename
      character(len=80) :: junk
      integer :: i, iPart
 
@@ -421,8 +421,8 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
-     use input_variables, only : blockhandout, tolerance, debug, geometry, lucyfilenamein, openlucy,&
-          usedust, rinner, router, readmol, amr1d, amr2d, amr3d, plotlevels
+     use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
+          usedust, amr2d,amr1d, plotlevels
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -458,29 +458,23 @@ module molecular_mod
       logical :: fixedRays
       integer :: isize
       integer, allocatable :: iseed(:)
-      real(double) :: maxFracChange 
-      real(double), allocatable :: maxFracChangePerLevel(:), avgFracChange(:,:)
-      integer, allocatable :: convergenceCounter(:,:)
  !     real :: r1(2) !random numbers
-      real(double) ::  maxavgfracChange, maxRMSfracChange
-      integer :: maxavgtrans(1),maxRMStrans(1)
+      real(double) :: maxRMSfracChange
 
       character(len=30) :: filename
 
 !      real(double) :: convtestarray(200,200,16)
-      real(double) :: r(100)
 
       logical :: restart = .false.
       logical :: firsttime = .true.
       
-      integer :: ntrans , lst !least significant transition
-
 !      integer, allocatable, save :: ioctalArray(:)
       
       real :: tol
       real(double) :: dummy, tau, tauarray(40) = -1.d0    
       logical :: quasi = .true.
 
+      position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
  ! blockhandout must be off for fixed ray case, otherwise setting the
  ! seed is not enough to ensure the same directions are done for
  ! each cell every iteration
@@ -896,11 +890,11 @@ end subroutine molecularLoop
 
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
 
-     use input_variables, only : useDust, amrgridsize
+     use input_variables, only : useDust
 
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
-     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+     type(OCTAL), pointer :: thisOctal, fromOctal
 
      integer, parameter :: maxSamplePoints = 100
 
@@ -914,15 +908,12 @@ end subroutine molecularLoop
      type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
      type(VECTOR) :: startVel, endVel, endPosition
 
-     real(double) :: alphanu(maxtrans,2), alpha(maxtrans), alphatemp(maxtrans), snu(maxtrans), jnu(maxtrans)
-     integer :: iLower(maxtrans) , iUpper(maxtrans)
+     real(double) :: alphanu(maxtrans,2), alpha(maxtrans),  snu(maxtrans), jnu(maxtrans)
      real(double) :: dv, deltaV
      integer :: i
      real(double) :: dist, dds, tval
      integer :: nTau
-     real(double) :: nLower(maxtrans)
 !     real(double),pointer :: nLower(:)
-     real(double) :: nUpper(maxtrans)
 !     real(double),pointer :: nupper(:)
 !     real(double) :: dTau, etaline(maxtrans), kappaAbs 
      real(double) :: dTau(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
@@ -940,10 +931,10 @@ end subroutine molecularLoop
 
      logical,save :: firsttime = .true.
      logical :: quasi = .false.
-
+     integer  :: iLower(maxTrans), iUpper(maxTrans)
      logical :: realdust
      real(double),save :: BnuBckGrnd(128)
-     real(double) :: balance(maxtrans), spontaneous(maxtrans), snugas(maxtrans)
+     real(double) :: balance(maxtrans), spontaneous(maxtrans)
      real(double) :: nMol
      integer :: done(maxtrans)
  !    real(double) :: z,
@@ -1183,7 +1174,7 @@ end subroutine molecularLoop
      integer :: iUpper, iLower
      real(double) :: tau, opticaldepth, snu, sumPhi
      real :: lambda
-     integer :: ilambda, i
+     integer :: ilambda
      logical :: realdust = .true.
      
      jBarExternal = 1.d-60
@@ -1287,7 +1278,6 @@ end subroutine molecularLoop
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1), collMatrix(maxlevel+1,maxlevel+1), cTot(maxlevel)
      real(double) :: boltzFac
-     integer :: nLevels
      integer :: i, j
      integer :: itrans, l, k, iPart
      real(double) :: collEx, colldeEx
@@ -1419,7 +1409,6 @@ end subroutine molecularLoop
      integer :: nVoxels
 
      logical :: fixedrays
-     integer :: ntrans
 
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
@@ -1513,7 +1502,7 @@ end subroutine molecularLoop
 !!!!READ ROUTINES!!!!
 
  subroutine calculateMoleculeSpectrum(grid, thisMolecule)
-   use input_variables, only : itrans, nSubpixels, inc, usedust
+   use input_variables, only : itrans, nSubpixels, inc
 
 #ifdef MPI
        include 'mpif.h'
@@ -1544,6 +1533,12 @@ end subroutine molecularLoop
      call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+
+     unitVec = VECTOR(0.d0, 0.d0, 0.d0)
+     posVec = VECTOR(0.d0, 0.d0, 0.d0)
+     viewVec = VECTOR(0.d0, 0.d0, 0.d0)
+     centreVec = VECTOR(0.d0, 0.d0, 0.d0)
+     cube%label = " "
 !     if(grid%geometry .eq. "iras04158") call plotdiscvalues(grid, thisMolecule)
 
 !     call readAMRgrid("molecular_tmp.grid",.false.,grid)
@@ -2472,7 +2467,6 @@ endif
 
    subroutine tauAlongRay(position, direction, grid, thisMolecule, deltaV, tau)
 
-     use input_variables, only : useDust
      type(VECTOR) :: position, direction
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2598,6 +2592,7 @@ endif
      logical :: lowvelgrad = .false.
      logical :: realdust = .true.
 
+     kappaabs = 0.d0
      if(present(tautest)) then
         dotautest = tautest
      else
@@ -2815,6 +2810,8 @@ endif
      logical :: dotautest
      logical :: lowvelgrad = .false.
 
+     kappaabs = 0.d0; kappasca = 0.d0
+     
      if(present(tautest)) then
         dotautest = tautest
      else
@@ -2941,7 +2938,7 @@ endif
      logical,save :: onetime = .true.
      logical :: firsttime
      character(len=10) :: out
-
+     kappaAbs = 0.d0
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
            ! find the child
@@ -3035,7 +3032,7 @@ endif
 
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule)!, convtestarray)
-     use input_variables, only : rinner, router,amr2d
+     use input_variables, only : rinner, router
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
@@ -3126,6 +3123,7 @@ endif
      integer, save :: icount = 0
      real(double) :: maxtemp = 0.d0
      character(len = 80) :: message
+     mollevels = 0.d0
          
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
@@ -3483,7 +3481,9 @@ endif
         real :: lamb
         real(double) :: tau, dummy, kappaAbs, kappaSca, i0
         character(len=50) :: message
-  
+        itrans = 0
+        centreVec= VECTOR(0.d0, 0.d0, 0.d0)
+        kappaAbs = 0.d0; kappaSca = 0.d0
   call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
   
   write(message,*) "Angular dependence"
@@ -3589,7 +3589,7 @@ subroutine plotdiscValues(grid, thisMolecule)
   type(GRIDTYPE) :: grid
   type(MOLECULETYPE) :: thisMolecule
   real(double) :: mean(6)
-  
+  mean = 0.d0
   call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
     
   call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 2)

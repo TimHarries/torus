@@ -559,10 +559,10 @@ contains
 
 #ifdef MPI
     include 'mpif.h'
+    integer :: ierr
 #endif
 
     character(len=*), optional, intent(in) :: message
-    integer :: ierr
 
     if ( present(message) ) then
        write(*,*) message

@@ -135,7 +135,7 @@ contains
     real :: weight
     logical, save :: firstTime = .true.
     real, allocatable, save :: cosArray(:)
-
+    weight = 1.
     if (firstTime)  then
        allocate(cosArray(1:nMuMie))
        do i = 1, nMumie
@@ -518,6 +518,8 @@ contains
 
     ! set up the weights and the stokes intensities (zero at emission)
 
+    bias = 1.; dlambias = 1.; fac = 1.; nBias = 1
+    thisSource = 0; lambias = 1.; weightArray = 1.
     photonFromEnvelope = .false.
 
     thisPhoton%resonanceLine = .false.
@@ -1855,9 +1857,12 @@ contains
     integer :: currentSubcell
     integer :: i, iLam
     type(PHASEMATRIX), intent(in) :: miePhase(nDustType, nLambda, nMumie) ! mie phase matrices   
+
+    call new(disc)
     do iLam = 1, nLambda
 
        thisPhoton%lambda = lamArray(iLam)
+       outPhoton%lambda = lamArray(iLam)
        thisPhoton%resonanceLine = .false.
        thisPhoton%position = VECTOR(5.d5, 0.d0, 0.d0)
        thisPhoton%direction = VECTOR(1.d0, 0.d0, 0.d0)

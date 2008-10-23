@@ -172,6 +172,9 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
   real, allocatable :: kappa(:)
   real, allocatable :: lambda(:)
   logical :: gridReadFromdisc
+  gridReadFromDisc = .false.
+
+  nLines = 0
 
   write(*,*) "Creating opacity look-up table..."
 
@@ -389,6 +392,7 @@ subroutine readTsujiPPTable()
   integer :: i, j
   character(len=80) :: filename, dataDirectory
 
+  dataDirectory = " "
   tsujiPPlookuptable%nTemps = 16
   tsujiPPlookuptable%nAtoms = 5
   tsujiPPlookuptable%nPressures = 9
@@ -416,6 +420,7 @@ subroutine readTsujiKPtable()
   character(len=80) :: junk, dataDirectory, filename
   integer :: i
 
+  datadirectory = " "
   tsujikplookuptable%nMolecules = 12
   allocate(tsujikplookuptable%molecule(1:12))
   allocate(tsujikplookuptable%a(1:12,1:5))
@@ -633,7 +638,7 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
   real :: t1, t2, lamArray(:)
   character(len=80) :: dataDirectory, filename
   integer :: i
-
+  dataDirectory = " "
   ! h2o
 
   h2oLookupTable%molecule = "H2O"
@@ -735,7 +740,7 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 
   DATA XISO/  .9976,  .0004,  .0020, .00001/
 
-
+  ielo = 0; iwl = 0
   ratiolog = LOG(1.D0+1.D0/2000000.D0)
 
 

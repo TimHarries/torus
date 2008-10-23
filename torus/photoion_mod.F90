@@ -63,7 +63,6 @@ contains
 #ifdef MPI
     use input_variables, only : blockHandout, nDusttype
 #endif
-    use messages_mod, only : myRankIsZero
     implicit none
 #ifdef MPI
  include 'mpif.h'
@@ -114,7 +113,6 @@ contains
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
 
     integer, parameter :: nFreq = 1000
-    integer :: nUndersampled
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
@@ -152,8 +150,21 @@ contains
 #endif
 
 
+    ok = .true.
+    rhat = VECTOR(0.d0, 0.d0, 0.d0)
+
+    escat = 0.d0
     nuStart = cSpeed / (1000.e4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
+    heTable%nfreq = 0
+    htable%nfreq = 0
+    hrecombTable%nTemp = 0
+    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
+    iSource = 0
+    kappaAbsGas = 0.d0; kappaAbsDust = 0.d0
+    luminosity1 = 0.d0; luminosity2 = 0.d0; luminosity3 = 0.d0
+    wavelength = 0.; temp = 0.
+
 
     do i = 1, nFreq
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
@@ -666,11 +677,13 @@ end subroutine photoIonizationloop
 !   real :: lambda
 !   integer :: ilambda
 
+   endSubcell = 0
     stillinGrid = .true.
     escaped = .false.
-       
+    diffusionZoneTemp = 0.
+    kappaAbsDb =0.d0 ; kappaScaDb = 0.0
 
-
+    ok = .true.
     thisLam = (cSpeed / thisFreq) * 1.e8
     call locate(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
@@ -1232,7 +1245,7 @@ end subroutine photoIonizationloop
     real :: deltaT
     real :: underCorrection = 1.
     integer :: nIter
-    
+    heheating = 0.d0; hheating = 0.d0; dustHeating = 0.d0; totalHeating = 0.d0
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -1363,6 +1376,7 @@ end subroutine photoIonizationloop
 
 !    call solveIonizationBalance(grid, thisOctal, subcell,  temperature, epsOverdeltaT)
                 
+    crate = 0.d0; kappap = 0.d0
     nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
     nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
     nh = thisOctal%nh(subcell)
@@ -1501,7 +1515,7 @@ end subroutine photoIonizationloop
     real(double) :: photonPacketWeight
     integer :: i 
     real :: e, xsec
-
+    kappaAbs = 0.d0; kappaAbsDust = 0.d0
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
     e = thisFreq * hCgs * ergtoEV
@@ -1555,7 +1569,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
   real(double), allocatable :: xplus1overx(:)
-
+  chargeExchangeIonization = 0.d0; chargeExchangeRecombination = 0.d0
   v = cellVolume(thisOctal, subcell)
   k = 1
   do while(k <= grid%nIon)
@@ -2053,6 +2067,8 @@ subroutine dumpLexington(grid, epsoverdt)
   real(double) :: cooling, dustHeating
   real :: netot
 
+  dustHeating = 0.d0; heHeating = 0.d0; hHeating = 0.d0; totalHeating = 0.d0
+
        call writeVtkFile(grid, "lexington.vtk", &
             valueTypeString=(/"rho        ", "temperature", "HI         "/))
 
@@ -2316,7 +2332,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   integer :: subcell, i, iIon, iTrans
   real(double) :: luminosity, v, rate
   real :: pops(10)
-  
+  pops = 0.
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -2352,7 +2368,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   real :: pops(10)
   integer :: i, j
   logical, optional :: debug
-
+  pops = 0.
   total = 0.d0
   do j = 5, nIons
      if (ionArray(j)%nTransitions > 0) then
@@ -2391,7 +2407,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   real(double) :: nh, ionFrac
   logical :: ok
   logical, optional :: debug
-
+  excitation  = 0.; deexcitation = 0.
   n = thisIon%nLevels
   allocate(matrixA(1:n, 1:n), matrixB(1:n), tempMatrix(1:n,1:n), qeff(1:n,1:n), rates(1:n))
 
@@ -2655,6 +2671,7 @@ subroutine createRecombTable(table, tablefilename)
   integer :: ia, ib, ne, ncut, i
   real :: e(1000)
 
+  dataDirectory = " "
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//tablefilename
 
@@ -2687,6 +2704,7 @@ subroutine createGammaTable(table, thisfilename)
   character(len=*) :: thisfilename
   character(len=200) :: dataDirectory, filename
   integer :: i
+  dataDirectory = " "
 
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//thisfilename
@@ -2966,7 +2984,7 @@ subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
   integer :: iIon, iTrans, j
   real :: pops(10)
   real(double) :: rate, lineFreq
-
+  pops = 0.
 
   do iIon = 3, grid%nIon
      do iTrans = 1, grid%ion(iIon)%nTransitions
@@ -3109,7 +3127,7 @@ end subroutine addDustContinuum
 subroutine readHeIRecombinationLinesFit()
   character(len=200) :: filename, datadirectory
   integer :: i
-
+  dataDirectory = " "
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"bss1999.dat"
 
@@ -3129,7 +3147,7 @@ end subroutine readHeIRecombinationLinesFit
 subroutine readHeIIrecombination()
   character(len=200) :: filename, datadirectory
   integer :: iup, ilow, i
-
+  dataDirectory = " "
 
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"r2b0100.dat"

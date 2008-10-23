@@ -251,6 +251,7 @@ contains
     character(len=80) :: absolutePath, inFile
     character(len=20) :: tag
 
+    absolutePath = " "
     error = 0
 
   call unixGetEnv("TORUS_JOB_DIR",absolutePath)

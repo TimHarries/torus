@@ -77,7 +77,7 @@ contains
     type(GRIDTYPE) :: grid
     real(double) :: kros
     integer :: subcell, i
-    
+    kros = 0.d0
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -726,7 +726,6 @@ end subroutine gaussSeidelSweep
      enddo
      write(message,*) "Gauss-seidel took ",niter, " iterations"
      call writeInfo(message,TRIVIAL)
-666  continue
    end subroutine solveArbitraryDiffusionZones
 
 
@@ -795,6 +794,7 @@ end subroutine gaussSeidelSweep
     integer :: subcell
     integer :: i
     real(double) :: kRos, tau
+    kros = 0.d0
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -1069,7 +1069,7 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use input_variables, only : tauForce, cylindrical, minCrossings
+    use input_variables, only : tauForce, cylindrical
 #ifdef MPI
     use input_variables, only : blockHandout
     include 'mpif.h'
@@ -1086,7 +1086,7 @@ subroutine setDiffOnTau(grid)
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
     real(double) :: kappaAbs
-    type(VECTOR) :: arrayVec(6), aVec
+    type(VECTOR) :: arrayVec(6)
      integer :: nDir
 #ifdef MPI
 ! Only declared in MPI case
@@ -1099,10 +1099,13 @@ subroutine setDiffOnTau(grid)
      integer :: nDiff
      integer :: np
      integer :: my_rank
-
-    np = 1
-    my_rank = 1
+     np = 1
+     my_rank = 1
 #endif
+
+     iLambda = 0
+     kappaAbs = 0.d0
+     thisTau = 0.d0
     
     ndir = 4
      arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)

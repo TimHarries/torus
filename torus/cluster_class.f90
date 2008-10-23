@@ -353,11 +353,11 @@ contains
     type(cluster), intent(in), optional :: a_cluster
     !
     real(double) :: density_ave, rho_disc_ave, dummy_d
-    type(VECTOR) :: velocity_ave
+!    type(VECTOR) :: velocity_ave
     real :: tem_ave
     integer :: nparticle     
 
-    logical :: dosmoothing
+!    logical :: dosmoothing
     real(double), parameter :: density_crit = 1d-13
     !
     !

@@ -69,6 +69,9 @@ contains
     character(len=120) :: junk
     character(len=20) :: chunk(20)
     character(len=80) :: message
+
+    dataDirectory = " "; chunk = " "; nChunks = 0
+
     call unixGetenv("TORUS_DATA", dataDirectory, i)
     thisfilename = trim(dataDirectory)//"/"//atomfilename
 
@@ -626,7 +629,7 @@ contains
     integer :: i, j
     character(len=80) :: junk
     integer, parameter :: maxFreq = 4000
-    
+    dataDirectory = " "
     call writeInfo("Read TOPBASE data from: "//trim(baseFilename),TRIVIAL)
 
     call unixGetenv("TORUS_DATA", dataDirectory, i)

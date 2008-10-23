@@ -98,6 +98,7 @@ contains
     freq=cSpeed/lambdah(m,n)
     transe=abs(eh(n)-eh(m))
 
+    nsaha = 0.
     call boltz_saha(nsaha,ne,temp)
 
     !

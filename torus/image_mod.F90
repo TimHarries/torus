@@ -182,7 +182,7 @@ module image_mod
      real(double) :: lambda_obs
 
      velIncgs = thisVel! * cSpeed/1.e5 
-
+     xPix = 0; yPix = 0
 
      ! observed wavelength should be Doppler shifted by local gas velocity
      if (thisPhoton%contPhoton) then

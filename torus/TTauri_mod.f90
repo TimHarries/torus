@@ -34,7 +34,7 @@ contains
 
     type(GRIDTYPE) :: grid
     character(len=*) :: contFile1, popFileName
-    character(len=80) :: contfile2, newContfile
+    character(len=80) :: contfile2 = " ", newContfile = " "
     logical :: readPops, writePops, lte
     logical :: curtains
     real :: dipoleOffset
@@ -457,7 +457,7 @@ contains
 
     type(GRIDTYPE) :: grid
     character(len=*) :: contFile1, popFileName
-    character(len=80) :: contfile2
+    character(len=80) :: contfile2 = " "
     logical :: readPops, writePops, lte
     integer :: i, j, k
     real :: rStar, vTerm, v0, v, r, mdot

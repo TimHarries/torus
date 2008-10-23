@@ -474,28 +474,6 @@ contains
     fromPhotosphereVector = v
   end function fromPhotosphereVector
 
-  subroutine bezier(a, b, c, d, t, bPoint)
-    real(double) :: t
-    type(VECTOR) :: a, b, c, d, bPoint
-    type(VECTOR) :: ab, bc, cd, abbc, bccd
-
-    call linterp(ab, a, b, t)
-    call linterp(bc, b, c, t)
-    call linterp(cd, c, d, t)
-    call linterp(abbc, ab, bc, t)
-    call linterp(bccd, bc, cd, t)
-    call linterp(bPoint, abbc, bccd, t)
-  end subroutine bezier
-
-
-  subroutine linterp(thisPoint, a, b, t)
-    type(VECTOR) :: thisPoint, a, b
-    real(double) :: t
-
-    thisPoint = a + t*(b-a)
-  end subroutine linterp
-    
-
   function projectToXZ(rVec) result (out)
     implicit none
     type(VECTOR) :: OUT

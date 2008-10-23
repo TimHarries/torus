@@ -327,14 +327,14 @@ contains
 !    integer*4 :: npart,  nsph, nptmass
     real(double) :: udist, umass, utime,  time
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter, u, h
-    real(double), allocatable :: xarray(:), harray(:)
-    INTEGER, allocatable :: ind(:)
+!    real(double), allocatable :: xarray(:), harray(:)
+!    INTEGER, allocatable :: ind(:)
     integer :: itype, ipart, icount, iptmass, igas, idead
-    integer :: npart, nptmass, n1, n2, nlines, i
+    integer :: npart, nptmass, n1, n2, nlines
     real(double) junk
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
-    real(double) :: hcrit
+!    real(double) :: hcrit
 
     open(unit=LUIN, file=TRIM(filename), form="formatted")
 

@@ -41,6 +41,9 @@ contains
 
     integer :: error
 
+    datadirectory = " "
+    done = .false.
+    ok = .true.
     oneKappa = .false.
 
     contrast = 1.

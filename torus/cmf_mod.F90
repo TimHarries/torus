@@ -63,7 +63,8 @@ contains
     integer, allocatable :: nCons(:)
     logical :: ok
     integer :: nDifferentElements
-
+    
+    blu = 0.d0; bul = 0.d0; a = 0.d0; ok = .true.
     nDifferentElements = 0
     do iAtom = 1, nAtom
        if (iAtom /= nAtom) then
@@ -427,10 +428,12 @@ contains
     integer :: j
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
     logical, save :: first = .true.
-    real(double) :: nStar(5,40), t1
+    real(double) :: nStar(5,40)
     logical :: passThroughResonance, velocityIncreasing
     real(double) :: x1, x2, fac, deltaDist
 
+    distToSource = 0.d0; hitSource = .false.
+    a = 0.d0; blu = 0.d0; bul =0.d0
     allocate(tauCont(1:nFreq))
     allocate(jnuCont(1:nFreq))
     allocate(alphanuCont(1:nFreq))
@@ -755,9 +758,7 @@ contains
   function phiProf(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
-    integer :: i
     logical, save :: firstTime = .true.
-    real(double) :: phiArray(-100:100)
 
     phi = 1.d0 / (b * sqrtPi)
     fac = (dv/b)**2
@@ -788,6 +789,7 @@ contains
     real(double) :: tauAv
     jBarExternal = 0.d0
     jBarInternal = 0.d0
+    a = 0.d0; bul = 0.d0; blu = 0.d0
 
     if (thisAtom%transType(iTrans) == "RBB") then
 
@@ -1006,6 +1008,12 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+    position = VECTOR(0.d0, 0.d0, 0.d0)
+    direction = VECTOR(0.d0, 0.d0, 0.d0)
+    freq = 0.d0
+    indexRBBTrans = 0
+    ilev = 0; ilab = 0; indexAtom = 0; lev1 = 0; lev2 = 0
+    nfreq = 0; nRBBTrans = 0; tauAv = 0.d0
     call writeVTKfile(grid, "grid.vtk", "vtk.txt")
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
@@ -1545,7 +1553,8 @@ contains
     integer :: subcell, i, iUpper, iAtom
     real(double) :: a, bul, blu
     real(double) :: etaLine
-  
+
+    a = 0.d0; blu = 0.d0; bul = 0.d0
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -1749,6 +1758,8 @@ contains
     logical :: lineoff, passThroughResonance, velocityIncreasing
 
 
+    hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
+    a = 0.d0; blu = 0.d0; bul = 0.d0
     nHAtom = 0
     nHeIAtom = 0
     nHeIIAtom = 0
@@ -2049,6 +2060,8 @@ contains
     integer       ::   ierr           ! error flag
     real(double), allocatable :: tempArray(:)
 
+
+
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
@@ -2057,6 +2070,10 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+    da = 0.d0; dOmega = 0.d0
+    cube%label = " "
+    freqArray = 0.d0; nFreqArray = 0
+    nray = 0; rayPosition = VECTOR(0.d0, 0.d0, 0.d0)
     call createContFreqArray(nFreqArray, freqArray, nAtom, thisAtom, nsource, source, maxFreq)
 
 

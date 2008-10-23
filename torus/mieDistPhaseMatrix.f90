@@ -546,6 +546,10 @@ contains
       real :: tot
       real :: p11tot, pltot, p33p11tot, p34p11tot
       real :: micronsTocm
+
+      nc = 0
+      pnmllg = 0
+
       ci = (0.0,1.0)
 
       ! for amorphous carbon grains we assume we're in the rayleigh regime
@@ -760,7 +764,7 @@ contains
       real :: cnrm(1000000) ! tjh, real declaration dma
       real :: x, xc, bj, bjm, rf, rn
       integer :: nc, nci, n, nmx
-
+      hkl = 0
       ci = (0.0,1.0)
 !     ......................................................
 !     .  set the number of terms required for convergence  .

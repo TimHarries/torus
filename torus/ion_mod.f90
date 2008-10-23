@@ -54,6 +54,7 @@ contains
     character(len=2) :: element
     character(len=4) :: roman
 
+    element = " "; roman = " "
     thisIon%z = z
     thisIon%n = n
     i = z - n + 1

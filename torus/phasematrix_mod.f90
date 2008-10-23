@@ -420,11 +420,11 @@ contains
     type(STOKESVECTOR), allocatable :: ytmpArray(:),  ymedian(:)
     real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
     real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
-    real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:), tArray(:)
+    real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
     real, allocatable, dimension(:) :: tmpXarray
     !  real :: tot
     real :: x
-    integer :: i,j
+    integer :: i
     logical :: SI
     character(len=80) :: message
 

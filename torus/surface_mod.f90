@@ -69,11 +69,11 @@ contains
     real(double) :: dPhase
     type(VECTOR) :: rVec
     integer :: nNuHotFlux
-    integer :: returnVal
-    real(double) :: dummyReal
-    real(double) :: nu, hnu
     logical :: ok
     type(SPECTRUMTYPE) :: hotspec
+
+    ok = .true.
+
     surface%centre = centre
     surface%radius = radius
     surface%nElements = 0
@@ -565,7 +565,7 @@ contains
     real(double), optional :: luminosity
     integer :: iElement
     real :: surfaceArea
-    integer :: iNu, i
+    integer :: iNu
 
     surfaceArea = fourPi * surface%radius**2. ! 1.e20 cm^2
 

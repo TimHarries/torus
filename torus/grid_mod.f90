@@ -1747,7 +1747,7 @@ contains
     real :: kfac
     logical :: ok
     real :: r, temp, rho, scale
-
+    ok = .false.
     plezmodel%geometry = "plez"
 
     open(20, file=filename,status="old",form="formatted")
@@ -3266,8 +3266,11 @@ contains
     character(len=80) :: absolutePath, inFile
     integer :: iJunk
     real, pointer :: junk(:), junk2(:,:), junk3(:,:)
-
+    absolutePath = " "
     error = 0
+    junk => null()
+    junk2 => null()
+    junk3 => null()
 
   call unixGetEnv("TORUS_JOB_DIR",absolutePath)
   inFile = trim(absolutePath)//trim(filename)
@@ -3553,7 +3556,7 @@ contains
     logical, optional :: mpiFlag
     logical :: doMpiFlag
     real, pointer :: junk(:) => null(), junk2(:,:) => null(), junk3(:,:)=>null()
-
+    absolutePath = " "
     error = 0
 
     dompiFlag = .false.
@@ -4346,7 +4349,8 @@ contains
     type(VECTOR) :: rHat
     integer :: i1, i2
     real :: lineTot, contTot
-
+    contTot = 0.
+    lineTot = 0.
     grid%lineEmission = .true.
 
     do i = 1, grid%nr
