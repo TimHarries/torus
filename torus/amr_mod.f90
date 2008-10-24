@@ -5302,12 +5302,23 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("toruslogo")
 !used to be 6
-      if (thisOctal%nDepth  < mindepthamr) split = .true.
+      if (thisOctal%nDepth  < 8) split = .true.
 
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.)) then
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 10.)) then
          split = .true.
          splitInAzimuth = .true.
       endif
+      cellCentre = subcellCentre(thisOctal, subcell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      if ((r + thisOctal%subcellSize/2.d0)  .lt. 1.5*rsol/1.e10) then
+         split = .false.
+         splitinAzimuth = .false.
+      endif
+      if ((r - thisOctal%subcellSize/2.d0)  .gt. 2.*rsol/1.e10) then
+         split = .false.
+         splitinAzimuth = .false.
+      endif
+
 
 
    case("warpeddisc")
@@ -13235,11 +13246,11 @@ end function readparameterfrom2dmap
 
           ! now look at the cylindrical case
 
-
+          halfCellSize = thisOctal%subcellSize/2.d0
           rVec = subcellCentre(thisOctal,subcell)
           r = sqrt(rVec%x**2 + rVec%y**2)
-          r1 = r - thisOctal%subcellSize/2.d0
-          r2 = r + thisOctal%subcellSize/2.d0
+          r1 = r - halfCellSize
+          r2 = r + halfCellSize
 
           distToR1 = 1.d30
           distToR2 = 1.d30
