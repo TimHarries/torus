@@ -13125,11 +13125,12 @@ end function readparameterfrom2dmap
     real(double) :: distTor1, distTor2, theta, mu
     real(double) :: distToRboundary, compz,currentZ
     real(double) :: phi, distToZboundary, ang1, ang2
-    type(VECTOR) :: subcen, point, xHat, rVec, rplane, rnorm
+    type(VECTOR) :: subcen, point, xHat, rVec, rplane, rnorm, xVec
     integer :: subcell
     real(double) :: distToSide1, distToSide2, distToSide
     real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
     real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCell
+    real(double) :: a, b, c 
     integer :: i,j
     logical :: ok, thisOk(6)
 
@@ -13390,7 +13391,8 @@ end function readparameterfrom2dmap
           distToR2 = 1.d30
           d2 = point%x**2+point%y**2
           d = sqrt(d2)
-          xHat = VECTOR(point%x, point%y,0.d0)
+          xVec = VECTOR(point%x, point%y,0.d0)
+          xHat = xVec
           call normalize(xHat)
           rDirection = VECTOR(direction%x, direction%y,0.d0)
           compX = modulus(rDirection)
@@ -13411,32 +13413,33 @@ end function readparameterfrom2dmap
              endif
              distTor2 = max(x1,x2)/compX
 
-             theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-             cosmu = ((-1.d0)*xHat).dot.rdirection
-             mu = acos(max(-1.d0,min(1.d0,cosmu)))
              distTor1 = 1.e30
 
-             fac = (rDirection.dot.xHat)-(xHat.dot.xHat)+r1**2
-!             write(*,*) fac, mu < theta
-             if (mu  < theta ) then
-                call solveQuadDble(1.d0, -2.d0*d*cosmu,d2-r1**2, x1, x2, ok)
-                !               if(ok) then
-                !                  write(*,*) "All good",d,cosmu,r1,x1,x2
-                !                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
-                !               endif
-
-                if (.not.ok) then
-                   write(*,*) "mu", mu, "theta", theta
-                   write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
-                   write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
-                   write(*,*) "xhat",xhat
-                   write(*,*) "dir",direction
-                   write(*,*) "point",point
-
-                   x1 = thisoctal%subcellSize/2.d0
-                   x2 = 0.d0
+             if (cosmu > 0.d0) then
+                a = 1.d0
+                b = -2.d0*d*cosmu
+                c = d2-r1**2
+                fac = b*b-4.d0*a*c
+                if (fac > 0.d0) then
+                   call solveQuadDble(a, b, c, x1, x2, ok)
+                   !               if(ok) then
+                   !                  write(*,*) "All good",d,cosmu,r1,x1,x2
+                   !                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
+                   !               endif
+                   
+                   if (.not.ok) then
+                      write(*,*) "mu", mu, "theta", theta
+                      write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
+                      write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
+                      write(*,*) "xhat",xhat
+                      write(*,*) "dir",direction
+                      write(*,*) "point",point
+                      
+                      x1 = thisoctal%subcellSize/2.d0
+                      x2 = 0.d0
+                   endif
+                   distTor1 = min(x1,x2)/compX
                 endif
-                distTor1 = min(x1,x2)/compX
              endif
           endif
           distToXboundary = min(distTor1, distTor2)
