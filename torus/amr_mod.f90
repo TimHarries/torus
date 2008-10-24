@@ -13309,36 +13309,6 @@ end function readparameterfrom2dmap
              ! ok now we have to tackle the two angled sides...
          thisOk = .true.
          
-         do i = 1, 6
-            
-            denom(i) = norm(i) .dot. direction
-            if (denom(i) /= 0.0d0) then
-               t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-            else
-               thisOk(i) = .false.
-               t(i) = 0.0d0
-            endif
-            if (t(i) < 0.) thisOk(i) = .false.
-            !      if (denom > 0.) thisOK(i) = .false.
-         enddo
-         
-         
-         j = 0
-         do i = 1, 6
-            if (thisOk(i)) j=j+1
-         enddo
-         
-         if (j == 0) ok = .false.
-         
-         if (.not.ok) then
-            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
-            write(*,*) direction%x,direction%y,direction%z
-            write(*,*) t(1:6)
-            call torus_abort
-         endif
-         
-         tval = minval(t, mask=thisOk)
-
 ! Commented out by Dave Acreman, October 2008
 ! tval == 0 is handled at the end of this subroutine         
 !         if (tval == 0.) then
