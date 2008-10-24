@@ -529,6 +529,9 @@ contains
 
     enddo
 
+#ifdef MPI
+666 continue
+#endif
 
   end subroutine writeVtkFile
 
