@@ -2461,7 +2461,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
      endif
   endif
   
-  call luSlv(matrixA, matrixB, n)
+  call luSlv(matrixA, matrixB)
 
   matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
   
