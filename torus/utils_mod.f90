@@ -3539,34 +3539,31 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
 END SUBROUTINE GAUSSJ
 
   ! this procedure performs the solution of linear equations
-  subroutine luSlv(a, b, n)
+  subroutine luSlv(a, b)
     implicit none
     
-    integer, intent(in)                  :: n 
+    real(double), intent(inout) :: a(:,:)
+    real(double), intent(inout) :: b(:)    
+    integer :: n
 
-    double precision,& 
-         & intent(inout), dimension(:,:) :: a
-    double precision,&
-         & intent(inout), dimension(:)   :: b    
+    call lured(a)
     
-    call lured(a,n)
-    
-    call reslv(a,b,n)
+    call reslv(a,b)
+
   end subroutine luSlv
   
-  subroutine lured(a,n)
+  subroutine lured(a)
     implicit none
     
-    integer, intent(in)                  :: n
-    
-    double precision,&
-         & intent(inout), dimension(:,:)    :: a
+    real(double), intent(inout)  :: a(:,:)
     
     ! local variables
-    integer          :: i, j, k                    ! counters
+    integer          :: i, j, k, n                    ! counters
     
-    double precision :: factor                     ! general calculation factor
-    
+    real(double) :: factor                     ! general calculation factor
+
+    n = size(a,1)
+
     if (n == 1) return
     
     do i = 1, n-1
@@ -3579,18 +3576,17 @@ END SUBROUTINE GAUSSJ
     end do
   end subroutine lured
   
-  subroutine reslv(a,b,n)
+  subroutine reslv(a,b)
     implicit none 
     
-    integer, intent(in)              :: n
-    
-    double precision,&
-         & intent(inout), dimension(:,:) :: a
-    double precision,&        
-         & intent(inout), dimension(:)   :: b
+    real(double), intent(inout) :: a(:,:)
+    real(double), intent(inout) :: b(:)
     
     ! local variables
     integer    :: i, j, k, l              ! counters
+    integer    :: n
+
+    n = size(b)
 
     if (n == 1) then
        b(n) = b(n) / a(n,n)
