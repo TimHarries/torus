@@ -1353,7 +1353,7 @@ end subroutine molecularLoop
 !     enddo
 
  ! finished creating equation 10, now solve it to find new level populations
-   call luSlv(matrixA, matrixB, maxlevel+1)
+   call luSlv(matrixA, matrixB)
 
    matrixB = abs(matrixB) ! stops negative level populations causing problems
 
@@ -3233,7 +3233,7 @@ endif
        enddo; enddo
 
        b = (/sumxy(2),sumxy(1),sum(yquad)/)
-       call luSlv(a,b,3)
+       call luSlv(a,b)
 
          write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
 
