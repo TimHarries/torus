@@ -3544,7 +3544,6 @@ END SUBROUTINE GAUSSJ
     
     real(double), intent(inout) :: a(:,:)
     real(double), intent(inout) :: b(:)    
-    integer :: n
 
     call lured(a)
     

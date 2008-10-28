@@ -2107,7 +2107,6 @@ contains
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, tdump, temptc(10)
-    character(len=80) :: plotfile
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -2291,7 +2290,7 @@ contains
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), gamma, mu
-    real(double) :: currentTime, smallTime
+    real(double) :: currentTime !, smallTime
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=20) :: plotfile
@@ -2540,7 +2539,7 @@ contains
     real(double) :: currentTime
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
-    character(len=20) :: plotfile, titleString
+    character(len=20) :: plotfile
     real(double) :: tDump, nextDumpTime, tff !, ang
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
@@ -3686,13 +3685,13 @@ contains
     integer :: subcell, i
     logical :: converged, converged_tmp
     type(VECTOR) :: dirVec(6), centre, locator
-    logical :: split
+!    logical :: split
     integer :: neighbourSubcell, nDir
-    real(double) :: r , grad, maxGradient
+    real(double) :: r !, grad, maxGradient
     logical, optional :: inherit
     real(double), parameter :: limit = 0.1d0
     real(double) :: gamma
-    real(double) :: cs, rhocs
+!    real(double) :: cs, rhocs
     integer :: myRank, ierr
     integer :: iEquationOfState
     logical :: refineOnMass, refineOnIonization

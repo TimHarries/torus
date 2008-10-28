@@ -418,7 +418,6 @@ contains
     real, intent(in) :: lamLine
     type(STOKESVECTOR), intent(in) :: yArray(nLambda)
     type(STOKESVECTOR), allocatable :: ytmpArray(:),  ymedian(:)
-    real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
     real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
     real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
     real, allocatable, dimension(:) :: tmpXarray
@@ -430,11 +429,6 @@ contains
 
     allocate(ytmpArray(1:nLambda))
     allocate(tmpXarray(1:nLambda))
-
-    allocate(meanQ(1:nLambda))
-    allocate(meanU(1:nLambda))
-    allocate(sigQ(1:nLambda))
-    allocate(sigU(1:nLambda))
 
     allocate(dlam(1:nLambda))
     allocate(stokes_i(1:nLambda))
@@ -587,7 +581,7 @@ contains
        close(20)
     endif
 
-    deallocate(ytmpArray,meanQ,meanU,sigQ,sigU)
+    deallocate(ytmpArray)
     deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
 
   end subroutine writeSpectrum

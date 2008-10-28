@@ -61,7 +61,7 @@ contains
        lucyfileout, lucyfilein)
     use input_variables, only : nlucy, taudiff !, smoothFactor
 #ifdef MPI
-    use input_variables, only : blockHandout, nDusttype
+    use input_variables, only : blockHandout
 #endif
     implicit none
 #ifdef MPI

@@ -74,7 +74,6 @@ contains
     real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
     integer :: iUnrefine
     integer :: myRank, ierr
-    character(len=20) :: plotfile
     real(double) :: tDump, nextDumpTime
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged

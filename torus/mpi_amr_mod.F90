@@ -1175,7 +1175,7 @@ contains
     type(GRIDTYPE) :: grid
     integer :: nSubcells
     integer, optional :: nSubcellArray(:)
-    integer :: ierr, myRank, iThread, nThreads, nVoxels, n, nOctals
+    integer :: ierr, myRank, iThread, nThreads, nVoxels, n
     integer :: iBuffer(1)
     integer, allocatable :: iArray(:)
     integer :: tag = 81
@@ -1231,7 +1231,7 @@ contains
       RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal, nVoxels)
         include 'mpif.h'
         integer :: nVoxels
-        integer :: myRank, ierr, subcell
+        integer :: subcell
         TYPE(OCTAL), POINTER  :: thisOctal 
         TYPE(OCTAL), POINTER  :: child
         INTEGER :: i

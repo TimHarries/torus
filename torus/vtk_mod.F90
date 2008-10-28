@@ -384,7 +384,6 @@ contains
     integer :: nOctals, nVoxels, i, iType
     integer :: nPointOffset
 #ifdef MPI
-    integer :: nPointsArray(64)
     integer :: ierr
     integer, allocatable :: iOffsetArray(:)
     integer :: myRank, nThreads, iThread
