@@ -96,6 +96,12 @@ module vector_mod
      module procedure SPtoXYZvector
   end interface
 
+  ! equivalence
+
+  interface operator(==)
+     module procedure VectorEquivalence
+  end interface
+
   ! dot product
 
   interface operator(.dot.)
@@ -141,18 +147,17 @@ contains
 
   subroutine normalize(a)
     type(VECTOR), intent(inout) :: a
+    type(VECTOR) :: ZeroVec = VECTOR(0.d0,0.d0,0.d0)
     real(double) :: m, oneOverM
 
-    m = modulus(a)
-    OneOverm = 1.d0 / m
-
-    if (m == 0.d0) then
-       write(*,'(a)') "! Attempt to normalize the zero vector single"
+    if (a .eq. ZeroVec) then
+       write(*,'(a)') "! Attempt to normalize the zero vector"
        a = VECTOR(1.d0,0.d0,0.d0)
     else
-       a%x = a%x * OneOverM
-       a%y = a%y * OneOverM
-       a%z = a%z * OneOverM
+       m = modulus(a)
+       OneOverm = 1.d0 / m
+
+       a = a * OneOverM
     endif
 
   end subroutine normalize
@@ -166,6 +171,7 @@ contains
     modulus = sqrt(modulus)
 
   end function modulus
+
   ! multiply function
 
   type(VECTOR) pure function rmult(a,b)
@@ -477,10 +483,20 @@ contains
   function projectToXZ(rVec) result (out)
     implicit none
     type(VECTOR) :: OUT
+    type(VECTOR), save :: outprev, rvecprev
     type(VECTOR),intent(in) :: rVec
-    out%x = sqrt(rVec%x**2 + rVec%y**2)
-    out%y = 0.d0
-    out%z = rVec%z
+
+    if(rvec .eq. rvecprev) then
+       out = outprev
+    else
+       out%x = sqrt(rVec%x**2 + rVec%y**2)
+       out%y = 0.d0
+       out%z = rVec%z
+
+       outprev = out
+       rvecprev = rvec
+    endif
+       
   end function projectToXZ
 
   elemental subroutine SPtoXYZvector(out,in)
@@ -516,7 +532,26 @@ contains
     IF (out%phi < 0.0) out%phi = out%phi + twoPi
     
   END SUBROUTINE XYZtoSPvector
-  
+
+  elemental logical function VectorEquivalence(a, b)
+    TYPE(vector),  INTENT(IN) :: a,b
+
+    VectorEquivalence = .false.
+
+    if(a%x .ne. b%x) then
+       return
+    else
+       if(a%y .ne. b%y) then
+          return
+       else
+          if(a%z .eq. b%z) then
+             VectorEquivalence = .true.
+             return
+          endif
+       endif
+    endif
+    
+  end function VectorEquivalence
   
   FUNCTION greatCircleDistance(pointA, pointB) RESULT(distance)
     ! returns the great circle distance between two points
