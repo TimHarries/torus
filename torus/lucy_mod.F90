@@ -28,7 +28,6 @@ contains
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
     use input_variables, only : variableDustSublimation, iterlucy, amax
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-!    use input_variables, only : rinner, router
 #ifdef MPI
     use input_variables, only : blockhandout
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
@@ -47,7 +46,7 @@ contains
     ! threshold value for undersampled cell in percent (for stopping iteration).
     real, intent(in) :: percent_undersampled_min  
     type(VECTOR) ::  uHat, uNew, rVec, rHat, olduHat
-    type(VECTOR) :: octVec,avedirection
+    type(VECTOR) :: octVec
     type(OCTAL), pointer :: thisOctal, sOctal, tempOctal, foundOctal
     integer :: foundSubcell
     integer :: tempSubcell
@@ -86,7 +85,6 @@ contains
     logical :: leftHandBoundary
     real :: treal
     real(oct) :: lCore
-!    real      :: kabs
     type(vector) :: vec_tmp
     real(oct)::  dT_sum ! [Kelvins]  the sum of the temperature change
     real(oct)::  dT_min ! [kelvins]  the minimum change of temperature
@@ -113,8 +111,6 @@ contains
     logical :: directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
     logical :: scatteredPhoton
-!    integer :: omp_get_num_threads, omp_get_thread_num
-!    real(double) :: this_bnu, fac2, hNuOverkT
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals
 
@@ -300,7 +296,7 @@ contains
 !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
 !$OMP PRIVATE(thisOctal, albedo, r) &
 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
-!$OMP PRIVATE(kabs,i, j, T1) &
+!$OMP PRIVATE(i, j, T1) &
 !$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
@@ -308,7 +304,7 @@ contains
 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
-!$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled, avedirection) 
+!$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
 
        call resetDirectGrid(grid%octreeRoot)
  
@@ -378,7 +374,6 @@ contains
       if (rankComplete) exit mpiBlockLoop  
 #endif    
 
-       avedirection = VECTOR(0.d0, 0.d0, 0.d0)
 
 
 !$OMP DO SCHEDULE(runtime)
@@ -410,7 +405,6 @@ contains
           endif
           sOctal => thisOctal
 
-          avedirection = avedirection + uHat
           escaped = .false.
           call getWavelength(thisSource%spectrum, wavelength)
           thisFreq = cSpeed/(wavelength / 1.e8)
