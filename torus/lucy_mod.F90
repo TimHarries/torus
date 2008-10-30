@@ -110,7 +110,6 @@ contains
     real :: diffusionZoneTemp, temp
     logical :: directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
-    logical :: scatteredPhoton
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals
 
@@ -269,8 +268,6 @@ contains
 
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
-       call locate(lamArray, nLambda, 5500.,ilam)
-
        if (multiLucyFiles) then
           write(tfilename, '(a,i2.2,a)') "lucy",iIter_grand,".vtk"
        else
@@ -389,7 +386,6 @@ contains
           call getPhotonPositionDirection(thisSource, rVec, uHat, rHat)
 
           directPhoton = .true.
-          scatteredPhoton = .false.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
@@ -412,7 +408,7 @@ contains
           do while(.not.escaped)
 
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton,  &
                   sOctal, foundOctal, foundSubcell)
 
              If (escaped) nInf_sub = nInf_sub + 1
@@ -462,7 +458,6 @@ contains
 
                    nScat_sub = nScat_sub + 1
                    uHat = uNew
-                   scatteredPhoton = .true.
 
                 else
 
@@ -542,7 +537,6 @@ contains
 
                    oldUhat = uHat
                    uHat = randomUnitVector()
-                   scatteredPhoton = .false.
 
                    ! make sure diffused photon is moving out of diffusion zone
 
@@ -1845,7 +1839,7 @@ contains
 
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  imonte, &
-      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
+      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, &
       startOctal, foundOctal, foundSubcell)
 
 
@@ -1876,7 +1870,6 @@ contains
 !   real(double) :: prob
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
-   logical :: scatteredPhoton
 
    isubcell = 0; endSubcell = 0
    stillinGrid = .true.
