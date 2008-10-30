@@ -161,18 +161,23 @@ for sys in ${SYS_TO_TEST}; do
     run_bench 
     check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
 
-    echo "Running cylindrical polar disc benchmark"
-    export THIS_BENCH=disc_cylindrical
-    run_bench
-    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+    if [[ ${SYSTEM} == ompi ]]; then
+	echo "Running cylindrical polar disc benchmark"
+	export THIS_BENCH=disc_cylindrical
+	run_bench
+	check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+    fi
 
-    echo "Running SPH-Bench"
-    run_sphbench
-    check_benchmark > check_log_sphbench.txt 2>&1 
+# SPH-Bench and HII region benchmark have been commented out 
+# when running Torus v1.1 stable version tests. 
 
-    echo "Running HII region benchmark"
-    export THIS_BENCH=HII_region
-    run_bench
+#    echo "Running SPH-Bench"
+#    run_sphbench
+#    check_benchmark > check_log_sphbench.txt 2>&1 
+
+#    echo "Running HII region benchmark"
+#    export THIS_BENCH=HII_region
+#    run_bench
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
@@ -235,7 +240,7 @@ for opt in ${DEBUG_OPTS}; do
 # Set name of output directory
     case ${MODE} in 
 	daily)  export TEST_DIR=${HOME}/SCRATCH/torus_daily_test;;
-	stable) export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
+	stable) export TEST_DIR=${HOME}/SCRATCH/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
     esac
 
     export TORUS_DATA=${TEST_DIR}/torus/data
