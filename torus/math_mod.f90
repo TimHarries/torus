@@ -701,7 +701,7 @@ contains
        rProbDist, rAxis, nr, muProbDist, muAxis, nMu, phiProbDist, phiAxis, nPhi, eta, chi,  &
        bias, totalEmission, lineEmission, lambda0, useBias)
 
-    type(GRIDTYPE), intent(in) :: grid
+    type(GRIDTYPE), intent(inout) :: grid
     type(VECTOR) :: rVec
     real :: tot, tot2
     real(double), intent(out) :: totalEmission
