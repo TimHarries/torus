@@ -66,7 +66,7 @@ module path_integral
       real, intent(out)         :: escProb                ! the escape probability
       real, intent(in)          :: lamStart, lamEnd
       integer, intent(in)       :: nLambda
-      real,intent(inout),dimension(maxTau, nLambda) :: tauCont
+      real,intent(inout)        :: tauCont(:,:)
       logical, intent(out)      :: hitcore                ! has the photon hit the core
       logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
       logical, intent(in)       :: lineResAbs             ! T if you want to include absorption
