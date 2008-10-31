@@ -287,22 +287,6 @@ contains
        call writeInfo(message, TRIVIAL)
 
 
-
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
-!$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
-!$OMP PRIVATE(thisOctal, albedo, r) &
-!$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
-!$OMP PRIVATE(i, j, T1) &
-!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
-!$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
-!$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
-!$OMP PRIVATE(oldUHat) &
-!$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
-!$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
-!$OMP SHARED(dnu, nFreq, freq, nMonte) &
-!$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
-
        call resetDirectGrid(grid%octreeRoot)
  
        nInf_sub = 0
@@ -371,6 +355,24 @@ contains
       if (rankComplete) exit mpiBlockLoop  
 #endif    
 
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
+!$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
+!$OMP PRIVATE(thisOctal, albedo, r) &
+!$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
+!$OMP PRIVATE(i, j, T1) &
+!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
+!$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
+!$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
+!$OMP PRIVATE(oldUHat) &
+!$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
+!$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
+!$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
+!$OMP SHARED(scale, logNu1, fac1dnu) &
+!$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
+!$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
+!$OMP SHARED(dnu, nFreq, freq, nMonte) &
+!$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
 
 
 !$OMP DO SCHEDULE(runtime)
@@ -552,6 +554,8 @@ contains
           enddo
 
        enddo photonLoop
+!$OMP END DO
+!$OMP CRITICAL (update)
 
 #ifdef MPI
  if (.not.blockHandout) exit mpiblockloop        
@@ -559,8 +563,6 @@ contains
   end if ! (myRankGlobal /= 0)
 #endif
 
-!$OMP END DO
-!$OMP CRITICAL (update)
       nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
       nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
       nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP

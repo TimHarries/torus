@@ -1285,42 +1285,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
-!$OMP PRIVATE(thisPhoton, directionalWeight) &
-!$OMP PRIVATE( ilambda, sourceSpectrum, ok) &
-!$OMP PRIVATE(hitCore, junk, thisLam, j, obs_weight, thisVel) &
-!$OMP PRIVATE(i1, i2, i3, t1, t2, t3, vray, vovercsqr, fac, observedLambda) &
-!$OMP PRIVATE(t, rHat, islit, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
-!$OMP PRIVATE(escaped, currentScat, absorbed, dlambda, thisChi, thisSca) &
-!$OMP PRIVATE(albedo, tempPhoton, redRegion, thrustar, ramanWeight) &
-!$OMP PRIVATE(outPhoton,intPathError) &
-!$OMP PRIVATE(nTau, escProb, spotPhoton) &
-!$OMP PRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray) &
-!$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
-!$OMP SHARED(grid) &
-!$OMP SHARED(meanr_Cont, wtot_cont,meanr_line,wtot_line, ntot) &
-!$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
-!$OMP SHARED(weightLinePhoton, flatSpec, vRot, secondSource, secondSourcePosition) &
-!$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
-!$OMP SHARED(weightContPhoton, useBias, pencilBeam ,outVec)&
-!$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, rStar, coolStarPosition) &
-!$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image, screened) &
-!$OMP SHARED(yArray, statArray, stokesImage, obsImageSet, doPvimage) &
-!$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
-!$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, maxScat, mie) &
-!$OMP SHARED(miePhase, zero Vec, theta1, theta2, chanceHotRing) &
-!$OMP SHARED(nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, chanceDust) &
-!$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
-!$OMP SHARED(sampleFreq, useInterp, photLine,tooFewSamples,boundaryProbs) &
-!$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
-!$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
-!$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
-!$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
-!$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat)
-
-
-
         if (mie) then
 
            iLambdaPhoton = iOuterLoop
@@ -1412,9 +1376,49 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
     
 #endif
 
-!$OMP DO SCHEDULE(DYNAMIC)
+
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
+!$OMP PRIVATE(thisPhoton, directionalWeight) &
+!$OMP PRIVATE( ilambda, sourceSpectrum, ok) &
+!$OMP PRIVATE(hitCore, junk, thisLam, j, obs_weight, thisVel) &
+!$OMP PRIVATE(i1, i2, i3, t1, t2, t3, vray, vovercsqr, fac, observedLambda) &
+!$OMP PRIVATE(t, rHat, islit, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
+!$OMP PRIVATE(escaped, currentScat, absorbed, dlambda, thisChi, thisSca) &
+!$OMP PRIVATE(albedo, tempPhoton, redRegion, thrustar, ramanWeight) &
+!$OMP PRIVATE(outPhoton,intPathError) &
+!$OMP PRIVATE(nTau, escProb, spotPhoton) &
+!$OMP PRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray) &
+!$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
+!$OMP PRIVATE(lambdaObs, tauExtObs, tauAbsObs, tauScaObs, photonfromEnvelope, sourceOctal, nFromEnv) &
+!$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
+!$OMP PRIVATE(testPhoton, nTauObs, dtau, currentOctal, currentSubcell) &
+!$OMP SHARED(doTuning, iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
+!$OMP SHARED(grid) &
+!$OMP SHARED(meanr_Cont, meanr_line, ntot) &
+!$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
+!$OMP SHARED(weightLinePhoton, flatSpec, vRot, secondSource, secondSourcePosition) &
+!$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
+!$OMP SHARED(weightContPhoton, useBias, pencilBeam ,outVec)&
+!$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, rStar, coolStarPosition) &
+!$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image, screened) &
+!$OMP SHARED(yArray, statArray, stokesImage, obsImageSet, doPvimage) &
+!$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
+!$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, maxScat, mie) &
+!$OMP SHARED(miePhase, zeroVec, theta1, theta2, chanceHotRing) &
+!$OMP SHARED(nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, chanceDust) &
+!$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
+!$OMP SHARED(sampleFreq, useInterp, photLine,tooFewSamples,boundaryProbs) &
+!$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
+!$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
+!$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
+!$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
+!$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat) &
+!$OMP PRIVATE(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect )
+
 
         nFromEnv = 0
+!$OMP DO SCHEDULE(DYNAMIC)
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
 #ifdef MPI

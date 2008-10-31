@@ -3196,19 +3196,6 @@ contains
        ioctal_end = SIZE(octalArray)       
 
 
-!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
-!$OMP    ! NOT WORKING YET WITH INTEL COMPILER!!!!!!
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
-!$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
-!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i, starCentre) &
-!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface) & 
-!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
-!$OMP SHARED(visFrac1, visFrac2, isBinary) & 
-!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
-!$OMP SHARED(numLTEsubcells,  NeFactor) 
-
-
 #ifdef MPI 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -3245,6 +3232,17 @@ contains
    if (rankComplete) exit blockLoop 
 #endif
 
+!!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
+!!$OMP    ! NOT WORKING YET WITH INTEL COMPILER!!!!!!
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
+!$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
+!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i, starCentre) &
+!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface) & 
+!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
+!$OMP SHARED(visFrac1, visFrac2, isBinary) & 
+!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
+!$OMP SHARED(numLTEsubcells,  NeFactor) 
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
 

@@ -234,6 +234,8 @@ contains
 !$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
 !$OMP PRIVATE(neighbourOctal, neighbourSubcell, enplus1, firsttime, deltax, deltat) &
 !$OMP PRIVATE(deltaE, octalarray, grade, dcoeffhalf, lambda, bigr) &
+!$OMP PRIVATE(phi, DeltaPhi, rVec, DeltaR, DeltaZ) &
+!$OMP SHARED(overCorrect) & 
 !$OMP SHARED(grid, tol, demax, ioctal_beg, ioctal_end) 
 !$OMP DO SCHEDULE(runtime)
     do iOctal =  iOctal_beg, iOctal_end
