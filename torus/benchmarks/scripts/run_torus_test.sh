@@ -53,7 +53,7 @@ echo Compiling comparespec code
 mkdir ${WORKING_DIR}/bin
 cd    ${WORKING_DIR}/bin
 cp ../benchmarks/disc/comparespec.f90 .
-g95 -o comparespec comparespec.f90
+${TORUS_FC} -o comparespec comparespec.f90
 }
 
 run_bench()
@@ -65,6 +65,8 @@ case ${SYSTEM} in
     ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
     intelmac) ./torus.intelmac  > run_log_${THIS_BENCH}.txt 2>&1 ;;
+
+    zen) mpirun -np 4 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
     *) echo "Unrecognised SYSTEM type. Aborting"
        exit 1;;
@@ -117,7 +119,7 @@ ${WORKING_DIR}/bin/comparespec
 check_molebench()
 {
 echo Compiling compare_molbench code
-g95 -o compare_molbench compare_molbench.f90
+${TORUS_FC} -o compare_molbench compare_molbench.f90
 model_file=`ls results.* | tail -1`
 ln -s ${model_file} results.dat
 ./compare_molbench
@@ -136,11 +138,6 @@ cd ${TEST_DIR}
 
 echo Checking out torus from CVS archive...
 /usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
-
-echo
-echo "G95 environment variables are"
-printenv | grep G95
-echo
 
 for sys in ${SYS_TO_TEST}; do
 
@@ -206,6 +203,7 @@ do
     case "$1" in 
 	-s) export MODE=stable;;
 	-d) export MODE=daily;;
+	-z) export MODE=zen;;
 	-h) print_help
 	    exit;;
     esac
@@ -216,15 +214,26 @@ case ${MODE} in
 
     daily) export SYS_TO_TEST="ompi"
 	   export DEBUG_OPTS="yes"
+	   export TORUS_FC="g95"
+	   export PATH=/sw/bin:/usr/local/bin:${PATH}
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
 
     stable) export SYS_TO_TEST="ompi intelmac"
             export DEBUG_OPTS="no yes"
+	    export TORUS_FC="g95"
+	    export PATH=/sw/bin:/usr/local/bin:${PATH}
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
 	    echo;;
+
+    zen) export SYS_TO_TEST="zen"
+	 export DEBUG_OPTS="yes"
+	 export TORUS_FC="ifort"
+	 echo TORUS zen tests started on `date`
+	 echo -------------------------------------------------------------------
+	 echo;;
 
     *)  echo "ERROR: unrecognised mode"
 	exit 1;;
@@ -232,7 +241,6 @@ esac
 
 export CVSROOT=${USER}@pinky.astro.ex.ac.uk:/h/th/CVS
 export CVS_RSH=ssh
-export PATH=/sw/bin:/usr/local/bin:${PATH}
 
 for opt in ${DEBUG_OPTS}; do
     export USEDEBUGFLAGS=${opt}
@@ -241,19 +249,30 @@ for opt in ${DEBUG_OPTS}; do
     case ${MODE} in 
 	daily)  export TEST_DIR=${HOME}/SCRATCH/torus_daily_test;;
 	stable) export TEST_DIR=${HOME}/SCRATCH/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
+	zen)    export TEST_DIR=/scratch/acreman/torus_tests/debug=${USEDEBUGFLAGS};;
     esac
 
     export TORUS_DATA=${TEST_DIR}/torus/data
 
-# Set floating point exception flags
-    case ${USEDEBUGFLAGS} in
-	yes) export G95_FPU_INVALID=true
-	    export G95_FPU_ZERODIV=true
-	    export G95_FPU_OVERFLOW=true;;
+# Set floating point exception flags for g95
+    case ${TORUS_FC} in 
+	g95) 
+	    case ${USEDEBUGFLAGS} in
+		yes) export G95_FPU_INVALID=true
+		    export G95_FPU_ZERODIV=true
+		    export G95_FPU_OVERFLOW=true;;
 
-	no) export G95_FPU_INVALID=false
-	    export G95_FPU_ZERODIV=false
-	    export G95_FPU_OVERFLOW=false;;
+		no) export G95_FPU_INVALID=false
+		    export G95_FPU_ZERODIV=false
+		    export G95_FPU_OVERFLOW=false;;
+
+	    esac
+
+	    echo
+	    echo "G95 environment variables are"
+	    printenv | grep G95
+	    echo
+
     esac
 
     run_torus_test_suite
