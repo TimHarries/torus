@@ -216,8 +216,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   character(len=80) :: specfile, obsfluxfile
 
-  logical :: firstplot, ok
-  real :: foreground = 0., background = 0.  ! plotting intensities
+  logical :: ok
   type(OCTAL), pointer :: sourceOctal, currentOctal
   integer :: sourceSubcell, currentSubcell
 
@@ -280,7 +279,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (writeoutput) write(*,'(a,f7.1,a)') "Raman source speed: ",modulus(ramanSourceVelocity)*cSpeed/1.e5, " km/s"
   endif
 
-  firstplot  = .true.
   lineResAbs = .false.  
 
   if (lineEmission) then
