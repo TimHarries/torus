@@ -117,7 +117,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nMuMie = 4000
+  integer, parameter :: nMuMie = 1800
   type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
 
   ! variables for clumped wind models

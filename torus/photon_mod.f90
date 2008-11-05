@@ -139,7 +139,7 @@ contains
     if (firstTime)  then
        allocate(cosArray(1:nMuMie))
        do i = 1, nMumie
-          cosArray(i) = -1.d0 + 2.d0*dble(i-1)/dble(nMuMie)
+          cosArray(i) = -1.d0 + 2.d0*dble(i-1)/dble(nMuMie-1)
        enddo
        allocate(miePhaseTemp(1:nDustType))
        firstTime = .false.
