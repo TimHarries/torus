@@ -57,9 +57,10 @@ MODULE amr_mod
   real(double), parameter :: amr_min_rho = 1.0e-30_db 
 
   integer :: mass_split, particle_split, density_split, both_split
+
 CONTAINS
 
-  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData, stellar_cluster, inherit, interp, &
+  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, stellar_cluster, inherit, interp, &
        romData, stream)
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
@@ -72,7 +73,7 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
     type(STREAMTYPE), optional :: stream
-    TYPE(sph_data), optional, INTENT(IN)  :: sphData   ! Matthew's SPH data.
+!    TYPE(sph_data), optional, INTENT(IN)  :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit               ! inherit densities, temp, etc of parent
     LOGICAL, OPTIONAL :: interp                ! interpolate densities, temp, etc of parent
@@ -214,11 +215,11 @@ CONTAINS
        
     CASE("cluster","molcluster")
        ! using a routine in cluster_class.f90
-       call assign_density(thisOctal,subcell, sphData, grid%geometry, stellar_cluster)
+!       call assign_density(thisOctal,subcell, grid%geometry, stellar_cluster)
 
     CASE("wr104")
        ! using a routine in cluster_class.f90
-       call assign_density(thisOctal,subcell, sphData, grid%geometry)
+       call assign_density(thisOctal,subcell, grid%geometry)
 
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell ,grid)
@@ -318,7 +319,7 @@ CONTAINS
  
   END SUBROUTINE calcValuesAMR
 
-  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, sphData, stellar_cluster, nDustType, romData ,&
+  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, stellar_cluster, nDustType, romData ,&
        stream)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
@@ -332,7 +333,7 @@ CONTAINS
     REAL, INTENT(IN)                 :: size 
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
-    TYPE(sph_data), optional, intent(in)   :: sphData   ! Matthew's SPH model data
+!    TYPE(sph_data), optional, intent(in)   :: sphData   ! Matthew's SPH model data
     TYPE(cluster), optional, INTENT(IN)    :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     type(streamtype), optional :: stream
@@ -429,25 +430,27 @@ CONTAINS
 
           write(message,*) "Copying SPH index to root"
           call writeinfo(message, TRIVIAL)
-          call copy_sph_index_to_root(grid, sphData)
+          call copy_sph_index_to_root(grid)
           write(message,*) "Initializing OctreeRoot"
           call writeinfo(message, TRIVIAL)
           !
-          DO subcell = 1, grid%octreeRoot%maxChildren
+!          DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData, stellar_cluster)
+!             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, stellar_cluster)
              ! label the subcells
-             grid%octreeRoot%label(subcell) = subcell
-          END DO
+!             grid%octreeRoot%label(subcell) = subcell
+!          END DO
+
           write(message,*) "Done."
           call writeinfo(message, TRIVIAL)
+
        case("wr104")
           ! Using the routine in grid_mod.f90
-          call copy_sph_index_to_root(grid, sphData)
+          call copy_sph_index_to_root(grid)
           !
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData, stellar_cluster)
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, stellar_cluster)
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
@@ -480,9 +483,9 @@ CONTAINS
 
 !!!!!!!!!!! EDITTED OUT BY TJH
 !          DO subcell = 1, grid%octreeRoot%maxChildren
-!             ! calculate the values at the centre of each of the subcells
+             ! calculate the values at the centre of each of the subcells
 !             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
-!             ! label the subcells
+             ! label the subcells
 !             grid%octreeRoot%label(subcell) = subcell
 !          END DO
        end select
@@ -501,7 +504,7 @@ CONTAINS
   END SUBROUTINE initFirstOctal
 
 
-  SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, sphData, &
+  SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, &
                          stellar_cluster, inherit, interp, splitAzimuthally, romData, &
                          isample, stream)
     ! adds one new child to an octal
@@ -523,7 +526,7 @@ CONTAINS
       ! whether these variables should be updated: 
       !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell    
     ! For only cluster geometry ...
-    TYPE(sph_data), OPTIONAL, INTENT(IN) :: sphData 
+!    TYPE(sph_data), OPTIONAL, INTENT(IN) :: sphData 
     TYPE(cluster), OPTIONAL, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit       ! inherit densities, temps, etc from parent
     LOGICAL, OPTIONAL :: interp        ! interpolate densities, temps, etc from parent    
@@ -733,18 +736,18 @@ CONTAINS
     call allocateOctalAttributes(grid, thisOctal)
 
 
-    IF (PRESENT(sphData)) THEN
-       if (isAlive(sphData)) then
+!    IF (PRESENT(sphData)) THEN
+       if (isAlive()) then
           ! updates the sph particle list.           
           !      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
-          CALL update_particle_list(parent, iChild, newChildIndex, sphData)
+          CALL update_particle_list(parent, iChild, newChildIndex)
           !      write(*,*) "update_particle_list broken"
        endif
-    END IF 
+!    END IF 
     
     ! put some data in the four/eight subcells of the new child
     DO subcell = 1, parent%child(newChildIndex)%maxChildren
-      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData=sphData, &
+      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, &
                          stellar_cluster=stellar_cluster, inherit=inheritProps, &
                          interp=interpolate, romData=romData, stream=stream)
       parent%child(newChildIndex)%label(subcell) = counter
@@ -894,8 +897,8 @@ CONTAINS
   END SUBROUTINE growChildArray
 
 
-  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, &
-       sphData, stellar_cluster, setChanged, romData)
+  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid,&
+ stellar_cluster, setChanged, romData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
@@ -912,7 +915,7 @@ CONTAINS
 
     ! Object containg the output from the (Mattew's) SPH code.
     ! This will be just passed to decideSplit routine.
-    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
+!    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL,  intent(in) :: stellar_cluster
     LOGICAL, INTENT(IN), OPTIONAL :: setChanged
     !
@@ -930,10 +933,10 @@ CONTAINS
       
       IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,&
             splitInAzimuth, &
-            sphData=sphData, stellar_cluster=stellar_cluster, romData=romData)) THEN
+            stellar_cluster=stellar_cluster, romData=romData)) THEN
 
         CALL addNewChild(thisOctal, iSubcell, grid, adjustGridInfo=.TRUE., &
-                         sphData=sphData, stellar_cluster=stellar_cluster, &
+                         stellar_cluster=stellar_cluster, &
                          splitAzimuthally=splitInAzimuth, romData=romData)
        
         if (.not.thisOctal%hasChild(isubcell)) then
@@ -989,7 +992,7 @@ CONTAINS
     DO iIndex = 1, thisOctal%nChildren
       
       CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
-                     sphData, stellar_cluster, setChanged, romData=romData)
+                     stellar_cluster, setChanged, romData=romData)
       
    END DO
 
@@ -1182,6 +1185,7 @@ CONTAINS
     TYPE(octal), POINTER   :: child
   
     INTEGER :: subcell, iChild
+    logical,save :: first_time = .true.
      
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren
@@ -1223,10 +1227,14 @@ CONTAINS
            "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158","circumbin")
          gridConverged = .TRUE.
 
-      CASE ("cluster","wr104","molcluster")
+      CASE ("cluster","wr104")
+         call assign_grid_values(thisOctal,subcell, grid)
+         gridConverged = .TRUE.
+!        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
+
+      CASE ("molcluster")
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
-!        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
 
       CASE ("ppdisk","wrshell","toruslogo","planetgap")
         gridConverged = .TRUE.
@@ -1265,14 +1273,12 @@ CONTAINS
       ! nothing at the moment
 
     END IF
-
-    if(grid%geometry .eq. 'molcluster') then
-       write(*,*) "Number of mass splits", mass_split
-!    write(*,*) "Number of particle splits", particle_split
-       write(*,*) "Number of density splits", density_split
-       write(*,*) "Number of both splits", both_split
+    
+    if(first_time) then
+       call howmanysplits()
+       first_time = .false.
     endif
-
+    
   END SUBROUTINE finishGrid
  
   
@@ -2473,18 +2479,23 @@ CONTAINS
     LOGICAL                           :: interpolate
     LOGICAL                           :: boundaryProblem = .false.
 
+!    type(vector), save :: lastpoint, lastpoint2
+
 ! this for possibility of twoD AMR grid
 
 
-    point2 = point
-
-    if (octaltree%twoD) then
-       point2 = projectToXZ(point)
-    endif
-    if (octaltree%oneD) then
-       point2  = VECTOR(modulus(point),0.d0,0.d0)
-    endif
-
+!    point2 = point
+!    if(point .eq. lastpoint) then
+!       point2 = lastpoint2
+!    else
+       if (octaltree%twoD) then
+          point2 = projectToXZ(point)
+       elseif(octaltree%oneD) then
+          point2  = VECTOR(modulus(point),0.d0,0.d0)
+       endif
+!    endif
+!    lastpoint = point
+!    lastpoint2 = point2
 
     IF (PRESENT(interp)) THEN
       interpolate = interp
@@ -3856,14 +3867,14 @@ CONTAINS
     endif
   END FUNCTION looseInOctal
 
-  SUBROUTINE smoothAMRgrid(grid,factor,sphData, stellar_cluster, inheritProps, interpProps, &
+  SUBROUTINE smoothAMRgrid(grid,factor, stellar_cluster, inheritProps, interpProps, &
        romData)
     ! checks whether each octal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
 
     TYPE(gridtype), INTENT(INOUT) :: grid 
     REAL, INTENT(IN)              :: factor
-    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
+!    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN),optional  :: inheritProps
     logical, intent(in), optional :: interpProps 
@@ -3973,7 +3984,7 @@ CONTAINS
             END IF
               neighbour%changed(1:neighbour%maxChildren) = .TRUE.
               call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
-                               sphData=sphData, stellar_cluster=stellar_cluster, &
+                               stellar_cluster=stellar_cluster, &
                                inherit=inheritProps, interp=interpProps, romData=romData)
               gridConverged = .FALSE.
           ENDIF
@@ -4382,7 +4393,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, splitInAzimuth,&
-       sphData, stellar_cluster,romData) RESULT(split)
+       stellar_cluster,romData) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
@@ -4402,7 +4413,7 @@ IF ( .NOT. gridConverged ) RETURN
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
+!    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
@@ -4419,6 +4430,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
     real(double)          :: minDensity, maxDensity
+    real(double)          :: minDensity1, maxDensity1
     INTEGER               :: nsample = 400
     INTEGER               :: nparticle, limit, npart_subcell
 !    real(double) :: timenow
@@ -4434,6 +4446,8 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: h0
     integer,save :: acount,bcount,ccount = 0
     logical,save  :: firstTime = .true.
+
+    type(VECTOR) :: point, somevector
 
 !    mass_split = 0
 !    particle_split = 0
@@ -4897,10 +4911,14 @@ IF ( .NOT. gridConverged ) RETURN
 
    case ("cluster","molcluster")
 
-      call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
+      call find_n_particle_in_subcell(nparticle, ave_density, &
            thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npart_subcell)
 
-      total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 )
+!      point = subcellcentre(thisOctal, subcell)
+!      somevector = Clusterparameter(point, theparam = 2)!, rhoMin = minDensity, rhoMax = maxDensity)
+!      thisOctal%rho(subcell) = somevector%x
+
+      total_mass = ave_density * cellVolume(thisOctal, subcell)  * 1.d30
 
       if (total_mass > amrlimitscalar) then
          split = .true.
@@ -4925,26 +4943,14 @@ IF ( .NOT. gridConverged ) RETURN
          end if
       endif
       
-
 ! Split if the cell contains both gas particles and a point mass
       if (npart_subcell>0 .and. nparticle >0) split = .true. 
 
-!   case ("molcluster")
-!
-!      ! Find number of particles and total mass in this cell
-!      call find_density(nparticle, ave_density, sphData, thisOctal, subcell)
-!      total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 ) ! in [g]
-
-!      ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
-!      split = .false.
-!      if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
-!      if (nparticle > 20) split = .true.
-!      
    case ("wr104")
       ! Splits if the number of particle is more than a critical value (~3).
       limit = nint(amrLimitScalar)
       
-      call find_n_particle_in_subcell(nparticle, dummyDouble, sphData, thisOctal, subcell)
+      call find_n_particle_in_subcell(nparticle, dummyDouble, thisOctal, subcell)
 
       rVec = subcellCentre(thisOctal,subcell)
       r = sqrt(rVec%x**2 + rVec%y**2)
@@ -8295,7 +8301,7 @@ IF ( .NOT. gridConverged ) RETURN
 
        out='td'
 !       thisOctal%temperaturedust(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-       thisOctal%temperaturedust(subcell) = 75.
+       thisOctal%temperaturedust(subcell) = 10.
        thisOctal%temperaturegas(subcell) = thisOctal%temperaturedust(subcell)
        thisOctal%temperature(subcell) = thisOctal%temperaturedust(subcell)
        
@@ -8759,161 +8765,6 @@ end function readparameterfrom2dmap
     endif    
 
   end function ggtauVelocity
-
-  TYPE(vector)  function molClusterVelocity(point, grid, done)
-
-    type(sph_data) :: tempsphdata
-    type(vector), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
-    type(vector) :: posvec
-    type(octal), pointer, save :: previousOctal
-!    type(vector) :: bodyvelocity
-
-    integer :: subcell
-    logical, save :: firsttime = .true.
-    logical, optional :: done
-    
-    integer, save :: npart
-    
-    real(double), allocatable, save :: PositionArray(:,:), VelocityArray(:,:), MassArray(:), Harray(:)
-    integer, allocatable, save :: ind(:)
-    integer :: closestXindex, testIndex, i, nupper, nlower, counter
-    real(double), save :: hcrit, rcrit, OneOverHcrit
-    real(double) :: rtest, qtest
-    real(double) :: codeVelocitytoTORUS, codeLengthtoTORUS, udist, umass, utime
-    real(double) :: x,y,z
-    real(double) :: mvx,mvy,mvz
-    real(double) :: Weight, SumWeight, SumMass, fac
-    
-    character(len=100) :: message
-
-    if(firsttime) then
-!       open(60,file='vel.dat', status="unknown", form="formatted")
-       call new_read_sph_data(tempsphdata, "newsph.dat.ascii") ! read in sphdata
-
-       udist = get_udist(tempsphdata)
-       utime = get_utime(tempsphdata)
-       umass = get_umass(tempsphdata)
-       codeLengthtoTORUS = udist * 1d-10
-       codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed ! velocity unit is derived from distance and time unit (converted to seconds from years)
-
-       npart = get_npart(tempsphdata) ! total gas particles
-
-       allocate(PositionArray(npart,3)) ! allocate memory
-       allocate(VelocityArray(npart,3))
-       allocate(MassArray(npart))
-       allocate(harray(npart))
-       allocate(ind(npart))
-
-       PositionArray = 0.d0; VelocityArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
-
-       harray(:) = tempsphdata%h(:) ! fill h array
-
-       PositionArray(:,1) = tempsphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
-
-       call sortbyx(PositionArray(:,1),ind(:)) ! sort the x's and recall their indices
-
-       PositionArray(:,2) = tempsphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
-       PositionArray(:,3) = tempsphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
-
-       VelocityArray(:,1) = tempsphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
-       VelocityArray(:,2) = tempsphdata%vyn(ind(:)) * codeVelocitytoTORUS 
-       VelocityArray(:,3) = tempsphdata%vzn(ind(:)) * codeVelocitytoTORUS
-
-       MassArray(:) = tempsphdata%gasmass(ind(:)) * umass! in case of unequal mass
-
-       call FindCriticalValue(harray, hcrit, 0.90d0) ! find hcrit = 95th percentile of total h
-       write(message, *) "Smoothing Length in code units", hcrit
-       call writeinfo(message, FORINFO)
-
-       hcrit = hcrit * codeLengthtoTORUS
-       OneOverHcrit = 1.d0 / hcrit
-
-       write(message,*) "Smoothing Length in 10^10cm", hcrit
-       call writeinfo(message, FORINFO)
-
-       rcrit = 2.d0 * hcrit ! edge of smoothing sphere
-
-       call kill(tempsphdata) ! don't need harray anymore
-       deallocate(harray)
-
-       firsttime = .false.
-
-       previousOctal => grid%OctreeRoot
-    endif
-
-    if(done) then
-       deallocate(PositionArray, VelocityArray, MassArray, harray, ind)
-       firsttime = .true.
-       return
-    endif
-
-    posVec = point
-
-    call findSubcelllocal(posvec, previousOctal, subcell)
-
-    x = posvec%x
-    y = posvec%y
-    z = posvec%z
-
-    call locate(PositionArray(:,1), size(Positionarray(:,1)), x, closestXindex) ! find the nearest particle to your point
-
-    nupper = 0
-    nlower = 0
-
-    do while(abs(PositionArray(closestXindex + nupper,1) - x) .le. rcrit) ! search in X to find all particles near point from above
-       nupper = nupper + 1
-    enddo
-
-    do while(abs(PositionArray(closestXindex + nlower,1) - x) .le. rcrit) ! search in X to find all particles near point from below
-       nlower = nlower - 1 ! nlower is negative
-    enddo
-
-    mvx = 0.d0
-    mvy = 0.d0
-    mvz = 0.d0
-    sumMass = 0.d0
-    sumWeight = 0.d0
-    counter = 0
-
-    do i = nlower, nupper ! search over all those particles we just found
-
-       testIndex = closestXindex + i
-
-       if(abs(PositionArray(testIndex, 2) - y) .le. rcrit) then ! if it's near in y then
-          if(abs(PositionArray(testIndex, 3) - z) .le. rcrit) then !only if it's near in z as well then work out contribution
-             rtest = sqrt((PositionArray(testIndex, 1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
-                          (PositionArray(testIndex, 2) - y)**2 + &
-                          (PositionArray(testIndex, 3) - z)**2)
-
-             qtest = rtest * OneOverHcrit ! dimensionless parameter that we're interested in
-
-             Weight = SmoothingKernel(qtest) ! normalised contribution from this particle
-             
-                sumWeight = sumWeight + Weight
-
-                mvx = mvx + Weight * VelocityArray(testIndex,1)
-                mvy = mvy + Weight * VelocityArray(testIndex,2)
-                mvz = mvz + Weight * VelocityArray(testIndex,3)
-
-                counter = counter + 1                
-
-             endif
-          endif
-       enddo
-
-       if(counter .gt. 0) then
-          fac = 1.d0 / sumWeight
-          molClustervelocity = VECTOR(mvx * fac, mvy * fac, mvz * fac)
-       else      
-          molClusterVelocity = VECTOR(1d-20,1d-20,1d-20)
-       endif
-
-!    BodyVelocity = previousOctal%velocity(subcell)
-
-!    write(60,'(9(e12.6,tr1),i7,tr1,i7,tr1,es12.6,tr1,f7.5)') x,y,z,NoddyVelocity%x,NoddyVelocity%y,NoddyVelocity%z,BodyVelocity%x,BodyVelocity%y,BodyVelocity%z, nupper - nlower, counter, real(nupper-nlower)/real(counter), sumWeight
-
-     end function molClusterVelocity
   
   subroutine assign_melvin(thisOctal,subcell,grid)
 
@@ -9195,15 +9046,15 @@ end function readparameterfrom2dmap
   ! Assign the indecies to root node in the grid
   !
   
-  subroutine copy_sph_index_to_root(grid, sphData)
+  subroutine copy_sph_index_to_root(grid)
     implicit none
     type(gridtype), intent(inout) :: grid    
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     !
     integer :: i, n
 
     ! extracting the number of gas particles in sph
-    n = get_npart(sphData)
+    n = get_npart()
 
     ! initialize the list
     ALLOCATE(grid%octreeRoot%gas_particle_list(n))
@@ -10198,7 +10049,7 @@ end function readparameterfrom2dmap
   ! the parameter file).
 
   RECURSIVE SUBROUTINE smoothAMRgridTau(thisOctal,grid,gridConverged, ilam, &
-                                        sphData, stellar_cluster, &
+                                        stellar_cluster, &
                                         inheritProps, interpProps, romData)
     USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
     IMPLICIT NONE
@@ -10206,7 +10057,7 @@ end function readparameterfrom2dmap
     TYPE(octal), POINTER             :: thisOctal
     TYPE(gridtype), INTENT(INOUT   ) :: grid 
     LOGICAL, INTENT(INOUT)               :: gridConverged
-    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
+!    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN) :: inheritProps
     LOGICAL, INTENT(IN), optional :: interpProps
@@ -10247,7 +10098,7 @@ end function readparameterfrom2dmap
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == thisSubcell) then
               child => thisOctal%child(i)
-              call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, &
+              call smoothAMRgridTau(child,grid,gridConverged,  ilam, stellar_cluster, &
                    inheritProps, interpProps, romData)
               ! force return until algorithm is fixed
               IF ( .NOT. gridConverged ) RETURN
@@ -10418,7 +10269,7 @@ end function readparameterfrom2dmap
 !                call addNewChild(thisOctal,thisSubcell,grid)
 
               call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
-                               sphData=sphData, stellar_cluster=stellar_cluster, &
+                               stellar_cluster=stellar_cluster, &
                                inherit=inheritProps, interp=interpProps, romData=romData)
 !              call addNewChild(thisOctal, thissubcell, grid, adjustGridInfo=.TRUE.,  &
 !                               sphData=sphData, stellar_cluster=stellar_cluster, &
@@ -11991,7 +11842,6 @@ end function readparameterfrom2dmap
     real(double), allocatable, save :: oneKappaAbsT(:,:)
     real(double), allocatable, save :: oneKappaScaT(:,:)
 
-    real(double) :: dustFractionDensity
     logical,save :: firsttime = .true. 
     integer(double),save :: nlambda
     
@@ -12029,21 +11879,22 @@ end function readparameterfrom2dmap
        firsttime = .false.
     endif
 
-    dustFractionDensity = thisOctal%dustTypeFraction(subcell, 1) * thisOctal%rho(subcell)
-
     if (PRESENT(kappaAbsArray)) then
 
+      if(grid%onekappa) then
 
-       if (nDustType .eq. 1) then
-            kappaAbsArray(1:nLambda) = dustFractionDensity * oneKappaAbsT(1:nlambda,1)
+         if (nDustType .eq. 1) then
+            kappaAbsArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaAbsT(1:nlambda,1)
          else
-            kappaAbsArray  = 0.
+            kappaAbsArray(1:grid%nLambda) = 0.            
             do i = 1, nDustType
-               kappaAbsArray(1:nLambda) = kappaAbsArray(1:nLambda) + & 
+               kappaAbsArray(1:nLambda) = kappaAbsArray(1:nLambda) + thisOctal%dustTypeFraction(subcell, i) * & 
                     oneKappaAbsT(1:nLambda,i)*thisOctal%rho(subcell) * frac
             enddo
          endif
-
+      else
+         kappaAbsArray(1:nlambda) = thisOctal%kappaAbs(subcell,:)
+      endif
 !       if (includeGasOpacity) then
 !          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
 !          kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
@@ -12053,18 +11904,20 @@ end function readparameterfrom2dmap
     endif
        
     if (PRESENT(kappaScaArray)) then
-
-
-       if (nDustType .eq. 1) then
-          kappaScaArray(1:nLambda) = dustFractionDensity * oneKappaScaT(1:nlambda,1)
+       if(grid%onekappa) then
+ 
+          if (nDustType .eq. 1) then
+             kappaScaArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaScaT(1:nlambda,1)
+          else
+             kappaScaArray(1:grid%nLambda) = 0.   
+             do i = 1, nDustType
+                kappaScaArray(1:nLambda) = kappaScaArray(1:nLambda) + thisOctal%dustTypeFraction(subcell, i) * & 
+                     oneKappaScaT(1:nLambda,i)*thisOctal%rho(subcell) * frac
+             enddo
+          endif
        else
-          kappaScaArray = 0.
-          do i = 1, nDustType
-             kappaScaArray(1:nLambda) = kappaScaArray(1:nLambda) + & 
-                  oneKappaScaT(1:nLambda,i)*thisOctal%rho(subcell) * frac
-          enddo
+          kappaScaArray(1:nlambda) = thisOctal%kappaSca(subcell,:)
        endif
-
 !       if (includeGasOpacity) then
 !          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
 !          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
@@ -12081,10 +11934,15 @@ end function readparameterfrom2dmap
        endif
        IF (.NOT.PRESENT(lambda)) THEN
           if (grid%oneKappa) then
-             kappaSca = 0
-             do i = 1, nDustType
-                kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
-             enddo
+             kappaSca = 0.
+             
+             if(ndusttype .eq. 1) then
+                kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell) 
+             else
+                do i = 1, nDustType
+                   kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
+                enddo
+             endif
           else 
              ! For line computation (without dust).
              ! Needs modification for a model which include gas and dust here.
@@ -12092,7 +11950,7 @@ end function readparameterfrom2dmap
              kappaSca = thisOctal%kappaSca(subcell,iLambda)
           end if
        else
-          kappaSca = 0
+          kappaSca = 0.
           do i = 1, nDustType
              kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
                   logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
@@ -12114,10 +11972,14 @@ end function readparameterfrom2dmap
        
        IF (.NOT.PRESENT(lambda)) THEN
           if (grid%oneKappa) then
-             kappaAbs = 0
-             do i = 1, nDustType
-                kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
-             enddo
+             kappaAbs = 0.
+             if(ndustType .eq. 1) then
+                kappaAbs = oneKappaAbsT(iLambda,1)*thisOctal%rho(subcell)
+             else
+                do i = 1, nDustType
+                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
+                enddo
+             endif
           else
              ! For line computation (without dust).
              ! Needs modification for a model which include gas and dust here.
@@ -12125,7 +11987,7 @@ end function readparameterfrom2dmap
              kappaAbs = thisOctal%kappaAbs(subcell,iLambda)
           end if
        else
-          kappaAbs = 0
+          kappaAbs = 0.
           do i = 1, nDustType
              !write(*,*) grid%oneKappaAbs(i,iLambda),grid%oneKappaAbs(i,iLambda+1),thisOctal%rho(subcell), &
              !     dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), ilambda, dble(lambda)
@@ -12383,11 +12245,11 @@ end function readparameterfrom2dmap
      deallocate(locator)
    end subroutine averageofNearbyCells
 
-  recursive subroutine estimateRhoOfEmpty(grid, thisOctal, sphData)
+  recursive subroutine estimateRhoOfEmpty(grid, thisOctal)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     real :: temp
     real(double) :: rho, rho_tmp
     integer :: subcell, i, np
@@ -12400,7 +12262,7 @@ end function readparameterfrom2dmap
     if (first_time) then 
        allocate( recip_sm(sphData%npart) )
        
-       udist = get_udist(sphData)
+       udist = get_udist()
        do i=1, sphData%npart 
 
           recip_sm(i) = 1.0_db / (sphData%hn(i) * udist * 1.0e-10_db)
@@ -12415,21 +12277,23 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call estimateRhoOfEmpty(grid, child, sphData)
+                call estimateRhoOfEmpty(grid, child)
                 exit
              end if
           end do
        else
-          call find_n_particle_in_subcell(np, rho_tmp, sphData, &
+          call find_n_particle_in_subcell(np, rho_tmp, &
                thisOctal, subcell)
           if (np < 1) then
 !            if ( grid%geometry == "cluster" ) then 
                 rVec = subcellCentre(thisOctal,subcell)
-                call find_closest_sph_particle(sphData, rVec, temp, rho, recip_sm(:) )
+                call find_closest_sph_particle(rVec, temp, rho, recip_sm(:) )
 !             else
 !                call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
 !             end if
-             thisOctal%rho(subcell) = rho
+                write(*,*) "rho before", thisOctal%rho(subcell)
+                write(*,*) "rho after", rho
+                thisOctal%rho(subcell) = rho
              thisOctal%temperature(subcell) = temp
           endif
        endif
@@ -12438,12 +12302,12 @@ end function readparameterfrom2dmap
 
   end subroutine estimateRhoOfEmpty
 
-  subroutine find_closest_sph_particle(sphData, rVec, temp, rho, recip_sm)
+  subroutine find_closest_sph_particle(rVec, temp, rho, recip_sm)
     USE inputs_mod, only: TMinGlobal
 
     implicit none
 
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(VECTOR), intent(in) :: rVec
     real, intent(out)             :: temp
     real(double), intent(out)     :: rho
@@ -12455,13 +12319,14 @@ end function readparameterfrom2dmap
     real(double) :: umass, udist, udent
     real(double), parameter :: cmToTorus = 1.0e-10_db
 
-    umass = get_umass(sphData)  ! [g]
-    udist = get_udist(sphData)  ! [cm]
+    umass = get_umass()  ! [g]
+    udist = get_udist()  ! [cm]
     udent = umass/udist**3
 
     dist = 1.0e99_db
     rho  = amr_min_rho
     temp = TMinGlobal
+
     do ipart=1, sphData%npart
 
        part_x = sphData%xn(ipart) * udist * cmToTorus
@@ -13025,14 +12890,14 @@ end function readparameterfrom2dmap
   end subroutine myTauSmooth
 
   recursive subroutine myScaleSmooth(factor, thisOctal, grid,  converged, &
-       inheritProps, interpProps, sphData, stellar_cluster, romData)
+       inheritProps, interpProps, stellar_cluster, romData)
     type(gridtype) :: grid
     real :: factor
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
     logical, optional :: inheritProps, interpProps
     !
-    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
+!    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
@@ -13051,7 +12916,7 @@ end function readparameterfrom2dmap
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call myScaleSmooth(factor, child, grid, converged, inheritProps, interpProps, &
-                     sphData=sphData, stellar_cluster=stellar_cluster, romData=romData)
+                     stellar_cluster=stellar_cluster, romData=romData)
                 exit
              end if
           end do
@@ -13090,7 +12955,7 @@ end function readparameterfrom2dmap
                 if ((thisOctal%subcellSize/neighbourOctal%subcellSize) > factor) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps, &
-                           sphData=sphData, stellar_cluster=stellar_cluster, romData=romData)
+                           stellar_cluster=stellar_cluster, romData=romData)
                       converged = .false.
                       return
                 endif
@@ -13199,7 +13064,7 @@ end function readparameterfrom2dmap
 
           do i = 1, 6
 
-             denom(i) = norm(i) .dot. direction
+             denom(i) = abs(norm(i) .dot. direction)
              if (denom(i) /= 0.0d0) then
                 t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
              else
@@ -13219,9 +13084,12 @@ end function readparameterfrom2dmap
           if (j == 0) ok = .false.
 
           if (.not.ok) then
-             write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
-             write(*,*) direction%x,direction%y,direction%z
-             write(*,*) t(1:6)
+             write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. ", thisoctal%ndepth
+             write(*,*) "dir",direction%x,direction%y,direction%z
+             write(*,*) "p3",p3(1:6)
+             write(*,*) "posvec",posvec%x,posvec%y,posvec%z
+             write(*,*) "denom",denom(1:6)
+             write(*,*) "t",t(1:6)
              call torus_abort
           endif
 
@@ -13383,14 +13251,14 @@ end function readparameterfrom2dmap
 
        else ! two-d grid case below
 
-          halfCellSize = thisOctal%subcellSize/2.d0
+          halfCellSize = thisOctal%subcellSize * 0.5d0
           r1 = subcen%x - halfCellSize
           r2 = subcen%x + halfCellSize
 
           distToR1 = 1.d30
           distToR2 = 1.d30
           d2 = point%x**2+point%y**2
-          d = sqrt(d2)
+          d = d2**0.5d0
           xVec = VECTOR(point%x, point%y,0.d0)
           xHat = xVec
           call normalize(xHat)
@@ -13443,6 +13311,11 @@ end function readparameterfrom2dmap
              endif
           endif
           distToXboundary = min(distTor1, distTor2)
+          if(disttoXboundary .le. 0.d0) then
+!             write(*,*) "dist to X", x1, x2
+             disttoXboundary = 1d40
+          endif
+
 
 
           compZ = zHat.dot.direction
@@ -13457,28 +13330,29 @@ end function readparameterfrom2dmap
           else
              disttoZboundary = 1.e30
           endif
-
+          
           tVal = min(distToZboundary, distToXboundary)
+!          if(disttoxboundary .ge. 1e35) write(*,*) tval
           if (tVal > 1.e29) then
              write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
              write(*,*) "subcen",subcen
              write(*,*) "z", currentZ
-      write(*,*) "TVAL", tval
-      write(*,*) "direction", direction
+             write(*,*) "TVAL", tval
+             write(*,*) "direction", direction
       call torus_abort
       endif
       if (tval < 0.) then
-         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary, disttor1, disttor2
          write(*,*) "subcen",subcen
 !         write(*,*) "x,z",currentX,currentZ
       endif
+!      if(tval > 0. .and. tval < 1e29) write(*,*) "hooray", tval
       
    endif
 
 666    continue
 
        tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
-
 
      end subroutine distanceToCellBoundary
 
@@ -16580,5 +16454,18 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine setupNeighbourPointers
+
+  subroutine howmanysplits()
+    implicit none
+    character(len = 100) :: message    
+
+    write(message, *) "There were ", mass_split, " splits by mass"
+    call writeinfo(message, TRIVIAL)
+    write(message, *) "There were ", density_split, " splits by density"
+    call writeinfo(message, TRIVIAL)
+    write(message, *) "There were ", both_split, " splits by both"
+    call writeinfo(message, TRIVIAL)
+    
+  end subroutine howmanysplits
    
 END MODULE amr_mod

@@ -1,10 +1,12 @@
 module sph_data_class
-
   use kind_mod
   use vector_mod
   use messages_mod
   use utils_mod
   use timing
+  use gridtype_mod
+  use math_mod2
+  use constants_mod, only : OneOnFourPi
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -37,12 +39,8 @@ module sph_data_class
        get_stellar_disc_parameters, &
        stellar_disc_exists, &
        find_inclinations, &
+       ClusterParameter, &
        isAlive
-  
-  private:: &
-       kill_sph_data
-  
-
 
   ! At a given time (time)
   type sph_data
@@ -82,6 +80,15 @@ module sph_data_class
           
   end type sph_data
 
+  real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), oneoverHcubed(:), &
+                               RhoArray(:), VelocityArray(:,:), MassArray(:), Harray(:)
+  type(sph_data), save :: sphdata
+  integer :: npart
+  real(double), allocatable, save :: partArray(:)
+  integer, allocatable, save :: indexArray(:)
+
+  private:: &
+       kill_sph_data
 
   !
   !
@@ -96,12 +103,12 @@ contains
   ! 
   ! Initializes an object with parameters (if possible).
   ! 
-  subroutine init_sph_data(sphdata, udist, umass, utime, npart,  time, nptmass)
+  subroutine init_sph_data(udist, umass, utime,  time, nptmass)
     implicit none
-    type(sph_data), intent(inout) :: sphdata
+
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
-    integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
+!    integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
 
@@ -131,7 +138,7 @@ contains
     ALLOCATE(sphdata%rhon(npart))
     ALLOCATE(sphdata%temperature(npart))
     ALLOCATE(sphdata%gasmass(npart))
-    ALLOCATE(sphdata%h(npart))
+    ALLOCATE(sphdata%hn(npart))
 
     ! -- for star positions
     ALLOCATE(sphdata%x(nptmass))
@@ -154,15 +161,15 @@ contains
   ! 
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
-  subroutine init_sph_data2(this, udist, umass, utime, npart,  time, nptmass, &
+  subroutine init_sph_data2(udist, umass, utime, time, nptmass, &
         b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
     implicit none
 
 ! Arguments --------------------------------------------------------------------
-    type(sph_data), intent(inout) :: this
+    type(sph_data) :: this
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                   ! (umass is M_sol, udist=0.1 pc)
-    integer, intent(in)           :: npart              ! Number of gas particles (field+disc)
+!    integer, intent(in)           :: npart              ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
 
@@ -275,7 +282,7 @@ contains
 !    integer*4 :: npart,  nsph, nptmass
     real(double) :: udist, umass, utime
     real(double) :: gaspartmass, time
-    integer :: npart, nptmass, n1, n2
+    integer :: nptmass, n1, n2
     real(double), allocatable :: dummy(:)     
 
 
@@ -286,7 +293,7 @@ contains
     READ(LUIN) udist, umass, utime, npart, n1, n2, time, nptmass, gaspartmass
 
     ! initilaizing the sph_data object (allocating arrays, saving parameters and so on....)
-    call init_sph_data(this, udist, umass, utime, npart, time, nptmass)
+    call init_sph_data(udist, umass, utime, time, nptmass)
 
 
     ! reading the positions  of gas particles and stars,
@@ -317,9 +324,9 @@ contains
 
   end subroutine read_sph_data
 
-  subroutine new_read_sph_data(sphdata, filename)
+  subroutine new_read_sph_data(filename)
     implicit none
-    type(sph_data), intent(inout) :: sphdata
+
     character(LEN=*), intent(in)  :: filename
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -330,7 +337,7 @@ contains
 !    real(double), allocatable :: xarray(:), harray(:)
 !    INTEGER, allocatable :: ind(:)
     integer :: itype, ipart, icount, iptmass, igas, idead
-    integer :: npart, nptmass, n1, n2, nlines
+    integer :: nptmass, n1, n2, nlines
     real(double) junk
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
@@ -355,7 +362,7 @@ contains
 
     write(*,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
 
-    call init_sph_data(sphdata, udist, umass, utime, npart, time, nptmass)
+    call init_sph_data(udist, umass, utime, time, nptmass)
 
     nlines = npart + n2 + nptmass + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
 
@@ -390,7 +397,7 @@ contains
 !         sphdata%temperature = 2. * 2.46 * (u * 1d-7) / (3. * 8.314472) ! 8.31 is gas constant
           sphdata%temperature(igas) = 1.9725e-8 * u
 
-          sphdata%h(igas) = h
+          sphdata%hn(igas) = h
 
           masscounter = masscounter + gaspartmass
           
@@ -498,54 +505,59 @@ contains
   !
   
   ! returns program units of distance in cm 
-  function get_udist(this) RESULT(out)
+!  function get_udist(this) RESULT(out)
+  function get_udist() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
-    out = this%udist
+!    type(sph_data), intent(in) :: this
+    out = sphdata%udist
   end function get_udist
 
   ! returns program units of mass in g
-  function get_umass(this) RESULT(out)
+!  function get_umass(this) RESULT(out)
+  function get_umass() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
-    out = this%umass
+!    type(sph_data), intent(in) :: this
+    out = sphdata%umass
   end function get_umass
 
   ! returns program units of time in s
-  function get_utime(this) RESULT(out)
+!  function get_utime(this) RESULT(out)
+  function get_utime() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
-    out = this%utime
+!    type(sph_data), intent(in) :: this
+    out = sphdata%utime
   end function get_utime
     
 
   ! returns the number of gas particles
-  function get_npart(this) RESULT(out)
+  function get_npart() RESULT(out)
     implicit none
     integer ::out 
-    type(sph_data), intent(in) :: this
-    out = this%npart
+!    type(sph_data), intent(in) :: this
+    out = sphdata%npart
   end function get_npart
     
 
   ! returns the number of point masses
-  function get_nptmass(this) RESULT(out)
+!  function get_nptmass(this) RESULT(out)
+  function get_nptmass() RESULT(out)
     implicit none
     integer :: out
-    type(sph_data), intent(in) :: this
-    out = this%nptmass
+!    type(sph_data), intent(in) :: this
+    out = sphdata%nptmass
   end function get_nptmass
     
 
   ! returns the time of dump time in the unit of [utime]
-  function get_time(this) RESULT(out)
+ ! function get_time(this) RESULT(out)
+ function get_time() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
-    out = this%time
+!    type(sph_data), intent(in) :: this
+    out = sphdata%time
   end function get_time
     
 
@@ -553,15 +565,15 @@ contains
   ! Returns the position of the i_th gas particle. 
   !
   ! x, y, z are in [udist] ... See the type definition section.
-  subroutine get_position_gas_particle(this, i, x, y, z)
+  subroutine get_position_gas_particle(i, x, y, z)
     implicit none    
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
     real(double), intent(out) :: x, y, z
     
-    x = this%xn(i) 
-    y = this%yn(i)
-    z = this%zn(i)
+    x = sphdata%xn(i) 
+    y = sphdata%yn(i)
+    z = sphdata%zn(i)
     
   end subroutine get_position_gas_particle
 
@@ -570,20 +582,20 @@ contains
   !
   ! "name" must be one of the following: "x", "y", "z"
   ! x, y, z are in [udist] ... See the type definition section.
-  subroutine put_position_gas_particle(this, i, name, value)
+  subroutine put_position_gas_particle(i, name, value)
     implicit none    
-    type(sph_data), intent(inout) :: this
+!    type(sph_data), intent(inout) :: this
     integer, intent(in) :: i
     character(LEN=*), intent(in) :: name
     real(double), intent(in) :: value
     
     select case(name)
     case ("x", "X")
-       this%xn(i) = value
+       sphdata%xn(i) = value
     case ("y", "Y") 
-       this%yn(i) = value
+       sphdata%yn(i) = value
     case ("z", "Z") 
-       this%zn(i) = value
+       sphdata%zn(i) = value
     case default
        write(*,*) "Error: Unknown name passed to sph_data_class::put_position_gas_particle."
        stop
@@ -595,59 +607,59 @@ contains
   ! Returns the density of gas particle at the postion of
   ! i-th particle.
   
-  function get_rhon(this, i) RESULT(out)
+  function get_rhon(i) RESULT(out)
     implicit none
     real(double) :: out 
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
-    out  = this%rhon(i)
+    out  = sphdata%rhon(i)
     
   end function get_rhon
 
-  function get_mass(this, i) RESULT(out)
+  function get_mass(i) RESULT(out)
     implicit none
     real(double) :: out 
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
-    out  = this%gasmass(i)
+    out  = sphdata%gasmass(i)
     
   end function get_mass
 
   ! Returns the temperature of gas particle at the postion of
   ! i-th particle.
   
-  function get_temp(this, i) RESULT(out)
+  function get_temp(i) RESULT(out)
     implicit none
     real(double) :: out 
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
-    out  = this%temperature(i)
+    out  = sphdata%temperature(i)
     
   end function get_temp
 
-  function get_vel(this, i) RESULT(out)
+  function get_vel(i) RESULT(out)
     implicit none
     type(VECTOR) :: out 
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
-    out  = VECTOR(this%vxn(i),this%vyn(i),this%vzn(i))
+    out  = VECTOR(sphdata%vxn(i),sphdata%vyn(i),sphdata%vzn(i))
     
   end function get_vel
 
   ! Assigns the density of gas particle at the postion of
   ! i-th particle.
   
-  subroutine put_rhon(this, i, value)
+  subroutine put_rhon(i, value)
     implicit none
-    type(sph_data), intent(inout) :: this
+!    type(sph_data), intent(inout) :: this
     integer, intent(in) :: i
     real(double), intent(in) :: value
 
-    this%rhon(i) = value
+    sphdata%rhon(i) = value
     
   end subroutine put_rhon
      
@@ -655,15 +667,15 @@ contains
   ! Rerurns the postions of the i-th point mass.
   !
   ! x, y, z are in [udist] ... See the type definition section.
-  subroutine get_position_pt_mass(this, i, x, y, z)
+  subroutine get_position_pt_mass(i, x, y, z)
     implicit none    
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
     real(double), intent(out) :: x, y, z
     
-    x = this%x(i) 
-    y = this%y(i)
-    z = this%z(i)
+    x = sphdata%x(i) 
+    y = sphdata%y(i)
+    z = sphdata%z(i)
     
   end subroutine get_position_pt_mass
  
@@ -672,13 +684,13 @@ contains
   ! Returns the mass of the point mass (star) in
   ! the i-th position of data.
   !
-  function get_pt_mass(this, i) RESULT(out)
+  function get_pt_mass(i) RESULT(out)
     implicit none
     real(double)  :: out 
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in):: i
 
-    out = this%ptmass(i)  !in program units [umass]. See above.
+    out = sphdata%ptmass(i)  !in program units [umass]. See above.
 
   end function get_pt_mass
   
@@ -690,31 +702,31 @@ contains
   ! 
   !  Deallocates the array memories
 
-  subroutine kill_sph_data(this)
+  subroutine kill_sph_data()
     implicit none
-    type(sph_data), intent(inout) :: this
+!    type(sph_data), intent(inout) :: this
     
-    DEALLOCATE(this%xn, this%yn, this%zn)
-    DEALLOCATE(this%rhon, this%temperature)
-    DEALLOCATE(this%x, this%y, this%z)
-    DEALLOCATE(this%ptmass)
+    DEALLOCATE(sphdata%xn, sphdata%yn, sphdata%zn)
+    DEALLOCATE(sphdata%rhon, sphdata%temperature)
+    DEALLOCATE(sphdata%x, sphdata%y, sphdata%z)
+    DEALLOCATE(sphdata%ptmass)
 
-    NULLIFY(this%xn, this%yn, this%zn)
-    NULLIFY(this%rhon, this%temperature)
-    NULLIFY(this%x, this%y, this%z)
-    NULLIFY(this%ptmass)
+    NULLIFY(sphdata%xn, sphdata%yn, sphdata%zn)
+    NULLIFY(sphdata%rhon, sphdata%temperature)
+    NULLIFY(sphdata%x, sphdata%y, sphdata%z)
+    NULLIFY(sphdata%ptmass)
 
-    if ( ASSOCIATED(this%gasmass) ) then 
-       DEALLOCATE(this%gasmass)
-       NULLIFY(this%gasmass)
+    if ( ASSOCIATED(sphdata%gasmass) ) then 
+       DEALLOCATE(sphdata%gasmass)
+       NULLIFY(sphdata%gasmass)
     end if
 
-    if ( ASSOCIATED(this%hn) ) then 
-       DEALLOCATE(this%hn)
-       NULLIFY(this%hn)
+    if ( ASSOCIATED(sphdata%hn) ) then 
+       DEALLOCATE(sphdata%hn)
+       NULLIFY(sphdata%hn)
     end if
 
-    this%inUse = .false.
+    sphdata%inUse = .false.
 
   end subroutine kill_sph_data
     
@@ -726,20 +738,20 @@ contains
   ! find the maximum distance between the pt masses
   !
 
-  function max_distance(this) RESULT(out)
+  function max_distance() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     !
     real(double) :: d_max, d, x, y, z
     integer :: i, j, n
     
     d_max= -1.0
-    n=get_nptmass(this) ! function in this moudle
+    n=get_nptmass() ! function in this moudle
     
     do i = 1, n-2
        do j = i+1, n
-          call get_position_pt_mass(this, j, x, y, z)
+          call get_position_pt_mass(j, x, y, z)
           d = (x*x+y*y+z*z)  ! omit SQRT here cus it costs too much.
           d_max = MAX(d_max, d)
        end do
@@ -752,12 +764,12 @@ contains
   !
   ! retuns the minimum value of rhon
   !
-  function get_rhon_min(this) RESULT(out)
+  function get_rhon_min() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
 
-    out = MINVAL(this%rhon)
+    out = MINVAL(sphdata%rhon)
     
   end function get_rhon_min
 
@@ -765,12 +777,12 @@ contains
   !
   ! retuns the maximum value of rhon
   !
-  function get_rhon_max(this) RESULT(out)
+  function get_rhon_max() RESULT(out)
     implicit none
     real(double) :: out
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
 
-    out = MAXVAL(this%rhon)
+    out = MAXVAL(sphdata%rhon)
     
   end function get_rhon_max
 
@@ -779,15 +791,15 @@ contains
   !
   ! retuns the spin direction of i_th star
   !
-  subroutine get_spins(this, i, sx, sy, sz) 
+  subroutine get_spins(i, sx, sy, sz) 
     implicit none
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i 
     real(double), intent(out) :: sx, sy, sz 
     
-    sx = this%spinx(i)
-    sy = this%spiny(i)
-    sz = this%spinz(i)
+    sx = sphdata%spinx(i)
+    sy = sphdata%spiny(i)
+    sz = sphdata%spinz(i)
     
   end subroutine get_spins
 
@@ -797,9 +809,9 @@ contains
   ! Prints basic infomation
   !
   ! if filename is '*' then it prints on screen.
-  subroutine info(this, filename)
+  subroutine info(filename)
     implicit none
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     character(LEN=*), intent(in) :: filename
     integer :: UN
     real(double) :: tmp
@@ -812,18 +824,18 @@ contains
     end if
 
     ! time of the data dump
-    tmp = get_time(this)*get_utime(this)/(60.0d0*60.0d0*24.0d0*365.0d0*1.0d6)
+    tmp = get_time()*get_utime()/(60.0d0*60.0d0*24.0d0*365.0d0*1.0d6)
     
     write(UN,'(a)') ' '
     write(UN,'(a)') '######################################################'
     write(UN,'(a)') 'SPH data info :'
     write(UN,'(a)') ' '    
-    write(UN,*)     'Units of length            : ', get_udist(this), ' [cm]'
-    write(UN,*)     'Units of mass              : ', get_umass(this), ' [g]'
-    write(UN,*)     'Units of time              : ', get_utime(this),  ' [s]' 
+    write(UN,*)     'Units of length            : ', get_udist(), ' [cm]'
+    write(UN,*)     'Units of mass              : ', get_umass(), ' [g]'
+    write(UN,*)     'Units of time              : ', get_utime(),  ' [s]' 
     write(UN,'(a)') ' '    
-    write(UN,*)     '# of stars                 : ',  get_nptmass(this)
-    write(UN,*)     '# of gas particles (total) : ',  get_npart(this)   
+    write(UN,*)     '# of stars                 : ',  get_nptmass()
+    write(UN,*)     '# of gas particles (total) : ',  get_npart()   
     write(UN,*)     'Time of data dump          : ',  tmp, ' [Myr]'    
     write(UN,'(a)') '#######################################################'
     write(UN,'(a)') ' '
@@ -839,10 +851,10 @@ contains
   ! Returns the parameters for stellar disc of i-th star
   ! in the data.
   ! x, y, z are in [udist] ... See the type definition section.
-  subroutine get_stellar_disc_parameters(this, i, discrad, discmass, &
+  subroutine get_stellar_disc_parameters(i, discrad, discmass, &
        spinx, spiny, spinz)
     implicit none    
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
     real(double), intent(out) :: discrad    ! in [10^10cm] 
     real(double), intent(out) :: discmass   ! in [grams] 
@@ -851,7 +863,7 @@ contains
     
     ! quick check
     if (first_time) then
-       if (this%have_stellar_disc) then
+       if (sphdata%have_stellar_disc) then
           first_time = .false.
        else
           write(*,*) "Error:: You did not read in the stellar disc data! &
@@ -860,11 +872,11 @@ contains
        end if
     end if
     
-    discrad = this%discrad(i)    ! in [10^10cm] 
-    discmass = this%discmass(i)  ! in [grams] 
-    spinx = this%spinx(i)
-    spiny = this%spiny(i)
-    spinz = this%spinz(i)
+    discrad = sphdata%discrad(i)    ! in [10^10cm] 
+    discmass = sphdata%discmass(i)  ! in [grams] 
+    spinx = sphdata%spinx(i)
+    spiny = sphdata%spiny(i)
+    spinz = sphdata%spinz(i)
         
   end subroutine get_stellar_disc_parameters
 
@@ -872,11 +884,11 @@ contains
   !
   !
   !
-  function stellar_disc_exists(this) RESULT(out)
+  function stellar_disc_exists() RESULT(out)
     implicit none
     logical :: out
-    type(sph_data), intent(in) :: this
-    out = this%have_stellar_disc
+!    type(sph_data), intent(in) :: this
+    out = sphdata%have_stellar_disc
   end function stellar_disc_exists
 
 
@@ -887,9 +899,9 @@ contains
   ! axis and the observer. The results will be written in 
   ! a file. 
   !
-  subroutine find_inclinations(this, obs_x, obs_y, obs_z, outfilename)
+  subroutine find_inclinations(obs_x, obs_y, obs_z, outfilename)
     implicit none
-    type(sph_data), intent(in) :: this
+!    type(sph_data), intent(in) :: this
     real(double), intent(in) :: obs_x,  obs_y, obs_z  ! directions cosines of of observer.
     character(LEN=*), intent(in) :: outfilename 
     real(double) :: r1, r2, inc, dp, pi
@@ -904,8 +916,8 @@ contains
 
     ! just in case the vectors are not normalized.
     r1 = SQRT(obs_x*obs_x + obs_y*obs_y + obs_z*obs_z)
-    do i = 1, this%nptmass       
-       call get_spins(this, i , sx, sy, sz)
+    do i = 1, sphdata%nptmass       
+       call get_spins(i , sx, sy, sz)
        ! just in case the vectors are not normalized.
        r2 = SQRT(sx*sx+sy*sy+sz*sz)
     
@@ -928,36 +940,36 @@ contains
   !
   ! Interface function to get the status of SPH data object
   !
-  pure function isAlive(this) RESULT(out)
+  pure function isAlive() RESULT(out)
     implicit none
     logical :: out
-    type(sph_data), intent(in) :: this
-    out = this%inUse
+!    type(sph_data), intent(in) :: this
+    out = sphdata%inUse
   end function isAlive
 
   subroutine sortbyx(xarray,ind)
     real(double) :: xarray(:)
     integer :: ind(:)
-    integer :: i, npart
+    integer :: i
     
-    npart = size(xarray)
+!    npart = size(xarray)
     
     do i=1,npart
        ind(i) = i
     enddo
     
     write(*,*) "Start sort by x "
-    call tune(6, "Sort")  ! start a stopwatch
-    call sortdouble2index(npart,xarray,ind)
-    call tune(6, "Sort")  ! stop a stopwatch
+!    call tune(6, "Sort")  ! start a stopwatch
+    call sortdouble2index(xarray,ind)
+!    call tune(6, "Sort")  ! stop a stopwatch
     write(*,*) "End sort by x "
 
-    open(unit=50, file='xsortunsort.dat', status="replace")
-    open(unit=49, file='thex.dat', status="replace")
+!    open(unit=50, file='xsortunsort.dat', status="replace")
+!    open(unit=49, file='thex.dat', status="replace")
     
-    do i=1,npart
-       write(50,*) xarray(i), ind(i)
-    enddo
+!    do i=1,npart
+!       write(50,*) xarray(i), ind(i)
+!    enddo
 
   end subroutine sortbyx
 
@@ -965,12 +977,12 @@ contains
 
     real(double) :: array(:), critval
     real(double), intent(in) :: percentile
-    integer :: i, npart
+    integer :: i
     logical, optional :: output 
 
     character(len=100) :: message
 
-    npart = size(array)
+!    npart = size(array)
 
     if(output .and. writeoutput) then
     
@@ -990,18 +1002,402 @@ contains
        do i=100,1,-1
           write(49,*) i,"%",array(nint((npart*i/100.)))
        enddo
+    
+       write(message,*) "Maximum Value",array(npart)
+       call writeinfo(message, FORINFO)
+       write(message,*) "Minimum Value",array(1)
+       call writeinfo(message, FORINFO)
     else
        call dquicksort(array)
     endif
-
-    write(message,*) "Maximum Value",array(npart)
-    call writeinfo(message, FORINFO)
-    write(message,*) "Minimum Value",array(1)
-    call writeinfo(message, FORINFO)
 
     critval = array(nint(percentile*npart))
 
   end subroutine FindCriticalValue
 
+  TYPE(vector)  function Clusterparameter(point, grid, theparam, isdone, shouldreuse, RhoMin, RhoMax)
+    type(vector), intent(in) :: point
+    type(GRIDTYPE), intent(in), optional :: grid
+    type(vector) :: posvec
+
+    integer :: i
+
+    integer, optional :: theparam
+    integer :: param
+
+    logical, save :: firsttime = .true.
+    logical, optional :: isdone
+    logical :: done
+    
+    integer, allocatable, save :: ind(:)
+    real(double), save :: hcrit, hmax, rcrit, OneOverHcrit, OneOverhMax, rmax
+    real(double) :: codeVelocitytoTORUS, codeLengthtoTORUS, codeDensitytoTORUS, udist, umass, utime
+    real(double) :: r
+    real(double) :: fac
+    real(double), save :: sumWeight
+    real(double) :: paramValue(4)
+    integer,save :: nparticles
+    
+    character(len=100) :: message
+
+    logical, save :: notfound
+    logical, optional :: shouldreuse
+    logical :: reuse
+
+    real(double), optional:: RhoMin, RhoMax
+
+    if(present(rhomin)) then
+       rhomin = 1d30
+       rhomax = -1d30
+    endif
+
+    if(present(shouldreuse)) then
+       reuse = shouldreuse
+    else
+       reuse = .false.
+    endif
+
+    if(present(theparam)) then
+       param = theparam
+    else
+       param = 1
+    endif
+
+    if(present(isdone)) then
+       done = isdone
+    else
+       done = .false.
+    endif
+
+    if(firsttime) then
+!       call new_read_sph_data(tempsphdata, "newsph.dat.ascii") ! read in sphdata
+
+       udist = get_udist()
+       utime = get_utime()
+       umass = get_umass()
+       codeLengthtoTORUS = udist * 1d-10
+       codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed ! velocity unit is derived from distance and time unit (converted to seconds from years)
+       codeDensitytoTORUS = umass / ((udist) ** 3)
+
+!       npart = get_npart() ! total gas particles
+
+       allocate(PositionArray(3,npart)) ! allocate memory
+       allocate(VelocityArray(3,npart))
+       allocate(RhoArray(npart))
+       allocate(MassArray(npart))
+       allocate(Harray(npart))
+       allocate(ind(npart))
+       allocate(OneOverHsquared(npart))
+       allocate(OneOverHcubed(npart))
+
+       PositionArray = 0.d0; VelocityArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
+
+       PositionArray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+
+       call sortbyx(PositionArray(1,:),ind(:)) ! sort the x's and recall their indices
+
+       PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
+       PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
+
+       VelocityArray(1,:) = sphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
+       VelocityArray(2,:) = sphdata%vyn(ind(:)) * codeVelocitytoTORUS 
+       VelocityArray(3,:) = sphdata%vzn(ind(:)) * codeVelocitytoTORUS
+
+       RhoArray(:) = sphdata%rhon(ind(:)) * codeDensitytoTORUS
+
+       MassArray(:) = sphdata%gasmass(ind(:)) * umass! in case of unequal mass
+       Harray(:) = sphdata%hn(ind(:)) ! fill h array
+
+       call FindCriticalValue(harray, hcrit, 0.8d0, output = .false.) ! find hcrit = 90th percentile of total h
+       call FindCriticalValue(harray, hmax, 1.d0, output = .false.) ! find hcrit = 99th percentile of total h
+       Harray(:) = sphdata%hn(ind(:)) ! fill h array
+
+       write(message, *) "80% Smoothing Length in code units", hcrit
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "100% Smoothing Length in code units", hmax
+       call writeinfo(message, TRIVIAL)
+
+       hcrit = hcrit * codeLengthtoTORUS
+       OneOverHcrit = 1.d0 / hcrit
+
+       hmax = hmax * codeLengthtoTORUS
+       OneOverHmax = 1.d0 / hmax
+
+       Harray(:) = Harray(:) * codeLengthtoTORUS  ! fill h array
+       OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
+       OneOverHcubed(:) = 1.d0 / (Harray(:)**3)
+
+       write(message,*) "80% Smoothing Length in 10^10cm", hcrit
+       call writeinfo(message, TRIVIAL)
+       write(message,*) "100% Smoothing Length in 10^10cm", hmax
+       call writeinfo(message, TRIVIAL)
+
+       rcrit = 2.d0 * hcrit ! edge of smoothing sphere
+       rmax = 2.d0 * hmax ! edge of smoothing sphere
+
+!       call kill() ! don't need harray anymore
+       allocate(partarray(npart), indexarray(npart))
+       firsttime = .false.
+    endif
+
+    if(done) then
+       deallocate(PositionArray, VelocityArray, MassArray, harray, RhoArray, ind)
+       firsttime = .true.
+       return
+    endif
+
+    posVec = point
+
+    r = rcrit ! CHECK HERE!!!
+
+    if(.not. reuse) then
+       notfound = .false.
+       call findNearestParticles(posvec, nparticles, sumWeight, rcrit)
+       if(sumweight .le. 0.d0) notfound = .true.
+    endif
+
+    paramvalue = 0.d0
+
+    if(.not. notfound) then
+       if(sumweight .gt. 0.5d0) then
+          fac = 1.d0 / sumWeight
+       else
+          fac = 1.d0
+       endif
+
+       if(param .eq. 1) then
+          do i = 1, nparticles
+             paramValue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
+             paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
+             paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
+          enddo
+
+          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity
+
+       elseif(param .eq. 2) then
+
+          do i = 1, nparticles
+             paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
+             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
+                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
+                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
+             endif
+          enddo
+          
+          Clusterparameter = VECTOR(paramValue(4) * fac, 0.d0, 0.d0) ! density ! stays as vector for moment
+       endif
+    else
+       if(param .eq. 1) then
+          Clusterparameter = VECTOR(1d-20,1d-20,1d-20)
+       elseif(param .eq. 2) then
+
+          if(.not. reuse) then
+             call findNearestParticles(posvec, nparticles, sumWeight, 0.75 * rmax, expkernel = .true.) ! redo but with exponential kernel
+          endif
+
+          do i = 1, nparticles
+             paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
+             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
+                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
+                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
+             endif
+          enddo
+
+          paramvalue(4) = max(1d-60, paramvalue(4))
+          Clusterparameter = VECTOR(paramValue(4), 0.d0, 0.d0) ! density ! stays as vector for moment
+       endif
+    endif
+
+!    BodyVelocity = previousOctal%velocity(subcell)
+
+  end function Clusterparameter
+
+  subroutine findnearestparticles(pos, partcount, sumWeight, r, expkernel)
+    type(VECTOR) :: pos
+    real(double) :: x,y,z
+    integer :: i
+    integer :: nupper, nlower
+    integer :: closestXindex, testIndex
+    integer, intent(out) :: partcount
+    real(double) :: weightFac
+    real(double) :: r2test, q2test, qtest, r
+    real(double) :: ydiff, zdiff, rr
+    real(double), intent(out) :: sumweight
+    logical, optional :: expkernel
+    logical :: doexpkernel
+    
+    real(double), parameter :: OneOversqrtPiCubed = 1.d0 / 5.568328000d0
+    real(double), parameter :: num = 125.d0 / 216.d0 ! (5/6)^3 ! (1/1.2^3)
+
+    integer :: stepsize, sense
+    logical :: test, prevtest, up
+    
+    if(present(expkernel)) then
+       doexpkernel = expkernel
+    else
+       doexpkernel = .false.
+    endif
+  
+    x = pos%x
+    y = pos%y
+    z = pos%z
+
+    call locate_double_f90(PositionArray(1,:), x, closestXindex) ! find the nearest particle to your point
+  
+    nupper = 1
+    nlower = -1
+
+    rr = r**2
+    
+    closestxIndex = min(max(1, closestXindex), npart)
+
+    if(closestxIndex .lt. npart) then
+  
+    up = .true.
+    nupper = 1
+    stepsize = 1
+    sense = 1
+    prevtest = .true.
+
+    do while (stepsize .ge. 1)
+       test = abs(PositionArray(1,min(npart,closestXindex + nupper)) - x) .le. r
+ 
+       if(test .and. (nupper .eq. npart - closestXindex)) exit
+       if(closestXindex + nupper .ge. npart) nupper = npart - closestXindex
+
+       if(.not. (test .eqv. prevtest)) then
+          sense = -sense ! forwards or backwards
+          up = .false.
+       endif
+       
+       if(up) then
+          stepsize = 2 * stepsize
+       else
+          stepsize = stepsize / 2
+       endif
+    
+       if(stepsize .lt. 1) then
+          if (test) then
+             nupper = nupper
+          else
+             nupper = nupper - 1 ! always has to be lower
+          endif
+          exit
+       endif
+
+       nupper = min(nupper + sense * stepsize, npart - closestXindex)
+
+       prevtest = test
+    enddo
+
+    else
+       nupper = npart
+    endif
+! repeat for nlower
+    if(closestXindex .gt. 1) then
+
+    up = .true.
+    nlower = -1
+    stepsize = 1
+    sense = -1
+    prevtest = .true.
+
+    do while (stepsize .ge. 1)
+       test = abs(PositionArray(1,max(1,closestXindex + nlower)) - x) .le. r
+ 
+       if(test .and. (nlower .eq. 1 - closestXindex)) exit
+       if(closestXindex + nlower .le. 1) nlower = 1 - closestXindex
+
+       if(.not. (test .eqv. prevtest)) then
+          sense = -sense ! forwards or backwards
+          up = .false.
+       endif
+       
+       if(up) then
+          stepsize = 2 * stepsize
+       else
+          stepsize = stepsize / 2
+       endif
+    
+       if(stepsize .lt. 1) then
+          if (test) then
+             nlower = nlower
+          else
+             nlower = nlower + 1 ! always has to be higher
+          endif
+          exit
+       endif
+
+       nlower = max(nlower + sense * stepsize, 1 - closestXindex)
+
+       prevtest = test
+    enddo
+
+    else
+       nlower = 1
+    endif
+       
+    partcount = 0
+    sumweight = 0.d0
+    
+    do i = nlower, nupper ! search over all those particles we just found
+       
+       testIndex = closestXindex + i
+       
+       ydiff = (PositionArray(2, testIndex) - y) ** 2
+
+       if(ydiff .le. rr) then ! if it's near in y then
+          zdiff = (PositionArray(3, testIndex) - z)**2
+          if(zdiff .le. rr) then !only if it's near in z as well then work out contribution
+
+             r2test = (PositionArray(1,testIndex) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
+                  ydiff + zdiff
+             
+             q2test = r2test * OneOverHsquared(testIndex) ! dimensionless parameter that we're interested in
+             
+             if(q2test .lt. 4.d0) then
+                partcount = partcount + 1
+                qtest = sqrt(q2test)
+                Weightfac = num * SmoothingKernel3d(qtest) ! normalised contribution from this particle
+             else
+                partcount = partcount + 1
+                weightfac = 0.d0
+                if(q2test .lt. 100.d0) then
+                   if(doexpkernel) then
+                      Weightfac = num * OneOversqrtPiCubed * exp(-q2test)
+                   endif
+                endif
+             endif
+             
+             partArray(partcount) = weightfac
+             indexArray(partcount) = testIndex
+             
+             sumWeight = sumWeight + Weightfac
+          endif
+       endif
+    enddo
+    
+  end subroutine findnearestparticles
+
+  real(double) pure function SmoothingKernel3d(q) result(Weight)
+      
+    real(double), intent(in) :: q
+    real(double) :: qminus2, qminus1
+
+    qminus2 = q - 2.d0
+    qminus1 = q - 1.d0
+   
+    if(qminus2 .lt. 0.d0) then
+       Weight = (-qminus2) ** 3
+       if(qminus1 .lt. 0.d0) then
+          Weight = Weight + 4.d0 * ((qminus1) ** 3)
+       endif
+       Weight = OneOnFourPi * Weight
+    else
+       Weight = 0.d0
+    endif
+    
+  end function SmoothingKernel3d
+  
 end module sph_data_class
     

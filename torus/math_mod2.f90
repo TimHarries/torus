@@ -5,7 +5,6 @@ module math_mod2
   !   problems.
 
   use kind_mod
-  use constants_mod, only : OneOnFourPi
   
   implicit none
 
@@ -459,26 +458,5 @@ contains
         b2(i)=sum/a(i,i)
 14    continue
       end subroutine lubksb_f77_double
-
-  real(double) pure function SmoothingKernel(q) result(Weight)
-      
-    real(double), intent(in) :: q
-    real(double) :: sigma
-    
-    sigma = OneOnFourPi
-
-    if(q .lt. 2.d0) then
-       Weight = (2.d0 - q) ** 3
-       if(q .lt. 1.d0) then
-          Weight = Weight - 4.d0 * ((1.d0 - q) ** 3)
-       endif
-    else
-       Weight = 1d-30
-    endif
-    
-    Weight = sigma * Weight
-    
-  end function SmoothingKernel
-
 
 end module math_mod2

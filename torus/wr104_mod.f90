@@ -13,14 +13,14 @@ module wr104_mod
 
 contains
 
-  subroutine readWR104Particles(filename, sphData, objectDistance)
+  subroutine readWR104Particles(filename, sphdata, objectDistance)
     character(len=*), intent(in) :: filename
     type(sph_data), intent(inout) :: sphData
     real(double), intent(in) :: objectDistance
     !
 !    integer :: i
     real(double) :: udist, umass, utime    ! Units of distance, mass, time
-    integer          :: npart                  ! Number of gas particles
+!    integer          :: npart                  ! Number of gas particles
     real(double) :: time                   ! Time of sph data dump (in units of utime)
     integer          :: nptmass                ! Number of stars/brown dwarfs
 
@@ -44,7 +44,7 @@ contains
 
     ! initilaizing the sph_data object
     ! using a routine in sph_data_class.  (Allocating the memory for arrays and etc..)
-    call init_sph_data(sphData, udist, umass, utime, npart, time, nptmass)
+    call init_sph_data(udist, umass, utime, time, nptmass)
 
 
     ! reading the X poistion of particles

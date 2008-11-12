@@ -471,7 +471,7 @@ module molecular_mod
 !      integer, allocatable, save :: ioctalArray(:)
       
       real :: tol
-      real(double) :: dummy, tau, tauarray(40) = -1.d0    
+      real(double) :: dummy, tau, tauarray(60) = -1.d0    
       logical :: quasi = .true.
 
       position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
@@ -485,7 +485,7 @@ module molecular_mod
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 
 !     finds max temperature and works out highest inhabited level at a given fraction. Highest necessary level is 4 above that
-      call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, nlevels, nVoxels)
+      call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, nlevels, nVoxels, lte = .true.)
 
       maxlevel = max(maxlevel,minlevel)
       maxtrans = maxlevel - 1
@@ -602,10 +602,10 @@ module molecular_mod
 
             grand_iter = grand_iter + 1
 
-             call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20), &
-	     grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
+            call taualongray(VECTOR(10.d0,10.d0,10.d0), VECTOR(0.577350269, 0.577350269, 0.577350269), &
+                 grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
-!            write(*,*) "tauarray", tauarray
+!            tauarray(1:maxtrans) = 0.02
 
             do i = size(tauarray), 1, -1
                mintrans = i + 2
@@ -672,7 +672,7 @@ module molecular_mod
 !       firsttime = .false.
 !    endif
 
-
+    call torus_abort("check mass")
  ! iterate over all octals, all rays, solving the system self-consistently
            if(writeoutput) then
               write(message,*) "Getray"
@@ -695,8 +695,7 @@ module molecular_mod
 !                    if(fixedrays) call sobseq(r1,-1)                     
 
                     do iRay = 1, nRay
-
-
+                      
                        call getRay(grid, thisOctal, subcell, position, direction, &
                             ds(iRay), phi(iRay), i0(1:maxtrans,iRay), &
                             thisMolecule,fixedrays) ! does the hard work - populates i0 etc
@@ -807,18 +806,13 @@ module molecular_mod
            gridConverged = .false.
         endif
 
-!        if (writeoutput) then
-!           write(*,*) maxRMSFracChange, tol ** 2 * real(nvoxels)
-!           write(*,*) gridconvergedtest, gridconverged, "a"
-!        endif
-
         if(myrankiszero) then
            call writeAmrGrid("molecular_tmp.grid",.false.,grid)
            call writeinfo("written grid", TRIVIAL)
 	endif
 
         call writeinfo("Dumping results", FORINFO)
-        if((amr1d .or. amr2d) .and. writeoutput .and. (.not. gridconvergedtest)) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
+        if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
 
         if(writeoutput) then
            write(message,*) "Done ",nray," rays"
@@ -826,13 +820,6 @@ module molecular_mod
 
         endif
         
-!        write(*,*) "fixedrays", fixedrays
-!        write(*,*) "gridconverged", gridconverged
-!        write(*,*) "gridconvergedtest", gridconvergedtest
-!        write(*,*) "molebench", molebench
-
-!	if(writeoutput) write(*,*) gridconvergedtest, gridconverged, fixedrays, molebench
-
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
               if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
@@ -853,8 +840,6 @@ module molecular_mod
            call writeWarning("Maximum number of rays exceeded - capping")
         endif
 
-!        if(gridconvergedtest) gridconverged = .true.
-!        write(*,*) "gridconverged", gridconverged
 
 #ifdef MPI
         deallocate(octalsBelongRank)
@@ -1046,7 +1031,16 @@ end subroutine molecularLoop
      do while(inOctal(grid%octreeRoot, currentPosition))
 
         call findSubcellLocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, soctal = thisoctal)
+
+        if(tval < 0.d0) then 
+           write(*,*) "tval", tval
+           write(*,*) "currentposition", tval
+           write(*,*) "direction", direction
+           write(*,*) "subcell", subcell
+           write(*,*) "label", thisoctal%label
+        endif
 
         if(useDust) then             
            do itrans = 1,maxtrans
@@ -1164,7 +1158,8 @@ end subroutine molecularLoop
      type(MOLECULETYPE) :: thisMolecule
 
      real(double) :: ds(:), phi(:), i0(:), nPops(:)
-     real(double) :: phids(nray), tauArray(nray), opticaldepthArray(nray), jbarinternalArray(nray), jbarExternalArray(nray)
+     real(double) :: jbarinternalArray(nray), jbarExternalArray(nray)
+     real(double), allocatable :: phids(:), tauList(:), opticaldepthArray(:)
      integer :: iTrans
      real(double) :: jbar
      integer :: iRay
@@ -1176,6 +1171,8 @@ end subroutine molecularLoop
      real :: lambda
      integer :: ilambda
      logical :: realdust = .true.
+
+     allocate(phids(nray), tauList(nray), opticaldepthArray(nray))
      
      jBarExternal = 1.d-60
      jBarInternal = 1.d-60
@@ -1244,9 +1241,9 @@ end subroutine molecularLoop
            snu = tiny(snu)
         endif
 
-        phids(1:nRay) = phi(1:nray) * ds(1:nray)
-        tauArray(1:nRay) = alpha * hCgsOverFourPi * phids(1:nRay)
-        opticaldepthArray(1:nRay) = exp(-1.d0 * tauArray(1:nRay))
+        phids(:) = phi(:) * ds(:)
+        tauList(:) = alpha * hCgsOverFourPi * phids(:)
+        opticaldepthArray(:) = exp(-1.d0 * tauList(:))
 
         jBarExternalArray(1:nRay) = i0(1:nRay) * opticaldepthArray(1:nRay) * phi(1:nRay)
         jBarInternalArray(1:nRay) = snu * (1.d0 - opticaldepthArray(1:nRay)) * phi(1:nRay)
@@ -1266,6 +1263,7 @@ end subroutine molecularLoop
         jbar = (jBarExternal + jBarInternal)/sumPhi
      endif
 
+     deallocate(phids, tauList, opticaldepthArray)
    
    end subroutine calculateJbar
 
@@ -2497,9 +2495,16 @@ endif
      iUpper(:)  = thisMolecule%iTransUpper(:)
      iLower(:)  = thisMolecule%iTransLower(:)
      
+     write(*,*) "Inoctal",inOctal(grid%octreeRoot, currentPosition)
+
+!     call findSubcellTD(currentPosition, thisOctal, subcell)
+
      do while(inOctal(grid%octreeRoot, currentPosition))
         
         call findSubcelllocal(currentPosition, thisOctal, subcell)
+        write(*,*) "currentposition", currentposition
+        write(*,*) "label", thisoctal%label
+        write(*,*) "subcell", subcell
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
@@ -3032,13 +3037,13 @@ endif
 
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule)!, convtestarray)
-     use input_variables, only : rinner, router
+     use input_variables, only : rinner, router, amr1d
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
      real(double), save :: logrinner, logrouter, OneOverNradiusMinusOne, OneOverNangle
      integer :: i
-     real(double) :: pops(minlevel), fracChange(minlevel), tauarray(40)!, convtestarray(:,:,:), tauarray(40)
+     real(double) :: pops(minlevel), fracChange(minlevel), tauarray(60)!, convtestarray(:,:,:), tauarray(40)
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      integer :: j
@@ -3059,15 +3064,19 @@ endif
 
      open(32,file=resultfile2,status="unknown",form="formatted")
 
-!     if( .not. amr2d) &
-          call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20),&
+     call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20),&
 	  grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
      if(firsttime) then
         open(33,file="tau.dat",status="unknown",form="formatted")	
 
-        nradius = 100! number of radii used to sample distribution
-        nangle = 360 ! number of rays used to sample distribution
+        nradius = 50! number of radii used to sample distribution
+
+        if(.not. amr1d) then
+           nangle = 360 ! number of rays used to sample distribution
+        else
+           nangle = 1
+        endif
         
         logrinner = log10(rinner)
         logrouter = log10(router)
@@ -3111,7 +3120,7 @@ endif
      close(32)
    end subroutine dumpResults
 
-   recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel)
+   recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel, lte)
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3123,6 +3132,8 @@ endif
      integer, save :: icount = 0
      real(double) :: maxtemp = 0.d0
      character(len = 80) :: message
+     logical :: lte
+
      mollevels = 0.d0
          
      do subcell = 1, thisOctal%maxChildren
@@ -3131,14 +3142,18 @@ endif
            do i = 1, thisOctal%nChildren
               if (thisOctal%indexChild(i) == subcell) then
                  child => thisOctal%child(i)
-                 call findmaxlevel(grid, child, thisMolecule, maxinterestinglevel, nlevels, nVoxel)
+                 call findmaxlevel(grid, child, thisMolecule, maxinterestinglevel, nlevels, nVoxel, lte)
                  exit
               end if
            end do
         else
-!           write(*,*) "temp", thisoctal%temperature(subcell),subcell
 
-           maxtemp = max(maxtemp, thisOctal%temperature(subcell))     
+           if (lte) then
+              maxtemp = max(maxtemp, thisOctal%temperature(subcell))     
+           else
+              mollevels(:) = max(mollevels(:), thisoctal%molecularlevel(subcell, 1:nlevels))
+           endif
+
            icount = icount + 1
         endif
      end do
@@ -3148,15 +3163,12 @@ endif
         write(message, *)  "Maximum Global Temperature", maxtemp
         call writeinfo(message, FORINFO)
 
-        call LTEpops(thisMolecule, maxtemp, mollevels(1:thisMolecule%nlevels))
+        if (lte) call LTEpops(thisMolecule, maxtemp, mollevels(1:thisMolecule%nlevels))
                 
         do i = thisMolecule%nlevels, 1, -1
            maxinterestinglevel = i
-!           write(*,*) i, mollevels(i)
            if(mollevels(i) .gt. 1d-8) exit
         enddo
-        
-        maxinterestinglevel = maxinterestinglevel
      endif
      
    End subroutine findmaxlevel

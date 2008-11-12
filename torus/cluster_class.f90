@@ -96,16 +96,16 @@ contains
   !
   ! Initializing with sph data
   !
-  subroutine int_cluster_alt(this, sphData, amrGridSize, disc_on)
+  subroutine int_cluster_alt(this, amrGridSize, disc_on)
     implicit none
     type(cluster), intent(inout) :: this
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     real(double), intent(in) :: amrGridSize
     logical, intent(in) :: disc_on
     ! Store important info from the data.    
     this%boxsize = amrGridSize  ! [10^10 cm]
     !
-    this%nstar = get_nptmass(sphData)
+    this%nstar = get_nptmass()
 
     ! Allocate star array
     ALLOCATE(this%stars(this%nstar))
@@ -216,10 +216,10 @@ contains
   ! Creates a cluster fully by assiging T, R, L and so on to each star
   ! 
 
-  subroutine build_cluster(this, sphData, lambda_beg, lambda_end, iso_data)
+  subroutine build_cluster(this, lambda_beg, lambda_end, iso_data)
     implicit none
     type(cluster), intent(inout) :: this
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     ! starting and the ending wavelength in Angstrome!
     real(double), intent(in) :: lambda_beg, lambda_end 
     !
@@ -237,9 +237,9 @@ contains
     n = get_nstar(this)
 
     ! using a function sph_data_class
-    length_units = get_udist(sphData)/1.0d10 ! [10^10 cm]
+    length_units = get_udist()/1.0d10 ! [10^10 cm]
     
-    age = get_time(sphData)*get_utime(sphData) ! in [sec]
+    age = get_time()*get_utime() ! in [sec]
     ! converting to years
     age = age * secsToYears   ! [years]
     ! assigning stars
@@ -247,7 +247,7 @@ contains
        ! preparing the spectrum
        !
 
-       mass = get_pt_mass(sphData, i)*get_umass(sphData) ! [g]
+       mass = get_pt_mass(i)*get_umass() ! [g]
        ! converting it to solar masses
        mass = mass/mSol ! [M_sun]
 
@@ -257,7 +257,7 @@ contains
        call  mass_age_to_temp_rad_lum(iso_data, mass, age, temperature, radius, luminosity)
 
        ! position of this star
-       call get_position_pt_mass(sphData, i, x, y, z)
+       call get_position_pt_mass(i, x, y, z)
        x = x*length_units; y=y*length_units; z=z*length_units  ! [10^10cm]
        ! save it to a star
        a_star%luminosity = luminosity     ! erg/sec
@@ -317,22 +317,30 @@ contains
     TYPE(octal), intent(inout) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double), parameter :: density_crit = 1d-13
+    real(double), parameter :: density_crit = 1d13
+    type(vector) :: point, somevector
+    integer :: dummy
+    real(double) :: density_ave
     
 !    thisOctal%temperature(subcell) = 3.0e0
 !    thisOctal%temperature(subcell) = 10.0
-    thisOctal%velocity = VECTOR(1.d-10,1.d-10,1.d-10)
-    thisOctal%etaLine(subcell) = 1.e-30
-    thisOctal%etaCont(subcell) = 1.e-30
+    thisOctal%velocity = VECTOR(-1.d10,-1.d10,-1.d10)
+!    thisOctal%etaLine(subcell) = 1.e-30
+!    thisOctal%etaCont(subcell) = 1.e-30
+    thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) * density_crit)**(0.4)))
+!    thisOctal%temperature(subcell) = 10.
 
-    if(grid%geometry .eq. 'molcluster') then
-       thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
-!       thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) / density_crit)**(0.4)))
+!    call find_n_particle_in_subcell(dummy, density_ave, &
+!         thisOctal, subcell)
 
-       thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-            (28.0 * amu)) + modulus(thisOctal%velocity(subcell))**2) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-    endif
-       
+    point = subcellcentre(thisOctal, subcell)
+    somevector = Clusterparameter(point, theparam = 2)
+    thisOctal%rho(subcell) = somevector%x
+    somevector = Clusterparameter(point, theparam = 1, shouldreuse = .true.)
+    thisOctal%velocity(subcell) = somevector
+
+    thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+      
   end subroutine assign_grid_values
 
   !
@@ -341,17 +349,16 @@ contains
   ! This routine can be used for example, in addNewChild and initFirstOctal
   ! in amr_mod.f90
   !
-  subroutine assign_density(thisOctal,subcell, sphData, geometry, a_cluster)
+  subroutine assign_density(thisOctal,subcell, geometry, a_cluster)
 
     implicit none
 
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
 !    type(gridtype), intent(in) :: grid
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     character(len=*) :: geometry
     type(cluster), intent(in), optional :: a_cluster
-    !
     real(double) :: density_ave, rho_disc_ave, dummy_d
 !    type(VECTOR) :: velocity_ave
     real :: tem_ave
@@ -365,11 +372,11 @@ contains
        
     select case (geometry)
        case ("cluster")
-          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
+          call find_temp_in_subcell(nparticle, tem_ave, &
                thisOctal, subcell)
 
           thisOctal%temperature(subcell)  = tem_ave
-          call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
+          call find_n_particle_in_subcell(nparticle, density_ave, &
                thisOctal, subcell)
 
           ! if this subcell intersect with any of the stellar disk
@@ -377,10 +384,10 @@ contains
           rho_disc_ave = 1.d-30
 
          if (a_cluster%disc_on) then
-             if (stellar_disc_exists(sphData) .and.  &       
-                  disc_intersects_subcell(a_cluster, sphData, thisOctal, subcell) ) then
+             if (stellar_disc_exists() .and.  &       
+                  disc_intersects_subcell(a_cluster, thisOctal, subcell) ) then
 
-                rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
+                rho_disc_ave = average_disc_density_fast(thisOctal, &
                      subcell, a_cluster, dummy_d)
 
 !             rho_disc_ave = average_disc_density(sphData, thisOctal, &
@@ -434,15 +441,15 @@ contains
 
 !          thisOctal%temperature(subcell)  = tem_ave
 
-!          call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
-!               thisOctal, subcell, dosmoothing = .true.)
+!          call find_n_particle_in_subcell(nparticle, density_ave, &
+!               thisOctal, subcell)!, !dosmoothing = .true.)
 
-          call find_density(nparticle, density_ave, sphData, &
-               thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
+!          call find_density(nparticle, density_ave, sphData, &
+!               thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
 
-          thisOctal%rho(subcell) = density_ave
-          thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) / density_crit)**(0.4)))
+!          thisOctal%rho(subcell) = 1d-20
 
+!          thisOctal%rho(subcell) = density_ave
 
 !          thisOctal%rho(subcell) = density_ave
 
@@ -452,7 +459,7 @@ contains
 !          thisOctal%rho(subcell) = density_ave
 
        case("wr104")
-          call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
+          call find_n_particle_in_subcell(nparticle, density_ave, &
                thisOctal, subcell)          
           thisOctal%rho(subcell) = max(1.d-30,dble(nparticle)/ cellVolume(thisOctal, subcell))
     end select
@@ -465,14 +472,14 @@ contains
   !
   ! Updates the sph particle linked list.
   !
-  subroutine update_particle_list(thisOctal, subcell, newChildIndex, sphData)
+  subroutine update_particle_list(thisOctal, subcell, newChildIndex)
     implicit none
     TYPE(octal), INTENT(INOUT) :: thisOctal ! the parent octal 
 !    type(octal), pointer :: thisOctal
     integer, intent(in) :: subcell       ! do loop index of thisOctal
     integer, intent(in) :: newChildIndex ! new child index
-    !type(gridtype), intent(in) :: grid
-    type(sph_data), intent(in) :: sphData
+   !type(gridtype), intent(in) :: grid
+!    type(sph_data), intent(in) :: sphData
     !
     integer          :: np, i, j, k
     real(double) :: udist  ! units for distance
@@ -482,7 +489,7 @@ contains
     
     !
     ! Finding the number of particles in this subcell first
-    call find_n_particle_in_subcell(nparticle, density_ave, sphData,&
+    call find_n_particle_in_subcell(nparticle, density_ave,&
          thisOctal, subcell)
 
     if (nParticle > 0) then
@@ -493,7 +500,7 @@ contains
        np = SIZE(thisOctal%gas_particle_list)
        
        ! Units of length
-       udist = get_udist(sphData) / 1.0d10  ! [10^10cm]
+       udist = get_udist() / 1.0d10  ! [10^10cm]
        
        k=0
        do i = 1, np
@@ -502,7 +509,7 @@ contains
           
           ! copy this value if this particle is in this child.
           ! Using a routine in sph_data_class. 
-          call get_position_gas_particle(sphData, j, x, y, z)
+          call get_position_gas_particle(j, x, y, z)
           
           ! convert units
           x = x*udist; y = y*udist;  z = z*udist  ! [10^10cm]
@@ -528,14 +535,14 @@ contains
   ! function returns the number of gas particles which belongs to a subcell this
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
-  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell, rho_min, rho_max, dosmoothing, n_pt)
+  subroutine find_n_particle_in_subcell(n, rho_ave, node, subcell, rho_min, rho_max, dosmoothing, n_pt)
     implicit none
     integer, intent(out) :: n                ! number of particles in the subcell
     integer, intent(out), optional :: n_pt   ! number of point masses in the subcell 
     real(double), intent(out) :: rho_ave ! average density of the subcell
     real(double), intent(out), optional :: rho_min, rho_max
     real(double) :: this_rho
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
@@ -563,8 +570,8 @@ contains
     ! Carry out the initial calculations
     if (first_time) then       
        ! units of sphData
-       umass = get_umass(sphData)  ! [g]
-       udist = get_udist(sphData)  ! [cm]
+       umass = get_umass()  ! [g]
+       udist = get_udist()  ! [cm]
        udent = umass/udist**3
 
        ! convert units
@@ -597,7 +604,7 @@ contains
           j = node%gas_particle_list(i)
           
           ! retriving this posiiton of the gas particle.
-          call get_position_gas_particle(sphData, j, x, y, z)
+          call get_position_gas_particle(j, x, y, z)
           
           ! convert units
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
@@ -610,7 +617,7 @@ contains
                 qtest = rtest * OneOverHcrit
                 
                 if(qtest .lt. 2.0) then 
-                   weight = SmoothingKernel(qtest)
+                   weight = SmoothingKernel3d(qtest)
                    write(*,*) qtest, weight
                 else
                    weight = 1d-30
@@ -621,7 +628,7 @@ contains
              
              counter = counter + 1
 !             sumweight = sumweight + weight
-             this_rho = get_rhon(sphData, j) 
+             this_rho = get_rhon(j) 
              !         rho_ave = rho_ave + this_rho
              
              rho_ave = rho_ave + this_rho * weight
@@ -639,7 +646,7 @@ contains
     if ( present(n_pt) ) then
        n_pt = 0
        do i=1, sphData%nptmass
-          call get_position_pt_mass(sphData, i, x, y, z)
+          call get_position_pt_mass(i, x, y, z)
           ! convert units
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
           if (within_subcell(node, subcell, x, y, z)  ) n_pt = n_pt + 1
@@ -665,11 +672,11 @@ contains
     
   end subroutine find_n_particle_in_subcell
 
-  subroutine find_density(n, dens_ave, sphData, node, subcell)
+  subroutine find_density(n, dens_ave, node, subcell)
     implicit none
     integer, intent(out) :: n                ! number of particels in the subcell
     real(double), intent(out) :: dens_ave ! average density of the subcell
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
@@ -689,14 +696,14 @@ contains
     ! Carry out the initial calculations
     if (first_time) then       
        ! units of sphData
-       umass = get_umass(sphData)  ! [g]
-       udist = get_udist(sphData)  ! [cm]
+       umass = get_umass()  ! [g]
+       udist = get_udist()  ! [cm]
        udens = umass/(udist**3)
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
 
-       dens_min = get_rhon_min(sphData)
+       dens_min = get_rhon_min()
        first_time = .false.
     end if
 
@@ -715,7 +722,7 @@ contains
           j = node%gas_particle_list(i)
           
           ! retriving this posisiton of the gas particle.
-          call get_position_gas_particle(sphData, j, x, y, z)
+          call get_position_gas_particle( j, x, y, z)
           
           ! convert units
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
@@ -723,7 +730,7 @@ contains
           ! belongs to this cell.
           if ( within_subcell(node, subcell, x, y, z) ) then
              counter = counter + 1
-             dens_ave = dens_ave + get_mass(sphData, j) 
+             dens_ave = dens_ave + get_mass(j) 
           end if
           
        end do
@@ -740,11 +747,11 @@ contains
     
   end subroutine find_density
 
-  subroutine find_velocity(n, vel_ave, sphData, node, subcell) ! technically finding average momentum?
+  subroutine find_velocity(n, vel_ave, node, subcell) ! technically finding average momentum?
     implicit none
     integer, intent(out) :: n                ! number of particels in the subcell
     type(VECTOR), intent(out) :: vel_ave ! average density of the subcell
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
@@ -760,14 +767,14 @@ contains
     ! Carry out the initial calculations
     if (first_time) then       
        ! units of sphData
-       umass = get_umass(sphData)  ! [g]
-       udist = get_udist(sphData)  ! [cm]
-       utime = get_utime(sphData)  ! [s]
+       umass = get_umass()  ! [g]
+       udist = get_udist()  ! [cm]
+       utime = get_utime()  ! [s]
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
 
-       dens_min = get_rhon_min(sphData)
+       dens_min = get_rhon_min()
        first_time = .false.
     end if
 
@@ -787,7 +794,7 @@ contains
           j = node%gas_particle_list(i)
           
           ! retriving this posisiton of the gas particle.
-          call get_position_gas_particle(sphData, j, x, y, z)
+          call get_position_gas_particle(j, x, y, z)
           
           ! convert units
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
@@ -795,8 +802,8 @@ contains
           ! belongs to this cell.
           if ( within_subcell(node, subcell, x, y, z) ) then
              counter = counter + 1
-             mass = get_mass(sphdata, j)
-             vel_ave = vel_ave + mass * get_vel(sphData, j)
+             mass = get_mass(j)
+             vel_ave = vel_ave + mass * get_vel(j)
              mass_sum = mass_sum + mass
           end if
           
@@ -820,12 +827,12 @@ contains
     
   end subroutine find_velocity
 
-  subroutine find_temp_in_subcell(n, tem_ave, sphData, node, subcell)
+  subroutine find_temp_in_subcell(n, tem_ave, node, subcell)
     use input_variables, only : TMinGlobal
     implicit none
     integer, intent(out) :: n    ! number of particles in the subcell
     real, intent(out) :: tem_ave ! average temperature of the subcell
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
@@ -839,7 +846,7 @@ contains
     ! Carry out the initial calculations
     if (first_time) then       
        ! units of sphData
-       udist = get_udist(sphData)  ! [cm]
+       udist = get_udist()  ! [cm]
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
@@ -861,7 +868,7 @@ contains
           j = node%gas_particle_list(i)
           
           ! retriving this posisiton of the gas particle.
-          call get_position_gas_particle(sphData, j, x, y, z)
+          call get_position_gas_particle(j, x, y, z)
           
           ! convert units
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
@@ -869,7 +876,7 @@ contains
           ! belongs to this cell.
           if ( within_subcell(node, subcell, x, y, z) ) then
              counter = counter + 1
-             tem_ave = tem_ave + get_temp(sphData, j) 
+             tem_ave = tem_ave + get_temp(j) 
           end if
           
        end do
@@ -918,12 +925,12 @@ contains
   ! Fill in  the empty cells (cells in which there is no sph particle), 
   ! if possible, by using the values of sibling (other childrens who have same parent).
   !
-  recursive subroutine fill_in_empty_octals(this, thisOctal, sphData)
+  recursive subroutine fill_in_empty_octals(this, thisOctal)
     implicit none
     
     type(octal), pointer       :: thisOctal
     type(cluster), intent(in)  :: this
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
 !    type(cluster), optional, intent(in)  :: stellar_cluster
     type(octal), pointer       :: pChild  
     integer                    :: i           ! loop counter
@@ -936,10 +943,9 @@ contains
        if (thisOctal%hasChild(subcell)) then
 
           if (this%disc_on) then
-             if (.not.disc_intersects_subcell(this, sphData, thisOctal, subcell)) then
+             if (.not.disc_intersects_subcell(this, thisOctal, subcell)) then
                 ! checks if this subcell is empty or not
-                call find_n_particle_in_subcell(np, rho_tmp, sphData, &
-                     thisOctal, subcell)
+                call find_n_particle_in_subcell(np, rho_tmp, thisOctal, subcell)
                 if (np<=0) then ! apply correction 
                    parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
                    rho_ave = thisOctal%parent%rho(parent_subcell)
@@ -952,8 +958,7 @@ contains
              end if
           else
              ! checks if this subcell is empty or not
-             call find_n_particle_in_subcell(np, rho_tmp, sphData, &
-                  thisOctal, subcell)
+             call find_n_particle_in_subcell(np, rho_tmp, thisOctal, subcell)
              if (np<=0) then ! apply correction 
                 ! inherit the value from a paranet.
                 parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
@@ -971,16 +976,15 @@ contains
           do i = 1, nc
              if (thisOctal%indexChild(i) == subcell) then
                 pChild => thisOctal%child(i)                
-                call fill_in_empty_octals(this, pChild, sphData)
+                call fill_in_empty_octals(this, pChild)
                 exit
              end if
           end do
        else
           if (this%disc_on) then
-             if (.not.disc_intersects_subcell(this, sphData, thisOctal, subcell)) then
+             if (.not.disc_intersects_subcell(this, thisOctal, subcell)) then
                 ! checks if this subcell is empty or not
-                call find_n_particle_in_subcell(np, rho_tmp, sphData, &
-                     thisOctal, subcell)
+                call find_n_particle_in_subcell(np, rho_tmp, thisOctal, subcell)
                 if (np<=0) then ! apply correction 
                    parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
                    rho_ave = thisOctal%parent%rho(parent_subcell)
@@ -993,8 +997,7 @@ contains
              end if
           else
              ! checks if this subcell is empty or not
-             call find_n_particle_in_subcell(np, rho_tmp, sphData, &
-                  thisOctal, subcell)
+             call find_n_particle_in_subcell(np, rho_tmp, thisOctal, subcell)
              if (np<=0) then ! apply correction 
                 ! inherit the value from a paranet.
                 parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
@@ -1112,10 +1115,10 @@ contains
   ! This routine write the catalog of the stars in a cluster in 
   ! "catalog.dat".
   !
-  subroutine write_catalog(this, sphData, filename)
+  subroutine write_catalog(this, filename)
     implicit none
     type(cluster),  intent(in) :: this
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     character(len=*), optional :: filename
     
     integer, parameter :: LUOF=23
@@ -1142,7 +1145,7 @@ contains
     write(LUOF,'(a)')       "#" 
     write(LUOF,'(a,1x,i15)') "# nstar =", this%nstar
     write(LUOF,'(a,1x,1PE12.3,1x,a10)') &
-         &                  "# age   =", get_time(sphData)*get_utime(sphData)/3.1536000d7, " years old"
+         &                  "# age   =", get_time()*get_utime()/3.1536000d7, " years old"
     write(LUOF,'(a)')       "#" 
     write(LUOF,'(a)')       "#" 
     write(LUOF,11)          "# ", "index", "x[10^cm]", "y[10^cm]", "z[10^cm]", &
@@ -1153,7 +1156,7 @@ contains
          &"---------------------------------------------------------------------------------"
     do i = 1, this%nstar
        a_star = get_a_star(this,i)
-       mass = get_pt_mass(sphData, i)*get_umass(sphData) ! [g]
+       mass = get_pt_mass(i)*get_umass() ! [g]
        write(LUOF,12) i, a_star%position%x, a_star%position%y, a_star%position%z, &
             mass/M_sun, a_star%luminosity/L_sun, a_star%radius/R_sun, a_star%teff
     end do
@@ -1176,11 +1179,11 @@ contains
   !     Returns density at a point in parameter space (0 if not within a disc)
   !     and gives a characteristic sizescale for grid construction.
   
-  function disc_density(xpos,ypos,zpos,sphData, young_cluster ,sizescale) RESULT(density_out)
+  function disc_density(xpos,ypos,zpos, young_cluster ,sizescale) RESULT(density_out)
     implicit none
     real(double) :: density_out  ! in [g/cm^3]
     real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
-    type(sph_data), intent(in)   :: sphData
+!    type(sph_data), intent(in)   :: sphData
     type(cluster), intent(in)    :: young_cluster
     real(double), intent(out):: sizescale       ! should be in [10^10cm]
     !
@@ -1205,7 +1208,7 @@ contains
 
     ! quick check
     if (first_time) then
-       if (stellar_disc_exists(sphData)) then ! OK
+       if (stellar_disc_exists()) then ! OK
           first_time = .false.
        else
           write(*,*) "Error:: You did not read in the stellar disc data! &
@@ -1232,7 +1235,7 @@ contains
        a_star = get_a_star(young_cluster,i)
        
        ! retrive some disc parameters from sphData
-       call get_stellar_disc_parameters(sphData, i, discrad, discmass, &
+       call get_stellar_disc_parameters(i, discrad, discmass, &
             spinx, spiny, spinz)
 
        ! radius of this star
@@ -1370,12 +1373,12 @@ contains
   ! in a cluster crosses a subcell of a octal.
   ! As a quick check, we consider the disk as a sphere (with r=Rdisc) 
   ! and the cell as a sphere with r=SQRT(3)*(d/2) where d is the subcell size
-  function disc_intersects_subcell(this, sphData, octal_in, subcell) RESULT(out)
+  function disc_intersects_subcell(this, octal_in, subcell) RESULT(out)
     implicit none
     logical :: out 
     
     type(cluster), intent(in) :: this
-    type(sph_data), intent(in) :: sphData
+!    type(sph_data), intent(in) :: sphData
     type(octal), intent(in) :: octal_in
     integer, intent(in) :: subcell
 
@@ -1397,7 +1400,7 @@ contains
     do i = 1, nstar
        a_star = get_a_star(this,i)
        ! retrive some disc parameters from sphData
-       call get_stellar_disc_parameters(sphData, i, R_disc, dummy_d, &
+       call get_stellar_disc_parameters(i, R_disc, dummy_d, &
             dummy_d, dummy_d, dummy_d)       
        
        ! position of the star
@@ -1479,11 +1482,11 @@ contains
   ! in the subcell. Density is eveualated according to "disc_density" function 
   ! in this module, but it does not include the density of from the sph particles.
   !
-  function average_disc_density(sphData, node, subcell, stellar_cluster, &
+  function average_disc_density(node, subcell, stellar_cluster, &
        scale_length) RESULT(out)
     implicit none
     real(double) :: out     ! out put density in [g/cm^3]
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
@@ -1499,7 +1502,7 @@ contains
     
     ! quick check for the first time
     if (first_time) then
-       if (stellar_disc_exists(sphData)) then ! OK
+       if (stellar_disc_exists()) then ! OK
           first_time = .false.
        else
           write(*,*) "Error:: You did not read in the stellar disc data! &
@@ -1510,7 +1513,7 @@ contains
     
     !
     rho_disc_ave =1.0d-30
-    if (stellar_disc_exists(sphData)) then
+    if (stellar_disc_exists()) then
        d = node%subcellsize/2.0d0
        cellCenter = subcellCentre(node, subcell)
        xc=dble(cellCenter%x); yc=dble(cellCenter%y); zc=dble(cellCenter%z)
@@ -1526,7 +1529,7 @@ contains
           z =  zc - d + r*2.0d0*d               
           ! evaluate the disc density density
           ! Taking the max value samples
-          rho_sample = disc_density(x, y, z, sphData, stellar_cluster, dummy_d)
+          rho_sample = disc_density(x, y, z, stellar_cluster, dummy_d)
           if (rho_sample > rho_disc_ave) rho_disc_ave  = rho_sample
 
        end do
@@ -1560,7 +1563,7 @@ contains
     
     ! Finding the scale_length
     if (present(scale_length)) then
-       dummy_d = disc_density(xc, yc, zc, sphData, stellar_cluster, scale_length)
+       dummy_d = disc_density(xc, yc, zc, stellar_cluster, scale_length)
     end if
 
 
@@ -1577,11 +1580,11 @@ contains
   ! Density is eveualated according to "disc_density" function 
   ! in this module, but it does not include the density of from the sph particles.
   !
-  function average_disc_density_fast(sphData, node, subcell, stellar_cluster, &
+  function average_disc_density_fast(node, subcell, stellar_cluster, &
        scale_length) RESULT(out)
     implicit none
     real(double) :: out     ! out put density in [g/cm^3]
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
@@ -1597,7 +1600,7 @@ contains
     
     ! quick check for the first time
     if (first_time) then
-       if (stellar_disc_exists(sphData)) then ! OK
+       if (stellar_disc_exists()) then ! OK
           first_time = .false.
        else
           write(*,*) "Error:: You did not read in the stellar disc data! &
@@ -1608,38 +1611,38 @@ contains
     
     !
     rho_disc_ave =0.0d0
-    if (stellar_disc_exists(sphData)) then
+    if (stellar_disc_exists()) then
        d = node%subcellsize/3.0d0
        d2 = d*2.0d0
        cellCenter = subcellCentre(node, subcell)
        xc=dble(cellCenter%x); yc=dble(cellCenter%y); zc=dble(cellCenter%z)
        
-       c0 =  disc_density(xc, yc, zc, sphData, stellar_cluster, scale_length)
+       c0 =  disc_density(xc, yc, zc, stellar_cluster, scale_length)
 
-       c1 =  disc_density(xc+d, yc+d, zc+d, sphData, stellar_cluster, dummy_d)
-       c2 =  disc_density(xc+d, yc+d, zc-d, sphData, stellar_cluster, dummy_d)
-       c3 =  disc_density(xc+d, yc-d, zc-d, sphData, stellar_cluster, dummy_d)
-       c4 =  disc_density(xc+d, yc-d, zc+d, sphData, stellar_cluster, dummy_d)
-       c5 =  disc_density(xc-d, yc+d, zc+d, sphData, stellar_cluster, dummy_d)
-       c6 =  disc_density(xc-d, yc+d, zc-d, sphData, stellar_cluster, dummy_d)
-       c7 =  disc_density(xc-d, yc-d, zc-d, sphData, stellar_cluster, dummy_d)
-       c8 =  disc_density(xc-d, yc-d, zc+d, sphData, stellar_cluster, dummy_d)
+       c1 =  disc_density(xc+d, yc+d, zc+d, stellar_cluster, dummy_d)
+       c2 =  disc_density(xc+d, yc+d, zc-d, stellar_cluster, dummy_d)
+       c3 =  disc_density(xc+d, yc-d, zc-d, stellar_cluster, dummy_d)
+       c4 =  disc_density(xc+d, yc-d, zc+d, stellar_cluster, dummy_d)
+       c5 =  disc_density(xc-d, yc+d, zc+d, stellar_cluster, dummy_d)
+       c6 =  disc_density(xc-d, yc+d, zc-d, stellar_cluster, dummy_d)
+       c7 =  disc_density(xc-d, yc-d, zc-d, stellar_cluster, dummy_d)
+       c8 =  disc_density(xc-d, yc-d, zc+d, stellar_cluster, dummy_d)
 
-       c9  =  disc_density(xc+d2, yc+d2, zc+d2, sphData, stellar_cluster, dummy_d)
-       c10 =  disc_density(xc+d2, yc+d2, zc-d2, sphData, stellar_cluster, dummy_d)
-       c11 =  disc_density(xc+d2, yc-d2, zc-d2, sphData, stellar_cluster, dummy_d)
-       c12 =  disc_density(xc+d2, yc-d2, zc+d2, sphData, stellar_cluster, dummy_d)
-       c13 =  disc_density(xc-d2, yc+d2, zc+d2, sphData, stellar_cluster, dummy_d)
-       c14 =  disc_density(xc-d2, yc+d2, zc-d2, sphData, stellar_cluster, dummy_d)
-       c15 =  disc_density(xc-d2, yc-d2, zc-d2, sphData, stellar_cluster, dummy_d)
-       c16 =  disc_density(xc-d2, yc-d2, zc+d2, sphData, stellar_cluster, dummy_d)
+       c9  =  disc_density(xc+d2, yc+d2, zc+d2, stellar_cluster, dummy_d)
+       c10 =  disc_density(xc+d2, yc+d2, zc-d2, stellar_cluster, dummy_d)
+       c11 =  disc_density(xc+d2, yc-d2, zc-d2, stellar_cluster, dummy_d)
+       c12 =  disc_density(xc+d2, yc-d2, zc+d2, stellar_cluster, dummy_d)
+       c13 =  disc_density(xc-d2, yc+d2, zc+d2, stellar_cluster, dummy_d)
+       c14 =  disc_density(xc-d2, yc+d2, zc-d2, stellar_cluster, dummy_d)
+       c15 =  disc_density(xc-d2, yc-d2, zc-d2, stellar_cluster, dummy_d)
+       c16 =  disc_density(xc-d2, yc-d2, zc+d2, stellar_cluster, dummy_d)
 
-       c17 =  disc_density(xc+d2, yc, zc, sphData, stellar_cluster, dummy_d)
-       c18 =  disc_density(xc-d2, yc, zc, sphData, stellar_cluster, dummy_d)
-       c19 =  disc_density(xc, yc+d2, zc, sphData, stellar_cluster, dummy_d)
-       c20 =  disc_density(xc, yc-d2, zc, sphData, stellar_cluster, dummy_d)
-       c21 =  disc_density(xc, yc, zc+d2, sphData, stellar_cluster, dummy_d)
-       c22 =  disc_density(xc, yc, zc-d2, sphData, stellar_cluster, dummy_d)
+       c17 =  disc_density(xc+d2, yc, zc, stellar_cluster, dummy_d)
+       c18 =  disc_density(xc-d2, yc, zc, stellar_cluster, dummy_d)
+       c19 =  disc_density(xc, yc+d2, zc, stellar_cluster, dummy_d)
+       c20 =  disc_density(xc, yc-d2, zc, stellar_cluster, dummy_d)
+       c21 =  disc_density(xc, yc, zc+d2, stellar_cluster, dummy_d)
+       c22 =  disc_density(xc, yc, zc-d2, stellar_cluster, dummy_d)
 
        
        rho_disc_ave = rho_disc_ave + max(c0, c1, c2, c3, c4, c5, c6, c7, c8, &
@@ -1661,11 +1664,11 @@ contains
   ! in the subcell. Density is eveualated according to "disc_density" function 
   ! in this module, but it does not include the density of from the sph particles.
   !
-  function max_disc_density_from_sample(sphData, node, subcell, stellar_cluster, &
+  function max_disc_density_from_sample(node, subcell, stellar_cluster, &
        scale_length) RESULT(out)
     implicit none
     real(double) :: out     ! out put density in [g/cm^3]
-    type(sph_data), intent(in)    :: sphData
+!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
@@ -1681,7 +1684,7 @@ contains
     
     ! quick check for the first time
     if (first_time) then
-       if (stellar_disc_exists(sphData)) then ! OK
+       if (stellar_disc_exists()) then ! OK
           first_time = .false.
        else
           write(*,*) "Error:: You did not read in the stellar disc data! &
@@ -1692,7 +1695,7 @@ contains
     
     !
     rho_disc_max =0.0d0
-    if (stellar_disc_exists(sphData)) then
+    if (stellar_disc_exists()) then
        d = node%subcellsize/2.0d0
        cellCenter = subcellCentre(node, subcell)
        xc=dble(cellCenter%x); yc=dble(cellCenter%y); zc=dble(cellCenter%z)
@@ -1706,7 +1709,7 @@ contains
           call random_number(r)
           z =  zc - d + r*2.0d0*d
           ! evaluate the disc density density
-          rho_tmp = disc_density(x, y, z, sphData, stellar_cluster, dummy_d)
+          rho_tmp = disc_density(x, y, z, stellar_cluster, dummy_d)
           rho_disc_max = MAX(rho_disc_max, rho_tmp)
        end do
        
@@ -1714,7 +1717,7 @@ contains
     
     ! Finding the scale_length
     if (present(scale_length)) then
-       dummy_d = disc_density(xc, yc, zc, sphData, stellar_cluster, scale_length)
+       dummy_d = disc_density(xc, yc, zc, stellar_cluster, scale_length)
     end if
 
 
