@@ -115,11 +115,10 @@ contains
 
     integer :: icritupper, icritlower
     real(double) :: logt
-    real(double) :: logNu1, logNuN, dlogNu, scale
+    real(double) :: logNu1, logNuN, dlogNu, scaleNu
+    real(double) :: loglam1, loglamN, dloglam, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
-
-    integer :: iseed(1)
 
 #ifdef USEMKL
     integer :: oldmode
@@ -160,7 +159,7 @@ contains
 
   oldTotalEmission = 1.d30
   kappaScaDb = 0.d0; kappaAbsDb = 0.d0
-  diffusionZoneTemp = 0.d0; foundSubcell = 0; iSource = 0 ; iSeed = 0
+  diffusionZoneTemp = 0.d0; foundSubcell = 0; iSource = 0
   kAbsArray = 0.; kAbsArray2 = 0.; leftHandBoundary = .true.; ok = .true.
   photonInDiffusionZone = .false.; rHat = VECTOR(0.d0, 0.d0, 0.d0);temp = 0.
   wavelength = 0.;  nfreq = 0
@@ -191,7 +190,13 @@ contains
     lognu1 = log(freq(1))
     logNuN = log(freq(nFreq))
     dlogNu = logNuN - lognu1
-    scale  = dble(nFreq) / dlogNu 
+    scaleNu  = dble(nFreq) / dlogNu 
+
+    loglam1 = log(lamarray(1))
+    loglamN = log(lamarray(nFreq))
+    dloglam = loglamN - loglam1
+    scalelam  = dble(nLambda - 1) / dlogNu 
+
 
     if (grid%geometry.eq."wr104") then
        totalMass = 0.
@@ -245,9 +250,6 @@ contains
     converged = .false.
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
-
-!    iseed = (/1/)! this will break. Take this out
-!    Call random_seed(put=iseed)
 
     do while (.not.converged)
        ! ensure we do at least three iterations
@@ -406,12 +408,15 @@ contains
           escaped = .false.
           call getWavelength(thisSource%spectrum, wavelength)
           thisFreq = cSpeed/(wavelength / 1.e8)
+          thislam = wavelength
 
           do while(.not.escaped)
 
+             ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
+
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton,  &
-                  sOctal, foundOctal, foundSubcell)
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, &
+                  sOctal, foundOctal, foundSubcell, ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
              If (escaped) nInf_sub = nInf_sub + 1
 
@@ -423,12 +428,14 @@ contains
 
                 thisOctal => foundOctal
                 subcell = foundSubcell
-                thisLam = (cSpeed / thisFreq) * 1.e8
-                call locate(lamArray, nLambda, real(thisLam), iLam)
+!                thisLam = (cSpeed / thisFreq) * 1.e8
+!                call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
 
-                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
-                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
+                ! This call is dead because kappaabs and kappasca come from tonextevent amr
+
+!                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
+!                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                 sOctal => thisOctal
 
                 if (thisOctal%diffusionApprox(subcell)) then
@@ -487,8 +494,9 @@ contains
                   logt = log(t1)
                   logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
                   logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
-                  icritupper = min( floor((logNucritUpper - logNu1) * scale), nfreq        )
-                  icritLower = min( floor((logNucritLower - logNu1) * scale), icritupper-1 )
+                  icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
+                  icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
+
                   
                   do i = 1, icritupper
                      iLam = nfreq - i + 1
@@ -500,7 +508,7 @@ contains
 !                     write(*,*) kabsarray2(i), kabsarray(ilam)
 !                  enddo
 !stop
-                  probDistJnu  = 1.d-50
+                  probDistJnu(1)  = 1.d-50
 #ifdef USEMKL
                   hrecip_ktarray(1:icritupper) = hrecip_kt
                   
@@ -524,7 +532,7 @@ contains
 #endif
 
                    do i = 2, icritupper
-                      probDistJnu(i) = probDistJnu(i-1) + this_bnu(i)
+                      probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
                    enddo
 
                    if (probDistJnu(icritupper) /= 0.d0) then
@@ -534,6 +542,7 @@ contains
                       if (j == nFreq) j = nFreq -1
                       thisFreq = freq(j) + (freq(j+1) - freq(j))* &
                            (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j)) ! note that probdistjnu(nfreq) cancels here so it's fine
+                      thisLam = (cSpeed / thisFreq) * 1.e8
 !                      write(*,*) cSpeed/thisFreq/angstromtocm
                    endif
 
@@ -1842,8 +1851,7 @@ contains
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  imonte, &
       photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, &
-      startOctal, foundOctal, foundSubcell)
-
+      startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, testVec
@@ -1873,21 +1881,29 @@ contains
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
 
+   integer, optional :: ilamIn
+   real(double), optional :: kappaScaOut, kappaAbsOut
+
    isubcell = 0; endSubcell = 0
    stillinGrid = .true.
    escaped = .false.
    ok = .true.
    photonInDiffusionZone = .false.
    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
-    thisLam = (cSpeed / thisFreq) * 1.e8
-    call hunt(lamArray, nLambda, real(thisLam), iLam)
-    if ((ilam < 1).or.(ilam > nlambda)) then
-       write(*,*) "ilam error in tonexteventamr",ilam,thislam
-    endif
+
+   if(.not. present(ilamIn)) then
+      thisLam = (cSpeed / thisFreq) * 1.e8
+      call hunt(lamArray, nLambda, real(thisLam), iLam)
+      if ((ilam < 1).or.(ilam > nlambda)) then
+         write(*,*) "ilam error in tonexteventamr",ilam,thislam
+      endif
+   else
+      ilam = ilamin
+   endif
 
 ! select an initial random tau and find distance to next cell
-    call random_number(r)
-    tau = -log(1.0-r)
+   call random_number(r)
+   tau = -log(1.0-r)
 
     octVec = rVec
     thisOctVec = rVec
@@ -1895,6 +1911,9 @@ contains
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  startOctal=startOctal, foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
+
+    if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
+    if(present(kappaScaOut)) kappaScaOut = kappaScadb
 
     oldOctal => thisOctal
     sOctal => thisOctal
@@ -2049,10 +2068,16 @@ contains
        if (stillinGrid) then
           call random_number(r)
           tau = -log(1.0-r)
+!          tau = -log(r)  ! modified as above
+
           sOctal => thisOctal
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, startOctal=sOctal,&
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
+
+          if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
+          if(present(kappaScaOut)) kappaScaOut = kappaScadb
+
           sOctal => thisOctal
           oldOctal => thisOctal
           thisOctVec = octVec
@@ -2116,6 +2141,10 @@ contains
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, &
             foundOctal=thisOctal, foundSubcell=subcell, & 
             kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
+
+       if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
+       if(present(kappaScaOut)) kappaScaOut = kappaScadb
+
        thisOctVec = octVec
 
 
@@ -2123,7 +2152,10 @@ contains
           write(*,*) "Photon in diff zone but not escaped"
        endif
 
-       if (.not.inFlow) kappaAbsdb =0.0d0
+       if (.not.inFlow) then
+          kappaAbsdb =0.0d0
+          if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
+       endif
 
 
 ! update the distance grid
