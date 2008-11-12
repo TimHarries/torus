@@ -138,6 +138,47 @@ contains
 
   end subroutine solveQuadDble
 
+!  subroutine solveQuadDble(a, b, c, x1, x2,ok)
+!    implicit none
+!    real(double),intent(in) :: a, b, c
+!    real(double),intent(out):: x1, x2
+!    real(double)            :: y
+!    logical,intent(out)              :: ok
+    
+!    real(double) :: OneOverTwoA, sqrty, MinusBOverTwoA
+
+!    ok = .true.
+
+!    ! special case:
+!    if (a == 0) then
+!       if (b/=0) then
+!          x1 = -c/b; x2 = -c/b 
+!       else
+!          write(*,*) "! quad solver failed (1):   (a,b,c) = ", a, b, c
+!          ok = .false.
+!          x1 = 0.0d0; x2 =0.0d0 
+!       end if
+!    end if
+
+!    OneOverTwoA = 1.d0 / (2.d0 * a)
+!    MinusBOverTwoA = -b * OneOverTwoA
+
+!    y = b*b-4.d0*a*c
+!    sqrty = y**0.5d0
+!    sqrty = sqrty * OneOverTwoA
+
+!    if (y >= 0.) then
+!       x1 = MinusBOverTwoA - sqrty !(-b + sqrt(y))/(2.d0*a)
+!       x2 = x1 + (2.d0 * sqrty)
+!    else
+!       write(*,*) "! quad solver failed (2).:  (y,a,b,c) = ", y,a,b,c
+!       ok = .false.
+!       x1 = -b/(2.d0*a)
+!       x2 = -b/(2.d0*a)
+!    endif
+!
+!  end subroutine solveQuadDble
+
   ! return a blackbody function [B_nu]
 
   real elemental function blackBody(temperature, wavelength)
@@ -354,17 +395,17 @@ contains
 	end do
       END SUBROUTINE dquicksort
 
-	SUBROUTINE dquicksort2(arr,slave)
+      SUBROUTINE dquicksort2(arr,slave)
 	USE nrtype; USE nrutil, ONLY : assert_eq
 	IMPLICIT NONE
 	REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr,slave
-	INTEGER(I4B) :: ndum
-	INTEGER(I4B), DIMENSION(size(arr)) :: index
+	INTEGER :: ndum
+	INTEGER, DIMENSION(size(arr)) :: index
 	ndum=assert_eq(size(arr),size(slave),'sort2')
 	call indexx(size(arr), arr,index)
 	arr=arr(index)
 	slave=slave(index)
-	END SUBROUTINE dquicksort2
+      END SUBROUTINE dquicksort2
 
   SUBROUTINE SORTsingle(N,RA)
     INTEGER N, L, IR, I, J
@@ -486,11 +527,14 @@ contains
     GO TO 10
   END subroutine sortdouble2
 
-  SUBROUTINE SORTdouble2index(N,RA,rb)
-    INTEGER N, L, IR, I, J
-    real(double) RRA
-    integer :: rrb,rb(n)
-    real(double) RA(N)
+  SUBROUTINE SORTdouble2index(RA, rb)
+    INTEGER :: N, L, IR, I, J
+    real(double) :: RRA
+    integer :: rrb,rb(:)
+    real(double) :: RA(:)
+
+    N = size(RA)
+
     L=N/2+1
     IR=N
 10  CONTINUE
