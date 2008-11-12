@@ -573,7 +573,7 @@ CONTAINS
        rVec = subcellCentre(thisOctal, subcell)
        r1 = rVec%x - thisOctal%subcellSize/2.d0
        r2 = rVec%x + thisOctal%subcellSize/2.d0
-       v = (fourPi / 3.d0) * (r2-r1)**3
+       v = (fourPi / 3.d0) * (r2**3-r1**3)
        goto 666
     endif
 
