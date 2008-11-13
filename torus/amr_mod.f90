@@ -13097,7 +13097,7 @@ end function readparameterfrom2dmap
           if (j == 0) ok = .false.
 
           if (.not.ok) then
-             write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+             write(*,*) "Error: j=0 (no intersection???) in distanceToCellBoundary. "
              write(*,*) direction%x,direction%y,direction%z
              write(*,*) t(1:6)
              call torus_abort
