@@ -161,15 +161,14 @@ contains
   ! 
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
-  subroutine init_sph_data2(udist, umass, utime, time, nptmass, &
+  subroutine init_sph_data2(udist, umass, utime, b_num_gas, time, nptmass, &
         b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
     implicit none
 
 ! Arguments --------------------------------------------------------------------
-    type(sph_data) :: this
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                   ! (umass is M_sol, udist=0.1 pc)
-!    integer, intent(in)           :: npart              ! Number of gas particles (field+disc)
+    integer, intent(in)           :: b_num_gas          ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
 
@@ -184,39 +183,42 @@ contains
 
 ! Begin executable statements --------------------------------------------------
 
+    npart = b_num_gas
+
     ! Indicate that this object is in use
-    this%inUse = .true.
+    sphData%inUse = .true.
 
     ! save these values in this object
-    this%udist = udist
-    this%umass = umass
-    this%utime = utime
-    this%npart = npart
-    this%time = time
-    this%nptmass = nptmass
-    this%totalgasmass = b_totalgasmass
+    sphData%udist = udist
+    sphData%umass = umass
+    sphData%utime = utime
+    sphData%npart = npart
+    sphData%time = time
+    sphData%nptmass = nptmass
+    sphData%totalgasmass = b_totalgasmass
+
 
     ! allocate arrays
     ! -- for gas particles
-    ALLOCATE(this%xn(npart))
-    ALLOCATE(this%yn(npart))
-    ALLOCATE(this%zn(npart))
-    ALLOCATE(this%hn(npart))
-    ALLOCATE(this%rhon(npart))
-    ALLOCATE(this%temperature(npart))
-    ALLOCATE(this%gasmass(npart))
+    ALLOCATE(sphData%xn(npart))
+    ALLOCATE(sphData%yn(npart))
+    ALLOCATE(sphData%zn(npart))
+    ALLOCATE(sphData%hn(npart))
+    ALLOCATE(sphData%rhon(npart))
+    ALLOCATE(sphData%temperature(npart))
+    ALLOCATE(sphData%gasmass(npart))
 
 
     ! -- for star positions
-    ALLOCATE(this%x(nptmass))
-    ALLOCATE(this%y(nptmass))
-    ALLOCATE(this%z(nptmass))
+    ALLOCATE(sphData%x(nptmass))
+    ALLOCATE(sphData%y(nptmass))
+    ALLOCATE(sphData%z(nptmass))
     
     ! -- for mass of stars
-    ALLOCATE(this%ptmass(nptmass))
+    ALLOCATE(sphData%ptmass(nptmass))
 
     !
-    this%have_stellar_disc = .false. 
+    sphData%have_stellar_disc = .false. 
     
     iiipart=0
     iiigas=0
@@ -229,14 +231,14 @@ contains
              write (*,*) 'Error: iiigas>npart',iiigas, npart
              cycle
           endif
-          this%rhon(iiigas) = b_rho(iii)
-          this%hn(iiigas)   = b_xyzmh(5,iii)
-          this%xn(iiigas)          = b_xyzmh(1,iii)
-          this%yn(iiigas)          = b_xyzmh(2,iii)
-          this%zn(iiigas)          = b_xyzmh(3,iii)
-          this%gasmass(iiigas)     = b_xyzmh(4,iii)
+          sphData%rhon(iiigas) = b_rho(iii)
+          sphData%hn(iiigas)   = b_xyzmh(5,iii)
+          sphData%xn(iiigas)          = b_xyzmh(1,iii)
+          sphData%yn(iiigas)          = b_xyzmh(2,iii)
+          sphData%zn(iiigas)          = b_xyzmh(3,iii)
+          sphData%gasmass(iiigas)     = b_xyzmh(4,iii)
 ! b_temp contains gas particle data only
-          this%temperature(iiigas) = b_temp(iiigas)
+          sphData%temperature(iiigas) = b_temp(iiigas)
 
        elseif (b_iphase(iii) > 0) then
           iiipart=iiipart+1
@@ -244,10 +246,10 @@ contains
              write (*,*) 'Error: iiipart>nptmass',iiipart,nptmass
              cycle
           endif
-          this%x(iiipart)      = b_xyzmh(1,iii)
-          this%y(iiipart)      = b_xyzmh(2,iii)
-          this%z(iiipart)      = b_xyzmh(3,iii)
-          this%ptmass(iiipart) = b_xyzmh(4,iii)
+          sphData%x(iiipart)      = b_xyzmh(1,iii)
+          sphData%y(iiipart)      = b_xyzmh(2,iii)
+          sphData%z(iiipart)      = b_xyzmh(3,iii)
+          sphData%ptmass(iiipart) = b_xyzmh(4,iii)
        endif
     end do
 
@@ -1016,6 +1018,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, grid, theparam, isdone, shouldreuse, RhoMin, RhoMax)
+
     type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in), optional :: grid
     type(vector) :: posvec
@@ -1082,7 +1085,6 @@ contains
 !       npart = get_npart() ! total gas particles
 
        allocate(PositionArray(3,npart)) ! allocate memory
-       allocate(VelocityArray(3,npart))
        allocate(RhoArray(npart))
        allocate(MassArray(npart))
        allocate(Harray(npart))
@@ -1090,7 +1092,7 @@ contains
        allocate(OneOverHsquared(npart))
        allocate(OneOverHcubed(npart))
 
-       PositionArray = 0.d0; VelocityArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
+       PositionArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
 
        PositionArray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
 
@@ -1099,9 +1101,28 @@ contains
        PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
        PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
 
-       VelocityArray(1,:) = sphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
-       VelocityArray(2,:) = sphdata%vyn(ind(:)) * codeVelocitytoTORUS 
-       VelocityArray(3,:) = sphdata%vzn(ind(:)) * codeVelocitytoTORUS
+! Decide if we need to set velocities for this configuration
+       if ( associated(sphData%vxn) ) then 
+
+          allocate(VelocityArray(3,npart))
+          VelocityArray(:,:) = 0.d0
+          VelocityArray(1,:) = sphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
+
+          if ( associated(sphData%vyn) ) then 
+             VelocityArray(2,:) = sphdata%vyn(ind(:)) * codeVelocitytoTORUS 
+          else
+             STOP
+!             call torus_abort("Error in function Clusterparameter: vxn is associated but vyn is not")
+          end if
+
+          if ( associated(sphData%vzn) ) then 
+             VelocityArray(3,:) = sphdata%vzn(ind(:)) * codeVelocitytoTORUS
+          else
+             STOP
+!             call torus_abort("Error in function Clusterparameter: vxn is associated but vzn is not")
+          end if
+
+       end if
 
        RhoArray(:) = sphdata%rhon(ind(:)) * codeDensitytoTORUS
 
@@ -1141,7 +1162,8 @@ contains
     endif
 
     if(done) then
-       deallocate(PositionArray, VelocityArray, MassArray, harray, RhoArray, ind)
+       deallocate(PositionArray, MassArray, harray, RhoArray, ind)
+       if (allocated(VelocityArray)) deallocate (VelocityArray)
        firsttime = .true.
        return
     endif
@@ -1291,7 +1313,7 @@ contains
     enddo
 
     else
-       nupper = npart
+       nupper = 0
     endif
 ! repeat for nlower
     if(closestXindex .gt. 1) then
@@ -1334,7 +1356,7 @@ contains
     enddo
 
     else
-       nlower = 1
+       nlower = 0
     endif
        
     partcount = 0

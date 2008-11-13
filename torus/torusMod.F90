@@ -121,9 +121,6 @@ contains
   integer, parameter :: maxTau = 20000
   type(BLOBTYPE), allocatable :: blobs(:)
   real dTime
-  !
-  ! SPH data of Matthew
-  type(sph_data) :: sphData
 
   ! Used for multiple sources (when geometry=cluster)
   type(cluster)   :: young_cluster
@@ -294,25 +291,26 @@ contains
   !=====================================================================
 
   ! The total number of gas particles is the total number of active particles less the number of point masses.
-  call init_sph_data2(sphData, b_udist, b_umass, b_utime, b_num_gas, b_time, b_nptmass, &
+  call init_sph_data2(b_udist, b_umass, b_utime, b_num_gas, b_time, b_nptmass, &
        b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
   ! Communicate particle data. Non-mpi case has a stubbed routine. 
-  call gather_sph_data(sphData)
+  call gather_sph_data
+  npart = sphData%npart
 
   ! Writing basic info of this data
-  if (myRankIsZero) call info(sphData, "info_sph_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
+  if (myRankIsZero) call info("info_sph_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
 
   ! reading in the isochrone data needed to build an cluster object.
   call new(isochrone_data, "dam98_0225")   
   call read_isochrone_data(isochrone_data)
      
   ! making a cluster object
-  call new(young_cluster, sphData, dble(amrGridSize), disc_on)
-  call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
+  call new(young_cluster, dble(amrGridSize), disc_on)
+  call build_cluster(young_cluster, dble(lamstart), dble(lamend), isochrone_data)
     
   ! Wrting the stellar catalog readble for a human
   filename="catalogue_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat"
-  if (myRankIsZero) call write_catalog(young_cluster, sphData, trim(filename) )
+  if (myRankIsZero) call write_catalog(young_cluster, trim(filename) )
 
   ! Finding the inclinations of discs seen from +z directions...
   !     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
@@ -390,7 +388,7 @@ contains
   ! set up the sources
   call set_up_sources
 
-  call checkSphTotalMass(grid, sphData, 2.0, ok)
+  call checkSphTotalMass(grid, 2.0, ok)
   if ( .not. ok ) goto 666
 
   call torus_mpi_barrier
@@ -413,7 +411,7 @@ contains
   filename = trim ( "torus_out_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
   if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
-  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp)
 
   if ( nInclination > 0 ) then
 
@@ -624,15 +622,10 @@ CONTAINS
        amrGridCentre = Vector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        
-       call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
-       call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
+       call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+       call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
        call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-       call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
-       !Removing the cells within 10^14 cm from the stars.
-       removedMass = 0.0
-       call remove_too_close_cells(young_cluster,grid%octreeRoot,real(grid%rCore, kind=db), removedMass, amr_min_rho)
-       write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
-       call writeInfo(message, TRIVIAL)
+!       call estimateRhoOfEmpty(grid, grid%octreeRoot )	
    
         nOctals = 0
         nVoxels = 0
@@ -650,6 +643,12 @@ CONTAINS
            call finishGrid(grid%octreeRoot,grid,gridConverged,romData=romData)
            if (gridConverged) exit
         end do        
+
+        !Removing the cells within 10^14 cm from the stars.
+        removedMass = 0.0
+        call remove_too_close_cells(young_cluster,grid%octreeRoot,real(grid%rCore, kind=db), removedMass, amr_min_rho)
+        write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
+        call writeInfo(message, TRIVIAL)
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
@@ -676,7 +675,7 @@ CONTAINS
 
         !
         ! cleaning up unused memoryusing the routine in sph_data_class
-        call kill(sphData)
+        call kill()
 
         if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
 
@@ -751,12 +750,12 @@ end module torus_mod
 !          Each process works on its own subset of the total number of particles.
 ! Author:  D. Acreman, November 2007
 
-  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp)
 
     USE vector_mod, only:     vector
     USE amr_mod, only:        amrGridValues
     USE gridtype_mod, only:   gridType
-    USE sph_data_class, only: sph_data, get_udist
+    USE sph_data_class, only: sphData, get_udist
     USE messages_mod
 
     implicit none
@@ -773,7 +772,6 @@ end module torus_mod
     integer*1, intent(in) :: b_iphase(b_idim)
     real*8, intent(in)    :: b_xyzmh(5,b_idim)
     real*8, intent(inout) :: b_temp(b_idim)
-    type(sph_data), intent(in) :: sphData
     type(GRIDTYPE), intent(in) :: grid
 
 ! Local variables
@@ -788,7 +786,7 @@ end module torus_mod
 ! Begin executable statements
 
 ! 1. Calculate conversion from sph distance units to torus distance units
-       sphDistfac  = get_udist(sphData) ! [cm]
+       sphDistfac  = get_udist() ! [cm]
        sphDistfac = sphDistfac / 1.e10  ! to torus units
 
 ! 2. Update particle temperatures and calculate some statistics 
@@ -843,10 +841,10 @@ end module torus_mod
 ! 
 ! D. Acreman, July 2008
    
-  subroutine checkSphTotalMass(grid, sphData, threshold, ok)
+  subroutine checkSphTotalMass(grid, threshold, ok)
 
     use gridtype_mod, only: gridtype
-    use sph_data_class, only : sph_data
+    use sph_data_class, only : sphData
     use constants_mod, only: mSol
     use messages_mod
     use amr_mod
@@ -854,7 +852,6 @@ end module torus_mod
     implicit none
 
     type(GRIDTYPE), intent(in) :: grid
-    type(sph_data), intent(in) :: sphData
     real, intent(in)           :: threshold
     logical, intent(out)       :: ok
 

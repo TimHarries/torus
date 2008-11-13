@@ -258,15 +258,14 @@ contains
 !          access to the full list of sph particle data
 ! Author:  D. Acreman October 2007
 
-  subroutine gather_sph_data(this)
+  subroutine gather_sph_data
 
     USE kind_mod
-    USE sph_data_class
+    USE sph_data_class, only: sphData
 
     implicit none
     include 'mpif.h'
 
-    type(sph_data), intent(inout) :: this
     integer :: my_rank, n_proc, ierr, i 
     integer :: npart_all, nptmass_all
     real(double)    :: totalgasmass_all
@@ -288,22 +287,22 @@ contains
   call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
 
 ! 1.1 Get total number of gas particles
-  call MPI_ALLREDUCE(this%npart, npart_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_ALLREDUCE(sphData%npart, npart_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 
 ! 1.2 Get number of gas particles for each process
   ALLOCATE( npart_arr(n_proc) )
-  CALL MPI_GATHER(this%npart, 1, MPI_INTEGER, npart_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  CALL MPI_GATHER(sphData%npart, 1, MPI_INTEGER, npart_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 ! 1.3 Get total gas mass
-  call MPI_ALLREDUCE(this%totalgasmass, totalgasmass_all, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr) 
-  this%totalgasmass = totalgasmass_all
+  call MPI_ALLREDUCE(sphData%totalgasmass, totalgasmass_all, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr) 
+  sphData%totalgasmass = totalgasmass_all
 
 ! 2.1 Get total number of point masses
-  call MPI_ALLREDUCE(this%nptmass, nptmass_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_ALLREDUCE(sphData%nptmass, nptmass_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 
 ! 2.2 Get total number of point masses for each proccess
   ALLOCATE( nptmass_arr(n_proc) )
-  CALL MPI_GATHER(this%nptmass, 1, MPI_INTEGER, nptmass_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  CALL MPI_GATHER(sphData%nptmass, 1, MPI_INTEGER, nptmass_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 ! 3. Communicate arrays xn, yn, zn, rhon, x, y, z, ptmass and keep in tmp storage
 
@@ -324,31 +323,31 @@ contains
 
 ! Gather the particle data on process 0 then broadcast to all. For some reason MPI_ALLGATHERV 
 ! doesn't work  for doing this. 
-  CALL MPI_GATHERV(this%xn, this%npart, MPI_DOUBLE_PRECISION, xn_tmp(:), npart_arr(:), npart_displ(:), &
+  CALL MPI_GATHERV(sphData%xn, sphData%npart, MPI_DOUBLE_PRECISION, xn_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(xn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-  CALL MPI_GATHERV(this%yn, this%npart, MPI_DOUBLE_PRECISION, yn_tmp(:), npart_arr(:), npart_displ(:), &
+  CALL MPI_GATHERV(sphData%yn, sphData%npart, MPI_DOUBLE_PRECISION, yn_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(yn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-  CALL MPI_GATHERV(this%zn, this%npart, MPI_DOUBLE_PRECISION, zn_tmp(:), npart_arr(:), npart_displ(:), &
+  CALL MPI_GATHERV(sphData%zn, sphData%npart, MPI_DOUBLE_PRECISION, zn_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(zn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-  CALL MPI_GATHERV(this%rhon, this%npart, MPI_DOUBLE_PRECISION, rhon_tmp(:), npart_arr(:), npart_displ(:), &
+  CALL MPI_GATHERV(sphData%rhon, sphData%npart, MPI_DOUBLE_PRECISION, rhon_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(rhon_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-  CALL MPI_GATHERV(this%temperature, this%npart, MPI_DOUBLE_PRECISION, temperature_tmp(:), npart_arr(:), &
+  CALL MPI_GATHERV(sphData%temperature, sphData%npart, MPI_DOUBLE_PRECISION, temperature_tmp(:), npart_arr(:), &
        npart_displ(:), MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(temperature_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-  CALL MPI_GATHERV(this%gasmass, this%npart, MPI_DOUBLE_PRECISION, gasmass_tmp(:), npart_arr(:), npart_displ(:), &
+  CALL MPI_GATHERV(sphData%gasmass, sphData%npart, MPI_DOUBLE_PRECISION, gasmass_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(gasmass_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-  CALL MPI_GATHERV(this%hn, this%npart, MPI_DOUBLE_PRECISION, hn_tmp(:), npart_arr(:), npart_displ(:), &
+  CALL MPI_GATHERV(sphData%hn, sphData%npart, MPI_DOUBLE_PRECISION, hn_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(hn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
@@ -366,19 +365,19 @@ contains
      ALLOCATE ( z_tmp(npart_all)      )
      ALLOCATE ( ptmass_tmp(npart_all) )
 
-     CALL MPI_GATHERV(this%x, this%nptmass, MPI_DOUBLE_PRECISION, x_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+     CALL MPI_GATHERV(sphData%x, sphData%nptmass, MPI_DOUBLE_PRECISION, x_tmp(:), nptmass_arr(:), nptmass_displ(:), &
           MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
      CALL MPI_BCAST(x_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
      
-     CALL MPI_GATHERV(this%y, this%nptmass, MPI_DOUBLE_PRECISION, y_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+     CALL MPI_GATHERV(sphData%y, sphData%nptmass, MPI_DOUBLE_PRECISION, y_tmp(:), nptmass_arr(:), nptmass_displ(:), &
           MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
      CALL MPI_BCAST(y_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-     CALL MPI_GATHERV(this%z, this%nptmass, MPI_DOUBLE_PRECISION, z_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+     CALL MPI_GATHERV(sphData%z, sphData%nptmass, MPI_DOUBLE_PRECISION, z_tmp(:), nptmass_arr(:), nptmass_displ(:), &
           MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
      CALL MPI_BCAST(z_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-     CALL MPI_GATHERV(this%ptmass, this%nptmass, MPI_DOUBLE_PRECISION, ptmass_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+     CALL MPI_GATHERV(sphData%ptmass, sphData%nptmass, MPI_DOUBLE_PRECISION, ptmass_tmp(:), nptmass_arr(:), nptmass_displ(:), &
           MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
      CALL MPI_BCAST(ptmass_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
@@ -402,70 +401,70 @@ contains
 ! 4. Deallocate and reAllocate arrays xn, yn, zn, rhon, x, y, z, ptmass
 
 ! 4.1 Gas particles
-  DEALLOCATE ( this%xn          )
-  DEALLOCATE ( this%yn          )
-  DEALLOCATE ( this%zn          )
-  DEALLOCATE ( this%rhon        )
-  DEALLOCATE ( this%temperature )
-  DEALLOCATE ( this%gasmass     )
-  DEALLOCATE ( this%hn          ) 
+  DEALLOCATE ( sphData%xn          )
+  DEALLOCATE ( sphData%yn          )
+  DEALLOCATE ( sphData%zn          )
+  DEALLOCATE ( sphData%rhon        )
+  DEALLOCATE ( sphData%temperature )
+  DEALLOCATE ( sphData%gasmass     )
+  DEALLOCATE ( sphData%hn          ) 
 
-  ALLOCATE   ( this%xn(npart_all)          )
-  ALLOCATE   ( this%yn(npart_all)          )
-  ALLOCATE   ( this%zn(npart_all)          )
-  ALLOCATE   ( this%rhon(npart_all)        )
-  ALLOCATE   ( this%temperature(npart_all) )
-  ALLOCATE   ( this%gasmass(npart_all)     )
-  ALLOCATE   ( this%hn(npart_all)          ) 
+  ALLOCATE   ( sphData%xn(npart_all)          )
+  ALLOCATE   ( sphData%yn(npart_all)          )
+  ALLOCATE   ( sphData%zn(npart_all)          )
+  ALLOCATE   ( sphData%rhon(npart_all)        )
+  ALLOCATE   ( sphData%temperature(npart_all) )
+  ALLOCATE   ( sphData%gasmass(npart_all)     )
+  ALLOCATE   ( sphData%hn(npart_all)          ) 
 
 ! 4.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
-     DEALLOCATE ( this%x   )
-     DEALLOCATE ( this%y   )
-     DEALLOCATE ( this%z   )
-     DEALLOCATE ( this%ptmass )
-     ALLOCATE   ( this%x(nptmass_all)      )
-     ALLOCATE   ( this%y(nptmass_all)      )
-     ALLOCATE   ( this%z(nptmass_all)      )
-     ALLOCATE   ( this%ptmass(nptmass_all) )
+     DEALLOCATE ( sphData%x   )
+     DEALLOCATE ( sphData%y   )
+     DEALLOCATE ( sphData%z   )
+     DEALLOCATE ( sphData%ptmass )
+     ALLOCATE   ( sphData%x(nptmass_all)      )
+     ALLOCATE   ( sphData%y(nptmass_all)      )
+     ALLOCATE   ( sphData%z(nptmass_all)      )
+     ALLOCATE   ( sphData%ptmass(nptmass_all) )
   END IF
 
 ! 5. Populate new arrays with values from the tmp storage
 
 ! 5.1 Gas particles
-  this%xn(:)          = xn_tmp(:)
-  this%yn(:)          = yn_tmp(:)
-  this%zn(:)          = zn_tmp(:)
-  this%rhon(:)        = rhon_tmp(:)
-  this%temperature(:) = temperature_tmp(:)
-  this%npart          = npart_all
-  this%gasmass(:)     = gasmass_tmp(:)
-  this%hn(:)          = hn_tmp(:)
+  sphData%xn(:)          = xn_tmp(:)
+  sphData%yn(:)          = yn_tmp(:)
+  sphData%zn(:)          = zn_tmp(:)
+  sphData%rhon(:)        = rhon_tmp(:)
+  sphData%temperature(:) = temperature_tmp(:)
+  sphData%npart          = npart_all
+  sphData%gasmass(:)     = gasmass_tmp(:)
+  sphData%hn(:)          = hn_tmp(:)
 
 ! 5.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
-     this%x(:)      = x_tmp(:)
-     this%y(:)      = y_tmp(:)
-     this%z(:)      = z_tmp(:)
-     this%ptmass(:) = ptmass_tmp(:)
-     this%nptmass   = nptmass_all
+     sphData%x(:)      = x_tmp(:)
+     sphData%y(:)      = y_tmp(:)
+     sphData%z(:)      = z_tmp(:)
+     sphData%ptmass(:) = ptmass_tmp(:)
+     sphData%nptmass   = nptmass_all
   END IF
 
 ! Write out particle list for tests
   If ( ll_testwrite ) THEN
      open (unit=60, status='replace', file='mpi_test_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
-     do i=1, this%npart
-        write(60,*) this%xn(i), this%yn(i), this%zn(i), this%rhon(i), this%temperature(i)
+     do i=1, sphData%npart
+        write(60,*) sphData%xn(i), sphData%yn(i), sphData%zn(i), sphData%rhon(i), sphData%temperature(i)
      end do
      IF ( nptmass_all > 0 ) THEN
-        DO i=1, this%nptmass
-           write(60, *) this%x(i), this%y(i), this%z(i), this%ptmass(i)
+        DO i=1, sphData%nptmass
+           write(60, *) sphData%x(i), sphData%y(i), sphData%z(i), sphData%ptmass(i)
         END DO 
      END IF
      close(60)
      open (unit=60, status='replace', file='smoothing_length_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
-     do i=1, this%npart
-        write(60,*) ( this%gasmass(i) / this%rhon(i) ) ** (1.0/3.0),  this%hn(i) 
+     do i=1, sphData%npart
+        write(60,*) ( sphData%gasmass(i) / sphData%rhon(i) ) ** (1.0/3.0),  sphData%hn(i) 
      end do
      close(60)
   END IF
@@ -489,10 +488,10 @@ contains
   DEALLOCATE ( npart_arr   )
 
 ! 7. Communicate data to processes which did not run the sph step
-  CALL MPI_BCAST(this%udist,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
-  CALL MPI_BCAST(this%utime,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
-  CALL MPI_BCAST(this%umass,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
-  CALL MPI_BCAST(this%time,         1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
+  CALL MPI_BCAST(sphData%udist,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
+  CALL MPI_BCAST(sphData%utime,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
+  CALL MPI_BCAST(sphData%umass,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
+  CALL MPI_BCAST(sphData%time,         1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
 
   end subroutine gather_sph_data
 
@@ -521,12 +520,10 @@ contains
 #else
 
 ! Dummy routines  for use in non-mpi case
-  subroutine gather_sph_data(this)
+  subroutine gather_sph_data
 
     USE sph_data_class
     implicit none
-
-    type(sph_data), intent(inout) :: this
 
     return
   

@@ -12,7 +12,7 @@ use particle_pos_mod, only: particle_pos
 #endif
 
 ! Total number of particles
-  integer, parameter :: npart=1e6
+  integer, parameter :: npart=1e5
 
 ! loop and particle index
   integer :: ipart

@@ -12272,7 +12272,6 @@ end function readparameterfrom2dmap
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-!    type(sph_data), intent(in) :: sphData
     real :: temp
     real(double) :: rho, rho_tmp
     integer :: subcell, i, np
@@ -12281,7 +12280,6 @@ end function readparameterfrom2dmap
     real(double)  :: udist
     logical, save :: first_time = .true.
 
-!    if ( first_time .and. grid%geometry == "cluster" ) then 
     if (first_time) then 
        allocate( recip_sm(sphData%npart) )
        
@@ -12308,14 +12306,10 @@ end function readparameterfrom2dmap
           call find_n_particle_in_subcell(np, rho_tmp, &
                thisOctal, subcell)
           if (np < 1) then
-!            if ( grid%geometry == "cluster" ) then 
                 rVec = subcellCentre(thisOctal,subcell)
                 call find_closest_sph_particle(rVec, temp, rho, recip_sm(:) )
-!             else
-!                call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
-!             end if
-                write(*,*) "rho before", thisOctal%rho(subcell)
-                write(*,*) "rho after", rho
+! Old method of filling in empty cells
+!               call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
                 thisOctal%rho(subcell) = rho
              thisOctal%temperature(subcell) = temp
           endif
