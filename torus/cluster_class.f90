@@ -318,28 +318,22 @@ contains
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real(double), parameter :: density_crit = 1d13
-    type(vector) :: point, somevector
+    type(vector) :: point, clusterparam
     integer :: dummy
     real(double) :: density_ave
-    
-!    thisOctal%temperature(subcell) = 3.0e0
-!    thisOctal%temperature(subcell) = 10.0
-    thisOctal%velocity = VECTOR(-1.d10,-1.d10,-1.d10)
-!    thisOctal%etaLine(subcell) = 1.e-30
-!    thisOctal%etaCont(subcell) = 1.e-30
-    thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) * density_crit)**(0.4)))
-!    thisOctal%temperature(subcell) = 10.
-
-!    call find_n_particle_in_subcell(dummy, density_ave, &
-!         thisOctal, subcell)
 
     point = subcellcentre(thisOctal, subcell)
-    somevector = Clusterparameter(point, theparam = 2)
-    thisOctal%rho(subcell) = somevector%x
-    somevector = Clusterparameter(point, theparam = 1, shouldreuse = .true.)
-    thisOctal%velocity(subcell) = somevector
-
+    clusterparam = Clusterparameter(point, theparam = 2)
+    
+    thisOctal%velocity(subcell) = VECTOR(-1.d10,-1.d10,-1.d10)
+    thisOctal%etaLine(subcell) = 1.e-30
+    thisOctal%etaCont(subcell) = 1.e-30
+    thisOctal%temperature(subcell) = max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
+    thisOctal%rho(subcell) = clusterparam%x
     thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+
+!    somevector = Clusterparameter(point, theparam = 1, shouldreuse = .true.) ! use switch for storing velocity
+!    thisOctal%velocity(subcell) = clusterparam
       
   end subroutine assign_grid_values
 
@@ -364,7 +358,6 @@ contains
     real :: tem_ave
     integer :: nparticle     
 
-!    logical :: dosmoothing
     real(double), parameter :: density_crit = 1d-13
     !
     !
@@ -436,27 +429,6 @@ contains
           !!
 
        case ("molcluster")
-!          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
-!               thisOctal, subcell)
-
-!          thisOctal%temperature(subcell)  = tem_ave
-
-!          call find_n_particle_in_subcell(nparticle, density_ave, &
-!               thisOctal, subcell)!, !dosmoothing = .true.)
-
-!          call find_density(nparticle, density_ave, sphData, &
-!               thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
-
-!          thisOctal%rho(subcell) = 1d-20
-
-!          thisOctal%rho(subcell) = density_ave
-
-!          thisOctal%rho(subcell) = density_ave
-
-!          call find_density2(nparticle, density_ave, sphData, &
-!               thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
-
-!          thisOctal%rho(subcell) = density_ave
 
        case("wr104")
           call find_n_particle_in_subcell(nparticle, density_ave, &
@@ -465,10 +437,7 @@ contains
     end select
 
   end subroutine assign_density
-  
     
-
-  
   !
   ! Updates the sph particle linked list.
   !
@@ -527,15 +496,12 @@ contains
     
   end subroutine update_particle_list
 
-  
-
-
-  
+    
   ! For a given octal object and sph_data_class object, this
   ! function returns the number of gas particles which belongs to a subcell this
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
-  subroutine find_n_particle_in_subcell(n, rho_ave, node, subcell, rho_min, rho_max, dosmoothing, n_pt)
+  subroutine find_n_particle_in_subcell(n, rho_ave, node, subcell, rho_min, rho_max, n_pt)
     implicit none
     integer, intent(out) :: n                ! number of particles in the subcell
     integer, intent(out), optional :: n_pt   ! number of point masses in the subcell 
@@ -552,20 +518,10 @@ contains
     !
     !
     real(double), save :: umass, udist, udent  ! for units conversion  
-    real(double), save :: OneOverHcrit
-    real(double), save :: rtest, qtest, weight, sumweight
     type(VECTOR) :: cellcentre
     logical, save  :: first_time = .true.
-    logical, optional :: dosmoothing
-    logical :: smoothing
     !
     real(double), parameter    :: rho_null = 1.0e-30_db
-
-    if(present(dosmoothing)) then
-       smoothing = dosmoothing
-    else
-       smoothing = .false.
-    endif
 
     ! Carry out the initial calculations
     if (first_time) then       
@@ -576,7 +532,6 @@ contains
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
-       OneOverHCrit = 1./ 205836.37494
 
        first_time = .false.
 
@@ -594,11 +549,6 @@ contains
        if ( present(rho_min) ) rho_min = 1.0d30
        if ( present(rho_max) ) rho_max = 0.0d0
 
-       if(smoothing) then
-          cellcentre = subcellcentre(node, subcell)
-          sumweight = 0.d0
-       endif
-
        do i=1, npart
           ! Retriving the sph data index for this particle
           j = node%gas_particle_list(i)
@@ -611,27 +561,13 @@ contains
           ! quick check to see if this gas particle is
           ! belongs to this cell.
           if ( within_subcell(node, subcell, x, y, z) ) then
-
-             if(smoothing) then
-                rtest = sqrt((x - cellcentre%x)**2 + (y - cellcentre%y)**2 + (z - cellcentre%z)**2)
-                qtest = rtest * OneOverHcrit
-                
-                if(qtest .lt. 2.0) then 
-                   weight = SmoothingKernel3d(qtest)
-                   write(*,*) qtest, weight
-                else
-                   weight = 1d-30
-                endif
-             else
-                weight = 1.d0
-             endif
-             
+           
              counter = counter + 1
-!             sumweight = sumweight + weight
+
              this_rho = get_rhon(j) 
              !         rho_ave = rho_ave + this_rho
              
-             rho_ave = rho_ave + this_rho * weight
+             rho_ave = rho_ave + this_rho
              if ( present(rho_min) ) rho_min = min(this_rho, rho_min)
              if ( present(rho_max) ) rho_max = max(this_rho, rho_max)
           end if
@@ -654,12 +590,7 @@ contains
     end if
 
     if (n>0) then
-       if(smoothing) then
- !         rho_ave = rho_ave/sumweight
-          rho_ave = rho_ave
-       else
-          rho_ave = rho_ave/dble(n)
-       endif
+       rho_ave = rho_ave/dble(n)
 
        rho_ave = rho_ave*udent  ! [g/cm^3]
        if ( present(rho_min) ) rho_min = rho_min * udent

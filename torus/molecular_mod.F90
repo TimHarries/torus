@@ -26,7 +26,7 @@ module molecular_mod
 
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels
    integer :: grand_iter, nray
-   Logical :: molebench
+   Logical :: molebench, molcluster, chrisdisc
 
 !   include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
 
@@ -293,6 +293,8 @@ module molecular_mod
  ! stores the non-zero local emission coefficient   
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule, restart, isinlte)
 
+     use input_variables, only : vturb, usedust
+
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      type(octal), pointer   :: thisOctal
@@ -406,15 +408,23 @@ module molecular_mod
              thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
           endif
 
+          if (.not.associated(thisOctal%microturb)) then
+             allocate(thisOctal%microturb(1:thisOctal%maxChildren))
+          endif
+
+          thisOctal%microturb(subcell) = max(3d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+               (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
+
           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
-!          if (grid%geometry .eq. "molcluster") CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+
+          if (molcluster) CALL fillVelocityCorners(thisOctal,grid,molclusterVelocity,thisOctal%threed)
        endif
     enddo
 
-!    if (.not. usedust) then
+    if (.not. usedust) then
        grid%oneKappaAbs = 1e-30
        grid%oneKappaSca = 1e-30
-!    endif
+    endif
 
    end subroutine allocateMolecularLevels
 
@@ -480,7 +490,10 @@ module molecular_mod
  ! each cell every iteration
 
       nlevels = thisMolecule%nlevels
+
       if(grid%geometry .eq. 'molebench') molebench = .true.
+      if(grid%geometry .eq. 'molcluster') molcluster = .true.
+      if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
 
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 
@@ -605,12 +618,9 @@ module molecular_mod
             call taualongray(VECTOR(10.d0,10.d0,10.d0), VECTOR(0.577350269, 0.577350269, 0.577350269), &
                  grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
-!            tauarray(1:maxtrans) = 0.02
-
             do i = size(tauarray), 1, -1
                mintrans = i + 2
                minlevel = mintrans + 1
-!               write(*,*) i, tauarray(i)
                if(tauarray(i) .gt. 0.01) exit
             enddo
             
@@ -626,13 +636,13 @@ module molecular_mod
             endif
 
             if(Writeoutput .and. plotlevels .and. .not.(amr1d)) then
-               write(filename, *) "./plots/data_",grand_iter,".vtk"
+               write(filename, '(a,i7.7,a)') "./plots/data_",grand_iter,".vtk"
                call  writeVtkFile(grid, filename)
             endif
 
             allocate(ds(1:nRay))
             allocate(phi(1:nRay))
-            allocate(i0(1:maxtrans, 1:nRay))
+            allocate(i0(1:nRay, 1:maxtrans))
 
             if (fixedRays) then
                call random_seed(put=iseed)   ! same seed for fixed rays
@@ -672,7 +682,6 @@ module molecular_mod
 !       firsttime = .false.
 !    endif
 
-    call torus_abort("check mass")
  ! iterate over all octals, all rays, solving the system self-consistently
            if(writeoutput) then
               write(message,*) "Getray"
@@ -697,7 +706,7 @@ module molecular_mod
                     do iRay = 1, nRay
                       
                        call getRay(grid, thisOctal, subcell, position, direction, &
-                            ds(iRay), phi(iRay), i0(1:maxtrans,iRay), &
+                            ds(iRay), phi(iRay), i0(iRay,1:maxtrans), &
                             thisMolecule,fixedrays) ! does the hard work - populates i0 etc
 
                     enddo
@@ -715,7 +724,7 @@ module molecular_mod
                        do iTrans = 1, maxtrans
 
                              call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
-                                  phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
+                                  phi(1:nRay), i0(1:nRay,itrans), iTrans, thisOctal%jnu(subcell,iTrans), &
                                   thisOctal%newMolecularLevel(subcell,1:maxlevel)) ! calculate updated Jbar
 
                        enddo
@@ -3626,14 +3635,10 @@ end subroutine plotdiscValues
        type(octal), pointer, optional :: startOctal
        integer, optional :: subcell
 
-!    select case (grid%geometry)
-       if(molebench)          Out = Molebenchvelocity(Position, grid)
-!       case("molebench")
-
-          
-!       case("iras04158","shakara")
-!          out = keplerianVelocity(position, grid)
-
+       if(molebench) Out = Molebenchvelocity(Position, grid)
+       if(molcluster) Out = MolClusterVelocity(Position, grid)
+       if(chrisdisc) Out = keplerianVelocity(Position, grid)
+       
 !       case default
 !          if(present(startOctal) .and. present(subcell)) then
 !             out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)

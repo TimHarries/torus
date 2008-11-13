@@ -1253,6 +1253,8 @@ contains
     gridDistance = gridDistance * pcTocm   ! cm
     call getReal("tolerance", tolerance, cLine, nLines, &
          "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+    call getReal("vturb", vturb, cLine, nLines, &
+         "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
     call getReal("molAbundance", molAbundance, cLine, nLines, &
          "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
     call getLogical("useDust", useDust, cLine, nLines, &

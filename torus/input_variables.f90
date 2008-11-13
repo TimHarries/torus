@@ -39,6 +39,7 @@ module input_variables
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
+  real :: vturb ! Subsonic turbulent velocity
   logical :: lineEmission
   logical :: resonanceLine
   real :: probContPhoton

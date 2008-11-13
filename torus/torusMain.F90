@@ -1524,13 +1524,11 @@ CONTAINS
 
        case("molcluster")
           if(.not. readmol) then
-          call writeInfo("Initialising adaptive grid...", TRIVIAL)
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
-          call writeInfo("Done. Splitting grid...", TRIVIAL)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
-!         call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
-!          call estimateRhoOfEmpty(grid, grid%octreeRoot)	
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+             call writeInfo("Initialising adaptive grid...", TRIVIAL)
+             call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+             call writeInfo("Done. Splitting grid...", TRIVIAL)
+             call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+             call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 !          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
 !          do
 !             gridConverged = .true.
@@ -1540,7 +1538,7 @@ CONTAINS
 !             if (gridConverged) exit
 !          end do
 !          call writeInfo("...grid smoothing complete", TRIVIAL)
-       endif
+          endif
        case("wr104")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)

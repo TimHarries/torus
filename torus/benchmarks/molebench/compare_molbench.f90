@@ -6,7 +6,7 @@ program compare_molbench
   character(len=*), parameter :: bench_file="moltest.dat"
 
 ! Maximum allowable fractional difference 
-  real, parameter :: max_diff = 0.1
+  real, parameter :: max_diff = 0.05
 
 ! Total number of J columns
   integer, parameter :: ncols=8

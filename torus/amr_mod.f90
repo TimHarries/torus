@@ -8765,6 +8765,29 @@ end function readparameterfrom2dmap
     endif    
 
   end function ggtauVelocity
+
+  TYPE(vector) FUNCTION molClusterVelocity(point, grid)
+
+    type(VECTOR), intent(in) :: point
+    type(GRIDTYPE), intent(in) :: grid
+    type(octal), pointer, save :: previousOctal
+    type(vector) :: centre
+    integer :: subcell
+
+    logical, save :: firsttime =.true.
+    
+    if(firsttime) then
+       previousOctal = grid%octreeRoot
+       firsttime = .false.
+    endif
+    
+    call findSubcellLocal(point, previousOctal,subcell)
+
+    molClusterVelocity = previousOctal%velocity(subcell)
+
+!    molClusterVelocity = Clusterparameter(point, theparam = 1)
+
+  end FUNCTION molClusterVelocity
   
   subroutine assign_melvin(thisOctal,subcell,grid)
 
@@ -12967,8 +12990,6 @@ end function readparameterfrom2dmap
 
   end subroutine myScaleSmooth
 
-
-  
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal)
 
 
@@ -13045,8 +13066,6 @@ end function readparameterfrom2dmap
        goto 666
     endif
 
-
-
     if (thisOctal%threed) then
 
        if (.not.thisOctal%cylindrical) then
@@ -13064,7 +13083,7 @@ end function readparameterfrom2dmap
 
           do i = 1, 6
 
-             denom(i) = abs(norm(i) .dot. direction)
+             denom(i) = norm(i) .dot. direction
              if (denom(i) /= 0.0d0) then
                 t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
              else
@@ -13084,12 +13103,9 @@ end function readparameterfrom2dmap
           if (j == 0) ok = .false.
 
           if (.not.ok) then
-             write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. ", thisoctal%ndepth
-             write(*,*) "dir",direction%x,direction%y,direction%z
-             write(*,*) "p3",p3(1:6)
-             write(*,*) "posvec",posvec%x,posvec%y,posvec%z
-             write(*,*) "denom",denom(1:6)
-             write(*,*) "t",t(1:6)
+             write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+             write(*,*) direction%x,direction%y,direction%z
+             write(*,*) t(1:6)
              call torus_abort
           endif
 
@@ -13251,14 +13267,14 @@ end function readparameterfrom2dmap
 
        else ! two-d grid case below
 
-          halfCellSize = thisOctal%subcellSize * 0.5d0
+          halfCellSize = thisOctal%subcellSize/2.d0
           r1 = subcen%x - halfCellSize
           r2 = subcen%x + halfCellSize
 
           distToR1 = 1.d30
           distToR2 = 1.d30
           d2 = point%x**2+point%y**2
-          d = d2**0.5d0
+          d = sqrt(d2)
           xVec = VECTOR(point%x, point%y,0.d0)
           xHat = xVec
           call normalize(xHat)
@@ -13311,11 +13327,6 @@ end function readparameterfrom2dmap
              endif
           endif
           distToXboundary = min(distTor1, distTor2)
-          if(disttoXboundary .le. 0.d0) then
-!             write(*,*) "dist to X", x1, x2
-             disttoXboundary = 1d40
-          endif
-
 
 
           compZ = zHat.dot.direction
@@ -13330,29 +13341,28 @@ end function readparameterfrom2dmap
           else
              disttoZboundary = 1.e30
           endif
-          
+
           tVal = min(distToZboundary, distToXboundary)
-!          if(disttoxboundary .ge. 1e35) write(*,*) tval
           if (tVal > 1.e29) then
              write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
              write(*,*) "subcen",subcen
              write(*,*) "z", currentZ
-             write(*,*) "TVAL", tval
-             write(*,*) "direction", direction
+      write(*,*) "TVAL", tval
+      write(*,*) "direction", direction
       call torus_abort
       endif
       if (tval < 0.) then
-         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary, disttor1, disttor2
+         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
 !         write(*,*) "x,z",currentX,currentZ
       endif
-!      if(tval > 0. .and. tval < 1e29) write(*,*) "hooray", tval
       
    endif
 
 666    continue
 
        tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+
 
      end subroutine distanceToCellBoundary
 

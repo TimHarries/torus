@@ -40,8 +40,8 @@ rcore 1.
 teff 5800.
 
 ! disc params
-rinner 1e6                               
-router 4e7                           
+rinner 1.00065E+6                               
+router 4.62840E+7
 height 125.
 rho 8.16136e-18
 
