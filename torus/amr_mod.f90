@@ -2484,7 +2484,7 @@ CONTAINS
 ! this for possibility of twoD AMR grid
 
 
-!    point2 = point
+    point2 = point
 !    if(point .eq. lastpoint) then
 !       point2 = lastpoint2
 !    else
