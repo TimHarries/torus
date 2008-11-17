@@ -3756,8 +3756,6 @@ CONTAINS
     doRotate = .false.
     if (PRESENT(alreadyRotated)) doRotate = alreadyRotated
 
-    
-
     if (thisOctal%threeD) then
        if (.not.thisOctal%cylindrical) then
           IF (point%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
@@ -3808,8 +3806,6 @@ CONTAINS
        endif
        goto 666
     endif
-
-
 
 
 666 continue
@@ -4175,6 +4171,10 @@ IF ( .NOT. gridConverged ) RETURN
 
         ! first check that we are not outside the grid
         IF ( thisOctal%nDepth == 1 ) THEN
+           write(*,*) "octal", thisOctal%ndepth
+           write(*,*) "inoctal min", thisOctal%xMin,thisOctal%yMin,thisOctal%zMin
+           write(*,*) "inoctal max", thisOctal%xMax,thisOctal%yMax,thisOctal%zMax
+
           PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
           write(*,*) point
           write(*,*) sqrt(point%x**2+point%y**2)
@@ -4182,7 +4182,7 @@ IF ( .NOT. gridConverged ) RETURN
           write(*,*) " "
           write(*,*) thisOctal%centre
           write(*,*) thisOctal%subcellSize
-          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+!          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
            DO ; END DO
           STOP
@@ -4430,7 +4430,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
     real(double)          :: minDensity, maxDensity
-    real(double)          :: minDensity1, maxDensity1
     INTEGER               :: nsample = 400
     INTEGER               :: nparticle, limit, npart_subcell
 !    real(double) :: timenow
@@ -4447,10 +4446,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer,save :: acount,bcount,ccount = 0
     logical,save  :: firstTime = .true.
 
-    type(VECTOR) :: point, somevector
-
-!    mass_split = 0
-!    particle_split = 0
+!    type(VECTOR) :: point, somevector
 
     splitInAzimuth = .false.
     split = .false.
@@ -8770,14 +8766,14 @@ end function readparameterfrom2dmap
 
     type(VECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
-    type(octal), pointer, save :: previousOctal
-    type(vector) :: centre
+    type(octal), pointer, save :: previousOctal => null()
+!    type(vector) :: centre
     integer :: subcell
 
     logical, save :: firsttime =.true.
     
     if(firsttime) then
-       previousOctal = grid%octreeRoot
+       call findSubcellTD(point,grid%OctreeRoot,previousoctal,subcell)
        firsttime = .false.
     endif
     

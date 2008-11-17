@@ -1174,14 +1174,14 @@ contains
 
     if(.not. reuse) then
        notfound = .false.
-       call findNearestParticles(posvec, nparticles, sumWeight, rcrit)
+       call findNearestParticles(posvec, nparticles, sumWeight, rcrit, expkernel = .true.)
        if(sumweight .le. 0.d0) notfound = .true.
     endif
 
     paramvalue = 0.d0
 
     if(.not. notfound) then
-       if(sumweight .gt. 0.5d0) then
+       if(sumweight .gt. 0.3d0) then
           fac = 1.d0 / sumWeight
        else
           fac = 1.d0
@@ -1366,11 +1366,11 @@ contains
        
        testIndex = closestXindex + i
        
-       ydiff = (PositionArray(2, testIndex) - y) ** 2
+       zdiff = (PositionArray(3, testIndex) - z) ** 2
 
-       if(ydiff .le. rr) then ! if it's near in y then
-          zdiff = (PositionArray(3, testIndex) - z)**2
-          if(zdiff .le. rr) then !only if it's near in z as well then work out contribution
+       if(zdiff .le. rr) then ! if it's near in y then
+          ydiff = (PositionArray(2, testIndex) - y)**2
+          if(ydiff .le. rr) then !only if it's near in z as well then work out contribution
 
              r2test = (PositionArray(1,testIndex) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
                   ydiff + zdiff
@@ -1379,8 +1379,9 @@ contains
              
              if(q2test .lt. 4.d0) then
                 partcount = partcount + 1
-                qtest = sqrt(q2test)
-                Weightfac = num * SmoothingKernel3d(qtest) ! normalised contribution from this particle
+!                qtest = sqrt(q2test)
+!                Weightfac = num * SmoothingKernel3d(qtest) ! normalised contribution from this particle
+                Weightfac = num * OneOversqrtPiCubed * exp(-q2test)
              else
                 partcount = partcount + 1
                 weightfac = 0.d0

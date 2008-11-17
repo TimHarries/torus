@@ -19,8 +19,6 @@ module molecular_mod
    use nrtype
    use parallel_mod
    use vtk_mod
-!   use mkl_vsl_type
-!   use mkl_vsl
 
    implicit none
 
@@ -28,7 +26,7 @@ module molecular_mod
    integer :: grand_iter, nray
    Logical :: molebench, molcluster, chrisdisc
 
-!   include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
+ ! include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
 
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
@@ -417,7 +415,9 @@ module molecular_mod
 
           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
 
-          if (molcluster) CALL fillVelocityCorners(thisOctal,grid,molclusterVelocity,thisOctal%threed)
+          if (molcluster) then
+             CALL fillVelocityCorners(thisOctal,grid,molclusterVelocity,thisOctal%threed)
+          endif
        endif
     enddo
 
@@ -432,7 +432,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d,amr1d, plotlevels
+          usedust, amr2d,amr1d, plotlevels, amr3d
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -615,17 +615,22 @@ module molecular_mod
 
             grand_iter = grand_iter + 1
 
-            call taualongray(VECTOR(10.d0,10.d0,10.d0), VECTOR(0.577350269, 0.577350269, 0.577350269), &
-                 grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
+            if(.not. amr3d) then 
+               call taualongray(VECTOR(10.d0,10.d0,10.d0), VECTOR(0.577350269, 0.577350269, 0.577350269), &
+                    grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
-            do i = size(tauarray), 1, -1
-               mintrans = i + 2
+               do i = size(tauarray), 1, -1
+                  mintrans = i + 2
+                  minlevel = mintrans + 1
+                  if(tauarray(i) .gt. 0.01) exit
+               enddo
+            else
+               mintrans = max(7,maxtrans / 2)
                minlevel = mintrans + 1
-               if(tauarray(i) .gt. 0.01) exit
-            enddo
+            endif
             
-            write(message, *) "Minimum important level", minlevel
-            call writeinfo(message, TRIVIAL)
+               write(message, *) "Minimum important level", minlevel
+               call writeinfo(message, TRIVIAL)
 
             write(message,*) "Iteration ",grand_iter
             call writeinfo(message, FORINFO)
@@ -1018,7 +1023,7 @@ end subroutine molecularLoop
      call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
 
      currentPosition = position + ds * direction
-
+!     write(*,*) "Inoctal gr1",inOctal(grid%octreeRoot, currentPosition)
      if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid
         thisVel = velocity(currentposition, grid) 
         endprojVel = deltaV - (thisVel.dot.direction)
@@ -1036,20 +1041,20 @@ end subroutine molecularLoop
 
      iUpper(:) = thisMolecule%iTransUpper(:)
      iLower(:) = thisMolecule%iTransLower(:)
-
+ !    write(*,*) "Inoctal gr2",inOctal(grid%octreeRoot, currentPosition)
      do while(inOctal(grid%octreeRoot, currentPosition))
-
+ !       write(*,*) "got in"
         call findSubcellLocal(currentPosition, thisOctal, subcell)
 
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, soctal = thisoctal)
 
-        if(tval < 0.d0) then 
-           write(*,*) "tval", tval
-           write(*,*) "currentposition", tval
-           write(*,*) "direction", direction
-           write(*,*) "subcell", subcell
-           write(*,*) "label", thisoctal%label
-        endif
+ !       if(tval < 0.d0) then 
+ !          write(*,*) "tval", tval
+ !          write(*,*) "currentposition", tval
+ !          write(*,*) "direction", direction
+ !          write(*,*) "subcell", subcell
+ !          write(*,*) "label", thisoctal%label
+ !       endif
 
         if(useDust) then             
            do itrans = 1,maxtrans
@@ -1075,12 +1080,17 @@ end subroutine molecularLoop
 
         snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
 
-
 !        alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
           
         startVel = velocity(currentposition, grid) 
         endPosition = currentPosition + tval * direction
-        endVel = velocity(endposition, grid)
+
+        if(inOctal(grid%octreeRoot, endposition)) then
+           endVel = velocity(endposition, grid)
+        else
+!           write(*,*) "hannah broke my code"
+           endVel = VECTOR(0.d0,0.d0,0.d0)
+        endif
 
         dvAcrossCell = ((startVel - endvel) .dot. direction) ! start - end
         dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
@@ -1096,10 +1106,15 @@ end subroutine molecularLoop
         do i = 2, nTau
 
            dist = dist + dds ! increment along distance counter
-              
            thisPosition = currentPosition + dist * direction
-
+   
+        if(inOctal(grid%octreeRoot, thisposition)) then
            thisVel = velocity(thisPosition, grid)
+        else
+!           write(*,*) "hannah broke my code", i, ntau
+           thisVel = VECTOR(0.d0,0.d0,0.d0)
+        endif
+
            dv = deltaV - (thisVel .dot. direction)
            PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
            
@@ -1148,8 +1163,10 @@ end subroutine molecularLoop
            enddo
            
         enddo
-        
+!        write(*,*) "What was your position", currentposition
         currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
+!        write(*,*) "What's your current position", currentposition
+!        write(*,*) "Inoctal gr3",inOctal(grid%octreeRoot, currentPosition)
      enddo
      
 118  continue
@@ -2504,10 +2521,9 @@ endif
      iUpper(:)  = thisMolecule%iTransUpper(:)
      iLower(:)  = thisMolecule%iTransLower(:)
      
-     write(*,*) "Inoctal",inOctal(grid%octreeRoot, currentPosition)
+!     write(*,*) "Inoctal tar",inOctal(grid%octreeRoot, currentPosition)
 
 !     call findSubcellTD(currentPosition, thisOctal, subcell)
-
      do while(inOctal(grid%octreeRoot, currentPosition))
         
         call findSubcelllocal(currentPosition, thisOctal, subcell)
@@ -3093,6 +3109,9 @@ endif
         OneOverNangle = 1.d0 / dble(nangle)
         
         firsttime = .false.
+
+        write(*,*) "Rinner", rinner
+        write(*,*) "Router", router
      endif
 
      thisOctal => grid%octreeroot
@@ -3109,15 +3128,20 @@ endif
            z = r * cos(ang)
            x = r * sin(ang)
            posVec = VECTOR(x, 1.d-20, z) ! get put in octal on grid
-           call findSubcellLocal(posVec, thisOctal,subcell) 
-           pops = pops + thisOctal%molecularLevel(subcell,1:minlevel) ! interested in first 8 levels
-           fracChange = fracChange + abs(((thisOctal%molecularLevel(subcell,1:minlevel) - &
-                        thisOctal%oldmolecularLevel(subcell,1:minlevel)) / thisOctal%molecularlevel(subcell,1:minlevel)))
+     write(*,*) "Inoctal dr",inOctal(grid%octreeRoot, posvec)
+           if(inoctal(grid%octreeroot, posvec)) then
+              call findSubcellLocal(posVec, thisOctal,subcell) 
+              pops = pops + thisOctal%molecularLevel(subcell,1:minlevel) ! interested in first 8 levels
+              fracChange = fracChange + abs(((thisOctal%molecularLevel(subcell,1:minlevel) - &
+                   thisOctal%oldmolecularLevel(subcell,1:minlevel)) / thisOctal%molecularlevel(subcell,1:minlevel)))
+           else
+              call torus_abort("something went wrong in dumpresults")
+           endif
         enddo
 
         pops = pops * OneOverNangle ! normalised level population at the 20 random positions 
         fracChange = fracChange * OneOverNangle
-
+        
 !        if(iter .gt. 0) convtestarray(iter,i,1:minlevel-1) = fracChange(1:minlevel-1)
 
         write(31,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:minlevel)
