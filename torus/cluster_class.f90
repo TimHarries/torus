@@ -319,8 +319,6 @@ contains
     TYPE(gridtype), INTENT(IN) :: grid
     real(double), parameter :: density_crit = 1d13
     type(vector) :: point, clusterparam
-    integer :: dummy
-    real(double) :: density_ave
 
     point = subcellcentre(thisOctal, subcell)
     clusterparam = Clusterparameter(point, theparam = 2)
@@ -328,8 +326,9 @@ contains
     thisOctal%velocity(subcell) = VECTOR(-1.d10,-1.d10,-1.d10)
     thisOctal%etaLine(subcell) = 1.e-30
     thisOctal%etaCont(subcell) = 1.e-30
-    thisOctal%temperature(subcell) = max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
+
     thisOctal%rho(subcell) = clusterparam%x
+    thisOctal%temperature(subcell) = max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
     if ( associated(thisOctal%nh2) ) thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
 
 ! Velocities are not required for all configurations so check if they are required
@@ -521,7 +520,6 @@ contains
     !
     !
     real(double), save :: umass, udist, udent  ! for units conversion  
-    type(VECTOR) :: cellcentre
     logical, save  :: first_time = .true.
     !
     real(double), parameter    :: rho_null = 1.0e-30_db
