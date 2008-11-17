@@ -7,6 +7,7 @@ module sph_data_class
   use gridtype_mod
   use math_mod2
   use constants_mod, only : OneOnFourPi
+!  use parallel_mod, only : torus_abort
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -362,8 +363,8 @@ contains
     read(LUIN,*)
     read(LUIN,*)
 
-    write(*,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
-
+    write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
+    call writeinfo(message, TRIVIAL)
     call init_sph_data(udist, umass, utime, time, nptmass)
 
     nlines = npart + n2 + nptmass + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
@@ -953,25 +954,12 @@ contains
     real(double) :: xarray(:)
     integer :: ind(:)
     integer :: i
-    
-!    npart = size(xarray)
-    
+      
     do i=1,npart
        ind(i) = i
     enddo
     
-    write(*,*) "Start sort by x "
-!    call tune(6, "Sort")  ! start a stopwatch
     call sortdouble2index(xarray,ind)
-!    call tune(6, "Sort")  ! stop a stopwatch
-    write(*,*) "End sort by x "
-
-!    open(unit=50, file='xsortunsort.dat', status="replace")
-!    open(unit=49, file='thex.dat', status="replace")
-    
-!    do i=1,npart
-!       write(50,*) xarray(i), ind(i)
-!    enddo
 
   end subroutine sortbyx
 
@@ -1084,7 +1072,7 @@ contains
 
 !       npart = get_npart() ! total gas particles
 
-       allocate(PositionArray(3,npart)) ! allocate memory
+       allocate(PositionArray(npart,3)) ! allocate memory
        allocate(RhoArray(npart))
        allocate(MassArray(npart))
        allocate(Harray(npart))
@@ -1094,12 +1082,19 @@ contains
 
        PositionArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
 
-       PositionArray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+       PositionArray(:,1) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
 
-       call sortbyx(PositionArray(1,:),ind(:)) ! sort the x's and recall their indices
+       call sortbyx(PositionArray(:,1),ind(:)) ! sort the x's and recall their indices
 
-       PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
-       PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
+       PositionArray(:,2) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
+       PositionArray(:,3) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
+
+       write(message, *) "Max abs(x)", max(abs(PositionArray(1,1)),abs(PositionArray(npart,1)))
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "Max abs(y)", maxval(PositionArray(:,2))
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "Max abs(z)", maxval(PositionArray(:,3))
+       call writeinfo(message, TRIVIAL)
 
 ! Decide if we need to set velocities for this configuration
        if ( associated(sphData%vxn) ) then 
@@ -1264,7 +1259,7 @@ contains
     y = pos%y
     z = pos%z
 
-    call locate_double_f90(PositionArray(1,:), x, closestXindex) ! find the nearest particle to your point
+    call locate_double_f90(PositionArray(:,1), x, closestXindex) ! find the nearest particle to your point
   
     nupper = 1
     nlower = -1
@@ -1282,7 +1277,7 @@ contains
     prevtest = .true.
 
     do while (stepsize .ge. 1)
-       test = abs(PositionArray(1,min(npart,closestXindex + nupper)) - x) .le. r
+       test = abs(PositionArray(min(npart,closestXindex + nupper),1) - x) .le. r
  
        if(test .and. (nupper .eq. npart - closestXindex)) exit
        if(closestXindex + nupper .ge. npart) nupper = npart - closestXindex
@@ -1325,7 +1320,7 @@ contains
     prevtest = .true.
 
     do while (stepsize .ge. 1)
-       test = abs(PositionArray(1,max(1,closestXindex + nlower)) - x) .le. r
+       test = abs(PositionArray(max(1,closestXindex + nlower),1) - x) .le. r
  
        if(test .and. (nlower .eq. 1 - closestXindex)) exit
        if(closestXindex + nlower .le. 1) nlower = 1 - closestXindex
@@ -1366,13 +1361,13 @@ contains
        
        testIndex = closestXindex + i
        
-       zdiff = (PositionArray(3, testIndex) - z) ** 2
+       zdiff = (PositionArray(testIndex,3) - z) ** 2
 
        if(zdiff .le. rr) then ! if it's near in y then
-          ydiff = (PositionArray(2, testIndex) - y)**2
+          ydiff = (PositionArray(testIndex,2) - y)**2
           if(ydiff .le. rr) then !only if it's near in z as well then work out contribution
 
-             r2test = (PositionArray(1,testIndex) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
+             r2test = (PositionArray(testIndex,1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
                   ydiff + zdiff
              
              q2test = r2test * OneOverHsquared(testIndex) ! dimensionless parameter that we're interested in

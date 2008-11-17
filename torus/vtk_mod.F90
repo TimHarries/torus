@@ -285,23 +285,23 @@ contains
                case("rho")
 
                   if(thisOctal%rho(subcell) .lt. 1.d-37) then
-                     write(lunit, *) -1e-30 ! floating underflow warning
+                     write(lunit, *) 1e-37 ! floating underflow warning
                   else
-                     write(lunit, *) real(thisOctal%rho(subcell))
+                     write(lunit, *) thisOctal%rho(subcell)
                   endif
 
                case("J=0")
-                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-10) then
-                     write(lunit, *) 1e-10
+                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-37) then
+                     write(lunit, *) 1e-37
                   else
-                     write(lunit, *) real(thisOctal%molecularlevel(1,subcell))
+                     write(lunit, *) thisOctal%molecularlevel(subcell,1)
                   endif
 
                case("J=1")
-                  if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-10) then
-                     write(lunit, *) 1e-10
+                  if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-37) then
+                     write(lunit, *) 1e-37
                   else
-                     write(lunit, *) real(thisOctal%molecularlevel(2,subcell))
+                     write(lunit, *) thisOctal%molecularlevel(subcell,2)
                   endif
 
                case("dust1")
