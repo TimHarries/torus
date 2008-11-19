@@ -2527,9 +2527,6 @@ endif
      do while(inOctal(grid%octreeRoot, currentPosition))
         
         call findSubcelllocal(currentPosition, thisOctal, subcell)
-        write(*,*) "currentposition", currentposition
-        write(*,*) "label", thisoctal%label
-        write(*,*) "subcell", subcell
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
