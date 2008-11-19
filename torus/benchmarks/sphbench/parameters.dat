@@ -12,8 +12,8 @@ taumax 0.5
 smoothfactor 2.
 smoothgridtau T
 lambdasmooth 5500.
-limitscalar 1.e28
-limittwo -1.6
+limitscalar 5.e26
+limittwo 0.0
 samplefreq 2.
 popfile lucy4.dat
 readpops F
