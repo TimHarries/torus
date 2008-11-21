@@ -4431,7 +4431,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: nr, nr1, nr2
     real(double)          :: minDensity, maxDensity
     INTEGER               :: nsample = 400
-    INTEGER               :: nparticle, limit, npart_subcell
+    INTEGER               :: nparticle, limit, npt_subcell
 !    real(double) :: timenow
     real(double) :: dummyDouble
     real(double),save  :: R_tmp(204)  ! [10^10cm]
@@ -4908,7 +4908,7 @@ IF ( .NOT. gridConverged ) RETURN
    case ("cluster","molcluster")
 
       call find_n_particle_in_subcell(nparticle, ave_density, &
-           thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npart_subcell)
+           thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
 
 !      point = subcellcentre(thisOctal, subcell)
 !      somevector = Clusterparameter(point, theparam = 2)!, rhoMin = minDensity, rhoMax = maxDensity)
@@ -4940,7 +4940,37 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       
 ! Split if the cell contains both gas particles and a point mass
-      if (npart_subcell>0 .and. nparticle >0) split = .true. 
+      if (npt_subcell>0 .and. nparticle >0) split = .true. 
+
+! The stellar disc code is retained in case this functionality needs to be used in future 
+!!$
+!!$      if (include_disc(stellar_cluster)) then
+!!$      
+!!$         ! If the subcell intersects with the stellar disk.. then do additional check.
+!!$         ! This time, the cells will be split when the mass of the cell exceeds a 
+!!$         ! critical mass specified by "amrlimitscalar.
+!!$
+!!$         if (stellar_disc_exists(sphData) .and.  &       
+!!$              disc_intersects_subcell(stellar_cluster, sphData, thisOctal, subcell) ) then
+!!$         rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
+!!$              subcell, stellar_cluster, scale_length)
+!!$
+!!$!!         rho_disc_ave = average_disc_density(sphData, thisOctal, &
+!!$!!              subcell, stellar_cluster, scale_length)
+!!$!            rho_disc_ave = max_disc_density_from_sample(sphData, thisOctal, &
+!!$!                 subcell, stellar_cluster, scale_length)
+!!$
+!!$            total_mass = total_mass + rho_disc_ave * (cellSize*1.e10_db)**3  !  [g]
+!!$
+!!$            if (cellSize > 1.0e4  .or.  &
+!!$                 (cellsize > scale_length) ) then
+!!$!                 (cellsize > scale_length .and. rho_disc_ave > 1.0e-20) ) then
+!!$               split = .true.  ! units in 10^10cm
+!!$            end if
+!!$            
+!!$         end if
+!!$
+!!$      end if
 
    case ("wr104")
       ! Splits if the number of particle is more than a critical value (~3).
@@ -11959,7 +11989,7 @@ end function readparameterfrom2dmap
                 kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell) 
              else
                 do i = 1, nDustType
-                   kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
+                   kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell)
                 enddo
              endif
           else 
