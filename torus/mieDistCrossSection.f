@@ -1,6 +1,9 @@
       subroutine mieDistCrossSection(aMin, aMax, a0, 
      & qDist, pDist, lambda, cmr, cmi,
      & kappaExt, kappaSca, kappaAbs, gscadist)
+
+      use bhmie_mod, only: MXNANG
+
       implicit none
       real  cmr, cmi, x, kappaExt, kappaAbs, kappaSca
       real aMin, aMax, a0, qDist, pDist, lambda
@@ -17,7 +20,7 @@
       real gscadist
       real nsd(100), aDist(100)
       complex refrel
-      complex s1(1000),s2(1000)
+      complex s1(2*MXNANG-1),s2(2*MXNANG-1)
       integer :: nang=2
       
       pi = 3.14159265358979
