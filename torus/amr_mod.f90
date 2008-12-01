@@ -11879,7 +11879,7 @@ end function readparameterfrom2dmap
     real, optional :: atthistemperature
     real :: temperature
     real :: frac
-    real :: tlambda
+!    real :: tlambda
     real, parameter :: sublimationTemp = 1500., subRange = 100.
 !    real :: tArray(1000)
     real(double) :: freq, dfreq, norm !,  bnutot
@@ -11976,11 +11976,6 @@ end function readparameterfrom2dmap
 
     if (PRESENT(kappaSca)) then
        kappaSca = 0.
-       if (.not.PRESENT(lambda)) then
-          tlambda = grid%lamArray(iLambda)
-       else
-          tlambda = lambda
-       endif
        IF (.NOT.PRESENT(lambda)) THEN
           if (grid%oneKappa) then
              kappaSca = 0.
@@ -12013,11 +12008,6 @@ end function readparameterfrom2dmap
 
     if (PRESENT(kappaAbs)) then
        kappaAbs = 0.
-       if (.not.PRESENT(lambda)) then
-          tlambda = grid%lamArray(iLambda)
-       else
-          tlambda = lambda
-       endif
        
        IF (.NOT.PRESENT(lambda)) THEN
           if (grid%oneKappa) then
@@ -12062,12 +12052,13 @@ end function readparameterfrom2dmap
 
 
 !   if (includeGasOpacity) then
+!      if (.not.PRESENT(lambda)) then
+!         tlambda = grid%lamArray(iLambda)
+!      else
+!         tlambda = lambda
+!      endif
+!
 !      if (PRESENT(kappaAbs)) then
-!         if (.not.PRESENT(lambda)) then
-!            tlambda = grid%lamArray(iLambda)
-!         else
-!            tlambda = lambda
-!         endif
 !         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
 !         kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
 !      endif
