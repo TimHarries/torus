@@ -413,10 +413,11 @@ contains
           do while(.not.escaped)
 
              ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
+             ilam = max(ilam, 1)
 
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
                   photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, &
-                  sOctal, foundOctal, foundSubcell, ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
+                  sOctal, foundOctal, foundSubcell, ilamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
              If (escaped) nInf_sub = nInf_sub + 1
 
