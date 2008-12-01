@@ -610,7 +610,7 @@ endif
 # Source files
 #
 F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
-            unix_mod.f90 inputs_mod.f90 utils_mod.f90 \
+            unix_mod.f90 inputs_mod.f90 utils_mod.f90 bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90  TTauri_mod.f90 puls_mod.f90 \
@@ -634,10 +634,9 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            mpi_global_mod.f90 nrtype.f90 nrutil.f90 gridio_mod.f90 benchmark_mod.f90 bitstring_mod.f90
+            mpi_global_mod.f90 nrtype.f90 nrutil.f90 gridio_mod.f90 benchmark_mod.f90 bitstring_mod.f90 
 
-F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f \
-            spec_f77.f image_f77.f 
+F77SOURCE = phfit2.f spec_f77.f image_f77.f 
 
 
 CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
