@@ -9772,6 +9772,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%changed,  source%changed)
 
 
+    call copyAttribute(dest%scatteredIntensity, source%scatteredIntensity)
     call copyAttribute(dest%temperaturedust, source%temperatureDust)
     call copyAttribute(dest%temperaturegas, source%temperaturegas)
     call copyAttribute(dest%dustType, source%dustType)
@@ -16436,6 +16437,7 @@ end function readparameterfrom2dmap
 
        call deAllocateAttribute(thisOctal%ionFrac)
        call deAllocateAttribute(thisOctal%PhotoIonCoeff)
+       call deAllocateAttribute(thisOctal%scatteredIntensity)
        
 
        call deAllocateAttribute(thisOctal%q_i)
