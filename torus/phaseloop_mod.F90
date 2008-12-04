@@ -1968,8 +1968,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                     call tauAlongPath2(ilambda, grid, obsPhoton%position, obsPhoton%direction, thistaudble, tauMax=20.d0, &
                          startOctal=tempOctal, startSubcell=tempSubcell)
 
-                    call amrGridValues(grid%octreeRoot, testPhoton%position, grid=grid, startOctal=tempOctal, actualSubcell=tempSubcell, &
-                         iLambda=iLambda, &
+                    call amrGridValues(grid%octreeRoot, testPhoton%position, grid=grid, startOctal=tempOctal, &
+                         actualSubcell=tempSubcell, iLambda=iLambda, &
                          kappaAbs = thisChi, kappaSca = thisSca)
 
                     albedo = thisSca / (thisSca + thisChi)
