@@ -200,7 +200,7 @@ contains
 
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
     if (nLucy == 0) then
-       nMonte = nVoxels * 10
+       nMonte = nVoxels * 100
     else
        nMonte = nlucy
     endif
@@ -634,7 +634,7 @@ end if ! (my_rank /= 0)
 
     if (writeoutput) call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
-    if (niter == 6) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 10) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
@@ -1473,7 +1473,7 @@ end subroutine photoIonizationloop
     betaHe = thisrootTbetaHe / sqrt(temperature)
 
 
-    betah = betah * 2.d0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!    betah = betah * 2.d0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
 
@@ -2076,8 +2076,8 @@ subroutine dumpLexington(grid, epsoverdt)
   open(21,file="orates.dat",form="formatted",status="unknown")
   open(22,file="ne.dat",form="formatted",status="unknown")
 
-  do i = 1, 50
-     r = (1.+7.d0*dble(i-1)/49.d0)*pctocm/1.e10
+  do i = 1, 500
+     r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
 
      t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
 

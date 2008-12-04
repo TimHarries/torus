@@ -69,6 +69,7 @@ MODULE octal_mod
   interface deallocateAttribute
      module procedure deallocateAttributeDouble
      module procedure deallocateAttributeDouble2D
+     module procedure deallocateAttributeDouble3D
      module procedure deallocateAttributeReal
      module procedure deallocateAttributeInteger
      module procedure deallocateAttributeVector
@@ -182,6 +183,7 @@ MODULE octal_mod
     REAL, DIMENSION(:), pointer                 :: oldTemperature  => null()   ! grid subcell temperatures
     REAL(double), DIMENSION(:), pointer                 :: kappaRoss => null()
     REAL(double), DIMENSION(:), pointer         :: distanceGrid  => null()  ! distance crossing used by lucy R Eq
+    real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     INTEGER, DIMENSION(:), pointer              :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
@@ -755,6 +757,15 @@ CONTAINS
        nullify(array)
     endif
   end subroutine deallocateAttributeDouble2d
+
+  subroutine deallocateAttributeDouble3d(array)
+    real(double), pointer :: array(:,:,:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeDouble3d
 
 
   subroutine deallocateAttributeVector(array)

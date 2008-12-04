@@ -109,6 +109,7 @@ contains
     logical :: photonInDiffusionZone
     real :: diffusionZoneTemp, temp
     logical :: directPhoton !, smoothconverged
+    logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals
@@ -168,7 +169,7 @@ contains
   if (nLucy /= 0) then
      nMonte = nLucy
   else
-     nMonte = nVoxels * 10
+     nMonte = nVoxels * 100
   endif
     nFreq = nLambda
     do i = 1, nFreq
@@ -388,7 +389,7 @@ contains
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat, rHat)
-
+          thermalPhoton = .true.
           directPhoton = .true.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -416,8 +417,9 @@ contains
              ilam = max(ilam, 1)
 
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, &
-                  sOctal, foundOctal, foundSubcell, ilamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, &
+                  directPhoton, scatteredPhoton, thermalPhoton, &
+                  sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
              If (escaped) nInf_sub = nInf_sub + 1
 
@@ -461,7 +463,9 @@ contains
 
                 ! scattering case
                 if (r < albedo) then 
-                   
+
+                   thermalPhoton = .false.
+                   scatteredPhoton = .true.
                    vec_tmp = uhat
                    uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
                         thisOctal%dustTypeFraction(subcell, 1:nDusttype))
@@ -549,7 +553,8 @@ contains
 
                    oldUhat = uHat
                    uHat = randomUnitVector()
-
+                   thermalPhoton = .true.
+                   scatteredPhoton = .false.
                    ! make sure diffused photon is moving out of diffusion zone
 
                    if (photonInDiffusionZone) then
@@ -1372,6 +1377,7 @@ contains
           thisOctal%nCrossings(subcell) = 0
           thisOctal%undersampled(subcell) = .false.
           thisOCtal%nDiffusion(subcell) = 0.
+          thisOctal%scatteredIntensity(subcell,:,:) = 0.d0
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -1851,14 +1857,15 @@ contains
 
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  imonte, &
-      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, &
-      startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
+      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
+      thermalPhoton, startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, testVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
+   logical :: scatteredPhoton, thermalPhoton
    integer :: foundSubcell
    integer :: endSubcell
    integer :: subcell, isubcell, tempSubcell!, sourceSubcell
@@ -2053,6 +2060,7 @@ contains
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
 
+          if (scatteredPhoton) call addToScatteredIntensity(thisOctal, subcell, uHat, tVal)
 
 !$OMP END CRITICAL (changegrid)
 
@@ -3029,6 +3037,71 @@ subroutine setBiasOnTau(grid, iLambda)
        endif
     enddo
   end subroutine allocateMemoryForLucy
+
+  subroutine addToScatteredIntensity(thisOctal, subcell, uHat, tVal)
+
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: uHat
+    real(double) :: tVal, thisTheta, thisPhi
+    integer, parameter :: nTheta = 10, nPhi = 10
+    integer :: iTheta, iPhi
+
+
+    thisTheta = acos(uhat%z)
+    thisPhi = atan2(uHat%y,uHat%x)
+
+    iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
+    iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
+
+    thisOctal%scatteredIntensity(subcell,iTheta,iPhi) = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) + tval
+  end subroutine addToScatteredIntensity
+
+  function returnScatteredIntensity(thisOctal, subcell, uHat) result(intensity)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: uHat
+    real(double) :: intensity
+    
+    intensity = 0.d0
+  end function returnScatteredIntensity
+
+  recursive subroutine calcIntensityFromGrid(thisOctal, epsOverDt, dnu)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: epsOverDt, dnu
+    real(double) :: v
+    integer :: subcell, i, j, k
+    integer, parameter :: nTheta = 10, nPhi = 10
+    real(double) :: iNuDomega(nTheta, nPhi), dTheta, dphi, theta, dOmega
+
+    Do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcIntensityFromGrid(child, epsOverDt, dnu)
+                exit
+             end if
+          end do
+       else
+
+          V = cellVolume(thisOctal, subcell)
+          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
+          dTheta = pi / dble(nTheta-1)
+          dPhi = twoPi / dble(nPhi)
+          do j = 1, nTheta
+             theta = pi * dble(j-1)/dble(nTheta-1)
+             do k = 1, nPhi
+                dOmega = dTheta * dphi * sin(theta)
+                thisOctal%scatteredIntensity(subcell, j, k) = inuDomega(j,k) / dOmega
+             enddo
+          enddo
+       endif
+    enddo
+  end subroutine calcIntensityFromGrid
 
 end module lucy_mod
 

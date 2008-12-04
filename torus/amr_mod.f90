@@ -4596,7 +4596,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
    case("lexington")
-      if (thisOctal%nDepth < 8) then
+      if (thisOctal%nDepth < 9) then
          split = .true.
       else
          split = .false.
@@ -5341,7 +5341,7 @@ IF ( .NOT. gridConverged ) RETURN
          splitInAzimuth = .true.
       endif
       cellCentre = subcellCentre(thisOctal, subcell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2 + cellcentre%z**2)
       if ((r + thisOctal%subcellSize/2.d0)  .lt. 1.5*rsol/1.e10) then
          split = .false.
          splitinAzimuth = .false.
@@ -5351,6 +5351,10 @@ IF ( .NOT. gridConverged ) RETURN
          splitinAzimuth = .false.
       endif
 
+!      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 90.)) then
+!         split = .true.
+!         splitInAzimuth = .true.
+!      endif
 
 
    case("warpeddisc")
@@ -15792,6 +15796,57 @@ end function readparameterfrom2dmap
     end do
   end subroutine tauAlongPath
 
+  subroutine tauAlongPath2(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)
+    use input_variables, only : rGap
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    integer :: iLambda
+    real(double) :: tau, distToNextCell
+    real(double), optional :: tauMax
+    type(OCTAL), pointer :: thisOctal, sOctal
+    type(OCTAL), pointer, optional :: startOctal
+    integer, optional :: startSubcell
+    real(double) :: fudgeFac = 1.d-1
+    real(double) :: kappaSca, kappaAbs, kappaExt
+    integer :: subcell
+    logical, optional :: ross
+    kappaAbs = 0.d0; kappaSca = 0.d0
+    tau = 0.d0
+    currentPosition = rVec
+    
+
+    if (PRESENT(startOctal)) then
+       thisOctal => startOctal
+       subcell = startSubcell
+    else
+       CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    endif
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+       if (.not.PRESENT(ross)) then
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          kappaExt = kappaAbs + kappaSca
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt)
+          kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
+       endif
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+       
+       beforeVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       afterVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
+       
+
+       tau = tau + distToNextCell*kappaExt
+       if (PRESENT(tauMax)) then
+          if (tau > tauMax) exit
+       endif
+    end do
+  end subroutine tauAlongPath2
+
   subroutine columnAlongPath(grid, source, nsource, rVec, direction, sigma)
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -16158,7 +16213,7 @@ end function readparameterfrom2dmap
          photoionization, hydrodynamics, sobolev
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
-
+    integer, parameter :: nTheta = 10 , nphi = 10
     if (mie) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
        thisOctal%oldFrac = 1.d-30
@@ -16168,6 +16223,9 @@ end function readparameterfrom2dmap
        thisOctal%dustTypeFraction = 0.d0
        thisOctal%dustTypeFraction(:,1) = 1.d0
        thisOctal%inflow = .true.
+
+       allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
+
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
@@ -16187,7 +16245,6 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
-
        call allocateAttribute(thisOctal%probDistLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
 
@@ -16342,6 +16399,7 @@ end function readparameterfrom2dmap
        call deallocateAttribute(thisOctal%dustType)
        call deallocateAttribute(thisOctal%dusttypefraction)
        call deallocateAttribute(thisOctal%diffusionApprox)
+       call deallocateAttribute(thisOctal%scatteredIntensity)
        call deallocateAttribute(thisOctal%changed)
        call deallocateAttribute(thisOctal%nDiffusion)
        call deallocateAttribute(thisOctal%eDens)

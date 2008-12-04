@@ -213,7 +213,8 @@ contains
        call writeAttributePointerFlexi(20, "N", thisOctal%n, fileFormatted)
        call writeAttributePointerFlexi(20, "departCoeff", thisOctal%departCoeff, fileFormatted)
        call writeAttributePointerFlexi(20, "dustTypeFraction", thisOctal%dustTypeFraction, fileFormatted)
-
+       call writeAttributePointerFlexi(20, "scatteredIntensity", thisOctal%scatteredIntensity, fileFormatted)
+       
 
        call writeAttributePointerFlexi(20, "atomAbundance", thisOctal%atomAbundance, fileFormatted)
        call writeAttributePointerFlexi(20, "atomLevel", thisOctal%atomLevel, fileFormatted)
@@ -518,6 +519,8 @@ contains
             call readPointerFlexi(20, thisOctal%dustType, fileFormatted)
          case("dustTypeFraction")
             call readPointerFlexi(20, thisOctal%dustTypeFraction, fileFormatted)
+         case("scatteredIntensity")
+            call readPointerFlexi(20, thisOctal%scatteredIntensity, fileFormatted)
           case("mpiThread")
              call readArrayFlexi(20, thisOctal%mpiThread,fileFormatted)
           case("kappaAbs")

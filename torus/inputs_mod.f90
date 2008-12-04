@@ -86,7 +86,7 @@ contains
 
 
     call getBigInteger("nphotons", nPhotons, cLine, nLines, &
-         "Number of photons: ", "(a,i10,1x,a)", 100000, ok, .true.)
+         "Number of photons: ", "(a,i15,1x,a)", 100000, ok, .true.)
 
     call getInteger("idump", idump, cLine, nLines, &
          "Hydrodynamic dump number: ", "(a,i4,1x,a)", 1, ok, .false.)
@@ -405,6 +405,9 @@ contains
 
 
     call getLogical("resonance", resonanceLine, cLine, nLines, &
+         "Resonance line: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("pointsource", pointsource, cLine, nLines, &
          "Resonance line: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (geometry .eq. "resonance") then
@@ -1000,7 +1003,7 @@ contains
     call getLogical("formalsol", formalsol, cLine, nLines, &
          "Solve for formal solution (no photon loops)?: ", "(a,1l,1x,a)", .false., ok, .false.)
 
-    if (formalsol) then
+    if (formalsol.and.(geometry=="ttauri")) then
        call getInteger("form_nphi", form_nphi, cLine, nLines, &
             "# of angular poins for formal integration : ","(a,i4,a)", 30, ok, .true.)
        call getInteger("form_nr_core", form_nr_core, cLine, nLines, &

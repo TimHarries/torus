@@ -149,9 +149,13 @@ contains
     type(VECTOR), intent(inout) :: a
     type(VECTOR) :: ZeroVec = VECTOR(0.d0,0.d0,0.d0)
     real(double) :: m, oneOverM
+    logical, save :: firstTime = .true.
 
     if (a .eq. ZeroVec) then
-       write(*,'(a)') "! Attempt to normalize the zero vector"
+       if (firstTime) then
+          write(*,'(a)') "! Attempt to normalize the zero vector"
+          firstTime = .false.
+       endif
        a = VECTOR(1.d0,0.d0,0.d0)
     else
        m = modulus(a)

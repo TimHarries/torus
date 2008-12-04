@@ -85,7 +85,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(oct) :: t1, t2, t3
   logical :: hitcore
   integer :: intPathError
-  integer :: nContPhotons
+  integer(kind=bigint) :: nContPhotons
   real :: chanceHotRing
   type(VECTOR) :: positionOc    ! photon position position
   real :: observedLambda
@@ -93,6 +93,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR) :: slitPosition
   real(double) :: tau_bnd
   real :: dlambda, thisTau
+  real(double) ::thisTauDble
   real :: thislam
   integer :: currentScat
   logical :: redRegion
@@ -107,7 +108,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: nu, junk
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
-  integer :: nInnerLoop
+  integer(kind=bigInt) :: nInnerLoop
   type(PHOTON) :: testPhoton
 
   real(double) :: totLineEmission
@@ -200,7 +201,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   integer :: nFromEnv
   logical :: photonFromEnvelope
-  integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
+  integer(kind=bigInt) :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
   integer :: i, iSlit, istep, ispline 
   type(VECTOR) :: viewVec, outVec, thisVec
@@ -217,8 +218,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(len=80) :: specfile, obsfluxfile
 
   logical :: ok
-  type(OCTAL), pointer :: sourceOctal, currentOctal
-  integer :: sourceSubcell, currentSubcell
+  type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
+  integer :: sourceSubcell, currentSubcell, tempSubcell
 
   ! photons
 
@@ -1009,7 +1010,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         deallocate(contWeightArray)
      end if
 
-     nContPhotons = nint(probContPhoton * real(nPhotons) / real(nOuterLoop))
+     nContPhotons = (probContPhoton * real(nPhotons) / real(nOuterLoop))
 
      !
      ! here we may loop over different inclinations
@@ -1129,9 +1130,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (setImageSize == 0.) then
            if (grid%adaptive) then
               if (amr2d) then
-                 imageSize = 2.*grid%octreeRoot%subcellSize
+                 imageSize = 4.*grid%octreeRoot%subcellSize
               else
-                 imageSize = grid%octreeRoot%subcellSize          
+                 imageSize = 2.*grid%octreeRoot%subcellSize          
               endif
            else if (grid%cartesian) then
               imageSize = grid%xAxis(grid%nx)-grid%xAxis(1)
@@ -1264,6 +1265,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         goto 777  
      end if
 
+     if (formalSol) then
+        if (myrankglobal == 0)call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda)
+        goto 777
+     endif
+
+
+
      !  These should be zero-ed for each viewing angle!
      tooFewSamples = 0 
      boundaryProbs = 0 
@@ -1347,31 +1355,36 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! Splitting the innerPhoton loop for multiple processors.
   if (myRankGlobal == 0) then
      print *, ' '
-     print *, 'innerPhotonLoop computed by ', nThreadsGlobal-1, ' processors.'
+     print *, 'innerPhotonLoop computed by ', nThreadsGlobal, ' processors.'
      print *, ' '
   endif
-  ! No need to use some processors if there are more processors
-  ! than the number of photons....
-  if (myRankGlobal > nPhotons/nOuterLoop - 1)  return
-    
-  if (myRankGlobal == 0) then
-     ! we will use an array to store the rank of the process
-     !   which will calculate each photon
-     allocate(photonBelongsRank(nPhotons/nOuterLoop))
-    
-     call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=40,tag=tag,&
-                          setDebug=.false.)
-     deallocate(photonBelongsRank) ! we don't really need this here. 
-  end if
-  !====================================================================================
+  
+  iInner_beg = myRankGlobal * (nInnerLoop/nThreadsGlobal) + 1
+  iInner_end = (myrankGlobal+1) * (nInnerLoop/nThreadsGlobal) 
+  write(*,*) "rank ", myrankglobal, " doing ", iInner_beg, " to " , iinner_end
 
-    
-    
-  if (myRankGlobal /= 0) then
-    mpiBlockLoop: do  
-      call mpiGetBlock(myRankGlobal,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
-      if (rankComplete) exit mpiBlockLoop  
-    
+
+!  ! No need to use some processors if there are more processors
+!  ! than the number of photons....
+!  if (myRankGlobal > nPhotons/nOuterLoop - 1)  return
+!    
+!  if (myRankGlobal == 0) then
+!     ! we will use an array to store the rank of the process
+!     !   which will calculate each photon
+!     allocate(photonBelongsRank(nPhotons/nOuterLoop))
+!    
+!     call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=40,tag=tag,&
+!                          setDebug=.false.)
+!     deallocate(photonBelongsRank) ! we don't really need this here. 
+!  end if
+!  !====================================================================================
+!
+!    
+!    
+!  if (myRankGlobal /= 0) then
+!    mpiBlockLoop: do  
+!      call mpiGetBlock(myRankGlobal,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
+!      if (rankComplete) exit mpiBlockLoop  
 #endif
 
 
@@ -1818,6 +1831,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
            endif
 
+
+
+
+
            call integratePath(gridUsesAMR, VoigtProf, &
               thisPhoton%lambda, lamLine, &
               thisPhoton%velocity, &
@@ -1924,37 +1941,40 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
               if (doIntensivePeelOff) then
                  testPhoton = thisPhoton
+                 redRegion = .false.
+                 iLambda = findIlambda(testPhoton%lambda, grid%lamArray, nLambda, ok)
 
+                 CALL findSubcellTD(testPhoton%position,grid%octreeRoot,tempOctal,tempsubcell)
 
-                 do iStep = 1, ntau
+                 do iStep = 2, ntau
 
                     testPhoton%position = thisPhoton%position + real(lambda(iStep),kind=oct)*thisPhoton%direction
 
-                    call scatterPhoton(grid, testPhoton, outVec, obsPhoton, mie, &
-                         miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc)
-                    
-                    call integratePath(gridUsesAMR, VoigtProf, &
-                         obsPhoton%lambda, lamLine, &
-                         obsPhoton%velocity, &
-                         obsPhoton%position, obsPhoton%direction, grid, &
-                         lambdaObs, tauExtObs, tauAbsObs, tauScaObs, linePhotonAlbedo, maxTau, nTauObs,  thin_disc_on, opaqueCore, &
-                         escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, &
-                         thinLine, lineResAbs, redRegion, &
-                         .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
-                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
+
+
+                    if (tauExt(iStep) > 10.) exit
+                    call findSubcellLocal(testPhoton%position, tempOctal, tempsubcell)
+
 
                     fac = exp(-tauExt(iStep))
-
-                    if (tauExt(iStep) > 20.) exit
-
-                    call amrGridValues(grid%octreeRoot, testPhoton%position, grid=grid, iLambda=iLambda, &
-                         kappaAbs = thisChi, kappaSca = thisSca)
-                    albedo = thisSca / (thisSca + thisChi)
                     dtau = tauExt(iStep) - tauExt(iStep-1)
                     fac= fac * (1.0d0-exp(-dtau)) * albedo
 
-                    obs_weight = fac*oneOnFourPi*exp(-tauExtObs(nTauObs))
+                    call scatterPhoton(grid, testPhoton, outVec, obsPhoton, mie, &
+                         miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc, &
+                         currentOctal=tempOctal, currentSubcell=tempsubcell)
+                    
+
+                    call tauAlongPath2(ilambda, grid, obsPhoton%position, obsPhoton%direction, thistaudble, tauMax=20.d0, &
+                         startOctal=tempOctal, startSubcell=tempSubcell)
+
+                    call amrGridValues(grid%octreeRoot, testPhoton%position, grid=grid, startOctal=tempOctal, actualSubcell=tempSubcell, &
+                         iLambda=iLambda, &
+                         kappaAbs = thisChi, kappaSca = thisSca)
+
+                    albedo = thisSca / (thisSca + thisChi)
+
+                    obs_weight = fac*oneOnFourPi*exp(-thisTaudble)
 
 
 !                    write(*,*) iStep, lambda(istep),obs_weight,tauExt(istep),tauExtObs(nTauObs)
@@ -2472,11 +2492,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP END DO
 !$OMP END PARALLEL
 
-
 #ifdef MPI
- if (.not.blockHandout) exit mpiblockloop        
-    end do mpiBlockLoop  
-  end if ! (myRankGlobal /= 0)
 !     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',myRankGlobal, &
 !                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 

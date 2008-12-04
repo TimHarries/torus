@@ -821,6 +821,68 @@ module image_mod
        endif
      end subroutine pixelLocate
             
+  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda)
+    use input_variables, only : npix, setimageSize, vmin, vmax, griddistance
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real :: lambda, xArray(:)
+    integer :: ilambda, nLambda
+    real(double) :: tVal
+    type(GRIDTYPE) :: grid
+    type(IMAGETYPE) :: image
+    type(VECTOR) :: viewVec, xVec, yVec, position
+    real(double) :: distToGrid
+    integer :: ix, iy
+    real(double) :: i0, tau, dtau, kappaAbs, jnu, snu
+    logical :: ok
+    
+    ilambda = findIlambda(lambda, xArray, nLambda, ok)
+
+    image = initImage(npix, npix, setimageSize, setimageSize, vmin, vmax) 
+
+    xVec = zHat .cross. viewVec
+    yVec = xVec .cross. zHat
+
+    call normalize(xVec)
+    call normalize(yVec)
+
+
+    do ix = 1, image%nx
+       do iy = 1, image%ny
+
+          position = (-10.d0*grid%octreeRoot%subcellSize)*viewVec + &
+               (dble(image%xAxisCentre(ix)) * xVec) + (dble(image%yAxisCentre(iy)) * yVec)
+          distToGrid = distanceToGridFromOutside(grid, position, viewVec) 
+          position = position + (1.d-1*grid%halfSmallestSubcell+distToGrid) * viewVec
+
+          thisOctal => grid%octreeRoot
+          subcell = 1
+          i0 = 0.d0
+          do while(inOctal(grid%octreeRoot, position))
+             call findSubcelllocal(position, thisOctal, subcell)
+             call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
+             call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs)
+             dTau = kappaAbs * tVal
+
+             jnu = kappaAbs * bnu(cspeed/lambda, dble(thisOctal%temperaturedust(subcell)))
+
+             if (kappaAbs .ne. 0.d0) then
+                
+                snu = jnu/kappaAbs
+                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+
+             else
+                snu = tiny(snu)
+                i0 = i0 + tiny(i0)
+             endif
+             tau = tau + dtau
+          end do
+          image%pixel(ix, iy)%i = i0
+       end do
+    end do
+
+    call writeFitsimage(image, "test.fits", griddistance*pctocm, "intensity")
+  end subroutine createLucyImage
 
       
 end module image_mod
