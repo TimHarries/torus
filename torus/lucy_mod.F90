@@ -169,7 +169,7 @@ contains
   if (nLucy /= 0) then
      nMonte = nLucy
   else
-     nMonte = nVoxels * 100
+     nMonte = nVoxels * 10
   endif
     nFreq = nLambda
     do i = 1, nFreq
@@ -3051,6 +3051,7 @@ subroutine setBiasOnTau(grid, iLambda)
     thisTheta = acos(uhat%z)
     thisPhi = atan2(uHat%y,uHat%x)
 
+    if (thisPhi < 0.d0) thisPhi = thisPhi + twoPi 
     iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
     iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
 
