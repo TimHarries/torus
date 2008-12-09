@@ -15798,7 +15798,6 @@ end function readparameterfrom2dmap
   end subroutine tauAlongPath
 
   subroutine tauAlongPath2(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)
-    use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     integer :: iLambda

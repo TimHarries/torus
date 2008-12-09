@@ -80,7 +80,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: imageSize
   real(double) :: fac
   real :: escProb
-  integer :: nTauObs
   real :: nuStart, nuEnd
   real(oct) :: t1, t2, t3
   logical :: hitcore
@@ -132,12 +131,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real, allocatable :: tauExt(:)
   real, allocatable :: tauAbs(:)
   real, allocatable :: tauSca(:)
-  real, allocatable :: tauExtObs(:)
-  real, allocatable :: tauAbsObs(:)
-  real, allocatable :: tauScaObs(:)
   real, allocatable :: linePhotonAlbedo(:)
   real, allocatable :: lambda(:)
-  real, allocatable :: lambdaObs(:)
 
   real, allocatable :: contTau(:,:)
 
@@ -234,9 +229,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real, dimension(:), allocatable :: tempRealArray2
   real(double), dimension(:), allocatable :: tempDoubleArray
   real(double), dimension(:), allocatable :: tempDoubleArray2
-  integer, dimension(:), allocatable :: photonBelongsRank
-  integer, parameter :: tag = 0
-  logical :: rankComplete
+!  integer, dimension(:), allocatable :: photonBelongsRank
+!  integer, parameter :: tag = 0
+!  logical :: rankComplete
 #endif
 
   ! O VI spectrum stuff
@@ -609,10 +604,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      allocate(tauExt(1:maxTau))
      allocate(tauAbs(1:maxTau))
      allocate(tauSca(1:maxTau))
-     allocate(lambdaObs(1:maxTau))
-     allocate(tauExtObs(1:maxTau))
-     allocate(tauAbsObs(1:maxTau))
-     allocate(tauScaObs(1:maxTau))
      allocate(linePhotonalbedo(1:maxTau))
      if (grid%lineEmission) allocate(contTau(1:maxTau,1:nLambda))
      allocate(contWeightArray(1:nLambda))
@@ -1001,10 +992,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         deallocate(tauSca)
         deallocate(tauExt)
         deallocate(tauAbs)
-        deallocate(lambdaObs)
-        deallocate(tauScaObs)
-        deallocate(tauExtObs)
-        deallocate(tauAbsObs)
         if (allocated(contTau)) deallocate(contTau)
         deallocate(linePhotonAlbedo)
         deallocate(contWeightArray)
@@ -1401,9 +1388,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PRIVATE(nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray) &
 !$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
-!$OMP PRIVATE(lambdaObs, tauExtObs, tauAbsObs, tauScaObs, photonfromEnvelope, sourceOctal, nFromEnv) &
+!$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
-!$OMP PRIVATE(testPhoton, nTauObs, dtau, currentOctal, currentSubcell) &
+!$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP SHARED(doTuning, iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
 !$OMP SHARED(grid) &
 !$OMP SHARED(meanr_Cont, meanr_line, ntot) &
@@ -1441,10 +1428,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
            allocate(tauSca(1:maxTau))
-           allocate(lambdaObs(1:maxTau))
-           allocate(tauExtObs(1:maxTau))
-           allocate(tauAbsObs(1:maxTau))
-           allocate(tauScaObs(1:maxTau))
            allocate(linePhotonalbedo(1:maxTau))
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
@@ -2475,10 +2458,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            deallocate(tauSca)
            deallocate(tauExt)
            deallocate(tauAbs)
-           deallocate(lambdaObs)
-           deallocate(tauScaObs)
-           deallocate(tauExtObs)
-           deallocate(tauAbsObs)
            deallocate(linePhotonalbedo)
            deallocate(contTau)
            deallocate(contWeightArray)
