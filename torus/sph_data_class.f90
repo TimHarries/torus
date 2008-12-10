@@ -79,10 +79,13 @@ module sph_data_class
      real(double), pointer, dimension(:) :: discmass   ! in [g]
      real(double), pointer, dimension(:) :: spinx, spiny, spinz
           
+     ! Does the temperature of the SPH particles get used?
+     logical :: useSphTem 
+
   end type sph_data
 
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), oneoverHcubed(:), &
-                               RhoArray(:), VelocityArray(:,:), MassArray(:), Harray(:)
+                               RhoArray(:), TemArray(:), VelocityArray(:,:), MassArray(:), Harray(:)
   type(sph_data), save :: sphdata
   integer :: npart
   real(double), allocatable, save :: partArray(:)
@@ -115,6 +118,9 @@ contains
 
     ! Indicate that this object is in use
     sphdata%inUse = .true.
+
+! Do not use temperature from SPH particles to initialise temperature grid
+    sphData%useSphTem = .false. 
 
     ! save these values in this object
     sphdata%udist = udist
@@ -189,6 +195,9 @@ contains
     ! Indicate that this object is in use
     sphData%inUse = .true.
 
+! Use temperature from SPH particles to initialise temperature grid
+    sphData%useSphTem = .true. 
+
     ! save these values in this object
     sphData%udist = udist
     sphData%umass = umass
@@ -232,14 +241,13 @@ contains
              write (*,*) 'Error: iiigas>npart',iiigas, npart
              cycle
           endif
-          sphData%rhon(iiigas) = b_rho(iii)
-          sphData%hn(iiigas)   = b_xyzmh(5,iii)
+          sphData%rhon(iiigas)        = b_rho(iii)
+          sphData%temperature(iiigas) = b_temp(iii)
           sphData%xn(iiigas)          = b_xyzmh(1,iii)
           sphData%yn(iiigas)          = b_xyzmh(2,iii)
           sphData%zn(iiigas)          = b_xyzmh(3,iii)
           sphData%gasmass(iiigas)     = b_xyzmh(4,iii)
-! b_temp contains gas particle data only
-          sphData%temperature(iiigas) = b_temp(iiigas)
+          sphData%hn(iiigas)          = b_xyzmh(5,iii)
 
        elseif (b_iphase(iii) > 0) then
           iiipart=iiipart+1
@@ -1074,6 +1082,7 @@ contains
 
        allocate(PositionArray(npart,3)) ! allocate memory
        allocate(RhoArray(npart))
+       allocate(TemArray(npart))
        allocate(MassArray(npart))
        allocate(Harray(npart))
        allocate(ind(npart))
@@ -1120,6 +1129,7 @@ contains
        end if
 
        RhoArray(:) = sphdata%rhon(ind(:)) * codeDensitytoTORUS
+       TemArray(:) = sphdata%temperature(ind(:))
 
        MassArray(:) = sphdata%gasmass(ind(:)) * umass! in case of unequal mass
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
@@ -1157,7 +1167,9 @@ contains
     endif
 
     if(done) then
-       deallocate(PositionArray, MassArray, harray, RhoArray, ind)
+       deallocate(PositionArray, MassArray, harray, RhoArray, TemArray, ind)
+       deallocate(OneOverHsquared, OneOverHcubed)
+       deallocate(partarray, indexarray)
        if (allocated(VelocityArray)) deallocate (VelocityArray)
        firsttime = .true.
        return
@@ -1173,7 +1185,7 @@ contains
        if(sumweight .le. 0.d0) notfound = .true.
     endif
 
-    paramvalue = 0.d0
+    paramvalue(:) = 0.d0
 
     if(.not. notfound) then
        if(sumweight .gt. 0.3d0) then
@@ -1194,6 +1206,7 @@ contains
        elseif(param .eq. 2) then
 
           do i = 1, nparticles
+             paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
              if(present(rhomin)) then ! have to have rhomax with rhomin !!!
                 RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
@@ -1201,7 +1214,7 @@ contains
              endif
           enddo
           
-          Clusterparameter = VECTOR(paramValue(4) * fac, 0.d0, 0.d0) ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, 0.d0)  ! density ! stays as vector for moment
        endif
     else
        if(param .eq. 1) then
@@ -1213,6 +1226,7 @@ contains
           endif
 
           do i = 1, nparticles
+             paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
              if(present(rhomin)) then ! have to have rhomax with rhomin !!!
                 RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
@@ -1221,7 +1235,7 @@ contains
           enddo
 
           paramvalue(4) = max(1d-60, paramvalue(4))
-          Clusterparameter = VECTOR(paramValue(4), 0.d0, 0.d0) ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(paramValue(4), paramValue(3), 0.d0) ! density ! stays as vector for moment
        endif
     endif
 

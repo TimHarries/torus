@@ -15,7 +15,7 @@ module cluster_class
   use vector_mod
   use math_mod2
   use constants_mod, only: mSol, secsToYears
-  use input_variables, only: rCore
+  use input_variables, only: rCore, tMinGlobal
   
   implicit none
 
@@ -328,7 +328,11 @@ contains
     thisOctal%etaCont(subcell) = 1.e-30
 
     thisOctal%rho(subcell) = clusterparam%x
-    thisOctal%temperature(subcell) = max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
+    if ( sphData%useSphTem ) then 
+       thisOctal%temperature(subcell) =  max(clusterparam%y, tMinGlobal)
+    else
+       thisOctal%temperature(subcell) =  max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
+    end if
     if ( associated(thisOctal%nh2) ) thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
 
 ! Velocities are not required for all configurations so check if they are required

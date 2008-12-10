@@ -18,10 +18,11 @@ module torus_mod
 
 contains
 
-  subroutine torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
-                   b_xyzmh, b_rho,         b_iphase,                        &
-                   b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
-                   temp_min, b_totalgasmass, file_tag )
+  subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas, &
+                   b_xyzmh, b_rho,         b_iphase,              &
+                   b_udist, b_umass,       b_utime,               &
+                   b_time,  b_temp,        temp_min,              &
+                   b_totalgasmass,         file_tag               )
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -130,13 +131,13 @@ contains
 
 ! Variables used when linking to sph code
   type(isochrone)       :: isochrone_data
-  integer, intent(in)   :: b_idim,b_npart,b_nactive,b_nptmass
+  integer, intent(in)   :: b_idim, b_npart, b_nptmass
   integer*1, intent(in) :: b_iphase(b_idim)
   real*8, intent(in)    :: b_xyzmh(5,b_idim)
   real*4, intent(in)    :: b_rho(b_idim)
   real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
-  real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
+  real*8, intent(inout) :: b_temp(b_idim)   ! Temperature of gas particles
   real*8, intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
   real(kind=8), intent(in)      :: temp_min
   character(len=11), intent(in) :: file_tag
@@ -159,7 +160,7 @@ contains
 
   call unixGetHostname(tempChar, tempInt) 
   print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
-  print *, 'Process ', myRankGlobal, 'b_npart=', b_npart, 'b_nactive=', b_nactive, &
+  print *, 'Process ', myRankGlobal, 'b_npart=', b_npart,  &
            'b_nptmass=', b_nptmass, 'b_num_gas=', b_num_gas
 
   !===============================================================================
@@ -408,7 +409,7 @@ contains
   filename = trim ( "torus_out_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
   if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
-  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp)
+  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
 
   if ( nInclination > 0 ) then
 
@@ -606,6 +607,7 @@ CONTAINS
     use constants_mod, only: mSol
 
     real(double) :: removedMass
+    TYPE(vector) :: someVector
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
@@ -672,6 +674,7 @@ CONTAINS
 
         !
         ! cleaning up unused memoryusing the routine in sph_data_class
+        somevector = Clusterparameter(amrGridCentre, isdone=.true.)
         call kill()
 
         if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
@@ -747,7 +750,7 @@ end module torus_mod
 !          Each process works on its own subset of the total number of particles.
 ! Author:  D. Acreman, November 2007
 
-  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp)
+  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
 
     USE vector_mod, only:     vector
     USE amr_mod, only:        amrGridValues
@@ -765,7 +768,7 @@ end module torus_mod
 #endif
 
 ! Arguments 
-    integer, intent(in)   :: b_idim, b_npart
+    integer, intent(in)   :: b_idim, b_npart, b_num_gas
     integer*1, intent(in) :: b_iphase(b_idim)
     real*8, intent(in)    :: b_xyzmh(5,b_idim)
     real*8, intent(inout) :: b_temp(b_idim)
@@ -800,11 +803,11 @@ end module torus_mod
              positionVec = VECTOR(xgas,ygas,zgas)
              call amrGridValues(grid%octreeRoot, positionVec, temperature=tgas, grid=grid)
 ! 2.2 Calculate statistics of temperature change
-             deltaT     = tgas - b_temp(iiigas)
+             deltaT     = tgas - b_temp(i)
              sum_deltaT = sum_deltaT + deltaT
              max_deltaT = MAX(max_deltaT, deltaT)
 ! 2.3 Update the gas particle temperature to pass back to sph code
-             b_temp(iiigas) = tgas
+             b_temp(i) = tgas
           endif
        enddo
 
