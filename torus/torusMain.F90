@@ -86,7 +86,6 @@ program torus
 
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
-  type(SOURCETYPE) a_star
   real :: inclination
   real(double) :: objectDistance
 
@@ -194,16 +193,12 @@ program torus
 
   ! adaptive grid stuff
 
-  type(VECTOR) :: amrGridCentre ! central coordinates of grid
-  type(VECTOR) :: octVec
   real :: ang
   real(double) :: kabs, eta
   integer :: nt
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
-  logical :: gridConverged           ! true when adaptive grid structure has 
-                                     !   been finalised
   real(double)           :: Ne         ! for testing
   real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
   integer                         :: level      ! for testing
@@ -216,10 +211,6 @@ program torus
 
   ! For romanova geometry case
   type(romanova) :: romData ! parameters and data for romanova geometry
-
-  !
-  ! SPH data of Matthew
-  !type(sph_data) :: sphData
 
   ! Used for multiple sources (when geometry=cluster)
   type(cluster)   :: young_cluster
@@ -370,7 +361,6 @@ program torus
   endif
 
 
-
   objectDistance = griddistance * pctocm
 
 
@@ -381,10 +371,6 @@ program torus
 
   grid%resonanceLine = resonanceLine
 
-
-  amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
-
-  !
 
   if (geometry.eq."raman") then
      hotSourcePosition = 0.75d0*secondSourcePosition
@@ -883,9 +869,6 @@ program torus
      endif
 #endif
 
-!     if (writeoutput) call  writeVtkFile(grid, "test.vtk", "rho")
-!     stop
-
   if (photoionization) then 
      call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
        lucyfileNameout, lucyfileNamein)
@@ -1119,6 +1102,7 @@ CONTAINS
 
   subroutine windtest
 
+    type(VECTOR) :: octVec
     integer, parameter :: nrGrid = 1000
     real :: rGrid(nrGrid)
     real,dimension(statEqMAxLevels) :: meanDepart ! for testing
@@ -1170,6 +1154,7 @@ CONTAINS
 
   subroutine testamr
 
+    type(VECTOR) :: octVec
     real :: meant, meaneta
     integer, parameter :: nrGrid = 1000
     real :: rGrid(nrGrid), drGrid(nrgrid)
@@ -1369,12 +1354,15 @@ CONTAINS
 
   subroutine amr_grid_setup
 
+    type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
     real(double) :: removedMass
     real         :: sigmaExt0
+    logical      :: gridConverged  ! true when adaptive grid structure has 
+                                   !   been finalised
+
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
-
     
 !    call readAMRgridFlexi("test.flexi",readFileFormatted,grid)
 !    call writeVtkFile(grid, "test.vtk")
@@ -1977,6 +1965,7 @@ end subroutine amr_grid_setup
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
 
+  type(SOURCETYPE) :: a_star
   integer      :: nstar
   real(double) :: d1, d2, massRatio
   real         :: tmp
