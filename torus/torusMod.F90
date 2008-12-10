@@ -213,9 +213,6 @@ contains
   contFluxFile = "none"
   intProFilename = "none"
 
-  inputKappaSca = 0.
-  inputKappaAbs = 0.
-
   lucyRadiativeEq = .false. ! this has to be initialized here
 
 ! Used to  set up output file names
@@ -419,7 +416,7 @@ contains
      objectDistance = griddistance * pctocm
      call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
           theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
-          starsurface, newContFluxFile, 0.0, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
+          starsurface, newContFluxFile, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
           0.0, 10000, flatspec, objectDistance, inclination, maxTau,                              &
           miePhase, nsource, source, blobs, nmumie, dTime)
 

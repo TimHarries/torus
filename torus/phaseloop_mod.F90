@@ -8,7 +8,7 @@ CONTAINS
 
 subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel,  &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
-     starsurface, newContFluxFile, sigmaExt0, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
+     starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, objectDistance, inclination, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime)
 
@@ -50,7 +50,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double) :: corecontinuumflux
   type(SURFACETYPE) :: starSurface
   type(romanova) :: romData ! parameters and data for romanova geometry
-  real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
+  real  :: sigmaAbs0, sigmaSca0  ! cross section at the line centre
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
   integer :: nvec
   type(VECTOR) :: distortionVec(nvec)

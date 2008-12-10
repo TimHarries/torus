@@ -1200,22 +1200,6 @@ contains
 
     !  endif
 
-
-
-    if (.not.(mie)) then
-       default = " "
-       call findReal("kappasca", inputKappaSca, cLine, nLines, ok)
-       if (ok) then
-          if (writeoutput) write(*,'(a,1pe12.4)') "Scattering cross-section: ",inputKappaSca
-       endif
-       default = " "
-       call findReal("kappaabs", inputKappaAbs, cLine, nLines, ok)
-       if (ok) then
-          if (writeoutput) write(*,'(a,1pe12.4)') "Absorption cross-section: ",inputKappaAbs
-       endif
-    endif
-
-
     call getLogical("secondsource", secondSource, cLine, nLines, &
          "Second source: ","(a,1l,a)", .false., ok, .false.)
 

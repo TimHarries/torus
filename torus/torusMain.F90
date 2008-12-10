@@ -112,7 +112,7 @@ program torus
   !  integer, parameter :: maxTau = 600000
 
   real :: scaleFac
-  real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
+  real :: sigmaAbs0, sigmaSca0  ! cross section at the line centre
 
   ! variables to do with dust
 
@@ -323,9 +323,6 @@ program torus
 
   contFluxFile = "none"
   intProFilename = "none"
-
-  inputKappaSca = 0.
-  inputKappaAbs = 0.
 
   lucyRadiativeEq = .false. ! this has to be initialized here
 
@@ -935,7 +932,7 @@ program torus
 
   call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
-     starsurface, newContFluxFile, sigmaExt0, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
+     starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, objectDistance, inclination, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime)
 
@@ -1374,6 +1371,7 @@ CONTAINS
 
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
     real(double) :: removedMass
+    real         :: sigmaExt0
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 

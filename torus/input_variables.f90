@@ -492,7 +492,6 @@ module input_variables
   !   The names are changed in inputs_mod, but keep the old labels so that the  
   !   input files don't have to be changed. 
   
-  real :: inputKappaSca, inputKappaAbs ! previously: 'kappaSca' and 'kappaAbs' 
   logical :: fillRayleighOpacity       ! previously: 'fillRayleigh'
   character(len=10) :: gridCoords      ! previously: 'gridtype'
   logical :: doPVimage                 ! previously: 'pvimage'
