@@ -45,7 +45,6 @@ program torus
   use input_variables         ! variables filled by inputs subroutine
   use lucy_mod
   use amr_mod
-  use jets_mod
   use dust_mod
   use source_mod
   use spectrum_mod
@@ -66,7 +65,6 @@ program torus
   use photoion_mod
   use photoionAMR_mod
   use formal_solutions
-  use starburst_mod
   use molecular_mod
   use modelatom_mod
   use cmf_mod
@@ -1964,7 +1962,7 @@ end subroutine amr_grid_setup
 
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
-
+  use starburst_mod, only: createsources
   type(SOURCETYPE) :: a_star
   integer      :: nstar
   real(double) :: d1, d2, massRatio
