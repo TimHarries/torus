@@ -18,11 +18,12 @@ module torus_mod
 
 contains
 
-  subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas, &
+  subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas, &  ! Required arguments
                    b_xyzmh, b_rho,         b_iphase,              &
                    b_udist, b_umass,       b_utime,               &
                    b_time,  b_temp,        temp_min,              &
-                   b_totalgasmass,         file_tag               )
+                   b_totalgasmass,         file_tag,              &
+                   fix_source_R, fix_source_L, fix_source_T)         ! optional arguments
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -141,6 +142,12 @@ contains
   real*8, intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
   real(kind=8), intent(in)      :: temp_min
   character(len=11), intent(in) :: file_tag
+
+! optional arguments to use when fixing source properties
+  real*8, optional :: fix_source_R  ! source radius
+  real*8, optional :: fix_source_L  ! source luminosity
+  real*8, optional :: fix_source_T  ! source temperature
+
   character(len=11), save       :: prev_file_tag="none"
   integer, save :: num_calls = 0
   character(len=4) :: char_num_calls
@@ -298,14 +305,28 @@ contains
   ! Writing basic info of this data
   if (myRankIsZero) call info("info_sph_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
 
-  ! reading in the isochrone data needed to build an cluster object.
-  call new(isochrone_data, "dam98_0225")   
-  call read_isochrone_data(isochrone_data)
+  if ( present( fix_source_T ) ) then 
+
+     call new(young_cluster, dble(amrGridSize), disc_on)
+
+     write(message,*) "Calling build_cluster with fixed parameters "
+     call writeInfo(message, TRIVIAL)
+
+     call build_cluster(young_cluster, dble(lamstart), dble(lamend), fix_source_R=fix_source_R, fix_source_L=fix_source_L, &
+          fix_source_T=fix_source_T )
+
+  else
      
-  ! making a cluster object
-  call new(young_cluster, dble(amrGridSize), disc_on)
-  call build_cluster(young_cluster, dble(lamstart), dble(lamend), isochrone_data)
+     ! reading in the isochrone data needed to build an cluster object.
+     call new(isochrone_data, "dam98_0225")   
+     call read_isochrone_data(isochrone_data)
+     
+     ! making a cluster object
+     call new(young_cluster, dble(amrGridSize), disc_on)
+     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data )
     
+  end if
+
   ! Wrting the stellar catalog readble for a human
   filename="catalogue_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat"
   if (myRankIsZero) call write_catalog(young_cluster, trim(filename) )

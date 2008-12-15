@@ -216,15 +216,21 @@ contains
   ! Creates a cluster fully by assiging T, R, L and so on to each star
   ! 
 
-  subroutine build_cluster(this, lambda_beg, lambda_end, iso_data)
+  subroutine build_cluster(this, lambda_beg, lambda_end, iso_data, fix_source_R, fix_source_L, fix_source_T)
+    USE parallel_mod, ONLY: torus_abort
     implicit none
     type(cluster), intent(inout) :: this
 !    type(sph_data), intent(in) :: sphData
     ! starting and the ending wavelength in Angstrome!
     real(double), intent(in) :: lambda_beg, lambda_end 
     !
-    ! isochrone data to assign R, L, & T os stars
-    type(isochrone), intent(in) :: iso_data  
+    ! isochrone data to assign R, L, & T to stars
+    type(isochrone), intent(in), optional :: iso_data  
+
+    ! Use fixed values as an alternative to isochrone data.
+    real(kind=8), optional, intent(in) :: fix_source_R ! Solar radii
+    real(kind=8), optional, intent(in) :: fix_source_L ! L_sun
+    real(kind=8), optional, intent(in) :: fix_source_T ! Kelvin
     
     !
     integer :: i, n
@@ -247,14 +253,40 @@ contains
        ! preparing the spectrum
        !
 
-       mass = get_pt_mass(i)*get_umass() ! [g]
-       ! converting it to solar masses
-       mass = mass/mSol ! [M_sun]
+      if ( present(iso_data) ) then
 
-       ! finding the corresponding radius and the surface temperature of
-       ! this star.
-       ! -- using a routine in isochrone_class
-       call  mass_age_to_temp_rad_lum(iso_data, mass, age, temperature, radius, luminosity)
+         mass = get_pt_mass(i)*get_umass() ! [g]
+         ! converting it to solar masses
+         mass = mass/mSol ! [M_sun]
+
+          ! finding the corresponding radius and the surface temperature of
+          ! this star.
+          ! -- using a routine in isochrone_class
+          call  mass_age_to_temp_rad_lum(iso_data, mass, age, temperature, radius, luminosity)
+
+       else
+
+          ! Use fixed source properties
+          if ( present(fix_source_R) ) then
+             radius = fix_source_R * rSol * 1.0e-10 ! In torus length units
+          else
+             call torus_abort("build_cluster: neither fix_source_R nor iso_data is present")
+          end if
+
+          if ( present(fix_source_L ) ) then
+             luminosity = fix_source_L * lSol
+          else
+             call torus_abort("build_cluster: neither fix_source_L nor iso_data is present")          
+          end if
+
+          if ( present(fix_source_T ) ) then
+             temperature = fix_source_T
+          else
+             call torus_abort("build_cluster: neither fix_source_T nor iso_data is present")
+          end if
+
+       end if
+
 
        ! position of this star
        call get_position_pt_mass(i, x, y, z)
