@@ -449,7 +449,7 @@ program torus
      
      ! making a cluster object
      call new(young_cluster, dble(amrGridSize), disc_on)
-     call build_cluster(young_cluster, dble(lamstart), dble(lamend), isochrone_data)
+     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data)
     
      ! Wrting the stellar catalog readble for a human
      if (myRankIsZero) call write_catalog(young_cluster)
@@ -476,7 +476,7 @@ program torus
 
      call new(young_cluster, dble(amrGridSize), disc_on)
 
-     call build_cluster(young_cluster, dble(lamstart), dble(lamend), isochrone_data)
+     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data)
 
      ! Wrting the stellar catalog readble for a human
      if (myRankIsZero) call write_catalog(young_cluster)
