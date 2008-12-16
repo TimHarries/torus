@@ -2128,9 +2128,6 @@ endif
     call getReal("rinner", rInner, cLine, nLines, &
          "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
 
-    call getReal("rsub", rSublimation, cLine, nLines, &
-         "Dust sublimation radius (stellar radii): ","(a,f5.1,a)", 12., ok, .false.)
-
     call getReal("router", rOuter, cLine, nLines, &
          "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
 
@@ -2169,7 +2166,6 @@ endif
    rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
 
    rInner = rInner * autocm / 1.e10
-   rSublimation = rSublimation * rCore
    rOuter = rOuter * autoCm / 1.e10
    height = height * autoCm / 1.e10
    mCore = mCore * mSol
@@ -2421,7 +2417,6 @@ endif
 
    rCore = rCore * rSol / 1.e10
    rInner = rInner * rCore
-   rSublimation = rSublimation * rCore
    rOuter = rOuter * autoCm / 1.e10
    height = height * autoCm / 1.e10
    mCore = mCore * mSol

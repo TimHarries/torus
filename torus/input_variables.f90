@@ -222,7 +222,6 @@ module input_variables
   real :: radius, kfac, xfac
   real :: contrast
   real :: rCore, rInner
-  real :: rSublimation
   real :: rTorus, rOuter
   real :: rho, rho0
   real :: scale, rscale
