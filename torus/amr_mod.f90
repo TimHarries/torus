@@ -13,7 +13,7 @@ MODULE amr_mod
   USE luc_cir3d_class 
   USE cmfgen_class
   USE constants_mod, only: cSpeed, pi
-  USE sph_data_class
+  USE sph_data_class, only: sphData 
   USE cluster_class
   USE density_mod
   USE wr104_mod
@@ -27,7 +27,6 @@ MODULE amr_mod
   USE mpi_global_mod
   USE parallel_mod, ONLY: torus_abort
 
-  USE sph_data_class
 
   IMPLICIT NONE
 
@@ -4405,7 +4404,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr , maxdepthamr
     use input_variables, only: planetgap, heightSplitFac
     IMPLICIT NONE
-!    include 'mpif.h'
+
     TYPE(octal), intent(inout) :: thisOctal
 
 !    TYPE(octal), POINTER       :: thisOctal
@@ -4413,7 +4412,6 @@ IF ( .NOT. gridConverged ) RETURN
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
-!    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
