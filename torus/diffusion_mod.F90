@@ -687,7 +687,7 @@ end subroutine gaussSeidelSweep
     real(double) :: deMax
     integer :: niter
     integer, parameter :: maxIter = 10000
-    logical, save :: firstTime = .true.
+!    logical, save :: firstTime = .true.
 
     call seteDens(grid, grid%octreeRoot)
     call setDiffusionCoeff(grid, grid%octreeRoot)
@@ -1081,7 +1081,7 @@ subroutine setDiffOnTau(grid)
     real(double) :: tau, thisTau
   type(VECTOR) :: rVec, direction
   integer :: i
-    integer :: subcell, ntau
+    integer :: subcell
     integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
@@ -1175,7 +1175,6 @@ subroutine setDiffOnTau(grid)
                 thisOctal%diffusionApprox(subcell) = .false.
              else
                 tau = 1.d30
-                ntau = 20
                 
                 if (cylindrical) then
                    ndir = 4

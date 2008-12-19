@@ -135,11 +135,7 @@ contains
     real(double) :: t1, t2, t3                   
     integer :: i, j, i1, i2, i3          ! counters
     integer ::   nTimes = 100000    ! the number of time segments
-    real :: dTime, thisdTime, timeScale, vel
-
-    ! the time increment
-
-    dTime = (timeEnd - timeStart) / real(nTimes)
+    real :: thisdTime, timeScale, vel
 
     ! loop over all blobs
 

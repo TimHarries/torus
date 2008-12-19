@@ -24,7 +24,6 @@ contains
     integer :: errNo, i
     logical :: ok
     character(len=80) :: cLine(200) 
-    character(len=10) :: default
 
     character(len=20) :: grainTypeLabel, aminLabel, aMaxLabel, a0label
     character(len=20) :: qdistlabel, pdistlabel, grainFracLabel
@@ -1044,7 +1043,6 @@ contains
 
     if (.not. ok) then
        mie = .true.
-       default = " (default)"
        if (writeoutput) write(*,*) "Error:: mie and iso_scatter must be defined in your parameter file."
        stop
     endif
@@ -2995,12 +2993,11 @@ end subroutine getBigInteger
   character(len=*) :: message, cformat
   character(len=10) :: default
   logical :: rdef
-  character(len=6) :: trueOrFalse, tmp
+  character(len=6) :: trueOrFalse
   logical :: ok, thisIsDefault
   ok = .true.
   default = " "
   thisIsDefault = .false.
-  tmp = cformat(1:6)
   call findLogical(name, rval, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then

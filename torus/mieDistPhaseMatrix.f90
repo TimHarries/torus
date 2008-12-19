@@ -503,7 +503,7 @@ contains
       type(PHASEMATRIX) :: mieMatrix
 !      real :: normFac, dMu
       real :: cosTheta
-      integer :: nMu = 20
+!      integer :: nMu = 20
       real :: aMin, aMax, a0, qDist, pDist, lambda, aFac
       integer :: nDist
       real ::  x, cmr, cmi,  t, theta, costh, rn, p1, p2

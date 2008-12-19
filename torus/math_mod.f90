@@ -344,7 +344,6 @@ contains
    
     real(double)            :: t1, t2, t3             ! multipliers
     type(VECTOR)    :: position1, position2, position_tmp
-    type(VECTOR)    :: rHat
     real(double)            :: r, theta, phi      ! spherical polar coords
     integer         :: j1, j2, j3             ! indices
     real, parameter :: h = 1.                 ! factor
@@ -375,14 +374,6 @@ contains
        dr = h * min(dr, real(r)*dtheta)
     endif
 
-
-
-    if (modulus(position) /= 0.) then
-       rHat = position/modulus(position)
-    else
-       rHat = direction
-       
-    endif
 
     j1=i1
     j2=i2
@@ -1327,7 +1318,6 @@ stop
 
   type(VECTOR) function thermalHydrogenVelocity(temperature)
     real :: temperature
-    !type(VECTOR) :: rHat
     !real :: vel
     !real :: sigmaVel
  

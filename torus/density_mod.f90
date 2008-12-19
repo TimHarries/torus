@@ -355,7 +355,7 @@ contains
     logical, optional, intent(in) :: ignoreDisk
     TYPE(VECTOR) :: starPosn
     TYPE(VECTOR) :: pointVec
-    real :: r, rM, theta, y
+    real :: r, rM, theta
     real :: Rstart
     !real :: Rend, thetaDisk
     real :: timeFlowStart, timeInFlow
@@ -383,7 +383,6 @@ contains
         rM = huge(rM)
       end if
       
-      y = SIN(theta)**2 
 
       !radius = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
       !radius = min(0.999,radius) ! to correct numerical errors
@@ -745,11 +744,9 @@ contains
     use input_variables
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
-    real :: r, mu, mu_0, muCavity, rhoEnv, r_c, rhoCavity
+    real :: r, mu, mu_0, rhoEnv, r_c
     real :: h, rhoDisc, alpha
     real(double) :: fac, theta
-
-    muCavity = cos(cavAngle/2.)
 
     r = modulus(point)*1.e10
 
@@ -759,7 +756,6 @@ contains
     alpha = 2.25
     beta = 1.25
 
-    rhoCavity = cavDens
     rhoEnv = 1.d-30
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
@@ -865,7 +861,6 @@ contains
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
-    real(double) :: kspiral
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
@@ -913,8 +908,6 @@ contains
     do i = 1, nspiral1
        phase(i)=twoPi*real(i-1)/real(nSpiral1)
     enddo
-
-    kspiral = grid%rOuter/Pi
 
 
     rhoOut = tiny(rhoOut)

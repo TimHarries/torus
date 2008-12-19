@@ -135,7 +135,6 @@ program torus
   ! vectors
 
   type(VECTOR) :: outVec, originalViewVec
-  type(VECTOR) :: rVec 
 
   ! output arrays
 
@@ -1105,6 +1104,7 @@ CONTAINS
     real :: rGrid(nrGrid)
     real,dimension(statEqMAxLevels) :: meanDepart ! for testing
     real :: treal
+!    type(VECTOR) :: rVec 
 
     do i = 1, 1000
        r = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i-1)/999.
@@ -1120,7 +1120,7 @@ CONTAINS
        meanDepart = 0.
        nt = 0
        outVec = VECTOR(1., 0., 0.)
-       rVec = dble(rGrid(i)) * outVec 
+!       rVec = dble(rGrid(i)) * outVec 
        r = rgrid(i)
 !       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
 !            rVec, outVec, grid, lambda, &
@@ -1157,6 +1157,7 @@ CONTAINS
     integer, parameter :: nrGrid = 1000
     real :: rGrid(nrGrid), drGrid(nrgrid)
     real :: treal
+!    type(VECTOR) :: rVec 
 
     do i = 1, 1000
        meant = 0.
@@ -1178,7 +1179,7 @@ CONTAINS
        meaneta =0.
        nt = 0
        outVec = VECTOR(1., 0., 0.)
-       rVec = dble(rGrid(i)) * outVec 
+ !      rVec = dble(rGrid(i)) * outVec 
        r = rgrid(i)
 !       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
 !            rVec, outVec, grid, lambda, &

@@ -382,7 +382,7 @@ contains
     type(romanova), intent(in)    :: this
     TYPE(VECTOR), INTENT(IN) :: point
     type(vector) :: v, rot
-    real :: Vrot, w
+    real :: Vrot
     real, parameter :: pi=3.14159265
 
     ! Point in spherical coordinates
@@ -410,7 +410,6 @@ contains
        ! the frame of rotating star. 
        Vrot = 2.0*PI*REAL(this%Rs)*1.0e10/REAL(this%Period)  ! [cm/s]
        call get_spherical_coordinates(point, r, phi, theta)
-       w = r*COS(theta)
        rot = VECTOR(-Vrot*SIN(phi), Vrot*COS(phi), 0.0)
 
        ! vector addition

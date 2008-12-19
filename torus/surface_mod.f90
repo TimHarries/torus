@@ -564,10 +564,8 @@ contains
     type(SURFACETYPE),intent(inout) :: surface
     real(double), optional :: luminosity
     integer :: iElement
-    real :: surfaceArea
     integer :: iNu
 
-    surfaceArea = fourPi * surface%radius**2. ! 1.e20 cm^2
 
     if (.not. associated(surface%totalPhotosphere)) &
       allocate(surface%totalPhotosphere(surface%nNuHotFlux))    
@@ -729,7 +727,6 @@ contains
     type(surfacetype), intent(in) :: thisSurface
     type(vector) :: position
     !
-    logical, save :: first_time = .true.
     integer :: i 
     real :: ip_max, ip
     real :: mp

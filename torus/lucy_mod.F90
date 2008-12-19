@@ -73,7 +73,6 @@ contains
     real(oct) :: t1, hrecip_kt
     real(oct) :: thisLam,wavelength
     integer :: iSource
-    integer :: nRemoved
     real :: Tthresh
     integer :: iLam
     integer(double) :: nInf
@@ -117,7 +116,7 @@ contains
     integer :: icritupper, icritlower
     real(double) :: logt
     real(double) :: logNu1, logNuN, dlogNu, scaleNu
-    real(double) :: loglam1, loglamN, dloglam, scalelam
+    real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
 
@@ -195,7 +194,6 @@ contains
 
     loglam1 = log(lamarray(1))
     loglamN = log(lamarray(nFreq))
-    dloglam = loglamN - loglam1
     scalelam  = dble(nLambda - 1) / dlogNu 
 
 
@@ -247,7 +245,6 @@ contains
 
 
     iIter_grand = 0
-    nRemoved = 1
     converged = .false.
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
@@ -1861,14 +1858,14 @@ contains
       thermalPhoton, startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, testVec
+   type(VECTOR) :: rVec,uHat, octVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
    logical :: scatteredPhoton, thermalPhoton
    integer :: foundSubcell
    integer :: endSubcell
-   integer :: subcell, isubcell, tempSubcell!, sourceSubcell
+   integer :: subcell, tempSubcell!, sourceSubcell
    logical :: directPhoton
    real(oct) :: tval, tau, r
    real :: lamArray(*)
@@ -1892,7 +1889,7 @@ contains
    integer, optional :: ilamIn
    real(double), optional :: kappaScaOut, kappaAbsOut
 
-   isubcell = 0; endSubcell = 0
+   endSubcell = 0
    stillinGrid = .true.
    escaped = .false.
    ok = .true.
@@ -1914,7 +1911,6 @@ contains
    tau = -log(1.0-r)
 
     octVec = rVec
-    thisOctVec = rVec
 
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  startOctal=startOctal, foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
@@ -2089,7 +2085,6 @@ contains
 
           sOctal => thisOctal
           oldOctal => thisOctal
-          thisOctVec = octVec
 
 ! calculate the distance to the next cell
 
@@ -2154,7 +2149,6 @@ contains
        if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
        if(present(kappaScaOut)) kappaScaOut = kappaScadb
 
-       thisOctVec = octVec
 
 
        if (thisOctal%diffusionApprox(subcell)) then
@@ -2196,7 +2190,6 @@ contains
 ! move the requisite distance within the cell and return. Reduce tval slightly to ensure
 ! event is within the grid if we are in the root octal.
        tVal = tVal - 2.0 * fudgeFac * grid%halfSmallestSubcell
-       testVec = rVec
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
 
