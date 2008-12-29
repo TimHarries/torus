@@ -647,7 +647,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             gridtype_mod.f90 getRefractiveIndex.f90 draineCrossSection.f90 \
             readTioCrossSection.f90 rayleighCrossSection.f90 \
             fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
-            intersectCube.f90 fillGridThomson.f90 cont_read.f90 \
+            fillGridThomson.f90 cont_read.f90 \
             getMeanMass.f90 input_variables.f90 amr_mod.f90 octal_mod.f90 \
             parameters_mod.f90 jets_mod.f90 \
             dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
