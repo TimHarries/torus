@@ -656,7 +656,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             linked_list_class.f90 timing.f90  isochrone_class.f90 \
             filter_set_class.f90 ostar_mod.f90  \
             cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
-            hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
+            hyd_col_coeff.f90 rotation_variables.f90 \
             flow_speed_variables.f90 clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \

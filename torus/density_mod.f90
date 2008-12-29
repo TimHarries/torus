@@ -559,17 +559,6 @@ contains
       TTauriVariableMdot = 1.e-25 
     end if
 
-  contains
-
-    real function discGetYfunction(y)
-    
-      USE functionVariables
-      
-      real, intent(in) :: y
-      
-      discGetYfunction = 3.*sqrt(y)*sqrt(1.-y)/sqrt(4.-3.*y) - zValue
-      
-    end function discGetYfunction
     
   end function TTauriVariableMdot
 
