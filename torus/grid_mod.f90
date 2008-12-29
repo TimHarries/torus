@@ -1791,8 +1791,8 @@ contains
     enddo
 
 
-    call fillGridTio(plezModel, kfac, scale)
-    call fillGridRayleigh(plezModel, kfac, scale)  
+    call fillGridTio(plezModel, scale)
+    call fillGridRayleigh(plezModel, scale)  
 
 
   end function plezModel
