@@ -745,7 +745,6 @@ contains
     use constants_mod
     use vector_mod
 !    use input_variables
-    use parameters_mod
 
     implicit none
     

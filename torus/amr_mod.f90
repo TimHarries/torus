@@ -8,7 +8,6 @@ MODULE amr_mod
   USE kind_mod            ! variable kind parameters    
   USE octal_mod           ! type definition for the grid elements
   USE gridtype_mod        ! type definition for the 3-d grid 
-  USE parameters_mod      ! parameters for specific geometries
   USE jets_mod            ! 
   USE luc_cir3d_class 
   USE cmfgen_class
@@ -6484,7 +6483,7 @@ IF ( .NOT. gridConverged ) RETURN
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
-    USE parameters_mod
+    USE parameters_mod, ONLY:  TTauriMinRho, TTauriMaxRho
     USE input_variables, ONLY: isoTherm, isoThermTemp
 
     IMPLICIT NONE
@@ -7432,7 +7431,6 @@ IF ( .NOT. gridConverged ) RETURN
     use constants_mod
     use vector_mod
     use input_variables
-    use parameters_mod
 
     implicit none
     
@@ -11420,7 +11418,6 @@ end function readparameterfrom2dmap
   SUBROUTINE calcWindTestValues(thisOctal,subcell,grid) 
     ! calculates some of the variables for a spherical wind flow
 
-    USE parameters_mod
     USE constants_mod
 
     IMPLICIT NONE
@@ -11484,8 +11481,6 @@ end function readparameterfrom2dmap
 
   
   TYPE(vector) FUNCTION windTestVelocity(point,grid)
-
-    USE parameters_mod
 
     IMPLICIT NONE
 

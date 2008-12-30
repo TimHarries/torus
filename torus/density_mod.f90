@@ -645,7 +645,6 @@ contains
 !    !   star with magnetospheric accretion
 !    !   see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 !
-!    use parameters_mod
 !    use input_variables, only: TTauriMstar, TTauriRstar, TTauriRinner, TTauriRouter
 !
 !    IMPLICIT NONE

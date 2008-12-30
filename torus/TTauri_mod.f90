@@ -15,7 +15,6 @@ module ttauri_mod
   use stateq_mod
   use math_mod
   use octal_mod
-  use parameters_mod
   use amr_mod
 
   implicit none
