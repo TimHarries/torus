@@ -43,18 +43,20 @@ program torus
   use discwind_class, only: discwind, new, add_discwind
   use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
   use photoion_mod, only: photoIonizationloop
-  use photoionAMR_mod, only: radiationhydro
   use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule
   use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
   use cmf_mod, only: atomLoop, calculateAtomSpectrum
   use vtk_mod, only: writeVtkfile
-  use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_global_mod, only: myRankGlobal
-  use mpi_amr_mod, only: setupAMRCOMMUNICATOR
   use parallel_mod, only: torus_mpi_barrier, torus_abort
   use gridio_mod, only: writeAMRgrid, readamrgrid
   use bitstring_mod, only: constructBitStrings
   use phaseloop_mod, only: do_phaseloop
+#ifdef MPI
+  use photoionAMR_mod, only: radiationhydro
+  use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
+  use mpi_amr_mod, only: setupAMRCOMMUNICATOR
+#endif
 
   implicit none
 #ifdef MPI
