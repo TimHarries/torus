@@ -204,7 +204,6 @@ module input_variables
   logical :: plotVelocity
   logical :: screened
   logical :: thinLine
-  logical :: inputOK
   logical :: VoigtProf
 
 

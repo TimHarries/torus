@@ -75,7 +75,6 @@ program torus
   use gridio_mod
   use bitstring_mod
   use phaseloop_mod, only: do_phaseloop
-  use benchmark_mod, only: check_benchmark_values
 
   implicit none
 #ifdef MPI
@@ -127,11 +126,6 @@ program torus
   real :: timeStart = 0.
   real :: dTime
 
-  ! filenames
-
-  character(len=80) :: filename, specFile
-  character(len=80) :: phasePopFilename
-
   ! vectors
 
   type(VECTOR) :: outVec, originalViewVec
@@ -139,8 +133,7 @@ program torus
   ! output arrays
 
   integer :: iLambda
-  real, allocatable :: xArray(:), tArray(:)
-  real :: testlam
+  real, allocatable :: xArray(:)
 
 
   ! model flags
@@ -188,17 +181,8 @@ program torus
   integer :: nVec
   type(VECTOR), allocatable :: distortionVec(:)
 
-  ! adaptive grid stuff
-
   real :: ang
-  real(double) :: kabs, eta
   integer :: nt
-  integer           :: nOctals       ! number of octals in grid
-  integer           :: nVoxels       ! number of unique voxels in grid
-                                     !   (i.e. the number of childless subcells)
-  real(double)           :: Ne         ! for testing
-  real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
-  integer                         :: level      ! for testing
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   real :: infallParticleMass         ! for T Tauri infall models
   logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
@@ -221,12 +205,8 @@ program torus
 
   type(isochrone)       :: isochrone_data
   type(modelatom), allocatable :: thisAtom(:)
-  type(STREAMTYPE) :: thisStream(2000), bigStream
-  integer :: nStreams
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
-
-!  real(double) :: tempArray(10)
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -277,8 +257,8 @@ program torus
   co%molecule = " "
   indexAtom = 0
   indexRBBTrans = 0; nRBBTrans = 0
-  kabs = 0.; laccretion = 0.; meanDustParticlemass = 0.
-  nStreams = 0; taccretion = 0.; saccretion  = 0.; vel = 0.
+  laccretion = 0.; meanDustParticlemass = 0.
+  taccretion = 0.; saccretion  = 0.; vel = 0.
   
 
   allocate(distortionVec(1:1))
@@ -319,7 +299,7 @@ program torus
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
-  if (.not.inputOK) goto 666
+
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
   nLambda = nLambdaInput
@@ -873,10 +853,6 @@ program torus
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
-! Check benchmark results against values read in from file
-! If the file does not exist then the routine will return cleanly
-  if (myRankIsZero .and. grid%geometry == 'benchmark') call check_benchmark_values(grid, "part_out.dat")
-
   if (molecular) then
      if (writemol) call molecularLoop(grid, co)
      if(writeoutput) call writeinfo('Calculating Image', TRIVIAL)
@@ -942,7 +918,8 @@ CONTAINS
 
     real :: deltaLambda
     real :: loglamStart, logLamEnd
-
+    real, allocatable :: tArray(:)
+    real :: testlam
 
     if (allocated(xArray)) then
        deallocate(xArray)
@@ -1105,6 +1082,9 @@ CONTAINS
     real,dimension(statEqMAxLevels) :: meanDepart ! for testing
     real :: treal
 !    type(VECTOR) :: rVec 
+    real(double)  :: Ne         ! for testing
+    real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
+    integer                         :: level      ! for testing
 
     do i = 1, 1000
        r = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i-1)/999.
@@ -1158,6 +1138,9 @@ CONTAINS
     real :: rGrid(nrGrid), drGrid(nrgrid)
     real :: treal
 !    type(VECTOR) :: rVec 
+    real(double) :: kabs, eta
+
+    kabs = 0.
 
     do i = 1, 1000
        meant = 0.
@@ -1359,9 +1342,19 @@ CONTAINS
     real         :: sigmaExt0
     logical      :: gridConverged  ! true when adaptive grid structure has 
                                    !   been finalised
+    character(len=80) :: phasePopFilename
 
+    type(STREAMTYPE)  :: thisStream(2000), bigStream
+    integer           :: nStreams
+
+  ! adaptive grid stuff
+    integer           :: nOctals       ! number of octals in grid
+    integer           :: nVoxels       ! number of unique voxels in grid
+                                       ! (i.e. the number of childless subcells)
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
+
+    nStreams = 0
     
 !    call readAMRgridFlexi("test.flexi",readFileFormatted,grid)
 !    call writeVtkFile(grid, "test.vtk")
@@ -2323,6 +2316,8 @@ end subroutine set_up_sources
 
 subroutine do_lucyRadiativeEq
 
+  use benchmark_mod, only: check_benchmark_values
+
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
      call allocateMemoryForLucy(grid%octreeRoot)
@@ -2382,6 +2377,10 @@ subroutine do_lucyRadiativeEq
 
      call torus_mpi_barrier
 
+! Check benchmark results against values read in from file
+! If the file does not exist then the routine will return cleanly
+     if (myRankIsZero .and. grid%geometry == 'benchmark') call check_benchmark_values(grid, "part_out.dat")
+
 end subroutine do_lucyRadiativeEq
 
 !-----------------------------------------------------------------------------------------------------------------------
@@ -2429,6 +2428,8 @@ end subroutine set_emission_bias
 
 subroutine initialize_blobs
   
+  character(len=80) :: filename, specFile
+
   allocate(blobs(1:maxBlobs))
   if (freshBlobs) then
      do i = 1 , maxBlobs

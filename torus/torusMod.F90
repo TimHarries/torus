@@ -233,7 +233,6 @@ contains
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
-  if (.not.inputOK) goto 666
 
 ! check that the minimum temperature used in the SPH code matches that used in Torus
   if ( temp_min /= TminGlobal ) then

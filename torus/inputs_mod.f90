@@ -52,8 +52,6 @@ contains
     nBlobs = 0
     nLines = 0
 
-    inputOK = .true.
-
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
     write(*,*) absolutePath
     paramFile = trim(absolutePath)//"parameters.dat"
