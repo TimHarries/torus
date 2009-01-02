@@ -21,59 +21,39 @@
 ! TJH: 10/09/08 pgplot calls removed...
 program torus
 
-
-  use constants_mod          ! physical constants
-  use kind_mod               ! variable type KIND parameters
-  use vector_mod             ! vector math
-  use photon_mod             ! photon manipulation
-  use gridtype_mod           ! type definition for the 3-d grid
-  use grid_mod               ! opacity grid routines
-  use phasematrix_mod        ! phase matrices and stokes vectors
-  use math_mod               ! misc maths subroutines
-  use blob_mod               ! clumps initialization and movement
-  use distortion_mod         ! for distorting opacity grid
-  use image_mod              ! stokes image
-  use utils_mod
-  use stateq_mod
-  use inputs_mod
-  use TTauri_mod
-  use cmfgen_class
-  use romanova_class
-  use unix_mod
-  use path_integral
-  use puls_mod
-  use input_variables         ! variables filled by inputs subroutine
-  use lucy_mod
   use amr_mod
-  use dust_mod
-  use source_mod
-  use spectrum_mod
-  use wr104_mod
-  use sph_data_class
-  use cluster_class
-  use timing
-  use isochrone_class
-  use cluster_utils
-  use surface_mod
-  use disc_hydro_mod
-  use disc_class
-  use discwind_class
-  use jet_class
-  use gas_opacity_mod
-  use diffusion_mod
-  use messages_mod
-  use photoion_mod
-  use photoionAMR_mod
-  use formal_solutions
-  use molecular_mod
-  use modelatom_mod
-  use cmf_mod
-  use vtk_mod
-  use hydrodynamics_mod
-  use mpi_global_mod
-  use parallel_mod
-  use gridio_mod
-  use bitstring_mod
+  use input_variables         ! variables filled by inputs subroutine
+  use vector_mod, only: vector             ! vector math
+  use gridtype_mod, only: gridType         ! type definition for the 3-d grid
+  use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
+  use phasematrix_mod, only: phasematrix        ! phase matrices
+  use math_mod, only: thermalElectronVelocity ! misc maths subroutines
+  use blob_mod, only: blobType
+  use utils_mod, only: findIlambda
+  use inputs_mod, only: inputs
+  use TTauri_mod, only: infallenhancment, initInfallEnhancement 
+  use romanova_class, only: romanova
+  use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
+  use source_mod, only: sourceType 
+  use sph_data_class, only: read_sph_data, kill, sphdata
+  use cluster_class, only: cluster, n_stars_in_octal, get_a_star, build_cluster
+  use isochrone_class, only: isochrone
+  use surface_mod, only: surfaceType
+  use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
+  use discwind_class, only: discwind, new, add_discwind
+  use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
+  use photoion_mod, only: photoIonizationloop
+  use photoionAMR_mod, only: radiationhydro
+  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule
+  use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
+  use cmf_mod, only: atomLoop, calculateAtomSpectrum
+  use vtk_mod, only: writeVtkfile
+  use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
+  use mpi_global_mod, only: myRankGlobal
+  use mpi_amr_mod, only: setupAMRCOMMUNICATOR
+  use parallel_mod, only: torus_mpi_barrier, torus_abort
+  use gridio_mod, only: writeAMRgrid, readamrgrid
+  use bitstring_mod, only: constructBitStrings
   use phaseloop_mod, only: do_phaseloop
 
   implicit none
@@ -916,6 +896,8 @@ CONTAINS
 
   subroutine set_up_lambda_array
 
+    use photoion_mod, only: refineLambdaArray
+
     real :: deltaLambda
     real :: loglamStart, logLamEnd
     real, allocatable :: tArray(:)
@@ -1076,6 +1058,9 @@ CONTAINS
 
   subroutine windtest
 
+    use stateq_mod, only: BoltzSaha
+    use gridtype_mod, only: statEqMaxLevels 
+
     type(VECTOR) :: octVec
     integer, parameter :: nrGrid = 1000
     real :: rGrid(nrGrid)
@@ -1197,6 +1182,11 @@ CONTAINS
 
   subroutine fill_opacities_noamr( ok )
 
+    use puls_mod, only: fillGridPuls
+    use grid_mod
+    use TTauri_mod, only: fillGridFlaredDisk, fillgridmagneticaccretion, fillgridttauriwind
+    use stateq_mod, only: initgridstateq
+
     logical, intent(out) :: ok
 
          ! fill up the grid with the appropriate opacities
@@ -1307,6 +1297,9 @@ CONTAINS
 
   subroutine distort_noamr
 
+    use distortion_mod, only: distortgridspiral, distortgridtest, distortrotation, distortstrom, &
+         distortwindcollision, distortwrdisk
+
   ! the distortion types
 
      select case(distortionType)
@@ -1335,6 +1328,10 @@ CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------
 
   subroutine amr_grid_setup
+
+    use spectrum_mod, only: fillSpectrumBB
+    use stateq_mod, only: map_cmfgen_opacities, amrStateq, generateOpacitiesAMR
+    use dust_mod, only: filldustshakara, filldustuniform, filldustwhitney
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -1591,8 +1588,7 @@ CONTAINS
           if (doTuning) call tune(6, "Magstream grid construction.") ! stop a stopwatch
 
        case DEFAULT
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, &
-               young_cluster, nDustType, romData=romData)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -1956,7 +1952,11 @@ end subroutine amr_grid_setup
 
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
+
   use starburst_mod, only: createsources
+  use source_mod, only: source_within_octal, randomSource
+  use cluster_class, only: get_nstar
+
   type(SOURCETYPE) :: a_star
   integer      :: nstar
   real(double) :: d1, d2, massRatio
@@ -2317,6 +2317,9 @@ end subroutine set_up_sources
 subroutine do_lucyRadiativeEq
 
   use benchmark_mod, only: check_benchmark_values
+  use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy
+  use disc_hydro_mod, only: verticalHydrostatic
+  use cluster_utils, only: analyze_cluster
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
@@ -2428,6 +2431,8 @@ end subroutine set_emission_bias
 
 subroutine initialize_blobs
   
+  use blob_mod, only: addnewblobs, moveblobs, writeBlobs
+
   character(len=80) :: filename, specFile
 
   allocate(blobs(1:maxBlobs))
