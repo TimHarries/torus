@@ -3,9 +3,8 @@ module input_variables
   !   program by the inputs subroutine. they are all collected
   !   here so that they only need to be defined once.  nhs
 
-  use constants_mod
-  use vector_mod
-  use unix_mod
+  use kind_mod
+  use vector_mod, only: vector
   
   implicit none
 
