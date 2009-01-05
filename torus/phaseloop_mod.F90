@@ -9,7 +9,7 @@ CONTAINS
 subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel,  &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
-     infallParticleMass, maxBlobs, flatspec, objectDistance, inclination, maxTau, &
+     infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime)
 
   use kind_mod
@@ -56,8 +56,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR) :: distortionVec(nvec)
   real :: infallParticleMass         ! for T Tauri infall models
   integer, intent(in) :: maxBlobs
-  logical :: flatSpec
-  real(double) :: objectDistance
+  logical, intent(in) :: flatSpec
   real :: inclination
   integer, intent(in) :: maxTau
   type(PHASEMATRIX),pointer :: miePhase(:,:, :)
@@ -68,6 +67,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: dtime
 
 ! local variables 
+  real(double) :: objectDistance
   real :: problinephoton
   type(VECTOR) :: originalViewVec
   type(VECTOR) :: rotationAxis
@@ -267,6 +267,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   sourcesubcell = 0; spotPhoton = .false.
   startTime = 0
   call define_rotation_axis
+
+  objectDistance = griddistance * pctocm
 
   probLinePhoton = 1. - probContPhoton
 

@@ -37,7 +37,6 @@ program torus
   use source_mod, only: sourceType 
   use sph_data_class, only: read_sph_data, kill, sphdata
   use cluster_class, only: cluster, n_stars_in_octal, get_a_star, build_cluster
-  use isochrone_class, only: isochrone
   use surface_mod, only: surfaceType
   use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
   use discwind_class, only: discwind, new, add_discwind
@@ -48,7 +47,7 @@ program torus
   use cmf_mod, only: atomLoop, calculateAtomSpectrum
   use vtk_mod, only: writeVtkfile
   use mpi_global_mod, only: myRankGlobal
-  use parallel_mod, only: torus_mpi_barrier, torus_abort
+  use parallel_mod, only: torus_mpi_barrier
   use gridio_mod, only: writeAMRgrid, readamrgrid
   use bitstring_mod, only: constructBitStrings
   use phaseloop_mod, only: do_phaseloop
@@ -66,7 +65,6 @@ program torus
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
   real :: inclination
-  real(double) :: objectDistance
 
   ! variables for the grid
 
@@ -185,7 +183,6 @@ program torus
 ! molecular line stuff
   type(MOLECULETYPE) :: co
 
-  type(isochrone)       :: isochrone_data
   type(modelatom), allocatable :: thisAtom(:)
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
@@ -309,9 +306,6 @@ program torus
   endif
 
 
-  objectDistance = griddistance * pctocm
-
-
   grid%photoionization = photoionization
   ! time elipsed since the beginning of the model
   grid%timeNow = phaseTime * REAL(nStartPhase-1)
@@ -376,123 +370,16 @@ program torus
   originalViewVec%y = -sin(inclination)
   originalViewVec%z = -cos(inclination)
 
-  !=====================================================================
-  ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOULD BE HERE
-  !=====================================================================
-
-  !
-  ! Special case
-  !
-  if (geometry == "cluster") then
-
-     ! HSC
-     ! read in the sph data from a file
-     call read_sph_data(sphdata,"sph.dat")
-     call read_stellar_disc_data(sphdata,"stellar_disc.dat")
-
-        ! Writing basic info of this data
-     if (myRankIsZero) call info("info_sph.dat")
-
-     ! reading in the isochrone data needed to build an cluster object.
-     call new(isochrone_data, "dam98_0225")   
-     call read_isochrone_data(isochrone_data)
-     
-     ! making a cluster object
-     call new(young_cluster, dble(amrGridSize), disc_on)
-     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data)
-    
-     ! Wrting the stellar catalog readble for a human
-     if (myRankIsZero) call write_catalog(young_cluster)
-
-      ! Finding the inclinations of discs seen from +z directions...
-     if (myRankIsZero) call find_inclinations(0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
-
-  elseif (geometry .eq. "molcluster" .and. .not. readmol) then
-
-     ! read in the sph data from a file
-
-     call new_read_sph_data("newsph.dat.ascii")
-
-!     call read_stellar_disc_data(sphData, "stellar_disc.dat")
-
-     ! Writing basic info of this data
-     if (myRankIsZero) call info("info_sph.dat")
-
-!     ! reading in the isochrone data needed to build an cluster object.
-     call new(isochrone_data, "dam98_0225")   
-     call read_isochrone_data(isochrone_data)
-     
-     ! making a cluster object
-
-     call new(young_cluster, dble(amrGridSize), disc_on)
-
-     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data)
-
-     ! Wrting the stellar catalog readble for a human
-     if (myRankIsZero) call write_catalog(young_cluster)
-
-      ! Finding the inclinations of discs seen from +z directions...
-!     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
-
-  elseif (geometry == "wr104") then
-     if (.not.(readPops.or.readlucy)) then
-        call readWR104Particles("harries_wr104.txt",sphdata , objectDistance)
-        call info("*")
-     endif
-
-  elseif (geometry == "ttauri".or.(geometry == "magstream")) then
-     onekappa=.false.
-     if (ttau_disc_on)  &
-          call new(ttauri_disc, dble(TTauriDiskRin*TTauriRstar/1.0e10), 1.5d3*100.d0, &
-          dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
-     if (ttau_discwind_on) &
-          call new(ttauri_discwind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
-          DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, &
-          dble(TTauriMstar/mSol),  dble(TTauriDiskHeight/1.0e10) )
-     if (ttau_jet_on) &
-!          call new(ttauri_jet,  dble(TTauriRouter/1.0e10), dble(amrgridsize), &
-          call new(ttauri_jet,  JET_Rmin, dble(amrgridsize), &
-          JET_theta_j, dble(TTauriMstar/mSol), JET_Mdot, JET_a_param, JET_b_param,  &
-          JET_Vbase, JET_Vinf, JET_beta, JET_gamma, limitscalar2, JET_T)
-
-  elseif (geometry == "luc_cir3d") then
-     onekappa=.false.
-     !                    Rmin [10^10cm]         
-     call new(CIR_Rstar*Rsol*1.0e-10, CIR_Twind, CIR_Mdot_scale,  &
-     "zeus_rgrid.dat", "zeus_rho_vel.dat")     
-
-  elseif (geometry == "cmfgen") then
-     onekappa=.false.
-     call read_cmfgen_data("OPACITY_DATA")
-     call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
-     call put_cmfgen_Rmax(dble(amrGridSize)/2.0d0)  ! in [10^10cm]
-
-  elseif (geometry == "romanova") then
-     onekappa=.false.
-     ! create the romanova data object and readin the data at the same time.
-     ! After this call, the obejct will be ready to use. 
-     call new(romData, ROM_Rs*DBLE(Rsol)*1.0d-10, 70.0d0, &
-          ROM_Mass*DBLE(Msol), ROM_isoT, ROM_T_flow, ROM_r_ref, &
-          ROM_rho_ref, ROM_T_ref, ROM_v_ref, ROM_tilt, ROM_period, ROM_datafile)
-
-     ! this is a temporary solution... It should be called something 
-     ! else .
-     TTauriRouter = REAL(get_dble_parameter(romData, "Rmax")*1.0d10)           
-
-  end if
-  !==========================================================================
-  !==========================================================================
-
-
-
+! Carry out geometry specific initialisation before setting up the AMR grid. 
+! Applies to: cluster, molcluster, wr104, ttauri, magstream, luc_cir3d, cmfgen, romanova.
+  call pre_initAMRGrid
 
   ! allocate the grid - this might crash out through memory problems
 
   if (gridUsesAMR) then
      ! any AMR allocation stuff goes here
-     call initAMRGrid(greyContinuum, &
-                        newContFluxFile,flatspec,grid,ok,theta1,theta2)
-        if (.not.ok) goto 666
+     call initAMRGrid(greyContinuum, newContFluxFile,flatspec,grid,ok,theta1,theta2)
+     if (.not.ok) goto 666
 
   else
      if (gridcoords /= "polar") then
@@ -523,7 +410,6 @@ program torus
 
   grid%resonanceLine = resonanceLine
   grid%lambda2 = lamline
-
 
   grid%doRaman = doRaman
 
@@ -860,7 +746,7 @@ program torus
   call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
-     infallParticleMass, maxBlobs, flatspec, objectDistance, inclination, maxTau, &
+     infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime)
 
 ! Tidy up and finish the run 
@@ -883,6 +769,120 @@ call MPI_FINALIZE(ierr)
 #endif
 
 CONTAINS
+!-----------------------------------------------------------------------------------------------------------------------
+
+  subroutine pre_initAMRGrid
+
+    use isochrone_class, only: isochrone
+
+    type(isochrone) :: isochrone_data
+    real(double)    :: objectDistance
+
+  !=====================================================================
+  ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOULD BE HERE
+  !=====================================================================
+
+  if (geometry == "cluster") then
+
+     ! HSC
+     ! read in the sph data from a file
+     call read_sph_data(sphdata,"sph.dat")
+     call read_stellar_disc_data(sphdata,"stellar_disc.dat")
+
+        ! Writing basic info of this data
+     if (myRankIsZero) call info("info_sph.dat")
+
+     ! reading in the isochrone data needed to build an cluster object.
+     call new(isochrone_data, "dam98_0225")   
+     call read_isochrone_data(isochrone_data)
+     
+     ! making a cluster object
+     call new(young_cluster, dble(amrGridSize), disc_on)
+     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data)
+    
+     ! Wrting the stellar catalog readble for a human
+     if (myRankIsZero) call write_catalog(young_cluster)
+
+      ! Finding the inclinations of discs seen from +z directions...
+     if (myRankIsZero) call find_inclinations(0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
+
+  elseif (geometry .eq. "molcluster" .and. .not. readmol) then
+
+     ! read in the sph data from a file
+
+     call new_read_sph_data("newsph.dat.ascii")
+
+!     call read_stellar_disc_data(sphData, "stellar_disc.dat")
+
+     ! Writing basic info of this data
+     if (myRankIsZero) call info("info_sph.dat")
+
+!     ! reading in the isochrone data needed to build an cluster object.
+     call new(isochrone_data, "dam98_0225")   
+     call read_isochrone_data(isochrone_data)
+     
+     ! making a cluster object
+
+     call new(young_cluster, dble(amrGridSize), disc_on)
+
+     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data)
+
+     ! Wrting the stellar catalog readble for a human
+     if (myRankIsZero) call write_catalog(young_cluster)
+
+      ! Finding the inclinations of discs seen from +z directions...
+!     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
+
+  elseif (geometry == "wr104") then
+     if (.not.(readPops.or.readlucy)) then
+        objectDistance = griddistance * pctocm
+        call readWR104Particles("harries_wr104.txt",sphdata , objectDistance)
+        call info("*")
+     endif
+
+  elseif (geometry == "ttauri".or.(geometry == "magstream")) then
+     onekappa=.false.
+     if (ttau_disc_on)  &
+          call new(ttauri_disc, dble(TTauriDiskRin*TTauriRstar/1.0e10), 1.5d3*100.d0, &
+          dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
+     if (ttau_discwind_on) &
+          call new(ttauri_discwind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+          DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, &
+          dble(TTauriMstar/mSol),  dble(TTauriDiskHeight/1.0e10) )
+     if (ttau_jet_on) &
+!          call new(ttauri_jet,  dble(TTauriRouter/1.0e10), dble(amrgridsize), &
+          call new(ttauri_jet,  JET_Rmin, dble(amrgridsize), &
+          JET_theta_j, dble(TTauriMstar/mSol), JET_Mdot, JET_a_param, JET_b_param,  &
+          JET_Vbase, JET_Vinf, JET_beta, JET_gamma, limitscalar2, JET_T)
+
+  elseif (geometry == "luc_cir3d") then
+     onekappa=.false.
+     !                    Rmin [10^10cm]         
+     call new(CIR_Rstar*Rsol*1.0e-10, CIR_Twind, CIR_Mdot_scale,  &
+     "zeus_rgrid.dat", "zeus_rho_vel.dat")     
+
+  elseif (geometry == "cmfgen") then
+     onekappa=.false.
+     call read_cmfgen_data("OPACITY_DATA")
+     call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
+     call put_cmfgen_Rmax(dble(amrGridSize)/2.0d0)  ! in [10^10cm]
+
+  elseif (geometry == "romanova") then
+     onekappa=.false.
+     ! create the romanova data object and readin the data at the same time.
+     ! After this call, the obejct will be ready to use. 
+     call new(romData, ROM_Rs*DBLE(Rsol)*1.0d-10, 70.0d0, &
+          ROM_Mass*DBLE(Msol), ROM_isoT, ROM_T_flow, ROM_r_ref, &
+          ROM_rho_ref, ROM_T_ref, ROM_v_ref, ROM_tilt, ROM_period, ROM_datafile)
+
+     ! this is a temporary solution... It should be called something 
+     ! else .
+     TTauriRouter = REAL(get_dble_parameter(romData, "Rmax")*1.0d10)           
+
+  end if
+
+end subroutine pre_initAMRGrid
+
 !-----------------------------------------------------------------------------------------------------------------------
 
   subroutine set_up_lambda_array
