@@ -1217,6 +1217,8 @@ contains
 
  if (molecular) then
     onekappa = .true.
+   call getString("moleculefile", moleculefile, cLine, nLines, &
+        "Input molecule filename: ","(a,a,1x,a)","none", ok, .false.)
    call getString("molfilein", molFilenameIn, cLine, nLines, &
         "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
    call getString("molfileout", molFilenameOut, cLine, nLines, &

@@ -296,18 +296,7 @@ program torus
   end if
 
   if (molecular) then
-     if (geometry .eq. "molebench") then
-!        call readbenchmarkMolecule(co, "hco_benchmark.mol")
-        call readMolecule(co, "hco_plus.mol")
-     elseif((geometry .eq. "h2obench1") .or. (geometry .eq. "h2obench2")) then
-        call readMolecule(co, "fakewater.mol")
-     elseif(geometry .eq. "agbstar") then
-        call readMolecule(co, "p-h2o.dat")
-     elseif(geometry .eq. "molefil") then
-        call readMolecule(co, "c18o.mol")
-     else
-        call readMolecule(co, "co.mol")
-     endif
+     call readMolecule(co, moleculefile)
   endif
 
   if (cmf) then

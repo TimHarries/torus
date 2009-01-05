@@ -310,6 +310,7 @@ module input_variables
   character(len=80) :: lucyFilenameIn
   character(len=80) :: lucyFilenameOut
   character(len=80) :: molFilename, molFilenameIn, molFilenameOut
+  character(len=80) :: moleculefile
   real :: mass1, mass2, massRatio, streamFac
   real :: temp1, temp2
   character(len=80) :: popFilename
