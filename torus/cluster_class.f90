@@ -356,8 +356,8 @@ contains
     clusterparam = Clusterparameter(point, theparam = 2)
     
     thisOctal%velocity(subcell) = VECTOR(-1.d10,-1.d10,-1.d10)
-    thisOctal%etaLine(subcell) = 1.e-30
-    thisOctal%etaCont(subcell) = 1.e-30
+    if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
+    if( associated(thisOctal%etaline)) thisOctal%etaCont(subcell) = 1.e-30
 
     thisOctal%rho(subcell) = clusterparam%x
     if ( sphData%useSphTem ) then 
@@ -365,12 +365,14 @@ contains
     else
        thisOctal%temperature(subcell) =  max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
     end if
+
     if ( associated(thisOctal%nh2) ) thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+    if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)
 
 ! Velocities are not required for all configurations so check if they are required
 !    if ( associated(sphData%vxn)  ) then 
-!    somevector = Clusterparameter(point, theparam = 1, shouldreuse = .true.) ! use switch for storing velocity
-!    thisOctal%velocity(subcell) = clusterparam
+!       clusterparam = Clusterparameter(point, theparam = 1, shouldreuse = .true.) ! use switch for storing velocity
+!       thisOctal%velocity(subcell) = clusterparam
 !    end if
       
   end subroutine assign_grid_values
