@@ -304,23 +304,24 @@ CONTAINS
 
     if (thisOctal%threeD) then  !do the three-d case as per diagram
        if (.not.thisOctal%cylindrical) then
+
           SELECT CASE (nChild)
           CASE (1)    
-             subcellCentre = thisOctal%centre - (d * xHat) - (d * yHat) - (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,-1.d0)
           CASE (2)    
-             subcellCentre = thisOctal%centre + (d * xHat) - (d * yHat) - (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,-1.d0)
           CASE (3)    
-             subcellCentre = thisOctal%centre - (d * xHat) + (d * yHat) - (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,-1.d0)
           CASE (4)    
-             subcellCentre = thisOctal%centre + (d * xHat) + (d * yHat) - (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,-1.d0)
           CASE (5)    
-             subcellCentre = thisOctal%centre - (d * xHat) - (d * yHat) + (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,1.d0)
           CASE (6)    
-             subcellCentre = thisOctal%centre + (d * xHat) - (d * yHat) + (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,1.d0)
           CASE (7)    
-             subcellCentre = thisOctal%centre - (d * xHat) + (d * yHat) + (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,1.d0)
           CASE (8)    
-             subcellCentre = thisOctal%centre + (d * xHat) + (d * yHat) + (d * zHat)
+             subcellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,1.d0)
           CASE DEFAULT
              PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
              PRINT *, "        nChild = ", nChild 
