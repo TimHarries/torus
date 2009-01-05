@@ -3175,7 +3175,7 @@ endif
      write(33,'(i2,tr3,12(f11.6,tr3))') grand_iter, tauarray(1:mintrans)
      
      close(31)
-     close(31)
+     close(310)
      close(32)
    end subroutine dumpResults
 
