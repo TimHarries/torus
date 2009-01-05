@@ -7,6 +7,7 @@ module sph_data_class
   use gridtype_mod
   use math_mod2
   use constants_mod, only : OneOnFourPi
+
 !  use parallel_mod, only : torus_abort
   ! 
   ! Class definition for Mathew's SPH data.
@@ -87,9 +88,9 @@ module sph_data_class
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), oneoverHcubed(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), MassArray(:), Harray(:)
   type(sph_data), save :: sphdata
-  integer :: npart
-  real(double), allocatable, save :: partArray(:)
-  integer, allocatable, save :: indexArray(:)
+  integer, save :: npart
+  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:)
+  integer, allocatable  :: indexArray(:)
 
   private:: &
        kill_sph_data
@@ -363,7 +364,6 @@ contains
     read(LUIN,*)
     read(LUIN,*)
     read(LUIN,*) junkchar, npart, n1, nptmass, n2
-    npart = npart ! no. of particles we're interested in
     read(LUIN,*)
 !    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, urho, uvel, junk, junk
     read(LUIN,*) junkchar, udist, junk, junk, umass
@@ -1013,7 +1013,7 @@ contains
 
   end subroutine FindCriticalValue
 
-  TYPE(vector)  function Clusterparameter(point, grid, theparam, isdone, shouldreuse, RhoMin, RhoMax)
+  TYPE(vector)  function Clusterparameter(point, grid, theparam, isdone, shouldreuse, d, RhoMin, RhoMax)
 
     type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in), optional :: grid
@@ -1032,6 +1032,7 @@ contains
     real(double), save :: hcrit, hmax, rcrit, OneOverHcrit, OneOverhMax, rmax
     real(double) :: codeVelocitytoTORUS, codeLengthtoTORUS, codeDensitytoTORUS, udist, umass, utime
     real(double) :: r
+    real(double), optional :: d
     real(double) :: fac
     real(double), save :: sumWeight
     real(double) :: paramValue(4)
@@ -1081,6 +1082,7 @@ contains
 !       npart = get_npart() ! total gas particles
 
        allocate(PositionArray(npart,3)) ! allocate memory
+       allocate(q2Array(npart))
        allocate(RhoArray(npart))
        allocate(TemArray(npart))
        allocate(MassArray(npart))
@@ -1088,8 +1090,9 @@ contains
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
        allocate(OneOverHcubed(npart))
+       allocate(tempPosArray(npart,3))
 
-       PositionArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0;
+       PositionArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0
 
        PositionArray(:,1) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
 
@@ -1163,13 +1166,17 @@ contains
 
 !       call kill() ! don't need harray anymore
        allocate(partarray(npart), indexarray(npart))
+
        firsttime = .false.
     endif
 
     if(done) then
-       deallocate(PositionArray, MassArray, harray, RhoArray, TemArray, ind)
+
+       deallocate(PositionArray, MassArray, harray, RhoArray, Temarray, ind, tempPosArray, q2Array)
+
        deallocate(OneOverHsquared, OneOverHcubed)
        deallocate(partarray, indexarray)
+
        if (allocated(VelocityArray)) deallocate (VelocityArray)
        firsttime = .true.
        return
@@ -1179,15 +1186,24 @@ contains
 
     r = rcrit ! CHECK HERE!!!
 
-    if(.not. reuse) then
-       notfound = .false.
-       call findNearestParticles(posvec, nparticles, sumWeight, rcrit, expkernel = .true.)
-       if(sumweight .le. 0.d0) notfound = .true.
+    if(present(d)) then
+       r = 1.75d0 * d + rcrit ! 1.75 is like sqrt(3)!
     endif
+
+    if(reuse) then
+       call doweights(posvec, nparticles, sumweight, qpresent = .false.)
+    else
+       notfound = .false.
+       call findNearestParticles(posvec, nparticles, r, expkernel = .true.)
+       call doweights(posvec, nparticles, sumweight, qpresent = .true.)
+    endif
+
+    if(sumweight .le. 0.d0) notfound = .true.
 
     paramvalue(:) = 0.d0
 
     if(.not. notfound) then
+
        if(sumweight .gt. 0.3d0) then
           fac = 1.d0 / sumWeight
        else
@@ -1201,37 +1217,49 @@ contains
              paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
           enddo
 
-          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity
+!          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity
+          Clusterparameter = VECTOR(paramValue(1), paramValue(2), paramValue(3)) ! Velocity
+
+          write(69,*) nparticles, sumweight
 
        elseif(param .eq. 2) then
 
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
-             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
-                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
-                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
-             endif
+!             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
+!                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
+!                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
+!             endif
           enddo
           
           Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, 0.d0)  ! density ! stays as vector for moment
        endif
     else
        if(param .eq. 1) then
-          Clusterparameter = VECTOR(1d-20,1d-20,1d-20)
-       elseif(param .eq. 2) then
+          
+!          do i = 1, nparticles
+!             paramValue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
+!             paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
+!             paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
+!          enddo
+          write(69,*) "0", sumweight
+          Clusterparameter = VECTOR(-1.d-20,1.d-20,-1.d-20) ! Velocity
 
+       elseif(param .eq. 2) then
           if(.not. reuse) then
-             call findNearestParticles(posvec, nparticles, sumWeight, 0.75 * rmax, expkernel = .true.) ! redo but with exponential kernel
+             call findNearestParticles(posvec, nparticles, 0.75 * rmax, expkernel = .true.) ! redo but with exponential kernel
           endif
 
+          call doweights(posvec, nparticles, sumweight, qpresent = .true.)
+  
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
-             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
-                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
-                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
-             endif
+!             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
+!                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
+!                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
+!             endif
           enddo
 
           paramvalue(4) = max(1d-60, paramvalue(4))
@@ -1239,21 +1267,18 @@ contains
        endif
     endif
 
-!    BodyVelocity = previousOctal%velocity(subcell)
-
   end function Clusterparameter
 
-  subroutine findnearestparticles(pos, partcount, sumWeight, r, expkernel)
+  subroutine findnearestparticles(pos, partcount, r, expkernel)
     type(VECTOR) :: pos
     real(double) :: x,y,z
     integer :: i
-    integer :: nupper, nlower
-    integer :: closestXindex, testIndex
+    integer, save :: nupper, nlower
+    integer, save :: closestXindex, testIndex
     integer, intent(out) :: partcount
     real(double) :: weightFac
     real(double) :: r2test, q2test, qtest, r
     real(double) :: ydiff, zdiff, rr
-    real(double), intent(out) :: sumweight
     logical, optional :: expkernel
     logical :: doexpkernel
     
@@ -1262,7 +1287,7 @@ contains
 
     integer :: stepsize, sense
     logical :: test, prevtest, up
-    
+
     if(present(expkernel)) then
        doexpkernel = expkernel
     else
@@ -1369,8 +1394,7 @@ contains
     endif
        
     partcount = 0
-    sumweight = 0.d0
-    
+
     do i = nlower, nupper ! search over all those particles we just found
        
        testIndex = closestXindex + i
@@ -1379,37 +1403,74 @@ contains
 
        if(zdiff .le. rr) then ! if it's near in y then
           ydiff = (PositionArray(testIndex,2) - y)**2
+
           if(ydiff .le. rr) then !only if it's near in z as well then work out contribution
 
              r2test = (PositionArray(testIndex,1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
                   ydiff + zdiff
-             
+
              q2test = r2test * OneOverHsquared(testIndex) ! dimensionless parameter that we're interested in
-             
+
              if(q2test .lt. 4.d0) then
                 partcount = partcount + 1
-!                qtest = sqrt(q2test)
 !                Weightfac = num * SmoothingKernel3d(qtest) ! normalised contribution from this particle
-                Weightfac = num * OneOversqrtPiCubed * exp(-q2test)
+!                Weightfac = num * OneOversqrtPiCubed * exp(-q2test)
+                indexArray(partcount) = testIndex
+                tempPosArray(partcount,1:3) = PositionArray(partcount,1:3)
+                q2array(partcount) = q2test
              else
-                partcount = partcount + 1
-                weightfac = 0.d0
                 if(q2test .lt. 100.d0) then
                    if(doexpkernel) then
-                      Weightfac = num * OneOversqrtPiCubed * exp(-q2test)
+                      partcount = partcount + 1
+                      indexArray(partcount) = testIndex
+                      tempPosArray(partcount,1:3) = PositionArray(partcount,1:3)
+                      q2array(partcount) = q2test
                    endif
                 endif
              endif
-             
-             partArray(partcount) = weightfac
-             indexArray(partcount) = testIndex
-             
-             sumWeight = sumWeight + Weightfac
           endif
        endif
     enddo
-    
+
   end subroutine findnearestparticles
+
+  subroutine doWeights(posvec, partcount, sumweight, qpresent)
+
+    type(VECTOR) :: posvec
+    integer :: partcount
+    real(double) :: x,y,z
+    logical, optional :: qpresent
+    logical :: q
+    real(double) :: r2test(3500000)
+    real(double), parameter :: OneOversqrtPiCubed = 1.d0 / 5.568328000d0
+    real(double), parameter :: num = 125.d0 / 216.d0 ! (5/6)^3 ! (1/1.2^3)
+    real(double) :: sumweight
+
+    if(present(qpresent)) then
+       q = qpresent
+    else
+       q = .false.
+    endif
+
+    if(partcount .gt. 0) then       
+    
+       x = posvec%x
+       y = posvec%y
+       z = posvec%z
+       
+       if(.not. q) then
+          r2test(1:partcount) = (tempPosArray(1:partcount,1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
+               (tempPosArray(1:partcount,2) - y)**2 + (tempPosArray(1:partcount,3) - z)**2
+          q2array(1:partcount) = r2test(1:partcount) * OneOverHsquared(indexArray(1:partcount)) ! dimensionless parameter that we're interested in
+       endif
+       
+       partarray(1:partcount) = num * OneOversqrtPiCubed * exp(-q2array(1:partcount))
+       sumWeight = sum(partarray(1:partcount))
+    else
+       sumweight = 0.d0
+    endif
+    
+  end subroutine doWeights
 
   real(double) pure function SmoothingKernel3d(q) result(Weight)
       
