@@ -118,7 +118,6 @@ contains
   type(romanova) :: romData ! parameters and data for romanova geometry
 
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
-  real(double) :: objectDistance
   real :: inclination
   integer, parameter :: maxTau = 20000
   type(BLOBTYPE), allocatable :: blobs(:)
@@ -434,11 +433,10 @@ contains
   if ( nInclination > 0 ) then
 
      call writeInfo ("Calling phaseloop", FORINFO)
-     objectDistance = griddistance * pctocm
      call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
           theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
           starsurface, newContFluxFile, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
-          0.0, 10000, flatspec, objectDistance, inclination, maxTau,                              &
+          0.0, 10000, flatspec, inclination, maxTau,                                         &
           miePhase, nsource, source, blobs, nmumie, dTime)
 
   else
