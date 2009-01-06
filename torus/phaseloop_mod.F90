@@ -277,6 +277,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (writeoutput) write(*,'(a,f7.1,a)') "Raman source speed: ",modulus(ramanSourceVelocity)*cSpeed/1.e5, " km/s"
   endif
 
+! thermalElectronVelocity is used by scatterPhoton 
+  if (modulus(thermalElectronVelocity(10000.)) == 0.) then
+     if (writeoutput) write(*,'(a)') "THERMAL ELECTRON BROADENING IS OFF!!!!!!!!!!!!!!!!!!!!!!!!!!"
+  endif
+
   lineResAbs = .false.  
 
   if (lineEmission) then

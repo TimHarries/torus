@@ -27,7 +27,6 @@ program torus
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
   use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
-  use math_mod, only: thermalElectronVelocity ! misc maths subroutines
   use blob_mod, only: blobType
   use utils_mod, only: findIlambda
   use inputs_mod, only: inputs
@@ -87,7 +86,6 @@ program torus
   ! for Chris
   !  integer, parameter :: maxTau = 600000
 
-  real :: scaleFac
   real :: sigmaAbs0, sigmaSca0  ! cross section at the line centre
 
   ! variables to do with dust
@@ -101,14 +99,13 @@ program torus
   integer, parameter :: maxBlobs = 10000
   integer :: nCurrent
   type(BLOBTYPE), allocatable :: blobs(:)
-  real, parameter :: blobTime = 1000.
   real :: timeEnd = 24.*60.*60.
   real :: timeStart = 0.
   real :: dTime
 
   ! vectors
 
-  type(VECTOR) :: outVec, originalViewVec
+  type(VECTOR) :: originalViewVec
 
   ! output arrays
 
@@ -147,9 +144,6 @@ program torus
   character(len=80) :: tempChar
 
   !
-  real(double) :: totalMass
-  real(double) :: T_ave   ! average temperature of cluster
-  real(double) :: T_mass  ! mass weighted temperature
   real(double) :: Laccretion
   real :: Taccretion, fAccretion, sAccretion
   real :: theta1, theta2 
@@ -561,96 +555,12 @@ program torus
   endif ! (gridusesAMR)
   !=================================================================
 
-  outVec = (-1.d0)* originalViewVec
-
   ! set up the sources
   call set_up_sources
-     if (geometry == "wr104") then
 
-        totalMass = 0.d0
-        call findTotalMass(grid%octreeRoot, totalMass)
-        scaleFac = massEnvelope / totalMass
-        if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-        call scaleDensityAMR(grid%octreeRoot, scaleFac)
-
-     else if (geometry == "cluster") then
-!        call find_average_temperature(grid, T_ave, T_mass, totalMass)
-!        if (writeoutput) write(*,*) " "
-!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
-!        if (writeoutput) write(*,*) " "
-!        ! computing the max, min and average tau at 2 micron (of all
-!        ! active cells)
-!        ilambda = findIlambda(20000.0, xArray, nLambda, ok)
-!        call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
-!        if (writeoutput) write(*,*) " "
-!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
-!        if (writeoutput) write(*,*) " "
-
-     else if (geometry == "ttauri") then
-        call find_average_temperature(grid, T_ave, T_mass, totalMass)
-        if (writeoutput) write(*,*) " "
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total mass in computational domain : ", TotalMass, " [g]"
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature in computational domain : ", T_ave,    " [K]"
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature in computational domain : ",T_mass,  " [K]"
-        if (writeoutput) write(*,*) " "
-     end if
-
-
-     if (associated(grid%octreeRoot)) then
-        totalMass =0.d0
-        call findTotalMass(grid%octreeRoot, totalMass)
-        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
-        call writeInfo(message, TRIVIAL)
-     endif
-        
-
-     if (mie) then
-        if (geometry == "shakara" .or. geometry .eq. 'iras04158' .or. geometry == "circumbin") then
-
-!        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
-
-!           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
-!                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
-
-!           sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
-!           (height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
-
-
-
-           sigma0 = rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi)
-
-           if (writeoutput) write(*,*) "Sigma0: ",sigma0
-        endif
-
-        if (geometry == "ppdisk") then
-           sigma0 = totalMass / ((amrgridsize**2 - twoPi*0.4)*1.e10*1.*autocm) ! defined at 1AU
-           if (writeoutput) write(*,*) "Sigma0: ",sigma0
-        endif
-
-        if (geometry == "planetgap") then
-           rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
-                * (rCore*1.e10)**(alphaDisc-betaDisc) * &
-                (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
-           h = height * rCore * 1.e10
-           sigma0 = rho0 * sqrt(twoPi) * h
-
-           if (writeoutput) write(*,*) "Sigma0: ",sigma0
-        endif
-
-        if (geometry == "warpeddisc") then
-           rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
-                   * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
-                   ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
-           sigma0 = rho0 * sqrt(twoPi) * height * 1.e10
-        endif
-
-     endif
-
-     call torus_mpi_barrier
+! Any tasks to be performed after the AMR grid is set up should be done here.
+! Calculates the mass on thr grid and also runs some geometry specific code. 
+  call post_initAMRgrid
 
 667 continue
      call init_random_seed()
@@ -735,9 +645,6 @@ program torus
      dTime = (timeEnd - timeStart) / real(nPhase-1)
   endif
 
-  if (modulus(thermalElectronVelocity(10000.)) == 0.) then
-     if (writeoutput) write(*,'(a)') "THERMAL ELECTRON BROADENING IS OFF!!!!!!!!!!!!!!!!!!!!!!!!!!"
-  endif
 
   lucyRadiativeEq = .false.
   call set_up_lambda_array
@@ -1075,7 +982,7 @@ end subroutine pre_initAMRGrid
     do i = 1, 1000
        meanDepart = 0.
        nt = 0
-       outVec = VECTOR(1., 0., 0.)
+!       outVec = VECTOR(1., 0., 0.)
 !       rVec = dble(rGrid(i)) * outVec 
        r = rgrid(i)
 !       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
@@ -1137,7 +1044,7 @@ end subroutine pre_initAMRGrid
        meant = 0.
        meaneta =0.
        nt = 0
-       outVec = VECTOR(1., 0., 0.)
+!       outVec = VECTOR(1., 0., 0.)
  !      rVec = dble(rGrid(i)) * outVec 
        r = rgrid(i)
 !       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
@@ -2305,12 +2212,113 @@ end subroutine set_up_sources
 
 !-----------------------------------------------------------------------------------------------------------------------
 
+subroutine post_initAMRgrid 
+
+  real         :: scaleFac
+  real(double) :: totalMass
+  real(double) :: T_ave   ! average temperature of cluster
+  real(double) :: T_mass  ! mass weighted temperature
+
+  if (geometry == "wr104") then
+
+     totalMass = 0.d0
+     call findTotalMass(grid%octreeRoot, totalMass)
+     scaleFac = massEnvelope / totalMass
+     if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+     call scaleDensityAMR(grid%octreeRoot, scaleFac)
+
+  else if (geometry == "cluster") then
+!        call find_average_temperature(grid, T_ave, T_mass, totalMass)
+!        if (writeoutput) write(*,*) " "
+!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
+!        if (writeoutput) write(*,*) " "
+!        ! computing the max, min and average tau at 2 micron (of all
+!        ! active cells)
+!        ilambda = findIlambda(20000.0, xArray, nLambda, ok)
+!        call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
+!        if (writeoutput) write(*,*) " "
+!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
+!        if (writeoutput) write(*,*) " "
+
+  else if (geometry == "ttauri") then
+     call find_average_temperature(grid, T_ave, T_mass, totalMass)
+     if (writeoutput) write(*,*) " "
+     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total mass in computational domain : ", TotalMass, " [g]"
+     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature in computational domain : ", T_ave,    " [K]"
+     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature in computational domain : ",T_mass,  " [K]"
+     if (writeoutput) write(*,*) " "
+  end if
+
+
+  if (associated(grid%octreeRoot)) then
+     totalMass =0.d0
+     call findTotalMass(grid%octreeRoot, totalMass)
+     write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+     call writeInfo(message, TRIVIAL)
+  endif
+        
+
+  if (mie) then
+     if (geometry == "shakara" .or. geometry .eq. 'iras04158' .or. geometry == "circumbin") then
+
+!        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
+
+!           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
+!                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
+
+!           sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
+!           (height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
+
+
+
+        sigma0 = rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi)
+
+        if (writeoutput) write(*,*) "Sigma0: ",sigma0
+     endif
+
+     if (geometry == "ppdisk") then
+        sigma0 = totalMass / ((amrgridsize**2 - twoPi*0.4)*1.e10*1.*autocm) ! defined at 1AU
+        if (writeoutput) write(*,*) "Sigma0: ",sigma0
+     endif
+
+     if (geometry == "planetgap") then
+        rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
+             * (rCore*1.e10)**(alphaDisc-betaDisc) * &
+             (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+        h = height * rCore * 1.e10
+        sigma0 = rho0 * sqrt(twoPi) * h
+        
+        if (writeoutput) write(*,*) "Sigma0: ",sigma0
+     endif
+
+     if (geometry == "warpeddisc") then
+        rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
+             * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
+             ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
+        sigma0 = rho0 * sqrt(twoPi) * height * 1.e10
+     endif
+
+  endif
+
+  call torus_mpi_barrier
+
+end subroutine post_initAMRgrid
+
+!-----------------------------------------------------------------------------------------------------------------------
+
 subroutine do_lucyRadiativeEq
 
   use benchmark_mod, only: check_benchmark_values
   use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy
   use disc_hydro_mod, only: verticalHydrostatic
   use cluster_utils, only: analyze_cluster
+
+  type(VECTOR) :: outVec
+  outVec = (-1.d0)* originalViewVec
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
@@ -2381,6 +2389,9 @@ end subroutine do_lucyRadiativeEq
 
 subroutine set_emission_bias
 
+  type(VECTOR) :: outVec
+  outVec = (-1.d0)* originalViewVec
+
   !
   ! Setting the emission bias.
   !
@@ -2425,6 +2436,7 @@ subroutine initialize_blobs
   use blob_mod, only: addnewblobs, moveblobs, writeBlobs
 
   character(len=80) :: filename, specFile
+  real, parameter   :: blobTime = 1000.
 
   allocate(blobs(1:maxBlobs))
   if (freshBlobs) then
