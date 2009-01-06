@@ -120,8 +120,6 @@ check_molebench()
 {
 echo Compiling compare_molbench code
 ${TORUS_FC} -o compare_molbench compare_molbench.f90
-model_file=`ls results.* | tail -1`
-ln -s ${model_file} results.dat
 ./compare_molbench
 }
 
