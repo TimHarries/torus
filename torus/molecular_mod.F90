@@ -436,27 +436,9 @@ module molecular_mod
                 CALL fillVelocityCorners(thisOctal,grid,molclustervelocity,thisOctal%threed)
              endif
 
-!             call writeInfo(message,TRIVIAL)
-!             CALL fillVelocityCorners(thisOctal,grid,molclusterVelocity,thisOctal%threed)
-!             write(51, *) thisOctal%label(subcell)
-!             write(51, *) thisOctal%cornervelocity(1)
-!             write(51, *) thisOctal%cornervelocity(3)
-!             write(51, *) thisOctal%cornervelocity(5)
-!             write(51, *) thisOctal%cornervelocity(7)
-!             write(51, *) thisOctal%cornervelocity(9)
-!             write(51, *) thisOctal%cornervelocity(11)
-!             write(51, *) thisOctal%cornervelocity(13)
-!             write(51, *) thisOctal%cornervelocity(14)
-!             write(51, *) thisOctal%cornervelocity(15)
-!             write(51, *) thisOctal%cornervelocity(17)
-!             write(51, *) thisOctal%cornervelocity(19)
-!             write(51, *) thisOctal%cornervelocity(21)
-!             write(51, *) thisOctal%cornervelocity(23)
-!             write(51, *) thisOctal%cornervelocity(25)
-!             write(51, *) thisOctal%cornervelocity(27)
-!             write(52, *) thisoctal%label(subcell),thisoctal%microturb(subcell), thisoctal%temperature(subcell), thisoctal%nh2(subcell), thisoctal%rho(subcell)
-!             write(53, *) thisoctal%label(subcell),thisoctal%molabundance(subcell), thisoctal%molecularlevel(subcell,1), thisoctal%molecularlevel(subcell,2)
+             thisoctal%velocity(subcell) = thisOctal%cornervelocity(14)
           endif
+
        endif
     enddo
 
@@ -679,7 +661,9 @@ module molecular_mod
                call tune(6, message)  ! start a stopwatch
             endif
 
-            if(Writeoutput .and. plotlevels .and. .not.(amr1d)) then
+!            if(Writeoutput .and. plotlevels .and. .not.(amr1d)) then
+            if(.true.) then
+               call writeinfo('Writing VTK file', TRIVIAL)
                write(filename, '(a,i7.7,a)') "./plots/data_",grand_iter,".vtk"
                call  writeVtkFile(grid, filename)
             endif
@@ -984,10 +968,6 @@ end subroutine molecularLoop
      else
         stage1 = .false.
      endif
-
-     nTrans = thisMolecule%nTrans
-
-!     allocate(tau(1:maxTrans))
 
      position = randomPositionInCell(fromOctal, fromsubcell)
 
@@ -1970,11 +1950,11 @@ end subroutine molecularLoop
            endif
 
            if(iv .eq. 1) then
-!              call writeinfo("Filling Octal parameters for first time",TRIVIAL)
+              call writeinfo("Filling Octal parameters for first time",TRIVIAL)
               call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV, .true.)
            else
 !              call writeinfo("Filling Octal parameters again",TRIVIAL)
-              call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV,.false.)
+              call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV,.true.)
            endif
 
            cube%intensity(:,:,iv) = makeImageGrid(cube,unitvec,posvec,grid,thisMolecule,itrans,deltaV,nsubpixels) ! 
@@ -2370,6 +2350,7 @@ endif
      real(double),save :: BnuBckGrnd
 
      real(double) :: phiProfVal
+     real(double) :: deps, origdeps
 
      logical,save :: firsttime = .true.
      logical, optional :: tautest
@@ -2401,23 +2382,28 @@ endif
         goto 666
      endif
      
-     currentPosition = position + (distToGrid + 5.d-4*grid%halfSmallestSubcell) * direction
+     deps = 5.d-4 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     origdeps = deps
+
+     currentPosition = position + (distToGrid + deps) * direction
      if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid + 2500.d0*Grid%halfsmallestsubcell) * direction
-!    if(grid%geometry .eq. 'iras04158') currentPosition = position + (distToGrid * (1.+1d-5)) * direction
 
      i0 = 0.d0
      tau = 0.d0
 
      thisOctal => grid%octreeRoot
      icount = 0
-     
-        if(.not. inOctal(grid%octreeRoot, currentPosition) .and. icount .eq. 0) stop
+
+     do while((.not. inOctal(grid%octreeRoot, currentPosition)) .and. icount .eq. 0 .and. deps .lt. 1d30)
+        deps = 10.d0 * deps
+        currentPosition = position + (distToGrid + deps) * direction
+     enddo
         
-        do while(inOctal(grid%octreeRoot, currentPosition))
-           icount = icount + 1
+     do while(inOctal(grid%octreeRoot, currentPosition))
+        icount = icount + 1
            
-           call findSubcelllocal(currentPosition, thisOctal, subcell)
-           call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+        call findSubcelllocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
            
 !           write(*,*) "THE CELL", thisoctal%ndepth
 !           write(*,*) "Stuff", nmol, nlower, nupper, balance, etaline, alphanu1
@@ -2509,7 +2495,7 @@ endif
            tau = tau + dtau
         enddo
 
-        currentPosition = currentPosition + (tval + 1d-3 * grid%halfSmallestSubcell) * direction
+        currentPosition = currentPosition + (tval + origdeps) * direction
   enddo
 
 666  continue
@@ -2998,7 +2984,7 @@ endif
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
            ! find the child
-           do i = 1, thisOctal%nChildren, 1
+           do i = 1, thisOctal%nChildren
               if (thisOctal%indexChild(i) == subcell) then
                  child => thisOctal%child(i)
                  call calculateOctalParams(grid, child, thisMolecule, deltaV, firsttime)
@@ -3007,9 +2993,9 @@ endif
            end do
         else
            
-           if(subcell .eq. 1) then
-              write(59,*) thisoctal%cornervelocity
-           Endif
+!           if(subcell .eq. 1) then
+!              write(59,*) thisoctal%cornervelocity
+!           Endif
 
           if(firsttime) then
 
@@ -3556,7 +3542,7 @@ endif
         centreVec= VECTOR(0.d0, 0.d0, 0.d0)
         kappaAbs = 0.d0; kappaSca = 0.d0
 
-  call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
+        call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
   
   write(message,*) "Angular dependence"
   call writeinfo(message, FORINFO)
@@ -3743,7 +3729,7 @@ end subroutine plotdiscValues
     type(GRIDTYPE) :: grid
     real(double) :: maxFracChangePerLevel(minlevel)
     integer :: ConvergenceCounter(4, minlevel) ! 3 different levels of convergence
-    real(double) :: avgFracChange(minlevel - 1, 2) ! don't want the uppermost level to count for convergence
+    real(double) :: avgFracChange(minlevel-1, 2) ! don't want the uppermost level to count for convergence
     real(double) :: maxavgFracChange, maxRMSFracChange, maxFracChange
     integer :: maxavgtrans(1), maxRMStrans(1)
     integer :: i
@@ -3765,11 +3751,11 @@ end subroutine plotdiscValues
     call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
          convergenceCounter, grand_iter, nVoxels, fixedrays) ! compares level populations between this and previous levels 
 
-    maxavgFracChange = maxval(avgFracChange(:,1))
-    maxRMSFracChange = maxval(avgFracChange(:,2))
+    maxavgFracChange = maxval(avgFracChange(1:minlevel-1,1))
+    maxRMSFracChange = maxval(avgFracChange(1:minlevel-1,2))
 
-    maxavgtrans = maxloc(avgFracChange(:,1)) - 1 ! array index -> level
-    maxRMStrans = maxloc(avgFracChange(:,2)) - 1
+    maxavgtrans = maxloc(avgFracChange(1:minlevel-1,1)) - 1 ! array index -> level
+    maxRMStrans = maxloc(avgFracChange(1:minlevel-1,2)) - 1
 
     maxFracChange = MAXVAL(maxFracChangePerLevel(1:mintrans)) ! Largest change of any level < 6 in any voxel
   
@@ -3787,7 +3773,6 @@ end subroutine plotdiscValues
     write(message,'(a,f11.7)') "  Std Dev                                   ", &
          sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
     call writeInfo(message,FORINFO)
-
     
     do i=3,1,-1
        if(i .lt. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * i," | ",&
@@ -3836,12 +3821,12 @@ end subroutine plotdiscValues
   
     open(139, file="avgChange.dat", position="append", status="unknown")
 20  format(i2,tr3,i6,tr3,12(f7.5,1x))
-    write(139,20) grand_iter, nray, avgFracChange(1:min(12,minlevel),1)/real(nvoxels)
+    write(139,20) grand_iter, nray, avgFracChange(1:min(12,minlevel-1),1)/real(nvoxels)
     
     close(139)
     
     open(140, file="avgRMSchange.dat", position="append", status="unknown")
-    write(140,20) grand_iter, nray, sqrt(avgFracChange(1:min(12,minlevel),2)/real(nvoxels))
+    write(140,20) grand_iter, nray, sqrt(avgFracChange(1:min(12,minlevel-1),2)/real(nvoxels))
        
     close(140)
  endif
