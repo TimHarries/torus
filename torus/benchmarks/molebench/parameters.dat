@@ -43,7 +43,7 @@ teff 5800.
 
 ! disc params
 rinner 1.00065E+6                               
-router 4.62840E+7
+router 4.00000E+7
 height 125.
 rho 8.16136e-18
 
