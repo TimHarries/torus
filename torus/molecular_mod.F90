@@ -19,6 +19,7 @@ module molecular_mod
    use nrtype
    use parallel_mod
    use vtk_mod
+   use image_mod
 
 #ifdef USEMKL
    use mkl95_lapack
@@ -345,23 +346,22 @@ module molecular_mod
               thisOctal%bnu(subcell,i) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
 
            else
-
               if (.not. associated(thisOctal%newmolecularLevel)) then
                  allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               endif
-              thisOctal%newmolecularLevel = 1.d-20
+              thisOctal%newmolecularLevel(subcell,:) = 1.d-20
 
               if (.not.associated(thisOctal%oldmolecularLevel)) then
                  allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               endif
-              thisOctal%oldmolecularLevel = 1.d-20
+              thisOctal%oldmolecularLevel(subcell,:) = 1.d-20
 
               if (.not.associated(thisOctal%molecularLevel)) then
                  allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren,1:maxlevel))
               endif
-              thisOctal%molecularLevel = 1.d-20
+              thisOctal%molecularLevel(subcell,:) = 1.d-20
 
-              if(lte) then           
+              if(lte) then
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
                               thisOctal%molecularLevel(subcell,1:maxlevel))
               else      
@@ -384,8 +384,7 @@ module molecular_mod
               if (.not.associated(thisOctal%jnu)) then
                  allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:maxtrans))
               endif
-              thisOctal%oldmolecularLevel = 1.d-20
-
+              
               if(lte) then
                  do i = 1, maxtrans
                     thisOctal%jnu(subcell,i) = bnu(thisMolecule%transFreq(i), dble(thisoctal%temperature(subcell)))
@@ -400,7 +399,6 @@ module molecular_mod
                     thisOctal%jnu(subcell,i) = bnu(thisMolecule%transFreq(i), tcbr)
                  enddo
               endif
-              thisOctal%oldmolecularLevel = 1.d-20
            endif
 
            if (.not.associated(thisOctal%molAbundance)) then
@@ -408,46 +406,46 @@ module molecular_mod
            endif
            thisOctal%molAbundance(subcell) = thisMolecule%abundance
 
-          if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
-             thisOctal%temperaturegas(subcell) = thisOctal%temperature(subcell)
-             thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
-          endif
+           if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
+              thisOctal%temperaturegas(subcell) = thisOctal%temperature(subcell)
+              thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
+           endif
 
-          if (.not.associated(thisOctal%microturb)) then
-             allocate(thisOctal%microturb(1:thisOctal%maxChildren))
+           if (.not.associated(thisOctal%microturb)) then
+              allocate(thisOctal%microturb(1:thisOctal%maxChildren))
 
-             thisOctal%microturb(subcell) = max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                  (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5)) ! mu is 0.3km/s subsonic turbulence
-          endif
+              thisOctal%microturb(subcell) = max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+                   (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5)) ! mu is 0.3km/s subsonic turbulence
+           endif
+           
+           if (molcluster) then
+              thisOctal%microturb(subcell) = max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+                   (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5)) ! mu is 0.3km/s subsonic turbulence
+           endif
 
-          if (molcluster) then
-             thisOctal%microturb(subcell) = max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                  (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5)) ! mu is 0.3km/s subsonic turbulence
-          endif
+           if (.not.associated(thisOctal%molmicroturb)) then
+              allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
+           endif
 
-          if (.not.associated(thisOctal%molmicroturb)) then
-             allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
-          endif
+           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+           
+           if (molcluster) then
+              if(subcell .eq. 1) then
+                 CALL fillVelocityCorners(thisOctal,grid,molclustervelocity,thisOctal%threed)
+              endif
 
-          thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
-
-          if (molcluster) then
-             if(subcell .eq. 1) then
-                CALL fillVelocityCorners(thisOctal,grid,molclustervelocity,thisOctal%threed)
-             endif
-
-             thisoctal%velocity(subcell) = thisOctal%cornervelocity(14)
-          endif
-
-       endif
-    enddo
-
-    if (.not. usedust) then
-       grid%oneKappaAbs = 1e-30
-       grid%oneKappaSca = 1e-30
-    endif
-
-  end subroutine allocateMolecularLevels
+              thisoctal%velocity(subcell) = thisOctal%cornervelocity(14)
+           endif
+        endif
+        
+     enddo
+           
+     if (.not. usedust) then
+        grid%oneKappaAbs = 1e-30
+        grid%oneKappaSca = 1e-30
+     endif
+     
+   end subroutine allocateMolecularLevels
 
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
@@ -661,8 +659,7 @@ module molecular_mod
                call tune(6, message)  ! start a stopwatch
             endif
 
-!            if(Writeoutput .and. plotlevels .and. .not.(amr1d)) then
-            if(.true.) then
+            if(Writeoutput .and. plotlevels .and. .not.(amr1d)) then
                call writeinfo('Writing VTK file', TRIVIAL)
                write(filename, '(a,i7.7,a)') "./plots/data_",grand_iter,".vtk"
                call  writeVtkFile(grid, filename)
@@ -907,7 +904,6 @@ module molecular_mod
   
   close(33)
 
-  call torus_abort("mole loop done")
 end subroutine molecularLoop
 
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
@@ -1533,6 +1529,7 @@ end subroutine molecularLoop
    type(DATACUBE) ::  cube
 
    character (len=80) :: filename
+   integer :: status
 
    real(double) :: mean(6) = 0.d0
    integer :: icount = 0
@@ -1583,7 +1580,12 @@ end subroutine molecularLoop
      
      call createFluxSpectra(cube, thismolecule, itrans)
 
-     if(writeoutput) call writedatacube(cube, 'MolRT.fits')
+     write(filename, *) 'MolRT.fits' ! can be changed to a variable name someday
+
+     status = 0
+     call deleteFitsFile (filename, status)
+
+     if(writeoutput) call writedatacube(cube, filename)
 
      write(filename,'(a,a,i1,a,i1,a)') trim(cube%telescope%label),'fluxcubeJ', &
           thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
@@ -1863,7 +1865,7 @@ end subroutine molecularLoop
 
    subroutine createimage(cube, grid, unitvec, posvec, thisMolecule, iTrans, nSubpixels)
 
-     use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel
+     use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel, usedust
 #ifdef MPI
      include 'mpif.h'
 #endif
@@ -1951,11 +1953,10 @@ end subroutine molecularLoop
 
            if(iv .eq. 1) then
               call writeinfo("Filling Octal parameters for first time",TRIVIAL)
-              call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV, .true.)
-           else
-!              call writeinfo("Filling Octal parameters again",TRIVIAL)
-              call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV,.true.)
+              call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
            endif
+
+           if(usedust) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
 
            cube%intensity(:,:,iv) = makeImageGrid(cube,unitvec,posvec,grid,thisMolecule,itrans,deltaV,nsubpixels) ! 
 
@@ -1971,7 +1972,7 @@ end subroutine molecularLoop
            fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance), thisMolecule)
 
            if(iv .eq. 1) then
-              background = cube%intensity(1,1,1)
+              background = Bnu(thisMolecule%transfreq(itrans), Tcbr)
               write(*,*) "background",background
               background = intensitytoflux(background, dble(imageside), dble(gridDistance), thisMolecule)
               write(*,*) "Background Flux: ", background
@@ -2962,9 +2963,9 @@ endif
 
    end subroutine continuumIntensityAlongRay
 
-   recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV, firsttime)
+   recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV)
 
-     use input_variables, only : useDust, iTrans, vturb
+     use input_variables, only : iTrans, vturb
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2974,11 +2975,85 @@ endif
      integer :: subcell, i
      integer :: iupper, ilower
      integer, save :: ilambda = 1
-     real(double) :: nmol, nlower, nupper, etaline, kappaAbs, deltaV
+     real(double) :: nmol, nlower, nupper, etaline, deltaV
+     character(len=10) :: out
+
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren
+              if (thisOctal%indexChild(i) == subcell) then
+                 child => thisOctal%child(i)
+                 call calculateOctalParams(grid, child, thisMolecule, deltaV)
+                 exit
+              end if
+           end do
+        else
+           
+           if(grid%geometry .eq. "iras04158") then
+              
+              thisOctal%velocity(subcell) = keplerianVelocity(subcellcentre(thisOctal,subcell), grid)
+              CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+              
+              out = 'abundance'
+              rvec = subcellCentre(thisOctal,subcell)
+              thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+!                 thisOctal%molabundance(subcell) = 1d-4
+!                 thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * 1.05
+!                 thisOctal%rho(subcell) = thisOctal%rho(subcell) * 1.05
+           endif
+              
+           if (.not.associated(thisOctal%molmicroturb)) then
+              allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
+           endif
+
+           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+
+           if (.not.associated(thisOctal%molcellparam)) then
+              allocate(thisOctal%molcellparam(1:thisOctal%maxChildren,8))
+           endif
+
+           thisOctal%molcellparam(subcell,1) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+           
+           nMol = thisOctal%molcellparam(subcell,1)
+           
+           iUpper = thisMolecule%iTransUpper(iTrans)
+           iLower = thisMolecule%iTransLower(iTrans)
+           
+           thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(subcell,iLower) * nMol
+           thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(subcell,iUpper) * nMol
+              
+           nLower = thisOctal%molcellparam(subcell,2)
+           nUpper = thisOctal%molcellparam(subcell,3)
+           thisOctal%molcellparam(subcell,4) = nLower * thisMolecule%einsteinBlu(iTrans) &
+                - nUpper * thisMolecule%einsteinBul(iTrans)
+              
+           etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
+           
+           thisOctal%molcellparam(subcell,5) = etaLine * nUpper
+           thisOctal%molcellparam(subcell,6) = hCgsOverFourPi * thisOctal%molcellparam(subcell,4)! balance
+        endif
+
+     end do
+
+   end subroutine calculateOctalParams
+
+   recursive subroutine addDustToOctalParams(grid, thisOctal, thisMolecule, deltaV)
+
+     use input_variables, only : useDust, iTrans
+
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child 
+     type(VECTOR)  :: rvec
+     integer :: subcell, i
+     integer :: iupper, ilower
+     integer, save :: ilambda = 1
+     real(double) :: kappaAbs, deltaV
      real :: lambda
      logical,save :: onetime = .true.
-     logical :: firsttime
-     character(len=10) :: out
+
      kappaAbs = 0.d0
 
      do subcell = 1, thisOctal%maxChildren
@@ -2987,80 +3062,25 @@ endif
            do i = 1, thisOctal%nChildren
               if (thisOctal%indexChild(i) == subcell) then
                  child => thisOctal%child(i)
-                 call calculateOctalParams(grid, child, thisMolecule, deltaV, firsttime)
+                 call addDustToOctalParams(grid, child, thisMolecule, deltaV)
                  exit
               end if
            end do
         else
-           
-!           if(subcell .eq. 1) then
-!              write(59,*) thisoctal%cornervelocity
-!           Endif
 
-          if(firsttime) then
-
-             if(grid%geometry .eq. "iras04158") then
-
-                 thisOctal%velocity(subcell) = keplerianVelocity(subcellcentre(thisOctal,subcell), grid)
-                 CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
-
-                 out = 'abundance'
-                 rvec = subcellCentre(thisOctal,subcell)
-                 thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-!                 thisOctal%molabundance(subcell) = 1d-4
-!                 thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * 1.05
-!                 thisOctal%rho(subcell) = thisOctal%rho(subcell) * 1.05
-              endif
-
-              if (.not.associated(thisOctal%molmicroturb)) then
-                 allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
-              endif
-
-              thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
-
-              if (.not.associated(thisOctal%molcellparam)) then
-                 allocate(thisOctal%molcellparam(1:thisOctal%maxChildren,8))
-              endif
-
-              thisOctal%molcellparam(subcell,1) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-              
-              nMol = thisOctal%molcellparam(subcell,1)
-
-              iUpper = thisMolecule%iTransUpper(iTrans)
-              iLower = thisMolecule%iTransLower(iTrans)
-
-              thisOctal%molcellparam(subcell,2) = thisOctal%molecularLevel(subcell,iLower) * nMol
-              thisOctal%molcellparam(subcell,3) = thisOctal%molecularLevel(subcell,iUpper) * nMol
-              
-              nLower = thisOctal%molcellparam(subcell,2)
-              nUpper = thisOctal%molcellparam(subcell,3)
-              thisOctal%molcellparam(subcell,4) = nLower * thisMolecule%einsteinBlu(iTrans) &
-                                                - nUpper * thisMolecule%einsteinBul(iTrans)
-              
-              etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
-              
-              thisOctal%molcellparam(subcell,5) = etaLine * nUpper
-              thisOctal%molcellparam(subcell,6) = hCgsOverFourPi * thisOctal%molcellparam(subcell,4)! balance
+           lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
+           lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter
+           if(onetime) then
+              call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
+              onetime = .false.
            endif
-
-           if(usedust) then
-
-              lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
-              lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter
-              if(onetime) then
-                 call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-                 onetime = .false.
-              endif
-              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
-              thisOctal%molcellparam(subcell,7) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)
-              thisOctal%molcellparam(subcell,8) = thisOctal%molcellparam(subcell,7) * thisOctal%bnu(subcell,itrans)
-           endif
+           call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
+           thisOctal%molcellparam(subcell,7) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)
+           thisOctal%molcellparam(subcell,8) = thisOctal%molcellparam(subcell,7) * thisOctal%bnu(subcell,itrans)
         endif
-
-     end do
-
-   end subroutine calculateOctalParams
-
+     enddo
+     
+   end subroutine addDustToOctalParams
 
  ! Equation 9 - calculating the doppler broadening due to a turbulent velocity field (b - constant locally)
  ! NB b here = b*nu0/c in the paper ! actually since April 2008 b = 1/old b to speed up code
@@ -3542,7 +3562,8 @@ endif
         centreVec= VECTOR(0.d0, 0.d0, 0.d0)
         kappaAbs = 0.d0; kappaSca = 0.d0
 
-        call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
+        call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, 0.d0)
+        call addDustToOctalParams(grid, grid%OctreeRoot, thisMolecule, 0.d0)
   
   write(message,*) "Angular dependence"
   call writeinfo(message, FORINFO)
@@ -3648,8 +3669,9 @@ subroutine plotdiscValues(grid, thisMolecule)
   type(MOLECULETYPE) :: thisMolecule
   real(double) :: mean(6)
   mean = 0.d0
-  call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
-    
+  call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, 0.d0)
+  call addDustToOctalParams(grid, grid%OctreeRoot, thisMolecule, 0.d0)
+  
   call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 2)
   
   call readAMRgrid("molecular_tmp.grid",.false.,grid)
