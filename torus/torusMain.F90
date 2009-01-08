@@ -494,18 +494,11 @@ program torus
 
 ! below is really yucky code - please change me
 
-     if (molecular .and. readmol .and. (.not. lucyRadiativeEq)) then
-        if(.not. openlucy) then
-           call readAMRgrid(molfilenamein,.false.,grid)
-        else
-           call readAMRgrid(lucyFileNamein,.false.,grid)
-        endif
-        goto 667
-     endif
-
      if (cmf.and.readLucy) then
         call readAMRgrid("atom_tmp.grid",.false.,grid)
      else if (photoionization.and.readlucy) then
+        continue
+     elseif (.not. writemol) then
         continue
      else
         ! Set up the AMR grid
@@ -622,10 +615,24 @@ program torus
 
   if (molecular) then
      if (writemol) call molecularLoop(grid, co)
-     if(writeoutput) call writeinfo('Calculating Image', TRIVIAL)
-     if (readmol) call calculateMoleculeSpectrum(grid, co)
-!        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
+     
+     if(.not. writemol) then
+        if (molecular .and. readmol .and. .not. (lucyRadiativeEq)) then
+           if(openlucy) then
+              call readAMRgrid(lucyFileNamein,.false.,grid)
+           else
+              call readAMRgrid(molfilenamein,.false.,grid)
+           endif
+        endif
+     endif
 
+     if (readmol) then 
+        call writeinfo('Creating Image', IMPORTANT)
+        call calculateMoleculeSpectrum(grid, co)
+     endif
+
+     goto 666
+!        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
      stop
   endif
 
