@@ -498,7 +498,7 @@ program torus
         call readAMRgrid("atom_tmp.grid",.false.,grid)
      else if (photoionization.and.readlucy) then
         continue
-     elseif (.not. writemol) then
+     elseif (molecular .and. .not. writemol) then
         continue
      else
         ! Set up the AMR grid
@@ -555,7 +555,6 @@ program torus
 ! Calculates the mass on thr grid and also runs some geometry specific code. 
   call post_initAMRgrid
 
-667 continue
      call init_random_seed()
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
