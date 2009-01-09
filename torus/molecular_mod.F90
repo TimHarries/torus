@@ -1519,10 +1519,6 @@ end subroutine molecularLoop
  subroutine calculateMoleculeSpectrum(grid, thisMolecule)
    use input_variables, only : itrans, nSubpixels, inc
 
-#ifdef MPI
-       include 'mpif.h'
-#endif
-
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    type(VECTOR) :: unitvec, posvec, centrevec, viewvec
@@ -1533,21 +1529,6 @@ end subroutine molecularLoop
 
    real(double) :: mean(6) = 0.d0
    integer :: icount = 0
-
-
-#ifdef MPI
-     ! For MPI implementations
-     integer       ::   my_rank        ! my processor rank
-     integer       ::   np             ! The number of processes
-     integer       ::   ierr           ! error flag
-
-     ! FOR MPI IMPLEMENTATION=======================================================
-     !  Get my process rank # 
-     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-
-     ! Find the total # of precessor being used in this run
-     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-#endif
 
      if(grid%geometry .eq. 'molebench') molebench = .true.
      if(grid%geometry .eq. 'molcluster') molcluster = .true.
@@ -3443,10 +3424,14 @@ endif
 
       subroutine setObserverVectors(inc, viewvec, unitvec, posvec, centreVec, gridsize)
         
-        type(VECTOR) :: unitvec, viewvec, posvec, centreVec
-        real(double) :: farAway, gridsize
-        real :: inc
-        
+        real(double), intent(in)  :: gridsize
+        real, intent(in) :: inc
+        type(VECTOR), intent(in)  :: centreVec
+        type(VECTOR), intent(out) :: unitvec, viewvec, posvec
+
+        real(double) :: farAway
+
+
         farAway = 500.0 * gridsize
         
         
@@ -3457,8 +3442,7 @@ endif
         endif
         
         posvec = faraway * unitvec
-        centrevec = VECTOR(0d7,0d7,0d7)
-        viewvec = centrevec - posvec
+        viewvec = centreVec - posvec
         call normalize(viewvec)
         unitvec = (-1.d0) * viewvec
         
