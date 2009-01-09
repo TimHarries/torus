@@ -1589,7 +1589,6 @@ end subroutine molecularLoop
 
      write(filename,'(a,a,i1,a,i1,a)') trim(cube%telescope%label),'fluxcubeJ', &
           thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
-     stop
 
     end subroutine calculateMoleculeSpectrum
 

@@ -491,9 +491,6 @@ program torus
   if (gridUsesAMR) then  !========================================
   !===============================================================
 
-
-! below is really yucky code - please change me
-
      if (cmf.and.readLucy) then
         call readAMRgrid("atom_tmp.grid",.false.,grid)
      else if (photoionization.and.readlucy) then
@@ -631,8 +628,6 @@ program torus
      endif
 
      goto 666
-!        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
-     stop
   endif
 
 
