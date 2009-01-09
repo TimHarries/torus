@@ -372,7 +372,7 @@ program torus
 
   if (gridUsesAMR) then
      ! any AMR allocation stuff goes here
-     call initAMRGrid(greyContinuum, newContFluxFile,flatspec,grid,ok,theta1,theta2)
+     call initAMRGrid(newContFluxFile,flatspec,grid,ok,theta1,theta2)
      if (.not.ok) goto 666
 
   else
@@ -477,8 +477,7 @@ program torus
   if (hydroWarp) then
      print *, "Creating and reading hydroGrid..."
      allocate(grid%hydroGrid)
-     call initAMRGrid(greyContinuum, &
-                        newContFluxFile,flatspec,grid%hydroGrid,ok,theta1,theta2)
+     call initAMRGrid(newContFluxFile,flatspec,grid%hydroGrid,ok,theta1,theta2)
      call readAMRgrid("hydrogrid.dat",readFileFormatted,grid%hydroGrid)
      print *, "hydroGrid read..."
      call hydroWarpFitSplines(grid%hydroGrid)

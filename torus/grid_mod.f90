@@ -501,7 +501,7 @@ contains
   ! function to initialize a cartesian grid
 
 
-  subroutine initAMRgrid(greyContinuum,newContFile,flatspec,grid,ok,theta1,theta2)
+  subroutine initAMRgrid(newContFile,flatspec,grid,ok,theta1,theta2)
 
     use input_variables
 
@@ -509,7 +509,6 @@ contains
 
     ! grid%timeNow must be assigned before this routine is called!
 
-    logical, intent(in) :: greyContinuum
     character(len=80), intent(out) :: newContFile
     logical, intent(in) :: flatspec        ! is the spectrum flat
     logical, intent(inout) :: ok           ! function done ok?

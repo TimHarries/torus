@@ -263,7 +263,6 @@ contains
 
   grid%resonanceLine = resonanceLine
 
-
   amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
 
@@ -338,8 +337,7 @@ contains
   ! allocate the grid - this might crash out through memory problems
 
      ! any AMR allocation stuff goes here
-  call initAMRGrid(greyContinuum, &
-       newContFluxFile,flatspec,grid,ok,theta1,theta2)
+  call initAMRGrid(newContFluxFile,flatspec,grid,ok,theta1,theta2)
   if (.not.ok) goto 666
 
   grid%splitOverMpi = .false.
