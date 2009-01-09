@@ -191,16 +191,9 @@ contains
   
   call init_random_seed()
 
-  call random_seed(size=iSize)
-  allocate(iSeed(1:iSize))
-  call random_seed(get=iSeed)
-
-  call torus_mpi_barrier
 #ifdef MPI
-  call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call random_seed(put=iseed)
+  call sync_random_seed()
 #endif
-  deallocate(iSeed)
 
 
   ! initialize

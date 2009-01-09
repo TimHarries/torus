@@ -515,6 +515,26 @@ contains
 
   end subroutine torus_mpi_barrier
 
+! Syncronise random seed across all MPI processes. 
+  subroutine sync_random_seed()
+
+    implicit none
+    include 'mpif.h'
+
+    integer :: isize, ierr
+    integer, allocatable :: iseed(:)
+
+    call random_seed(size=iSize)
+    allocate(iSeed(1:iSize))
+    call random_seed(get=iSeed)
+
+    call torus_mpi_barrier
+    call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+    call random_seed(put=iseed)
+    deallocate(iSeed)
+
+  end subroutine sync_random_seed
+
 ! End of MPI routines ----------------------------------------------------------
 
 #else

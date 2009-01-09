@@ -54,6 +54,7 @@ program torus
   use photoionAMR_mod, only: radiationhydro
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_amr_mod, only: setupAMRCOMMUNICATOR
+  use parallel_mod, only: sync_random_seed
 #endif
 
   implicit none
@@ -70,9 +71,6 @@ program torus
   type(GRIDTYPE) :: grid
 
   real(double) :: cOrecontinuumflux
-
-  integer :: isize
-  integer, allocatable :: iseed(:)
 
   ! optical depth variables
   !
@@ -236,17 +234,9 @@ program torus
 
   allocate(distortionVec(1:1))
 
-  call random_seed(size=iSize)
-  allocate(iSeed(1:iSize))
-  call random_seed(get=iSeed)
-
-  call torus_mpi_barrier
 #ifdef MPI
-  call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call random_seed(put=iseed)
+  call sync_random_seed()
 #endif
-  deallocate(iSeed)
-
 
   ! initialize
 
@@ -1854,6 +1844,9 @@ subroutine set_up_sources
   use starburst_mod, only: createsources
   use source_mod, only: source_within_octal, randomSource
   use cluster_class, only: get_nstar
+
+  integer :: isize
+  integer, allocatable :: iseed(:)
 
   type(SOURCETYPE) :: a_star
   integer      :: nstar
