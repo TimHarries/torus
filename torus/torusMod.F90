@@ -65,14 +65,11 @@ contains
   use TTauri_mod, only: alpha_disc
 
   implicit none
-#ifdef MPI
-   include 'mpif.h'  
-#endif
 
-   real, allocatable :: xArray(:), tArray(:)
-   real :: testlam, junk
-   real(double) :: fac
-   integer :: nCurrent, nt
+  real, allocatable :: xArray(:), tArray(:)
+  real :: testlam, junk
+  real(double) :: fac
+  integer :: nCurrent, nt
 
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
@@ -81,9 +78,6 @@ contains
   ! variables for the grid
 
   type(GRIDTYPE) :: grid
-
-  integer :: isize
-  integer, allocatable :: iseed(:)
 
   ! variables to do with dust
   integer :: itestlam, ismoothlam
@@ -154,7 +148,6 @@ contains
 
 #ifdef MPI
   ! For MPI implementations =====================================================
-  integer ::   ierr           ! error flag
   integer ::   tempInt        !
   
 ! Begin executable statements --------------------------------------------------
