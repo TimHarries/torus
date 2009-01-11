@@ -425,6 +425,7 @@ contains
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
     use input_variables , only : gridDistance
+    use constants_mod, only: auTocm, pi
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin, dx, dy
     integer :: i
@@ -503,6 +504,7 @@ contains
   end subroutine getWeightedSpectrum
 
   subroutine convolveCube(cube, beamSize)
+    use constants_mod, only: pcTocm, pi, twoPi
     type(DATACUBE) :: cube
     real(double) :: beamSize ! beamsize in arcsec
     real(double), allocatable :: newArray(:,:)

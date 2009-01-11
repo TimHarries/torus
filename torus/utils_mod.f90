@@ -5,12 +5,10 @@ module utils_mod
 
   use kind_mod
   use vector_mod          ! vector maths
-  use constants_mod       ! physical constants
+  use constants_mod, only: angstromToCm, cSpeed, kErg, hCgs, ergtoEv, mHydrogen, twoPi, pi
   use messages_mod
-  use unix_mod
-  use nrutil
+  use nrutil, only: arth
   use nrtype
-  use mpi_global_mod
 
   implicit none
 
@@ -1246,6 +1244,7 @@ contains
     end subroutine timeString      
 
     subroutine systemInfo(startTime,nPhotons)
+      use unix_mod
       integer(kind=bigInt) :: nPhotons
       character(len=80) :: time, login, hostname, message
       integer :: cpuTime, endTime, startTime, i
@@ -4302,6 +4301,8 @@ END SUBROUTINE GAUSSJ
 
 
   SUBROUTINE init_random_seed()
+    use mpi_global_mod, only: myRankGlobal
+
     INTEGER :: i, n, clock
     INTEGER, DIMENSION(:), ALLOCATABLE :: seed
 
@@ -4317,7 +4318,4 @@ END SUBROUTINE GAUSSJ
   END SUBROUTINE init_random_seed
 
 end module utils_mod
-
-
-
 

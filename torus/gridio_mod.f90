@@ -239,6 +239,7 @@ contains
 
   subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
+    use unix_mod, only: unixGetenv
     implicit none
 
     character(len=*)            :: filename

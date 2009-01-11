@@ -15,6 +15,7 @@ use diffusion_mod
 use mpi_amr_mod
 use mpi_global_mod
 use hydrodynamics_mod
+use unix_mod, only: unixGetenv
 
 implicit none
 

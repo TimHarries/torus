@@ -1,7 +1,6 @@
 module atom_mod
-  use mpi_global_mod
-  use constants_mod
-  use kind_mod
+  use constants_mod, only: cSpeed, hConst, mElectron, eCharge, pi, kConst, hCgs, kErg
+  use kind_mod, only: double
   implicit none
   public
 

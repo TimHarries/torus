@@ -29,6 +29,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use lucy_mod
   use formal_solutions
   use distortion_mod
+  use unix_mod, only: unixTimes
 
   implicit none
 

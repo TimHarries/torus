@@ -3,29 +3,15 @@ MODULE amr_mod
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
 
-  USE messages_mod
-  USE vector_mod          ! vector maths routines
-  USE kind_mod            ! variable kind parameters    
-  USE octal_mod           ! type definition for the grid elements
-  USE gridtype_mod        ! type definition for the 3-d grid 
-  USE jets_mod            ! 
-  USE luc_cir3d_class 
-  USE cmfgen_class
-  USE constants_mod, only: cSpeed, pi
-  USE sph_data_class, only: sphData 
-  USE cluster_class
-  USE density_mod
-  USE wr104_mod
-  USE utils_mod
-  USE gas_opacity_mod
-  USE math_mod2!, only : mnewt  
-  USE atom_mod
-  USE source_mod
-  USE romanova_class
-  USE magField
-  USE mpi_global_mod
-  USE parallel_mod, ONLY: torus_abort
-
+  USE octal_mod
+  use utils_mod
+  USE constants_mod
+  use density_mod, only:    density, TTauriInFlow
+  use romanova_class, only: romanova
+  use gridtype_mod, only:   gridtype, hydrospline
+  use surface_mod, ONLY:    SURFACETYPE
+  USE cluster_class, only:  cluster
+  USE parallel_mod, ONLY:   torus_abort
 
   IMPLICIT NONE
 
@@ -54,7 +40,7 @@ MODULE amr_mod
 
   real(double), parameter :: amr_min_rho = 1.0e-30_db 
 
-  integer :: mass_split, particle_split, density_split, both_split
+  integer :: mass_split, density_split, both_split
 
 CONTAINS
 
@@ -64,6 +50,12 @@ CONTAINS
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
    
+    use cluster_class, only:  assign_density
+    use luc_cir3d_class, only: calc_cir3d_mass_velocity
+    use cmfgen_class, only: cmfgen_mass_velocity
+    use jets_mod, only: calcJetsMassVelocity
+    use romanova_class, only: calc_romanova_mass_velocity
+
     IMPLICIT NONE
 
     TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
@@ -71,7 +63,6 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
     type(STREAMTYPE), optional :: stream
-!    TYPE(sph_data), optional, INTENT(IN)  :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit               ! inherit densities, temp, etc of parent
     LOGICAL, OPTIONAL :: interp                ! interpolate densities, temp, etc of parent
@@ -331,7 +322,6 @@ CONTAINS
     REAL, INTENT(IN)                 :: size 
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
-!    TYPE(sph_data), optional, intent(in)   :: sphData   ! Matthew's SPH model data
     TYPE(cluster), optional, INTENT(IN)    :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     type(streamtype), optional :: stream
@@ -508,6 +498,9 @@ CONTAINS
     ! adds one new child to an octal
 
     USE input_variables, ONLY : cylindrical
+    USE cluster_class, only: update_particle_list
+    USE sph_data_class, only: isAlive
+    use mpi_global_mod, only: nThreadsGlobal
 
     IMPLICIT NONE
     
@@ -523,8 +516,6 @@ CONTAINS
     LOGICAL, optional :: splitAzimuthally
       ! whether these variables should be updated: 
       !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell    
-    ! For only cluster geometry ...
-!    TYPE(sph_data), OPTIONAL, INTENT(IN) :: sphData 
     TYPE(cluster), OPTIONAL, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit       ! inherit densities, temps, etc from parent
     LOGICAL, OPTIONAL :: interp        ! interpolate densities, temps, etc from parent    
@@ -734,14 +725,10 @@ CONTAINS
     call allocateOctalAttributes(grid, thisOctal)
 
 
-!    IF (PRESENT(sphData)) THEN
-       if (isAlive()) then
-          ! updates the sph particle list.           
-          !      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
-          CALL update_particle_list(parent, iChild, newChildIndex)
-          !      write(*,*) "update_particle_list broken"
-       endif
-!    END IF 
+    if (isAlive()) then
+       ! updates the sph particle list.           
+       CALL update_particle_list(parent, iChild, newChildIndex)
+    endif
     
     ! put some data in the four/eight subcells of the new child
     DO subcell = 1, parent%child(newChildIndex)%maxChildren
@@ -913,7 +900,6 @@ CONTAINS
 
     ! Object containg the output from the (Mattew's) SPH code.
     ! This will be just passed to decideSplit routine.
-!    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL,  intent(in) :: stellar_cluster
     LOGICAL, INTENT(IN), OPTIONAL :: setChanged
     !
@@ -1172,7 +1158,12 @@ CONTAINS
     !   will be called repeatedly.
     
     USE input_variables, ONLY : useHartmannTemp
-    
+    USE cluster_class, ONLY:    assign_grid_values 
+    USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
+    USE cmfgen_class, ONLY:     calc_cmfgen_temperature
+    USE jets_mod, ONLY:         calcJetsTemperature
+    USE romanova_class, ONLY:   calc_romanova_temperature
+
     IMPLICIT NONE
 
     TYPE(octal), POINTER   :: thisOctal
@@ -2296,7 +2287,8 @@ CONTAINS
                         kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
                         temperature,Ne,inFlow,etaCont,etaLine) 
   
-    
+    use jets_mod, only: JetsVelocity, get_jets_parameter, dV_dn_jets    
+
     IMPLICIT NONE
     
     TYPE(vector), INTENT(IN)      :: point     ! place to make sample
@@ -2400,7 +2392,6 @@ CONTAINS
        velocityDeriv(nSamples) = dV_dn_jets(VECTOR(pointVec%x, pointVec%y, pointVec%z), &
             VECTOR(direction%x, direction%y, direction%z))    ! [1/sec]
     end If
-    
 
     ! use variables to silence compiler warnings
     error = error
@@ -3868,7 +3859,6 @@ CONTAINS
 
     TYPE(gridtype), INTENT(INOUT) :: grid 
     REAL, INTENT(IN)              :: factor
-!    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN),optional  :: inheritProps
     logical, intent(in), optional :: interpProps 
@@ -4400,8 +4390,14 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr , maxdepthamr
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr
     use input_variables, only: planetgap, heightSplitFac
+    use luc_cir3d_class, only: get_dble_param, cir3d_data
+    use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
+    use romanova_class, only:  romanova_density
+    USE cluster_class, only:   find_n_particle_in_subcell
+    use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
+
     IMPLICIT NONE
 
     TYPE(octal), intent(inout) :: thisOctal
@@ -6483,7 +6479,6 @@ IF ( .NOT. gridConverged ) RETURN
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
-    USE parameters_mod, ONLY:  TTauriMinRho, TTauriMaxRho
     USE input_variables, ONLY: isoTherm, isoThermTemp
 
     IMPLICIT NONE
@@ -6493,6 +6488,15 @@ IF ( .NOT. gridConverged ) RETURN
 
     REAL :: rho
 
+   ! TTauri star and disk
+   ! we may need to track the minimum and maximum densities of the
+   !   accretion flow 
+! RK COMMENTED OUT THIS. IBM XFL compiler does not allow intrinsic function 
+! in declearations.
+!   real, save      :: TTauriMinRho = huge(TTauriMinRho)
+!   real, save      :: TTauriMaxRho = tiny(TTauriMaxRho)
+    real, parameter :: TTauriMinRho = 1.0e25
+    real, parameter :: TTauriMaxRho = 1.0e-25
 
     IF (isoTherm) THEN
       thisOctal%temperature(subcell) = isoThermTemp
@@ -6523,6 +6527,8 @@ IF ( .NOT. gridConverged ) RETURN
     !   on one of the figures. this function returns the temperature
     !   at any point within the accretion flow, by interpolating
     !   between the values in the published figure 6.
+
+    USE unix_mod, only: unixgetenv
 
     REAL             :: hartmannTemp
     REAL, INTENT(IN) :: rM ! normalized (0=inside, 1=outside)
@@ -6677,6 +6683,8 @@ IF ( .NOT. gridConverged ) RETURN
     !   on one of the figures. this function returns the temperature
     !   at any point within the accretion flow, by interpolating
     !   between the values in the published figure 6.
+
+    USE unix_mod, only: unixGetEnv
 
     REAL             :: hartmannTemp2
     REAL, INTENT(IN) :: rM ! normalized (0=inside, 1=outside)
@@ -7133,6 +7141,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
                                dipoleOffset, contFluxFile, &
                                magStreamFile, thinDiskRin !, TTauriMstar
+    USE magField, only: loadMagField
 
     implicit none
     
@@ -8296,6 +8305,7 @@ IF ( .NOT. gridConverged ) RETURN
   subroutine iras04158(thisOctal, subcell ,grid)
 
     use input_variables, only : router, rinner
+    use density_mod, only: iras04158Disc
     
     TYPE(octal), INTENT(INOUT) :: thisOctal
     type(GRIDTYPE), intent(in) :: grid
@@ -8817,7 +8827,7 @@ end function readparameterfrom2dmap
   
   subroutine assign_melvin(thisOctal,subcell,grid)
 
-    use input_variables
+    use density_mod, only: melvinDensity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -8838,7 +8848,7 @@ end function readparameterfrom2dmap
 
   subroutine assign_whitney(thisOctal,subcell,grid)
 
-    use input_variables
+    use density_mod, only: whitneyDensity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -8855,6 +8865,7 @@ end function readparameterfrom2dmap
   end subroutine assign_whitney
 
   subroutine assign_planetgap(thisOctal,subcell,grid)
+    use density_mod, only: planetgapDensity
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -8873,7 +8884,7 @@ end function readparameterfrom2dmap
 
   subroutine assign_toruslogo(thisOctal,subcell,grid)
 
-    use input_variables
+    use density_mod, only: toruslogoDensity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -9096,9 +9107,9 @@ end function readparameterfrom2dmap
   !
   
   subroutine copy_sph_index_to_root(grid)
+    use sph_data_class, only: get_npart
     implicit none
     type(gridtype), intent(inout) :: grid    
-!    type(sph_data), intent(in) :: sphData
     !
     integer :: i, n
 
@@ -9320,6 +9331,7 @@ end function readparameterfrom2dmap
 
 
   subroutine spiralWindSubcell(thisOctal, subcell, grid)
+    use ostar_mod, only: returnSpiralFactor
     use input_variables
     real(double) :: v, r, rhoOut
     type(VECTOR) :: rVec, rHat
@@ -10107,7 +10119,6 @@ end function readparameterfrom2dmap
     TYPE(octal), POINTER             :: thisOctal
     TYPE(gridtype), INTENT(INOUT   ) :: grid 
     LOGICAL, INTENT(INOUT)               :: gridConverged
-!    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN) :: inheritProps
     LOGICAL, INTENT(IN), optional :: interpProps
@@ -11864,6 +11875,7 @@ end function readparameterfrom2dmap
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas)
     use input_variables, only: nDustType, photoionization !, mie, includeGasOpacity
+    use atom_mod, only: bnu
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -12284,6 +12296,9 @@ end function readparameterfrom2dmap
    end subroutine averageofNearbyCells
 
   recursive subroutine estimateRhoOfEmpty(grid, thisOctal)
+    USE sph_data_class, only: sphData, get_udist
+    USE cluster_class, only:  find_n_particle_in_subcell
+
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -12335,11 +12350,11 @@ end function readparameterfrom2dmap
   end subroutine estimateRhoOfEmpty
 
   subroutine find_closest_sph_particle(rVec, temp, rho, recip_sm)
-    USE inputs_mod, only: TMinGlobal
+    USE input_variables, only: TMinGlobal
+    USE sph_data_class, only: sphData, get_udist, get_umass
 
     implicit none
 
-!    type(sph_data), intent(in)    :: sphData
     type(VECTOR), intent(in) :: rVec
     real, intent(out)             :: temp
     real(double), intent(out)     :: rho
@@ -12929,7 +12944,6 @@ end function readparameterfrom2dmap
     type(octal), pointer  :: child, neighbourOctal, startOctal
     logical, optional :: inheritProps, interpProps
     !
-!    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
@@ -14094,6 +14108,9 @@ end function readparameterfrom2dmap
     !   criterion is met. also, the path of the photon is checked for 
     !   intersection with the stellar surface(s), disc etc. 
  
+    USE magField, only: innerDiskData_Radii, innerDiskData_Phi, maxSizeMagFieldGrid
+    USE source_mod, only: SOURCETYPE, distanceToSource
+
     IMPLICIT NONE
 
     type(octal), pointer, optional :: startOctal
@@ -15841,6 +15858,8 @@ end function readparameterfrom2dmap
   end subroutine tauAlongPath2
 
   subroutine columnAlongPath(grid, source, nsource, rVec, direction, sigma)
+    USE source_mod, only: SOURCETYPE, distanceToSource
+
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -16139,6 +16158,9 @@ end function readparameterfrom2dmap
 
 
   subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion)
+
+    USE surface_mod, only: createProbs, sumSurface
+
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -16204,6 +16226,7 @@ end function readparameterfrom2dmap
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev
+    use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
     integer, parameter :: nTheta = 10 , nphi = 10

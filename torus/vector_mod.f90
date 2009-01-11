@@ -13,7 +13,6 @@ module vector_mod
 ! real(double) and 'octal' versions of some routines added by nhs
 
   use kind_mod
-  use constants_mod
 
   implicit none
 
@@ -233,7 +232,7 @@ contains
   end function subtract
 
   pure subroutine getPolar(vec, r, theta, phi)
-
+    use constants_mod, only: twoPi
     implicit none
     type(vector), intent(in) :: vec
     real(double), intent(out) :: r, theta, phi
@@ -304,6 +303,7 @@ contains
   end function rotateY
 
   type(VECTOR) function randomUnitVector()
+    use constants_mod, only: pi
     real(double) :: r1, r2, u, v, w, t, ang
     call random_number(r1)
     w = 2.*r1 - 1.
@@ -317,6 +317,7 @@ contains
   end function randomUnitVector
 
   type(VECTOR) function specificUnitVector(r1,r2)
+    use constants_mod, only: pi
     real(double) :: r1, r2, u, v, w, t, ang
 !    type(VECTOR) :: specificunitvector
     w = 2.d0*r1 - 1.
@@ -455,6 +456,7 @@ contains
   
   
   type(VECTOR) function fromPhotosphereVector(rVec)
+    use constants_mod, only: twoPi
     real(double) :: ang, z
     type(VECTOR) :: norm, zAxis, v, rVec, n
     
@@ -515,7 +517,7 @@ contains
   end subroutine SPtoXYZvector
 
   ELEMENTAL SUBROUTINE XYZtoSPvector(out,in)
-
+    use constants_mod, only: twoPi, pi
     TYPE(SPvector), INTENT(OUT) :: out
     TYPE(vector),  INTENT(IN) :: in
 

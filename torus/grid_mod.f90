@@ -3250,6 +3250,7 @@ contains
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
     use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
+    use unix_mod, only: unixGetenv
     implicit none
 
     character(len=*)            :: filename
@@ -3539,6 +3540,7 @@ contains
   subroutine readAMRgridMPI(filename,fileFormatted,grid, mpiflag)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
+    use unix_mod, only: unixGetenv
     use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
     implicit none
 

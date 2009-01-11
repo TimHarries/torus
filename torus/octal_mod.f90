@@ -7,9 +7,6 @@ MODULE octal_mod
   USE kind_mod
   USE vector_mod
   USE messages_mod
-
-!  USE linked_list_class
-  
   
   IMPLICIT NONE
 
@@ -480,6 +477,7 @@ CONTAINS
   ! function checks if this position is within this octal.
   !
   function within_subcell(this, subcell, x, y, z) RESULT(out)
+    use constants_mod, only: twoPi
     implicit none
     logical :: out
     type(octal), intent(in) :: this
@@ -567,6 +565,7 @@ CONTAINS
 
 
   real(double) function cellVolume(thisOctal, subcell) result(v)
+    use constants_mod, only: fourPi, twoPi, pi
     type(OCTAL) :: thisOctal
     integer :: subcell
     real(double) :: r1, r2, dphi

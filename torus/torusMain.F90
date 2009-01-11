@@ -21,21 +21,21 @@
 ! TJH: 10/09/08 pgplot calls removed...
 program torus
 
-  use amr_mod
+  use utils_mod
   use input_variables         ! variables filled by inputs subroutine
-  use vector_mod, only: vector             ! vector math
+  use constants_mod
+  use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
   use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
   use blob_mod, only: blobType
-  use utils_mod, only: findIlambda
   use inputs_mod, only: inputs
   use TTauri_mod, only: infallenhancment, initInfallEnhancement 
   use romanova_class, only: romanova
   use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
-  use source_mod, only: sourceType 
+  use source_mod, only: sourceType, buildSphere 
   use sph_data_class, only: read_sph_data, kill, sphdata
-  use cluster_class, only: cluster, n_stars_in_octal, get_a_star, build_cluster
+  use cluster_class, only: cluster
   use surface_mod, only: surfaceType
   use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
   use discwind_class, only: discwind, new, add_discwind
@@ -49,11 +49,16 @@ program torus
   use parallel_mod, only: torus_mpi_barrier
   use gridio_mod, only: writeAMRgrid, readamrgrid
   use bitstring_mod, only: constructBitStrings
+  use gas_opacity_mod, only: createAllMolecularTables, readTsujiKPTable, readTsujiPPTable
+  use density_mod, only: calcPlanetMass
   use phaseloop_mod, only: do_phaseloop
+  use timing, only: tune
+  use ion_mod, only: addions
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_amr_mod, only: setupAMRCOMMUNICATOR
+  use unix_mod, only: unixGetHostname
   use parallel_mod, only: sync_random_seed
 #endif
 
@@ -670,7 +675,12 @@ CONTAINS
 
   subroutine pre_initAMRGrid
 
-    use isochrone_class, only: isochrone
+    use isochrone_class, only: isochrone, read_isochrone_data
+    use cluster_class, only: write_catalog, build_cluster
+    use romanova_class, only: get_dble_parameter
+    use sph_data_class, only: find_inclinations, new_read_sph_data, read_stellar_disc_data, info
+    use wr104_mod, only: readwr104particles
+    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax
 
     type(isochrone) :: isochrone_data
     real(double)    :: objectDistance
@@ -1217,9 +1227,13 @@ end subroutine pre_initAMRGrid
 
   subroutine amr_grid_setup
 
-    use spectrum_mod, only: fillSpectrumBB
+    use amr_mod
+    use spectrum_mod, only: fillSpectrumBB, normalizedSpectrum
     use stateq_mod, only: map_cmfgen_opacities, amrStateq, generateOpacitiesAMR
     use dust_mod, only: filldustshakara, filldustuniform, filldustwhitney
+    use cluster_class, only: remove_too_close_cells
+    use surface_mod, only: createTTauriSurface, createTTauriSurface2, createSurface
+    use luc_cir3d_class, only: deallocate_zeus_data
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -1841,9 +1855,12 @@ end subroutine amr_grid_setup
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
 
+  use amr_mod, only: genericAccretionSurface
+  use spectrum_mod, only: fillSpectrumBB, readSpectrum, normalizedSpectrum
   use starburst_mod, only: createsources
   use source_mod, only: source_within_octal, randomSource
-  use cluster_class, only: get_nstar
+  use cluster_class, only: get_nstar, n_stars_in_octal, get_a_star
+  use surface_mod, only: createTTauriSurface, createTTauriSurface2, sumSurface, createSurface, testSurface
 
   integer :: isize
   integer, allocatable :: iseed(:)
@@ -2207,6 +2224,8 @@ end subroutine set_up_sources
 
 subroutine post_initAMRgrid 
 
+  use amr_mod, only: find_average_temperature, findTotalMass, scaleDensityAMR
+
   real         :: scaleFac
   real(double) :: totalMass
   real(double) :: T_ave   ! average temperature of cluster
@@ -2309,6 +2328,7 @@ subroutine do_lucyRadiativeEq
   use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy
   use disc_hydro_mod, only: verticalHydrostatic
   use cluster_utils, only: analyze_cluster
+  use cluster_class, only: reassign_10k_temperature, restrict, kill_all
 
   type(VECTOR) :: outVec
   outVec = (-1.d0)* originalViewVec
@@ -2381,6 +2401,10 @@ end subroutine do_lucyRadiativeEq
 !-----------------------------------------------------------------------------------------------------------------------
 
 subroutine set_emission_bias
+
+  use cluster_class, only: assign_emission_bias
+  use amr_mod, only: set_bias_shakara, set_bias_cmfgen, set_bias_rosseland, &
+       set_bias_ttauri, set_bias_whitney, setbiasamr
 
   type(VECTOR) :: outVec
   outVec = (-1.d0)* originalViewVec

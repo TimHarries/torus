@@ -14,6 +14,7 @@ module dust_mod
 contains
 
   subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
+    use unix_mod, only: unixGetenv
 
     ! gr1_dl - graphite orth  .25
     ! gr2_dl - graphite para  .125

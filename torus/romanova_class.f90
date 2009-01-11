@@ -1,13 +1,13 @@
 module romanova_class
   ! --------------------------------------------------------------------
-  !  The data class to handle the data output from Romanpva's tilted
+  !  The data class to handle the data output from Romanova's tilted
   !  dipole magnetosphere MHD simulation.  
   !---------------------------------------------------------------------
   !  Created: 05-april-2006  (R.Kurosawa)
   !---------------------------------------------------------------------
 
   use kind_mod
-  use constants_mod, only: pi, cSpeed_dbl
+  use constants_mod, only: pi, cSpeed_dbl, cSpeed
   use octal_mod
   use zeus_data_class
   use vector_mod

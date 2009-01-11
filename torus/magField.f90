@@ -82,6 +82,7 @@ CONTAINS
                                flowRhoScale, scaleFlowRho,   &
                                magStreamFileDegrees, limitSpotTemp, &
                                maxSpotTemp
+    USE constants_mod
    
     CHARACTER(LEN=*), INTENT(IN) :: fileName ! input file
     TYPE(vector), INTENT(IN) :: starPosn 

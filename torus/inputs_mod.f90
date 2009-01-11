@@ -1,22 +1,25 @@
 module inputs_mod
 
-use messages_mod
-use utils_mod
-use input_variables
-use jets_mod
+  use messages_mod
+  use kind_mod
 
-implicit none
+  implicit none
 
-public
+  public :: inputs
+
+  private
 
 contains
 
   subroutine inputs()
 
-    use constants_mod
     use vector_mod
-    use unix_mod
     use input_variables         ! variables that would be passed as arguments
+    use constants_mod
+    use unix_mod, only:  unixGetEnv
+    use jets_mod, only:  set_jets_parameters
+    use utils_mod, only: replaceDots
+
 
     implicit none
 
@@ -3051,7 +3054,8 @@ end subroutine getBigInteger
  ! Assumes all distances in AU, mass in msol
 
  real(double) function densityfrommass(mdisc, h0, rin, rout, r0, alpha, beta) result(rho0)
-   
+     use constants_mod, only: twoPi, msolpercAUtogpercc
+
    real :: mdisc, h0, rin, rout, r0, alpha, beta, fac
 
    fac    = beta - alpha + 2.

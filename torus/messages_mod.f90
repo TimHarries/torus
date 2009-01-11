@@ -3,9 +3,6 @@
 
 
 module messages_mod
-
-  use kind_mod
-  use unix_mod
   
   implicit none
 

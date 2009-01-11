@@ -759,6 +759,7 @@ end module torus_mod
     USE gridtype_mod, only:   gridType
     USE sph_data_class, only: sphData, get_udist
     USE messages_mod
+    USE kind_mod
 
     implicit none
 

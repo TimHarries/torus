@@ -2,7 +2,7 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, a0, qDist, pDist, &
      kappaAbs, kappaSca, grainType)
   use constants_mod
   use utils_mod
-  use unix_mod
+  use unix_mod, only: unixGetenv
   implicit none
   character(len=80) :: dataDirectory, filename
   real :: lambda(*)

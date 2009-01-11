@@ -5,7 +5,6 @@ module surface_mod
   use vector_mod
   use utils_mod
   use gridtype_mod
-!  use amr_mod
   use density_mod
   use romanova_class
   use messages_mod

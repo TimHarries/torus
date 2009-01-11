@@ -4,7 +4,7 @@ module modelatom_mod
 
   use kind_mod
   use constants_mod
-  use unix_mod
+  use unix_mod, only: unixGetenv
   use messages_mod
   use hyd_col_coeff
   use utils_mod

@@ -1,7 +1,7 @@
 subroutine getRefractiveIndex2(lambda, grainType, mReal, mImg)
  use constants_mod
  use utils_mod
- use unix_mod
+ use unix_mod, only: unixGetenv
 
  implicit none
  real :: lambda

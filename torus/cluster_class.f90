@@ -13,7 +13,6 @@ module cluster_class
   use isochrone_class
   use messages_mod
   use vector_mod
-  use math_mod2
   use constants_mod, only: mSol, secsToYears
   use input_variables, only: rCore, tMinGlobal
   

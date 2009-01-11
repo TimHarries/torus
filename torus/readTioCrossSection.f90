@@ -6,7 +6,7 @@ CONTAINS
 
 subroutine readTioCrossSection(lamArray, nLambda, sigmaArray)
   use utils_mod
-  use unix_mod
+  use unix_mod, only: unixGetenv
   implicit none
   integer :: nLambda
   real :: lamArray(nLambda), sigmaArray(nLambda)

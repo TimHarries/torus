@@ -73,6 +73,7 @@ module molecular_mod
    ! Read in molecular parameters from file - note: abundance hard-coded here
 
    subroutine readMolecule(thisMolecule, molFilename)
+     use unix_mod, only: unixGetenv
      use input_variables, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
@@ -208,6 +209,7 @@ module molecular_mod
 
  ! Same routine for benchmark molecule (slightly different file format)
    subroutine readBenchmarkMolecule(thisMolecule, molFilename)
+     use unix_mod, only: unixGetenv
      use input_variables, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename

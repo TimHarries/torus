@@ -12,7 +12,7 @@ module starburst_mod
   use messages_mod
   use utils_mod
   use source_mod
-  use unix_mod
+  use unix_mod, only: unixGetenv
 
   implicit none
 

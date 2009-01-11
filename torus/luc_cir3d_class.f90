@@ -4,7 +4,7 @@ module luc_cir3d_class
   !---------------------------------------------------------------------------------
 
   use kind_mod
-  use constants_mod, only: pi
+  use constants_mod, only: pi, cSpeed
   use octal_mod
   use zeus_data_class
   use vector_mod

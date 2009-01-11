@@ -11,6 +11,7 @@ use amr_mod
 use constants_mod
 use messages_mod
 use diffusion_mod
+use unix_mod, only: unixGetenv
 
 implicit none
 
