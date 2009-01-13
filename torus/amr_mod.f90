@@ -5876,53 +5876,6 @@ IF ( .NOT. gridConverged ) RETURN
 
   END FUNCTION TTauriVelocity
 
-  SUBROUTINE equationA7(m,func,deriv)
-  
-    USE rotation_variables
-    use input_variables, only: TTauriMstar
-    real(double), DIMENSION(:), INTENT(IN) :: m
-    real(double), DIMENSION(:), INTENT(OUT) :: func
-    real(double), DIMENSION(:,:), INTENT(OUT) :: deriv
-
-    !print *, 'eta = ',eta
-    !print *, 'm = ',m
-    !print *, 'Bp = ',Bp
-    !print *, 'Einitial = ',Einitial
-    !print *, '2ndterm = ',-(Bp**2 * m**2)/(8.0*pi*eta)
-    !print *, '3rdterm = ',bigG*TTauriMstar/r
-    
-
-    !print *,(Bp**2/(8.0_db*pi*eta)) * m**4                                    
-    !print *, - (Einitial + bigG*TTauriMstar/r - l**2/(2.0_db*bigR**2) - (Bp**2/(8.0_db*pi*eta))) * m**2 
-    !print *,        + (bigR**2 * omegaStar * omega) * m                              
-    !print *,        - (0.5_db * bigR**2 * omega**2) + Einitial + (bigG*TTauriMstar/r)
-
-    func = (Bp**2/(8.0_db*pi*eta)) * m**4                                    &
-            - (Einitial + bigG*TTauriMstar/r + l**2/(2.0_db*bigR**2) + (Bp**2/(8.0_db*pi*eta))) * m**2 &
-            + (omegaStar * l) * m                                            &
-            - (0.5_db * bigR**2 * omegaStar**2) + Einitial + (bigG*TTauriMstar/r)
-
-    deriv = spread(dim=1,ncopies=1,source=                                        &
-              (4.0 * Bp**2/(8.0_db*pi*eta)) * m**3                                &
-              + 2.0 * (-Einitial - bigG*TTauriMstar/r - l**2/(2.0_db*bigR**2) - (Bp**2/(8.0_db*pi*eta))) * m &
-              + (omegaStar * l))
-
-    
-  END SUBROUTINE equationA7
-  
-  real(double) PURE FUNCTION funcA7(m)
-
-    USE rotation_variables
-    use input_variables, only: TTauriMstar
-    real(double), INTENT(IN) :: m
-!!!!!!!!!!!!!! INCORRECT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    funcA7 = (Bp**2/8.0_db*pi*eta) * m**4                                      &
-              - (Einitial + bigG*TTauriMstar/r - l**2/(2.0_db*bigR**2)) * m**2 &
-              + (bigR**2 * omegaStar * omega) * m                              &
-              - (0.5_db * bigR**2 * omega**2)
-
-  END FUNCTION funcA7
-
   SUBROUTINE calcTTauriMassVelocity(thisOctal,subcell,grid) 
     ! calculates some of the variables at a given point for a model
     !   of a T Tauri star with magnetospheric accretion
