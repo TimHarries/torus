@@ -1219,7 +1219,10 @@ contains
    "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
  if (molecular) then
+
     onekappa = .true.
+   call getLogical("restart", restart, cLine, nLines, &
+        "Restart from previous grid file: ","(a,l,1x,a)",.false., ok, .false.)
    call getString("moleculefile", moleculefile, cLine, nLines, &
         "Input molecule filename: ","(a,a,1x,a)","none", ok, .false.)
    call getString("molfilein", molFilenameIn, cLine, nLines, &
@@ -1238,7 +1241,9 @@ contains
         "Open Existing lucy file: ","(a,1l,1x,a)", .false., ok, .false.)
     call getReal("distance", gridDistance, cLine, nLines, &
          "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
+
     gridDistance = gridDistance * pcTocm   ! cm
+
     call getReal("tolerance", tolerance, cLine, nLines, &
          "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
     call getReal("vturb", vturb, cLine, nLines, &
@@ -1251,9 +1256,14 @@ contains
          "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
     call getReal("dusttogas", dusttoGas, cLine, nLines, &
          "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
-   call getLogical("plotlevels", plotlevels, cLine, nLines, &
-        "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
-    
+    call getLogical("plotlevels", plotlevels, cLine, nLines, &
+         "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if(geometry .eq. 'molcluster') then
+       call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
+            "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+    endif
+
 ! Image parameters
     if(readmol) then
 
