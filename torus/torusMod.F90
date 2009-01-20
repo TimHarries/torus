@@ -23,7 +23,8 @@ contains
                    b_udist, b_umass,       b_utime,               &
                    b_time,  b_temp,        temp_min,              &
                    b_totalgasmass,         file_tag,              &
-                   fix_source_R, fix_source_L, fix_source_T)         ! optional arguments
+                   fix_source_R, fix_source_L, fix_source_T,      &  ! optional arguments
+                   remove_radius )         
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -140,6 +141,7 @@ contains
   real*8, optional :: fix_source_R  ! source radius
   real*8, optional :: fix_source_L  ! source luminosity
   real*8, optional :: fix_source_T  ! source temperature
+  real*8, optional :: remove_radius ! radius to use for remove_too_close_cells
 
   character(len=11), save       :: prev_file_tag="none"
   integer, save :: num_calls = 0
@@ -609,6 +611,7 @@ CONTAINS
     use constants_mod, only: mSol
 
     real(double) :: removedMass
+    real(double) :: close_radius
     TYPE(vector) :: someVector
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
@@ -619,6 +622,8 @@ CONTAINS
        STOP
 
     else  ! not reading a population file
+
+        if ( present (remove_radius) ) grid%rCore = remove_radius*1e-10
 
        amrGridCentre = Vector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
@@ -645,9 +650,14 @@ CONTAINS
            if (gridConverged) exit
         end do        
 
-        !Removing the cells within 10^14 cm from the stars.
+        ! Removing the cells within close_radius of the stars.
+        ! Use value from subroutine argument if present or value from parameter file if not. 
+        close_radius = real(grid%rCore, kind=db)
+
         removedMass = 0.0
-        call remove_too_close_cells(young_cluster,grid%octreeRoot,real(grid%rCore, kind=db), removedMass, amr_min_rho)
+        write(message,*) "Removing mass within ", close_radius, " (10^10 cm)"
+        call writeInfo(message, TRIVIAL)
+        call remove_too_close_cells(young_cluster, grid%octreeRoot, close_radius, removedMass, amr_min_rho)
         write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
         call writeInfo(message, TRIVIAL)
 
