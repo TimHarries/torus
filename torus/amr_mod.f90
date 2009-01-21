@@ -12290,9 +12290,7 @@ end function readparameterfrom2dmap
                thisOctal, subcell)
           if (np < 1) then
                 rVec = subcellCentre(thisOctal,subcell)
-                call find_closest_sph_particle(rVec, temp, rho, recip_sm(:) )
-! Old method of filling in empty cells
-!               call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
+               call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
                 thisOctal%rho(subcell) = rho
              thisOctal%temperature(subcell) = temp
           endif
@@ -12301,52 +12299,6 @@ end function readparameterfrom2dmap
 
 
   end subroutine estimateRhoOfEmpty
-
-  subroutine find_closest_sph_particle(rVec, temp, rho, recip_sm)
-    USE input_variables, only: TMinGlobal
-    USE sph_data_class, only: sphData, get_udist, get_umass
-
-    implicit none
-
-    type(VECTOR), intent(in) :: rVec
-    real, intent(out)             :: temp
-    real(double), intent(out)     :: rho
-    real(double), intent(in)      :: recip_sm(sphData%npart)
-
-    integer      :: ipart
-    real(double) :: this_dist, dist, sm_len
-    real(double) :: part_x, part_y, part_z ! particle positions in torus units
-    real(double) :: umass, udist, udent
-    real(double), parameter :: cmToTorus = 1.0e-10_db
-
-    umass = get_umass()  ! [g]
-    udist = get_udist()  ! [cm]
-    udent = umass/udist**3
-
-    dist = 1.0e99_db
-    rho  = amr_min_rho
-    temp = TMinGlobal
-
-    do ipart=1, sphData%npart
-
-       part_x = sphData%xn(ipart) * udist * cmToTorus
-       part_y = sphData%yn(ipart) * udist * cmToTorus 
-       part_z = sphData%zn(ipart) * udist * cmToTorus 
-       sm_len = sphData%hn(ipart) * udist * cmToTorus
-       ! Calculate distance**2 instead of distance as there is no need to calculate the (slow) sqrt function.
-       this_dist = ( (part_x - rVec%x)**2 + (part_y - rVec%y)**2 + (part_z - rVec%z)**2 ) * recip_sm(ipart) 
-
-       if ( this_dist < dist) then
-          dist = this_dist
-          rho  = sphData%rhon(ipart) * udent
-          temp = sphdata%temperature(ipart)
-       end if
-
-    end do
-    
-
-  end subroutine find_closest_sph_particle
-
 
   recursive subroutine updateTemps(grid, thisOctal)
     type(gridtype) :: grid
