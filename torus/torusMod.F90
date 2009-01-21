@@ -631,7 +631,6 @@ CONTAINS
        call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
        call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
        call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-!       call estimateRhoOfEmpty(grid, grid%octreeRoot )	
    
         nOctals = 0
         nVoxels = 0
