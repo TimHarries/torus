@@ -105,8 +105,7 @@ contains
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
-  logical :: gridConverged           ! true when adaptive grid structure has 
-                                     !   been finalised
+
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
 
   ! For romanova geometry case
@@ -640,14 +639,10 @@ CONTAINS
         write(message,*) "                      : ",nVoxels," unique voxels"
         call writeInfo(message, TRIVIAL)
         grid%nOctals = nOctals
+        call howmanysplits()
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
-        gridConverged = .false.
-     
-        do
-           call finishGrid(grid%octreeRoot,grid,gridConverged,romData=romData)
-           if (gridConverged) exit
-        end do        
+        call finishGrid(grid%octreeRoot, grid, romData=romData)
 
         ! Removing the cells within close_radius of the stars.
         ! Use value from subroutine argument if present or value from parameter file if not. 

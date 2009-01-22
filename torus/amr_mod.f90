@@ -1149,13 +1149,10 @@ CONTAINS
   END SUBROUTINE sortOctalArray    
     
   
-  RECURSIVE SUBROUTINE finishGrid(thisOctal,grid,gridConverged,romData)
+  RECURSIVE SUBROUTINE finishGrid(thisOctal, grid, romData)
     ! takes the octree grid that has been created using 'splitGrid'
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
-    ! the gridConverged variable should be set .TRUE. when the entire
-    !   grid has been finished. Until that happens, this subroutine 
-    !   will be called repeatedly.
     
     USE input_variables, ONLY : useHartmannTemp
     USE cluster_class, ONLY:    assign_grid_values 
@@ -1168,13 +1165,11 @@ CONTAINS
 
     TYPE(octal), POINTER   :: thisOctal
     TYPE(gridtype)         :: grid
-    LOGICAL, INTENT(INOUT) :: gridConverged
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
     TYPE(octal), POINTER   :: child
   
     INTEGER :: subcell, iChild
-    logical,save :: first_time = .true.
      
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren
@@ -1184,89 +1179,40 @@ CONTAINS
       CASE ("ttauri")
         IF (.NOT. useHartmannTemp) &
           CALL calcTTauriTemperature(thisOctal,subcell)
-        gridConverged = .TRUE.
         
-      CASE ("spiralwind")
-        gridConverged = .TRUE.
-
       CASE ("jets")
         CALL calcJetsTemperature(thisOctal,subcell, grid)
-        gridConverged = .TRUE.
         
       CASE ("luc_cir3d")
         CALL calc_cir3d_temperature(thisOctal,subcell)
-        gridConverged = .TRUE.
 
       CASE ("cmfgen")
         CALL calc_cmfgen_temperature(thisOctal,subcell)
-        gridConverged = .TRUE.
 
       CASE ("romanova")
         CALL calc_romanova_temperature(romData, thisOctal,subcell)
-        gridConverged = .TRUE.
         
-      CASE ("testamr","proto")
-        gridConverged = .TRUE.
-
-      CASE ("windtest")
-        gridConverged = .TRUE.
-
-      CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
-           "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
-           "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158","circumbin")
-         gridConverged = .TRUE.
-
       CASE ("cluster","wr104")
          call assign_grid_values(thisOctal,subcell, grid)
-         gridConverged = .TRUE.
 !        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
 
       CASE ("molcluster")
         call assign_grid_values(thisOctal,subcell, grid)
-        gridConverged = .TRUE.
-
-      CASE ("ppdisk","wrshell","toruslogo","planetgap")
-        gridConverged = .TRUE.
-
-      CASE ("magstream")
-        gridConverged = .TRUE.
-
-      CASE ("hydro1d")
-        gridConverged = .TRUE.
-
-      CASE ("kelvin")
-        gridConverged = .TRUE.
-
-      CASE ("sedov")
-        gridConverged = .TRUE.
-
-      CASE ("protobin")
-        gridConverged = .TRUE.
 
       CASE DEFAULT
-        WRITE(*,*) "! Unrecognised grid geometry in finishgrid: ",trim(grid%geometry)
-        STOP
-      
+         ! Nothing to be done for this geometry so just return. 
+         goto 666
+
       END SELECT
       
     END DO
    
     DO iChild = 1, thisOctal%nChildren, 1
-      child => thisOctal%child(iChild)
-      CALL finishGrid(child,grid,gridConverged,romData=romData)
+       child => thisOctal%child(iChild)
+       CALL finishGrid(child, grid, romData=romData)
     END DO
 
-    ! any stuff that gets done *after* the finishGrid recursion goes here:
-    IF (.NOT. ASSOCIATED(thisOctal%parent)) THEN
-     
-      ! nothing at the moment
-
-    END IF
-    
-    if(first_time) then
-       call howmanysplits()
-       first_time = .false.
-    endif
+666 continue
     
   END SUBROUTINE finishGrid
  

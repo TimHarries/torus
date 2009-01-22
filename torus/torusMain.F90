@@ -1641,14 +1641,10 @@ end subroutine pre_initAMRGrid
         write(message,*) "                      : ",nVoxels," unique voxels"
         call writeInfo(message, TRIVIAL)
         grid%nOctals = nOctals
+        call howmanysplits()
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
-        gridConverged = .false.
-     
-        do
-           call finishGrid(grid%octreeRoot,grid,gridConverged,romData=romData)
-           if (gridConverged) exit
-        end do        
+        call finishGrid(grid%octreeRoot, grid, romData=romData)
 !        call writeInfo("...cleaning up dynamic memory",TRIVIAL)
 !        call cleanupAMRgrid(grid%octreeRoot)
 
