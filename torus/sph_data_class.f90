@@ -49,6 +49,7 @@ module sph_data_class
 !     private  ! Believe me. It's better to be private!    
      logical      :: inUse=.false.          ! Flag to indicate if this object is in use.
      real(double) :: udist, umass, utime    ! Units of distance, mass, time in cgs
+     real(double) :: codeVelocitytoTORUS    ! Conversion from SPH code velocity units to Torus units
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Total number of gas particles (field+disc)
      real(double) :: time                   ! Time of sph data dump (in units of utime)
@@ -374,6 +375,8 @@ contains
     write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
     call writeinfo(message, TRIVIAL)
     call init_sph_data(udist, umass, utime, time, nptmass)
+    ! velocity unit is derived from distance and time unit (converted to seconds from years)
+    sphdata%codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed 
 
     nlines = npart + n2 + nptmass + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
 
@@ -1076,7 +1079,7 @@ contains
        utime = get_utime()
        umass = get_umass()
        codeLengthtoTORUS = udist * 1d-10
-       codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed ! velocity unit is derived from distance and time unit (converted to seconds from years)
+       codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
        codeDensitytoTORUS = umass / ((udist) ** 3)
 
 !       npart = get_npart() ! total gas particles
