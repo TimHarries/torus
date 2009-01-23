@@ -397,7 +397,7 @@ contains
 
   call init_random_seed()
 
-  filename = trim ( "torus_in_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
+  filename = trim ( "torus_in_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
   if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
@@ -410,7 +410,7 @@ contains
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-  filename = trim ( "torus_out_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
+  filename = trim ( "torus_out_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
   if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
@@ -651,7 +651,7 @@ CONTAINS
         removedMass = 0.0
         write(message,*) "Removing mass within ", close_radius, " (10^10 cm)"
         call writeInfo(message, TRIVIAL)
-        call remove_too_close_cells(young_cluster, grid%octreeRoot, close_radius, removedMass, amr_min_rho)
+        call remove_too_close_cells(young_cluster, grid%octreeRoot, close_radius, removedMass, 1.0d-60)
         write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
         call writeInfo(message, TRIVIAL)
 
