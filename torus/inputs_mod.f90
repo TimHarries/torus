@@ -1215,107 +1215,119 @@ contains
     call getLogical("photoionization", photoionization, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
- call getLogical("molecular", molecular, cLine, nLines, &
-   "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
+    call getLogical("molecular", molecular, cLine, nLines, &
+         "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
- if (molecular) then
+    if (molecular) then
 
-    onekappa = .true.
-   call getLogical("restart", restart, cLine, nLines, &
-        "Restart from previous grid file: ","(a,l,1x,a)",.false., ok, .false.)
-   call getString("moleculefile", moleculefile, cLine, nLines, &
-        "Input molecule filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("molfilein", molFilenameIn, cLine, nLines, &
-        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("molfileout", molFilenameOut, cLine, nLines, &
-        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getLogical("writemol", writeMol, cLine, nLines, &
-        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readmol", readMol, cLine, nLines, &
-          "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("writeLucy", writeLucy, cLine, nLines, &
-        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readLucy", readLucy, cLine, nLines, &
-          "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("openlucy", openLucy, cLine, nLines, &
-        "Open Existing lucy file: ","(a,1l,1x,a)", .false., ok, .false.)
-    call getReal("distance", gridDistance, cLine, nLines, &
-         "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
-
-    gridDistance = gridDistance * pcTocm   ! cm
-
-    call getReal("tolerance", tolerance, cLine, nLines, &
-         "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
-    call getReal("vturb", vturb, cLine, nLines, &
-         "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
-    call getReal("molAbundance", molAbundance, cLine, nLines, &
-         "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
-    call getLogical("useDust", useDust, cLine, nLines, &
-         "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
-    call getLogical("isinLTE", isinlte, cLine, nLines, &
-         "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
-    call getReal("dusttogas", dusttoGas, cLine, nLines, &
-         "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
-    call getLogical("plotlevels", plotlevels, cLine, nLines, &
-         "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
-
-    if(geometry .eq. 'molcluster') then
-       call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
-            "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
-    endif
-
-! Image parameters
-    if(readmol) then
-
-       call getReal("imageside", imageside, cLine, nLines, &
-            "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
-       call getInteger("npixels", npixels, cLine, nLines, &
-            "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
-       call getInteger("nv", nv, cLine, nLines, &
-            "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
-       call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
-            "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .true.)
-       call getInteger("itrans", itrans, cLine, nLines, &
-            "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
-       call getReal("beamsize", beamsize, cLine, nLines, &
-            "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .true.)
-       call getReal("inclination", inc, cLine, nLines, &
-            "Inclination angle (deg): ","(a,f4.1,1x,a)", -1., ok, .true.)
-       call getDouble("maxVel", maxVel, cLine, nLines, &
-            "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
-
-       if(writelucy .or. readlucy) then
-          call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
-               "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-          call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
-               "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-       endif
-
-    endif
-
-    if(geometry .eq. 'molecularFilament') then
-
-       call getReal("r0", r0, cLine, nLines, &
-            "Core Radius of Filament:","(a,f4.1,1x,a)", 1., ok, .true.)
-       call getReal("rhoC", rhoC, cLine, nLines, &
-            "Central density along filament axis:","(a,f4.1,1x,a)", 1., ok, .true.)
-    endif
-
-    if((geometry .eq. 'molebench') .or. (geometry .eq. 'h2obench1') .or. &
-       (geometry .eq. 'h2obench2') .or. (geometry .eq. 'AGBStar')) then
-
-       call getReal("rinner", rInner, cLine, nLines, &
-            "Inner Radius for dumpresults (10^10cm): ","(a,f5.1,a)", 1e4, ok, .true.)
+       onekappa = .true.
+       call getLogical("suppresswarnings", suppressWarnings, cLine, nLines, &
+            "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.)
+       call getLogical("restart", restart, cLine, nLines, &
+            "Restart from previous grid file: ","(a,l,1x,a)",.false., ok, .false.)
+       call getString("moleculefile", moleculefile, cLine, nLines, &
+            "Input molecule filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("molfilein", molFilenameIn, cLine, nLines, &
+            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("molfileout", molFilenameOut, cLine, nLines, &
+            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getLogical("writemol", writeMol, cLine, nLines, &
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readmol", readMol, cLine, nLines, &
+            "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("writeLucy", writeLucy, cLine, nLines, &
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readLucy", readLucy, cLine, nLines, &
+            "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("openlucy", openLucy, cLine, nLines, &
+            "Open Existing lucy file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("distance", gridDistance, cLine, nLines, &
+            "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
        
-       call getReal("router", rOuter, cLine, nLines, &
-            "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
+       gridDistance = gridDistance * pcTocm   ! cm
+       
+       call getReal("tolerance", tolerance, cLine, nLines, &
+            "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+       call getReal("vturb", vturb, cLine, nLines, &
+            "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
+       call getReal("molAbundance", molAbundance, cLine, nLines, &
+            "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
+       call getLogical("useDust", useDust, cLine, nLines, &
+            "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
+       call getLogical("isinLTE", isinlte, cLine, nLines, &
+            "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("dusttogas", dusttoGas, cLine, nLines, &
+            "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+       call getLogical("plotlevels", plotlevels, cLine, nLines, &
+            "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("realdust", isinlte, cLine, nLines, &
+            "Use realistic dust model: ", "(a,1l,1x,a)", .true., ok, .false.)
+       
+       
+       if(geometry .eq. 'molcluster') then
+          call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
+               "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+       endif
+       
+       ! Image parameters
+       if(readmol) then
+          
+          call getReal("imageside", imageside, cLine, nLines, &
+               "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+          call getInteger("npixels", npixels, cLine, nLines, &
+               "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
+          call getInteger("nv", nv, cLine, nLines, &
+               "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
+          call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
+               "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .true.)
+          call getInteger("itrans", itrans, cLine, nLines, &
+               "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
+          call getReal("beamsize", beamsize, cLine, nLines, &
+               "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .true.)
+          call getReal("inclination", inc, cLine, nLines, &
+               "Inclination angle (deg): ","(a,f4.1,1x,a)", -1., ok, .true.)
+          call getDouble("maxVel", maxVel, cLine, nLines, &
+               "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
+          call getDouble("centrevecx", centrevecx, cLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, cLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecz", centrevecz, cLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          
+
+          if(writelucy .or. readlucy) then
+             call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+                  "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+             call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+                  "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+          endif
+          
+       endif
+       
+       if(geometry .eq. 'molecularFilament') then
+          
+          call getReal("r0", r0, cLine, nLines, &
+               "Core Radius of Filament:","(a,f4.1,1x,a)", 1., ok, .true.)
+          call getReal("rhoC", rhoC, cLine, nLines, &
+               "Central density along filament axis:","(a,f4.1,1x,a)", 1., ok, .true.)
+       endif
+       
+       if((geometry .eq. 'molebench') .or. (geometry .eq. 'h2obench1') .or. &
+            (geometry .eq. 'h2obench2') .or. (geometry .eq. 'agbstar')) then
+          
+          call getReal("rinner", rInner, cLine, nLines, &
+               "Inner Radius for dumpresults (10^10cm): ","(a,f5.1,a)", 1e4, ok, .true.)
+          
+          call getReal("router", rOuter, cLine, nLines, &
+               "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
+       endif
+       
     endif
-
-endif
-
+    
     call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
          "Do hydrodynamics: ","(a,1l,a)", .false., ok, .false.)
-
+    
     call getReal("cfl", cflNumber, cLine, nLines, &
          "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
 

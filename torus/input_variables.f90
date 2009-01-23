@@ -16,6 +16,7 @@ module input_variables
   ! variables for the grid
 
   logical :: debug
+  logical :: suppressWarnings
   integer :: idump ! hydrodynamics time step dump number
   real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
@@ -74,13 +75,14 @@ module input_variables
   integer :: nDustType
   logical :: forcedWavelength
   real :: usePhotonWavelength
-  logical :: useDust ! molecular_mod includes continuum emission
+  logical :: useDust, realdust ! molecular_mod includes continuum emission
   logical :: isinlte ! assume grid is in LTE
   real :: r0, rhoC ! Filamentry parameters
 
   real(double) :: maxVel
   real :: imageside ! molecular_mod image parameters
   integer :: itrans, npixels, nsubpixels !nv already exists
+  real(double) :: centrevecx, centrevecy, centrevecz
 
   logical :: blockHandout
 
