@@ -28,7 +28,7 @@ module input_variables
   logical :: molecular
   real :: beamSize
   real :: eccentricity
-  real :: inc
+  real(double) :: rotateViewAboutX, rotateViewAboutZ
   logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom

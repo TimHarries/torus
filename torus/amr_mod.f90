@@ -1174,36 +1174,43 @@ CONTAINS
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren
    
-      SELECT CASE (grid%geometry)
+       SELECT CASE (grid%geometry)
 
-      CASE ("ttauri")
-        IF (.NOT. useHartmannTemp) &
-          CALL calcTTauriTemperature(thisOctal,subcell)
+       CASE ("ttauri")
+          IF (.NOT. useHartmannTemp) &
+               CALL calcTTauriTemperature(thisOctal,subcell)
+          
+       CASE ("jets")
+          CALL calcJetsTemperature(thisOctal,subcell, grid)
+          
+       CASE ("luc_cir3d")
+          CALL calc_cir3d_temperature(thisOctal,subcell)
         
-      CASE ("jets")
-        CALL calcJetsTemperature(thisOctal,subcell, grid)
-        
-      CASE ("luc_cir3d")
-        CALL calc_cir3d_temperature(thisOctal,subcell)
-
-      CASE ("cmfgen")
-        CALL calc_cmfgen_temperature(thisOctal,subcell)
-
-      CASE ("romanova")
-        CALL calc_romanova_temperature(romData, thisOctal,subcell)
-        
-      CASE ("cluster","wr104")
-         call assign_grid_values(thisOctal,subcell, grid)
-!        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
-
-      CASE ("molcluster")
-        call assign_grid_values(thisOctal,subcell, grid)
-
-      CASE DEFAULT
-         ! Nothing to be done for this geometry so just return. 
-         goto 666
-
-      END SELECT
+       CASE ("cmfgen")
+          CALL calc_cmfgen_temperature(thisOctal,subcell)
+          
+       CASE ("romanova")
+          CALL calc_romanova_temperature(romData, thisOctal,subcell)
+          
+       CASE ("cluster","wr104")
+          call assign_grid_values(thisOctal,subcell, grid)
+          
+       CASE ("molcluster")
+          if(thisoctal%haschild(subcell)) then 
+             continue
+          else
+             call assign_grid_values(thisOctal,subcell, grid)
+             if(subcell .eq. 1) then
+                CALL fillVelocityCorners(thisOctal,grid,molclustervelocity,thisOctal%threed)
+             endif
+             thisoctal%velocity(subcell) = thisOctal%cornervelocity(14)
+          endif
+          
+       CASE DEFAULT
+          ! Nothing to be done for this geometry so just return. 
+          goto 666
+          
+       END SELECT
       
     END DO
    
@@ -2648,7 +2655,6 @@ CONTAINS
        point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
-
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
@@ -2660,14 +2666,13 @@ CONTAINS
       END IF
       resultOctal => startOctal
       
-    ELSE
+   ELSE
          ! called with rotated point if necessary for 2d
       CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
-    END IF
-
+   END IF
 
       inc = 0.5 * resultOctal%subcellSize
       centre = subcellCentre(resultOctal,subcell)
@@ -2676,7 +2681,6 @@ CONTAINS
       t1 = MAX(0.0_oc, fac * (point_local%x - (centre%x - inc)))
       t2 = MAX(0.0_oc, fac * (point_local%y - (centre%y - inc)))
       t3 = MAX(0.0_oc, fac * (point_local%z - (centre%z - inc)))
-
 
       if (resultOctal%oneD) then
 
@@ -3693,15 +3697,16 @@ CONTAINS
 
     if (thisOctal%threeD) then
        if (.not.thisOctal%cylindrical) then
-          IF (point%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
-          ELSEIF (point%x > thisOctal%xMax) THEN ; inOctal = .FALSE.
-          ELSEIF (point%y < thisOctal%yMin) THEN ; inOctal = .FALSE.
-          ELSEIF (point%y > thisOctal%yMax) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
+          IF (point%x < thisOctal%xMin) THEN ; inOctal = .FALSE. ; goto 101
+          ELSEIF (point%x > thisOctal%xMax) THEN ; inOctal = .FALSE.; goto 101
+          ELSEIF (point%y < thisOctal%yMin) THEN ; inOctal = .FALSE.; goto 101
+          ELSEIF (point%y > thisOctal%yMax) THEN ; inOctal = .FALSE.; goto 101
+          ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.; goto 101
+          ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.; goto 101
           ELSE  
              inOctal = .TRUE.
           ENDIF
+101       continue
        else
           phi = atan2(point%y,point%x)
           if (phi < 0.d0) phi = phi + twoPi
@@ -4048,6 +4053,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     CALL findSubcellLocalPrivate(point_local,thisOctal,subcell,&
                                  haveDescended,boundaryProblem)
+
     if (present(prob)) then
       prob = boundaryProblem
     else
@@ -4706,12 +4712,10 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       rd = modulus(cellCentre)
       call locate(rgrid, nr, rd, i)
-!     if (thisOctal%subcellSize > 0.25*(rgrid(i+1)-rgrid(i))) split = .true.
+
       if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
       if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
       if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
-
-!      if (thisOctal%nDepth > 5) split = .false.
 
    case("molefil")
 
@@ -5597,6 +5601,11 @@ IF ( .NOT. gridConverged ) RETURN
           z2 = thisOctal%centre%z
           z3 = thisOctal%centre%z + thisOctal%subcellSize
           
+          ! DAR move '14' to the start so that can work out particle list
+          ! for central point not edge.
+          
+          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2),grid)
+
           ! now store the 'base level' values
           
           thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
@@ -5615,7 +5624,6 @@ IF ( .NOT. gridConverged ) RETURN
           thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2),grid)
           thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2),grid)
           thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2),grid)
-          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2),grid)
           thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2),grid)
           thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2),grid)
           thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2),grid)
@@ -7964,8 +7972,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: v1 !, vDopp
     integer :: i
 
-!    real :: costheta ! used for angular dependence of density - HPC proposal
-!    real :: btherm
     type(VECTOR) :: vel
 
     if (firsttime) then
@@ -8564,7 +8570,8 @@ end function readparameterfrom2dmap
     integer :: i
     real(double), save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr), OneOverrdiff(nr)
     real(double) :: v1, t1
-    real(double) :: r1
+    real(double) :: r1, pos
+    real(double), save :: nstartOverlogdiff, noverlogdiff, t2
 
     if (firsttime) then
        open(31, file="model_1.dat", status="old", form="formatted")
@@ -8579,18 +8586,27 @@ end function readparameterfrom2dmap
        do i = 1, nr-1
           OneOverrdiff(i) = 1.d0 / (r(i+1)-r(i))
        enddo
+
+       nOverlogdiff = dble(nr-1) / (log(r(nr)) - log(r(1)))
+       nstartOverlogdiff = log(r(1)) * dble(nr-1) / (log(r(nr)) - log(r(1)))
     endif
 
     moleBenchVelocity = VECTOR(1d-30,1d-30,1d-30)
     
-    if(point%x .gt. 1d7 .or. point%z .gt. 1d7 .or. point%z .gt. 1d7) return
-
+    if(point%x .gt. 1d7 .or. point%y .gt. 1d7 .or. point%z .gt. 1d7) return
+    
     r1 = modulus(point)
     
     if ((r1 > r(1)).and.(r1 < r(nr))) then
 
-       call locate(r, nr, r1, i)
-       t1 = (r1 - r(i)) * OneOverrdiff(i)
+!       call locate(r, nr, r1, i)
+       
+!       t1 = (r1 - r(i)) * OneOverrdiff(i)
+
+       pos = (nOverlogdiff * log(r1) - nstartOverlogdiff)
+       
+       t1 = fraction(pos)
+       i = int(pos) + 1
        v1 = (v(i) + t1 * (v(i+1)-v(i)))*1.d5
        moleBenchVelocity = (v1 * OneOvercSpeed / r1) * point
     endif
@@ -8703,24 +8719,34 @@ end function readparameterfrom2dmap
 
   TYPE(vector) FUNCTION molClusterVelocity(point, grid)
 
+    use sph_data_class, only : clusterparameter
+
+    real(double) :: da
     type(VECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     type(octal), pointer, save :: previousOctal => null()
-!    type(vector) :: centre
+    type(octal), pointer :: thisOctal => null()
     integer :: subcell
 
     logical, save :: firsttime =.true.
     
     if(firsttime) then
        call findSubcellTD(point,grid%OctreeRoot,previousoctal,subcell)
+       call findSubcellTD(point,grid%OctreeRoot,thisoctal,subcell)
        firsttime = .false.
     endif
     
-    call findSubcellLocal(point, previousOctal,subcell)
+    call findSubcellLocal(point, thisOctal,subcell)
 
-    molClusterVelocity = previousOctal%velocity(subcell)
+!    if(thisoctal%centre .eq. previousoctal%centre) then
+!       molclusterVelocity = Clusterparameter(point, theparam = 1, d = thisOctal%subcellsize, shouldreuse = .true.) ! use switch for storing velocity
+!    else
 
-!    molClusterVelocity = Clusterparameter(point, theparam = 1)
+    da = thisoctal%subcellsize
+    molclusterVelocity = Clusterparameter(point, theparam = 1, d = da, shouldreuse = .false.) ! use switch for storing velocity
+!    endif
+
+!    previousoctal => thisoctal
 
   end FUNCTION molClusterVelocity
   
@@ -12236,7 +12262,9 @@ end function readparameterfrom2dmap
                thisOctal, subcell)
           if (np < 1) then
                 rVec = subcellCentre(thisOctal,subcell)
-               call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
+                call find_closest_sph_particle(rVec, temp, rho, recip_sm(:) )
+! Old method of filling in empty cells
+!               call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
                 thisOctal%rho(subcell) = rho
              thisOctal%temperature(subcell) = temp
           endif
@@ -12245,6 +12273,52 @@ end function readparameterfrom2dmap
 
 
   end subroutine estimateRhoOfEmpty
+
+  subroutine find_closest_sph_particle(rVec, temp, rho, recip_sm)
+    USE input_variables, only: TMinGlobal
+    USE sph_data_class, only: sphData, get_udist, get_umass
+
+    implicit none
+
+    type(VECTOR), intent(in) :: rVec
+    real, intent(out)             :: temp
+    real(double), intent(out)     :: rho
+    real(double), intent(in)      :: recip_sm(sphData%npart)
+
+    integer      :: ipart
+    real(double) :: this_dist, dist, sm_len
+    real(double) :: part_x, part_y, part_z ! particle positions in torus units
+    real(double) :: umass, udist, udent
+    real(double), parameter :: cmToTorus = 1.0e-10_db
+
+    umass = get_umass()  ! [g]
+    udist = get_udist()  ! [cm]
+    udent = umass/udist**3
+
+    dist = 1.0e99_db
+    rho  = amr_min_rho
+    temp = TMinGlobal
+
+    do ipart=1, sphData%npart
+
+       part_x = sphData%xn(ipart) * udist * cmToTorus
+       part_y = sphData%yn(ipart) * udist * cmToTorus 
+       part_z = sphData%zn(ipart) * udist * cmToTorus 
+       sm_len = sphData%hn(ipart) * udist * cmToTorus
+       ! Calculate distance**2 instead of distance as there is no need to calculate the (slow) sqrt function.
+       this_dist = ( (part_x - rVec%x)**2 + (part_y - rVec%y)**2 + (part_z - rVec%z)**2 ) * recip_sm(ipart) 
+
+       if ( this_dist < dist) then
+          dist = this_dist
+          rho  = sphData%rhon(ipart) * udent
+          temp = sphdata%temperature(ipart)
+       end if
+
+    end do
+    
+
+  end subroutine find_closest_sph_particle
+
 
   recursive subroutine updateTemps(grid, thisOctal)
     type(gridtype) :: grid
@@ -12866,7 +12940,6 @@ end function readparameterfrom2dmap
 
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal)
 
-
     implicit none
     type(GRIDTYPE), intent(in)    :: grid
     type(VECTOR), intent(in) :: posVec
@@ -12889,11 +12962,13 @@ end function readparameterfrom2dmap
     integer :: subcell
     real(double) :: distToSide1, distToSide2, distToSide
     real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
-    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCell
+    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCellsize
     real(double) :: a, b, c 
     integer :: i,j
     logical :: ok, thisOk(6)
+    integer :: jarray(6)
 
+    type(VECTOR) :: normdiff
 
     point = posVec
 
@@ -12903,8 +12978,6 @@ end function readparameterfrom2dmap
        call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
     endif
     subcen =  subcellCentre(thisOctal,subcell)
-
-
 
     if (thisOctal%oneD) then
 
@@ -12945,46 +13018,59 @@ end function readparameterfrom2dmap
        if (.not.thisOctal%cylindrical) then
           ok = .true.
 
-          halfSubCell = thisOctal%subcellsize/2.0d0
-          p3(1) = VECTOR(subcen%x+halfSubCell, subcen%y,             subcen%z)
-          p3(2) = VECTOR(subcen%x,             subcen%y+halfSubCell ,subcen%z)
-          p3(3) = VECTOR(subcen%x,             subcen%y,             subcen%z+halfSubCell)
-          p3(4) = VECTOR(subcen%x-halfSubCell, subcen%y,             subcen%z)
-          p3(5) = VECTOR(subcen%x,             subcen%y-halfSubCell, subcen%z)
-          p3(6) = VECTOR(subcen%x,             subcen%y,             subcen%z-halfSubCell)
+          halfSubCellsize = thisOctal%subcellsize * 0.5d0
 
-          thisOk = .true.
+          if(direction%x .ne. 0.d0) then            
+             denom(1) = 1.d0 / direction%x
+          else
+             denom(1) = 0.d0
+          endif
+          denom(4) = -denom(1)
 
-          do i = 1, 6
+          if(direction%y .ne. 0.d0) then            
+             denom(2) = 1.d0 / direction%y
+          else
+             denom(2) = 0.d0
+          endif
+          denom(5) = -denom(2)
+          
+          if(direction%z .ne. 0.d0) then            
+             denom(3) = 1.d0 / direction%z
+          else
+             denom(3) = 0.d0
+          endif
+          denom(6) = -denom(3)
 
-             denom(i) = norm(i) .dot. direction
-             if (denom(i) /= 0.0d0) then
-                t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-             else
-                thisOk(i) = .false.
-                t(i) = 0.0d0
-             endif
-             if (t(i) < 0.) thisOk(i) = .false.
-             !      if (denom > 0.) thisOK(i) = .false.
-          enddo
+          normdiff = subcen - posvec
+          
+          t(1) =  (normdiff%x + halfsubcellsize) * denom(1)
+          t(2) =  (normdiff%y + halfsubcellsize) * denom(2)
+          t(3) =  (normdiff%z + halfsubcellsize) * denom(3)
+          t(4) =  (normdiff%x - halfsubcellsize) * denom(1)
+          t(5) =  (normdiff%y - halfsubcellsize) * denom(2)
+          t(6) =  (normdiff%z - halfsubcellsize) * denom(3)
+          
+          where(t > 0.)
+             jarray = 1
+             thisOk = .true.
+          elsewhere
+             jarray = 0
+             thisOk = .false.
+          end where
+          
+          j = sum(jarray)
 
-
-          j = 0
-          do i = 1, 6
-             if (thisOk(i)) j=j+1
-          enddo
-
-          if (j == 0) ok = .false.
-
+          if (j .eq. 0) ok = .false.
+          
           if (.not.ok) then
-             write(*,*) "Error: j=0 (no intersection???) in distanceToCellBoundary. "
+             write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToCellBoundary. "
              write(*,*) direction%x,direction%y,direction%z
              write(*,*) t(1:6)
              call torus_abort
           endif
-
+          
           tval = minval(t, mask=thisOk)
-
+          
 ! Commented out by Dave Acreman, October 2008
 ! tval == 0 is handled at the end of this subroutine    
 !          if (tval == 0.) then
@@ -13221,15 +13307,16 @@ end function readparameterfrom2dmap
              write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
              write(*,*) "subcen",subcen
              write(*,*) "z", currentZ
-      write(*,*) "TVAL", tval
-      write(*,*) "direction", direction
-      call torus_abort
-      endif
-      if (tval < 0.) then
-         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-         write(*,*) "subcen",subcen
-!         write(*,*) "x,z",currentX,currentZ
-      endif
+             write(*,*) "TVAL", tval
+             write(*,*) "direction", direction
+             call torus_abort
+          endif
+
+!          if (tval < 0.) then
+!             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+!             write(*,*) "subcen",subcen
+             !         write(*,*) "x,z",currentX,currentZ
+!          endif
       
    endif
 
@@ -13254,52 +13341,62 @@ end function readparameterfrom2dmap
    real(double) :: distToZboundary !, ang1, ang2 , phi
    type(VECTOR) :: subcen, point, xHat, zHat !, rVec
    real(double) :: distToSide  !, distToSide1, distToSide2
-   real(double) :: disttoxBoundary, subcellsize
+   real(double) :: disttoxBoundary, subcellsize, halfsubcellsize
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
 
+   type(VECTOR) :: normdiff
 
    point = posVec
 
    subcen =  grid%octreeRoot%centre
    subcellsize = grid%octreeRoot%subcellSize * 2.d0
+   halfsubcellsize = grid%octreeRoot%subcellSize
 
    if (grid%octreeRoot%threed) then
 
       if (.not.grid%octreeRoot%cylindrical) then
          ok = .true.
          
-         norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
+         if(direction%x .ne. 0.d0) then            
+            denom(1) = 1.d0 / direction%x
+         else
+            denom(1) = 0.d0
+         endif
          
-         p3(1) = VECTOR(subcen%x+subcellsize/2.0d0, subcen%y, subcen%z)
-         p3(2) = VECTOR(subcen%x, subcen%y+subcellsize/2.0d0 ,subcen%z)
-         p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+subcellsize/2.0d0)
-         p3(4) = VECTOR(subcen%x-subcellsize/2.0d0, subcen%y,  subcen%z)
-         p3(5) = VECTOR(subcen%x,subcen%y-subcellsize/2.0d0, subcen%z)
-         p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-subcellsize/2.0d0)
+         if(direction%y .ne. 0.d0) then            
+            denom(2) = 1.d0 / direction%y
+         else
+            denom(2) = 0.d0
+         endif
+         
+         if(direction%z .ne. 0.d0) then            
+            denom(3) = 1.d0 / direction%z
+         else
+            denom(3) = 0.d0
+         endif
+                     
+         normdiff = subcen - posvec
+
+         t(1) =  (normdiff%x + halfsubcellsize) * denom(1)
+         t(2) =  (normdiff%y + halfsubcellsize) * denom(2)
+         t(3) =  (normdiff%z + halfsubcellsize) * denom(3)
+         t(4) =  (normdiff%x - halfsubcellsize) * denom(1)
+         t(5) =  (normdiff%y - halfsubcellsize) * denom(2)
+         t(6) =  (normdiff%z - halfsubcellsize) * denom(3)
 
          thisOk = .true.
          
          do i = 1, 6
             
-            denom(i) = norm(i) .dot. direction
-            if (denom(i) /= 0.0d0) then
-               t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-            else
+            if (denom(i) .eq. 0.0d0) then
                thisOk(i) = .false.
-               t(i) = 0.0d0
             endif
+
             if (t(i) < 0.) thisOk(i) = .false.
-            !      if (denom > 0.) thisOK(i) = .false.
          enddo
-         
-         
+                  
          j = 0
          do i = 1, 6
             if (thisOk(i)) j=j+1
@@ -13308,14 +13405,13 @@ end function readparameterfrom2dmap
          if (j == 0) ok = .false.
          
          if (.not.ok) then
-            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+            write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToGridEdge. "
             write(*,*) direction%x,direction%y,direction%z
             write(*,*) t(1:6)
             stop
          endif
          
          tval = minval(t, mask=thisOk)
-         
 
          if (tval == 0.) then
             write(*,*) posVec
@@ -14369,23 +14465,38 @@ end function readparameterfrom2dmap
 
 
   function distanceToGridFromOutside(grid, posVec, direction) result (tval)
+    use input_variables, only : suppressWarnings
     type(GRIDTYPE) :: grid
     type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
     real(double) :: tval
-   type(VECTOR) :: norm(6), p3(6)
-   real(double) :: distTor1, theta, mu
-   real(double) :: distToRboundary, compz,currentZ
-   real(double) :: distToZboundary
-   type(VECTOR) ::  zHat, rhat
-   real(double) ::  compx, gridRadius
-   real(oct) :: t(6),denom(6), r, r1, d, cosmu,x1,x2
-   integer :: i,j
-   logical :: ok, thisOk(6)
-   logical :: debug
+    type(VECTOR),save :: norm(6)
+    logical, save :: firsttime = .true.
+    type(VECTOR) :: p3(6)
+    real(double) :: distTor1, theta, mu
+    real(double) :: distToRboundary, compz,currentZ
+    real(double) :: distToZboundary
+    type(VECTOR) ::  zHat, rhat
+    real(double) ::  compx, gridRadius
+    real(oct) :: t(6),denom(6), r, r1, d, cosmu,x1,x2
+    integer :: i,j
+    logical :: ok, thisOk(6)
+    logical :: debug
+    
+    real(double) :: subcellsize
+    type(VECTOR) :: normdiff, oneoverdirection
 
+    if(firsttime) then
+       norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
+       norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
+       norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
+       norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
+       norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
+       norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
+       firsttime = .false.
+    endif
 
-    tval = HUGE(tval)
+   tval = HUGE(tval)
 
    point = posVec
 
@@ -14420,38 +14531,45 @@ end function readparameterfrom2dmap
           ! cube
 
          ok = .true.
-         
-         norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
-         
-         p3(1) = VECTOR(subcen%x+thisOctal%subcellsize, subcen%y, subcen%z)
-         p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize ,subcen%z)
-         p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize)
-         p3(4) = VECTOR(subcen%x-thisOctal%subcellsize, subcen%y,  subcen%z)
-         p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize, subcen%z)
-         p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize)
+
+         subcellsize = thisOctal%subcellSize
+
+         if(direction%x .ne. 0.d0) then            
+            denom(1) = 1.d0 / direction%x
+         else
+            denom(1) = 0.d0
+         endif
+         denom(4) = -denom(1)
+
+         if(direction%y .ne. 0.d0) then            
+            denom(2) = 1.d0 / direction%y
+         else
+            denom(2) = 0.d0
+         endif
+         denom(5) = -denom(2)
+
+         if(direction%z .ne. 0.d0) then            
+            denom(3) = 1.d0 / direction%z
+         else
+            denom(3) = 0.d0
+         endif
+         denom(6) = -denom(3)
+
+         normdiff = subcen - posvec
+
+         t(1) =  (normdiff%x + subcellsize) * denom(1)
+         t(2) =  (normdiff%y + subcellsize) * denom(2)
+         t(3) =  (normdiff%z + subcellsize) * denom(3)
+         t(4) =  (normdiff%x - subcellsize) * denom(1)
+         t(5) =  (normdiff%y - subcellsize) * denom(2)
+         t(6) =  (normdiff%z - subcellsize) * denom(3)
 
          thisOk = .true.
-         
-         do i = 1, 6
-            
-            denom(i) = norm(i) .dot. direction
 
-            if (denom(i) > 0.d0) thisOK(i) = .false.
-            if (denom(i) /= 0.0d0) then
-               t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-            else
-               thisOk(i) = .false.
-               t(i) = 0.0d0
-            endif
+         do i = 1, 6
+            if (denom(i) .ge. 0.d0) thisOK(i) = .false.
             if (t(i) < 0.) thisOk(i) = .false.
-            !      if (denom > 0.) thisOK(i) = .false.
          enddo
-         
          
          j = 0
          do i = 1, 6
@@ -14461,10 +14579,9 @@ end function readparameterfrom2dmap
          if (j == 0) ok = .false.
          
          if (.not.ok) then
-            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. "
             write(*,*) direction%x,direction%y,direction%z
             write(*,*) t(1:6)
-            stop
          endif
          
          tval = maxval(t, mask=thisOk)
@@ -14555,28 +14672,29 @@ end function readparameterfrom2dmap
             disttoZboundary = 1.e30
          endif
       
-!        write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
-
          tVal = min(distToZboundary, distToRboundary)
+         if(.not. suppressWarnings) then
 
-         if (tVal > 1.e29) then
-            write(*,*) "Cylindrical"
-            write(*,*) "posVec",posvec
-            write(*,*) "direction",direction
-            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
-            write(*,*) "subcen",subcen
-            write(*,*) "z",currentZ
-            write(*,*) "x1,x2",x1,x2
-         endif
-         if (tval < 0.) then
-            write(*,*) "Cylindrical"
-            write(*,*) tVal,distToZboundary,disttorboundary
-            write(*,*) "subcen",subcen
-            write(*,*) "z",currentZ
+            if (tVal > 1.e29) then
+               write(*,*) "Cylindrical"
+               write(*,*) "posVec",posvec
+               write(*,*) "direction",direction
+               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
+               write(*,*) "subcen",subcen
+               write(*,*) "z",currentZ
+               write(*,*) "x1,x2",x1,x2
+            endif
+
+            if (tval < 0.) then
+               write(*,*) "Cylindrical"
+               write(*,*) tVal,distToZboundary,disttorboundary
+               write(*,*) "subcen",subcen
+               write(*,*) "z",currentZ
+            endif
          endif
       endif
-
-666 continue
+      
+666   continue
     end function distanceToGridFromOutside
 
   !

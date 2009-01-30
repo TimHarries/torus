@@ -284,25 +284,97 @@ contains
             select case (valueType)
                case("rho")
 
-                  if(thisOctal%rho(subcell) .lt. 1.d-37) then
-                     write(lunit, *) 1e-37 ! floating underflow warning
-                  else
+!                  if(thisOctal%rho(subcell) .lt. 1.d-37) then
+!                     write(lunit, *) 1e-37 ! floating underflow warning
+!                  else
                      write(lunit, *) thisOctal%rho(subcell)
-                  endif
+!                  endif
 
                case("J=0")
-                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-37) then
-                     write(lunit, *) 1e-37
-                  else
+!                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-37) then
+!                     write(lunit, *) 1e-37
+!                  else
                      write(lunit, *) thisOctal%molecularlevel(subcell,1)
-                  endif
+!                  endif
 
                case("J=1")
-                  if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-37) then
-                     write(lunit, *) 1e-37
-                  else
+!                  if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-37) then
+!                     write(lunit, *) 1e-37
+!                  else
                      write(lunit, *) thisOctal%molecularlevel(subcell,2)
-                  endif
+!                  endif
+
+               case("J=2")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,3)
+
+               case("J=3")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,4)
+
+               case("J=4")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,5)
+
+               case("J=5")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,6)
+
+               case("J=10")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,10)
+
+               case("J=16")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,16)
+
+               case("tau10")
+                  write(lunit, *) thisOctal%tau(subcell,1)
+
+               case("tau21")
+                  write(lunit, *) thisOctal%tau(subcell,2)
+
+               case("tau32")
+                  write(lunit, *) thisOctal%tau(subcell,3)
+
+               case("tau43")
+                  write(lunit, *) thisOctal%tau(subcell,4)
+
+               case("tau54")
+                  write(lunit, *) thisOctal%tau(subcell,5)
+
+               case("tau65")
+                  write(lunit, *) thisOctal%tau(subcell,6)
+
+               case("tau76")
+                  write(lunit, *) thisOctal%tau(subcell,7)
+
+               case("tau87")
+                  write(lunit, *) thisOctal%tau(subcell,8)
+
+               case("niter")
+                  write(lunit, *) int(thisOctal%convergence(subcell)/100)
+
+               case("convergence")
+                  write(lunit, *) mod(thisOctal%convergence(subcell),1.d0)
+
+               case("slowestlevel")
+                  write(lunit, *) floor(mod(thisoctal%convergence(subcell),100.d0))
+
+               case("molabundance")
+                  write(lunit, *) thisOctal%molabundance(subcell)
+
+               case("dc0")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,1) * thisOctal%departcoeff(subcell,1)
+
+               case("dc1")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,2) * thisOctal%departcoeff(subcell,2)
+
+               case("dc2")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,3) * thisOctal%departcoeff(subcell,3)
+
+               case("dc3")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,4) * thisOctal%departcoeff(subcell,4)
+
+               case("dc4")
+                  write(lunit, *) thisOctal%molecularlevel(subcell,5) * thisOctal%departcoeff(subcell,5)
+
+               case("jnu10")
+                  write(lunit, *) thisOctal%jnu(subcell,1)
 
                case("dust1")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))

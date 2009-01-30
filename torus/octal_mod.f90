@@ -223,9 +223,10 @@ MODULE octal_mod
     real(double), pointer :: jnu(:,:) => null() ! Molecular radiation field
     real(double), pointer :: jnuCont(:,:) => null()
     real(double), pointer :: jnuLine(:,:) => null()
-    real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations
+    real(double), pointer :: tau(:,:) => null() ! molecular level populations
     real(double), pointer :: bnu(:,:) => null() ! 
     real, pointer :: molAbundance(:) => null() ! molecular abundances ! only 1D because only deal with one molecule at a time
+    real(double), pointer :: convergence(:) => null() ! convergence
     real(double), pointer, DIMENSION(:) :: NHI => null()           ! neutral H
     real(double),  pointer, DIMENSION(:) :: NHII  => null()           ! HII
     real(double),  pointer, DIMENSION(:) :: NHeI => null()            ! HeI

@@ -1,4 +1,5 @@
 module sph_data_class
+
   use kind_mod
   use vector_mod
   use messages_mod
@@ -413,11 +414,11 @@ contains
 
           sphdata%hn(igas) = h
 
-          masscounter = masscounter + gaspartmass
+          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
           
-       Elseif(itype .eq. 3) then
+       Elseif(itype .eq. 3 ) then
 
-          iptmass = iptmass+1
+          iptmass = iptmass + 1
 
           sphdata%x(iptmass) = xn
           sphdata%y(iptmass) = yn
@@ -430,10 +431,12 @@ contains
           sphdata%ptmass(iptmass) = gaspartmass 
           sphdata%hpt(iptmass) = h
 
-          masscounter = masscounter + gaspartmass
+          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
 
-          write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas, h
+          write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas
           call writeinfo(message, TRIVIAL)
+          write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10
+
        else
 
           idead = idead + 1
@@ -448,7 +451,7 @@ contains
     write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are dead"
     call writeinfo(message, TRIVIAL)
 
-    write(message,*) "Total Mass in all particles, ", masscounter, " Msol"
+    write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass, " Msol"
     call writeinfo(message, TRIVIAL)
     
     close(LUIN)
@@ -1141,12 +1144,12 @@ contains
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
        call FindCriticalValue(harray, hcrit, 0.8d0, output = .false.) ! find hcrit = 90th percentile of total h
-       call FindCriticalValue(harray, hmax, 1.d0, output = .false.) ! find hcrit = 99th percentile of total h
+       call FindCriticalValue(harray, hmax, 0.99d0, output = .false.) ! find hcrit = 99th percentile of total h
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
        write(message, *) "80% Smoothing Length in code units", hcrit
        call writeinfo(message, TRIVIAL)
-       write(message, *) "100% Smoothing Length in code units", hmax
+       write(message, *) "99% Smoothing Length in code units", hmax
        call writeinfo(message, TRIVIAL)
 
        hcrit = hcrit * codeLengthtoTORUS
@@ -1161,7 +1164,7 @@ contains
 
        write(message,*) "80% Smoothing Length in 10^10cm", hcrit
        call writeinfo(message, TRIVIAL)
-       write(message,*) "100% Smoothing Length in 10^10cm", hmax
+       write(message,*) "99% Smoothing Length in 10^10cm", hmax
        call writeinfo(message, TRIVIAL)
 
        rcrit = 2.d0 * hcrit ! edge of smoothing sphere
@@ -1186,11 +1189,11 @@ contains
     endif
 
     posVec = point
-
     r = rcrit ! CHECK HERE!!!
 
     if(present(d)) then
        r = 1.75d0 * d + rcrit ! 1.75 is like sqrt(3)!
+!       r = rmax
     endif
 
     if(reuse) then
@@ -1220,10 +1223,9 @@ contains
              paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
           enddo
 
-!          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity
-          Clusterparameter = VECTOR(paramValue(1), paramValue(2), paramValue(3)) ! Velocity
+          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
 
-          write(69,*) nparticles, sumweight
+!          write(69,*) nparticles, sumweight
 
        elseif(param .eq. 2) then
 
@@ -1240,18 +1242,30 @@ contains
        endif
     else
        if(param .eq. 1) then
+          if(.not. reuse) then
+             call findNearestParticles(posvec, nparticles, rmax, expkernel = .true.) ! redo but with exponential kernel
+          endif
+
+          call doweights(posvec, nparticles, sumweight, qpresent = .true.)
           
-!          do i = 1, nparticles
-!             paramValue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
-!             paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
-!             paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
-!          enddo
-          write(69,*) "0", sumweight
-          Clusterparameter = VECTOR(-1.d-20,1.d-20,-1.d-20) ! Velocity
+          if(sumweight .ne. 0.d0) then
+             fac = 1.d0 / sumWeight
+          else
+             fac = 1.d0
+          endif
+
+          do i = 1, nparticles
+             paramValue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
+             paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
+             paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
+          enddo
+!          write(69,*) "0", sumweight
+          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
+!          Clusterparameter = VECTOR(-1.d20,1.d20,-1.d20) ! Velocity
 
        elseif(param .eq. 2) then
           if(.not. reuse) then
-             call findNearestParticles(posvec, nparticles, 0.75 * rmax, expkernel = .true.) ! redo but with exponential kernel
+             call findNearestParticles(posvec, nparticles, rmax, expkernel = .true.) ! redo but with exponential kernel
           endif
 
           call doweights(posvec, nparticles, sumweight, qpresent = .true.)

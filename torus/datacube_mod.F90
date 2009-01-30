@@ -23,9 +23,9 @@ module datacube_mod
      character(len=10) :: IntensityUnit ! units for intensity
      character(len=10) :: FluxUnit ! units for flux
 
-     integer, pointer :: nsubpixels(:,:,:) ! contains resolution information 
-     integer, pointer :: converged(:,:,:)  ! contains convergence information (should take 1 or 0)
-     real(double),pointer :: weight(:,:)     ! Weighting for integration (used to find spectra)
+     integer, pointer :: nsubpixels(:,:,:) => null() ! contains resolution information 
+     integer, pointer :: converged(:,:,:) => null() ! contains convergence information (should take 1 or 0)
+     real(double),pointer :: weight(:,:) => null()    ! Weighting for integration (used to find spectra)
      integer :: nx 
      integer :: ny
      integer :: nv
@@ -34,8 +34,9 @@ module datacube_mod
      real(double), pointer :: xAxis(:)
      real(double), pointer :: yAxis(:)
      real(double), pointer :: vAxis(:)
-     real(double), pointer :: intensity(:,:,:)
-     real(double), pointer :: flux(:,:,:)
+     real, pointer :: intensity(:,:,:) => null()
+     real, pointer :: flux(:,:,:) => null()
+     real, pointer :: tau(:,:,:) => null()
   end type DATACUBE
 
 contains
@@ -53,6 +54,7 @@ contains
     integer, dimension(5) :: naxes
     integer :: group,fpixel,nelements
     logical :: simple, extend
+    character(len=80) :: card
     
     status=0
     
@@ -70,110 +72,127 @@ contains
     fpixel=1
 
     ! 1st HDU : flux
-    bitpix=-64
-    naxis=3
-    naxes(1)=thisCube%nx
-    naxes(2)=thisCube%ny
-    naxes(3)=thisCube%nv
-    nelements=naxes(1)*naxes(2)*naxes(3)
+    if(associated(thiscube%intensity)) then
 
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-    
-    !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%flux,status)
+       bitpix=-32
+       naxis=3
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       naxes(3)=thisCube%nv
+       nelements=thisCube%nx*thisCube%ny*thisCube%nv
 
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
 
-    !  Write keywords to the header.
-    call ftpkyj(unit,'LABEL',1,thisCube%label,status) 
-    call ftpkyj(unit,'VUNIT',1,thisCube%vUnit,status)
-    call ftpkyj(unit,'XUNIT',1,thisCube%xUnit,status)
-    call ftpkyj(unit,'IUNIT',1,thisCube%IntensityUnit,status)
-    call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
+       !  Write keywords to the header.
+       call ftpkyj(unit,'LABEL',1,thisCube%label,status) 
+       call ftpkyj(unit,'VUNIT',1,thisCube%vUnit,status)
+       call ftpkyj(unit,'XUNIT',1,thisCube%xUnit,status)
+       call ftpkyj(unit,'X',1,thisCube%xAxis,status)
+       call ftpkyj(unit,'IUNIT',1,thisCube%IntensityUnit,status)
+       call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
+       
+       !  Write the array to the FITS file.
+       call ftppre(unit,group,fpixel,nelements,thisCube%intensity,status)
+              
+    endif
 
-    ! 2nd HDU : converged
-    call FTCRHD(unit, status)
-    bitpix=32
-    naxis=3
-    naxes(1)=thisCube%nx
-    naxes(2)=thisCube%ny
-    naxes(3)=thisCube%nv
-    nelements=naxes(1)*naxes(2)*naxes(3)
+    if(associated(thisCube%tau)) then
 
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       ! 2nd HDU : tau
+       call FTCRHD(unit, status)
+       bitpix=-32
+       naxis=3
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       naxes(3)=thisCube%nv
+       nelements=naxes(1)*naxes(2)*naxes(3)
 
-    !  Write the array to the FITS file.
-    call ftpprj(unit,group,fpixel,nelements,thisCube%converged,status)
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       !  Write the array to the FITS file.
+       call ftppre(unit,group,fpixel,nelements,thisCube%tau,status)
+    endif
 
-    ! 3rd HDU : weight
-    call FTCRHD(unit, status)
-    bitpix=-64
-    naxis=2
-    naxes(1)=thisCube%nx
-    naxes(2)=thisCube%ny
-    nelements=naxes(1)*naxes(2)
+    if(associated(thisCube%weight)) then
+       
+       ! 3rd HDU : weight
+       call FTCRHD(unit, status)
+       bitpix=-64
+       naxis=2
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       nelements=naxes(1)*naxes(2)
 
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       !  Write the array to the FITS file.
+       call ftpprd(unit,group,fpixel,nelements,thisCube%weight,status)
+    endif
 
-    !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%weight,status)
+    if(associated(thisCube%xAxis)) then
+       ! 4th HDU : xAxis
+       call FTCRHD(unit, status)
+       bitpix=-64
+       naxis=1
+       naxes(1)=thisCube%nx     
+       nelements=naxes(1)
 
-    ! 4th HDU : xAxis
-    call FTCRHD(unit, status)
-    bitpix=-64
-    naxis=1
-    naxes(1)=thisCube%nx     
-    nelements=naxes(1)
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       !  Write the array to the FITS file.
+       call ftpprd(unit,group,fpixel,nelements,thisCube%xAxis,status)
+    endif
 
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+    if(associated(thisCube%yAxis)) then
+       ! 5th HDU : yAxis
+       call FTCRHD(unit, status)
+       bitpix=-64
+       naxis=1
+       naxes(1)=thisCube%ny    
+       nelements=naxes(1)
 
-    !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%xAxis,status)
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       !  Write the array to the FITS file.
+       call ftpprd(unit,group,fpixel,nelements,thisCube%yAxis,status)
+    endif
 
-    ! 5th HDU : yAxis
-    call FTCRHD(unit, status)
-    bitpix=-64
-    naxis=1
-    naxes(1)=thisCube%ny    
-    nelements=naxes(1)
-
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-
-    !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%yAxis,status)
-
-    ! 6th HDU : vAxis
-    call FTCRHD(unit, status)
-    bitpix=-64 
-    naxis=1
-    naxes(1)=thisCube%nv        
-    nelements=naxes(1)
-
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-
-    !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%vAxis,status)
-
-    ! 7th HDU : nsubpixels
-    call FTCRHD(unit, status)
-    bitpix=32
-    naxis=3
-    naxes(1)=thisCube%nx
-    naxes(2)=thisCube%ny
-    naxes(3)=thisCube%nv
-    nelements=naxes(1)*naxes(2)*naxes(3)
-
-    !  Write the required header keywords.
-    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-
-    !  Write the array to the FITS file.
-    call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
-
+    if(associated(thisCube%vAxis)) then
+       ! 6th HDU : vAxis
+       call FTCRHD(unit, status)
+       bitpix=-64 
+       naxis=1
+       naxes(1)=thisCube%nv        
+       nelements=naxes(1)
+       
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       !  Write the array to the FITS file.
+       call ftpprd(unit,group,fpixel,nelements,thisCube%vAxis,status)
+    endif
+       
+    if(associated(thisCube%nSubpixels)) then
+       ! 7th HDU : nsubpixels
+       call FTCRHD(unit, status)
+       bitpix=32
+       naxis=3
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       naxes(3)=thisCube%nv
+       nelements=naxes(1)*naxes(2)*naxes(3)
+       
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       !  Write the array to the FITS file.
+       call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
+    endif
 
     !  Close the file and free the unit number.
     call ftclos(unit, status)
@@ -203,6 +222,7 @@ contains
     real :: nullval
     integer, dimension(4) :: naxes
     logical :: anynull
+    character(len=80) :: keyword
 
     status=0
     !  Get an unused Logical Unit Number to use to open the FITS file.
@@ -219,6 +239,11 @@ contains
 
     ! 1st HDU : intensity
     hdu=1
+
+    call ftgcrd(unit,keyword,status)
+
+    write(*,*) "Keyword", keyword
+
     call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
     if (nfound /= 3) then
        write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
@@ -386,8 +411,8 @@ contains
     endif
 
     thisCube%label=" "
-    thisCube%vUnit=" "
-    thisCube%xUnit=" "
+    thisCube%vUnit="km/s"
+    thisCube%xUnit="10^10cm "
     thisCube%IntensityUnit=" "
     thisCube%FluxUnit=" "
 
@@ -395,31 +420,21 @@ contains
     thisCube%ny = ny
     thisCube%nv = nv
     allocate(thisCube%xAxis(1:nx))
-     call writeinfo("x",TRIVIAL)
     allocate(thisCube%yAxis(1:ny))
-     call writeinfo("y",TRIVIAL)
     allocate(thisCube%vAxis(1:nv))
-     call writeinfo("v",TRIVIAL)
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
-     call writeinfo("i",TRIVIAL)
     allocate(thisCube%flux(1:nx,1:ny,1:nv))
-     call writeinfo("f",TRIVIAL)
-    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
-     call writeinfo("n",TRIVIAL)
-    allocate(thisCube%converged(1:nx,1:ny,1:nv))
-     call writeinfo("c",TRIVIAL)
-    allocate(thisCube%weight(1:nx,1:ny))
-     call writeinfo("w",TRIVIAL)
+    allocate(thisCube%tau(1:nx,1:ny,1:nv))
+!    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
+!    allocate(thisCube%converged(1:nx,1:ny,1:nv))
+!    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
-    thisCube%flux = 0.d0
-    thisCube%nsubpixels = 0.d0
-    thisCube%converged = 0
-    thisCube%weight = 1.d0
-
-    write(message, *) "Done!"
-    call writeinfo(message,TRIVIAL)
-
+    thisCube%tau =  0.d0
+!    thisCube%flux = 0.d0
+!    thisCube%nsubpixels = 0.d0
+!    thisCube%converged = 0
+!    thisCube%weight = 1.d0
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
@@ -431,22 +446,20 @@ contains
     integer :: i
     character(len=100) :: message
 
-    write(message, *) "Adding spatial axes..."
-    call writeinfo(message,TRIVIAL)
-
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
 
-    write(message, *) "Pixel Separation = ", dx*1e10/autocm, "AU", (dx*1e10/griddistance)*(180./pi)*60.*60.
+    write(message,'(a,f7.2,a)') "Linear pixel resolution  : ", dx*1e10/autocm, " AU"
+    call writeinfo(message,TRIVIAL)
+    write(message,'(a,f7.4,a)') "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
     call writeinfo(message,TRIVIAL)
 
     do i = 1, cube%nx
-       cube%xAxis(i) = xmin + dx/2.d0 + dble(i-1)*dx 
-
+       cube%xAxis(i) = xmin + dble(i-0.5d0)*dx 
     enddo
 
     do i = 1, cube%ny
-       cube%yAxis(i) = ymin + dy/2.d0 + dble(i-1)*dx 
+       cube%yAxis(i) = ymin + dble(i-0.5d0)*dx 
     enddo
 
   end subroutine addSpatialAxes
@@ -458,12 +471,9 @@ contains
     integer :: i
     character(len=100) :: message
 
-    write(message, *) "Adding velocity axis... "
-    call writeinfo(message,TRIVIAL)
-
     dv = (vMax - vMin) / dble(cube%nv)
 
-    write(message, *) "Velocity bin width =  ", dv, " km/s"
+    write(message, '(a,f7.4,a)') "Velocity pixel resolution: ", dv, " km/s"
     call writeinfo(message,TRIVIAL)
 
     do i = 1, cube%nv
@@ -569,7 +579,6 @@ end subroutine TranslateCubeIntensity
 
 subroutine freeDataCube(thiscube)
   type(DATACUBE) :: thiscube
-
 
     if (associated(thisCube%xAxis)) deallocate(thiscube%xAxis)
     if (associated(thisCube%yAxis)) deallocate(thiscube%yAxis)

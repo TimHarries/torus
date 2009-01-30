@@ -354,7 +354,6 @@ contains
     point = subcellcentre(thisOctal, subcell)
     clusterparam = Clusterparameter(point, theparam = 2)
     
-    thisOctal%velocity(subcell) = VECTOR(-1.d10,-1.d10,-1.d10)
     if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
     if( associated(thisOctal%etaline)) thisOctal%etaCont(subcell) = 1.e-30
 
@@ -365,7 +364,13 @@ contains
        thisOctal%temperature(subcell) =  max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
     end if
 
-    if ( associated(thisOctal%nh2) ) thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+    if ( associated(thisOctal%nh2) ) then
+       thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+       thisOctal%molAbundance(subcell) = 4e-6
+       if(thisOctal%rho(subcell) .lt. 1d-19) thisOctal%molAbundance(subcell) = 4e-5 ! 3e4/cm^3
+       if(thisOctal%rho(subcell) .gt. 1.5d-12) thisOctal%molAbundance(subcell) = 4e-5 !T > 30K
+    endif
+
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)
 
 ! Velocities are not required for all configurations so check if they are required

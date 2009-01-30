@@ -44,23 +44,22 @@ ifeq ($(SYSTEM), davesmac)
 #    F77COMP  = g95
 #    F77FLAG  = -w -fno-second-underscore -g
 #    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
-    F95COMP  = ifort #-I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries
+    F95COMP  = ifort -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries
     F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
 #   DEBUGFLAG = -warn -g -no-ipo  # 
-    DEBUGFLAG=-g -O0 -warn nounused -warn -traceback -debug full -check pointer -CB -ftz
+    DEBUGFLAG=-g -O0 -warn -traceback -debug full -check pointer -CB -ftz
 #    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
     FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -g
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    CFITSIOLIBS = -L/scisoft/i386/Packages/cfitsio/lib -lcfitsio# -lmkl_intel_thread -lmkl_core -lguide #-lmkl_intel
+    CFITSIOLIBS = -L/scisoft/i386/Packages/cfitsio/lib -lcfitsio -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
 #    STARLIBS = -L/star/lib `ndf_link`                                                                   
 #    F2CLIB   = -L$(PATH2G2C) -lg2c                                                                      
     EXE = torus.intelmac
     KNOWN_SYSTEM = yes
-    USEMKL  = no
 endif
 
 
@@ -689,7 +688,7 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ)
 # Compilers and compiler flags
 #
 
-F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG)
+F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG)
 F77 = $(F77COMP) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG) $(MPI_INC)
 
 #

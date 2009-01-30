@@ -1284,16 +1284,18 @@ contains
                "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
           call getReal("beamsize", beamsize, cLine, nLines, &
                "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .true.)
-          call getReal("inclination", inc, cLine, nLines, &
-               "Inclination angle (deg): ","(a,f4.1,1x,a)", -1., ok, .true.)
+          call getDouble("rotateviewaboutx", rotateViewAboutX, cLine, nLines, &
+               "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+          call getDouble("rotateviewaboutz", rotateViewAboutZ, cLine, nLines, &
+               "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
           call getDouble("maxVel", maxVel, cLine, nLines, &
                "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
           call getDouble("centrevecx", centrevecx, cLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecy", centrevecy, cLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecz", centrevecz, cLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
           
 
           if(writelucy .or. readlucy) then
