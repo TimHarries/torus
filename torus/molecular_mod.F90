@@ -848,7 +848,8 @@ module molecular_mod
                      thisOctal%jnu(subcell,1:maxtrans), dble(thisOctal%temperature(subcell)), &
                      thisMolecule, thisOctal%nh2(subcell))
 
-                error(1:minlevel-1) = (thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops(1:minlevel-1)) / oldpops(1:minlevel-1)
+                error(1:minlevel-1) = (thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops(1:minlevel-1)) &
+                                      / oldpops(1:minlevel-1)
                 maxlocerror = maxloc(error(1:minlevel-1))
                 maxerrorloc = maxlocerror(1)
                 thisoctal%convergence(subcell) = (100.d0 * iter) + dble(maxerrorloc-1) + min(0.99d0,maxval(error(1:minlevel-1))) 
@@ -860,7 +861,9 @@ module molecular_mod
                    if(iter .eq. maxiter) then
                       warncount = warncount + 1
                    endif
-                   thisOctal%tau(subcell, 1:mintrans) = calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay)) ! calculate updated Jbar
+ ! calculate updated Jbar
+                   thisOctal%tau(subcell, 1:mintrans) = &
+                        calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay))
                 endif
              enddo
 
