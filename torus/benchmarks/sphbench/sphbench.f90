@@ -30,7 +30,6 @@ use particle_pos_mod, only: particle_pos
 ! Torus arguments
   integer            :: b_idim              ! Maximum array size
   integer            :: b_npart
-  integer, parameter :: b_nactive=-99       ! Not used
   integer            :: b_nptmass           ! Number of point masses
   integer            :: b_num_gas           ! Number of gas particles
   real(kind=8),allocatable     :: b_xyzmh(:,:)
@@ -223,7 +222,7 @@ use particle_pos_mod, only: particle_pos
 ! 3. Call torus
 
 ! Call torus
-  call torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
+  call torus(b_idim,  b_npart,       b_nptmass, b_num_gas, &
              b_xyzmh, b_rho,         b_iphase,                        &
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
             temp_min, total_gas_mass, file_tag )
