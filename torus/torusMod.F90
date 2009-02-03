@@ -651,7 +651,7 @@ CONTAINS
         removedMass = 0.0
         write(message,*) "Removing mass within ", close_radius, " (10^10 cm)"
         call writeInfo(message, TRIVIAL)
-        call remove_too_close_cells(young_cluster, grid%octreeRoot, close_radius, removedMass, 1.0d-60)
+        call remove_too_close_cells(young_cluster, grid%octreeRoot, close_radius, removedMass, 1.0d-60, 'z')
         write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
         call writeInfo(message, TRIVIAL)
 

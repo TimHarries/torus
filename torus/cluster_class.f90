@@ -1042,7 +1042,9 @@ contains
   !
   ! Removes cells by setting the inflow flag to .false. and density to rho_small if the cells are  
   ! closer than a given radius (in 10^10cm) from star positions specified in cluster_class object.
-  recursive subroutine remove_too_close_cells(thisCluster, thisOctal, R_max, removedMass, rho_small)
+  ! The value of axis allows the removed region to be either a sphere or a cylinder aligned with 
+  ! one of the co-ordinate axes. 
+  recursive subroutine remove_too_close_cells(thisCluster, thisOctal, R_max, removedMass, rho_small, axis)
     implicit none
 
     type(cluster), intent(in)   :: thisCluster    
@@ -1050,6 +1052,7 @@ contains
     real(double), intent(in)    :: R_max   ! [10^10 cm]
     real(double), intent(inout) :: removedMass
     real(double), intent(in)    :: rho_small
+    character(len=1), intent(in) :: axis
     !
     type(octal), pointer       :: pChild
     integer                    :: i           ! loop counter
@@ -1063,17 +1066,17 @@ contains
           do i = 1, nc
              if (thisOctal%indexChild(i) == subcell) then
                 pChild => thisOctal%child(i)                
-                call remove_too_close_cells(thisCluster, pChild, R_max, removedMass, rho_small)
+                call remove_too_close_cells(thisCluster, pChild, R_max, removedMass, rho_small, axis)
                 exit
              end if
           end do
        else
           if (.not. thisCluster%disc_on) then
              ! checks if it's too close 
-             if (cell_too_close_to_star(thisCluster,thisOctal, subcell, R_max) ) then
+             if (cell_too_close_to_star(thisCluster,thisOctal, subcell, R_max, axis) ) then
                 thisOctal%inFlow(subcell) = .false.
                 removedMass = removedMass + (thisOctal%rho(subcell)-rho_small) * cellVolume(thisOctal, subcell) * 1.0e30_db
-                thisOctal%rho(subcell) = rho_small  ! set it to a very low density
+                thisOctal%rho(subcell) = min(rho_small, thisOctal%rho(subcell))  ! set it to a very low density
              end if
           end if
        end if
@@ -1402,15 +1405,16 @@ contains
   !
   ! For a given octal, this routine checks if the center of the cell is with
   ! in a given radius from stars.
-  ! As a quick check, we consider the disk as a sphere (with r=Rdisc) 
-  function cell_too_close_to_star(this,octal_in, subcell, R_max) RESULT(out)
+  ! The removed reqion can be either a sphere or a cylinder, depending on the axis argument.
+  function cell_too_close_to_star(this,octal_in, subcell, R_max, axis) RESULT(out)
     implicit none
     logical :: out 
     
     type(cluster), intent(in) :: this
     type(octal), intent(in) :: octal_in
     integer, intent(in) :: subcell
-    real(double), intent(in) :: R_max  ! limiting distance in [10^10cm]
+    real(double), intent(in) :: R_max    ! limiting distance in [10^10cm]
+    character(len=1), intent(in) :: axis ! Type of region (sphere or cylinder)
 
     real(double) :: x, y, z, xc, yc, zc
     type(sourcetype) :: a_star
@@ -1435,11 +1439,21 @@ contains
        y = a_star%position%y
        z = a_star%position%z
        
-       ! The square of the distance between the star and the cell center.
-       R_sq = (x-xc)**2 + (y-yc)**2 + (z-zc)**2       
-
+       ! The square of the distance between the star and the cell center
+       ! Use either a spherical or a cylindrical distance as required. 
+       select case (axis)
+       case ("s")
+          R_sq = (x-xc)**2 + (y-yc)**2 + (z-zc)**2
+       case ("x")
+          R_sq = (y-yc)**2 + (z-zc)**2
+       case ("y")
+          R_sq = (x-xc)**2 + (z-zc)**2
+       case ("z")
+          R_sq = (x-xc)**2 + (y-yc)**2
+       end select
+       
        if (R_sq < R_max_sq) then 
-          ! the two sphere intersect
+          ! the two regions intersect
           out = .true.
           exit  ! exit this loop.
        end if          
