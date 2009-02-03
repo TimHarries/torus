@@ -18,7 +18,7 @@ module lucy_mod
   implicit none
 
 #ifdef USEMKL
-   include '/Library/Frameworks/Intel_MKL.framework/Headers/mkl_vml.fi'
+   include 'mkl_vml.fi'
 #endif
 
 contains
