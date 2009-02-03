@@ -467,6 +467,7 @@ module molecular_mod
      type(octal), pointer  :: child 
      integer :: subcell, ichild
      real(double) :: temparray(8,100)
+     integer :: h
 
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
@@ -481,27 +482,20 @@ module molecular_mod
         else
 
            if(associated(thisOctal%newmolecularlevel)) then
-
               temparray(1:thisoctal%maxchildren,1:maxlevel) = thisoctal%newmolecularlevel(1:thisoctal%maxchildren,1:maxlevel)
-
               deallocate(thisoctal%newmolecularlevel)
-
               allocate(thisoctal%newmolecularlevel(1:thisoctal%maxchildren, maxlevel))
-
               thisoctal%newmolecularlevel(1:thisoctal%maxchildren,1:maxlevel) = temparray(1:thisoctal%maxchildren,1:maxlevel)
-
            else
-
               allocate(thisoctal%newmolecularlevel(1:thisoctal%maxchildren, maxlevel))
-
               thisoctal%newmolecularlevel(subcell,1:maxlevel) = thisoctal%molecularlevel(subcell,1:maxlevel)
            endif
 
-
            if(associated(thisOctal%oldmolecularlevel)) then
-              temparray(1:thisoctal%maxchildren,1:minlevel) = thisoctal%oldmolecularlevel(1:thisoctal%maxchildren,1:minlevel)
+              h = size(thisoctal%oldmolecularlevel(1,:))
+              temparray(1:thisoctal%maxchildren,1:h) = thisoctal%oldmolecularlevel(1:thisoctal%maxchildren,1:h)
               deallocate(thisoctal%oldmolecularlevel)
-              allocate(thisoctal%oldmolecularlevel(1:thisoctal%maxchildren, minlevel))
+              allocate(thisoctal%oldmolecularlevel(1:thisoctal%maxchildren, 1:minlevel))
               thisoctal%oldmolecularlevel(1:thisoctal%maxchildren,1:minlevel) = temparray(1:thisoctal%maxchildren,1:minlevel)
            else
               allocate(thisoctal%oldmolecularlevel(1:thisoctal%maxchildren, minlevel))
@@ -509,7 +503,8 @@ module molecular_mod
            endif
 
            if(associated(thisOctal%tau)) then
-              temparray(1:thisoctal%maxchildren,1:minlevel) = thisoctal%tau(1:thisoctal%maxchildren,1:minlevel)
+              h = size(thisoctal%tau(1,:))
+              temparray(1:thisoctal%maxchildren,1:h) = thisoctal%tau(1:thisoctal%maxchildren,1:h)
               deallocate(thisoctal%tau)
               allocate(thisoctal%tau(1:thisoctal%maxchildren, minlevel))
               thisoctal%tau(1:thisoctal%maxchildren,1:minlevel) = temparray(1:thisoctal%maxchildren,1:minlevel)
@@ -524,7 +519,7 @@ module molecular_mod
            endif
                      
         endif
-        
+
      enddo
      
    end subroutine allocateOther
@@ -707,7 +702,7 @@ module molecular_mod
 
          if(restart) then 
             open(95, file="restart.dat",status="unknown",form="formatted")
-            read(95, '(1l,1x,7i,1x,3i)') fixedrays, nray, grand_iter
+            read(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
             if(fixedrays) continue
             close(95)
          endif
@@ -936,7 +931,7 @@ module molecular_mod
            call writeAmrGrid("molecular_tmp.grid",.false.,grid)
            call writeinfo("Written Molecular Grid", TRIVIAL)
            open(95, file="restart.dat",status="unknown",form="formatted")
-           write(95, '(1l,1x,7i,1x,3i)') fixedrays, nray, grand_iter 
+           write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter 
            close(95)
         endif
 
@@ -1023,7 +1018,6 @@ end subroutine molecularLoop
      logical :: stage1
      integer :: fromSubcell
      integer :: subcell
-!     real(double) :: ds, phi, i0(:), r, di0
      real(double) :: ds, phi, i0(:), r, di0(maxtrans)
      integer :: iTrans
      type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
@@ -1034,16 +1028,11 @@ end subroutine molecularLoop
      integer :: i
      real(double) :: dist, dds, tval
      integer :: nTau
-!     real(double),pointer :: nLower(:)
-!     real(double),pointer :: nupper(:)
-!     real(double) :: dTau, etaline(maxtrans), kappaAbs 
      real(double) :: dTau(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
-!     real(double), allocatable :: tau(:)
      real(double) :: tau(maxtrans)
      real(double) :: dvAcrossCell, projVel, endprojVel
      real(double) :: CellEdgeInterval, phiProfVal
-!     real :: lambda
-     real(double), allocatable, save :: lambda(:), OneArray(:)
+     real(double), allocatable, save :: OneArray(:)
      integer :: ilambda
      integer :: iCount
 
@@ -2268,7 +2257,7 @@ endif
 !sub intensity
    subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
 
-     use input_variables, only : useDust, realdust
+     use input_variables, only : useDust
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2527,7 +2516,7 @@ endif
 
    subroutine lteintensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
 
-     use input_variables, only : useDust, realdust
+     use input_variables, only : useDust
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2866,7 +2855,7 @@ endif
 
    recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV)
 
-     use input_variables, only : iTrans, vturb
+     use input_variables, only : iTrans
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2940,7 +2929,7 @@ endif
 
    recursive subroutine addDustToOctalParams(grid, thisOctal, thisMolecule, deltaV)
 
-     use input_variables, only : useDust, iTrans
+     use input_variables, only : iTrans
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3060,7 +3049,6 @@ endif
 
            if(inoctal(grid%octreeroot, posvec)) then
               call findSubcellLocal(posVec, thisOctal,subcell) 
-!              write(*,*) thisoctal%temperature(subcell),thisoctal%temperaturegas(subcell),thisoctal%temperaturedust(subcell)
               pops = pops + thisOctal%molecularLevel(subcell,1:minlevel)
               dc = dc + (thisOctal%molecularLevel(subcell,1:5) * thisOctal%departcoeff(subcell,1:5))
               fracChange = fracChange + abs(((thisOctal%molecularLevel(subcell,1:minlevel) - &

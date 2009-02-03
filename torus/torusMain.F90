@@ -34,7 +34,7 @@ program torus
   use romanova_class, only: romanova
   use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
   use source_mod, only: sourceType, buildSphere 
-  use sph_data_class, only: read_sph_data, kill, sphdata
+  use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter
   use cluster_class, only: cluster
   use surface_mod, only: surfaceType
   use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
@@ -1251,14 +1251,12 @@ end subroutine pre_initAMRGrid
     integer           :: nOctals       ! number of octals in grid
     integer           :: nVoxels       ! number of unique voxels in grid
                                        ! (i.e. the number of childless subcells)
+    type(VECTOR) :: dummy
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
     nStreams = 0
     
-!    call readAMRgridFlexi("test.flexi",readFileFormatted,grid)
-!    call writeVtkFile(grid, "test.vtk")
-!    stop
     if (readPops .or. readPhasePops .or. readLucy) then 
 
 
@@ -1798,6 +1796,7 @@ end subroutine pre_initAMRGrid
            ! using the routine in amr_mod.f90
 
           if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
+          dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),isdone = .true.)
 
         elseif (geometry == "luc_cir3d") then
            call deallocate_zeus_data()

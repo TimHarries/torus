@@ -366,9 +366,9 @@ contains
 
     if ( associated(thisOctal%nh2) ) then
        thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
-       thisOctal%molAbundance(subcell) = 4e-6
-       if(thisOctal%rho(subcell) .lt. 1d-19) thisOctal%molAbundance(subcell) = 4e-5 ! 3e4/cm^3
-       if(thisOctal%rho(subcell) .gt. 1.5d-12) thisOctal%molAbundance(subcell) = 4e-5 !T > 30K
+       thisOctal%molAbundance(subcell) = 4e-10
+       if(thisOctal%rho(subcell) .lt. 1d-19) thisOctal%molAbundance(subcell) = 4e-9 ! 3e4/cm^3
+       if(thisOctal%rho(subcell) .gt. 1.5d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
     endif
 
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)
