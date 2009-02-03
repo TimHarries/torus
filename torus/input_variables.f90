@@ -201,8 +201,6 @@ module input_variables
   logical :: plezModelOn
   logical :: useBias
   logical :: fillThomson
-  logical :: movie
-  logical :: plotVelocity
   logical :: screened
   logical :: thinLine
   logical :: VoigtProf
@@ -294,6 +292,11 @@ module input_variables
   logical :: photLine                    ! photospheric line production
 
 
+! SPH parameters
+  character(len=80) :: sphdataFilename
+  real :: hcritPercentile
+  real :: hmaxPercentile
+
   ! binary parameters
 
   real :: period
@@ -312,7 +315,6 @@ module input_variables
   character(len=80) :: lucyFilenameIn
   character(len=80) :: lucyFilenameOut
   character(len=80) :: molFilename, molFilenameIn, molFilenameOut
-  character(len=80) :: sphdataFilename
   character(len=80) :: moleculefile
   logical :: restart
   real :: mass1, mass2, massRatio, streamFac
@@ -359,7 +361,7 @@ module input_variables
 
   !--------------------------------------------------------------------
 
-  ! Use this paremeter to turn off the alpha disc, jets and magnetosphere accretion
+  ! Use this parameter to turn off the alpha disc, jets and magnetosphere accretion
   logical :: ttau_turn_off_disc  
   logical :: ttau_turn_off_jet
   logical :: ttau_turn_off_acc  ! magenetoshere

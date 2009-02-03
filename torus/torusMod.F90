@@ -196,7 +196,6 @@ contains
   sed = .false.
   jansky = .false.
   SIsed = .false.
-  movie = .false.
   thinLine = .false.
   flatspec = .false.
   greyContinuum = .false.

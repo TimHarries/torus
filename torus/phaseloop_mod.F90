@@ -605,8 +605,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      endif
 
 
-     ! if we are producing a movie then plot this phase
-
 
      allocate(lambda(1:maxTau))
      allocate(tauExt(1:maxTau))

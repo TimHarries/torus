@@ -1020,6 +1020,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, grid, theparam, isdone, shouldreuse, d, RhoMin, RhoMax)
+    USE input_variables, only: hcritPercentile, hmaxPercentile
 
     type(vector), intent(in) :: point
     type(GRIDTYPE), intent(in), optional :: grid
@@ -1143,13 +1144,13 @@ contains
        MassArray(:) = sphdata%gasmass(ind(:)) * umass! in case of unequal mass
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
-       call FindCriticalValue(harray, hcrit, 0.8d0, output = .false.) ! find hcrit = 90th percentile of total h
-       call FindCriticalValue(harray, hmax, 0.99d0, output = .false.) ! find hcrit = 99th percentile of total h
+       call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .false.) ! find hcrit as percentile of total h
+       call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
-       write(message, *) "80% Smoothing Length in code units", hcrit
+       write(message, *) "Critical smoothing Length in code units", hcrit
        call writeinfo(message, TRIVIAL)
-       write(message, *) "99% Smoothing Length in code units", hmax
+       write(message, *) "Maximum smoothing Length in code units", hmax
        call writeinfo(message, TRIVIAL)
 
        hcrit = hcrit * codeLengthtoTORUS
@@ -1162,9 +1163,9 @@ contains
        OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
        OneOverHcubed(:) = 1.d0 / (Harray(:)**3)
 
-       write(message,*) "80% Smoothing Length in 10^10cm", hcrit
+       write(message,*) "Critical smoothing Length in 10^10cm", hcrit
        call writeinfo(message, TRIVIAL)
-       write(message,*) "99% Smoothing Length in 10^10cm", hmax
+       write(message,*) "Maximum smoothing Length in 10^10cm", hmax
        call writeinfo(message, TRIVIAL)
 
        rcrit = 2.d0 * hcrit ! edge of smoothing sphere

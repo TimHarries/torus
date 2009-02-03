@@ -1218,6 +1218,12 @@ contains
     call getLogical("molecular", molecular, cLine, nLines, &
          "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
+    call getReal("hcritPercentile", hcritPercentile, cLine, nLines, &
+         "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
+    call getReal("hmaxPercentile", hmaxPercentile, cLine, nLines, &
+         "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+
+
     if (molecular) then
 
        onekappa = .true.
@@ -1269,6 +1275,7 @@ contains
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
        endif
        
+
        ! Image parameters
        if(readmol) then
           
@@ -1947,9 +1954,6 @@ endif
  call getString("misc", misc, cLine, nLines, &
   "Miscallenous rubbish: ","(a,a,1x,a)","junk", ok, .false.)
 
- call getLogical("movie", movie, cLine, nLines, &
-  "Make a movie: ","(a,1l,a)",.false., ok, .false.)
-
  call getLogical("stokesimage", stokesImage, cLine, nLines, &
       "Output stokes image: ","(a,1l,a)",.false., ok, .false.)
 
@@ -2021,9 +2025,6 @@ endif
     gridDistance = gridDistance * pcTocm / 1.e10  ! now in 10^10 cm
  endif
 
-
- call getLogical("plotvel", plotVelocity, cLine, nLines, &
-  "Plot velocity vectors: ","(a,1l,a)",.false., ok, .false.)
 
  call getLogical("sphericity", sphericitytest, cLine, nLines, &
   "Perform sphericity test: ","(a,1l,a)",.false., ok, .false.)
