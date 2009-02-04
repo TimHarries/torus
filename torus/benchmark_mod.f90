@@ -21,7 +21,7 @@ module benchmark_mod
       use messages_mod
       use gridtype_mod, only: gridtype
       use vector_mod,   only: vector
-      use amr_mod,      only: amrGridDensity, amrGridTemperature
+      use amr_mod,      only: amrGridValues
 
 ! Arguments
       type(GRIDTYPE), intent(in)   :: grid
@@ -61,8 +61,7 @@ module benchmark_mod
             point%y = point%y * 1.0e-10
             point%z = point%z * 1.0e-10
 
-            density_grid     = amrGridDensity(grid%octreeRoot, point)
-            temperature_grid = amrGridTemperature(grid%octreeRoot, point)
+            call amrGridValues(grid%octreeRoot, point, rho=density_grid, temperature=temperature_grid)
 
             temperature_diff = temperature - temperature_grid
             density_diff     = density     - density_grid

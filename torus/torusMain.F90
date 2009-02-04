@@ -1389,7 +1389,6 @@ end subroutine pre_initAMRGrid
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-!           call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
           call estimateRhoOfEmpty(grid, grid%octreeRoot)	
            !Removing the cells within 10^14 cm from the stars.
           removedMass = 0.0
