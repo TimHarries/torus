@@ -1223,6 +1223,8 @@ contains
     call getReal("hmaxPercentile", hmaxPercentile, cLine, nLines, &
          "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
 
+    call getLogical("refineCentre", refineCentre, cline, nLines, &
+         "Refine centre of grid: ", "(a,l,1x,a)", .false., ok, .false.)
 
     if (molecular) then
 

@@ -4343,7 +4343,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr
-    use input_variables, only: planetgap, heightSplitFac
+    use input_variables, only: planetgap, heightSplitFac, refineCentre
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4882,8 +4882,23 @@ IF ( .NOT. gridConverged ) RETURN
          end if
       endif
       
-! Split if the cell contains both gas particles and a point mass
-      if (npt_subcell>0 .and. nparticle >0) split = .true. 
+! Additional refinement at the grid centre used for SPH-Torus discs. 
+      if ( refineCentre ) then 
+
+         cellSize   = thisOctal%subcellSize
+         cellCentre = subcellCentre(thisOctal,subCell)
+
+         if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
+              < 40.0*grid%rCore ) then 
+            if ( cellSize > grid%rCore ) split = .true. 
+         end if
+
+         if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
+              abs(cellCentre%z) < 20.0*grid%rCore ) then 
+            if ( cellSize > 0.5*grid%rCore ) split = .true. 
+         end if
+
+      end if
 
 ! The stellar disc code is retained in case this functionality needs to be used in future 
 !!$

@@ -297,6 +297,8 @@ module input_variables
   real :: hcritPercentile
   real :: hmaxPercentile
 
+  logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
+
   ! binary parameters
 
   real :: period
