@@ -382,8 +382,10 @@ module molecular_mod
               endif
 
               call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), dble(thisOctal%departcoeff(subcell,1:5)))
+              do i = 1, 5
+                 thisoctal%departcoeff(subcell,i) = max(thisoctal%departcoeff(subcell,i),1d-30)
+              enddo
               thisoctal%departcoeff(subcell,1:5) = 1.d0 / thisoctal%departcoeff(subcell, 1:5)
-
 
               if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
                  thisOctal%molecularLevel(subcell,1) = 1.0
@@ -787,12 +789,6 @@ module molecular_mod
                   if (rankComplete) exit blockLoop 
 #endif
 
-!    if(firsttime) then
-!       allocate(iOctalArray(ioctal_end - ioctal_beg + 1))
-!       call decideOctalOrder(iOctal_beg, iOctal_end, iOctalArray, shouldinterlace = .true.)
-!       firsttime = .false.
-!    endif
-
  ! iterate over all octals, all rays, solving the system self-consistently
  
     warn = .true.
@@ -805,13 +801,11 @@ module molecular_mod
           call writeInfo(message,TRIVIAL)
        endif
 
- !             thisOctal => octalArray(iOctalArray(iOctal))%content
        thisOctal => octalArray(ioctal)%content
 
        do subcell = 1, thisOctal%maxChildren
 
           if (.not.thisOctal%hasChild(subcell)) then
-!                    if(fixedrays) call sobseq(r1,-1)                     
 
              do iRay = 1, nRay
                       
