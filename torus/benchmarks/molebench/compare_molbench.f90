@@ -42,10 +42,10 @@ program compare_molbench
      end if
 
      diff(:) = abs(model_J(:) - bench_J(:)) / bench_J(:) 
+     write(*,*) diff(1:ncheck)
 
      if ( any(diff(1:ncheck) > max_diff) .and. model_R .lt. 4e17) then 
         write(*,*) "Difference of more than ", max_diff, "found."
-        write(*,*) diff(1:ncheck)
         write(*,*) "Test failed"
         exit
      end if

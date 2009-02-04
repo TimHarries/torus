@@ -113,4 +113,14 @@ vmax +100000.
 line F                                   
 opaquecore T
 
-mindepthamr 7
+mindepthamr 8
+
+restart F
+isinLTE T
+plotlevels F
+
+centrevecx 0.d7
+centrevecy 0.d7
+centrevecz 0.d7
+suppresswarnings T
+
