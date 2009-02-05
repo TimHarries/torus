@@ -493,7 +493,7 @@ program torus
      else
         ! Set up the AMR grid
         call amr_grid_setup
-        if(molecular) call writeAMRgrid('notmolecular.grid',writeFileFormatted,grid) 
+        if(molecular .and. writeoutput) call writeAMRgrid('notmolecular.grid',writeFileFormatted,grid) 
 
         if (geometry(1:7) .eq. "testamr") call testamr
         
