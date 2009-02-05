@@ -724,7 +724,7 @@ module molecular_mod
                do i = size(tauarray), 1, -1
                   mintrans = i + 2
                   minlevel = mintrans + 1
-                  write(99,*) i, mintrans, tauarray(i)
+                  if(writeoutput) write(99,*) i, mintrans, tauarray(i)
                   if(tauarray(i) .gt. 0.01) exit
                enddo
             else
@@ -921,7 +921,7 @@ module molecular_mod
            gridConverged = .false.
         endif
 
-        if(myrankiszero) then
+        if(writeoutput) then
            call writeAmrGrid("molecular_tmp.grid",.false.,grid)
            call writeinfo("Written Molecular Grid", TRIVIAL)
            open(95, file="restart.dat",status="unknown",form="formatted")
@@ -936,8 +936,6 @@ module molecular_mod
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
            call  writeVtkFile(grid, filename, "vtk.txt")
         endif
-
-
 
         if(writeoutput) then
            write(message,*) "Done ",nray," rays"
@@ -958,7 +956,6 @@ module molecular_mod
            endif
         else
            if(.not. gridconverged) call writeinfo("Doing all rays again", FORINFO)
-!DARDAR
         endif
         
         if (nRay > maxRay) then
@@ -972,26 +969,6 @@ module molecular_mod
 #endif
         deallocate(ds, phi, i0)
      enddo
-
-!     if(writeoutput) then
-!        call writeinfo("Writing convergence profile", TRIVIAL)
-!     endif
-
-!     if(writeoutput .and. molebench .and. amr1d) then
-!        open(141,file="convergenceprofile.dat",status="unknown",form="formatted")
-
-!        do i=1,100
-!           r(i) = log10(rinner) + dble(i-1)/dble(100-1)*((log10(router) - log10(rinner))) ! log(radius) -> radius
-!        enddo
-        
-!        write(141,'(tr3,100(es8.3e1,tr1))') 10.**r
-
-!        do i = 1,grand_iter
-!           write(141,'(i2,tr1,100(f8.6,tr1))') i, convtestarray(i,:,1)
-!        enddo
-
-!        close(141)
-!     endif
   enddo
   
   close(33)
