@@ -488,7 +488,7 @@ program torus
         call readAMRgrid("atom_tmp.grid",.false.,grid)
      else if (photoionization.and.readlucy) then
         continue
-     elseif (molecular .and. ((.not. writemol) .or. restart)) then
+     elseif (molecular .and. ((.not. writemol) .or. restart .or. addnewmoldata)) then
         continue
      else
         ! Set up the AMR grid
@@ -540,7 +540,7 @@ program torus
   !=================================================================
 
   ! set up the sources
-  if(.not. restart) call set_up_sources
+  if(.not. (restart .or. addnewmoldata)) call set_up_sources
 
 ! Any tasks to be performed after the AMR grid is set up should be done here.
 ! Calculates the mass on thr grid and also runs some geometry specific code. 
@@ -713,7 +713,7 @@ CONTAINS
       ! Finding the inclinations of discs seen from +z directions...
      if (myRankIsZero) call find_inclinations(0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
 
-  elseif (geometry .eq. "molcluster" .and. .not. readmol .and. .not. restart) then
+  elseif (geometry .eq. "molcluster" .and. .not. readmol .and. .not. restart .and. .not. addnewmoldata) then
 
      ! read in the sph data from a file
 
