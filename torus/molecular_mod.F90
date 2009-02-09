@@ -299,7 +299,7 @@ module molecular_mod
  ! stores the non-zero local emission coefficient   
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
-     use input_variables, only : vturb, usedust, restart, isinLTE
+     use input_variables, only : vturb, usedust, restart, isinLTE, addnewmoldata
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -315,7 +315,11 @@ module molecular_mod
         call writeinfo("Reading in previous grid", FORINFO)
         call freeGrid(grid)
         call readAMRgrid("molecular_tmp.grid",.false.,grid)
-
+        call writeinfo("Done", FORINFO)
+        firsttime1 = .false.
+     elseif(addnewmoldata .and. firsttime1) then
+        call readAMRgrid("notmolecular.grid",.false.,grid)
+        restart = .false.
         firsttime1 = .false.
      endif
 
@@ -336,8 +340,6 @@ module molecular_mod
               if(firsttime2) then
                  maxlevel = size(thisOctal%molecularLevel(1,:))
                  maxtrans = maxlevel - 1
-                 minlevel = size(thisoctal%oldmolecularlevel(1:,:))
-                 mintrans = mintrans - 1
                  firsttime2 = .false.
               endif
               
@@ -544,7 +546,7 @@ module molecular_mod
 
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
-     integer, parameter :: maxIter = 1000, maxRay = 1000000
+     integer, parameter :: maxIter = 50, maxRay = 1000000
      logical :: popsConverged, gridConverged, gridConvergedTest
      character(len=200) :: message
      integer :: iRay, iTrans, iter, i 
@@ -623,6 +625,7 @@ module molecular_mod
         open(139,file="avgChange.dat",status="replace",form="formatted")
         open(140,file="avgRMSChange.dat",status="replace",form="formatted")
         open(141,file="tau.dat",status="replace",form="formatted")
+        open(142,file="criticaldensities.dat",status="replace",form="formatted")
         close(139)
         close(140)
         close(141)
@@ -668,6 +671,14 @@ module molecular_mod
       nRay = 1 ! number of rays used to establish estimate of jnu and pops
 
       if(((amr1d .or. amr2d) .or. molebench) .and. writeoutput .and. .not. restart) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
+
+! critical density table
+      write(142,*) "Critical Density @ 10K"
+      do itrans = 1, min(9, maxlevel)
+         write(142,'(a,i1,a,i1,a,es7.1,a)') "J=",thismolecule%itransupper(itrans)-1,"-",thismolecule%itranslower(itrans)-1,"    ", &
+                                            thismolecule%einsteinA(itrans) / collRate(thisMolecule, 10d0, 1, iTrans),"      cm^-3"
+      enddo
+      close(142)
 
       if(usedust) then 
          call continuumIntensityAlongRay(vector(1d10,0.d0,0.d0),vector(-1.d0,1d-20,1d-20), grid, 1e4, 0.d0, dummy, &
@@ -1165,9 +1176,9 @@ end subroutine molecularLoop
            dist = dist + dds ! increment along distance counter
            thisPosition = currentPosition + dist * direction
    
-        if(inOctal(grid%octreeRoot, thisposition)) then
-           thisVel = velocity(thisPosition, grid)
-        endif
+           if(inOctal(grid%octreeRoot, thisposition)) then
+              thisVel = velocity(thisPosition, grid)
+           endif
 
            dv = deltaV - (thisVel .dot. direction)
            PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
@@ -1207,7 +1218,7 @@ end subroutine molecularLoop
                  i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
                  tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
 
-                 if(sum(done) .ge. mintrans) then
+                 if(sum(done(1:mintrans)) .eq. mintrans) then
                     goto 118 
                  endif
               endif
@@ -3398,19 +3409,56 @@ endif
 
 end subroutine plotdiscValues
 
-     function velocity(position, grid, startOctal, subcell) RESULT(out)
+     type(VECTOR) function velocity(position, grid, startOctal, subcell) RESULT(out)
+
+       use input_variables, only : sphdatafilename, debug
 
        implicit none
-       type(VECTOR) :: out
+       
        type(VECTOR), intent(in) :: position
+       type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
        type(gridtype), intent(in) :: grid
        type(octal), pointer, optional :: startOctal
        integer, optional :: subcell
+       logical, save :: firsttime = .true.
+       real(double) :: magi, mage
+       integer, save :: savecounter = 0
 
-       if(molebench) Out = Molebenchvelocity(Position, grid)
-       if(molcluster) Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)
-       if(chrisdisc) Out = keplerianVelocity(Position, grid)
-      
+       if(oldposition .eq. position) then
+          savecounter = savecounter + 1
+!          write(*,*) "Saved", savecounter
+          out = oldout
+          return
+       endif
+
+       if(molebench) then
+          Out = Molebenchvelocity(Position, grid) 
+       elseif(molcluster) then
+          Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)
+       elseif(chrisdisc) then
+          Out = keplerianVelocity(Position, grid)
+       else
+          Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)
+       endif
+
+       if (debug) then 
+          write(95,'(a,tr2,3(es11.4,tr2))') "Position", position
+           
+          magi = cspeed * modulus(out) * 1e-5
+          write(95,'(a,tr2,4(es11.4,tr2),i5)') "interp",cspeed * out%x, cspeed * out%y, cspeed * out%z, magi, savecounter
+       
+          if(firsttime) then
+             call new_read_sph_data(sphdatafilename)
+             firsttime = .false.
+          endif
+
+          if(molcluster) Out = molclustervelocity(position, grid)
+          mage = cspeed * modulus(out) * 1e-5
+          write(95,'(a,tr2,5(es11.4,tr2))') "exact ",cspeed * out%x, cspeed * out%y, cspeed * out%z, mage, abs((mage - magi) / mage)
+       endif
+
+       oldout = out
+       oldposition = position
 !       case default
 !          if(present(startOctal) .and. present(subcell)) then
 !             out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell)
