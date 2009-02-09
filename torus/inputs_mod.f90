@@ -1256,6 +1256,8 @@ contains
             "Rotation angle about x-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
        call getDouble("rotateViewAboutZ", rotateViewAboutZ, cLine, nLines, &
             "Rotation angle about z-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+       call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
+            "Input sph data file: ","(a,a,1x,a)","Torusdump", ok, .true.)
 
     endif
 
