@@ -689,7 +689,7 @@ contains
     case ("proto")
        call initProtoAMR(grid)
 
-    case("cluster","wr104","molcluster")
+    case("cluster","wr104","molcluster", "theGalaxy")
        call initClusterAMR(grid)
        
     case("spiralwind")

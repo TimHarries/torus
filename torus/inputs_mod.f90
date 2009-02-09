@@ -1218,6 +1218,48 @@ contains
     call getLogical("molecular", molecular, cLine, nLines, &
          "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("h21cm", h21cm, cLine, nLines, &
+         "Compute 21cm emission: ","(a,1l,a)", .false., ok, .false.)
+
+    if( geometry == "theGalaxy" ) then
+
+       call getReal("imageside", imageside, cLine, nLines, &
+            "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+       call getInteger("npixels", npixels, cLine, nLines, &
+            "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
+       call getInteger("nv", nv, cLine, nLines, &
+            "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
+       call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
+            "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .false.)
+       call getReal("beamsize", beamsize, cLine, nLines, &
+            "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
+       call getDouble("maxVel", maxVel, cLine, nLines, &
+            "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .false.)
+       call getLogical("useDust", useDust, cLine, nLines, &
+            "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
+       itrans = 1
+       
+       call getReal("distance", gridDistance, cLine, nLines, &
+            "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
+
+       gridDistance = gridDistance * pcTocm   ! cm
+
+
+       call getDouble("centrevecx", centrevecx, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("centrevecy", centrevecy, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("centrevecz", centrevecz, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+
+       call getDouble("rotateViewAboutX", rotateViewAboutX, cLine, nLines, &
+            "Rotation angle about x-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("rotateViewAboutZ", rotateViewAboutZ, cLine, nLines, &
+            "Rotation angle about z-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+
+    endif
+
+
     call getReal("hcritPercentile", hcritPercentile, cLine, nLines, &
          "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
     call getReal("hmaxPercentile", hmaxPercentile, cLine, nLines, &

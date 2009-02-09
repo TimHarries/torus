@@ -2245,7 +2245,7 @@ endif
 !sub intensity
    subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
 
-     use input_variables, only : useDust
+     use input_variables, only : useDust, h21cm
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2270,6 +2270,7 @@ endif
      real(double),save :: BnuBckGrnd
 
      real(double) :: phiProfVal
+     real         :: sigma_thermal
      real(double) :: deps, origdeps
 
      logical,save :: firsttime = .true.
@@ -2374,7 +2375,17 @@ endif
 
               dv = (thisVel .dot. direction) - deltaV
            
+
+! Use thermal line width for H 21cm lines or turbulent line widths otherwise
+           if ( h21cm ) then 
+! Calculate line width in cm/s.
+              sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+! Convert to Torus units (v/c)
+              sigma_thermal = sigma_thermal / cspeed
+              phiprofval    = gauss (sigma_thermal, real(dv) ) 
+           else
               phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+           end if
               alphanu1 = thisOctal%molcellparam(6,subcell) * phiprofval
 
               alpha = alphanu1 + alphanu2
@@ -2843,7 +2854,7 @@ endif
 
    recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV)
 
-     use input_variables, only : iTrans
+     use input_variables, only : iTrans, h21cm
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2880,6 +2891,27 @@ endif
 !                 thisOctal%rho(subcell) = thisOctal%rho(subcell) * 1.05
            endif
               
+
+           if ( h21cm ) then 
+
+              if (.not.associated(thisOctal%molcellparam)) then
+                 allocate(thisOctal%molcellparam(1:thisOctal%maxChildren,8))
+              endif
+
+              thisOctal%molcellparam(1,subcell) = 0.0
+              thisOctal%molcellparam(2,subcell) = 0.0
+              thisOctal%molcellparam(3,subcell) = 0.0
+              thisOctal%molcellparam(4,subcell) = 0.0
+              thisOctal%molcellparam(5,subcell) = thisOctal%etaLine(subcell)
+              thisOctal%molcellparam(6,subcell) = thisOctal%chiLine(subcell)
+              thisOctal%molcellparam(7,subcell) = 0.0
+              thisOctal%molcellparam(8,subcell) = 0.0 
+
+              allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
+              thisOctal%molmicroturb(:) = 1.0
+
+           else
+
            if (.not.associated(thisOctal%molmicroturb)) then
               allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
            endif
@@ -2910,6 +2942,7 @@ endif
            thisOctal%molcellparam(5,subcell) = etaLine * nUpper
            thisOctal%molcellparam(6,subcell) = hCgsOverFourPi * thisOctal%molcellparam(4,subcell)! balance
         endif
+     endif
 
      end do
 
@@ -3739,6 +3772,34 @@ end subroutine calculateConvergenceData
 
  end subroutine LTEpops
 
+!-----------------------------------------------------------------------------------------------------------
+
+ subroutine make_h21cm_image(grid)
+   
+   use input_variables, only : nsubpixels, itrans
+
+   implicit none
+
+   TYPE(gridtype), intent(in) :: grid
+   type(VECTOR)    :: observervec, viewvec, imagebasis(2)
+   type(DATACUBE) ::  cube
+   type(MOLECULETYPE) :: thisMolecule
+
+! Set up 21cm line
+   allocate( thisMolecule%transfreq(1) )
+   thisMolecule%transfreq(1) = cSpeed / (21.0)
+
+   call writeinfo('Generating H 21cm image', TRIVIAL)
+   call setObserverVectors(viewvec, observerVec, imagebasis)
+
+   call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
+
+   cube%flux = cube%intensity
+   if(writeoutput) call writedatacube(cube, "h21cm.fits")
+
+ end subroutine make_h21cm_image
+
+!-----------------------------------------------------------------------------------------------------------
       recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
         use input_variables, only : rinner, router
         type(GRIDTYPE) :: grid

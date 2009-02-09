@@ -26,6 +26,7 @@ module input_variables
   integer :: nr, nmu, nphi
   logical :: photoionization
   logical :: molecular
+  logical :: h21cm 
   real :: beamSize
   real :: eccentricity
   real(double) :: rotateViewAboutX, rotateViewAboutZ

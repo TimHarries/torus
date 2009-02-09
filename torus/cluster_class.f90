@@ -342,6 +342,10 @@ contains
   ! only in finishGrid routine in amr_mod.f90
   !
   subroutine assign_grid_values(thisOctal,subcell, grid)
+
+    use input_variables, only: h21cm
+    use h21cm_mod, only: hi_emop
+
     IMPLICIT NONE
     
     TYPE(octal), intent(inout) :: thisOctal
@@ -378,6 +382,12 @@ contains
 !       thisOctal%velocity(subcell) = clusterparam
 !    end if
       
+    if ( h21cm ) then 
+       call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
+                   thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
+    end if
+       
+
   end subroutine assign_grid_values
 
   !

@@ -202,7 +202,7 @@ CONTAINS
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
-    CASE("cluster","molcluster")
+    CASE("cluster","molcluster","theGalaxy")
        ! using a routine in cluster_class.f90
 !       call assign_density(thisOctal,subcell, grid%geometry, stellar_cluster)
 
@@ -408,7 +408,7 @@ CONTAINS
     call allocateOctalAttributes(grid, thisOctal)
 
     select case (grid%geometry)
-       case("cluster","molcluster")
+       case("cluster","molcluster","theGalaxy")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
           ! to the subcells if the particles are in the subcells.
@@ -1189,15 +1189,15 @@ CONTAINS
           CALL calc_cir3d_temperature(thisOctal,subcell)
         
        CASE ("cmfgen")
-          CALL calc_cmfgen_temperature(thisOctal,subcell)
-          
+         CALL calc_cmfgen_temperature(thisOctal,subcell)
+
        CASE ("romanova")
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
-          
+        
        CASE ("cluster","wr104")
           call assign_grid_values(thisOctal,subcell, grid)
           
-       CASE ("molcluster")
+       CASE ("molcluster", "theGalaxy")
           if(thisoctal%haschild(subcell)) then 
              continue
           else
@@ -1207,7 +1207,7 @@ CONTAINS
              endif
              thisoctal%velocity(subcell) = thisOctal%cornervelocity(14)
           endif
-          
+
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return. 
           goto 666
@@ -4641,7 +4641,7 @@ IF ( .NOT. gridConverged ) RETURN
 
       if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen)/4.0d0)  split=.true.
 
-   case ("cluster","molcluster")
+   case ("cluster","molcluster","theGalaxy")
 
       call find_n_particle_in_subcell(nparticle, ave_density, &
            thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
@@ -15635,11 +15635,17 @@ end function readparameterfrom2dmap
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, sobolev
+         photoionization, hydrodynamics, sobolev, h21cm
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
     integer, parameter :: nTheta = 10 , nphi = 10
+
+    if ( h21cm ) then 
+       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+    end if
+
     if (mie) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
        thisOctal%oldFrac = 1.d-30

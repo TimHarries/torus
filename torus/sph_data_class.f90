@@ -7,7 +7,7 @@ module sph_data_class
   use timing
   use gridtype_mod
   use math_mod2
-  use constants_mod, only : OneOnFourPi
+  use constants_mod, only : OneOnFourPi, mSol
 
 !  use parallel_mod, only : torus_abort
   ! 
@@ -458,6 +458,174 @@ contains
    
   end subroutine new_read_sph_data
 
+! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
+  subroutine read_galaxy_sph_data(filename)
+    implicit none
+    
+    character(len=*), intent(in) :: filename
+    character(LEN=150) :: message
+
+    integer :: i, j, iiigas
+    real(double) :: hI_mass
+
+    real(double) :: udist, umass, utime,  time
+    integer, parameter :: nptmass=0
+
+    INTEGER*4 :: int1, int2, i1
+    integer*4 :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
+    REAL(kind=8)    :: r1, r2, dummy, array(8)
+    integer :: intarray(8)
+    CHARACTER*100 fileident
+
+    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+
+    integer*1, allocatable :: iphase(:)
+    integer, allocatable   :: isteps(:)
+    real*8, allocatable    :: xyzmh(:,:)
+    real*8, allocatable    :: vxyzu(:,:)
+    real*4, allocatable    :: rho(:)
+    real*8, allocatable    :: h2rho(:)
+    real*8, allocatable    :: h1rho(:)
+
+!
+! Read in data from file
+!
+
+    write(message,*) "Reading SPH data from "//trim(filename)
+    call writeinfo(message, TRIVIAL)
+
+    open(unit=LUIN, file=filename, form='unformatted', status='old')
+
+    read(LUIN) int1, r1, int2, i1, int1
+    read(LUIN) fileident
+
+    read(LUIN) number
+    read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
+
+    do i=1,4
+       read(LUIN) number
+    end do
+
+    read(LUIN) number
+    
+    read(LUIN) dummy, dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,&
+         dummy,dummy,dummy,dummy,dummy,dummy
+
+    read(LUIN) number
+
+    read(LUIN) number
+    read(LUIN) udist, umass, utime, dummy
+
+    time=0.0
+    call init_sph_data(udist, umass, utime, time, nptmass)
+    sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
+
+! Arrays
+
+    read(LUIN) number, nblocks
+
+! Array length 1 header
+    read(LUIN) dummy, intarray(1:8)
+
+! Array length 2 header
+    read(LUIN) dummy, intarray(1:8)
+
+! isteps and iphase
+    allocate(isteps(npart))
+    allocate(iphase(npart))
+! Note: this should not be a do loop
+    read(LUIN) ( isteps(i), i=1,npart)
+    read(LUIN) ( iphase(i), i=1, npart)
+
+! xyzmh, vxyzu
+    allocate( xyzmh(5,npart) )
+    allocate( vxyzu(4,npart) )
+
+    do j=1,5
+       read(LUIN) ( xyzmh(j,i), i=1, npart)
+    end do
+
+    do j=1,4
+       read(LUIN) ( vxyzu(j,i), i=1, npart)
+    end do
+
+! rho
+    allocate(rho(npart))
+    read(LUIN) ( rho(i), i=1, npart) 
+
+! h2rho and h1rho
+    allocate(h2rho(npart))
+    allocate(h1rho(npart))
+    read(LUIN) ( h2rho(i), i=1, npart)
+    read(LUIN) ( h1rho(i), i=1, npart)
+
+    close(LUIN)
+
+!
+! Set up SPH data structure
+!
+
+    ! Indicate that this object is in use
+    sphData%inUse = .true.
+
+! Use temperature from SPH particles to initialise temperature grid
+    sphData%useSphTem = .true. 
+    sphData%npart = npart
+    sphData%time = time
+
+    iiigas=0
+    hI_mass = 0.0
+    do i=1, npart
+       if (iphase(i) == 0) then
+
+          iiigas=iiigas+1
+          hI_mass = hI_mass + xyzmh(4,i) * (h1rho(i) / rho(i))
+
+          sphData%rhon(iiigas)        = h1rho(i)
+
+          sphdata%vxn(iiigas)         = vxyzu(1,i)
+          sphdata%vyn(iiigas)         = vxyzu(2,i)
+          sphdata%vzn(iiigas)         = vxyzu(3,i)
+          sphData%temperature(iiigas) = vxyzu(4,i)
+
+          sphData%xn(iiigas)          = xyzmh(1,i)
+          sphData%yn(iiigas)          = xyzmh(2,i)
+          sphData%zn(iiigas)          = xyzmh(3,i)
+          sphData%gasmass(iiigas)     = xyzmh(4,i)
+          sphData%hn(iiigas)          = xyzmh(5,i)
+       end if
+    end do
+
+    write(message,*) "Read ", iiigas, " gas particles"
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Minimum x=", minval(xyzmh(1,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum x=", maxval(xyzmh(1,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Minimum y=", minval(xyzmh(2,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum y=", maxval(xyzmh(2,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Minimum z=", minval(xyzmh(3,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum z=", maxval(xyzmh(3,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Total mass=", hI_mass * umass / mSol
+    call writeinfo(message, TRIVIAL)
+
+    deallocate(h1rho)
+    deallocate(h2rho)
+    deallocate(rho)
+    deallocate(vxyzu)
+    deallocate(xyzmh)
+    deallocate(iphase)
+    deallocate(isteps)
+
+  end subroutine read_galaxy_sph_data
 
   !
   !

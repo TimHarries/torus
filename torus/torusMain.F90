@@ -41,7 +41,7 @@ program torus
   use discwind_class, only: discwind, new, add_discwind
   use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
   use photoion_mod, only: photoIonizationloop
-  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule
+  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image
   use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
   use cmf_mod, only: atomLoop, calculateAtomSpectrum
   use vtk_mod, only: writeVtkfile
@@ -504,6 +504,10 @@ program torus
 
         ! Plotting the various values stored in the AMR grid.
         if ( plot_maps .and. myRankIsZero ) call writeVtkFile(grid, "rho.vtk")
+
+        ! Output H 21cm emissivity and opacity 
+        if ( h21cm ) call writeVtkFile(grid, "h21cm.vtk", valueTypeString=(/"etaline","chiline"/) )
+
      end if
 
   !=================================================================
@@ -621,8 +625,14 @@ program torus
      endif
 
      goto 666
+
   endif
 
+! Generate H 21cm image
+  if ( h21cm ) then 
+     call make_h21cm_image(grid)
+     goto 666
+  end if
 
 !  if (grid%geometry == "shakara") call defineDiffusionZone(grid, .false., .false.)
 
@@ -678,7 +688,7 @@ CONTAINS
     use isochrone_class, only: isochrone, read_isochrone_data
     use cluster_class, only: write_catalog, build_cluster
     use romanova_class, only: get_dble_parameter
-    use sph_data_class, only: find_inclinations, new_read_sph_data, read_stellar_disc_data, info
+    use sph_data_class, only: find_inclinations, new_read_sph_data, read_stellar_disc_data, info, read_galaxy_sph_data
     use wr104_mod, only: readwr104particles
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax
 
@@ -785,6 +795,9 @@ CONTAINS
      ! this is a temporary solution... It should be called something 
      ! else .
      TTauriRouter = REAL(get_dble_parameter(romData, "Rmax")*1.0d10)           
+
+  elseif (geometry == "theGalaxy" ) then
+     call read_galaxy_sph_data("Torusdump")
 
   end if
 
@@ -1385,11 +1398,11 @@ end subroutine pre_initAMRGrid
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        
        select case (geometry)
-       case("cluster")
+       case("cluster", "theGalaxy")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-          call estimateRhoOfEmpty(grid, grid%octreeRoot)	
+!          call estimateRhoOfEmpty(grid, grid%octreeRoot)	
            !Removing the cells within 10^14 cm from the stars.
           removedMass = 0.0
           call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4, removedMass, amr_min_rho, 's')
