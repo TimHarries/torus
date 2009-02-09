@@ -578,7 +578,7 @@ module molecular_mod
       real :: tol
       real(double) :: dummy, tau, tauarray(60) = -1.d0    
       logical :: warn = .true.
-      integer :: warncount
+      integer :: warncount, warncount_all
       real(double) :: error(50)
       integer :: maxerrorloc, maxlocerror(1)
       integer :: mintransold
@@ -778,6 +778,9 @@ module molecular_mod
             ioctal_beg = 1
             ioctal_end = SIZE(octalArray)         
 
+            warn = .true.
+            warncount = 0
+
 #ifdef MPI
 
      ! we will use an array to store the rank of the process
@@ -802,9 +805,6 @@ module molecular_mod
 
  ! iterate over all octals, all rays, solving the system self-consistently
  
-    warn = .true.
-    warncount = 0
-
     do iOctal = ioctal_beg, ioctal_end
 
        if (debug .and. writeoutput) then
@@ -887,6 +887,8 @@ module molecular_mod
                      MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
       call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
+      call MPI_ALLREDUCE(warncount,warncount_all,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
+
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
       allocate(tArrayd(1:nVoxels))
       allocate(tempArrayd(1:nVoxels))
@@ -903,6 +905,8 @@ module molecular_mod
       deallocate(tArrayd, tempArrayd)
 
       if(my_rank == 0) write(*,*) "Done updating"
+#else
+      warncount_all = warncount
 #endif
 
       ! Calculate convergence towards solution (per level)
@@ -911,7 +915,7 @@ module molecular_mod
 
 !      call solveAllPops(grid, grid%octreeroot, thisMolecule)
       call writeinfo("Calculating convergence data", FORINFO)
-      write(message,*) "Number of unconverged cells ", warncount
+      write(message,*) "Number of unconverged cells ", warncount_all
       call writeinfo(message, FORINFO)
       call calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
 
@@ -942,10 +946,12 @@ module molecular_mod
 
         call writeinfo("Dumping results", FORINFO)
         if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
-        if(Writeoutput .and. plotlevels .and. .not.(amr1d) .and. nray .gt. 1) then
+        if(myrankiszero .and. plotlevels .and. .not.(amr1d) .and. nray .gt. 1) then
            call writeinfo('Writing VTK file', TRIVIAL)
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
-           call  writeVtkFile(grid, filename, "vtk.txt")
+           write(message, *) "Wrote VTK file to", filename
+           call writeinfo(message, TRIVIAL)
+           call writeVtkFile(grid, filename, "vtk.txt")
         endif
 
         if(writeoutput) then
