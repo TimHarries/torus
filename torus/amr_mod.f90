@@ -206,6 +206,8 @@ CONTAINS
        ! using a routine in cluster_class.f90
 !       call assign_density(thisOctal,subcell, grid%geometry, stellar_cluster)
 
+       thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+
     CASE("wr104")
        ! using a routine in cluster_class.f90
        call assign_density(thisOctal,subcell, grid%geometry)
@@ -1200,7 +1202,7 @@ CONTAINS
              continue
           else
              call assign_grid_values(thisOctal,subcell, grid)
-             if(subcell .eq. 1) then
+             if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
                 CALL fillVelocityCorners(thisOctal,grid,molclustervelocity,thisOctal%threed)
              endif
              thisoctal%velocity(subcell) = thisOctal%cornervelocity(14)
@@ -3854,6 +3856,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     RECURSIVE SUBROUTINE findSubcellLocalPrivate(point,thisOctal,subcell,&
                                                  haveDescended,boundaryProblem)
+      use input_variables, only : suppressWarnings
       TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
       INTEGER, INTENT(OUT)   :: subcell
@@ -3912,8 +3915,10 @@ IF ( .NOT. gridConverged ) RETURN
           write(*,*) thisOctal%subcellSize
 !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-           DO ; END DO
-          STOP
+          if(.not. suppresswarnings) then
+             DO ; END DO
+                STOP
+          endif
           boundaryProblem = .TRUE.
           RETURN
         END IF
@@ -8491,6 +8496,11 @@ end function readparameterfrom2dmap
     
     call findSubcellLocal(point, thisOctal,subcell)
 
+    if(thisoctal%ndepth .eq. 1) then
+       write(*,*) "broke"
+       call findSubcellTD(point,grid%OctreeRoot,thisoctal,subcell)
+       write(*,*) thisoctal%ndepth
+    endif
 !    if(thisoctal%centre .eq. previousoctal%centre) then
 !       molclusterVelocity = Clusterparameter(point, theparam = 1, d = thisOctal%subcellsize, shouldreuse = .true.) ! use switch for storing velocity
 !    else
@@ -9422,7 +9432,6 @@ end function readparameterfrom2dmap
     dest%subcellSize =  source%subcellSize
     dest%gasOpacity =  source%gasOpacity 
     dest%cornerVelocity =  source%cornerVelocity
-
 
     dest%xMax = source%xMax
     dest%yMax = source%yMax
