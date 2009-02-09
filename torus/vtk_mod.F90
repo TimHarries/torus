@@ -264,6 +264,8 @@ contains
       real :: value
       real(double) :: kAbs
       character(len=*) :: valueType
+      real, parameter :: min_single_prec = 1.0e-37
+
       kabs = 0.d0
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
@@ -405,7 +407,10 @@ contains
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
                case("chiline")
-                  write(lunit, *) real(thisOctal%chiline(subcell))
+                  write(lunit, *) max( real(thisOctal%chiline(subcell)), min_single_prec )
+
+               case("etaline")
+                  write(lunit, *) max ( real(thisOctal%etaline(subcell)), min_single_prec )
 
                case("tau")
                   call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
