@@ -319,6 +319,7 @@ module input_variables
   character(len=80) :: molFilename, molFilenameIn, molFilenameOut
   character(len=80) :: moleculefile
   logical :: restart
+  logical :: addnewmoldata
   real :: mass1, mass2, massRatio, streamFac
   real :: temp1, temp2
   character(len=80) :: popFilename

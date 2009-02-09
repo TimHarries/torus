@@ -1230,9 +1230,11 @@ contains
 
        onekappa = .true.
        call getLogical("suppresswarnings", suppressWarnings, cLine, nLines, &
-            "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.)
+            "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.) 
        call getLogical("restart", restart, cLine, nLines, &
             "Restart from previous grid file: ","(a,l,1x,a)",.false., ok, .false.)
+       call getLogical("addnewmoldata", addnewmoldata, cLine, nLines, &
+            "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
        call getString("moleculefile", moleculefile, cLine, nLines, &
             "Input molecule filename: ","(a,a,1x,a)","none", ok, .false.)
        call getString("molfilein", molFilenameIn, cLine, nLines, &
