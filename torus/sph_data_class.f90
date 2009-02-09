@@ -1204,9 +1204,9 @@ contains
        call findNearestParticles(posvec, nparticles, r, expkernel = .true.)
        call doweights(posvec, nparticles, sumweight, qpresent = .true.)
     endif
-
+    
     if(sumweight .le. 0.d0) notfound = .true.
-
+    
     paramvalue(:) = 0.d0
 
     if(.not. notfound) then
@@ -1226,17 +1226,11 @@ contains
 
           Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
 
-!          write(69,*) nparticles, sumweight
-
        elseif(param .eq. 2) then
-
+          
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
-!             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
-!                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
-!                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
-!             endif
           enddo
           
           Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, 0.d0)  ! density ! stays as vector for moment
@@ -1244,9 +1238,13 @@ contains
     else
        if(param .eq. 1) then
           if(.not. reuse) then
-             call findNearestParticles(posvec, nparticles, rmax, expkernel = .true.) ! redo but with exponential kernel
+             do while (nparticles .eq. 0)
+                call findNearestParticles(posvec, nparticles, rmax, expkernel = .true.) ! redo but with exponential kernel
+                rmax = 2.d0 * rmax
+             enddo
+             rmax = 2.d0 * hmax
           endif
-
+          
           call doweights(posvec, nparticles, sumweight, qpresent = .true.)
           
           if(sumweight .ne. 0.d0) then
@@ -1260,9 +1258,8 @@ contains
              paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
              paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
           enddo
-!          write(69,*) "0", sumweight
+
           Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
-!          Clusterparameter = VECTOR(-1.d20,1.d20,-1.d20) ! Velocity
 
        elseif(param .eq. 2) then
           if(.not. reuse) then
@@ -1274,10 +1271,6 @@ contains
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
-!             if(present(rhomin)) then ! have to have rhomax with rhomin !!!
-!                RhoMin = min(Rhomin, RhoArray(indexArray(i))) ! rhomin
-!                RhoMax = max(Rhomax, RhoArray(indexArray(i))) ! rhomax
-!             endif
           enddo
 
           paramvalue(4) = max(1d-60, paramvalue(4))
@@ -1294,8 +1287,7 @@ contains
     integer, save :: nupper, nlower
     integer, save :: closestXindex, testIndex
     integer, intent(out) :: partcount
-    real(double) :: weightFac
-    real(double) :: r2test, q2test, qtest, r
+    real(double) :: r2test, q2test, r
     real(double) :: ydiff, zdiff, rr
     logical, optional :: expkernel
     logical :: doexpkernel
@@ -1431,8 +1423,6 @@ contains
 
              if(q2test .lt. 4.d0) then
                 partcount = partcount + 1
-!                Weightfac = num * SmoothingKernel3d(qtest) ! normalised contribution from this particle
-!                Weightfac = num * OneOversqrtPiCubed * exp(-q2test)
                 indexArray(partcount) = testIndex
                 tempPosArray(partcount,1:3) = PositionArray(partcount,1:3)
                 q2array(partcount) = q2test
