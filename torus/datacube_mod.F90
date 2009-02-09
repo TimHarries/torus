@@ -24,7 +24,6 @@ module datacube_mod
      character(len=10) :: FluxUnit ! units for flux
 
      integer, pointer :: nsubpixels(:,:,:) => null() ! contains resolution information 
-     integer, pointer :: converged(:,:,:) => null() ! contains convergence information (should take 1 or 0)
      real(double),pointer :: weight(:,:) => null()    ! Weighting for integration (used to find spectra)
      integer :: nx 
      integer :: ny
@@ -54,7 +53,6 @@ contains
     integer, dimension(5) :: naxes
     integer :: group,fpixel,nelements
     logical :: simple, extend
-    character(len=80) :: card
     
     status=0
     
@@ -85,11 +83,10 @@ contains
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
 
        !  Write keywords to the header.
-       call ftpkyj(unit,'LABEL',1,thisCube%label,status) 
-       call ftpkyj(unit,'VUNIT',1,thisCube%vUnit,status)
-       call ftpkyj(unit,'XUNIT',1,thisCube%xUnit,status)
-       call ftpkyj(unit,'X',1,thisCube%xAxis,status)
-       call ftpkyj(unit,'IUNIT',1,thisCube%IntensityUnit,status)
+       call ftpkys(unit,'LABEL',1,thisCube%label,status) 
+       call ftpkys(unit,'VUNIT',1,thisCube%vUnit,status)
+       call ftpkys(unit,'XUNIT',1,thisCube%xUnit,status)
+       call ftpkys(unit,'IUNIT',1,thisCube%IntensityUnit,status)
        call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
        
        !  Write the array to the FITS file.
@@ -253,7 +250,7 @@ contains
     npixels=naxes(1)*naxes(2)*naxes(3)
     nbuffer=npixels
     ! read_image
-    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
+    call ftgpve(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
 
 
     !  Read keywords from the header.
@@ -266,20 +263,6 @@ contains
     call FTGKYJ(unit,"IUNIT", junk,comment,status)
     thisCube%IntensityUnit = comment
     call FTGKYD(unit,"DISTANCE", thisCube%obsdistance,comment,status)
-
-    ! 2nd HDU : converged
-    hdu=2
-    call ftmahd(unit,hdu,hdutype,status)
-    call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
-    if (nfound /= 3) then
-       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
-       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'
-       stop
-    endif
-    npixels=naxes(1)*naxes(2)*naxes(3)
-    nbuffer=npixels
-    ! read_image
-    call ftgpvj(unit,group,firstpix,nbuffer,nullval,thisCube%converged,anynull,status)
 
     ! 3rd HDU : weight
     hdu=3
@@ -335,7 +318,7 @@ contains
     npixels=naxes(1)
     nbuffer=npixels
     ! read_image
-    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%vAxis,anynull,status)
+    call ftgpvd(Unit,group,firstpix,nbuffer,nullval,thisCube%vAxis,anynull,status)
     
     ! 7th HDU : intensity
     hdu=7
@@ -397,7 +380,6 @@ contains
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
-    character(len=100) :: message
     if(present(mytelescope)) then
        
        thisCube%telescope = mytelescope
@@ -426,15 +408,11 @@ contains
     allocate(thisCube%flux(1:nx,1:ny,1:nv))
     allocate(thisCube%tau(1:nx,1:ny,1:nv))
 !    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
-!    allocate(thisCube%converged(1:nx,1:ny,1:nv))
+
 !    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
     thisCube%tau =  0.d0
-!    thisCube%flux = 0.d0
-!    thisCube%nsubpixels = 0.d0
-!    thisCube%converged = 0
-!    thisCube%weight = 1.d0
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
@@ -587,7 +565,6 @@ subroutine freeDataCube(thiscube)
     if (associated(thisCube%intensity)) deallocate(thiscube%intensity)
     if (associated(thisCube%flux)) deallocate(thiscube%flux)
     if (associated(thisCube%nsubpixels)) deallocate(thiscube%nSubpixels)
-    if (associated(thisCube%converged)) deallocate(thiscube%converged)
     if (associated(thisCube%weight)) deallocate(thiscube%weight)
 
   end subroutine freeDataCube

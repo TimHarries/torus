@@ -8329,7 +8329,7 @@ end function readparameterfrom2dmap
     real(double), save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr), OneOverrdiff(nr)
     real(double) :: v1, t1
     real(double) :: r1, pos
-    real(double), save :: nstartOverlogdiff, noverlogdiff, t2
+    real(double), save :: nstartOverlogdiff, noverlogdiff
 
     if (firsttime) then
        open(31, file="model_1.dat", status="old", form="formatted")
@@ -12453,7 +12453,7 @@ end function readparameterfrom2dmap
                                             VECTOR(-1.0d0,  0.0d0,  0.0d0),  &
                                             VECTOR( 0.0d0, -1.0d0,  0.0d0),  &
                                             VECTOR( 0.0d0,  0.0d0, -1.0d0) /)
-    type(VECTOR) :: p3(6), rDirection
+    type(VECTOR) :: rDirection
     type(OCTAL),pointer :: thisOctal
     real(double) :: distTor1, distTor2, theta, mu
     real(double) :: distToRboundary, compz,currentZ
@@ -12464,7 +12464,7 @@ end function readparameterfrom2dmap
     real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
     real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCellsize
     real(double) :: a, b, c 
-    integer :: i,j
+    integer :: j
     logical :: ok, thisOk(6)
     integer :: jarray(6)
 
@@ -12835,7 +12835,6 @@ end function readparameterfrom2dmap
    type(VECTOR), intent(in) :: direction
    real(oct), intent(out) :: tval
    !
-   type(VECTOR) :: norm(6), p3(6) !, thisNorm
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: distToZboundary !, ang1, ang2 , phi
@@ -13953,7 +13952,6 @@ end function readparameterfrom2dmap
     real(double) :: tval
     type(VECTOR),save :: norm(6)
     logical, save :: firsttime = .true.
-    type(VECTOR) :: p3(6)
     real(double) :: distTor1, theta, mu
     real(double) :: distToRboundary, compz,currentZ
     real(double) :: distToZboundary
@@ -13965,7 +13963,7 @@ end function readparameterfrom2dmap
     logical :: debug
     
     real(double) :: subcellsize
-    type(VECTOR) :: normdiff, oneoverdirection
+    type(VECTOR) :: normdiff
 
     if(firsttime) then
        norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
