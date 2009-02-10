@@ -83,10 +83,10 @@ contains
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
 
        !  Write keywords to the header.
-       call ftpkys(unit,'LABEL',1,thisCube%label,status) 
-       call ftpkys(unit,'VUNIT',1,thisCube%vUnit,status)
-       call ftpkys(unit,'XUNIT',1,thisCube%xUnit,status)
-       call ftpkys(unit,'IUNIT',1,thisCube%IntensityUnit,status)
+       call ftpkys(unit,'LABEL',thisCube%label,"Telescope label",status) 
+       call ftpkys(unit,'VUNIT',thisCube%vUnit,"Velocity unit",status)
+       call ftpkys(unit,'XUNIT',thisCube%xUnit,"Spatial unit",status)
+       call ftpkys(unit,'IUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
        
        !  Write the array to the FITS file.
