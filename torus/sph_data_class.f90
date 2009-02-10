@@ -473,7 +473,7 @@ contains
 
     INTEGER*4 :: int1, int2, i1
     integer*4 :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
-    REAL(kind=8)    :: r1, r2, dummy, array(8)
+    REAL(kind=8)    :: r1, dummy
     integer :: intarray(8)
     CHARACTER*100 fileident
 
