@@ -89,6 +89,23 @@ contains
        call ftpkys(unit,'IUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
        
+       ! Write WCS keywords to the header
+       call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+       call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
+       call ftpkys(unit,'CTYPE1','x',"x axis",status)
+       call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
+
+       call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
+       call ftpkyd(unit,'CDELT2',thisCube%yAxis(2)-thisCube%yAxis(1),-3,'coordinate increment at reference point',status)
+       call ftpkys(unit,'CTYPE2','y',"y axis",status)
+       call ftpkyd(unit,'CRVAL2',thisCube%yAxis(1),-3,'coordinate value at reference point',status)
+
+       call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
+       call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
+       call ftpkys(unit,'CTYPE3','velocity',"velocity axis",status)
+       call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
+
+
        !  Write the array to the FITS file.
        call ftppre(unit,group,fpixel,nelements,thisCube%intensity,status)
               
