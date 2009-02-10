@@ -94,11 +94,13 @@ contains
        call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
        call ftpkys(unit,'CTYPE1','x',"x axis",status)
        call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
+       call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
 
        call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
        call ftpkyd(unit,'CDELT2',thisCube%yAxis(2)-thisCube%yAxis(1),-3,'coordinate increment at reference point',status)
        call ftpkys(unit,'CTYPE2','y',"y axis",status)
        call ftpkyd(unit,'CRVAL2',thisCube%yAxis(1),-3,'coordinate value at reference point',status)
+       call ftpkys(unit,'CUNIT2', thisCube%xUnit, "y axis unit", status)
 
        call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
        call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
@@ -458,6 +460,35 @@ contains
     enddo
 
   end subroutine addSpatialAxes
+
+  subroutine convertSpatialAxes(cube, newUnit)
+    use constants_mod, only: autocm, pctocm
+    type(DATACUBE) :: cube
+    character(len=*), intent(in) :: newUnit
+
+    select case (newUnit) 
+
+    case ('pc')
+       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / pctocm
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / pctocm
+       cube%xUnit    = "pc"
+
+    case ('kpc')
+       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / (1000.0_db * pctocm)
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / (1000.0_db * pctocm)
+       cube%xUnit    = "kpc"
+
+    case('au')
+       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / autocm
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / autocm
+       cube%xUnit    = "AU"
+
+    case DEFAULT 
+       call writewarning('Unrecognised unit in convertSpatialAxes')
+
+    end select
+
+  end subroutine convertSpatialAxes
 
 ! Set velocity axis for datacube - Equally spaced (linearly) between min and max
   subroutine addVelocityAxis(cube, vMin, vMax)

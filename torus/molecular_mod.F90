@@ -3794,6 +3794,7 @@ end subroutine calculateConvergenceData
 
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
+   call convertSpatialAxes(cube,'kpc')
    call cubeIntensityToFlux(cube,thisMolecule,itrans)
 
    if(writeoutput) call writedatacube(cube, "h21cm.fits")
