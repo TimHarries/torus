@@ -45,6 +45,9 @@ use particle_pos_mod, only: particle_pos
   real(kind=8), parameter :: total_disc_mass=0.011  ! Taken from 2D benchmark
   real(kind=8)            :: total_gas_mass
   character(len=11), parameter :: file_tag = "sphbench   "
+  real(kind=8), parameter :: source_R =    1.0
+  real(kind=8), parameter :: source_L =    1.0
+  real(kind=8), parameter :: source_T = 5800.0 
 
 ! Source parameters
   real(db), parameter :: mSol = 1.9891e33_db
@@ -225,7 +228,8 @@ use particle_pos_mod, only: particle_pos
   call torus(b_idim,  b_npart,       b_nptmass, b_num_gas, &
              b_xyzmh, b_rho,         b_iphase,                        &
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
-            temp_min, total_gas_mass, file_tag )
+            temp_min, total_gas_mass, file_tag,                       &
+            fix_source_R=source_R, fix_source_L=source_L, fix_source_T=source_T)
 
   open(unit=61, file="part_out_"//trim(adjustl(char_nproc))//".dat", status='replace')
   do ipart=1, b_num_gas
