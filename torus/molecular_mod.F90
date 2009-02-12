@@ -2357,8 +2357,17 @@ endif
            Veldiff = endVel - startVel
 
            dvAcrossCell = (veldiff.dot.direction)
-           dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
 
+           if ( h21cm ) then 
+              ! Calculate line width in cm/s.
+              sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+              ! Convert to Torus units (v/c)
+              sigma_thermal = sigma_thermal / cspeed
+              dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
+           else
+              dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+           end if
+           
            nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 20) ! ensure good resolution / 5 chosen as its the magic number!
 
            distArray(1) = 0.d0
@@ -2375,17 +2384,13 @@ endif
 
               dv = (thisVel .dot. direction) - deltaV
            
-
 ! Use thermal line width for H 21cm lines or turbulent line widths otherwise
-           if ( h21cm ) then 
-! Calculate line width in cm/s.
-              sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
-! Convert to Torus units (v/c)
-              sigma_thermal = sigma_thermal / cspeed
-              phiprofval    = gauss (sigma_thermal, real(dv) ) 
-           else
-              phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
-           end if
+              if ( h21cm ) then 
+                 phiprofval = gauss (sigma_thermal, real(dv) ) 
+              else
+                 phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+              end if
+
               alphanu1 = thisOctal%molcellparam(6,subcell) * phiprofval
 
               alpha = alphanu1 + alphanu2
