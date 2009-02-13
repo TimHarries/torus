@@ -57,7 +57,7 @@ contains
     call make_filter_set(UKIRT_JHKLM, 'ukirt')
     
     ! compute UKIRT magnitudes and colors
-    call compute_Av(a_cluster, dir_obs, distance, grid)
+    call compute_Av(a_cluster, dir_obs, grid)
 !    call ukirt_color_magnitudes(a_cluster, dir_obs, distance, grid)
 !    call compute_colors(a_cluster, dir_obs, distance, grid, UKIRT_JHKLM)
     
@@ -261,17 +261,17 @@ contains
        ! Flux units here are [erg cm^-2 s^-2 A^-1 * offset]
        Rmax = 1.5d13 ! [cm] ... = 1 AU
        F_J = observed_flux(I0_J, lam_J, R*1.d10, Rmax, &
-            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)  
+            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)  
        F_H = observed_flux(I0_H, lam_H, R*1.d10, Rmax, &
-            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)  
+            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)  
        F_K = observed_flux(I0_K, lam_K, R*1.d10, Rmax, &
-            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)  
+            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)  
        F_L = observed_flux(I0_L, lam_L, R*1.d10, Rmax, &
-            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)  
+            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)  
        F_M = observed_flux(I0_M, lam_M, R*1.d10, Rmax, &
-            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)  
+            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)  
        F_V = observed_flux(I0_V, lam_V, R*1.d10, Rmax, &
-            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)  
+            position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)  
 
 
        
@@ -544,7 +544,7 @@ contains
           Rmax = 1.5d13 ! [cm] ... = 1 AU
 
           F_lambda(j) = observed_flux(I0(j), lambda(j), R*1.d10,  Rmax, &
-               position,  nr, nphi, dir_obs, distance*3.08568d18, grid, .true., offset)
+               position,  nr, nphi, dir_obs, distance*3.08568d18, grid, offset)
           ! [erg cm^-2 s^-2 A^-1 * offset]
 
           F_lambda(j) =  F_lambda(j)/offset   ! [erg cm^-2 s^-2 A^-1]
@@ -601,7 +601,7 @@ contains
   ! Flux units in  [erg cm^-2 s^-2 cm^-1 * offset]
 
   function observed_flux(I0, wavelength, R_star, R_max, pos_star, &
-       nr, nphi, dir_obs, dist_obs, amrgrid, contPhoton, offset) RESULT(F_obs)
+       nr, nphi, dir_obs, dist_obs, amrgrid, offset) RESULT(F_obs)
 
     implicit none
     
@@ -617,7 +617,6 @@ contains
     real(double), intent(in)  :: dist_obs      ! [cm] distance to the observer
     type(VECTOR), intent(in)      :: dir_obs       ! direction
     type(GRIDTYPE), intent(in)         :: amrgrid       ! the opacity grid
-    logical, intent(in)                :: contPhoton    ! is this a continuum photon?
     real(double), intent(in)  :: offset        ! offset scale factor
     !
     type(VECTOR), allocatable     :: p(:)          ! integration grids
@@ -647,7 +646,7 @@ contains
 
 
     ! setting up the grid for integration
-    call setup_grid(p,dA, nr_core, nphi_core, 0.01d0*R_star, 0.99d0*R_star, pos_star, dir_obs)    
+    call setup_grid(p,dA, nr_core, nphi_core, 0.01d0*R_star, 0.99d0*R_star, pos_star)    
     
 !$OMP PARALLEL DEFAULT(NONE) & 
 !$OMP PRIVATE(i, I1, Fi, F_sub, q)&
@@ -680,7 +679,7 @@ contains
     ALLOCATE(p(np), dA(np))
 
     ! setting up the grid for integration
-    call setup_grid(p,dA, nr, nphi, R_star, R_max, pos_star, dir_obs)
+    call setup_grid(p,dA, nr, nphi, R_star, R_max, pos_star)
 
 
 !$OMP PARALLEL DEFAULT(NONE) & 
@@ -722,7 +721,7 @@ contains
   ! Routine to setup the grid used in the observed flux integration (observed_flux)
   !
   ! THIS IS STILL DEVELOPMENTAL STAGE!!
-  subroutine setup_grid(p, dA,nr, nphi, R_min, R_max, pos_star, dir_obs)
+  subroutine setup_grid(p, dA,nr, nphi, R_min, R_max, pos_star)
     implicit none
     type(VECTOR), intent(inout)     :: p(:)          ! integration grids
     real(double), intent(inout) :: dA(:)         ! surface elements at p
@@ -732,7 +731,6 @@ contains
     real(double), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
     
     type(VECTOR), intent(in)      :: pos_star      ! position of the sta
-    type(VECTOR), intent(in)      :: dir_obs       ! direction
     
     integer :: i , j , k
     type(VECTOR)                  :: q             ! 
@@ -780,12 +778,11 @@ contains
   ! Computing extinction
   !
 
-  subroutine compute_Av(a_cluster, dir_obs, distance, grid)
+  subroutine compute_Av(a_cluster, dir_obs, grid)
     implicit none
 
     type(cluster), intent(in) :: a_cluster 
     type(VECTOR), intent(in) :: dir_obs
-    real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
     integer :: i
@@ -822,13 +819,13 @@ contains
 !    real     :: escProb     ! the escape probability
 !    logical  :: hitcore     ! has the photon hit the core
 !    integer  :: error       ! error code returned
-    logical      :: opaqueCore  =.true.       ! is the core opaque
+!    logical      :: opaqueCore  =.true.       ! is the core opaque
 !    real         :: lamStart, lamEnd
     !
 !    logical      :: thinLine=.false.           ! ignore line absorption of continuum
 !    integer      :: nUpper = 3
 !    integer      :: nLower =2
-    real         :: sampleFreq=2.0        ! max. samples per grid cell
+!    real         :: sampleFreq=2.0        ! max. samples per grid cell
 !    real :: junk        
 
 

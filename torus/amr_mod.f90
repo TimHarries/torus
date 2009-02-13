@@ -1195,13 +1195,13 @@ CONTAINS
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
         
        CASE ("cluster","wr104")
-          call assign_grid_values(thisOctal,subcell, grid)
+          call assign_grid_values(thisOctal,subcell)
           
        CASE ("molcluster", "theGalaxy")
           if(thisoctal%haschild(subcell)) then 
              continue
           else
-             call assign_grid_values(thisOctal,subcell, grid)
+             call assign_grid_values(thisOctal,subcell)
              if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
                 CALL fillVelocityCorners(thisOctal,grid,molclustervelocity,thisOctal%threed)
              endif

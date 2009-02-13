@@ -758,7 +758,6 @@ contains
   function phiProf(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
-    logical, save :: firstTime = .true.
 
     phi = 1.d0 / (b * sqrtPi)
     fac = (dv/b)**2
@@ -2235,7 +2234,6 @@ contains
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
     type(VECTOR) :: viewvec, rayPos, xProj, yProj
-    real(double) :: distance = 250.d0*pctocm/1.d10
     real(double) :: deltaV
     integer :: iTrans
     integer :: ix, iy, iv

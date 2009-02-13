@@ -341,7 +341,7 @@ contains
   ! This routine should be called only after the grid has been constructed, namely
   ! only in finishGrid routine in amr_mod.f90
   !
-  subroutine assign_grid_values(thisOctal,subcell, grid)
+  subroutine assign_grid_values(thisOctal,subcell)
 
     use input_variables, only: h21cm
     use h21cm_mod, only: hi_emop
@@ -350,7 +350,6 @@ contains
     
     TYPE(octal), intent(inout) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     real(double), parameter :: density_crit = 1d13
     type(vector) :: point, clusterparam
 

@@ -5,7 +5,6 @@ module sph_data_class
   use messages_mod
   use utils_mod
   use timing
-  use gridtype_mod
   use math_mod2
   use constants_mod, only : OneOnFourPi, mSol
 
@@ -1187,11 +1186,10 @@ contains
 
   end subroutine FindCriticalValue
 
-  TYPE(vector)  function Clusterparameter(point, grid, theparam, isdone, shouldreuse, d, RhoMin, RhoMax)
+  TYPE(vector)  function Clusterparameter(point, theparam, isdone, shouldreuse, d, RhoMin, RhoMax)
     USE input_variables, only: hcritPercentile, hmaxPercentile
 
     type(vector), intent(in) :: point
-    type(GRIDTYPE), intent(in), optional :: grid
     type(vector) :: posvec
 
     integer :: i

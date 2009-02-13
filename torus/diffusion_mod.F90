@@ -148,7 +148,7 @@ contains
     enddo
   end subroutine checkConvergence
 
-  subroutine gaussSeidelSweep(grid,  tol, demax, converged, iter)
+  subroutine gaussSeidelSweep(grid,  tol, demax, converged)
 #ifdef MPI
     use input_variables, only : blockhandout
     use mpi_global_mod, only : myRankGlobal, nThreadsGlobal
@@ -158,7 +158,6 @@ contains
     type(GRIDTYPE) :: grid
     real(double) ::  deMax
     real :: tol
-    integer :: iter
     logical :: converged
     integer :: subcell, neighbourSubcell
     real(double) :: eDens(-1:1,-1:1,-1:1)
@@ -715,7 +714,7 @@ end subroutine gaussSeidelSweep
         nIter = nIter + 1
         gridconverged = .true.
         deMax = -1.e30
-        call gaussSeidelSweep(grid, edenstol, demax, gridConverged, nIter)
+        call gaussSeidelSweep(grid, edenstol, demax, gridConverged)
 !        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
 !        write(message,*) nIter," Maximum relative change in eDens:",deMax

@@ -900,7 +900,7 @@ module molecular_mod
         call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
             MPI_SUM,MPI_COMM_WORLD,ierr)
         tArrayd = tempArrayd
-        call unpackMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+        call unpackMoleLevel(octalArray, nVoxels, tArrayd, i)
      enddo
       deallocate(tArrayd, tempArrayd)
 
@@ -3163,17 +3163,14 @@ endif
         end do
       end subroutine packMoleLevel
 
-      subroutine unpackMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
-        include 'mpif.h'
+      subroutine unpackMoleLevel(octalArray, nTemps, tArray, iLevel)
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         integer :: iLevel
         type(OCTAL), pointer :: thisOctal
         
-        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !

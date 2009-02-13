@@ -14,6 +14,7 @@ module wr104_mod
 contains
 
   subroutine readWR104Particles(filename, sphdata, objectDistance)
+    use constants_mod, only: degtorad
     character(len=*), intent(in) :: filename
     type(sph_data), intent(inout) :: sphData
     real(double), intent(in) :: objectDistance
