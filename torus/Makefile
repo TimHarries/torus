@@ -6,6 +6,7 @@
 #    4. make debug=yes   : Make torus with debug option,
 #    5. make profile=yes : Make torus with profiler option
 #    6. make static=yes  : Make torus with static linking
+#    7. make trace=yes   : Make torus will ITAC profiling
 #-----------------------------------------------------------------
 
 USEMKL  = no
