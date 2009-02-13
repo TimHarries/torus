@@ -1539,10 +1539,6 @@ end subroutine molecularLoop
  subroutine calculateMoleculeSpectrum(grid, thisMolecule)
    use input_variables, only : itrans, nSubpixels
 
-#ifdef MPI
-       include 'mpif.h'
-#endif
-
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    type(VECTOR) :: unitvec, observerVec, centrevec, viewvec, imagebasis(2)
@@ -1550,20 +1546,6 @@ end subroutine molecularLoop
 
    character (len=80) :: filename
    integer :: status
-
-#ifdef MPI
-     ! For MPI implementations
-     integer       ::   my_rank        ! my processor rank
-     integer       ::   np             ! The number of processes
-     integer       ::   ierr           ! error flag
-
-     ! FOR MPI IMPLEMENTATION=======================================================
-     !  Get my process rank # 
-     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-
-     ! Find the total # of precessor being used in this run
-     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-#endif
 
      if(grid%geometry .eq. 'molebench') molebench = .true.
      if(grid%geometry .eq. 'molcluster') molcluster = .true.
@@ -3220,7 +3202,7 @@ endif
         logical :: paraxial = .true.
         real(double) :: pixelwidth, theta
         type(VECTOR) :: centreVec, unitvec, viewvecprime, rotationaxis
-        
+        character(len=80) :: message
 
         type(VECTOR), intent(OUT) :: viewvec, observerVec, imagebasis(2)
         
@@ -3251,10 +3233,14 @@ endif
         unitVec = (-1.d0) * viewvec ! This is a vector parallel to the line of sight *from* the observer to the grid centre
         observerVec = dble(griddistance*1e-10) * unitvec ! This is the EXACT position of the observer in space
 
-        write(*,*) "unitvec",unitvec
-        write(*,*) "viewvec",viewvec
-        write(*,*) "v1",imagebasis(1)
-        write(*,*) "v2",imagebasis(2)
+        write(message,*) "unitvec",unitvec
+        call writeInfo(trim(message),FORINFO) 
+        write(message,*) "viewvec",viewvec
+        call writeInfo(trim(message),FORINFO) 
+        write(message,*) "v1",imagebasis(1)
+        call writeInfo(trim(message),FORINFO) 
+        write(message,*) "v2",imagebasis(2)
+        call writeInfo(trim(message),FORINFO) 
 
         if(paraxial) then
            ! Paraxial case 
@@ -3270,21 +3256,27 @@ endif
            viewVecprime = CentreVec - ObserverVec
            call normalize(viewVecPrime)
            
-           write(*,*) "viewvecprime",viewvecprime
+           write(message,*) "viewvecprime",viewvecprime
+           call writeInfo(trim(message),FORINFO) 
 
            theta = acos(viewvec .dot. viewVecprime)
-           write(*,*) "theta",theta
+           write(message,*) "theta",theta
+           call writeInfo(trim(message),FORINFO) 
            rotationaxis = viewvec .cross. viewVecprime
            call normalize(rotationaxis)
-           write(*,*) "rotationaxis",rotationaxis
+           write(message,*) "rotationaxis",rotationaxis
+           call writeInfo(trim(message),FORINFO) 
 
            viewvec = arbitraryRotate(viewvec,theta,rotationaxis)
            imagebasis(1) = arbitraryRotate(imagebasis(1),theta,rotationaxis)
            imagebasis(2) = arbitraryRotate(imagebasis(2),theta,rotationaxis)
 
-           write(*,*) "viewvecprime",viewvec
-           write(*,*) "v1",imagebasis(1)
-           write(*,*) "v2",imagebasis(2)
+           write(message,*) "viewvecprime",viewvec
+           call writeInfo(trim(message),FORINFO) 
+           write(message,*) "v1",imagebasis(1)
+           call writeInfo(trim(message),FORINFO) 
+           write(message,*) "v2",imagebasis(2)
+           call writeInfo(trim(message),FORINFO) 
 
         endif
 
