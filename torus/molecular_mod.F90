@@ -1614,7 +1614,7 @@ end subroutine molecularLoop
 
     end subroutine calculateMoleculeSpectrum
 
-    subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, ObserverVec, viewvec, imagebasis, imagegrid)
+    subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, ObserverVec, viewvec, imagebasis, imagegrid, ix1, ix2)
 
       use input_variables, only : npixels
       
@@ -1625,16 +1625,22 @@ end subroutine molecularLoop
       integer, intent(IN) :: nsubpixels
       type(VECTOR), intent(IN) :: viewvec, ObserverVec, imagebasis(:)
       real, intent(OUT) :: imagegrid(:,:,:)
+      integer, intent(in) :: ix1, ix2
 
-      real(double) :: dnpixels ! npixels as a double, save conversion
+      real(double) :: dnpixels   ! npixels as a double, save conversion
+      real(double) :: mydnpixels ! number of x pixels in this slice
       type(VECTOR) :: pixelcorner
       integer :: subpixels
       integer :: ipixels, jpixels
       integer :: index(2)
 
-      dnpixels = dble(npixels) 
+      dnpixels   = dble(npixels)
+      mydnpixels = dble(ix2 - ix1 + 1) 
 
       pixelcorner = ObserverVec - (dnpixels * 0.5d0)*(imagebasis(1) - imagebasis(2)) + imagebasis(2) ! pixelcorner initialised to TOPLEFT
+
+! For MPI runs move the pixel to the correct x slice, for non-MPI case ix1=1
+      pixelcorner = pixelcorner + real( (ix1 - 1), kind=db) * imagebasis(1)
 
       if (nsubpixels .gt. 0) then ! if nsubpixels = 0 then use adaptive subpixel sampling
          subpixels = nsubpixels
@@ -1646,10 +1652,10 @@ end subroutine molecularLoop
          if (jpixels .eq. 1) then 
             pixelcorner = pixelcorner - imagebasis(2) 
          else
-            pixelcorner = pixelcorner - (dnpixels*imagebasis(1) + imagebasis(2))
+            pixelcorner = pixelcorner - (mydnpixels*imagebasis(1) + imagebasis(2))
          endif
-         
-         do ipixels = 1, npixels
+        
+         do ipixels = ix1, ix2
             index = (/ipixels,jpixels/)
             imagegrid(ipixels,jpixels,:) = PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
                  iTrans,deltaV, subpixels)
@@ -1771,6 +1777,7 @@ end subroutine molecularLoop
 
      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel, usedust
 #ifdef MPI
+     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
      include 'mpif.h'
 #endif
      type(TELESCOPE) :: mytelescope
@@ -1784,6 +1791,7 @@ end subroutine molecularLoop
      integer :: i !, j, k
      integer :: iv
      integer :: nsubpixels
+     integer :: ix1, ix2
      character(len=200) :: message
      real(double) :: intensitysum, fluxsum, ddv!, dummy
      real(double), save :: background
@@ -1796,18 +1804,8 @@ end subroutine molecularLoop
 
 #ifdef MPI
      ! For MPI implementations
-     integer       ::   my_rank        ! my processor rank
-     integer       ::   np             ! The number of processes
-     integer       ::   ierr           ! error flag
-     integer :: ix1, ix2, n
+     integer :: ierr, n           ! error flag
      real(double), allocatable :: tempArray(:), tempArray2(:)
-
-     ! FOR MPI IMPLEMENTATION=======================================================
-     !  Get my process rank # 
-     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-
-     ! Find the total # of precessor being used in this run
-     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
  ! SHOULD HAVE CASE(TELESCOPE) STATEMENT HERE
@@ -1839,10 +1837,17 @@ end subroutine molecularLoop
         cube%vAxis(1) = minVel
      endif
 
+! Divide up the image along the x axis for MPI case, otherwise work on the whole image
 #ifdef MPI
-     ix1 = (my_rank) * (cube%nx / (np)) + 1
-     ix2 = (my_rank+1) * (cube%nx / (np))
-     if (my_rank == (np-1)) ix2 = cube%nx
+     ix1 = (myRankGlobal)   * (cube%nx / (nThreadsGlobal)) + 1
+     ix2 = (myRankGlobal+1) * (cube%nx / (nThreadsGlobal))
+     if (myRankGlobal == (nThreadsGlobal-1)) ix2 = cube%nx
+
+     n = (npixels*npixels)
+     allocate(tempArray(1:n), tempArray2(1:n))
+#else
+     ix1 = 1
+     ix2 = npixels
 #endif
 
      deltaV = minVel * 1.e5/cspeed_sgl
@@ -1867,10 +1872,21 @@ end subroutine molecularLoop
 
            if(usedust) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
 
-           temp = 0.d0
+           temp(:,:,:) = 0.d0
+           call makeImageGrid(grid, thisMolecule, itrans, deltaV, nSubpixels, ObserverVec, viewvec, imagebasis, temp, ix1, ix2)
 
-           call makeImageGrid(grid, thisMolecule, itrans, deltaV, nSubpixels, ObserverVec, viewvec, imagebasis, temp) !
+! Put results from makeImageGrid into data cube, performing MPI communication if required
+#ifdef MPI
+           ! Communicate intensity
+           tempArray = reshape(temp(:,:,1), (/ n /))
+           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+           temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
 
+           ! Communicate tau
+           tempArray = reshape(temp(:,:,2), (/ n /))
+           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+           temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
+#endif           
            cube%intensity(:,:,iv) = real(temp(:,:,1))
            cube%tau(:,:,iv) = real(temp(:,:,2))
 
@@ -1993,45 +2009,7 @@ end subroutine molecularLoop
         enddo
      endif
 
- !    cube%intensity(:,:,1:cube%nv) = cube%intensity(:,:,1:cube%nv) - cube%intensity(1,1,1) ! TJH background subtract
-
- !    do i = ix1, ix2
- !       Write(*,*) i
- !       write(*,*) "You are here"
- !       do j = 1, cube%ny
- !
- !          do iMonte = 1, nMonte
- !             if (nMonte > 1) then
- !                call random_number(r)
- !                xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
- !                call random_number(r)
- !!                yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
- !             else
- !                xVal = cube%xAxis(i)
- !                yVal = cube%yAxis(j)
- !             endif
- !             rayPos =  (xval * xProj) + (yval * yProj)
- !             raypos = rayPos + ((-1.d0*distance) * viewVec)
- !             do k = 1, cube%nv
- !                deltaV = cube%vAxis(k)*1.d5/cSpeed
- !                cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisMolecule, iTrans, deltaV)
- !             enddo
- !          enddo
- !          cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
- !       enddo
- !    enddo
-
 #ifdef MPI
-     n = (cube%nx*cube%ny*cube%nv)
-     allocate(tempArray(1:n), tempArray2(1:n))
-     tempArray = reshape(cube%intensity, (/  n /))
-
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
-        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
-            MPI_SUM,MPI_COMM_WORLD,ierr)
-
-     cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
      deallocate(tempArray, tempArray2)
 #endif
 
