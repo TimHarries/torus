@@ -656,9 +656,6 @@ CONTAINS
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
-        if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
-
-
         if (lineEmission.and.(.not.cmf)) then
            !  calculate the statistical equilibrium (and hence the emissivities 
            !  and the opacities) for all of the subcells in an
