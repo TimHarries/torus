@@ -3957,7 +3957,8 @@ IF ( .NOT. gridConverged ) RETURN
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
            write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
            write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
-           write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, thisOctal%parent%zMax
+           write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, &
+                thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
            write(*,*) "size ",thisOctal%subcellsize
 !           rVec = subcellCentre(thisOctal,subcell)
@@ -10575,8 +10576,8 @@ end function readparameterfrom2dmap
     
     TYPE(OCTAL), POINTER :: parentOctal
     INTEGER :: parentSubcell
-    INTEGER :: nVals
-    REAL(double) :: nValsREAL, i
+    INTEGER :: nVals, i
+    REAL(double) :: nValsREAL
 
     IF ( childOctal%nDepth == 1 ) THEN
       ! we're at the root of the tree
