@@ -26,7 +26,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
-    use input_variables, only : variableDustSublimation, iterlucy, amax
+    use input_variables, only : variableDustSublimation, iterlucy, amax, storeScattered
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -107,6 +107,7 @@ contains
     logical :: ok                             ! Did call to randomWalk complete OK?
     logical :: photonInDiffusionZone
     real :: diffusionZoneTemp, temp
+    real(double) ::  dlambda
     logical :: directPhoton !, smoothconverged
     logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
@@ -236,6 +237,9 @@ contains
        call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
     endif
 
+    if (variableDustSublimation) then
+       call stripDustAway(grid%octreeRoot, 1.d-5, 1.d30)
+    endif
 
 
     nCellsInDiffusion = 0
@@ -385,8 +389,8 @@ contains
           thisPhotonAbs = 0
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
-          call getPhotonPositionDirection(thisSource, rVec, uHat, rHat)
-          thermalPhoton = .true.
+          call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
+          thermalphoton = .true.
           directPhoton = .true.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -772,6 +776,7 @@ contains
           totFrac = 0.
           nFrac = 0
           tauMax = 1.e30
+          if (iiter_grand <= 8) tauMax = 1.*dble(iiter_grand)
           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
@@ -866,6 +871,11 @@ contains
        
  enddo
 
+ if (storescattered) then 
+    call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
+    call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+    if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+ endif
   end subroutine lucyRadiativeEquilibriumAMR
 
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
@@ -1185,7 +1195,7 @@ contains
     call random_number(r)
     tau = -log(1.0-r)
     call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-    call intersectCube(grid, rVec, i1, i2, i3, uHat, tVal)
+    call intersectCubeCart(grid, rVec, i1, i2, i3, uHat, tVal)
 
     if (.not.grid%oneKappa) then
        kabs = grid%kappaAbs(i1,i2,i3,iLam)
@@ -1222,7 +1232,7 @@ contains
           call random_number(r)
           tau = -log(1.0-r)
           call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-          call intersectCube(grid, rVec, i1, i2, i3, uHat, tVal)
+          call intersectCubeCart(grid, rVec, i1, i2, i3, uHat, tVal)
           if (.not.grid%oneKappa) then
              kabs = grid%kappaAbs(i1,i2,i3,iLam)
              ksca = grid%kappaSca(i1,i2,i3,iLam)
@@ -1240,7 +1250,7 @@ contains
 
     if (.not.escaped) then
        call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-       call intersectCube(grid, rVec, i1, i2, i3, uHat, tVal)
+       call intersectCubeCart(grid, rVec, i1, i2, i3, uHat, tVal)
 
        if ((tVal*tau/thisTau) > 2.*(grid%xAxis(2)-grid%xAxis(1))) then
           write(*,*) "tval*tau/thistau too big", tval*tau/thisTau
@@ -1268,7 +1278,7 @@ contains
  end subroutine toNextEvent
 
 
-  subroutine intersectCube(grid, posVec, i1,i2,i3,direction, tval)
+  subroutine intersectCubeCart(grid, posVec, i1,i2,i3,direction, tval)
    use vector_mod
    use grid_mod
    implicit none
@@ -1351,7 +1361,7 @@ contains
   endif
 
 
-  end subroutine intersectCube 
+  end subroutine intersectCubeCart 
 
 
   recursive subroutine zeroDistanceGrid(thisOctal)
@@ -1374,7 +1384,8 @@ contains
           thisOctal%nCrossings(subcell) = 0
           thisOctal%undersampled(subcell) = .false.
           thisOCtal%nDiffusion(subcell) = 0.
-          thisOctal%scatteredIntensity(subcell,:,:) = 0.d0
+          if (associated(thisOctal%scatteredIntensity)) &
+               thisOctal%scatteredIntensity(subcell,:,:) = 0.d0
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -1413,7 +1424,7 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    use input_variables, only : minCrossings, TMinGlobal
+    use input_variables, only : minCrossings, TMinGlobal, storeScattered
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -1857,6 +1868,7 @@ contains
       photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
       thermalPhoton, startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
+   use input_variables, only : storeScattered
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
@@ -1888,6 +1900,9 @@ contains
 
    integer, optional :: ilamIn
    real(double), optional :: kappaScaOut, kappaAbsOut
+   integer, save :: iLamScat
+   logical, save :: firstTime = .true.
+
 
    endSubcell = 0
    stillinGrid = .true.
@@ -1896,9 +1911,14 @@ contains
    photonInDiffusionZone = .false.
    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
 
+   if (firstTime) then
+      call hunt(lamArray, nLambda, 1.e4, iLamScat)
+      firstTime = .false.
+   endif
+
+
    if(.not. present(ilamIn)) then
       thisLam = (cSpeed / thisFreq) * 1.e8
-      call hunt(lamArray, nLambda, real(thisLam), iLam)
       if ((ilam < 1).or.(ilam > nlambda)) then
          write(*,*) "ilam error in tonexteventamr",ilam,thislam
       endif
@@ -2056,7 +2076,8 @@ contains
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
 
-          if (scatteredPhoton) call addToScatteredIntensity(thisOctal, subcell, uHat, tVal)
+          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
+               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
 !$OMP END CRITICAL (changegrid)
 
@@ -2173,6 +2194,9 @@ contains
                   + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
+               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
+
 
 
 !$OMP END CRITICAL (changegrid2)
@@ -2303,15 +2327,17 @@ contains
 
 
   subroutine updateGridMPI(grid)
+    use input_variables, only : storeScattered
     implicit none
     include 'mpif.h'
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
     real, allocatable :: nCrossings(:)
     real, allocatable :: tempRealArray(:)
-    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:)
+    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:), scatteredIntensity(:)
     real, allocatable :: nDiffusion(:)
-    integer :: ierr, nIndex
+    integer, parameter :: nTheta = 11, nPhi = 10
+    integer :: ierr, nIndex, nIndexScattered
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     nOctals = 0
@@ -2321,12 +2347,29 @@ contains
     allocate(nDiffusion(1:nVoxels))
     allocate(distanceGrid(1:nVoxels))
 
+    allocate(scatteredIntensity(1:(nVoxels*nTheta*nPhi)))
+
     nIndex = 0
-    call packValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,ndiffusion)
+    nIndexScattered = 0 
+    call packValues(grid%octreeRoot,nIndex,nIndexScattered, &
+         distanceGrid,nCrossings,ndiffusion, scatteredIntensity)
 
 
-    allocate(tempDoubleArray(nVoxels))
+
+    if (storeScattered) then
+       allocate(tempDoubleArray(nVoxels*nTheta*nPhi))
+       tempDoubleArray = 0.d0
+       call MPI_ALLREDUCE(scatteredIntensity,tempDoubleArray, &
+            nVoxels*nTheta*nPhi,MPI_DOUBLE_PRECISION,&
+            MPI_SUM,MPI_COMM_WORLD,ierr)
+       scatteredIntensity= tempDoubleArray 
+       deallocate(tempDoubleArray)
+    endif
+
+
     allocate(tempRealArray(nVoxels))
+    allocate(tempDoubleArray(nVoxels))
+
 
     tempDoubleArray = 0.d0
     call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
@@ -2348,9 +2391,11 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     
     nIndex = 0
-    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,nDiffusion)
+    nIndexScattered = 0
+    call unpackValues(grid%octreeRoot,nIndex,nIndexScattered, &
+         distanceGrid,nCrossings,nDiffusion,scatteredIntensity)
 
-    deallocate(nCrossings, nDiffusion, distanceGrid)
+    deallocate(nCrossings, nDiffusion, distanceGrid, scatteredIntensity)
 
   end subroutine updateGridMPI
 #endif
@@ -2529,14 +2574,18 @@ contains
     enddo
   end subroutine calculateEtaCont
 
-  recursive subroutine packvalues(thisOctal,nIndex,distanceGrid,nCrossings, nDiffusion)
+  recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
+       distanceGrid,nCrossings, nDiffusion, scatteredIntensity)
+    use input_variables, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
+  real(double) :: scatteredIntensity(:)
   real :: nCrossings(:)
   real :: nDiffusion(:)
-  integer :: nIndex
-  integer :: subcell, i
+  integer :: nIndex, nIndexScattered
+  integer :: subcell, i, j , k
+  integer, parameter :: nTheta = 10, nPhi = 10
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2544,7 +2593,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call packvalues(child,nIndex,distanceGrid,nCrossings,nDiffusion)
+                call packvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings,nDiffusion, scatteredIntensity)
                 exit
              end if
           end do
@@ -2553,18 +2602,30 @@ contains
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
           nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
+          if (storeScattered) then
+             do j = 1, nTheta
+                do k = 1, nPhi
+                   nIndexScattered = nIndexScattered+1
+                   scatteredIntensity(nIndexScattered) = thisOctal%scatteredIntensity(subcell, j ,k)
+                enddo
+             enddo
+          endif
+
        endif
     enddo
   end subroutine packvalues
 
-  recursive subroutine unpackvalues(thisOctal,nIndex,distanceGrid,nCrossings, nDiffusion)
+  recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,nCrossings, nDiffusion, scatteredIntensity)
+    use input_variables, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(double) :: distanceGrid(:)
+  real(double) :: distanceGrid(:), scatteredIntensity(:)
   real :: ncrossings(:)
   real :: ndiffusion(:)
   integer :: nIndex
-  integer :: subcell, i
+  integer :: subcell, i, j, k
+  integer :: nIndexScattered
+  integer, parameter :: nTheta = 10, nPhi = 10
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2572,7 +2633,8 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child,nIndex,distanceGrid,nCrossings,nDiffusion)
+                call unpackvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings, &
+                     nDiffusion, scatteredIntensity)
                 exit
              end if
           end do
@@ -2581,6 +2643,14 @@ contains
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
+          if (storescattered) then
+             do j = 1, nTheta
+                do k = 1, nPhi
+                   nIndexScattered = nIndexScattered + 1
+                   thisOctal%scatteredIntensity(subcell,j,k) = scatteredIntensity(nIndexScattered)
+                enddo
+             enddo
+          endif
        endif
     enddo
   end subroutine unpackvalues
@@ -3031,34 +3101,38 @@ subroutine setBiasOnTau(grid, iLambda)
     enddo
   end subroutine allocateMemoryForLucy
 
-  subroutine addToScatteredIntensity(thisOctal, subcell, uHat, tVal)
+  subroutine addToScatteredIntensity(position, thisOctal, subcell, uHat, tVal)
 
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: uHat
-    real(double) :: tVal, thisTheta, thisPhi
-    integer, parameter :: nTheta = 10, nPhi = 10
+    type(VECTOR) :: uHat, thisVec, centre, position
+    real(double) :: tVal, thisTheta, thisPhi, ang
+    integer :: nTheta, nPhi
     integer :: iTheta, iPhi
 
+    nTheta = SIZE(thisOctal%scatteredIntensity,2)
+    nPhi = SIZE(thisOctal%scatteredIntensity,3)
 
-    thisTheta = acos(uhat%z)
-    thisPhi = atan2(uHat%y,uHat%x)
+
+    ang = atan2(position%y, position%x)
+
+    thisVec = uHat
+    
+    if (thisOctal%twoD) then
+       thisVec = rotateZ(uHat, -ang)
+    endif
+
+    thisTheta = acos(thisvec%z)
+    thisPhi = atan2(thisVec%y,thisVec%x)
 
     if (thisPhi < 0.d0) thisPhi = thisPhi + twoPi 
     iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
     iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
 
-    thisOctal%scatteredIntensity(subcell,iTheta,iPhi) = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) + tval
+    thisOctal%scatteredIntensity(subcell,iTheta,iPhi) = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) + tval*1.d10
+!    write(*,*) thisOctal%scatteredIntensity(subcell,itheta,iphi)
   end subroutine addToScatteredIntensity
 
-  function returnScatteredIntensity(thisOctal, subcell, uHat) result(intensity)
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    type(VECTOR) :: uHat
-    real(double) :: intensity
-    
-    intensity = 0.d0
-  end function returnScatteredIntensity
 
   recursive subroutine calcIntensityFromGrid(thisOctal, epsOverDt, dnu)
 
@@ -3067,8 +3141,17 @@ subroutine setBiasOnTau(grid, iLambda)
     real(double) :: epsOverDt, dnu
     real(double) :: v
     integer :: subcell, i, j, k
-    integer, parameter :: nTheta = 10, nPhi = 10
-    real(double) :: iNuDomega(nTheta, nPhi), dTheta, dphi, theta, dOmega
+    integer :: nTheta, nphi
+    real(double), allocatable :: iNuDomega(:,:)
+    real(double) :: dTheta, dphi, theta, dOmega
+
+
+
+
+    nTheta = SIZE(thisOctal%scatteredIntensity,2)
+    nPhi = SIZE(thisOctal%scatteredIntensity,3)
+
+    allocate(iNudOmega(nTheta, nPhi))
 
     Do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3082,7 +3165,7 @@ subroutine setBiasOnTau(grid, iLambda)
           end do
        else
 
-          V = cellVolume(thisOctal, subcell)
+          V = cellVolume(thisOctal, subcell)*1.d30
           InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
           dTheta = pi / dble(nTheta-1)
           dPhi = twoPi / dble(nPhi)
@@ -3090,11 +3173,14 @@ subroutine setBiasOnTau(grid, iLambda)
              theta = pi * dble(j-1)/dble(nTheta-1)
              do k = 1, nPhi
                 dOmega = dTheta * dphi * sin(theta)
-                thisOctal%scatteredIntensity(subcell, j, k) = inuDomega(j,k) / dOmega
+                thisOctal%scatteredIntensity(subcell, j, k) = inuDomega(j,k) / max(dOmega,1.d-10)
              enddo
           enddo
        endif
+       
     enddo
+
+    deallocate(iNuDOmega)
   end subroutine calcIntensityFromGrid
 
 end module lucy_mod

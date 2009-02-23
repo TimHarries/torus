@@ -722,6 +722,13 @@ contains
     case("kelvin")
        grid%geometry = "kelvin"
 
+    case("bonnor")
+       grid%geometry = "bonnor"
+
+    case("unisphere")
+       grid%geometry = "unisphere"
+
+
     case("sedov")
        grid%geometry = "sedov"
 
@@ -1790,8 +1797,8 @@ contains
     enddo
 
 
-    call fillGridTio(plezModel, scale)
-    call fillGridRayleigh(plezModel, scale)  
+!    call fillGridTio(plezModel, kfac, scale)
+!    call fillGridRayleigh(plezModel, kfac, scale)  
 
 
   end function plezModel

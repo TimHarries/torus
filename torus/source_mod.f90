@@ -22,6 +22,7 @@ module source_mod
      real(double) :: age        ! [years]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
      type(SURFACETYPE) :: surface
+     logical :: outsideGrid
   end type SOURCETYPE
 
 
@@ -197,26 +198,37 @@ module source_mod
       enddo mainloop
     end subroutine distanceToSource
 
-    subroutine getPhotonPositionDirection(source, position, direction, rHat)
+    subroutine getPhotonPositionDirection(source, position, direction, rHat, grid)
       use input_variables, only : pointSource
+      type(GRIDTYPE) :: grid
+      real(double) :: r 
       type(SOURCETYPE) :: source
       type(VECTOR) :: position, direction, rHat
 
-
-
-      if (pointSource) then
-         !      ! simply treating as a point source
-         position = source%position
-         direction = randomUnitVector()
-         
+      if (.not.source%outsideGrid) then
+         if (pointSource) then
+            !      ! simply treating as a point source
+            position = source%position
+            direction = randomUnitVector()
+            
+         else
+            rHat = randomUnitVector()
+            position = source%position + source%radius*rHat
+            ! A limb darkening law should be applied here for 
+            ! for general case here.....
+            direction = fromPhotoSphereVector(rHat)
+         endif
       else
-         rHat = randomUnitVector()
-         position = source%position + source%radius*rHat
-         ! A limb darkening law should be applied here for 
-         ! for general case here.....
-         direction = fromPhotoSphereVector(rHat)
+         position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
+         call random_number(r)
+         r = 2.d0 * r - 1.d0
+         position%y = r * grid%octreeRoot%subcellSize
+         call random_number(r)
+         r = 2.d0 * r - 1.d0
+         position%z = r * grid%octreeRoot%subcellSize
+         direction = VECTOR(1.d0, 0.d0, 0.d0)
       endif
-       end subroutine getPhotonPositionDirection
+    end subroutine getPhotonPositionDirection
 
 
 
@@ -344,6 +356,9 @@ module source_mod
 !    fLambda = source%spectrum%flux(i)
 !    fnu = flambda * (cSpeed*1.d8) /nu**2 ! 1.d8 to go from cm/s to angs/c
 !    i_nu = 1.5d0 * fnu / pi
+
+!    write(*,*) "i_nu ",nu, source%surface%nuArray(1), &
+!         source%surface%nuArray(source%surface%nNuHotFlux)
 
     if (nu < source%surface%nuArray(1)) then
        i_nu = tiny(i_nu)

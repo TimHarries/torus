@@ -12,6 +12,7 @@ MODULE amr_mod
   use surface_mod, ONLY:    SURFACETYPE
   USE cluster_class, only:  cluster
   USE parallel_mod, ONLY:   torus_abort
+  use mpi_global_mod
 
   IMPLICIT NONE
 
@@ -116,6 +117,7 @@ CONTAINS
        thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
 
     else if (interpolate) then
+       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
        thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
        thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
@@ -188,6 +190,12 @@ CONTAINS
 
     CASE("kelvin")
        call calcKelvinDensity(thisOctal, subcell, grid)
+
+    CASE("bonnor")
+       call calcBonnorEbertDensity(thisOctal, subcell, grid)
+
+    CASE("unisphere")
+       call calcUniformsphere(thisOctal, subcell, grid)
 
     CASE("sedov")
        call calcSedovDensity(thisOctal, subcell, grid)
@@ -2362,7 +2370,7 @@ CONTAINS
                            interp, departCoeff,kappaAbsArray,kappaScaArray, dusttypeFraction, rosselandKappa, kappap, &
                            atthistemperature)
 
-    USE input_variables, only: nLambda
+    USE input_variables, only: nLambda, hydrodynamics
 
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
@@ -2433,7 +2441,11 @@ CONTAINS
 !       point2 = lastpoint2
 !    else
        if (octaltree%twoD) then
-          point2 = projectToXZ(point)
+          if (.not.hydrodynamics) then
+             point2 = projectToXZ(point)
+          else
+             point2 = point
+          endif
        elseif(octaltree%oneD) then
           point2  = VECTOR(modulus(point),0.d0,0.d0)
        endif
@@ -3482,8 +3494,8 @@ CONTAINS
     logical, optional :: alreadyRotated
     logical :: doRotate
 
-    doRotate = .false.
-    if (PRESENT(alreadyRotated)) doRotate = alreadyRotated
+    doRotate = .true.
+    if (PRESENT(alreadyRotated)) doRotate = .not.alreadyRotated
 
     if (thisOctal%threeD) then
        if (.not.thisOctal%cylindrical) then
@@ -3513,12 +3525,16 @@ CONTAINS
           ENDIF
        endif
     else ! twoD case
-       if ((.not.hydrodynamics).or.(doRotate)) then
-          octVec2D = projectToXZ(point)
+       if (.not.hydrodynamics) then
+          if (doRotate) then
+             octVec2D = projectToXZ(point)
+          else
+             octVec2D = point   
+          endif
        else
           octVec2D = point
        endif
-           IF (octVec2D%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
+       IF (octVec2D%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
        ELSEIF (octVec2D%x > thisOctal%xMax) THEN ; inOctal = .FALSE.
        ELSEIF (octVec2D%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
        ELSEIF (octVec2D%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
@@ -3928,6 +3944,7 @@ IF ( .NOT. gridConverged ) RETURN
         IF (haveDescended) then
            boundaryProblem = .TRUE.
            PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
+           write(*,*) "rank ",myrankglobal, thisOctal%mpithread(1:8)
            write(*,*) "split az ",thisOctal%splitAzimuthally
            write(*,*) point
            write(*,*) atan2(point%y,point%x)*radtodeg
@@ -3940,6 +3957,7 @@ IF ( .NOT. gridConverged ) RETURN
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
            write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
            write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
+           write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
            write(*,*) "size ",thisOctal%subcellsize
 !           rVec = subcellCentre(thisOctal,subcell)
@@ -4334,7 +4352,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
    case("lexington")
-      if (thisOctal%nDepth < 9) then
+      if (thisOctal%nDepth < mindepthamr) then
          split = .true.
       else
          split = .false.
@@ -4347,7 +4365,7 @@ IF ( .NOT. gridConverged ) RETURN
 !      endif
 
    case("starburst")
-      if (thisOctal%nDepth < 5) then
+      if (thisOctal%nDepth < mindepthamr) then
          split = .true.
       else
          split = .false.
@@ -4450,7 +4468,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       if ( (r+cellsize) < rgrid(1)) split = .false.
 
-   case("hydro1d", "kelvin")
+   case("hydro1d", "kelvin", "bonnor", "unisphere")
 
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -6950,6 +6968,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine calcLexington(thisOctal,subcell,grid)
 
+    use input_variables, only : hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -6993,7 +7012,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%inFlow(subcell) = .true.
 
 
-!    if (r > grid%rinner) then
+    if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
        thisOctal%rho(subcell) = 100.*mHydrogen
        thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
@@ -7007,12 +7026,12 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%ionFrac(subcell,3) = 1.e-10
        thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
-       thisOctal%temperature(subcell) = 8000.
+       thisOctal%temperature(subcell) = 10000.
        if ((r > radius(1)).and.(r < radius(it))) then
           call locate(radius, it, r, i)
           fac = (r-radius(i))/(radius(i+1)-radius(i))
-          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
-!       endif
+!          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
+       endif
 
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -7030,26 +7049,29 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
 
 
-!    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
-!    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-!    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
-!    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-!    thisOctal%boundaryCondition(subcell) = 4
-!
+    if (hydrodynamics) then
+       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
+       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+       thisOctal%boundaryCondition(subcell) = 4
+    endif
 
   end subroutine calcLexington
 
   subroutine calcStarburst(thisOctal,subcell,grid)
 
+    use input_variables, only : hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector) :: rVec
+    real(double) :: ethermal, gamma = 5.d0/3.d0
 
     rVec = subcellCentre(thisOctal,subcell)
 
     thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
-    thisOctal%temperature(subcell) = 5000.
+    thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
@@ -7072,6 +7094,13 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%etaLine = 1.e-30
     thisOctal%dustTypeFraction(subcell,1)=1.d0
 
+    if (hydrodynamics) then
+       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
+       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+       thisOctal%boundaryCondition(subcell) = 4
+    endif
   end subroutine calcStarburst
 
   subroutine calcSymbiotic(thisOctal,subcell,grid)
@@ -7458,6 +7487,7 @@ IF ( .NOT. gridConverged ) RETURN
        zprime = -1.d0 - (rVec%x+rVec%y)
     else
        zprime = -0.5d0 - rVec%x
+       zprime = -rVec%x
     endif
 
     if (rvec%z < zprime) then
@@ -7469,6 +7499,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%energy(subcell) = 0.25d0
        thisOctal%pressure_i(subcell) = 0.1d0
     endif
+
     if (thisOctal%oneD) then
        if (rvec%x < 0.25d0) then
           thisOctal%rho(subcell) = 1.d0
@@ -7494,7 +7525,6 @@ IF ( .NOT. gridConverged ) RETURN
 !    thisOctal%pressure_i(subcell) = (5.d0/3.d0-1.d0)*thisOctal%rho(subcell) * thisOctal%energy(subcell)
 
     thisOctal%boundaryCondition(subcell) = 1
-    thisOctal%chiline(subcell) = -111111.d0
 
 
   end subroutine calcHydro1DDensity
@@ -7537,6 +7567,98 @@ IF ( .NOT. gridConverged ) RETURN
      thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (gamma-1.d0) * thisOctal%rho(subcell))
     thisOctal%boundaryCondition(subcell) = 2
   end subroutine calcKelvinDensity
+
+  subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
+
+    use input_variables, only : photoionization
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(VECTOR) :: rVec
+    real(double), parameter :: gamma = 5.d0/3.d0
+    real(double) :: eThermal, rMod, fac
+    logical, save :: firstTime = .true.
+    integer, parameter :: nr = 1000
+    real(double), save :: r(nr), rho(nr)
+    integer :: i
+
+    if (firstTime) then
+       firstTime = .false.
+       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen, 6.d0,  nr, r, rho)
+       r = r / 1.d10
+       if (myrankGlobal==1) then
+          do i =1 , nr
+             write(55, *) r(i)*1.d10/autocm, rho(i)
+          enddo
+       endif
+    endif
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    if (rMod < r(nr)) then
+       call locate(r, nr, rMod, i)
+       fac = (rMod-r(i))/(r(i+1)-r(i))
+       thisOctal%rho(subcell) = rho(i) + fac*(rho(i+1)-rho(i))
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = rho(nr)
+       thisOctal%temperature(subcell) = 10.d0
+    endif
+
+!    thisOctal%rho(subcell) = rho(nr)
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%boundaryCondition(subcell) = 2 ! periodic
+    thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
+       
+
+    if (photoionization) then
+       thisOctal%inFlow(subcell) = .true.
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = thisOctal%nh(subcell)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+       thisOctal%ionFrac(subcell,1) = 1.e-10
+       thisOctal%ionFrac(subcell,2) = 1.
+       thisOctal%ionFrac(subcell,3) = 1.e-10
+       thisOctal%ionFrac(subcell,4) = 1.       
+       thisOctal%etaCont(subcell) = 0.
+    endif
+  end subroutine calcBonnorEbertDensity
+
+  subroutine calcUniformSphere(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, fac
+    integer :: i
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    if (rMod < (pctocm/1.d10)) then
+       thisOctal%rho(subcell) = 1000.d0*2.d0*mHydrogen
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = 1.d-24
+       thisOctal%temperature(subcell) = 10.d0
+    endif
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%boundaryCondition(subcell) = 2
+    thisOctal%phi_i(subcell) = -bigG * 100.d0 * mSol / (modulus(rVec)*1.d10)
+       
+  end subroutine calcUniformSphere
 
 
 
@@ -9515,9 +9637,13 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%pressure_i_minus_1, source%pressure_i_minus_1)
     call copyAttribute(dest%pressure_i, source%pressure_i)
     call copyAttribute(dest%phi_i, source%phi_i)
+    call copyAttribute(dest%phi_i_plus_1, source%phi_i_plus_1)
+    call copyAttribute(dest%phi_i_minus_1, source%phi_i_minus_1)
     call copyAttribute(dest%pressure_i_plus_1, source%pressure_i_plus_1)
 
     call copyAttribute(dest%u_interface, source%u_interface)
+    call copyAttribute(dest%u_i_plus_1, source%u_i_plus_1)
+    call copyAttribute(dest%u_i_minus_1, source%u_i_minus_1)
     call copyAttribute(dest%rLimit, source%rLimit)
     call copyAttribute(dest%phiLimit, source%phiLimit)
     call copyAttribute(dest%ghostCell, source%ghostCell)
@@ -10450,7 +10576,7 @@ end function readparameterfrom2dmap
     TYPE(OCTAL), POINTER :: parentOctal
     INTEGER :: parentSubcell
     INTEGER :: nVals
-    REAL(double) :: nValsREAL
+    REAL(double) :: nValsREAL, i
 
     IF ( childOctal%nDepth == 1 ) THEN
       ! we're at the root of the tree
@@ -10475,6 +10601,9 @@ end function readparameterfrom2dmap
     parentOctal%rho(parentSubcell) =                    &
     SUM(childOctal%rho(1:nVals)) / nValsREAL
 
+    parentOctal%nh(parentSubcell) =                    &
+    SUM(childOctal%nh(1:nVals)) / nValsREAL
+
     parentOctal%rhoe(parentSubcell) =                    &
     SUM(childOctal%rhoe(1:nVals)) / nValsREAL
 
@@ -10489,6 +10618,12 @@ end function readparameterfrom2dmap
    
     parentOctal%temperature(parentSubcell) =            &
     SUM(childOctal%temperature(1:nVals)) / nValsREAL
+
+
+    do i = 1, SIZE(parentOctal%ionFrac,2)
+       parentOctal%ionFrac(parentSubcell,i) =            &
+            SUM(childOctal%ionFrac(1:nVals,i)) / nValsREAL
+    enddo
     
 !    if (associated(parentOctal%dustTypeFraction)) then
 !       parentOctal%dustTypeFraction(parentSubcell,:) =     &
@@ -14075,6 +14210,7 @@ end function readparameterfrom2dmap
 !         write(*,*) t(1:6),thisOK(1:6)
 
          if (tval == 0.) then
+            write(*,*) " tval=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
             write(*,*) posVec
             write(*,*) direction%x,direction%y,direction%z
             write(*,*) t(1:6)
@@ -15642,7 +15778,7 @@ end function readparameterfrom2dmap
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, sobolev, h21cm
+         photoionization, hydrodynamics, sobolev, storeScattered, h21cm
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -15663,7 +15799,7 @@ end function readparameterfrom2dmap
        thisOctal%dustTypeFraction(:,1) = 1.d0
        thisOctal%inflow = .true.
 
-       allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
+       if (storescattered) allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
 
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
@@ -15782,50 +15918,57 @@ end function readparameterfrom2dmap
     endif
        
     if (hydrodynamics) then
-       allocate(thisOctal%q_i(1:thisOctal%maxchildren))
-       allocate(thisOctal%q_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%q_i_minus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%q_i_minus_2(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%x_i(1:thisOctal%maxchildren))
-       allocate(thisOctal%x_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%x_i_minus_1(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%u_interface(1:thisOctal%maxchildren))
-       allocate(thisOctal%u_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%u_i_minus_1(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%flux_i(1:thisOctal%maxchildren))
-       allocate(thisOctal%flux_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%flux_i_minus_1(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%phiLimit(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%ghostCell(1:thisOctal%maxchildren))
-       allocate(thisOctal%feederCell(1:thisOctal%maxchildren))
-       allocate(thisOctal%edgeCell(1:thisOctal%maxchildren))
-       allocate(thisOctal%refinedLastTime(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%pressure_i(1:thisOctal%maxchildren))
-       allocate(thisOctal%pressure_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%pressure_i_minus_1(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%rhou(1:thisOctal%maxchildren))
-       allocate(thisOctal%rhov(1:thisOctal%maxchildren))
-       allocate(thisOctal%rhow(1:thisOctal%maxchildren))
-
-       allocate(thisOctal%rhoe(1:thisOctal%maxchildren))
-       allocate(thisOctal%energy(1:thisOctal%maxchildren))
 
 
-       allocate(thisOctal%phi_i(1:thisOctal%maxchildren))
-       allocate(thisOctal%phi_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%phi_i_minus_1(1:thisOctal%maxchildren))
 
-       allocate(thisOctal%rho_i_plus_1(1:thisOctal%maxchildren))
-       allocate(thisOctal%rho_i_minus_1(1:thisOctal%maxchildren))
+       call allocateAttribute(thisOctal%q_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%q_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%q_i_minus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%q_i_minus_2,thisOctal%maxchildren)
 
-       allocate(thisOctal%boundaryCondition(1:thisOctal%maxchildren))
+       call allocateAttribute(thisOctal%x_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%x_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%x_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%flux_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%flux_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%flux_i_minus_1,thisOctal%maxchildren)
+
+
+       call allocateAttribute(thisOctal%phiLimit,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%feederCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%refinedLastTime,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%pressure_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%pressure_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%pressure_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rhou,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhov,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhow,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rhoe,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%energy,thisOctal%maxchildren)
+
+
+       call allocateAttribute(thisOctal%phi_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rho_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%rLimit,thisOctal%maxChildren)
 
     endif
   end  subroutine allocateOctalAttributes
@@ -15839,7 +15982,6 @@ end function readparameterfrom2dmap
        call deallocateAttribute(thisOctal%dusttypefraction)
        call deallocateAttribute(thisOctal%diffusionApprox)
        call deallocateAttribute(thisOctal%scatteredIntensity)
-       call deallocateAttribute(thisOctal%changed)
        call deallocateAttribute(thisOctal%nDiffusion)
        call deallocateAttribute(thisOctal%eDens)
        call deallocateAttribute(thisOctal%diffusionCoeff)
@@ -15922,6 +16064,9 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%rho_i_minus_1)
 
        call deAllocateAttribute(thisOctal%boundaryCondition)
+       call deAllocateAttribute(thisOctal%boundaryPartner)
+       call deAllocateAttribute(thisOctal%changed)
+       call deAllocateAttribute(thisOctal%rLimit)
 
      end subroutine deallocateOctalDynamicAttributes
 
@@ -15986,5 +16131,36 @@ end function readparameterfrom2dmap
     call writeinfo(message, TRIVIAL)
     
   end subroutine howmanysplits
+
+  function returnScatteredIntensity(position, thisOctal, subcell, uHat) result(intensity)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: uHat, thisVec, centre, position
+    real(double) :: intensity, thisTheta, thisPhi, ang
+    integer :: nTheta, nPhi
+    integer :: iTheta, iPhi
+    
+    nTheta = SIZE(thisOctal%scatteredIntensity,2)
+    nPhi = SIZE(thisOctal%scatteredIntensity,3)
+
+    ang = atan2(position%y, position%x)
+
+    thisVec = uHat
+    
+    if (thisOctal%twoD) then
+       thisVec = rotateZ(uHat, -ang)
+    endif
+
+    thisTheta = acos(thisvec%z)
+    thisPhi = atan2(thisVec%y,thisVec%x)
+
+    if (thisPhi < 0.d0) thisPhi = thisPhi + twoPi 
+    iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
+    iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
+
+    intensity = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) 
+!    intensity = SUM(thisOctal%scatteredIntensity(subcell,:,:))/100.d0
+  end function returnScatteredIntensity
+
    
 END MODULE amr_mod

@@ -22,7 +22,9 @@ module gridio_mod
 
   interface writeAttributePointerFlexi
      module procedure writeAttributePointerInteger1dFlexi
+     module procedure writeAttributePointerLogical1dFlexi
      module procedure writeAttributePointerReal1dFlexi
+     module procedure writeAttributePointerVector1dFlexi
      module procedure writeAttributePointerDouble1dFlexi
      module procedure writeAttributePointerDouble2dFlexi
      module procedure writeAttributePointerDouble3dFlexi
@@ -63,6 +65,7 @@ module gridio_mod
   interface readPointerFlexi
      module procedure readDoublePointer1DFlexi
      module procedure readRealPointer1DFlexi
+     module procedure readLogicalPointer1DFlexi
      module procedure readIntegerPointer1DFlexi
      module procedure readVectorPointer1DFlexi
      module procedure readDoublePointer2DFlexi
@@ -78,16 +81,25 @@ contains
     implicit none
   
     character(len=*)           :: filename
+    character(len=80)          :: updatedFilename
     logical, intent(in)        :: fileFormatted
     type(GRIDTYPE), intent(in) :: grid
     
     integer, dimension(8) :: timeValues ! system date and time
     integer               :: error      ! error code
 
+    updatedFilename = filename
+
+#ifdef MPI 
+    if (grid%splitOverMPI) then
+       write(updatedFilename,'(a,a,i3.3,a)') trim(filename),"_rank_",myrankGlobal
+    endif
+#endif
+
     if (fileFormatted) then 
-       open(unit=20,iostat=error, file=filename, form="formatted", status="replace")
+       open(unit=20,iostat=error, file=updatedfilename, form="formatted", status="replace")
     else 
-       open(unit=20,iostat=error, file=filename, form="unformatted", status="replace")
+       open(unit=20,iostat=error, file=updatedfilename, form="unformatted", status="replace")
     end if        
     call writeInfo("Writing AMR grid file to: "//trim(filename),TRIVIAL)
     
@@ -204,6 +216,18 @@ contains
        call writeAttributePointerFlexi(20, "ionFrac", thisOctal%ionFrac, fileFormatted)
        call writeAttributePointerFlexi(20, "photoIonCoeff", thisOctal%photoIonCoeff, fileFormatted)
 
+       call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "nCrossings", thisOctal%nCrossings, fileFormatted)
+       call writeAttributePointerFlexi(20, "hHeating", thisOctal%hHeating, fileFormatted)
+       call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
+       call writeAttributePointerFlexi(20, "undersampled", thisOctal%undersampled, fileFormatted)
+       call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
+       call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
+
+
+
+
        call writeAttributePointerFlexi(20, "molecularLevel", thisOctal%molecularLevel, fileFormatted)
        call writeAttributePointerFlexi(20, "jnu", thisOctal%jnu, fileFormatted)
        call writeAttributePointerFlexi(20, "bnu", thisOctal%bnu, fileFormatted)
@@ -221,6 +245,64 @@ contains
        call writeAttributePointerFlexi(20, "atomLevel", thisOctal%atomLevel, fileFormatted)
        call writeAttributePointerFlexi(20, "jnuCont", thisOctal%jnuCont, fileFormatted)
        call writeAttributePointerFlexi(20, "jnuLine", thisOctal%jnuLine, fileFormatted)
+
+
+
+
+
+       call writeAttributePointerFlexi(20, "q_i", thisOctal%q_i, fileFormatted)
+       call writeAttributePointerFlexi(20, "q_i_plus_1", thisOctal%q_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "q_i_minus_1", thisOctal%q_i_minus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "q_i_minus_2", thisOctal%q_i_minus_2, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "x_i", thisOctal%x_i, fileFormatted)
+       call writeAttributePointerFlexi(20, "x_i_plus_1", thisOctal%x_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "x_i_minus_1", thisOctal%x_i_minus_1, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "u_interface", thisOctal%u_interface, fileFormatted)
+       call writeAttributePointerFlexi(20, "u_i_plus_1", thisOctal%u_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "u_i_minus_1", thisOctal%u_i_minus_1, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "flux_i", thisOctal%flux_i, fileFormatted)
+       call writeAttributePointerFlexi(20, "flux_i_plus_1", thisOctal%flux_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "flux_i_minus_1", thisOctal%flux_i_minus_1, fileFormatted)
+
+
+       call writeAttributePointerFlexi(20, "phiLimit", thisOctal%phiLimit, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
+       call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
+       call writeAttributePointerFlexi(20, "edgeCell", thisOctal%edgeCell, fileFormatted)
+       call writeAttributePointerFlexi(20, "refinedLastTime", thisOctal%refinedLastTime, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "pressure_i", thisOctal%pressure_i, fileFormatted)
+       call writeAttributePointerFlexi(20, "pressure_i_plus_1", thisOctal%pressure_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "pressure_i_minus_1", thisOctal%pressure_i_minus_1, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "rhou", thisOctal%rhou, fileFormatted)
+       call writeAttributePointerFlexi(20, "rhov", thisOctal%rhov, fileFormatted)
+       call writeAttributePointerFlexi(20, "rhow", thisOctal%rhow, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "rhoe", thisOctal%rhoe, fileFormatted)
+       call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
+
+
+       call writeAttributePointerFlexi(20, "phi_i", thisOctal%phi_i, fileFormatted)
+       call writeAttributePointerFlexi(20, "phi_i_plus_1", thisOctal%phi_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "phi_i_minus_1", thisOctal%phi_i_minus_1, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "rho_i_plus_1", thisOctal%rho_i_plus_1, fileFormatted)
+       call writeAttributePointerFlexi(20, "rho_i_minus_1", thisOctal%rho_i_minus_1, fileFormatted)
+
+       call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
+       call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
+       call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
+       call writeAttributePointerFlexi(20, "rLimit", thisOctal%rLimit, fileFormatted)
+
+
+
+
+
 
        call writeAttributeStaticFlexi(20, "mpiThread", thisOctal%mpiThread, fileFormatted)
        call writeFileTag(20, "OCTALENDS", fileFormatted)
@@ -251,7 +333,7 @@ contains
     integer               :: dummy         
     integer               :: error         ! status code
     integer :: nOctal
-    character(len=80) :: absolutePath, inFile
+    character(len=80) :: absolutePath, inFile, updatedFilename
     character(len=20) :: tag
 
     absolutePath = " "
@@ -260,8 +342,18 @@ contains
   call unixGetEnv("TORUS_JOB_DIR",absolutePath)
   inFile = trim(absolutePath)//trim(filename)
 
+
+  updatedFilename = inFile
+
+#ifdef MPI 
+  if (grid%splitOverMpi) then
+    write(updatedFilename,'(a,a,i3.3,a)') trim(inFile),"_rank_",myrankGlobal
+ endif
+#endif
+
+
     if (fileFormatted) then
-       open(unit=20, iostat=error, file=inFile, form="formatted", status="old")
+       open(unit=20, iostat=error, file=updatedFilename, form="formatted", status="old")
        if (error /=0) then
          print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
        end if
@@ -271,7 +363,7 @@ contains
          print *, 'Panic: read error in readAMRgrid (formatted timeValues)' ; stop
        end if
     else
-       open(unit=20, iostat=error, file=inFile, form="unformatted", status="old")
+       open(unit=20, iostat=error, file=updatedFilename, form="unformatted", status="old")
        if (error /=0) then
          print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
        end if
@@ -525,40 +617,145 @@ contains
             call readPointerFlexi(20, thisOctal%dustTypeFraction, fileFormatted)
          case("scatteredIntensity")
             call readPointerFlexi(20, thisOctal%scatteredIntensity, fileFormatted)
-          case("mpiThread")
-             call readArrayFlexi(20, thisOctal%mpiThread,fileFormatted)
-          case("kappaAbs")
-             call readPointerFlexi(20, thisOctal%kappaAbs, fileFormatted)
-          case("kappaSca")
-             call readPointerFlexi(20, thisOctal%kappaSca, fileFormatted)
-          case("ionFrac")
-             call readPointerFlexi(20, thisOctal%ionFrac, fileFormatted)
-          case("photoIonCoeff")
-             call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
-          case("molecularLevel")
-             call readPointerFlexi(20, thisOctal%molecularLevel, fileFormatted)
-          case("jnu")
-             call readPointerFlexi(20, thisOctal%jnu, fileFormatted)
-          case("bnu")
-             call readPointerFlexi(20, thisOctal%bnu, fileFormatted)
-          case("molAbundance")
-             call readPointerFlexi(20, thisOctal%molAbundance, fileFormatted)
-          case("nh2")
-             call readPointerFlexi(20, thisOctal%nh2, fileFormatted)
-          case("microTurb")
-             call readPointerFlexi(20, thisOctal%microTurb, fileFormatted)
-          case("N")
-             call readPointerFlexi(20, thisOctal%n, fileFormatted)
-          case("departCoeff")
-             call readPointerFlexi(20, thisOctal%departCoeff, fileFormatted)
-          case("atomAbundance")
-             call readPointerFlexi(20, thisOctal%atomAbundance, fileFormatted)
-          case("atomLevel")
-             call readPointerFlexi(20, thisOctal%atomLevel, fileFormatted)
-          case("jnuCont")
-             call readPointerFlexi(20, thisOctal%jnuCont, fileFormatted)
-          case("jnuLine")
-             call readPointerFlexi(20, thisOctal%jnuLine, fileFormatted)
+         case("mpiThread")
+            call readArrayFlexi(20, thisOctal%mpiThread,fileFormatted)
+         case("kappaAbs")
+            call readPointerFlexi(20, thisOctal%kappaAbs, fileFormatted)
+         case("kappaSca")
+            call readPointerFlexi(20, thisOctal%kappaSca, fileFormatted)
+         case("ionFrac")
+            call readPointerFlexi(20, thisOctal%ionFrac, fileFormatted)
+         case("photoIonCoeff")
+            call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
+         case("distanceGrid")
+            call readPointerFlexi(20, thisOctal%distanceGrid, fileFormatted)
+
+         case("nCrossings")
+            call readPointerFlexi(20, thisOctal%nCrossings, fileFormatted)
+         case("hHeating")
+            call readPointerFlexi(20, thisOctal%hHeating, fileFormatted)
+         case("heHeating")
+            call readPointerFlexi(20, thisOctal%heHeating, fileFormatted)
+
+         case("undersampled")
+            call readPointerFlexi(20, thisOctal%undersampled, fileFormatted)
+         case("nDiffusion")
+            call readPointerFlexi(20, thisOctal%nDiffusion, fileFormatted)
+         case("diffusionApprox")
+            call readPointerFlexi(20, thisOctal%diffusionApprox, fileFormatted)
+
+
+         case("molecularLevel")
+            call readPointerFlexi(20, thisOctal%molecularLevel, fileFormatted)
+         case("jnu")
+            call readPointerFlexi(20, thisOctal%jnu, fileFormatted)
+         case("bnu")
+            call readPointerFlexi(20, thisOctal%bnu, fileFormatted)
+         case("molAbundance")
+            call readPointerFlexi(20, thisOctal%molAbundance, fileFormatted)
+         case("nh2")
+            call readPointerFlexi(20, thisOctal%nh2, fileFormatted)
+         case("microTurb")
+            call readPointerFlexi(20, thisOctal%microTurb, fileFormatted)
+         case("N")
+            call readPointerFlexi(20, thisOctal%n, fileFormatted)
+         case("departCoeff")
+            call readPointerFlexi(20, thisOctal%departCoeff, fileFormatted)
+         case("atomAbundance")
+            call readPointerFlexi(20, thisOctal%atomAbundance, fileFormatted)
+         case("atomLevel")
+            call readPointerFlexi(20, thisOctal%atomLevel, fileFormatted)
+         case("jnuCont")
+            call readPointerFlexi(20, thisOctal%jnuCont, fileFormatted)
+         case("jnuLine")
+            call readPointerFlexi(20, thisOctal%jnuLine, fileFormatted)
+
+         case("q_i")
+            call readPointerFlexi(20, thisOctal%q_i, fileFormatted)
+         case("q_i_plus_1")
+            call readPointerFlexi(20, thisOctal%q_i_plus_1, fileFormatted)
+         case("q_i_minus_1")
+            call readPointerFlexi(20, thisOctal%q_i_minus_1, fileFormatted)
+         case("q_i_minus_2")
+            call readPointerFlexi(20, thisOctal%q_i_minus_2, fileFormatted)
+
+         case("x_i")
+            call readPointerFlexi(20, thisOctal%x_i, fileFormatted)
+         case("x_i_plus_1")
+            call readPointerFlexi(20, thisOctal%x_i_plus_1, fileFormatted)
+         case("x_i_minus_1")
+            call readPointerFlexi(20, thisOctal%x_i_minus_1, fileFormatted)
+
+         case("u_interface")
+            call readPointerFlexi(20, thisOctal%u_interface, fileFormatted)
+         case("u_i_plus_1")
+            call readPointerFlexi(20, thisOctal%u_i_plus_1, fileFormatted)
+         case("u_i_minus_1")
+            call readPointerFlexi(20, thisOctal%u_i_minus_1, fileFormatted)
+
+         case("flux_i")
+            call readPointerFlexi(20, thisOctal%flux_i, fileFormatted)
+         case("flux_i_plus_1")
+            call readPointerFlexi(20, thisOctal%flux_i_plus_1, fileFormatted)
+         case("flux_i_minus_1")
+            call readPointerFlexi(20, thisOctal%flux_i_minus_1, fileFormatted)
+
+
+         case("phiLimit")
+            call readPointerFlexi(20, thisOctal%phiLimit, fileFormatted)
+
+         case("ghostCell")
+            call readPointerFlexi(20, thisOctal%ghostCell, fileFormatted)
+         case("feederCell")
+            call readPointerFlexi(20, thisOctal%feederCell, fileFormatted)
+         case("edgeCell")
+            call readPointerFlexi(20, thisOctal%edgeCell, fileFormatted)
+         case("refinedLastTime")
+            call readPointerFlexi(20, thisOctal%refinedLastTime, fileFormatted)
+
+         case("pressure_i")
+            call readPointerFlexi(20, thisOctal%pressure_i, fileFormatted)
+         case("pressure_i_plus_1")
+            call readPointerFlexi(20, thisOctal%pressure_i_plus_1, fileFormatted)
+         case("pressure_i_minus_1")
+            call readPointerFlexi(20, thisOctal%pressure_i_minus_1, fileFormatted)
+
+         case("rhou")
+            call readPointerFlexi(20, thisOctal%rhou, fileFormatted)
+         case("rhov")
+            call readPointerFlexi(20, thisOctal%rhov, fileFormatted)
+         case("rhow")
+            call readPointerFlexi(20, thisOctal%rhow, fileFormatted)
+
+         case("rhoe")
+            call readPointerFlexi(20, thisOctal%rhoe, fileFormatted)
+         case("energy")
+            call readPointerFlexi(20, thisOctal%energy, fileFormatted)
+
+
+         case("phi_i")
+            call readPointerFlexi(20, thisOctal%phi_i, fileFormatted)
+         case("phi_i_plus_1")
+            call readPointerFlexi(20, thisOctal%phi_i_plus_1, fileFormatted)
+         case("phi_i_minus_1")
+            call readPointerFlexi(20, thisOctal%phi_i_minus_1, fileFormatted)
+
+         case("rho_i_plus_1")
+            call readPointerFlexi(20, thisOctal%rho_i_plus_1, fileFormatted)
+         case("rho_i_minus_1")
+            call readPointerFlexi(20, thisOctal%rho_i_minus_1, fileFormatted)
+
+         case("boundaryCondition")
+            call readPointerFlexi(20, thisOctal%boundaryCondition, fileFormatted)
+         case("boundaryPartner")
+            call readPointerFlexi(20, thisOctal%boundaryPartner, fileFormatted)
+         case("changed")
+            call readPointerFlexi(20, thisOctal%changed, fileFormatted)
+         case("rLimit")
+            call readPointerFlexi(20, thisOctal%rLimit, fileFormatted)
+
+
+
 
          case DEFAULT
             write(message,*) "Unrecognised tag on read: "//trim(tag)
@@ -890,6 +1087,33 @@ contains
     endif
   end subroutine writeAttributePointerInteger1DFlexi
 
+
+  subroutine writeAttributePointerLogical1DFlexi(lUnit, name, value, fileFormatted)
+    integer :: lUnit
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    logical, pointer :: value(:)
+    logical :: fileFormatted
+    character(len=10) :: dataType
+
+    dataType = "l1darray"
+
+    attributeName = name
+    if (associated(value)) then
+       if (fileFormatted) then
+          write(lUnit,*) attributeName
+          write(lUnit,*) dataType
+          write(lUnit,*) SIZE(value)
+          write(lUnit,*) value(1:SIZE(value))
+       else
+          write(lUnit) attributeName
+          write(lUnit) dataType
+          write(lUnit) SIZE(value)
+          write(lUnit) value(1:SIZE(value))
+       endif
+    endif
+  end subroutine writeAttributePointerLogical1DFlexi
+
   subroutine writeAttributePointerReal1DFlexi(lUnit, name, value, fileFormatted)
     integer :: lUnit
     character(len=*) :: name
@@ -915,6 +1139,32 @@ contains
        endif
     endif
   end subroutine writeAttributePointerReal1DFlexi
+
+  subroutine writeAttributePointerVector1DFlexi(lUnit, name, value, fileFormatted)
+    integer :: lUnit
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    type(VECTOR), pointer :: value(:)
+    logical :: fileFormatted
+    character(len=10) :: dataType
+
+    dataType = "v1darray"
+
+    attributeName = name
+    if (associated(value)) then
+       if (fileFormatted) then
+          write(lUnit,*) attributeName
+          write(lUnit,*) dataType
+          write(lUnit,*) SIZE(value)
+          write(lUnit,*) value(1:SIZE(value))
+       else
+          write(lUnit) attributeName
+          write(lUnit) dataType
+          write(lUnit) SIZE(value)
+          write(lUnit) value(1:SIZE(value))
+       endif
+    endif
+  end subroutine writeAttributePointerVector1DFlexi
 
   subroutine writeAttributePointerDouble2DFlexi(lUnit, name, value, fileFormatted)
     integer :: lUnit
@@ -1200,6 +1450,28 @@ contains
          read(lUnit) value(1:n)
       endif
     end subroutine readRealPointer1DFlexi
+
+    subroutine readLogicalPointer1DFlexi(lUnit, value, fileFormatted)
+      integer :: lUnit
+      logical, pointer :: value(:)
+      logical :: fileFormatted
+      integer :: n
+
+      call testDataType("l1darray", fileFormatted)
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      if (fileFormatted) then
+         read(lUnit,*) n
+         allocate(value(1:n))
+         read(lUnit,*) value(1:n)
+      else
+         read(lUnit) n
+         allocate(value(1:n))
+         read(lUnit) value(1:n)
+      endif
+    end subroutine readLogicalPointer1DFlexi
 
     subroutine readIntegerPointer1DFlexi(lUnit, value, fileFormatted)
       integer :: lUnit

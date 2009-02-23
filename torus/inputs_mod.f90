@@ -1060,6 +1060,10 @@ contains
     call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
          "Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
 
+
+    call getLogical("storescattered", storeScattered, cLine, nLines, &
+         "Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
+
     if  (isotropicScattering) then
        call writeWarning("ISOTROPIC SCATTERING PHASE MATRIX ENFORCED")
     endif
@@ -1214,6 +1218,9 @@ contains
 
     call getLogical("photoionization", photoionization, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("usemetals", usemetals, cLine, nLines, &
+         "Include metals in photoion calculation: ","(a,1l,a)", .true., ok, .false.)
 
     call getLogical("molecular", molecular, cLine, nLines, &
          "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
@@ -1384,17 +1391,23 @@ contains
     
     call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
          "Do hydrodynamics: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("doselfgrav", doselfgrav, cLine, nLines, &
+         "Solve self-gravity: ","(a,1l,a)", .false., ok, .false.)
     
     call getReal("cfl", cflNumber, cLine, nLines, &
          "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
 
+    call getDouble("griddistancescale", gridDistanceScale, cLine, nLines, &
+         "Distance grid scale:","(a,e12.3,1x,a)", 1.d10, ok, .false.)
 
-    if (hydrodynamics) then
-       call getReal("x1", x1, cLine, nLines, &
-         "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
-       call getReal("x2", x2, cLine, nLines, &
-         "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
-    endif
+
+!    if (hydrodynamics) then
+!       call getReal("x1", x1, cLine, nLines, &
+!         "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+!       call getReal("x2", x2, cLine, nLines, &
+!         "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+!    endif
 
 
     call getLogical("cmf", cmf, cLine, nLines, &

@@ -1005,6 +1005,18 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      nContPhotons = (probContPhoton * real(nPhotons) / real(nOuterLoop))
 
+
+
+     if (formalSol) then
+        if (myrankglobal == 0) then
+           write(*,*) "calling create lucy image"
+           call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda, source, nSource)
+        endif
+        call torus_mpi_barrier
+        stop
+     endif
+
+
      !
      ! here we may loop over different inclinations
      !
@@ -1257,11 +1269,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         ! jumps to the end of inclination loops  (this should be replaced with while loop later)
         goto 777  
      end if
-
-     if (formalSol) then
-        if (myrankglobal == 0)call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda)
-        goto 777
-     endif
 
 
 

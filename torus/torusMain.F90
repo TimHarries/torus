@@ -57,7 +57,7 @@ program torus
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
-  use mpi_amr_mod, only: setupAMRCOMMUNICATOR
+  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads
   use unix_mod, only: unixGetHostname
   use parallel_mod, only: sync_random_seed
 #endif
@@ -262,6 +262,7 @@ program torus
   lucyRadiativeEq = .false. ! this has to be initialized here
 
   hydrodynamics = .false.
+  storeScattered = .false.
 
   ! get the model parameters
 
@@ -578,7 +579,6 @@ program torus
 
         grid%splitOverMPI = .true.
 	
-
         if (idump /= 1) then
            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
            write(message,'(a,i4.4,a)') "dump",idump,".grid"
@@ -595,8 +595,12 @@ program torus
               call doHydrodynamics1d(grid)
            else if (grid%octreeRoot%threeD) then
               call doHydrodynamics3d(grid)
+              goto 666
            endif
+        else
+           goto 666
         endif
+
      endif
 #endif
 
@@ -1441,10 +1445,11 @@ end subroutine pre_initAMRGrid
           
        case("starburst")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           gridconverged = .false.
-          do while(.not.gridconverged) 
-             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
-          enddo
+!          do while(.not.gridconverged) 
+!             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
+!          enddo
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("magstream")
@@ -1915,6 +1920,7 @@ subroutine set_up_sources
 
            nSource = 1
            allocate(source(1:1))
+           source(:)%outsideGrid = .false.
            source(1)%luminosity = grid%lCore
            source(1)%radius = ttaurirStar/1.d10
            source(1)%teff = 4000.
@@ -1931,17 +1937,22 @@ subroutine set_up_sources
     case("testamr","benchmark")
        nSource = 1
        allocate(source(1:1))
+       source(:)%outsideGrid = .false.
        source(1)%luminosity = grid%lCore
        source(1)%radius = grid%rCore
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
        call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
        call normalizedSpectrum(source(1)%spectrum)
+       call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, "blackbody")
+       call sumSurface(source(1)%surface)
+       call testSurface(source(1)%surface)
 
     case("magstream")
        nSource = 1
        if (.not.allocated(source)) then
           allocate(source(1:1))
+          source(:)%outsideGrid = .false.
           source(1)%luminosity = grid%lCore
           source(1)%radius = ttaurirStar/1.d10
           source(1)%teff = 4000.
@@ -1958,6 +1969,7 @@ subroutine set_up_sources
        nSource = 1
        teff = 30000.
        allocate(source(1:1))
+       source(:)%outsideGrid = .false.
        source(1)%luminosity = fourPi * (10.*rsol)*(10.*rsol) * stefanBoltz * teff**4
        source(1)%radius = 10.*rSol / 1.e10
        source(1)%teff = teff
@@ -1969,6 +1981,7 @@ subroutine set_up_sources
     case("whitney")
        nSource = 1
        allocate(source(1:1))
+       source(:)%outsideGrid = .false.
        source(1)%luminosity = fourPi * rStellar**2 * stefanBoltz * teff**4
        source(1)%radius = rStellar / 1.e10
        source(1)%teff = teff
@@ -1980,6 +1993,7 @@ subroutine set_up_sources
     case("toruslogo")
        nSource = 1
        allocate(source(1:1))
+       source(:)%outsideGrid = .false.
        source(1)%luminosity = lsol
        source(1)%radius = rSol / 1.e10
        source(1)%teff = 6000.
@@ -1997,14 +2011,17 @@ subroutine set_up_sources
        deallocate(iSeed)
 
        allocate(source(1:10000))
+       source(:)%outsideGrid = .false.
+       nSource = 0
        call createSources(nSource, source, "instantaneous", 1.d6, 1.d3, 1.d0)
+       call writeInfo(message, TRIVIAL)
        call init_random_seed()
-
 
     case("wr104")
        nSource = 2
 
        allocate(source(1:nSource)) 
+       source(:)%outsideGrid = .false.
        source(1)%teff = 30000.  ! o star
        source(1)%radius = 10. * rSol / 1.e10
        source(1)%position = (VECTOR(1.,0.,0.)*dble(autocm))/1.d10
@@ -2022,6 +2039,7 @@ subroutine set_up_sources
     case("lexington","fractal")
        nSource = 1
        allocate(source(1:nSource)) 
+       source(:)%outsideGrid = .false.
        source(1)%teff = 40000.  ! o star
        source(1)%radius = 18.67 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
@@ -2031,9 +2049,26 @@ subroutine set_up_sources
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
 
+    case("bonnor")
+       nSource = 1
+       allocate(source(1:nSource)) 
+       source(1)%teff = 40000.  ! o star
+       source(1)%radius = 18.67 * rSol / 1.e10
+       source(1)%position = VECTOR(0.,0.,0.)
+       source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
+
+       source(1)%luminosity = source(1)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+            (fourPi*(50.d0* pctocm)**2)
+       if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
+       fac = 1.e8*cspeed/5.d16
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
+       call normalizedSpectrum(source(1)%spectrum)
+       source%outsideGrid = .true.
+
     case("symbiotic")
        nSource = 2
        allocate(source(1:nSource)) 
+       source(:)%outsideGrid = .false.
        source(1)%teff = 2500.  
        source(1)%radius = 100. * rSol / 1.e10
        source(1)%position = VECTOR(-250.*rSol/1.e10,0.,0.)
@@ -2060,6 +2095,7 @@ subroutine set_up_sources
        ! This is ugly. Maybe lucyRadiativeEquilibriumAMR should be changed to take
        ! an cluster_class object as an input variable in future.
        ALLOCATE(source(nSource))
+       source(:)%outsideGrid = .false.
        
        ! Restricting the source to be within the root cell (in case the root cell is 
        ! is smaller than the sph model space!
@@ -2076,6 +2112,7 @@ subroutine set_up_sources
     case("shakara","clumpydisc","wrshell","warpeddisc","iras04158")
        nSource = 1
        allocate(source(1:1))
+       source(:)%outsideGrid = .false.
        source(1)%radius = grid%rCore
        source(1)%teff = teff   
        source(1)%position = VECTOR(0.,0.,0.)
@@ -2109,6 +2146,7 @@ subroutine set_up_sources
     case("circumbin")
        nSource = 2
        allocate(source(1:2))
+       source(:)%outsideGrid = .false.
        massRatio = mstar2/mstar1
        source(1)%radius = rStar1
        source(1)%teff = teff1  
@@ -2141,6 +2179,7 @@ subroutine set_up_sources
     case("gammavel")
        nSource = 2
        allocate(source(1:2))
+       source(:)%outsideGrid = .false.
 
 
        massRatio = mass1/mass2
@@ -2187,6 +2226,7 @@ subroutine set_up_sources
     case ("ppdisk")
        nSource = 1
        allocate(source(1:nSource))
+       source(:)%outsideGrid = .false.
 !       source(1)%teff = 5780.
        source(1)%teff = Teff
 !       source(1)%luminosity = 3.83d+32 
@@ -2203,6 +2243,7 @@ subroutine set_up_sources
     case ("planetgap")
        nSource = 1
        allocate(source(1:nSource))
+       source(:)%outsideGrid = .false.
        source(1)%teff = Teff
        source(1)%luminosity = fourPi*(rcore*1.e10)**2 * stefanBoltz*teff**4
        source(1)%radius = rCore
@@ -2275,7 +2316,15 @@ subroutine post_initAMRgrid
 
   if (associated(grid%octreeRoot)) then
      totalMass =0.d0
-     call findTotalMass(grid%octreeRoot, totalMass)
+     if (.not.grid%splitOverMpi) then
+        call findTotalMass(grid%octreeRoot, totalMass)
+     else
+#ifdef MPI
+        if (myrankglobal /= 0) then
+           call findMassOverAllThreads(grid, totalMass)
+        endif
+#endif
+     endif
      write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
      call writeInfo(message, TRIVIAL)
   endif

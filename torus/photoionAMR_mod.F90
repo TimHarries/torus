@@ -62,7 +62,7 @@ contains
 
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
-    use input_variables, only : iDump
+    use input_variables, only : iDump, doselfgrav
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -105,13 +105,13 @@ contains
     grid%iDump = 0
     nextDumpTime = 0.d0
     tDump = 0.005d0
-    deltaTforDump = 5.d11
+    deltaTforDump = 2.d11
     iunrefine = 0
 
     if (readlucy) then
        write(mpiFilename,'(a, i4.4, a)') "dump_", iDump, ".grid"
        write(*,*) "Reading from: ",trim(mpiFilename)
-       call readAmrGridMpiAll(mpiFilename,.false.,grid)
+       call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
     timeofNextDump = grid%currentTime + deltaTforDump
@@ -184,26 +184,32 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-
-
     endif
 
     call ionizeGrid(grid%octreeRoot)
 
 
-    do irefine = 1, 3
+    do irefine = 1, 1
 
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-               lucyfileout, lucyfilein, 3)
+               lucyfileout, lucyfilein, 5)
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-               lucyfileout, lucyfilein, 1)
+               lucyfileout, lucyfilein, 5)
           call writeInfo("Done",TRIVIAL)
        endif
+
+!       call testIonFront(grid%octreeRoot, grid%currentTime)
+
+       if (myrank /= 0) then
+          call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+          call calculateRhoE(grid%octreeRoot, direction)
+       endif
+
 
        if (myrank/=0) then
 
@@ -222,14 +228,20 @@ contains
           endif
 
 
+!          call writeVtkFile(grid, "beforegeneric.vtk", &
+!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+
           call writeInfo("Refining grid", TRIVIAL)
           do
              gridConverged = .true.
-             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.false.)
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
              if (gridConverged) exit
           end do
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
+
+!          call writeVtkFile(grid, "aftergeneric.vtk", &
+!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
           call writeInfo("Refining grid part 2", TRIVIAL)    
           do
@@ -248,17 +260,12 @@ contains
           call evenUpGridMPI(grid, .false., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+!          call writeVtkFile(grid, "afterevenup.vtk", &
+!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+
 
        endif
     enddo
-    if (myrank /=0) then
-       call unrefineCellsPhotoion(grid%octreeRoot, grid, gamma, iEquationOfState)
-
-       call evenUpGridMPI(grid, .false., .true.)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-    endif
-
 
 
     if (myrank /= 0) then
@@ -304,7 +311,7 @@ contains
           call writeInfo("calling hydro step",TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=.false.)
+          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
           if (myRank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call resetNh(grid%octreeRoot)
@@ -319,6 +326,9 @@ contains
 
 
        call writeInfo("Calling photoionization loop",TRIVIAL)
+!       call ionizeGrid(grid%octreeRoot)
+!       call testIonFront(grid%octreeRoot, grid%currentTime)
+
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
             lucyfileout, lucyfilein, 1)
        call writeInfo("Done",TRIVIAL)
@@ -364,6 +374,8 @@ contains
 
        endif
 
+          call writeVtkFile(grid, "current.vtk", &
+            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
        grid%currentTime = grid%currentTime + dt
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
@@ -371,8 +383,14 @@ contains
        if (dumpThisTime) then
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
-          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-          !          call writeAmrGridMpiAll(mpiFilename,.false.,grid)
+
+!          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
+!          call writeAmrGrid(mpiFilename, .false., grid)
+          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
+          call writeVtkFile(grid, mpiFilename, &
+            valueTypeString=(/"rho        ","HI        " , "temperature", &
+            "hydrovelocity"/))
+
 
        endif
 
@@ -439,8 +457,10 @@ contains
     logical :: crossedMPIboundary
     integer :: tag = 41
     integer :: nTotScat, nPhot
+    logical :: quickThermal
     logical, save :: firstTimeTables = .true.
 
+    quickThermal = .true.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
@@ -487,7 +507,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 1000000
+    nMonte = 10000000
 
     nIter = 0
     
@@ -506,9 +526,9 @@ contains
 
        epsoverdeltat = lcore/dble(nMonte)
        
-       call zeroDistanceGrid(grid%octreeRoot)
+       if (myrank /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
-       if (myrank == 1) write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter, maxIter
+       if (myrank == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
 
        if (myrank == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
@@ -525,8 +545,8 @@ contains
              mainloop: do iMonte = iMonte_beg, iMonte_end
                 call randomSource(source, nSource, iSource)
                 thisSource = source(iSource)
-                call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
-                
+                call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+!                write(*,*) inOctal(grid%octreeRoot, rVec), "rvec ",rVec," dir ",uhat
  !               call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
  !                    foundSubcell=tempsubcell)
  !               
@@ -544,7 +564,7 @@ contains
                 iThread = thisOctal%mpiThread(subcell)
 
                 call sendMPIPhoton(rVec, uHat, thisFreq, iThread)
-
+!                write(*,*) "Rank 0 sending photon with rvec%x ",rvec%x, " to ", iThread
                 nInf = nInf + 1
 
              end do mainloop
@@ -558,6 +578,7 @@ contains
              endLoop = .false.
              do while(.not.endLoop)
                 call getNewMPIPhoton(rVec, uHat, thisFreq, endloop)
+!                write(*,*) "rank ",myrank, " getting photon with rvec%x ",rvec%x
 !                write(*,*) "Photon at freq ",thisFreq, " received by ",myrank
                 if (.not.endLoop) then
                    nScat = 0
@@ -615,18 +636,22 @@ contains
                             else ! non-ionizing photon must be absorbed by dust
                                call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                             endif
-                            if (firsttime.and.writeoutput) then
-                               firsttime = .false.
-                               open(67,file="pdf.dat",status="unknown",form="formatted")
-                               do i = 1, nfreq
-                                  write(67,*) freq(i), spectrum(i)
-                               enddo
-                               close(67)
-                            endif
-                            
+!                            if (firsttime.and.writeoutput) then
+!                               firsttime = .false.
+!                               open(67,file="pdf.dat",status="unknown",form="formatted")
+!                               do i = 1, nfreq
+!                                  write(67,*) freq(i), spectrum(i)
+!                               enddo
+!                               close(67)
+!                            endif
                             thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                             uHat = randomUnitVector() ! isotropic emission
                             nScat = nScat + 1
+                            
+                            
+                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
+
+
                          endif
                 
 
@@ -708,14 +733,18 @@ contains
           
           thisOctal => octalArray(iOctal)%content
           
-          do i = 1 , 3
-             call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-             if (.not.firstCall) then
-                call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
-             endif
+             do i = 1 , 3
+                call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
+                if (quickThermal) then
+                   call quickThermalCalc(thisOctal)
+                else
+                   if (.not.firstCall) then
+                      call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+                   endif
+                endif
+             enddo
           enddo
-       enddo
-    endif
+       endif
 
     deallocate(octalArray)
 
@@ -1398,6 +1427,36 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     enddo
   end subroutine zeroDistanceGrid
 
+  recursive subroutine testIonFront(thisOctal, currentTime)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: currentTime
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call testIonFront(child, currentTime)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal, subcell)
+          if (rVec%x < -400.d6) then
+             thisOctal%ionFrac(subcell,1) = 0.d0
+             thisOctal%ionFrac(subcell,2) = 1.d0
+          else
+             thisOctal%ionFrac(subcell,1) = 1.d0
+             thisOctal%ionFrac(subcell,2) = 0.d0
+          endif
+       endif
+    enddo
+  end subroutine testIonFront
+
   recursive subroutine ionizeGrid(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -1531,12 +1590,29 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
              else
-                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
        endif
     enddo
   end subroutine calculateIonizationBalance
+
+  subroutine quickThermalCalc(thisOctal)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (.not.thisOctal%hasChild(subcell)) then
+          if (thisOctal%ionFrac(subcell,2) > 0.5d0) then
+             thisOctal%temperature(subcell) = 10000.d0
+          else
+             thisOctal%temperature(subcell) = 10.d0
+          endif
+       endif
+
+    enddo
+  end subroutine quickThermalCalc
 
   subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT, simple)
     type(gridtype) :: grid

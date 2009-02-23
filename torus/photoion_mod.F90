@@ -269,7 +269,7 @@ contains
        mainloop: do iMonte = iMonte_beg, iMonte_end
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
-          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
+          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
           escaped = .false.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -325,12 +325,12 @@ contains
                          call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                          call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
 !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-                         call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+!                         call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                       else
-                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                       endif
                    else ! non-ionizing photon must be absorbed by dust
-                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                    endif
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
@@ -455,7 +455,7 @@ contains
 
        do i = 1 , 3
           call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+!          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
        enddo
 
     enddo
@@ -630,7 +630,7 @@ end if ! (my_rank /= 0)
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
-       nMonte = nMonte * 2
+!      if (niter < 6) nMonte = nMonte * 2
 
 
     if (writeoutput) call writeAmrGrid("photo_tmp.grid",.false.,grid)
@@ -1530,33 +1530,33 @@ end subroutine photoIonizationloop
                + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
        endif
 
-       ! neutral H heating
+       ! neutral h heating
 
-       if ((grid%Ion(i)%z == 1).and.(grid%Ion(i)%n == 1)) then
-          thisOctal%Hheating(subcell) = thisOctal%Hheating(subcell) &
-            + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
-            * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh)) * photonPacketWeight
+       if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
+          thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
+            + dble(distance) * dble(xsec / (thisfreq * hcgs)) &
+            * (dble(hcgs * thisfreq) - dble(hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
        endif
 
-       ! neutral He heating
+       ! neutral he heating
 
-       if ((grid%Ion(i)%z == 2).and.(grid%Ion(i)%n == 2)) then
-          thisOctal%Heheating(subcell) = thisOctal%Heheating(subcell) &
-            + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
-            * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh)) * photonPacketWeight
+       if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
+          thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
+            + dble(distance) * dble(xsec / (thisfreq * hcgs)) &
+            * (dble(hcgs * thisfreq) - dble(hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
        endif
 
     enddo
 
 
 
-    call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaAbsDust=kappaAbsDust, kappaAbs=kappaAbs)
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
 
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-         + dble(distance) * dble(kappaAbsDust)
+    thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
+         + dble(distance) * dble(kappaabsdust)
 
 
-  end subroutine updateGrid
+  end subroutine updategrid
 
 subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOverdeltaT)
   implicit none
@@ -2746,7 +2746,7 @@ real(double) function returnGamma(table, temp, freq) result(out)
   call locate(table%temp, table%nTemp, log10(temp), i)
   call locate(table%freq, table%nFreq, log10(freq), j)
 
-  if (log10(freq) >= table%freq(1)) then
+  if (log10(freq) >= table%freq(1).and.log10(freq) <= table%freq(table%nFreq)) then
      tfac  = (log10(temp) - table%temp(i))/(table%temp(i+1) - table%temp(i))
      ffac  = (log10(freq) - table%freq(j))/(table%freq(j+1) - table%freq(j))
      
@@ -2775,7 +2775,7 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
   ! do Saha-Milne continua for H, HeI and HeII
 
-  do k = 1 , 2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  do k = 1 , 2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
      if (k == 1) iIon = 1
      if (k == 2) iIon = 3
@@ -2783,9 +2783,9 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
      call locate(freq, nfreq, grid%ion(iIon)%nuThresh, n1)
      n2 = nFreq
-     if (iIon == 3) then
-        call locate(freq, nfreq, grid%ion(iIon+1)%nuThresh, n2)
-     endif
+!     if (iIon == 3) then
+!        call locate(freq, nfreq, grid%ion(iIon+1)%nuThresh, n2)
+!     endif
      do i = n1, n2
         
         e = freq(i) * hcgs* ergtoev
@@ -2835,12 +2835,13 @@ subroutine addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
      if (k == 3) iIon = 4
 
      call locate(freq, nFreq, grid%ion(iIon)%nuThresh, iEnd)
-     do i = 2, iEnd
+!     do i = 2, iEnd
+     do i = 1, nFreq
         fac = returnGamma(table(k), dble(thisOctal%temperature(subcell)) , freq(i))
         fac = fac*1.d-40 ! units of 10^-40 erg/s/cm/cm/cm
         fac = fac * thisOctal%ne(subcell) * thisOctal%nh(subcell) &
              * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance
-        spectrum(i) = spectrum(i) + fac*dfreq(i)
+        spectrum(i) = spectrum(i) + fac*dfreq(i)*5.
      enddo
   enddo
 
@@ -2928,10 +2929,14 @@ subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal
         lineEmissivity = emissivity(iup, ilow) * Hbeta * 1.e-25
         energy = (hydE0eV / dble(iLow**2))-(hydE0eV / dble(iUp**2))
         lineFreq = cSpeed/lambdaTrans(iup, ilow)
+!        if (iup ==4 .and. ilow == 2) then
+!           write(*,*) "hbeta: ",lambdatrans(iup,ilow)*1.d8, emissivity(iup, ilow)
+!           stop
+!        endif
         if ((lineFreq > freq(1)).and.(lineFreq < freq(nfreq))) then
            call locate(freq, nFreq, lineFreq, i)
            i = i + 1
-           spectrum(i) = spectrum(i) + lineEmissivity
+           spectrum(i) = spectrum(i) + lineEmissivity 
         endif
      end do
   end do
@@ -3375,7 +3380,7 @@ end subroutine readHeIIrecombination
           if (thisOctal%temperature(subcell) > 1.5d0) then
              call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
              call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-             call addHydrogenRecombinationLines(nfreq,  freq, dfreq, spectrum, thisOctal, subcell, grid)
+!             call addHydrogenRecombinationLines(nfreq,  freq, dfreq, spectrum, thisOctal, subcell, grid)
              !         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
              call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
              call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
@@ -3804,6 +3809,7 @@ end subroutine readHeIIrecombination
        end do
      end subroutine unpackIonFrac
 #endif
+
 
 end module
 

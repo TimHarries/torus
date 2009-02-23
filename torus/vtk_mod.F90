@@ -384,8 +384,18 @@ contains
                case("bias")
                   write(lunit, *) real(thisOctal%biasCont3d(subcell))
 
+               case("mpithread")
+                  write(lunit, *) real(thisOctal%mpithread(subcell))
+
+               case("bcond")
+                  write(lunit, *) real(thisOctal%boundaryCondition(subcell))
+
                case("deltaT")
                   write(lunit, *) real(thisOctal%oldtemperature(subcell))
+
+
+               case("scattered")
+                  write(lunit, *) real(thisOctal%scatteredIntensity(subcell,5,3))
 
                case("hydrovelocity")
                   write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
@@ -432,6 +442,18 @@ contains
                case("phi")
                   write(lunit, *) real(thisOctal%phi_i(subcell))
 
+               case("q_i")
+                  write(lunit, *) real(thisOctal%q_i(subcell))
+
+               case("u_i")
+                  write(lunit, *) real(thisOctal%u_interface(subcell))
+
+               case("rhoe")
+                  write(lunit, *) real(thisOctal%rhoe(subcell))
+
+               case("q_i-1")
+                  write(lunit, *) real(thisOctal%q_i_minus_1(subcell))
+
 
                case DEFAULT
                   write(*,*) "Cannot write vtk type ",trim(valueType)
@@ -466,12 +488,12 @@ contains
     integer :: myRank, nThreads, iThread
 #endif
 
-
+!
 #ifdef MPI
 ! just return if the grid is not decomposed and MPI job and not zero rank thread
     if ((.not.grid%splitOverMpi).and.(myRankGlobal /= 0)) goto 666
 #endif
-
+!
 #ifdef MPI
 ! just return if the grid is decomposed and MPI job and this is rank zero thread
     if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
@@ -490,10 +512,18 @@ contains
        nValueType = nValueType - 1
        close(29)
     else
-       nValueType = 3
-       valueType(1) = "rho"
-       valueType(2) = "velocity"
-       valueType(3) = "temperature"
+       if (.not.grid%splitOverMpi) then
+          nValueType = 3
+          valueType(1) = "rho"
+          valueType(2) = "velocity"
+          valueType(3) = "temperature"
+       else
+          nValueType = 4
+          valueType(1) = "rho"
+          valueType(2) = "velocity"
+          valueType(3) = "temperature"
+          valueType(4) = "mpithread"
+       endif
     endif
 
     if (PRESENT(valueTypeString)) then

@@ -18,6 +18,8 @@ module input_variables
   logical :: debug
   logical :: suppressWarnings
   integer :: idump ! hydrodynamics time step dump number
+  logical :: doSelfGrav
+  real(double) :: gridDistanceScale
   real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
   character(len=10) :: geometry
@@ -25,6 +27,7 @@ module input_variables
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
   logical :: photoionization
+  logical :: useMetals
   logical :: molecular
   logical :: h21cm 
   real :: beamSize
@@ -64,6 +67,7 @@ module input_variables
   real :: grainFrac(maxDustTypes)
   real :: grainSize
   logical :: mie
+  logical :: storescattered
   logical :: readMiePhase
   logical :: writeMiePhase
   logical :: useOldMiePhaseCalc

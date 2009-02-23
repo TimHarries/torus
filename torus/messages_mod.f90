@@ -69,9 +69,9 @@ contains
 
   subroutine writefatal(wstring)
     character(len=*) :: wstring
-    if (writeoutput) then
+!    if (writeoutput) then
        write(*,'(a,a,a)') "FATAL ERROR: ", trim(wstring)
-    endif
+!    endif
   end subroutine writefatal
 
   subroutine writeInfo(wstring, level)

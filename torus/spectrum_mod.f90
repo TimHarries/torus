@@ -236,6 +236,20 @@ module spectrum_mod
 
     end subroutine readSpectrum
 
+    subroutine copySpectrum(a, b)
+      type(SPECTRUMTYPE) :: a, b
+      integer :: nLambda
+      nLambda = b%nlambda
+      allocate(a%flux(1:nLambda))
+      allocate(a%lambda(1:nLambda))
+      allocate(a%dlambda(1:nLambda))
+      allocate(a%prob(1:nLambda))
+      a%flux = b%flux
+      a%lambda = b%lambda
+      a%dlambda = b%dlambda
+      a%prob = b%prob
+    end subroutine copySpectrum
+
     subroutine probSpectrum(spectrum, biasToLyman)
       type(SPECTRUMTYPE) :: spectrum
       logical, optional :: biasToLyman

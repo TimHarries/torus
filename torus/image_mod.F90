@@ -821,63 +821,119 @@ module image_mod
        endif
      end subroutine pixelLocate
             
-  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda)
+  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
     use input_variables, only : npix, setimageSize, vmin, vmax, griddistance
     type(OCTAL), pointer :: thisOctal
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
     integer :: subcell
     real :: lambda, xArray(:)
-    integer :: ilambda, nLambda
+    integer :: ilambda, nLambda, sourceNumber
     real(double) :: tVal
     type(GRIDTYPE) :: grid
     type(IMAGETYPE) :: image
-    type(VECTOR) :: viewVec, xVec, yVec, position
-    real(double) :: distToGrid
+    type(VECTOR) :: viewVec, xVec, yVec, position, photoDirection, thisVec
+    integer :: iElement
+    type(VECTOR) :: pVec
+    real(double) :: cosTheta
+    real(double) :: distToGrid, distToSource, currentDistance
     integer :: ix, iy
-    real(double) :: i0, tau, dtau, kappaAbs, jnu, snu
-    logical :: ok
-    
+    real(double) :: i0, tau, dtau, kappaAbs, jnu, snu, kappaSca, iScattered
+    logical :: ok, hitsource
+    integer, parameter :: nTheta = 11, nPhi = 10
+    integer :: iTheta, iPhi
+    real(double) :: thisTheta, thisPhi
+    real(double) :: scale, dlam, lamCen, lamStart, lamEnd
+    real(double) :: objectDistance
+
+
+    lamStart = 1.d4
+    lamEnd = 1.01e4
+    objectDistance = 2.25558e-8 * pctocm
+
+    scale = 1.d20
+    scale = scale / (objectDistance**2) 
+    scale = scale * 1.d4
+    scale = scale * 1.d-7
+    dlam = (lamEnd - lamStart) * 2.d0 * angstoMicrons
+    lamCen = (lamStart + lamEnd) / 2.d0 * angstoMicrons
+
+
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    image = initImage(npix, npix, setimageSize, setimageSize, vmin, vmax) 
+    image = initImage(npix, npix, setimageSize/1.e10, setimageSize/1.e10, vmin, vmax) 
 
     xVec = zHat .cross. viewVec
-    yVec = xVec .cross. zHat
-
     call normalize(xVec)
+    yVec = xVec .cross. viewVec
     call normalize(yVec)
 
+    thisVec = (-1.d0)*viewVec
+    thisTheta = acos(thisvec%z)
+    thisPhi = atan2(thisVec%y,thisVec%x)
+
+    if (thisPhi < 0.d0) thisPhi = thisPhi + twoPi 
+    iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
+    iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
+
+    write(*,*) "Scattered Light indices " , itheta, iphi
 
     do ix = 1, image%nx
        do iy = 1, image%ny
-
           position = (-10.d0*grid%octreeRoot%subcellSize)*viewVec + &
                (dble(image%xAxisCentre(ix)) * xVec) + (dble(image%yAxisCentre(iy)) * yVec)
           distToGrid = distanceToGridFromOutside(grid, position, viewVec) 
           position = position + (1.d-1*grid%halfSmallestSubcell+distToGrid) * viewVec
 
+
+          call distanceToSource(source, nSource, position, viewVec, hitSource, disttosource, sourcenumber)
+          if (.not.hitSource) distToSource = 1.d30
+
+          if (hitSource) then
+             pVec = (position + (viewVec * distToSource) - source(sourceNumber)%position)
+             call normalize(pVec)
+             cosTheta = -1.d0*(pVec.dot.viewVec)
+             photoDirection = pVec
+             call normalize(PhotoDirection)
+             iElement = getElement(source(sourcenumber)%surface, photoDirection)
+          endif
+
           thisOctal => grid%octreeRoot
           subcell = 1
           i0 = 0.d0
-          do while(inOctal(grid%octreeRoot, position))
+          tau = 0.d0
+          currentDistance  = 0.d0
+          do while(inOctal(grid%octreeRoot, position).and.(currentDistance < disttoSource))
              call findSubcelllocal(position, thisOctal, subcell)
              call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
-             call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs)
-             dTau = kappaAbs * tVal
+             call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
+             dTau = (kappaAbs + kappaSca) * tVal
 
-             jnu = kappaAbs * bnu(cspeed/lambda, dble(thisOctal%temperaturedust(subcell)))
+             jnu = kappaAbs * bnu(cspeed/(lambda*angstromTocm), dble(thisOctal%temperature(subcell)))
 
-             if (kappaAbs .ne. 0.d0) then
-                
-                snu = jnu/kappaAbs
-                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
 
-             else
-                snu = tiny(snu)
-                i0 = i0 + tiny(i0)
-             endif
+             iScattered = returnScatteredIntensity(position,thisOctal, subcell, (-1.d0)*viewVec)
+!             write(*,*) iScattered
+!             write(*,*) "subcell ",thisOctal%scatteredIntensity(subcell,:,:)
+             i0 = i0 + exp(-tau) * (1.d0 - exp(-dtau)) * iScattered
+
+!             if (kappaAbs .ne. 0.d0) then
+!                
+!                snu = jnu/kappaAbs
+!                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+!             else
+!                snu = tiny(snu)
+!                i0 = i0 + tiny(i0)
+!             endif
              tau = tau + dtau
+             position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
           end do
-          image%pixel(ix, iy)%i = i0
+          if (hitSource) then
+             i0 = i0 + i_nu(source(sourceNumber), cSpeed/(lambda*angstromtocm), iElement)*exp(-tau)
+             write(*,*) "hit core ", &
+            i_nu(source(sourceNumber), cSpeed/(lambda*angstromtocm), iElement)*exp(-tau), tau, lambda
+          endif
+          image%pixel(ix, iy)%i = i0 * scale
        end do
     end do
 

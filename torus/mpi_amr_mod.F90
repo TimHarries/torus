@@ -25,6 +25,65 @@ contains
 
   end subroutine setupAMRCOMMUNICATOR
 
+  subroutine findMassOverAllThreads(grid, mass)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    real(double) :: mass
+    real(double), allocatable :: massOnThreads(:), temp(:)
+    integer :: ierr
+
+    allocate(massOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    massOnThreads = 0.d0
+    temp = 0.d0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findMassOverAllThreads: grid not split over MPI")
+       mass = 0.d0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findtotalMassMPI(grid%octreeRoot, massOnThreads(myRankGlobal))
+       call MPI_ALLREDUCE(massOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       mass = SUM(temp(1:nThreadsGlobal))
+    end if
+666 continue
+  end subroutine findMassOverAllThreads
+    
+  recursive subroutine findTotalMassMPI(thisOctal, totalMass, minRho, maxRho)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: totalMass
+  real(double),optional :: minRho, maxRho
+  real(double) :: dv
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalMassMPI(child, totalMass, minRho, maxRho)
+                exit
+             end if
+          end do
+       else
+
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             dv = cellVolume(thisOctal, subcell)
+             totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
+             if (PRESENT(minRho)) then
+                if (thisOctal%rho(subcell) > 1.d-20) then
+                   minRho = min(thisOctal%rho(subcell), minRho)
+                endif
+             endif
+             if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
+          endif
+       endif
+    enddo
+  end subroutine findTotalMassMPI
+
+
   
 
   subroutine getSquares(grid, plane, valueName, nSquares, corners, value, speed, ang)
@@ -389,12 +448,12 @@ contains
                 tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
                 tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
 
-                tempStorage(12) = neighbourOctal%flux_i(neighbourSubcell)
+                tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
 
 
-
-
-
+!                write(*,*) myrank," set up tempstorage with ", &
+!                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
+!                     neighbourOctal%edgeCell(neighbourSubcell)
 
              else ! need to average
                 call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
@@ -417,7 +476,7 @@ contains
                 tempStorage(11) = flux
                 tempStorage(12) = phi
              endif
-!                          write(*,*) myRank, " sending temp storage"
+!                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
 !                          write(*,*) myRank, " temp storage sent"
 
@@ -429,13 +488,15 @@ contains
     endif
   end subroutine receiveAcrossMpiBoundary
   
-  subroutine exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+  subroutine exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup, iGroup
+    integer, optional :: useThisBound
     integer :: rBound
     integer :: myRank, ierr
+    logical :: doExchange
     character(len=10) :: boundaryType(6) = (/"left  ","right ", "top   ", "bottom", "front ", "back  "/)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -446,29 +507,36 @@ contains
        do iPair = 1, nPairs
 
           if (group(iPair) == iGroup) then
-             !       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
-             if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
-                !          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
-                call receiveAcrossMpiBoundary(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair))
-                !          write(*,*) myrank, " finished receive across boundary"
-                if      (nBound(iPair) == 1) then
-                   rBound = 2
-                else if (nBound(iPair) == 2) then
-                   rBound = 1
-                else if (nBound(iPair) == 3) then
-                   rBound = 4
-                else if (nBound(iPair) == 4) then
-                   rBound = 3
-                else if (nBound(iPair) == 5) then
-                   rBound = 6
-                else if (nBound(iPair) == 6) then
-                   rBound = 5
+             doExchange = .true.
+             if (present(useThisBound)) then
+                doExchange = .false.
+                if (nBound(iPair) == useThisBound) doExchange = .true.
+             endif
+             if (doExchange) then
+                !       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
+                if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
+                   !          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
+                   call receiveAcrossMpiBoundary(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair))
+                   !          write(*,*) myrank, " finished receive across boundary"
+                   if      (nBound(iPair) == 1) then
+                      rBound = 2
+                   else if (nBound(iPair) == 2) then
+                      rBound = 1
+                   else if (nBound(iPair) == 3) then
+                      rBound = 4
+                   else if (nBound(iPair) == 4) then
+                      rBound = 3
+                   else if (nBound(iPair) == 5) then
+                      rBound = 6
+                   else if (nBound(iPair) == 6) then
+                      rBound = 5
+                   endif
+                   call receiveAcrossMpiBoundary(grid, boundaryType(rBound), thread2(iPair), thread1(iPair))
+                   !          if (myRank == 1) then
+                   !             write(*,*) "Exchange done for direction ",nbound(ipair), " and ",rBound
+                   !             write(*,*) "Between threads ", thread1(ipair), " and ", thread2(ipair)
+                   !          endif
                 endif
-                call receiveAcrossMpiBoundary(grid, boundaryType(rBound), thread2(iPair), thread1(iPair))
-                !          if (myRank == 1) then
-                !             write(*,*) "Exchange done for direction ",nbound(ipair), " and ",rBound
-                !             write(*,*) "Between threads ", thread1(ipair), " and ", thread2(ipair)
-                !          endif
              endif
           endif
        enddo
@@ -769,8 +837,8 @@ contains
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
-                neighbourOctal => thisOctal
-                call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+                neighbourOctal => thisOctal 
+               call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
 !                if (neighbourOctal%mpiThread(neighboursubcell) /= iThread) then
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
@@ -844,40 +912,21 @@ contains
 
     nGroup = 1
     group = 0
-    group(1) = nGroup
-    iStart = 1
+    nList = 0
     do while(any(group(1:nPairs)==0))
-       nList = 2
-       list(1) = thread1(iStart)
-       list(2) = thread2(iStart)
-       groupFound = .false.
-       do i = iStart+1, nPairs
+       do i = 1, nPairs
           if (group(i) == 0) then
              if (.not.inList(thread1(i), list, nList).and.(.not.inList(thread2(i), list, nList))) then
                 group(i) = nGroup
                 list(nList+1) = thread1(i)
                 list(nList+2) = thread2(i)
                 nList = nList + 2
-                groupFound = .true.
              endif
           endif
        enddo
-       if (.not.groupFound) then
-          group(iStart) = nGroup
-       endif
        nGroup = nGroup + 1
-       do i = 1, nPairs
-          if (group(i) == 0) then
-             iStart = i
-             exit
-          endif
-       enddo
+       nList = 0
     enddo
-!    if (myRankGlobal == 1) then
-!       do iPair = 1, nPairs
-!          write(*,*) "Pair: ",iPair, thread1(iPair), " -> ", thread2(iPair), group(iPair)
-!       enddo
-!    endif
   end subroutine returnBoundaryPairs
 
   logical function inList(num, list, nList)
@@ -1389,7 +1438,7 @@ contains
     include 'mpif.h'
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
-    real(double) :: loc(3), tempStorage(7)
+    real(double) :: loc(3), tempStorage(8)
     integer :: subcell, i
     integer :: tag1 = 78, tag2 = 79
     integer :: ierr
@@ -1431,10 +1480,13 @@ contains
 !             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
 !             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
-             if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:7))
-             thisOctal%tempStorage(subcell,1:7) = tempStorage(1:7)
+             if (.not.associated(thisOctal%tempStorage)) then
+                allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                thisOctal%tempStorage = 0.d0
+             endif
+             thisOctal%tempStorage(subcell,1:8) = tempStorage(1:8)
           endif
        endif
     enddo
@@ -1476,8 +1528,9 @@ contains
           tempStorage(5) = thisOctal%rhow(Subcell)
           tempStorage(6) = thisOctal%energy(Subcell)
           tempStorage(7) = thisOctal%pressure_i(Subcell)
+!          tempStorage(8) = thisOctal%phi_i(Subcell)
 !          write(*,*) myRankGlobal, " sending tempstorage to ", receiveThread
-          call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
        endif
     enddo
 !    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop

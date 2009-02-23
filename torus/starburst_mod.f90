@@ -323,6 +323,7 @@ contains
        logical :: ok 
        integer :: nKurucz
        character(len=*) :: kLabel(:)
+       logical,save :: firstWarning = .true.
        type(SPECTRUMTYPE) :: kSpectrum(:)
 
        ok = .true.
@@ -380,7 +381,11 @@ contains
              enddo
           endif
           if (.not.ok) then
-             call writeFatal("Cannot find appropriate model atmosphere for source")
+             if (firstWarning) then
+                call writeInfo("Cannot find appropriate model atmosphere for source: "//trim(thisFile), IMPORTANT)
+                firstWarning  = .false.
+             endif
+             call fillSpectrumBB(source%spectrum,source%teff, 100.d0, 1.d7, 1000)
           endif
        endif
 
@@ -389,14 +394,19 @@ contains
 
      subroutine createKuruczFileName(teff, logg, thisfile)
        real :: teff, logg
+       integer :: i
        character(len=*) thisfile
-       character(len=80) :: fluxfile
+       character(len=80) :: fluxfile, dataDirectory
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+
        if (teff < 10000.) then
           write(fluxfile,'(a,i4,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"
        else
           write(fluxfile,'(a,i5,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"          
        endif
-       thisFile = trim(fluxfile)
+       thisFile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
      end subroutine createKuruczFileName
 
      subroutine readKuruczGrid(label, spectrum, nFiles)
@@ -435,7 +445,8 @@ contains
        ok = .false.
        do i = 1, nFiles
           if (trim(label(i)).eq.trim(thisLabel)) then
-             thisSpectrum = spectrum(i)
+             call copySpectrum(thisSpectrum, spectrum(i))
+             write(*,*) "spectrum copied"
              ok = .true.
              exit
           endif

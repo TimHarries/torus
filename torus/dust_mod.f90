@@ -1149,7 +1149,7 @@ contains
     use input_variables, only : nDustType
     type(GRIDTYPE) :: grid
     integer :: i, j, k
-    real :: bNuTot, rosselandKappa, temperature
+    real(double) :: bNuTot, rosselandKappa, temperature
     real(double) :: dFreq, Freq
     real :: maxTemp
 
@@ -1172,10 +1172,11 @@ contains
 !             rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
 !                  (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))
 !             bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
-
-             rosselandKappa = rosselandKappa + dbNubydT(freq, dble(temperature)) * dFreq / &
-                  (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))
-             bnutot = bnutot + dbNubydT(freq, dble(temperature))*dfreq
+             if ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)) /= 0.) then
+                rosselandKappa = rosselandKappa + dbNubydT(freq, dble(temperature)) * dFreq / &
+                     (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))
+                bnutot = bnutot + dbNubydT(freq, dble(temperature))*dfreq
+             endif
 
           enddo
           if (rosselandkappa /= 0.) then
@@ -1421,16 +1422,18 @@ contains
           enddo
        endif
        if (writeoutput) then
-          open(20, file="albedo.dat", status="unknown", form="formatted")
-          write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
-             &  kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
-          write(20,*) "# Note that the opacities are per gram of dust"
-          do i = 1, nLambda
-             kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
-             kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
-             write(20,*) xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
-          enddo
-          close(20)
+          if (dustToGas /= 0.) then
+             open(20, file="albedo.dat", status="unknown", form="formatted")
+             write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
+                  &  kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
+             write(20,*) "# Note that the opacities are per gram of dust"
+             do i = 1, nLambda
+                kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
+                kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
+                write(20,*) xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
+             enddo
+             close(20)
+          endif
        endif
 
 

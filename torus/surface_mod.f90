@@ -57,6 +57,7 @@ module surface_mod
 contains
 
   subroutine buildSphere(centre, radius, surface, nTheta, contFile)
+    use input_variables, only : teff, lamstart, lamEnd, nLambda
     type(VECTOR),intent(in) :: centre
     real(double),intent(in) :: radius ! 1.e10 cm
     real(double) :: area ! 1.e20 cm^2
@@ -81,7 +82,11 @@ contains
     allocate(surface%angleArray(1:nTheta,1:nTheta))
     ! open the continuum flux file to get the number of points
 
-    call readSpectrum(hotSpec, contfile, ok)
+    if (contfile /= "blackbody") then
+       call readSpectrum(hotSpec, contfile, ok)
+    else
+       call fillSpectrumBB(hotSpec, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
+    endif
 
 
     nNuHotFlux = hotSpec%nLambda
@@ -266,6 +271,7 @@ contains
         area = 0.0
       end where
 
+      if (Writeoutput) then
       write (*,'(a,f12.3)') 'Hotspot filling factor: ',fillFactor
                             
       write (*,'(a,f12.3)') 'Min temperature of accretion region: ',&
@@ -286,9 +292,9 @@ contains
       write(*,'(a,f14.1)') "Accretion black-body temperature estimated to be about: ",&
                  (real(SUM(surface%totalAccretion),kind=db) / &
                  ((fourPi*(surface%radius*1.e10)**2.*stefanBoltz)*fillFactor) )**0.25
-      
+      endif
     else
-      print *, 'Surface does not contain accretion hotspots'
+      if (Writeoutput) print *, 'Surface does not contain accretion hotspots'
     end if
     print *, ''
     

@@ -4317,5 +4317,78 @@ END SUBROUTINE GAUSSJ
     DEALLOCATE(seed)
   END SUBROUTINE init_random_seed
 
+
+  subroutine bonnorEbertRun(t, mu, rho0, rCut,  nr, r, rho)
+    use constants_mod
+    implicit none
+    real(double) :: t, rho0, rCut
+    integer :: nr
+    real(double) :: r(:), rho(:)
+    real(double), allocatable :: zeta(:), phi(:)
+    real(double) :: dphibydzeta, d2phibydzeta2, dzeta, r0
+    real(double) :: mu, soundSpeed, mass, zinner, eThermal, eGrav, dv
+    integer :: i
+    real(double), parameter :: zetaCrit = 5.d0
+    real(double) :: dr, drhodr, d2rhodr2
+    character(len=80) :: message
+
+
+
+    zinner = 0.001d0
+    allocate(zeta(1:nr), phi(1:nr))
+    zeta = 0.d0
+    phi = 0.d0
+
+    do i = 1, nr
+      zeta(i) = log10(zinner) + (log10(zetaCrit)-log10(zinner))*dble(i-1)/dble(nr-1)
+   enddo
+   zeta(1:nr) = 10.d0**zeta(1:nr)
+   zeta(1) = 0.d0
+   soundSpeed = sqrt((kErg*t) /(mu*mHydrogen))
+
+   r0 = 0.89d0 * soundSpeed / sqrt(bigG * rho0)
+!   r0 = 1.6d0*pctocm
+   do i = 1, nr
+      r(i) = zeta(i) * r0
+   enddo
+   
+   drhodr  = 0.d0
+   rho(1) = rho0
+   d2rhodr2 = (-fourPi*bigG*rho(1)**2 * (mu*mHydrogen) / (kerg * t)) 
+ 
+   do i = 2, nr
+      dr = r(i) - r(i-1)
+      rho(i) = rho(i-1) + drhodr * dr
+      d2rhodr2 = (-fourPi*bigG*rho(i)**2 * (mu*mHydrogen) / (kerg * t)) - (2.d0/r(i))*drhodr + (1.d0/rho(i))*drhodr**2
+      drhodr = drhodr + d2rhodr2 * dr
+   enddo
+      
+
+   mass = 0.d0
+   eThermal = 0.d0
+   eGrav = 0.d0
+   do i = 2, nr
+      dv = fourPi*r(i)**2*(r(i)-r(i-1))
+      mass = mass + rho(i)*dv
+      eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
+      eThermal = eThermal + (dv*rho(i)/(mu*mHydrogen))*kerg*t
+   enddo
+   
+   write(message,'(a,f5.2)') "Outer radius of Bonnor-Ebert sphere is (in pc): ",r0/pctocm
+    call writeInfo(message, TRIVIAL)
+   write(message,'(a,f5.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
+   call writeInfo(message, TRIVIAL)
+   write(message,'(a,1pe12.3)') "Gravitational p.e.  contained in Bonnor-Ebert sphere is: ",eGrav
+   call writeInfo(message, TRIVIAL)
+   write(message,'(a,1pe12.3)') "Thermal energy contained in Bonnor-Ebert sphere is: ",eThermal
+   call writeInfo(message, TRIVIAL)
+   write(message,'(a,f6.3)') "Ratio of thermal enery/grav energy: ",eThermal/eGrav
+   call writeInfo(message, TRIVIAL)
+
+ end subroutine bonnorEbertRun
+      
+   
+      
+
 end module utils_mod
 
