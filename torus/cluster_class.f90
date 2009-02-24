@@ -5,16 +5,10 @@ module cluster_class
   ! Class definition and method for stellar cluster (multiple sources).
   !
   
-  use sph_data_class
-  use source_mod
-  use spectrum_mod
-  use octal_mod
-  use gridtype_mod
-  use isochrone_class
-  use messages_mod
+  use sph_data_class, only: get_utime, get_time, get_umass, get_pt_mass, get_udist, get_rhon
+  use source_mod, only: SOURCETYPE, stellar_disc_exists
+  use octal_mod, only: octal, subcellCentre, cellVolume, within_subcell
   use vector_mod
-  use constants_mod, only: mSol, secsToYears
-  use input_variables, only: rCore, tMinGlobal
   
   implicit none
 
@@ -95,9 +89,9 @@ contains
   ! Initializing with sph data
   !
   subroutine int_cluster_alt(this, amrGridSize, disc_on)
+    use sph_data_class, only: get_nptmass
     implicit none
     type(cluster), intent(inout) :: this
-!    type(sph_data), intent(in) :: sphData
     real(double), intent(in) :: amrGridSize
     logical, intent(in) :: disc_on
     ! Store important info from the data.    
@@ -215,10 +209,14 @@ contains
   ! 
 
   subroutine build_cluster(this, lambda_beg, lambda_end, iso_data, fix_source_R, fix_source_L, fix_source_T)
+    use constants_mod, only: mSol, rSol, lSol, secsToYears
     USE parallel_mod, ONLY: torus_abort
+    use isochrone_class
+    use source_mod, only: fillspectrumBB, normalizedspectrum
+    use sph_data_class, only: get_position_pt_mass
     implicit none
     type(cluster), intent(inout) :: this
-!    type(sph_data), intent(in) :: sphData
+
     ! starting and the ending wavelength in Angstrome!
     real(double), intent(in) :: lambda_beg, lambda_end 
     !
@@ -318,6 +316,8 @@ contains
   ! Initialize some parameters in grid
   !
   subroutine initClusterAMR(grid)
+    use input_variables, only: rCore
+    use gridtype_mod, only: GRIDTYPE
     implicit none    
     type(GRIDTYPE), intent(inout)  :: grid
     
@@ -343,7 +343,9 @@ contains
   !
   subroutine assign_grid_values(thisOctal,subcell)
 
-    use input_variables, only: h21cm
+    use sph_data_class, only: Clusterparameter, sphData
+    use constants_mod, only: mhydrogen
+    use input_variables, only: h21cm, tMinGlobal
     use h21cm_mod, only: hi_emop
 
     IMPLICIT NONE
@@ -401,8 +403,6 @@ contains
 
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
-!    type(gridtype), intent(in) :: grid
-!    type(sph_data), intent(in) :: sphData
     character(len=*) :: geometry
     type(cluster), intent(in), optional :: a_cluster
     real(double) :: density_ave, rho_disc_ave, dummy_d
@@ -494,13 +494,12 @@ contains
   ! Updates the sph particle linked list.
   !
   subroutine update_particle_list(thisOctal, subcell, newChildIndex)
+    use sph_data_class, only: get_position_gas_particle
     implicit none
     TYPE(octal), INTENT(INOUT) :: thisOctal ! the parent octal 
 !    type(octal), pointer :: thisOctal
     integer, intent(in) :: subcell       ! do loop index of thisOctal
     integer, intent(in) :: newChildIndex ! new child index
-   !type(gridtype), intent(in) :: grid
-!    type(sph_data), intent(in) :: sphData
     !
     integer          :: np, i, j, k
     real(double) :: udist  ! units for distance
@@ -554,13 +553,13 @@ contains
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
   subroutine find_n_particle_in_subcell(n, rho_ave, node, subcell, rho_min, rho_max, n_pt)
+    use sph_data_class, only: sphData, get_position_pt_mass, get_position_gas_particle
     implicit none
     integer, intent(out) :: n                ! number of particles in the subcell
     integer, intent(out), optional :: n_pt   ! number of point masses in the subcell 
     real(double), intent(out) :: rho_ave ! average density of the subcell
     real(double), intent(out), optional :: rho_min, rho_max
     real(double) :: this_rho
-!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
@@ -654,167 +653,13 @@ contains
     
   end subroutine find_n_particle_in_subcell
 
-  subroutine find_density(n, dens_ave, node, subcell)
-    implicit none
-    integer, intent(out) :: n                ! number of particels in the subcell
-    real(double), intent(out) :: dens_ave ! average density of the subcell
-!    type(sph_data), intent(in)    :: sphData
-    type(octal), intent(inout)    :: node
-    integer, intent(in)           :: subcell ! index of the subcell
-    !
-    integer :: npart
-    integer :: i, j, counter
-    real(double) :: x, y, z
-    !
-    !
-    real(double), save :: umass, udist, udens  ! for units conversion  
-    real(double), save :: dens_min 
-    logical, save  :: first_time = .true.
-    !
-    !logical :: restart
-    !    
-    integer, parameter :: nsample =400
-
-    ! Carry out the initial calculations
-    if (first_time) then       
-       ! units of sphData
-       umass = get_umass()  ! [g]
-       udist = get_udist()  ! [cm]
-       udens = umass/(udist**3)
-
-       ! convert units
-       udist = udist/1.0d10  ! [10^10cm]
-
-       dens_min = get_rhon_min()
-       first_time = .false.
-    end if
-
-    if (associated(node%gas_particle_list)) then
-       
-       ! retriving the number of the total gas particles
-       ! in "node".
-       ! -- using the function in linked_list_class.f90
-       npart = SIZE(node%gas_particle_list)
-       
-       counter = 0
-       dens_ave = 0.0d0
-
-       do i=1, npart
-          ! Retriving the sph data index for this paritcle
-          j = node%gas_particle_list(i)
-          
-          ! retriving this posisiton of the gas particle.
-          call get_position_gas_particle( j, x, y, z)
-          
-          ! convert units
-          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
-          ! quick check to see if this gas particle is
-          ! belongs to this cell.
-          if ( within_subcell(node, subcell, x, y, z) ) then
-             counter = counter + 1
-             dens_ave = dens_ave + get_mass(j) 
-          end if
-          
-       end do
-       n = counter
-    else
-       n = 0
-    endif
-    
-    if (n>0) then
-       dens_ave = dens_ave*umass/(1e30*cellVolume(node, subcell))  ! [g/cm^3]
-    else
-       dens_ave = 1.d-30
-    end if
-    
-  end subroutine find_density
-
-  subroutine find_velocity(n, vel_ave, node, subcell) ! technically finding average momentum?
-    implicit none
-    integer, intent(out) :: n                ! number of particels in the subcell
-    type(VECTOR), intent(out) :: vel_ave ! average density of the subcell
-!    type(sph_data), intent(in)    :: sphData
-    type(octal), intent(inout)    :: node
-    integer, intent(in)           :: subcell ! index of the subcell
-    !
-    integer :: npart
-    integer :: i, j, counter
-    real(double) :: x, y, z
-    real(double) :: mass, mass_sum
-
-    real(double), save :: umass, udist, utime  ! for units conversion  
-    real(double), save :: dens_min
-    logical, save  :: first_time = .true.
-
-    ! Carry out the initial calculations
-    if (first_time) then       
-       ! units of sphData
-       umass = get_umass()  ! [g]
-       udist = get_udist()  ! [cm]
-       utime = get_utime()  ! [s]
-
-       ! convert units
-       udist = udist/1.0d10  ! [10^10cm]
-
-       dens_min = get_rhon_min()
-       first_time = .false.
-    end if
-
-    if (associated(node%gas_particle_list)) then
-       
-       ! retriving the number of the total gas particles
-       ! in "node".
-       ! -- using the function in linked_list_class.f90
-       npart = SIZE(node%gas_particle_list)
-       
-       counter = 0
-       vel_ave = VECTOR(1d-30,1d-30,1d-30)
-       mass_sum = 0.
-
-       do i=1, npart
-          ! Retriving the sph data index for this paritcle
-          j = node%gas_particle_list(i)
-          
-          ! retriving this posisiton of the gas particle.
-          call get_position_gas_particle(j, x, y, z)
-          
-          ! convert units
-          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
-          ! quick check to see if this gas particle is
-          ! belongs to this cell.
-          if ( within_subcell(node, subcell, x, y, z) ) then
-             counter = counter + 1
-             mass = get_mass(j)
-             vel_ave = vel_ave + mass * get_vel(j)
-             mass_sum = mass_sum + mass
-          end if
-          
-       end do
-       
-       n = counter
-       
-    else
-
-       n = 0
-
-    endif
-    
-    if (n>0) then
-       vel_ave = (1./mass_sum) * vel_ave
-       vel_ave = ((1./(utime*3.1556926e7))*udist*1d10) * vel_ave  ! [cm/s]
-       vel_ave = (1./cspeed) * vel_ave  ! fraction of c
-    else
-       vel_ave = VECTOR(-7.d0,-7.d0,-7.d0)
-    end if
-    
-  end subroutine find_velocity
 
   subroutine find_temp_in_subcell(n, tem_ave, node, subcell)
     use input_variables, only : TMinGlobal
+    use sph_data_class, only: get_temp, get_position_gas_particle
     implicit none
     integer, intent(out) :: n    ! number of particles in the subcell
     real, intent(out) :: tem_ave ! average temperature of the subcell
-!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
@@ -886,6 +731,7 @@ contains
   !
 
   function n_stars_in_octal(this, an_octal) result(out)
+    use source_mod, only: source_within_octal
     implicit none
     integer :: out 
     type(cluster), intent(in) :: this 
@@ -957,9 +803,9 @@ contains
   ! "catalog.dat".
   !
   subroutine write_catalog(this, filename)
+    use messages_mod
     implicit none
     type(cluster),  intent(in) :: this
-!    type(sph_data), intent(in) :: sphData
     character(len=*), optional :: filename
     
     integer, parameter :: LUOF=23
@@ -1021,10 +867,10 @@ contains
   !     and gives a characteristic sizescale for grid construction.
   
   function disc_density(xpos,ypos,zpos, young_cluster ,sizescale) RESULT(density_out)
+    use sph_data_class, only: get_stellar_disc_parameters
     implicit none
     real(double) :: density_out  ! in [g/cm^3]
     real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
-!    type(sph_data), intent(in)   :: sphData
     type(cluster), intent(in)    :: young_cluster
     real(double), intent(out):: sizescale       ! should be in [10^10cm]
     !
@@ -1215,11 +1061,11 @@ contains
   ! As a quick check, we consider the disk as a sphere (with r=Rdisc) 
   ! and the cell as a sphere with r=SQRT(3)*(d/2) where d is the subcell size
   function disc_intersects_subcell(this, octal_in, subcell) RESULT(out)
+    use sph_data_class, only: get_stellar_disc_parameters
     implicit none
     logical :: out 
     
     type(cluster), intent(in) :: this
-!    type(sph_data), intent(in) :: sphData
     type(octal), intent(in) :: octal_in
     integer, intent(in) :: subcell
 
@@ -1338,7 +1184,6 @@ contains
        scale_length) RESULT(out)
     implicit none
     real(double) :: out     ! out put density in [g/cm^3]
-!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
@@ -1436,7 +1281,6 @@ contains
        scale_length) RESULT(out)
     implicit none
     real(double) :: out     ! out put density in [g/cm^3]
-!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
@@ -1520,7 +1364,6 @@ contains
        scale_length) RESULT(out)
     implicit none
     real(double) :: out     ! out put density in [g/cm^3]
-!    type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
@@ -1627,6 +1470,8 @@ contains
   ! the emission bias for contiuum and line photons.
   !
   subroutine compute_emission_bias(thisOctal,subcell, grid, lambda, lambda_array, n_lambda)
+    use gridtype_mod, only: GRIDTYPE
+    use utils_mod, only: hunt
     IMPLICIT NONE
     
     TYPE(octal), intent(inout) :: thisOctal
@@ -1680,6 +1525,7 @@ contains
   ! Recursively assigns the emission bias to all octals.
   !
   recursive subroutine assign_emission_bias(thisOctal,grid, lambda, lambda_array, n_lambda)
+    use gridtype_mod, only: GRIDTYPE
     IMPLICIT NONE
     
     TYPE(octal), pointer :: thisOctal
@@ -1852,5 +1698,5 @@ contains
 
 
 
-
 end module cluster_class
+

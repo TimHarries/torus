@@ -689,12 +689,13 @@ CONTAINS
   subroutine pre_initAMRGrid
 
     use input_variables, only: sphdatafilename
-    use isochrone_class, only: isochrone, read_isochrone_data
-    use cluster_class, only: write_catalog, build_cluster
-    use romanova_class, only: get_dble_parameter
+    use isochrone_class, only: isochrone, read_isochrone_data, new
+    use cluster_class, only: write_catalog, build_cluster, new
+    use romanova_class, only: get_dble_parameter, new
     use sph_data_class, only: find_inclinations, new_read_sph_data, read_stellar_disc_data, info, read_galaxy_sph_data
     use wr104_mod, only: readwr104particles
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax
+    use luc_cir3d_class, only: new
 
     type(isochrone) :: isochrone_data
     real(double)    :: objectDistance

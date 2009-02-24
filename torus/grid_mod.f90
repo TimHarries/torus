@@ -21,15 +21,9 @@ module grid_mod
   use kind_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
-  use atom_mod                        ! LTE atomic physics
-  use utils_mod
+  use amr_mod, only: deleteOctreeBranch, deleteOctal
   use octal_mod                       ! octal type for amr
-  use amr_mod
-  use density_mod                     ! to use generic density function
-  use cluster_class
-  use cmfgen_class
   use messages_mod
-  use ion_mod
   use mpi_global_mod
   use mpi_amr_mod
 
@@ -504,6 +498,10 @@ contains
   subroutine initAMRgrid(newContFile,flatspec,grid,ok,theta1,theta2)
 
     use input_variables
+    use cluster_class, only: initClusterAMR
+    use cmfgen_class, only: get_cmfgen_data_array_element
+    use jets_mod, only: initJetsAMR
+    use amr_mod, only: initTTauriAMR, initWindTestAMR
 
     implicit none
 
@@ -6275,6 +6273,7 @@ contains
   
   ! if filename is '*' then it prints on screen.
   subroutine grid_info(thisGrid, filename)
+    use amr_mod, only:  countVoxels
     implicit none
     type(gridtype), intent(in) :: thisGrid
     character(LEN=*), intent(in) :: filename
@@ -6339,65 +6338,6 @@ contains
     if (filename(1:1) /= '*')  close(UN)
 
   end subroutine grid_info
-    
-
-
-
-  !
-  ! Routine to shift the poistion of stars in a cluster to be at the center of leaf node
-  ! assuming (hoping) that no two stars are in the same cell. This is done to avoid 
-  ! or minimize the asymmetry in the temperature map computed later. 
-  ! Note: this must be done only after computing the octree tree without the disc.
-  !       If you want to include the disc, you must recompute the grid with new postion...
-  ! 
-
-  subroutine move_stars_to_cell_center(a_cluster, grid)
-    implicit none
-    type(cluster), intent(inout) :: a_cluster
-    type(gridtype), intent(in) :: grid
-
-    integer :: nstar
-    integer :: i 
-    type(sourcetype) :: a_star
-    type(VECTOR) :: position, newposition
-    type(OCTAL), pointer :: thisOctal
-
-    
-    nstar = get_nstar(a_cluster)
-
-    write (*, *) " "
-    write (*, *) "Shifting the star positions...."
-    write (*, *) " "
-    write (*, *) "-- i --- old position and new position "     
-    do i = 1, nstar       
-       ! Finding the position of the stars in the list,
-       a_star = get_a_star(a_cluster,i)         
-       position = VECTOR(a_star%position%x, a_star%position%y, a_star%position%z)
-
-       ! Finding the octal which contains the position.
-       call amrGridValues(grid%octreeRoot, position, foundOctal=thisOctal)
-
-       newposition = thisOctal%centre
-       
-       write(*,*) i, position 
-       write(*,*) i, newposition 
-       
-       ! shifting the position to new position (the cell center).
-       a_star%position = newposition 
-
-       ! reinserting the star in the cluster.
-       call put_a_star(a_cluster, a_star, i)
-
-
-    end do
-
-    write(*,*) " "
-    write(*,*) "Finished shifting the stars ..."
-    write(*,*) " "
-    
-              
-  end subroutine move_stars_to_cell_center
-
 
 
   !  

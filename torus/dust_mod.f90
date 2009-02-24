@@ -1147,6 +1147,7 @@ contains
 
   subroutine createRossArray(grid)
     use input_variables, only : nDustType
+    use atom_mod, only: dbNubydT
     type(GRIDTYPE) :: grid
     integer :: i, j, k
     real(double) :: bNuTot, rosselandKappa, temperature

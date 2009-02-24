@@ -8,7 +8,6 @@ module gridio_mod
   use octal_mod                       ! octal type for amr
   use amr_mod
   use density_mod                     ! to use generic density function
-  use cluster_class
   use cmfgen_class
   use messages_mod
   use ion_mod
