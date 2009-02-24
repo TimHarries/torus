@@ -38,6 +38,8 @@ module ion_mod
      real :: ipot         ! ionization potential
      real :: abundance    ! of element relative to H
      real(double) :: nuthresh ! freq equivalent of ion pot
+     integer :: nFreq  ! number of frequency bins in xsection array
+     real(double), pointer :: freq(:), xSec(:) ! frequency and ionization xsection arrays
      character(len=8) :: species  ! name of ion
      integer :: nTransitions ! number of bb transitions for this species
      integer :: nLevels ! number of energy levels
@@ -72,6 +74,39 @@ contains
 
   end subroutine createIon
 
+  subroutine addxSectionArray(thisIon, nfreq, freq)
+    type(IONTYPE) :: thisIon
+    integer :: nFreq
+    real(double) :: freq(:)
+    real :: e, xSec
+    integer :: i
+
+    thisIon%nfreq = nFreq
+    if (associated(thisIon%Freq)) deallocate(thisIon%freq)
+    if (associated(thisIon%xsec)) deallocate(thisIon%xsec)
+    allocate(thisIon%freq(1:nFreq), thisIon%xSec(1:nFreq))
+    thision%freq(1:nFreq) = freq(1:nFreq)
+
+    do  i = 1, nFreq
+       e = hCgs * freq(i) * ergtoEv
+       call phfit2(thisIon%z, thisIon%n, thisIon%outerShell , e , xsec)
+       thisIon%xSec(i) = dble(xSec)
+    enddo
+  end subroutine addxSectionArray
+
+  function returnXsec(thisIon, freq, iFreq) result(xSec)
+    type(IONTYPE) :: thisIon
+    real(double) :: freq, xSec
+    integer, optional :: iFreq
+    integer :: i
+
+       if (PRESENT(iFreq)) then
+          xSec = thisIon%xSec(iFreq)
+       else
+          call locate(thisIon%freq, thisIon%nFreq, freq, i)
+          xSec = thisIon%xSec(i)
+       endif
+  end function returnXsec
 
   subroutine addIons(ionArray, nIon)
     use input_variables, only : useMetals

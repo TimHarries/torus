@@ -177,6 +177,9 @@ contains
     dfreq(1) = 2.d0*(freq(2)-freq(1))
     dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
 
+    do i = 1, grid%nIon
+       call addxSectionArray(grid%ion(i), nfreq, freq)
+    enddo
 
     call createGammaTable(gammaTableArray(1), 'gammaHI.dat')
     call createGammaTable(gammaTableArray(2), 'gammaHeI.dat')
@@ -296,7 +299,7 @@ contains
           do while(.not.escaped)
              nScat = nScat + 1
 
-             call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, photonPacketWeight)
+             call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, photonPacketWeight, nFreq, freq)
              if (.not. escaped) then
 
                 thisLam = (cSpeed / thisFreq) * 1.e8
@@ -653,13 +656,15 @@ end if ! (my_rank /= 0)
 end subroutine photoIonizationloop
 
 
- SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight)
+ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, nfreq, freq)
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
+   integer :: nfreq
+   real(double) :: freq(:)
    integer :: endSubcell
    real(double) :: photonPacketWeight
    integer :: subcell, tempSubcell
@@ -744,7 +749,7 @@ end subroutine photoIonizationloop
 
 ! update the distance grid
 
-       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam)
+       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq)
           
 
 
@@ -854,7 +859,7 @@ end subroutine photoIonizationloop
 
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
-          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
 
           oldOctal => thisOctal
           
@@ -1507,43 +1512,51 @@ end subroutine photoIonizationloop
 
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda)
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
+    integer :: nFreq, iFreq
+    real(double) :: freq(:)
     integer :: subcell
     real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
-    real :: e, xsec
+    real(double) :: fac, xSec
     kappaAbs = 0.d0; kappaAbsDust = 0.d0
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
-    e = thisFreq * hCgs * ergtoEV
 
+    fac = distance * photonPacketWeight / (hCgs * thisFreq)
 
+    call locate(freq, nFreq, thisFreq, iFreq)
 
     do i = 1, grid%nIon
-       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
-       if (xSec > 0.) then
+
+       xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)
+!       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
+       if (xSec > 0.d0) then
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
-               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
+               + fac * xSec
+
+!          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
+!               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
        endif
 
        ! neutral h heating
 
        if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
           thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
-            + dble(distance) * dble(xsec / (thisfreq * hcgs)) &
-            * (dble(hcgs * thisfreq) - dble(hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
+            + distance * xsec / (thisfreq * hcgs) &
+            * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
        endif
 
        ! neutral he heating
 
        if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
           thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
-            + dble(distance) * dble(xsec / (thisfreq * hcgs)) &
-            * (dble(hcgs * thisfreq) - dble(hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
+            + distance * xsec / (thisfreq * hcgs) &
+            * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
        endif
 
     enddo
@@ -2741,14 +2754,17 @@ real(double) function returnGamma(table, temp, freq) result(out)
   type(GAMMATABLE) :: table
   real(double) :: temp , freq
   integer :: i, j
-  real(double) :: tfac, ffac, gamma1, gamma2
+  real(double) :: tfac, ffac, gamma1, gamma2, logT, logF
 
-  call locate(table%temp, table%nTemp, log10(temp), i)
-  call locate(table%freq, table%nFreq, log10(freq), j)
+  logT = log10(temp)
+  logF = log10(freq)
 
-  if (log10(freq) >= table%freq(1).and.log10(freq) <= table%freq(table%nFreq)) then
-     tfac  = (log10(temp) - table%temp(i))/(table%temp(i+1) - table%temp(i))
-     ffac  = (log10(freq) - table%freq(j))/(table%freq(j+1) - table%freq(j))
+  call locate(table%temp, table%nTemp, logT, i)
+  call locate(table%freq, table%nFreq, logF, j)
+
+  if (logF >= table%freq(1).and.logF <= table%freq(table%nFreq)) then
+     tfac  = (logT - table%temp(i))/(table%temp(i+1) - table%temp(i))
+     ffac  = (logF - table%freq(j))/(table%freq(j+1) - table%freq(j))
      
      gamma1 = table%gamma(j,i) + tfac*(table%gamma(j, i+1) - table%gamma(j,i))
      gamma2 = table%gamma(j+1,i) + tfac*(table%gamma(j+1, i+1) - table%gamma(j+1,i))

@@ -484,6 +484,12 @@ contains
 
     if (firstTimeTables) then
 
+
+
+
+       do i = 1, grid%nIon
+          call addxSectionArray(grid%ion(i), nfreq, freq)
+       enddo
        call createGammaTable(gammaTableArray(1), 'gammaHI.dat')
        call createGammaTable(gammaTableArray(2), 'gammaHeI.dat')
        call createGammaTable(gammaTableArray(3), 'gammaHeII.dat')
@@ -586,7 +592,7 @@ contains
                    do while(.not.escaped)
                       
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
-                           photonPacketWeight, crossedMPIboundary)
+                           photonPacketWeight, nfreq, freq, crossedMPIboundary)
 !                      write(*,*) myrank," After photon of freq ", thisFreq, " exited to nexteventphoto", escaped, crossedMPIboundary
                       if (crossedMPIBoundary) then
 !                         write(*,*) "crossedboundary with rvec ",rvec
@@ -867,7 +873,8 @@ if (.false.) then
 end subroutine photoIonizationloopAMR
 
 
-SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, crossedMPIboundary)
+SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, &
+     nfreq, freq, crossedMPIboundary)
   include 'mpif.h'
   integer :: myRank, ierr
    type(GRIDTYPE) :: grid
@@ -877,6 +884,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(OCTAL),pointer :: endOctal
    integer :: endSubcell
    real(double) :: photonPacketWeight
+   integer :: nFreq
+   real(double) :: freq(:)
    integer :: subcell, tempSubcell
    real(oct) :: tval, tau, r
    real :: lamArray(:)
@@ -983,7 +992,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! update the distance grid
 
-       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam)
+       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq)
           
 
 
@@ -1094,7 +1103,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
-          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
 
           oldOctal => thisOctal
           
@@ -1897,62 +1906,64 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda)
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
+    integer :: nFreq, iFreq
+    real(double) :: freq(:)
     integer :: subcell
     real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
-    real :: e, xsec
-!    type(VECTOR) :: rVec
-
+    real(double) :: fac, xSec
+    kappaAbs = 0.d0; kappaAbsDust = 0.d0
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
-    e = thisFreq * hCgs * ergtoEV
 
+    fac = distance * photonPacketWeight / (hCgs * thisFreq)
 
+    call locate(freq, nFreq, thisFreq, iFreq)
 
     do i = 1, grid%nIon
-       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
-       if (xSec > 0.) then
+
+       xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)
+!       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
+       if (xSec > 0.d0) then
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
-               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight !* 1.d15!!!!!!!!!!!
-!          rVec = subcellCentre(thisOctal, subcell)
-!          if ((myrankglobal==1).and.(i == 1).and.((modulus(rVec)/3.1d8)>2.d0).and.&
-!               (thisOctal%label(subcell)==4557)) then
-!             write(*,*)  "xsec",xsec, thisOctal%photoIonCoeff(subcell,i), thisOctal%label(subcell)
-!          endif
+               + fac * xSec
+
+!          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
+!               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
        endif
 
-       ! neutral H heating
+       ! neutral h heating
 
-       if ((grid%Ion(i)%z == 1).and.(grid%Ion(i)%n == 1)) then
-          thisOctal%Hheating(subcell) = thisOctal%Hheating(subcell) &
-            + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
-            * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh)) * photonPacketWeight
+       if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
+          thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
+            + distance * xsec / (thisfreq * hcgs) &
+            * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
        endif
 
-       ! neutral He heating
+       ! neutral he heating
 
-       if ((grid%Ion(i)%z == 2).and.(grid%Ion(i)%n == 2)) then
-          thisOctal%Heheating(subcell) = thisOctal%Heheating(subcell) &
-            + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
-            * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh)) * photonPacketWeight
+       if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
+          thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
+            + distance * xsec / (thisfreq * hcgs) &
+            * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
        endif
 
     enddo
 
 
 
-    call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaAbsDust=kappaAbsDust, kappaAbs=kappaAbs)
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
 
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-         + dble(distance) * dble(kappaAbsDust)
+    thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
+         + dble(distance) * dble(kappaabsdust)
 
 
-  end subroutine updateGrid
+  end subroutine updategrid
 
 subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOverdeltaT)
   implicit none
