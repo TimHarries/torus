@@ -2346,7 +2346,8 @@ endif
            
 ! Use thermal line width for H 21cm lines or turbulent line widths otherwise
               if ( h21cm ) then 
-                 phiprofval = gauss (sigma_thermal, real(dv) ) 
+! Line profile in units of (1/Hz)
+                 phiprofval = gauss (sigma_thermal, real(dv) ) / thisMolecule%transfreq(1)
               else
                  phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
               end if
