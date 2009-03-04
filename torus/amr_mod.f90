@@ -88,7 +88,8 @@ CONTAINS
        parentOctal => thisOctal%parent
        parentSubcell = thisOctal%parentSubcell
 
-       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       if (associated (thisOctal%boundaryCondition)) &
+            thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
        if (associated(thisOctal%gamma)) thisOctal%gamma(subcell)  = parentOctal%gamma(parentSubcell)
        if (associated(thisOctal%iEquationOfState)) &
             thisOctal%iEquationOfState(subcell)  = parentOctal%iEquationOfState(parentSubcell)
