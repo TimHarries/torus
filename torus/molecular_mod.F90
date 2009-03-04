@@ -3757,10 +3757,11 @@ end subroutine calculateConvergenceData
    type(VECTOR)    :: observervec, viewvec, imagebasis(2)
    type(DATACUBE) ::  cube
    type(MOLECULETYPE) :: thisMolecule
+   real, parameter :: thisWavelength=21.0
 
 ! Set up 21cm line
    allocate( thisMolecule%transfreq(1) )
-   thisMolecule%transfreq(1) = cSpeed / (21.0)
+   thisMolecule%transfreq(1) = cSpeed / thisWavelength
 
    call writeinfo('Generating H 21cm image', TRIVIAL)
    call setObserverVectors(viewvec, observerVec, imagebasis)
@@ -3768,7 +3769,8 @@ end subroutine calculateConvergenceData
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
    call convertSpatialAxes(cube,'kpc')
-   call cubeIntensityToFlux(cube,thisMolecule,itrans)
+! Output as brightness temperature
+   cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
 
    if(writeoutput) call writedatacube(cube, "h21cm.fits")
 
