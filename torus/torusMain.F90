@@ -489,9 +489,9 @@ program torus
         call readAMRgrid("atom_tmp.grid",.false.,grid)
      else if (photoionization.and.readlucy) then
         continue
-     elseif (molecular .and. ((.not. writemol) .or. restart .or. addnewmoldata)) then
+     elseif (molecular .and. ((.not. writemol) .or. addnewmoldata)) then
         continue
-     else
+     else if (.not. restart ) then 
         ! Set up the AMR grid
         call amr_grid_setup
         if(molecular .and. writeoutput) call writeAMRgrid('notmolecular.grid',writeFileFormatted,grid) 
@@ -634,6 +634,13 @@ program torus
 
 ! Generate H 21cm image
   if ( h21cm ) then 
+
+     if (restart) then 
+        call readAMRgrid("h21cm_grid",.false.,grid)
+     else
+        if (writeoutput) call writeAMRgrid("h21cm_grid",.false.,grid)
+     endif
+
      call make_h21cm_image(grid)
      goto 666
   end if
