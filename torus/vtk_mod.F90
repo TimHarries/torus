@@ -398,9 +398,15 @@ contains
                   write(lunit, *) real(thisOctal%scatteredIntensity(subcell,5,3))
 
                case("hydrovelocity")
-                  write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
-                       real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &
-                       real(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                  if (thisOctal%threeD) then
+                     write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
+                          real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &
+                          real(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                  else
+                     write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
+                          real(thisOctal%rhow(subcell)/thisOctal%rho(subcell)), &
+                          real(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
+                  endif
                case("velocity")
                   if (thisOctal%threed) then
                      write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &

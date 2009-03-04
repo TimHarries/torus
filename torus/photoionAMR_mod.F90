@@ -78,13 +78,12 @@ contains
     real(double) :: tDump, nextDumpTime
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
-    integer :: thread1(200), thread2(200), nBound(200), nPairs
-    integer :: group(100), nGroup
+    integer :: thread1(200), thread2(200), nBound(1000), nPairs
+    integer :: group(1000), nGroup
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump
-    integer :: iEquationOFState = 1
     integer :: iRefine
 
     nHydroThreads = nThreadsGlobal-1
@@ -159,7 +158,7 @@ contains
        call writeInfo("Refining grid", TRIVIAL)
        do
           gridConverged = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.false.)
+          call refineGridGeneric2(grid%octreeRoot, grid, gridconverged, inherit=.false.)
           if (gridConverged) exit
        end do
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -170,7 +169,7 @@ contains
        do
           globalConverged(myRank) = .true.
           call writeInfo("Refining grid", TRIVIAL)    
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.false.)
+          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inherit=.false.)
           call writeInfo("Exchanging boundaries", TRIVIAL)    
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -234,7 +233,7 @@ contains
           call writeInfo("Refining grid", TRIVIAL)
           do
              gridConverged = .true.
-             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
+             call refineGridGeneric2(grid%octreeRoot, grid, gridconverged, inherit=.true.)
              if (gridConverged) exit
           end do
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -247,7 +246,7 @@ contains
           do
              globalConverged(myRank) = .true.
              call writeInfo("Refining grid", TRIVIAL)    
-             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.false.)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inherit=.false.)
              call writeInfo("Exchanging boundaries", TRIVIAL)    
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -286,7 +285,7 @@ contains
     do while(.true.)
        tc = 0.d0
        tc(myrank+1) = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc(myRank+1), gamma, iEquationOfState)
+       call computeCourantTime(grid%octreeRoot, tc(myRank+1))
        call MPI_ALLREDUCE(tc, tempTc, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
@@ -311,7 +310,7 @@ contains
           call writeInfo("calling hydro step",TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+          call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
           if (myRank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call resetNh(grid%octreeRoot)
@@ -344,7 +343,7 @@ contains
           call writeInfo("Refining grid", TRIVIAL)
           do
              gridConverged = .true.
-             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
+             call refineGridGeneric2(grid%octreeRoot, grid, gridconverged, inherit=.true.)
              if (gridConverged) exit
           end do
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -353,7 +352,7 @@ contains
           do
              globalConverged(myRank) = .true.
              call writeInfo("Refining grid", TRIVIAL)    
-             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.true.)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inherit=.true.)
              call writeInfo("Exchanging boundaries", TRIVIAL)    
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -363,9 +362,9 @@ contains
 
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 5) then
-             call tune(6, "Unrefine grid")
-             call unrefineCellsPhotoion(grid%octreeRoot, grid, gamma, iEquationOfState)
-             call tune(6, "Unrefine grid")
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             call unrefineCellsPhotoion(grid%octreeRoot, grid)
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
 
@@ -374,8 +373,8 @@ contains
 
        endif
 
-          call writeVtkFile(grid, "current.vtk", &
-            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+!          call writeVtkFile(grid, "current.vtk", &
+!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
        grid%currentTime = grid%currentTime + dt
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
@@ -1435,6 +1434,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        endif
     enddo
   end subroutine zeroDistanceGrid
+
 
   recursive subroutine testIonFront(thisOctal, currentTime)
   type(octal), pointer   :: thisOctal

@@ -88,7 +88,10 @@ CONTAINS
        parentOctal => thisOctal%parent
        parentSubcell = thisOctal%parentSubcell
 
-
+       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       if (associated(thisOctal%gamma)) thisOctal%gamma(subcell)  = parentOctal%gamma(parentSubcell)
+       if (associated(thisOctal%iEquationOfState)) &
+            thisOctal%iEquationOfState(subcell)  = parentOctal%iEquationOfState(parentSubcell)
     if (inheritProps) then
        thisOctal%rho(subcell) = parentOctal%rho(parentSubcell)
        thisOctal%temperature(subcell) = parentOctal%temperature(parentSubcell)
@@ -3932,6 +3935,7 @@ IF ( .NOT. gridConverged ) RETURN
 !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
           if(.not. suppresswarnings) then
+             write(*,*) sqrt(-2.d0)
              DO ; END DO
                 STOP
           endif
@@ -4469,13 +4473,22 @@ IF ( .NOT. gridConverged ) RETURN
       if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       if ( (r+cellsize) < rgrid(1)) split = .false.
 
-   case("hydro1d", "kelvin", "bonnor", "unisphere")
+   case("hydro1d",  "bonnor", "unisphere")
 
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 !      rVec = subcellCentre(thisOctal, subcell)
 !      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
 !      if ((rVec%x > 0.d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
+
+   case("kelvin")
+      rVec = subcellCentre(thisOctal, subcell)
+
+      if ((abs(rVec%x) < 0.3d0).and.(abs(rvec%z) < 0.3d0)) then
+         if (thisOctal%nDepth < (maxDepthAMR)) then
+            split = .true.
+         endif
+      endif
 
    case("sedov")
 
@@ -7557,16 +7570,23 @@ IF ( .NOT. gridConverged ) RETURN
 !    u2 = (2.*u2-1.) * 0.005
 
     u1 = 0.d0
-    if (abs(rVec%z-0.25d0) < 0.025d0) then
-       u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
-    else if (abs(rVec%z+0.25d0) < 0.025d0) then
-       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
-    endif
+!    if (abs(rVec%z-0.25d0) < 0.025d0) then
+!       u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+!    else if (abs(rVec%z+0.25d0) < 0.025d0) then
+!       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+!    endif
+    u1 = -0.025d0
+    
+    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)
+!    if (modulus(rvec) < 0.02d0) thisOctal%rho(subcell) = 0.5d0
+    if (inSubcell(thisOctal, subcell, VECTOR(0.295d0,0.d0, -0.005d0))) thisOctal%rho(subcell) = 0.5d0
     thisOctal%pressure_i(subcell) = 2.5d0
-    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
+!    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
 
-     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (gamma-1.d0) * thisOctal%rho(subcell))
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (gamma-1.d0) * thisOctal%rho(subcell))
     thisOctal%boundaryCondition(subcell) = 2
+    thisOctal%gamma(subcell) = 7.d0/5.d0
+    thisOctal%iEquationOfState(subcell) = 1
   end subroutine calcKelvinDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
@@ -7615,8 +7635,9 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%boundaryCondition(subcell) = 4 ! outflow no inflow
     thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
-       
-
+    thisOctal%gamma(subcell) = 1.d0
+    thisOctal%iEquationOfState(subcell) = 1
+      
     if (photoionization) then
        thisOctal%inFlow(subcell) = .true.
        thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
@@ -7658,7 +7679,8 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%boundaryCondition(subcell) = 2
     thisOctal%phi_i(subcell) = -bigG * 100.d0 * mSol / (modulus(rVec)*1.d10)
-       
+    thisOctal%gamma(subcell) = 2.d0
+    thisOctal%iEquationOfState(subcell) = 3
   end subroutine calcUniformSphere
 
 
@@ -9670,6 +9692,9 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%ionFrac, source%ionFrac)
 
+    call copyAttribute(dest%gamma, source%gamma)
+    call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
+
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
       ALLOCATE(dest%mpiboundaryStorage( SIZE(source%mpiboundaryStorage,1),       &
@@ -10604,6 +10629,9 @@ end function readparameterfrom2dmap
 
     parentOctal%nh(parentSubcell) =                    &
     SUM(childOctal%nh(1:nVals)) / nValsREAL
+
+    parentOctal%ne(parentSubcell) =                    &
+    SUM(childOctal%ne(1:nVals)) / nValsREAL
 
     parentOctal%rhoe(parentSubcell) =                    &
     SUM(childOctal%rhoe(1:nVals)) / nValsREAL
@@ -15971,6 +15999,9 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%rLimit,thisOctal%maxChildren)
 
+       call allocateAttribute(thisOctal%iEquationOfState,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gamma,thisOctal%maxChildren)
+
     endif
   end  subroutine allocateOctalAttributes
 
@@ -16055,6 +16086,9 @@ end function readparameterfrom2dmap
 
        call deAllocateAttribute(thisOctal%rhoe)
        call deAllocateAttribute(thisOctal%energy)
+
+       call deAllocateAttribute(thisOctal%iEquationOfState)
+       call deAllocateAttribute(thisOctal%gamma)
 
 
        call deAllocateAttribute(thisOctal%phi_i)

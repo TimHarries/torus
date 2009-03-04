@@ -298,6 +298,9 @@ contains
        call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
        call writeAttributePointerFlexi(20, "rLimit", thisOctal%rLimit, fileFormatted)
 
+       call writeAttributePointerFlexi(20, "iEquationOfState", thisOctal%iEquationOfState, fileFormatted)
+       call writeAttributePointerFlexi(20, "gamma", thisOctal%gamma, fileFormatted)
+
 
 
 
@@ -517,8 +520,6 @@ contains
       thisOctal%parent => parent
 
       do while (.true.)
-
-
 
          if (fileFormatted) then
             read(20, *) tag
@@ -752,6 +753,11 @@ contains
             call readPointerFlexi(20, thisOctal%changed, fileFormatted)
          case("rLimit")
             call readPointerFlexi(20, thisOctal%rLimit, fileFormatted)
+
+         case("iEquationOfState")
+            call readPointerFlexi(20, thisOctal%iEquationOfState, fileFormatted)
+         case("gamma")
+            call readPointerFlexi(20, thisOctal%gamma, fileFormatted)
 
 
 

@@ -158,6 +158,8 @@ MODULE octal_mod
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
+    integer, pointer :: iEquationOfState(:)
+    real(double), pointer :: gamma(:)
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
 
