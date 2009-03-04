@@ -387,7 +387,7 @@ contains
 !          call writeAmrGrid(mpiFilename, .false., grid)
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
-            valueTypeString=(/"rho        ","HI        " , "temperature", &
+            valueTypeString=(/"rho          ","HI           " , "temperature  ", &
             "hydrovelocity"/))
 
 

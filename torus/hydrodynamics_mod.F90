@@ -210,6 +210,7 @@ contains
                   (1.d0 - abs(thisOctal%u_interface(subcell) * dt / &
                    dx)) * &
                   thisOctal%phiLimit(subcell) * (thisOctal%q_i(subcell) - thisOctal%q_i_minus_1(subcell))
+
           endif
 !          if (thisOctal%flux_i(subcell) > 1.d-10) write(*,*) "flux ",thisOctal%flux_i(subcell),thisOctal%u_interface(subcell), &
 !               thisOctal%rho(subcell), thisOctal%rhou(subcell)
@@ -260,6 +261,8 @@ contains
 !             write(*,*) "old q ",thisOctal%q_i(subcell)
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / dx
+
+
 
 !             write(*,*) "new q ", thisOctal%q_i(subcell),dt,thisOctal%flux_i_plus_1(subcell), &
 !                  thisOctal%flux_i(subcell),dx
@@ -696,7 +699,21 @@ contains
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
-             thisOctal%flux_i_plus_1(subcell) = flux
+
+             if (nd >= thisOctal%nDepth) then ! this is a coarse-to-fine cell boundary
+                thisOctal%flux_i_plus_1(subcell) = flux
+             else
+                ! now we need to do the fine-to-coarse flux
+
+                if (thisOctal%u_i_plus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
+                   thisOctal%flux_i_plus_1(subcell) = thisOctal%q_i(subcell) * thisOctal%u_i_plus_1(subcell)
+                else
+                   thisOctal%flux_i_plus_1(subcell) = flux ! flow is from neighbour into this one
+                endif
+             endif
+
+
+
 
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
@@ -1959,10 +1976,12 @@ contains
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
+    call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
-    call testCell(grid, VECTOR(0.2495d0, 0.d0, 0.2495d0))
-    call testCell(grid, VECTOR(0.1d0, 0.d0, 0.2495d0))
-    call testCell(grid, VECTOR(0.257d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.293d0, 0.d0, -0.0105d0))
+!    call testCell(grid, VECTOR(0.1d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.257d0, 0.d0, 0.2495d0))
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1980,10 +1999,12 @@ contains
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWi(grid%octreeRoot, grid, direction)
+    call setupWpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-    call testCell(grid, VECTOR(0.2495d0, 0.d0, 0.2495d0))
-    call testCell(grid, VECTOR(0.1d0, 0.d0, 0.2495d0))
-    call testCell(grid, VECTOR(0.257d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.2495d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.1d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.257d0, 0.d0, 0.2495d0))
 
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2003,10 +2024,12 @@ contains
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
+    call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
-    call testCell(grid,VECTOR(0.2495d0, 0.d0, 0.2495d0))
-    call testCell(grid, VECTOR(0.1d0, 0.d0, 0.2495d0))
-    call testCell(grid, VECTOR(0.257d0, 0.d0, 0.2495d0))
+!    call testCell(grid,VECTOR(0.2495d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.1d0, 0.d0, 0.2495d0))
+!    call testCell(grid, VECTOR(0.257d0, 0.d0, 0.2495d0))
 
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2586,7 +2609,7 @@ contains
 
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"rho        ","hydrovelocity","rhoe      " ,"u_i        " /))
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          " /))
           if (myrank==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -2737,7 +2760,6 @@ contains
 
     tdump = 5.d0 * dt
     
-    tdump = dt
     write(*,*) "Setting tdump to: ", tdump
 
     iUnrefine = 0
@@ -2820,7 +2842,7 @@ contains
 !          call writeAMRgrid(plotfile,.false. ,grid)
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"rho        ","velocity   ","rhoe      " ,"u_i        ","hydrovelocity" /))
+            valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
 
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)

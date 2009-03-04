@@ -7577,9 +7577,9 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
     u1 = -0.025d0
     
-    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)
-!    if (modulus(rvec) < 0.02d0) thisOctal%rho(subcell) = 0.5d0
-    if (inSubcell(thisOctal, subcell, VECTOR(0.295d0,0.d0, -0.005d0))) thisOctal%rho(subcell) = 0.5d0
+    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)/cspeed
+    if (modulus(rvec) < 0.2d0) thisOctal%rho(subcell) = 0.5d0
+!    if (inSubcell(thisOctal, subcell, VECTOR(0.295d0,0.d0, -0.005d0))) thisOctal%rho(subcell) = 0.5d0
     thisOctal%pressure_i(subcell) = 2.5d0
 !    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
 
