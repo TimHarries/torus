@@ -3,6 +3,7 @@
 module photoionAMR_mod
 
 #ifdef MPI
+use hydrodynamics_mod
 use parallel_mod
 use gridio_mod
 use source_mod
@@ -14,7 +15,6 @@ use messages_mod
 use diffusion_mod
 use mpi_amr_mod
 use mpi_global_mod
-use hydrodynamics_mod
 use unix_mod, only: unixGetenv
 
 implicit none
@@ -113,7 +113,7 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    timeofNextDump = grid%currentTime + deltaTforDump
+    timeofNextDump = 0.d0
 
 
     if (myRank == 1) write(*,*) "CFL set to ", cfl
@@ -135,7 +135,7 @@ contains
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
 
-       call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+       call calculateEnergyFromTemperature(grid%octreeRoot, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
 
@@ -155,28 +155,16 @@ contains
        endif
 
 
-       call writeInfo("Refining grid", TRIVIAL)
-       do
-          gridConverged = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid, gridconverged, inherit=.false.)
-          if (gridConverged) exit
-       end do
-       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-
-
-
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Refining grid part 2", TRIVIAL)    
        do
           globalConverged(myRank) = .true.
-          call writeInfo("Refining grid", TRIVIAL)    
-          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inherit=.false.)
-          call writeInfo("Exchanging boundaries", TRIVIAL)    
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:nHydroThreads))) exit
        end do
-
 
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid, .false., .true.)
@@ -205,7 +193,7 @@ contains
 !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
        if (myrank /= 0) then
-          call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+          call calculateEnergyFromTemperature(grid%octreeRoot, mu)
           call calculateRhoE(grid%octreeRoot, direction)
        endif
 
@@ -230,37 +218,21 @@ contains
 !          call writeVtkFile(grid, "beforegeneric.vtk", &
 !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
-          call writeInfo("Refining grid", TRIVIAL)
-          do
-             gridConverged = .true.
-             call refineGridGeneric2(grid%octreeRoot, grid, gridconverged, inherit=.true.)
-             if (gridConverged) exit
-          end do
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
-
-!          call writeVtkFile(grid, "aftergeneric.vtk", &
-!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
-
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call writeInfo("Refining grid part 2", TRIVIAL)    
           do
              globalConverged(myRank) = .true.
-             call writeInfo("Refining grid", TRIVIAL)    
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inherit=.false.)
-             call writeInfo("Exchanging boundaries", TRIVIAL)    
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
              if (ALL(tConverged(1:nHydroThreads))) exit
           end do
-
-
+          
           call writeInfo("Evening up grid", TRIVIAL)    
-          call evenUpGridMPI(grid, .false., .true.)
+          call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-!          call writeVtkFile(grid, "afterevenup.vtk", &
-!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
 
        endif
@@ -269,7 +241,7 @@ contains
 
     if (myrank /= 0) then
 
-       call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+       call calculateEnergyFromTemperature(grid%octreeRoot, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
        !       direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -295,7 +267,7 @@ contains
           write(*,*) "courantTime", dt
        endif
        dumpThisTime = .false.
-       if ((grid%currentTime + dt) > timeOfNextDump) then
+       if ((grid%currentTime + dt) >= timeOfNextDump) then
           dt =  timeofNextDump - grid%currentTime
           dumpThisTime = .true.
        endif
@@ -316,10 +288,20 @@ contains
           call resetNh(grid%octreeRoot)
 
 
+
+          iUnrefine = iUnrefine + 1
+          if (iUnrefine == 5) then
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             call unrefineCellsPhotoion(grid%octreeRoot, grid)
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             iUnrefine = 0
+          endif
+       
+          call evenUpGridMPI(grid, .true., .true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
        endif
-
-
-
 
 
 
@@ -332,7 +314,7 @@ contains
             lucyfileout, lucyfilein, 1)
        call writeInfo("Done",TRIVIAL)
        if (myrank /= 0) then
-          call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+          call calculateEnergyFromTemperature(grid%octreeRoot, mu)
           call calculateRhoE(grid%octreeRoot, direction)
        endif
        !
@@ -340,36 +322,20 @@ contains
 
 
        if (myRank /= 0) then
-          call writeInfo("Refining grid", TRIVIAL)
-          do
-             gridConverged = .true.
-             call refineGridGeneric2(grid%octreeRoot, grid, gridconverged, inherit=.true.)
-             if (gridConverged) exit
-          end do
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
           call writeInfo("Refining grid part 2", TRIVIAL)    
           do
              globalConverged(myRank) = .true.
-             call writeInfo("Refining grid", TRIVIAL)    
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inherit=.true.)
-             call writeInfo("Exchanging boundaries", TRIVIAL)    
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
              if (ALL(tConverged(1:nHydroThreads))) exit
           end do
 
-          iUnrefine = iUnrefine + 1
-          if (iUnrefine == 5) then
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCellsPhotoion(grid%octreeRoot, grid)
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             iUnrefine = 0
-          endif
-
           call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
 
        endif
 
@@ -1613,11 +1579,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
-          if (thisOctal%ionFrac(subcell,2) > 0.5d0) then
-             thisOctal%temperature(subcell) = 10000.d0
-          else
-             thisOctal%temperature(subcell) = 10.d0
-          endif
+          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
        endif
 
     enddo
@@ -4024,7 +3986,7 @@ end subroutine readHeIIrecombination
        
 
 
-  recursive subroutine calculateEnergyFromTemperature(thisOctal, gamma, mu)
+  recursive subroutine calculateEnergyFromTemperature(thisOctal, mu)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -4037,13 +3999,13 @@ end subroutine readHeIIrecombination
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateEnergyFromTemperature(child, gamma, mu)
+                call calculateEnergyFromTemperature(child,  mu)
                 exit
              end if
           end do
        else
 
-          eThermal = thisOctal%temperature(subcell) * Rgas / (gamma-1.d0)
+          eThermal = thisOctal%temperature(subcell) * Rgas / (thisOctal%gamma(subcell)-1.d0)
           thisOctal%energy(subcell) =  eThermal
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
 

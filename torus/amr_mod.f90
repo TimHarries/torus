@@ -96,29 +96,29 @@ CONTAINS
     if (inheritProps) then
        thisOctal%rho(subcell) = parentOctal%rho(parentSubcell)
        thisOctal%temperature(subcell) = parentOctal%temperature(parentSubcell)
-       thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
+       if (associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
        thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
-       thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
-       thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
-       thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       if (associated(thisOctal%biasCont3d)) thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
+       if (associated(thisOctal%etaLine)) thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
+       if (associated(thisOctal%chiLine)) thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
+       if (associated(thisOctal%boundaryCondition)) thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        endif
-       thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
+       if (associated(thisOctal%oldFrac)) thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
        if (associated(thisOctal%ionFrac)) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
-       thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
-       thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
+       if (associated(thisOctal%nh)) thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
+       if (associated(thisOctal%ne)) thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
 
-       thisOctal%rhou(subcell) = parentOctal%rhou(parentSubcell)
-       thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
-       thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
-       thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
-       thisOctal%phi_i(subcell) = parentOctal%phi_i(parentSubcell)
-       thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
+       if (associated(thisOctal%rhou)) thisOctal%rhou(subcell) = parentOctal%rhou(parentSubcell)
+       if (associated(thisOctal%rhov)) thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
+       if (associated(thisOctal%rhow)) thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
+       if (associated(thisOctal%rhoe)) thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
+       if (associated(thisOctal%phi_i)) thisOctal%phi_i(subcell) = parentOctal%phi_i(parentSubcell)
+       if (associated(thisOctal%energy)) thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
 
     else if (interpolate) then
        thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
@@ -7483,7 +7483,7 @@ IF ( .NOT. gridConverged ) RETURN
     else
        r = modulus(rVec - VECTOR(0.5d0, 0.d0, 0.0d0))
     endif
-    thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-r**2/gd**2)
+!    thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-r**2/gd**2)
     thisOctal%energy(subcell) = 2.5d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     thisOctal%pressure_i(subcell) = 1.d0
@@ -7540,7 +7540,8 @@ IF ( .NOT. gridConverged ) RETURN
 !    thisOctal%pressure_i(subcell) = (5.d0/3.d0-1.d0)*thisOctal%rho(subcell) * thisOctal%energy(subcell)
 
     thisOctal%boundaryCondition(subcell) = 1
-
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+    thisOctal%iEquationOfState(subcell) = 0
 
   end subroutine calcHydro1DDensity
 
@@ -10628,10 +10629,10 @@ end function readparameterfrom2dmap
     parentOctal%rho(parentSubcell) =                    &
     SUM(childOctal%rho(1:nVals)) / nValsREAL
 
-    parentOctal%nh(parentSubcell) =                    &
+    if (associated(parentOctal%nh)) parentOctal%nh(parentSubcell) =                    &
     SUM(childOctal%nh(1:nVals)) / nValsREAL
 
-    parentOctal%ne(parentSubcell) =                    &
+    if (associated(parentOctal%ne)) parentOctal%ne(parentSubcell) =                    &
     SUM(childOctal%ne(1:nVals)) / nValsREAL
 
     parentOctal%rhoe(parentSubcell) =                    &
