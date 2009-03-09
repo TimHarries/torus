@@ -122,7 +122,8 @@ CONTAINS
        if (associated(thisOctal%energy)) thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
 
     else if (interpolate) then
-       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       if (associated(thisOctal%boundaryCondition)) &
+            thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
        Thisoctal%etacont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
        thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
