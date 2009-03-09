@@ -478,7 +478,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 10000000
+    nMonte = 1000000
 
     nIter = 0
     
@@ -3111,15 +3111,18 @@ end subroutine createGammaTable
 real(double) function returnGamma(table, temp, freq) result(out)
   type(GAMMATABLE) :: table
   real(double) :: temp , freq
-  integer :: i, j
-  real(double) :: tfac, ffac, gamma1, gamma2
+  integer,save :: i, j
+  real(double) :: tfac, ffac, gamma1, gamma2, logT, logF
 
-  call locate(table%temp, table%nTemp, log10(temp), i)
-  call locate(table%freq, table%nFreq, log10(freq), j)
+  logT = log10(temp)
+  logF = log10(freq)
 
-  if (log10(freq) >= table%freq(1)) then
-     tfac  = (log10(temp) - table%temp(i))/(table%temp(i+1) - table%temp(i))
-     ffac  = (log10(freq) - table%freq(j))/(table%freq(j+1) - table%freq(j))
+  call hunt(table%temp, table%nTemp, logT, i)
+  call hunt(table%freq, table%nFreq, logF, j)
+
+  if (logF >= table%freq(1).and.logF <= table%freq(table%nFreq)) then
+     tfac  = (logT - table%temp(i))/(table%temp(i+1) - table%temp(i))
+     ffac  = (logF - table%freq(j))/(table%freq(j+1) - table%freq(j))
      
      gamma1 = table%gamma(j,i) + tfac*(table%gamma(j, i+1) - table%gamma(j,i))
      gamma2 = table%gamma(j+1,i) + tfac*(table%gamma(j+1, i+1) - table%gamma(j+1,i))
@@ -3161,8 +3164,9 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
         
         e = freq(i) * hcgs* ergtoev
 
+       hxSec = returnxSec(grid%ion(iIon), freq(i), iFreq=i)
 
-        call phfit2(grid%ion(iIon)%z, grid%ion(iIon)%n, grid%ion(iIon)%outerShell , e , hxsec)
+!        call phfit2(grid%ion(iIon)%z, grid%ion(iIon)%n, grid%ion(iIon)%outerShell , e , hxsec)
 
         jnu = tiny(jnu)
 
