@@ -555,6 +555,9 @@ contains
        grid%geometry = "toruslogo"
        grid%rStar1 = rSol/1.e10
 
+    case("pathtest")
+       grid%geometry = "pathtest"
+
     case("whitney")
        grid%geometry = "whitney"
        grid%rCore = rStellar/1.e10

@@ -24,7 +24,8 @@ program torus
   use utils_mod
   use input_variables         ! variables filled by inputs subroutine
   use constants_mod
-  use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump
+  use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
+       setupNeighbourPointers
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
   use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
@@ -664,6 +665,12 @@ program torus
   lucyRadiativeEq = .false.
   call set_up_lambda_array
   
+  if (geometry=="pathtest") then
+     call setupNeighbourPointers(grid, grid%octreeRoot)
+     call pathTest(grid)
+     goto 666
+  endif
+
 
   call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &

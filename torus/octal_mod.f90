@@ -69,6 +69,8 @@ MODULE octal_mod
      module procedure deallocateAttributeDouble3D
      module procedure deallocateAttributeReal
      module procedure deallocateAttributeInteger
+     module procedure deallocateAttributeInteger3D
+     module procedure deallocateAttributeOctalPointer3D
      module procedure deallocateAttributeVector
      module procedure deallocateAttributeLogical
   end interface
@@ -167,8 +169,8 @@ MODULE octal_mod
 
     INTEGER(KIND=BIGINT) :: iXbitstring(8), iYbitstring(8), iZbitstring(8)
     
-    TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) ! pointer to neighbour
-    integer, pointer :: neighbourSubcell(:,:,:) 
+    TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) => null() ! pointer to neighbour
+    integer, pointer :: neighbourSubcell(:,:,:)  => null()
 
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells
@@ -280,7 +282,7 @@ MODULE octal_mod
   END TYPE octal
  
   TYPE octalPointer
-     TYPE(OCTAL), pointer :: pointer
+     TYPE(OCTAL), pointer :: pointer => null()
   end TYPE octalPointer
      
 CONTAINS 
@@ -804,6 +806,24 @@ CONTAINS
        nullify(array)
     endif
   end subroutine deallocateAttributeInteger
+
+  subroutine deallocateAttributeInteger3D(array)
+    integer, pointer :: array(:,:,:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeInteger3D
+
+  subroutine deallocateAttributeOctalPointer3D(array)
+    type(OCTALPOINTER), pointer :: array(:,:,:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeOctalPointer3D
 
   subroutine deallocateAttributeLogical(array)
     logical, pointer :: array(:)
