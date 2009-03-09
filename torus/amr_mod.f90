@@ -16131,32 +16131,333 @@ end function readparameterfrom2dmap
   END SUBROUTINE cleanupAMRgrid
 
 
-  recursive subroutine setupNeighbourPointers(thisOctal)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  type(VECTOR) :: centre
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+  recursive subroutine setupNeighbourPointers(grid, thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer :: neighbourOctal
+    integer :: neighbourSubcell
+    type(octal), pointer  :: child 
+    type(VECTOR) :: centre, rvec
+    real(double) :: d
+    integer :: subcell, i
+    type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+    type(VECTOR), parameter :: yAxis = VECTOR(0.d0, 1.d0, 0.d0)
+    type(VECTOR), parameter :: xAxis = VECTOR(1.d0, 0.d0, 0.d0)
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call  setupNeighbourPointers(child)
+                call  setupNeighbourPointers(grid, child)
                 exit
              end if
           end do
        else
 
-          ! top face
+          if (.not.associated(thisOctal%neighbourOctal)) then
+             allocate(thisOctal%neighbourOctal(thisOctal%maxChildren, 6, 4)%pointer)
+          endif
+          if (.not.associated(thisOctal%neighbourSubcell)) then
+             allocate(thisOctal%neighbourSubcell(thisOctal%maxChildren, 6, 4))
+          endif
 
           centre = subcellCentre(thisOctal, subcell)
-          
+          d = thisOctal%subcellSize/2.d0
+
+          ! top face (plus z)
+
+          rVec = centre + zAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) - yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 1, 1)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 1, 1) = neighbourSubcell
+
+          rVec = centre + zAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) - yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 1, 2)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 1, 2) = neighbourSubcell
+
+          rVec = centre + zAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) + yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 1, 3)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 1, 3) = neighbourSubcell
+
+          rVec = centre + zAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) + yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 1, 4)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 1, 4) = neighbourSubcell
+
+          ! bottom face (minus z)
+
+          rVec = centre - zAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) - yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 2, 1)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 2, 1) = neighbourSubcell
+
+          rVec = centre - zAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) - yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 2, 2)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 2, 2) = neighbourSubcell
+
+          rVec = centre - zAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) + yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 2, 3)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 2, 3) = neighbourSubcell
+
+          rVec = centre - zAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) + yAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 2, 4)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 2, 4) = neighbourSubcell
+
+
+          ! left face (minus x)
+
+          rVec = centre - xAxis * (d+grid%halfSmallestSubcell*00.1d0) - yAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 3, 1)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 3, 1) = neighbourSubcell
+
+          rVec = centre - xAxis * (d+grid%halfSmallestSubcell*00.1d0) + yAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 3, 2)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 3, 2) = neighbourSubcell
+
+          rVec = centre - xAxis * (d+grid%halfSmallestSubcell*00.1d0) - yAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 3, 3)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 3, 3) = neighbourSubcell
+
+          rVec = centre - xAxis * (d+grid%halfSmallestSubcell*00.1d0) + yAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 3, 4)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 3, 4) = neighbourSubcell
+
+          ! right face (plus x)
+
+          rVec = centre + xAxis * (d+grid%halfSmallestSubcell*00.1d0) - yAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 4, 1)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 4, 1) = neighbourSubcell
+
+          rVec = centre + xAxis * (d+grid%halfSmallestSubcell*00.1d0) + yAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 4, 2)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 4, 2) = neighbourSubcell
+
+          rVec = centre + xAxis * (d+grid%halfSmallestSubcell*00.1d0) - yAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 4, 3)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 4, 3) = neighbourSubcell
+
+          rVec = centre + xAxis * (d+grid%halfSmallestSubcell*00.1d0) + yAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 4, 4)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 4, 4) = neighbourSubcell
+
+
+          ! front face (plus y)
+
+          rVec = centre + yAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 5, 1)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 5, 1) = neighbourSubcell
+
+          rVec = centre + yAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 5, 2)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 5, 2) = neighbourSubcell
+
+          rVec = centre + yAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 5, 3)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 5, 3) = neighbourSubcell
+
+          rVec = centre + yAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 5, 4)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 5, 4) = neighbourSubcell
+
+          ! back face (minus y)
+
+          rVec = centre - yAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 6, 1)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 6, 1) = neighbourSubcell
+
+          rVec = centre - yAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) - zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 6, 2)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 6, 2) = neighbourSubcell
+
+          rVec = centre - yAxis * (d+grid%halfSmallestSubcell*00.1d0) - xAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 6, 3)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 6, 3) = neighbourSubcell
+
+          rVec = centre - yAxis * (d+grid%halfSmallestSubcell*00.1d0) + xAxis*(d/2.d0) + zAxis*(d/2.d0)
+          neighbourOctal => thisOctal
+          neighbourSubcell = subcell
+          call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+          thisOctal%neighbourOctal(subcell, 6, 4)%pointer => neighbourOctal
+          thisOctal%neighbourSubcell(subcell, 6, 4) = neighbourSubcell
 
        endif
     enddo
   end subroutine setupNeighbourPointers
+
+  subroutine getNeighbourFromPointOnFace(rVec, thisOctal, subcell, neighbourOctal, neighbourSubcell)
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    integer :: neighbourSubcell, subcell
+    type(VECTOR) :: rVec, centre, normVec
+    logical :: xPos, xNeg, yPos, yNeg, zPos, zNeg
+
+    centre = subcellCentre(thisOctal, subcell)
+    normVec = 2.d0*((rVec - centre)/thisOctal%subcellSize)
+
+    xPos = normVec%x >= 0.d0
+    xNeg = .not.xPos
+
+    yPos = normVec%y >= 0.d0
+    yNeg = .not.yPos
+
+    zPos = normVec%z >= 0.d0
+    zNeg = .not.zPos
+
+
+
+    if (normVec%z > 0.9999d0) then ! top face
+       if ((xNeg.and.yNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 1)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 1)
+       else if ((xPos.and.yNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 2)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 2)
+       else if ((xNeg.and.yPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 3)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 3)
+       else if ((xPos.and.yPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 4)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 4)
+       endif
+    else if (normVec%z < -0.9999d0) then ! bottom face
+       if ((xNeg.and.yNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 1)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 1)
+       else if ((xPos.and.yNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 2)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 2)
+       else if ((xNeg.and.yPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 3)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 3)
+       else if ((xPos.and.yPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 4)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 4)
+       endif
+    else if (normVec%x < -0.9999d0) then ! left face
+       if ((yNeg.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 1)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 1)
+       else if ((yPos.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 2)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 2)
+       else if ((yNeg.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 3)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 3)
+       else if ((yPos.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 4)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 4)
+       endif
+    else if (normVec%x > 0.9999d0) then ! right face
+       if ((yNeg.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 1)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 1)
+       else if ((yPos.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 2)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 2)
+       else if ((yNeg.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 3)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 3)
+       else if ((yPos.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 4)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 4)
+       endif
+    else if (normVec%y > 0.9999d0) then ! front face
+       if ((xNeg.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 1)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 1)
+       else if ((xPos.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 2)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 2)
+       else if ((xNeg.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 3)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 3)
+       else if ((xPos.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 4)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 4)
+       endif
+    else if (normVec%y < -0.9999d0) then ! back
+       if ((xNeg.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 1)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 1)
+       else if ((xPos.and.zNeg)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 2)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 2)
+       else if ((xNeg.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 3)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 3)
+       else if ((xPos.and.zPos)) then
+          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 4)%pointer
+          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 4)
+       endif
+    endif
+  end subroutine getNeighbourFromPointOnFace
+
 
   subroutine howmanysplits()
     implicit none
@@ -16201,5 +16502,6 @@ end function readparameterfrom2dmap
 !    intensity = SUM(thisOctal%scatteredIntensity(subcell,:,:))/100.d0
   end function returnScatteredIntensity
 
+ 
    
 END MODULE amr_mod

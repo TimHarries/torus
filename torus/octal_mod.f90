@@ -166,6 +166,9 @@ MODULE octal_mod
     LOGICAL, DIMENSION(8)              :: inFlow
 
     INTEGER(KIND=BIGINT) :: iXbitstring(8), iYbitstring(8), iZbitstring(8)
+    
+    TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) ! pointer to neighbour
+    integer, pointer :: neighbourSubcell(:,:,:) 
 
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells
@@ -276,6 +279,10 @@ MODULE octal_mod
 
   END TYPE octal
  
+  TYPE octalPointer
+     TYPE(OCTAL), pointer :: pointer
+  end TYPE octalPointer
+     
 CONTAINS 
  
   TYPE(Vector) FUNCTION subcellCentre(thisOctal,nChild)
