@@ -102,7 +102,8 @@ CONTAINS
        if (associated(thisOctal%biasCont3d)) thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        if (associated(thisOctal%etaLine)) thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        if (associated(thisOctal%chiLine)) thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       if (associated(thisOctal%boundaryCondition)) thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       if (associated(thisOctal%boundaryCondition)) thisOCtal%boundaryCondition(subcell) &
+            = parentOctal%boundaryCondition(parentSubcell)
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        endif
@@ -122,7 +123,7 @@ CONTAINS
 
     else if (interpolate) then
        thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
-       thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
+       Thisoctal%etacont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
        thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
