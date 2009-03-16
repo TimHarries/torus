@@ -7524,46 +7524,41 @@ IF ( .NOT. gridConverged ) RETURN
     if  (thisOctal%threed) then
        zprime = -1.d0 - (rVec%x+rVec%y)
     else
-       zprime = -0.5d0 - rVec%x
+!       zprime = -0.5d0 - rVec%x
        zprime = -rVec%x
+!       zprime = sqrt(0.5d0**2 - rVec%x**2) - 0.5d0
     endif
 
-    if (rvec%z < zprime) then
+!    if (rvec%z < zprime) then
+    if (rvec%x < 0.5d0) then
        thisOctal%rho(subcell) = 1.d0
        thisOctal%energy(subcell) = 2.5d0
        thisOctal%pressure_i(subcell) = 1.d0
+       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     else
        thisOctal%rho(subcell) = 0.125d0
-       thisOctal%energy(subcell) = 0.25d0
+       thisOctal%energy(subcell) = 2.d0
        thisOctal%pressure_i(subcell) = 0.1d0
+       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     endif
 
     if (thisOctal%oneD) then
-       if (rvec%x < 0.25d0) then
+       if (rvec%x < 0.5d0) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
        else
           thisOctal%rho(subcell) = 0.125d0
-          thisOctal%energy(subcell) = 0.25d0
+          thisOctal%energy(subcell) = 2.d0
           thisOctal%pressure_i(subcell) = 0.1d0
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
        endif
     endif
 
-
-
-!    r = rVec%x
-!    gd = 0.025d0
-!    thisOctal%rho(subcell) = 0.5d0 + 0.3d0 * exp(-(r-0.5d0)**2/gd**2)
-!    thisOctal%energy(subcell) = 2.5d0
-!    thisOCtal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-!    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-!    thisOctal%pressure_i(subcell) = (5.d0/3.d0-1.d0)*thisOctal%rho(subcell) * thisOctal%energy(subcell)
-
+    thisOctal%phi_i(subcell) = 0.d0
     thisOctal%boundaryCondition(subcell) = 1
-    thisOctal%gamma(subcell) = 5.d0/3.d0
+    thisOctal%gamma(subcell) = 7.d0/5.d0
     thisOctal%iEquationOfState(subcell) = 0
 
   end subroutine calcHydro1DDensity
@@ -16534,10 +16529,10 @@ end function readparameterfrom2dmap
     enddo
   end subroutine setupNeighbourPointers
 
-  subroutine getNeighbourFromPointOnFace(rVec, thisOctal, subcell, neighbourOctal, neighbourSubcell)
+  subroutine getNeighbourFromPointOnFace(rVec, uHat, thisOctal, subcell, neighbourOctal, neighbourSubcell)
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     integer :: neighbourSubcell, subcell
-    type(VECTOR) :: rVec, centre, normVec
+    type(VECTOR) :: rVec, centre, normVec, uHat
     logical :: xPos, xNeg, yPos, yNeg, zPos, zNeg
 
     centre = subcellCentre(thisOctal, subcell)
@@ -16553,12 +16548,13 @@ end function readparameterfrom2dmap
     zPos = normVec%z >= 0.d0
     zNeg = .not.zPos
 
+
 !    write(*,*) "xpos,xneg ",xpos,xneg
 !    write(*,*) "ypos,yneg ",ypos,yneg
 !    write(*,*) "zpos,zneg ",zpos,zneg
 
 !    write(*,*) "current subcell", subcell
-    if (normVec%z > 0.99999d0) then ! top face
+    if ((normVec%z > 0.999999d0).and.(uHat%z > 0.d0)) then ! top face
        if ((xNeg.and.yNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 1)
@@ -16572,7 +16568,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 4)
        endif
-    else if (normVec%z < -0.99999d0) then ! bottom face
+    else if ((normVec%z < -0.999999d0).and.(uHat%z < 0.d0)) then ! bottom face
        if ((xNeg.and.yNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 1)
@@ -16586,7 +16582,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 4)
        endif
-    else if (normVec%x < -0.99999d0) then ! left face
+    else if ((normVec%x < -0.999999d0).and.(uHat%x < 0.d0)) then ! left face
        if ((yNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 1)
@@ -16600,7 +16596,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 4)
        endif
-    else if (normVec%x > 0.99999d0) then ! right face
+    else if ((normVec%x > 0.999999d0).and.(uHat%x > 0.d0)) then ! right face
        if ((yNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 1)
@@ -16614,7 +16610,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 4)
        endif
-    else if (normVec%y > 0.99999d0) then ! front face
+    else if ((normVec%y > 0.999999d0).and.(uHat%y > 0.d0)) then ! front face
        if ((xNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 1)
@@ -16628,7 +16624,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 4)
        endif
-    else if (normVec%y < -0.99999d0) then ! back
+    else if ((normVec%y < -0.999999d0).and.(uHat%y < 0.d0)) then ! back
        if ((xNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 1)
@@ -16780,7 +16776,7 @@ end function readparameterfrom2dmap
        call distanceToCellBoundary(grid, currentPosition, uHat, DisttoNextCell, thisOctal, subcell)
 
        currentPosition = currentPosition + distToNextCell*uHat
-       call getNeighbourFromPointOnFace(currentPosition, thisOctal, subcell, sOctal, sSubcell)
+       call getNeighbourFromPointOnFace(currentPosition, uHat, thisOctal, subcell, sOctal, sSubcell)
        thisOctal => sOctal
        subcell = sSubcell
 

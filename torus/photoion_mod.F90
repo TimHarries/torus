@@ -1497,7 +1497,7 @@ end subroutine photoIonizationloop
     endif
 
 
-    call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
+    call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate, debug=.true.)
     if (crate < 0.) then
        write(*,*) "total negative metal cooling",crate
     endif

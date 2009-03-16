@@ -776,27 +776,35 @@ contains
           totFrac = 0.
           nFrac = 0
           tauMax = 1.e30
-          if (iiter_grand <= 8) tauMax = 1.*dble(iiter_grand)
-          call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-          if ((nfrac /= 0).and.(writeoutput)) then
-             write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
-          endif
-!          if ((iIter_grand>=1).and.(iIter_grand <=20)) then
 
+
+          if (mod(iIter_grand, 4) == 0) then
+
+             if (iIter_grand == 4) tauMax = 0.1d0
+             if (iIter_grand == 8) tauMax = 1.d0
+             if (iIter_grand == 12) tauMax = 10.d0
+             if (iIter_grand >= 16) tauMax = 1.e30
+
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+             if ((nfrac /= 0).and.(writeoutput)) then
+                write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
+             endif
+             !          if ((iIter_grand>=1).and.(iIter_grand <=20)) then
+             
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-
-             if (iiter_grand > 3) then
-
-!                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-!                gridconverged = .false.
-!                do while(.not.gridconverged)
-!                   gridconverged = .true.
-!                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-!                end do
-!                if (writeoutput) then
-!                   write(*,*) "done."
-!                endif
-
+             
+             if (iiter_grand >= 12) then
+                
+                !                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+                !                gridconverged = .false.
+                !                do while(.not.gridconverged)
+                !                   gridconverged = .true.
+                !                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+                !                end do
+                !                if (writeoutput) then
+                !                   write(*,*) "done."
+                !                endif
+                
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
                 do j = iSmoothLam, iSmoothlam !nLambda, 5
                    do
@@ -816,10 +824,8 @@ contains
                    if (gridConverged) exit
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
-
-
+             endif
           endif
-
           nCellsInDiffusion = 0
           call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
           write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
@@ -853,7 +859,7 @@ contains
     if (iIter_grand < iterlucy) converged = .false.
 
     if (variableDustSublimation) then
-       if (iIter_grand < 4) then
+       if (iIter_grand < 16) then
           converged = .false.
        endif
     endif

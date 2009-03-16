@@ -1536,6 +1536,61 @@ contains
 !    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
   end subroutine periodBoundaryReceiveRequests
 
+
+  subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: nPoints
+    type(VECTOR) :: startPoint, endPoint, rVec
+    integer :: i
+    real(double), allocatable :: rho(:), x(:), temp(:), rhoe(:), rhou(:)
+    character(len=*) :: thisFile
+    integer :: ierr
+    if (myrankGlobal==0) goto 666
+
+    allocate(rho(1:nPoints), rhoe(1:nPoints),x(1:nPoints), rhou(1:nPoints), temp(1:nPoints))
+    rho = 0.d0
+    rhoe = 0.d0
+    rhou = 0.d0
+    thisOctal => grid%octreeRoot
+    subcell = 1
+    do i = 1, nPoints
+       rVec = startPoint+(endPoint-startPoint)*(dble(i-1)/dble(nPoints-1))
+       x(i) = modulus(endPoint - startPoint)*(dble(i-1)/dble(nPoints-1))
+       
+       call findSubcellLocal(rVec, thisOctal, subcell)
+       if (octalonThread(thisOctal, subcell, myRankGlobal)) then
+          rho(i) = thisOctal%rho(subcell)
+          rhoe(i)= thisOctal%rhoe(subcell)
+          rhou(i)= thisOctal%rhou(subcell)
+       endif
+    enddo
+    temp = 0.d0
+    call MPI_ALLREDUCE(rho, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+    rho = temp
+    temp = 0.d0
+    call MPI_ALLREDUCE(rhoe, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+    rhoe = temp
+    temp = 0.d0
+    call MPI_ALLREDUCE(rhou, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+    rhou = temp
+
+    if (myrankGlobal == 1) then
+       open(88, file=thisFile,status="unknown", form="formatted")
+       write(88, *) npoints
+       do i = 1, nPoints
+          write(88,'(4f12.4)') x(i), rho(i), rhoe(i)/rho(i),rhou(i)/rho(i)
+       enddo
+       close(88)
+    endif
+    deallocate(x, rho, temp, rhoe, rhou)
+666 continue
+  end subroutine dumpValuesAlongLine
+    
+    
+
 #else
 
   use messages_mod
@@ -1558,6 +1613,8 @@ contains
     STOP
 
   end function octalOnThread
+
+
 
 #endif
 end module mpi_amr_mod

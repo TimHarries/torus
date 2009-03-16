@@ -180,11 +180,13 @@ contains
 
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
+          call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
                lucyfileout, lucyfilein, 5)
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
+          call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
                lucyfileout, lucyfilein, 5)
           call writeInfo("Done",TRIVIAL)
@@ -310,6 +312,7 @@ contains
 !       call ionizeGrid(grid%octreeRoot)
 !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
+       call setupNeighbourPointers(grid, grid%octreeRoot)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
             lucyfileout, lucyfilein, 1)
        call writeInfo("Done",TRIVIAL)
@@ -370,10 +373,12 @@ contains
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
+    integer :: nMonte
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
     logical :: readlucy, writelucy
-    type(OCTAL), pointer :: thisOctal !, tempOctal
+    type(OCTAL), pointer :: thisOctal, currentOctal !, tempOctal
+    integer :: currentSubcell
 !    integer :: nCellsInDiffusion
 !    character(len=80) :: message
 !    integer :: tempSubcell
@@ -384,7 +389,7 @@ contains
     integer :: iSource
     type(VECTOR) :: rVec, uHat, rHat
     real(double) :: lCore
-    integer :: nMonte, iMonte
+    integer :: iMonte
     integer :: subcell
     integer :: i, j
     logical :: escaped
@@ -422,6 +427,7 @@ contains
     logical :: crossedMPIboundary
     integer :: tag = 41
     integer :: nTotScat, nPhot
+    integer :: newThread
     logical :: quickThermal
     logical, save :: firstTimeTables = .true.
 
@@ -478,7 +484,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 1000000
+    nMonte = 10000000
 
     nIter = 0
     
@@ -557,16 +563,9 @@ contains
                    do while(.not.escaped)
                       
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
-                           photonPacketWeight, nfreq, freq, crossedMPIboundary)
-!                      write(*,*) myrank," After photon of freq ", thisFreq, " exited to nexteventphoto", escaped, crossedMPIboundary
+                           photonPacketWeight, nfreq, freq, crossedMPIboundary, currentOctal, currentSubcell, newThread)
                       if (crossedMPIBoundary) then
-!                         write(*,*) "crossedboundary with rvec ",rvec
-!                         write(*,*) "inoctal",inOctal(grid%octreeroot,rvec)
-                         call findSubcellTD(rVec, grid%octreeRoot, thisOctal, subcell)
-                         iThread = thisOctal%mpiThread(subcell)
-!                         write(*,*) myrank, "->", ithread," label ",thisOctal%label(subcell),modulus(rVec)
-                         call sendMPIPhoton(rVec, uHat, thisFreq, iThread)
-!                         write(*,*) "after tonexteventPhoto photon passed to ", ithread
+                         call sendMPIPhoton(rVec, uHat, thisFreq, newThread)
                          goto 777
                       endif
 
@@ -839,15 +838,16 @@ end subroutine photoIonizationloopAMR
 
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, &
-     nfreq, freq, crossedMPIboundary)
+     nfreq, freq, crossedMPIboundary, currentOctal, currentSubcell, newThread)
   include 'mpif.h'
   integer :: myRank, ierr
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
-   type(OCTAL), pointer :: thisOctal, tempOctal
+   type(OCTAL), pointer :: thisOctal, tempOctal, currentOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
-   integer :: endSubcell
+   integer :: newThread
+   integer :: endSubcell, currentSubcell
    real(double) :: photonPacketWeight
    integer :: nFreq
    real(double) :: freq(:)
@@ -887,11 +887,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! select an initial random tau and find distance to next cell
 
+    call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
+
     call random_number(r)
     tau = -log(1.0-r)
 
-    call distanceToCellBoundary(grid, rVec, uHat, tval)
-    tval = tval + 1.d-3*grid%halfSmallestSubcell
+    call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+    
 
 
     octVec = rVec
@@ -900,8 +902,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     call locate(lamArray, nLambda, real(thisLam), iLam)
 
 
-    call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), foundOctal=thisOctal, &
-         foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+    call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+         actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
     oldOctal => thisOctal
 
@@ -914,18 +916,25 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 
+!    write(*,*) "tau, thisTau ", tau, thistau
+
     do while(stillinGrid .and. (tau > thisTau)) 
 
 ! add on the distance to the next cell
 
-       rVec = rVec + tVal * uHat
+       rVec = rVec + tVal * uHat ! rvec is now at face of thisOctal, subcell
+
+       call getNeighbourFromPointOnFace(rVec, uHat, thisOctal, subcell, nextOctal, nextSubcell)
+
+       rVec = rVec + (1.d-8*grid%halfSmallestSubcell) * uHat ! rvec is now in nextoctal
+
 
        octVec = rVec
 
 
 ! check whether the photon has escaped from the grid
 
-       if (.not.inOctal(grid%octreeRoot, octVec)) then
+       if (nextSubcell < 1) then
           stillinGrid = .false.
           escaped = .true.
        endif
@@ -933,16 +942,12 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! check whether the photon has  moved across an MPI boundary
         
       if (stillInGrid) then
-          nextOctal => thisOctal
-          nextSubcell = Subcell
-          call findSubcellLocal(octVec, nextOctal, nextSubcell)
-!          if (nextOctal%mpiThread(nextSubcell) /= myRank) then
+
           if (.not.octalOnThread(nextOctal, nextsubcell, myRank)) then
              stillInGrid = .false.
              escaped = .true.
              crossedMPIboundary = .true.
-!             write(*,*) myrank," crossed to thread ", nextOctal%mpiThread(nextsubcell), &
-!                  nextOctal%label(nextSubcell), modulus(rVec)
+             newThread = nextOctal%mpiThread(nextSubcell)
           endif
        endif
 
@@ -956,8 +961,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        if (stillinGrid) then
           
-          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-               foundSubcell=subcell)
+          thisOctal => nextOctal
+          subcell = nextSubcell
           if (thisOctal%diffusionApprox(subcell)) then
              call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
              rVec = subcellCentre(endOctal,endSubcell)
@@ -978,8 +983,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call random_number(r)
           tau = -log(1.0-r)
           call locate(lamArray, nLambda, real(thisLam), iLam)
-          call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), foundOctal=thisOctal, &
-               foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+          call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), startOctal=thisOctal, &
+               actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
           oldOctal => thisOctal
           thisOctVec = octVec
@@ -987,9 +992,18 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! calculate the distance to the next cell
 
 
-          call distanceToCellBoundary(grid, rVec, uHat, tval, sOctal=thisOctal)
+!          write(*,*) "disttocell rvec ", inSubcell(thisOCtal, subcell, rVec)
+!          write(*,*) "disttocell octvec ", inSubcell(thisOCtal, subcell, octVec)
 
-          tval = tval + 1.d-3*grid%halfSmallestSubcell
+          if (.not.inSubcell(thisOctal, subcell, rVec)) then
+             write(*,*) "rvec ",rVec
+             write(*,*) "octvec ", octvec
+             write(*,*) "xmin xmax ", thisOctal%xmin, thisOctal%xmax
+             write(*,*) "ymin ymax ", thisOctal%ymin, thisOctal%ymax
+             write(*,*) "zmin zmax ", thisOctal%zmin, thisOctal%zmax
+          endif
+          call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+
 
           octVec = rVec
 
@@ -1012,7 +1026,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        
     enddo
-    
 
 ! the photon may have escaped the grid...
 
@@ -1037,8 +1050,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           write(*,*) "tau prob",tau,thisTau
        endif
 
-       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
-            foundOctal=thisOctal, foundSubcell=subcell, & 
+       call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualSubcell = subcell, &
+            iLambda=iLam,lambda=real(thisLam),&
             kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
        thisOctVec = octVec
 
@@ -1078,8 +1091,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        endif
 
        octVec = rVec
-       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
-            foundOctal=thisOctal, foundSubcell=subcell)
        if (thisOctal%diffusionApprox(subcell)) then
           call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
           rVec = subcellCentre(endOctal,endSubcell)
@@ -3997,7 +4008,11 @@ end subroutine readHeIIrecombination
           end do
        else
 
-          eThermal = thisOctal%temperature(subcell) * Rgas / (thisOctal%gamma(subcell)-1.d0)
+          if (thisOctal%gamma(subcell) /= 1.d0) then
+             eThermal = thisOctal%temperature(subcell) * Rgas / (thisOctal%gamma(subcell)-1.d0)
+          else
+             eThermal = 1.d0/(thisOctal%temperature(subcell)*kerg*mHydrogen)
+          endif
           thisOctal%energy(subcell) =  eThermal
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
 

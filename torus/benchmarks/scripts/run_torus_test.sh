@@ -74,6 +74,22 @@ esac
 
 }
 
+run_hydro()
+{
+cd ${WORKING_DIR}/benchmarks/hydro
+ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
+
+case ${SYSTEM} in
+    ompi) mpirun -np 3 torus.ompi > run_log_hydro.txt 2>&1 ;;
+
+    zen) mpirun -np 3 torus.zen > run_log_hydro.txt 2>&1 ;;
+
+    *) echo "Unrecognised SYSTEM type. Aborting"
+       exit 1;;
+esac
+
+}
+
 run_sphbench()
 {
 cd ${WORKING_DIR}/benchmarks/sphbench
@@ -121,6 +137,13 @@ check_molebench()
 echo Compiling compare_molbench code
 ${TORUS_FC} -o compare_molbench compare_molbench.f90
 ./compare_molbench
+}
+
+check_hydro()
+{
+echo Compiling compare_molbench code
+${TORUS_FC} -o comparesod compareSod.f90
+./comparesod
 }
 
 run_torus_test_suite()
