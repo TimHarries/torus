@@ -58,6 +58,14 @@ subject_line3=" "
 #    subject_line4="SPH-Bench failed. "
 #fi
 
+# Test for success of hydro benchmark
+num_success=`/usr/bin/grep "Test passed" benchmarks_ompi/benchmarks/hydro/check_log_hydro.txt | /usr/bin/wc -l `
+
+if [[ ${num_success} -eq 1 ]]; then
+    subject_line5="Hydro benchmark successful. "
+else
+    subject_line5="Hydro benchmark failed. "
+fi
 
 # Join the output files together and get rid of the old log file
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log 
@@ -66,7 +74,7 @@ export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 # Send mail 
 mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk drundle@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk"
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "${subject_line} ${subject_line2} ${subject_line3}" ${attach_list} ${user} < ${LOG_FILE}
+    /sw/bin/mutt -s "${subject_line} ${subject_line2} ${subject_line3} ${subject_line5}" ${attach_list} ${user} < ${LOG_FILE}
 done
 
 exit
