@@ -146,7 +146,7 @@ check_hydro()
 {
 echo Compiling compareSod code
 ${TORUS_FC} -o comparesod compareSod.f90
-./comparesod
+./comparesod > check_log_hydro.txt
 }
 
 run_torus_test_suite()
