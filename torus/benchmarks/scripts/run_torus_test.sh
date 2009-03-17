@@ -72,6 +72,9 @@ case ${SYSTEM} in
        exit 1;;
 esac
 
+#Tag the tune.dat file 
+ln -s tune.dat tune_${THIS_BENCH}.txt 
+
 }
 
 run_hydro()
@@ -141,7 +144,7 @@ ${TORUS_FC} -o compare_molbench compare_molbench.f90
 
 check_hydro()
 {
-echo Compiling compare_molbench code
+echo Compiling compareSod code
 ${TORUS_FC} -o comparesod compareSod.f90
 ./comparesod
 }
@@ -173,18 +176,23 @@ for sys in ${SYS_TO_TEST}; do
     make_lib
     make_comparespec
 
+# Run hydro benchmark
+    echo "Running hydro benchmark"
+    run_hydro
+    check_hydro
+
 # Run benchmark tests
     echo "Running disc benchmark"
     export THIS_BENCH=disc
     run_bench 
     check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
 
-    if [[ ${SYSTEM} == ompi ]]; then
-	echo "Running cylindrical polar disc benchmark"
-	export THIS_BENCH=disc_cylindrical
-	run_bench
-	check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
-    fi
+#    if [[ ${SYSTEM} == ompi ]]; then
+#	echo "Running cylindrical polar disc benchmark"
+#	export THIS_BENCH=disc_cylindrical
+#	run_bench
+#	check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+#    fi
 
 # SPH-Bench and HII region benchmark have been commented out 
 # when running Torus v1.1 stable version tests. 
@@ -199,6 +207,7 @@ for sys in ${SYS_TO_TEST}; do
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
+    mkdir ${WORKING_DIR}/benchmarks/molebench/plots 
     run_bench
     check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
 
