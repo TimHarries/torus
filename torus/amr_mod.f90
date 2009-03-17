@@ -12447,15 +12447,19 @@ end function readparameterfrom2dmap
 
   end subroutine interpFromParent
 
-  subroutine interpHydroProperties(thisOctal, subcell)
+  subroutine interpHydroProperties(grid, thisOctal, subcell)
+    type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, parentOctal, neighbourOctal
+    type(OCTAL),pointer :: neighbourOctalMinus, neighbourOctalPlus
     integer :: subcell, parentSubcell, neighbourSubcell
-    type(VECTOR) :: direction
+    type(VECTOR) :: direction, cellCentre, rVec, parentSubcellCentre
+    real(double) :: xMinus, xMid, xPlus
+    integer :: neighbourSubcellPlus, neighbourSubcellMinus
 
-    parentOctal => thisOctal%parentOctal
-    parentSubcell => thisOctal%parentSubcell
-    subcellCentre = subcellCentre(thisOctal, subcell)
-    xMid = subcellCentre%x
+    parentOctal => thisOctal%parent
+    parentSubcell = thisOctal%parentSubcell
+    cellCentre = subcellCentre(thisOctal, subcell)
+    xMid = cellCentre%x
     parentSubcellCentre = subcellCentre(parentOctal, parentSubcell)
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
