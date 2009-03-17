@@ -1,7 +1,7 @@
 #!/bin/ksh
 
 export BASE_DIR=/Users/acreman
-export TORUS_TEST_DIR=${BASE_DIR}/torus_daily_test
+export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
 export LOG_FILE=${BASE_DIR}/torus_daily_test_log
 export num_tests=2
 
@@ -9,7 +9,7 @@ cd  ${TORUS_TEST_DIR}
 
 attach_list=""
 
-for file in cvs_log.txt  benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*
+for file in cvs_log.txt  benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt
  
 do
     file_size=`du -ks ${file} | awk '{print $1}'`
@@ -40,22 +40,23 @@ else
 fi
 
 # Test for success of cylindrical polar disc benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc_cylindrical/check_log_disc_cylindrical.txt | /usr/bin/wc -l `
+#num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc_cylindrical/check_log_disc_cylindrical.txt | /usr/bin/wc -l `
 
-if [[ ${num_success} -eq ${num_tests} ]]; then
-    subject_line3="Cylindrical polar disc benchmark successful. "
-else
-    subject_line3="Cylindrical polar disc benchmark failed. "
-fi
+#if [[ ${num_success} -eq ${num_tests} ]]; then
+#    subject_line3="Cylindrical polar disc benchmark successful. "
+#else
+#    subject_line3="Cylindrical polar disc benchmark failed. "
+#fi
+subject_line3=" "
 
 # Test for success of sphbench
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/sphbench/check_log_sphbench.txt | /usr/bin/wc -l `
+#num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/sphbench/check_log_sphbench.txt | /usr/bin/wc -l `
 
-if [[ ${num_success} -eq ${num_tests} ]]; then
-    subject_line4="SPH-Bench successful. "
-else
-    subject_line4="SPH-Bench failed. "
-fi
+#if [[ ${num_success} -eq ${num_tests} ]]; then
+#    subject_line4="SPH-Bench successful. "
+#else
+#    subject_line4="SPH-Bench failed. "
+#fi
 
 
 # Join the output files together and get rid of the old log file
@@ -65,7 +66,7 @@ export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 # Send mail 
 mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk drundle@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk"
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "${subject_line} ${subject_line2} ${subject_line3} ${subject_line4}" ${attach_list} ${user} < ${LOG_FILE}
+    /sw/bin/mutt -s "${subject_line} ${subject_line2} ${subject_line3}" ${attach_list} ${user} < ${LOG_FILE}
 done
 
 exit
