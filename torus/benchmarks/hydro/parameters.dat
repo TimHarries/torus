@@ -54,5 +54,5 @@ mincrossings 50
 ndusttype 0
 firstinc 90.
 lastinc 90.
-ninc 1
+ninc 0
 maxscat 10

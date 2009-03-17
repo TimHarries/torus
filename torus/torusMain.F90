@@ -671,12 +671,13 @@ program torus
      goto 666
   endif
 
-
-  call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
-     theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
-     starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
-     infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
-     miePhase, nsource, source, blobs, nmumie, dTime)
+  if ( nInclination > 0 ) then
+     call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
+          theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
+          starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
+          infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
+          miePhase, nsource, source, blobs, nmumie, dTime)
+  end if
 
 ! Tidy up and finish the run 
 
