@@ -12447,6 +12447,33 @@ end function readparameterfrom2dmap
 
   end subroutine interpFromParent
 
+  subroutine interpHydroProperties(thisOctal, subcell)
+    type(OCTAL), pointer :: thisOctal, parentOctal, neighbourOctal
+    integer :: subcell, parentSubcell, neighbourSubcell
+    type(VECTOR) :: direction
+
+    parentOctal => thisOctal%parentOctal
+    parentSubcell => thisOctal%parentSubcell
+    subcellCentre = subcellCentre(thisOctal, subcell)
+    xMid = subcellCentre%x
+    parentSubcellCentre = subcellCentre(parentOctal, parentSubcell)
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
+
+    neighbourOctalMinus => thisOctal
+    rVec = parentSubcellCentre - direction*(parentoctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+    call findSubcellLocal(rVec, neighbourOctalMinus, neighbourSubcellMinus)
+    rVec = subcellCentre(neighbourOctalminus, neighbourSubcellMinus)
+    xMinus = rvec%x
+    neighbourOctalPlus => thisOctal
+    rVec = parentSubcellCentre - direction*(parentoctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+    call findSubcellLocal(rVec, neighbourOctalPlus, neighbourSubcellPlus)
+    rVec = subcellCentre(neighbourOctalPlus, neighbourSubcellPlus)
+    xPlus = rvec%x
+    
+
+  end subroutine interpHydroProperties
+
+
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
     use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr!, rinner
