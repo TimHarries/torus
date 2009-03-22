@@ -1170,7 +1170,7 @@ subroutine setDiffOnTau(grid)
              call returnKappa(grid, thisOctal, subcell,  rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
 
-             if (tau < 0.1d0) then
+             if (tau < 0.01d0) then
                 thisOctal%diffusionApprox(subcell) = .false.
              else
                 tau = 1.d30

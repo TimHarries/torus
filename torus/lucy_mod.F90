@@ -171,6 +171,8 @@ contains
   else
      nMonte = nVoxels * 10
   endif
+
+
     nFreq = nLambda
     do i = 1, nFreq
        freq(nFreq-i+1) = cSpeed / (lamArray(i)*1.e-8)
@@ -271,16 +273,6 @@ contains
     do iIter = 1, nIter
 
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
-
-       if (multiLucyFiles) then
-          write(tfilename, '(a,i2.2,a)') "lucy",iIter_grand,".vtk"
-       else
-          tfilename = "lucy.vtk"
-       endif
-       
-       call writeVtkFile(grid, tfilename, &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                              "dust1      ", "deltaT     "/))
        
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
@@ -665,8 +657,13 @@ contains
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
-       call solveArbitraryDiffusionZones(grid)
-
+       if (.not.variableDustSublimation) then
+          call solveArbitraryDiffusionZones(grid)
+       else
+          if (iITer_grand >= 9) then
+             call solveArbitraryDiffusionZones(grid)
+          endif
+       endif
 
        nCellsInDiffusion = 0
        nUndersampled = 0
@@ -762,8 +759,8 @@ contains
        endif
 
 
-       if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-       call writeInfo("Grid written",TRIVIAL)
+!       if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+!       call writeInfo("Grid written",TRIVIAL)
 
 
     enddo
@@ -778,14 +775,15 @@ contains
           tauMax = 1.e30
 
 
-          if (mod(iIter_grand, 4) == 0) then
+          if (mod(iIter_grand, 1) == 0) then
 
-             if (iIter_grand == 4) tauMax = 0.1d0
-             if (iIter_grand == 8) tauMax = 1.d0
-             if (iIter_grand == 12) tauMax = 10.d0
-             if (iIter_grand >= 16) tauMax = 1.e30
+             if (iIter_grand < 9) tauMax = 0.1d0
+!             if (iIter_grand == 6) tauMax = 1.d0
+             if (iIter_grand == 9) tauMax = 1.d30
 
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+             if (iIter_grand <= 9) then
+                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+             endif
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
              endif
@@ -793,7 +791,7 @@ contains
              
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
              
-             if (iiter_grand >= 12) then
+             if (iiter_grand >= 9) then
                 
                 !                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
                 !                gridconverged = .false.
@@ -859,7 +857,7 @@ contains
     if (iIter_grand < iterlucy) converged = .false.
 
     if (variableDustSublimation) then
-       if (iIter_grand < 16) then
+       if (iIter_grand < 10) then
           converged = .false.
        endif
     endif
@@ -870,11 +868,26 @@ contains
        if (myRankIsZero) write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
     end if
 
+
+       if (multiLucyFiles) then
+          write(tfilename, '(a,i2.2,a)') "lucy",iIter_grand,".vtk"
+       else
+          tfilename = "lucy.vtk"
+       endif
+       
+       call writeVtkFile(grid, tfilename, &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                              "dust1      ", "deltaT     "/))
+
 !    !
 !    ! Write grid structure to a tmp file.
 !    !
-    if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-       
+
+
+!    if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+ 
+
+      
  enddo
 
  if (storescattered) then 
