@@ -4161,7 +4161,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
 
-    use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
+    use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
@@ -4932,6 +4932,10 @@ IF ( .NOT. gridConverged ) RETURN
          splitInAzimuth = .false.
       endif
 
+      if (hydrodynamics) then
+         split = .false.
+         if (thisOctal%nDepth < minDepthAMR) split = .true.
+      endif
 
 !      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
 !         if ((abs(cellcentre%z)/hr < 2.)) then
@@ -8766,7 +8770,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, h, rd
+    real :: r, h, rd, ethermal
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -8844,7 +8848,24 @@ end function readparameterfrom2dmap
        thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
        thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
     endif
-!    write(*,*) velocitysum
+
+    if (hydrodynamics) then
+       thisOctal%rho(subcell) = max(thisOCtal%rho(subcell), 1.e-20)
+       thisOctal%temperature(subcell) = (1.d-15*10.d0)/thisOCtal%rho(subcell)
+       thisOctal%velocity(subcell) = keplerianVelocity(rvec,grid)
+       thisOctal%boundaryCondition(subcell) = 4
+       thisOctal%iEquationOfState(subcell) = 1
+       thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
+       if (modulus(rvec) < rInner) then
+          thisOctal%phi_i(subcell) = -bigG * mCore / (rInner*1.d10)
+          thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+       endif
+       thisOctal%gamma(subcell) = 7.d0/5.d0
+       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell)
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+    endif
+
 
   end subroutine shakaraDisk
 
@@ -16585,7 +16606,7 @@ end function readparameterfrom2dmap
 !    write(*,*) "zpos,zneg ",zpos,zneg
 
 !    write(*,*) "current subcell", subcell
-    if ((normVec%z > 0.999999d0).and.(uHat%z > 0.d0)) then ! top face
+    if ((normVec%z > 0.9999999d0).and.(uHat%z > 0.d0)) then ! top face
        if ((xNeg.and.yNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 1)
@@ -16599,7 +16620,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 4)
        endif
-    else if ((normVec%z < -0.999999d0).and.(uHat%z < 0.d0)) then ! bottom face
+    else if ((normVec%z < -0.9999999d0).and.(uHat%z < 0.d0)) then ! bottom face
        if ((xNeg.and.yNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 1)
@@ -16613,7 +16634,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 4)
        endif
-    else if ((normVec%x < -0.999999d0).and.(uHat%x < 0.d0)) then ! left face
+    else if ((normVec%x < -0.9999999d0).and.(uHat%x < 0.d0)) then ! left face
        if ((yNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 1)
@@ -16627,7 +16648,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 4)
        endif
-    else if ((normVec%x > 0.999999d0).and.(uHat%x > 0.d0)) then ! right face
+    else if ((normVec%x > 0.9999999d0).and.(uHat%x > 0.d0)) then ! right face
        if ((yNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 1)
@@ -16641,7 +16662,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 4)
        endif
-    else if ((normVec%y > 0.999999d0).and.(uHat%y > 0.d0)) then ! front face
+    else if ((normVec%y > 0.9999999d0).and.(uHat%y > 0.d0)) then ! front face
        if ((xNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 1)
@@ -16655,7 +16676,7 @@ end function readparameterfrom2dmap
           neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 4)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 4)
        endif
-    else if ((normVec%y < -0.999999d0).and.(uHat%y < 0.d0)) then ! back
+    else if ((normVec%y < -0.9999999d0).and.(uHat%y < 0.d0)) then ! back
        if ((xNeg.and.zNeg)) then
           neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 1)%pointer
           neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 1)

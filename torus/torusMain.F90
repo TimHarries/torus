@@ -56,7 +56,7 @@ program torus
   use timing, only: tune
   use ion_mod, only: addions
 #ifdef MPI
-  use photoionAMR_mod, only: radiationhydro
+  use photoionAMR_mod, only: radiationhydro, createImage
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads
   use unix_mod, only: unixGetHostname
@@ -571,6 +571,9 @@ program torus
      if (photoIonization.and.hydrodynamics) then
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
+
+        call createImage(grid, nSource, source)
+        stop
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
            call torus_mpi_barrier

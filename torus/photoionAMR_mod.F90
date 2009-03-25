@@ -16,11 +16,13 @@ use diffusion_mod
 use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
+use photon_mod
+use image_mod
 
 implicit none
 
 private
-public :: photoIonizationloopAMR, radiationHydro
+public :: photoIonizationloopAMR, radiationHydro, createImage
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -3760,106 +3762,6 @@ end subroutine readHeIIrecombination
 
   end function getRandomWavelengthPhotoion
 
-  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, dlam, nLambda, ilambda, bias, useBias)
-
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    integer :: nFreq
-    real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
-    real :: dlam(:), dlam2
-    real(double), allocatable :: prob(:)
-    real(double) :: t
-    real :: thisLam
-    real(double) :: thisFreq, r, fac
-    integer :: nLambda
-    real :: lamArray(:)
-    real :: bias
-    integer :: ilambda
-    integer :: i
-    logical :: useBias
-
-    nFreq = nlambda
-
-    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), tSpec(1:nFreq), dfreq(1:nFreq))
-
-    do i = 1, nFreq
-       freq(i) = cSpeed/(lamArray(nFreq-i+1)*1.e-8)
-    enddo
-    do i = 2, nFreq-1
-       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
-    enddo
-    dfreq(1) = 2.d0*(freq(2)-freq(1))
-    dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
-
-
-    spectrum = 1.d-50
-
-    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-!       if (iLambda == 1) then
-!          open(31,file="crap.dat",status="unknown",form="formatted")
-!          do i = 1, nLambda
-!             write(31,*) lamArray(i), spectrum(i),dFreq(nfreq-i+1)
-!          enddo
-!          close(31)
-!          stop
-!       endif
-    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-!    !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-
-    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-    
-
-
-    if (useBias) then
-       fac = 0.d0
-       do i = 1, nFreq
-          fac = fac + spectrum(i)
-       enddo
-
-
-       do i = 1, nFreq
-          lamSpec(i) = cspeed/freq(i)
-       enddo
-       lamSpec = lamSpec * 1.d8
-       
-       do i = 1, nFreq
-          tSpec(i) = spectrum(nFreq-i+1)
-       enddo
-       spectrum(1:nFreq) = tspec
-       
-       do i = 1, nFreq
-          tSpec(i) = lamSpec(nFreq-i+1)
-       enddo
-       lamSpec(1:nFreq)= tspec
-       do i = 1, nFreq
-          dlam2 = 1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1)
-          spectrum(i) = spectrum(i) / dlam2
-       enddo
-       bias = spectrum(iLambda)/fac
-    else
-       allocate(prob(1:nFreq))
-       prob(1:nFreq) = spectrum(1:nFreq)
-       do i = 2, nFreq
-          prob(i) = prob(i-1) + prob(i)
-       enddo
-       prob(1:nFreq) = prob(1:nFreq)-prob(1)
-       prob(1:nFreq) = prob(1:nFreq)/prob(nFreq)
-       call random_number(r)
-       call locate(prob, nFreq, r, i)
-       t = (r - prob(i))/(prob(i+1)-prob(i))
-       thisFreq = freq(i) + t * (freq(i+1)-freq(i))
-       thisLam = 1.d8 * cspeed/thisFreq
-       call locate(lamArray, nLambda, thisLam, iLambda)
-       bias = 1.d0
-    endif
-
-
-    deallocate(freq, spectrum, lamSpec, tSpec, dfreq)
-
-  end subroutine getWavelengthBiasPhotoion
 
   subroutine refineLambdaArray(lamArray, nLambda, grid)
     type(GRIDTYPE) :: grid
@@ -3944,7 +3846,6 @@ end subroutine readHeIIrecombination
     
 
     call MPI_RECV(tempStorage, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
-
     if (tempStorage(1) > 1.d30) then
 !       write(*,*) myRankGlobal, " finished receiving"
        endLoop = .true.
@@ -4020,6 +3921,320 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
+  subroutine createImage(grid, nSource, source)
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:), thisSource
+    type(PHOTON) :: thisPhoton, observerPhoton
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: iPhoton, nPhotons
+    integer :: iLam
+    integer :: iSource
+    integer :: iThread
+    type(VECTOR) :: rVec, uHat, rHat
+    real(double) :: wavelength, thisFreq
+    logical :: endLoop, addToiMage
+    integer :: newthread
+    type(IMAGETYPE) :: thisimage, totalImage
+    logical :: escaped, absorbed, crossedBoundary
+    
+    if (myRankGlobal == 0) then
+       mainloop: do iPhoton = 1, nPhotons
+!          call randomSource(source, nSource, iSource)
+!          thisSource = source(iSource)
+!          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)         
+!          call getWavelength(thisSource%spectrum, wavelength)          
+!          thisFreq = cSpeed/(wavelength / 1.e8)
+
+
+          thisPhoton%position = VECTOR(0.d0, 0.d0, 0.d0)
+          thisPhoton%direction = randomUnitVector()
+          thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
+          thisPhoton%lambda = 10000.
+          thisPhoton%iLam = 100
+
+          call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
+          
+          iThread = thisOctal%mpiThread(subcell)
+          
+          write(*,*) myrankGlobal, " zero thread sending photon to ", ithread
+          call sendPhoton(thisPhoton, iThread, endLoop = .false.)
+
+       end do mainloop
+
+       do iThread = 1, nThreadsGlobal-1
+          write(*,*) myrankGlobal, " zero thread sending endloop signal to ", ithread
+          call sendPhoton(thisPhoton, iThread, endLoop = .true.)
+       enddo
+             
+    else
+       endLoop = .false.
+       do while (.not.endLoop)
+          
+          call receivePhoton(thisPhoton, endLoop)
+          
+
+          if (.not.endLoop) then
+
+             if (thisPhoton%observerPhoton) then
+                call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
+                if (addToImage) then
+                   call addPhotonToImageLocal(grid, thisPhoton, thisImage)
+                   goto 777
+                else
+                   call sendPhoton(thisPhoton, newThread, endLoop = .false.)
+                   goto 777
+                endif
+             else
+                call moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
+
+                
+                if (escaped.or.absorbed) goto 777
+
+                if (.not.crossedBoundary) then
+                   call scatterPhotonLocal(grid, thisPhoton)
+                   observerPhoton = thisPhoton
+                   observerPhoton%observerPhoton = .true.
+                   observerPhoton%tau = 0.d0
+                   call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread)
+                   if (addToImage) then
+                      call addPhotonToImageLocal(grid, observerPhoton, thisImage)
+                      goto 777
+                   else
+                      call sendPhoton(observerPhoton, newThread, endLoop = .false.)
+                      goto 777
+                   endif
+                else
+                   call sendPhoton(thisPhoton, newThread, endLoop = .false.)
+                   goto 777
+                endif
+             endif
+          endif
+777       continue
+       enddo
+    endif
+
+    if (myRankGlobal /= 0) then
+       call collateImages(totalImage, thisImage)
+       if (myrankGlobal == 1) then
+          call writeImageLocal(thisImage)
+       endif
+    endif
+  end subroutine createImage
+
+
+  subroutine sendPhoton(thisPhoton, iThread, endLoop)
+    include 'mpif.h'
+    type(PHOTON) :: thisPhoton
+    integer :: iThread
+    logical :: endLoop
+    integer, parameter  :: nTemp = 14
+    real :: temp(nTemp)
+    integer :: ierr
+    integer :: tag = 42
+    integer, parameter :: nLogic = 1
+    logical :: tLogic(nLogic)
+
+    temp(1) = thisPhoton%stokes%i
+    temp(2) = thisPhoton%stokes%q
+    temp(3) = thisPhoton%stokes%u
+    temp(4) = thisPhoton%stokes%v
+
+    temp(5) = thisPhoton%position%x
+    temp(6) = thisPhoton%position%y
+    temp(7) = thisPhoton%position%z
+
+    temp(8) = thisPhoton%direction%x
+    temp(9) = thisPhoton%direction%y
+    temp(10) = thisPhoton%direction%z
+
+    temp(11) = thisPhoton%lambda
+
+    if (endLoop) then
+       temp(12) = 1.d30
+    else
+       temp(12) = 0.d0
+    endif
+
+    temp(13) = thisPhoton%tau
+    temp(14) = thisPhoton%iLam
+
+    if (iThread == myRankGlobal) then
+       write(*,*) "sending to self bug ", ithread
+       stop
+    endif
+    call MPI_SEND(temp, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+    call MPI_SEND(tLogic, nLogic, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD,  ierr)
+    
+  end subroutine sendPhoton
+
+  subroutine receivePhoton(thisPhoton, endLoop)
+    include 'mpif.h'
+    type(PHOTON) :: thisPhoton
+    integer :: iThread
+    logical :: endLoop
+    integer :: nTemp
+    real :: temp(14)
+    integer :: nLogic
+    logical :: tLogic(1)
+    integer :: ierr, status
+    integer :: tag = 42
+
+    call MPI_RECV(temp, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+    call MPI_RECV(tLogic, nLogic, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+
+    if (temp(12) > 1.d0) then
+       endLoop = .true.
+    else
+       endLoop = .false.
+    endif
+    thisPhoton%stokes%i =     temp(1)  
+    thisPhoton%stokes%q =     temp(2)  
+    thisPhoton%stokes%u =     temp(3)  
+    thisPhoton%stokes%v =     temp(4)  
+
+    thisPhoton%position%x =     temp(5)  
+    thisPhoton%position%y =     temp(6)  
+    thisPhoton%position%z =     temp(7)  
+
+    thisPhoton%direction%x =     temp(8)  
+    thisPhoton%direction%y =     temp(9)  
+    thisPhoton%direction%z =     temp(10) 
+
+    thisPhoton%lambda =     temp(11) 
+
+    thisPhoton%tau =     temp(13) 
+    thisPhoton%iLam =     nint(temp(14) )
+
+    thisPhoton%observerPhoton = tLogic(1)
+    
+  end subroutine receivePhoton
+
+  subroutine scatterPhotonLocal(grid, thisPhoton)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisPhoton
+
+    thisPhoton%direction = randomUnitVector() !isotropic scattering
+
+  end subroutine scatterPhotonLocal
+
+  subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisPhoton
+    logical :: addToImage
+    logical :: endLoop
+    integer :: newThread
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: tVal
+    real(double) :: kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, kappaExt
+    integer :: ilam
+    thisOctal => grid%octreeRoot
+    call findSubcellTD(thisPhoton%position, grid%octreeRoot, thisOctal, subcell)
+    if (myRankGlobal /= thisOctal%mpiThread(subcell)) then
+       write(*,*) "PropagateObserverPhoton call with wrong thread ", myRankGlobal, thisOctal%mpiThread(subcell)
+       stop
+    endif
+
+    addToImage = .false.
+    endLoop = .false.
+    do while (.not.endLoop)
+       call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
+       call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
+            kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+            kappaScaDust=kappaScaDust, kappaScaGas=kappaScaGas)
+       kappaExt = kappaAbsDust + kappaAbsGas + kappaScaDust + kappaScaGas
+       thisPhoton%tau = thisPhoton%tau + tval * kappaExt
+       thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
+       if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
+          addToImage = .true.
+          endLoop = .true.
+       else
+          call findSubcellTD(thisPhoton%position, grid%octreeRoot, thisOctal, subcell)
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             newThread = thisOctal%mpiThread(subcell)
+             endLoop = .true.
+          endif
+       endif
+    enddo
+  end subroutine propagateObserverPhoton
+
+  subroutine moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisphoton
+    logical :: escaped, absorbed, crossedBoundary, scattered
+    integer :: newThread
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: tau, thisTau, tVal, r, albedo
+    real(double) :: kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, kappaExt
+    logical :: endLoop
+    
+    thisOctal => grid%octreeRoot
+    call findSubcellTD(thisPhoton%position, grid%octreeRoot, thisOctal, subcell)
+    
+    if (myRankGlobal /= thisOctal%mpiThread(subcell)) then
+       write(*,*) "moveToNextScattering call with wrong thread ", myRankGlobal, thisOctal%mpiThread(subcell)
+       stop
+    endif
+
+    absorbed = .false.
+    escaped = .false.
+    endLoop = .false.
+    scattered = .false.
+    do while (.not.endLoop)
+       call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
+       call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
+            kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+            kappaScaDust=kappaScaDust, kappaScaGas=kappaScaGas)
+       kappaExt = kappaAbsDust + kappaAbsGas + kappaScaDust + kappaScaGas
+
+       tau = kappaExt * tVal
+
+       call random_number(r)
+       thisTau = -log(1.d0-r)
+
+       if (thisTau > tau) then ! photon crosses to boundary
+          thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
+          if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
+             escaped = .true.
+             endLoop = .true.
+          else
+             call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                newThread = thisOctal%mpiThread(subcell)
+                endLoop = .true.
+             endif
+          endif
+       else
+          thisPhoton%position = thisPhoton%position + ((tau/thisTau)*tVal) * thisPhoton%direction
+          endLoop = .true.
+          albedo = (kappaScaDust+kappaScaGas)/kappaExt
+          call random_number(r)
+          if (r < albedo) then
+             scattered = .true.
+          else
+             absorbed = .true.
+          endif
+
+       endif
+    enddo
+  end subroutine moveToNextScattering
+
+  subroutine writeImageLocal(thisImage)
+    type(IMAGETYPE) :: thisImage
+  end subroutine writeImageLocal
+
+  subroutine collateImages(totalImage, thisImage)
+    type(IMAGETYPE) :: thisImage, totalImage
+  end subroutine collateImages
+
+  subroutine addPhotonToImageLocal(grid, observerPhoton, thisImage)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: observerPhoton
+    type(IMAGETYPE) :: thisImage
+  end subroutine addPhotonToImageLocal
 
 
 #endif    

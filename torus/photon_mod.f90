@@ -11,7 +11,7 @@
 
 module photon_mod
 
-  use photoion_mod ! test
+  use photoion_mod, only :  getWavelengthBiasPhotoion ! test
   use vector_mod            ! the vector maths
   use constants_mod         ! physical constants
   use phasematrix_mod       ! phase matrix manipulation
@@ -54,6 +54,9 @@ module photon_mod
      logical :: thermal ! thermal emission?
      logical :: scattered ! has photon been scattered?
      logical :: stellar ! stellar emission
+     logical :: observerPhoton
+     real :: tau
+     integer :: iLam
   end type PHOTON
 
 

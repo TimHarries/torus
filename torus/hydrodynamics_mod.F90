@@ -2329,6 +2329,8 @@ contains
 
     doSelfGrav = .true.
 
+    if (grid%geometry == "shakara") doSelfGrav = .false.
+
     dorefine = .true.
 
     nHydroThreads = nThreadsGlobal - 1
@@ -2354,19 +2356,10 @@ contains
     tDump = 0.01d0 * tff
 
 
+
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-    tc = 0.d0
-    tc(myrank) = 1.d30
-    call computeCourantTime(grid%octreeRoot, tc(myRank))
-    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
-
-
-    dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
-
-
-    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
 
@@ -2414,10 +2407,8 @@ contains
     call writeInfo("Refining grid part 2", TRIVIAL)    
     do
        globalConverged(myRank) = .true.
-       call writeInfo("Refining grid", TRIVIAL)    
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
-       call writeInfo("Exchanging boundaries", TRIVIAL)    
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        if (ALL(tConverged(1:nHydroThreads))) exit
@@ -2448,11 +2439,6 @@ contains
 
 
 
-    if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
-    nextDumpTime = tdump + currentTime
-    iUnrefine = 0
-
-    iUnrefine = 0
 
 
     if (doselfGrav) then
@@ -2463,6 +2449,29 @@ contains
        if (myrank == 1) call tune(6, "Self-Gravity")
     endif
 
+    tc = 0.d0
+    tc(myrank) = 1.d30
+    call computeCourantTime(grid%octreeRoot, tc(myRank))
+    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+
+
+    dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
+
+    if (grid%geometry == "shakara") then
+       tdump =  dt
+    endif
+
+    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
+
+    if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
+    nextDumpTime = tdump + currentTime
+    iUnrefine = 0
+
+    iUnrefine = 0
+
+    write(plotfile,'(a)') "start.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          " /))
 
     do while(.true.)
        tc = 0.d0
@@ -2520,10 +2529,8 @@ contains
        call writeInfo("Refining grid part 2", TRIVIAL)    
        do
           globalConverged(myRank) = .true.
-          call writeInfo("Refining grid", TRIVIAL)    
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
-          call writeInfo("Exchanging boundaries", TRIVIAL)    
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:nHydroThreads))) exit
@@ -2542,6 +2549,8 @@ contains
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
+       if (myRank == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
+
 !       stop
 
        if (currentTime .ge. nextDumpTime) then
@@ -5100,6 +5109,7 @@ end subroutine refineGridGeneric2
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
           getPressure =  (thisOctal%gamma(subcell) - 1.d0) * thisOctal%rho(subcell) * eThermal
           getPressure = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+
        case(2) !  equation of state from Bonnell 1994
           if (thisOctal%rho(subcell) < rhoCrit) then
              K = 4.1317d8
