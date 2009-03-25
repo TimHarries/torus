@@ -572,7 +572,7 @@ program torus
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
 
-        call createImage(grid, nSource, source)
+        call createImage(grid, nSource, source, VECTOR(1.d0, 0.d0, 0.d0))
         stop
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
