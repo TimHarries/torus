@@ -7870,7 +7870,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%rho(subcell) = min_rho
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
-    thisOctal%inFlow(subcell) = .false.
+    thisOctal%inFlow(subcell) = .true.
     rd = rOuter / 2.
     r = sqrt(rVec%x**2 + rVec%y**2)
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then

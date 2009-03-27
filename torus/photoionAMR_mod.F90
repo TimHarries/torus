@@ -434,7 +434,7 @@ contains
     logical :: quickThermal
     logical, save :: firstTimeTables = .true.
 
-    quickThermal = .true.
+    quickThermal = .false.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
@@ -487,7 +487,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 10000000
+    nMonte = 100000
 
     nIter = 0
     
@@ -609,20 +609,20 @@ contains
                             else ! non-ionizing photon must be absorbed by dust
                                call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                             endif
-!                            if (firsttime.and.writeoutput) then
-!                               firsttime = .false.
-!                               open(67,file="pdf.dat",status="unknown",form="formatted")
-!                               do i = 1, nfreq
-!                                  write(67,*) freq(i), spectrum(i)
-!                               enddo
-!                               close(67)
-!                            endif
+                            if (firsttime.and.(myrankglobal==1)) then
+                               firsttime = .false.
+                               open(67,file="pdf.dat",status="unknown",form="formatted")
+                               do i = 1, nfreq
+                                  write(67,*) freq(i), spectrum(i)
+                               enddo
+                               close(67)
+                            endif
                             thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                             uHat = randomUnitVector() ! isotropic emission
                             nScat = nScat + 1
                             
                             
-                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
+!                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
 
 
                          endif
@@ -1596,7 +1596,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     integer :: subcell
     logical :: converged, found
     real :: t1, t2, tm
-    real, parameter :: Tlow = 100.
+    real, parameter :: Tlow = 3.
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
     real :: underCorrection = 1.
@@ -1837,7 +1837,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     betaHe = thisrootTbetaHe / sqrt(temperature)
 
 
-    betah = betah * 2.d0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
 
@@ -3922,7 +3921,7 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImage(grid, nSource, source, observerDirection)
+  subroutine createImage(grid, nSource, source, observerDirection, iLambdaPhoton)
     type(GRIDTYPE) :: grid
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
@@ -3940,36 +3939,82 @@ end subroutine readHeIIrecombination
     type(IMAGETYPE) :: thisimage
     logical :: escaped, absorbed, crossedBoundary
     real(double) :: totalEmission
-    
-    call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, 100)
+    integer :: iLambdaPhoton, nInf, i
+    real(double) :: lCore, probsource, r
+    real(double), allocatable :: threadProbArray(:)
+    integer :: np(10)
 
-    call computeProbDistAMRMpi(grid, totalEmission)
+    call init_random_seed()
 
-    write(*,*) myRankGlobal, "total emssion", totalEmission
-    nPhotons = 10000000
+    call setupNeighbourPointers(grid, grid%octreeRoot)
+    call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &
+       "X", "Y", 3)
+    call writeVtkFile(grid, "current.vtk", &
+         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
-    thisImage = initImage(100, 100, real(2.*grid%octreeRoot%subcellSize), &
+    thisImage = initImage(50, 50, real(2.*grid%octreeRoot%subcellSize), &
          real(2.*grid%octreeRoot%subcellSize), 0., 0.)
 
+    allocate(threadProbArray(1:nThreadsGlobal-1))
+    
+    call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+
+    call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
+
+    totalEmission = totalEmission * 1.d30
+
+    if (nSource > 0) then              
+       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+    else
+       lcore = tiny(lcore)
+    endif
+
+
+    probSource = lCore / (lCore + totalEmission)
+
     if (myRankGlobal == 0) then
+       write(*,*) "Probability of photon from sources: ", probSource
+    endif
+
+    nPhotons = 10000
+    nInf = 0
+
+
+
+    if (myRankGlobal == 0) then
+       np = 0
        mainloop: do iPhoton = 1, nPhotons
-!          call randomSource(source, nSource, iSource)
-!          thisSource = source(iSource)
-!          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)         
-!          call getWavelength(thisSource%spectrum, wavelength)          
-!          thisFreq = cSpeed/(wavelength / 1.e8)
 
-
-          thisPhoton%position = 1.d0*randomUnitVector()
-          thisPhoton%direction = randomUnitVector()
           thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
-          thisPhoton%lambda = 10000.
-          thisPhoton%iLam = 100
+          thisPhoton%iLam = iLambdaPhoton
+          thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%observerPhoton = .false.
+          call random_number(r)
 
-          call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
-          iThread = thisOctal%mpiThread(subcell)
-          call sendPhoton(thisPhoton, iThread, endLoop = .false.)
+
+          probsource = 0.d0
+          if (r < probSource) then
+             call randomSource(source, nSource, iSource)
+             thisSource = source(iSource)
+             call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
+             call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
+             iThread = thisOctal%mpiThread(subcell)
+             call sendPhoton(thisPhoton, iThread, endloop = .false.) 
+          else
+             call random_number(r)
+             if (r < threadProbArray(1)) then
+                iThread = 1
+             else
+                call locate(threadProbArray, SIZE(threadProbArray), r, iThread)
+                iThread = iThread + 1
+             endif
+             np(iThread) = np (iThread) + 1
+             thisPhoton%position%x = 1.e30 ! flag to tell receiving thread to return a photon position
+             thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
+             thisPhoton%direction = randomUnitVector()
+             call sendPhoton(thisPhoton, iThread, endloop = .false.) 
+             call receivePhoton(thisPhoton, endLoop)
+          endif
 
           observerPhoton = thisPhoton
           observerPhoton%observerPhoton = .true.
@@ -3982,14 +4027,28 @@ end subroutine readHeIIrecombination
        do iThread = 1, nThreadsGlobal-1
           call sendPhoton(thisPhoton, iThread, endLoop = .true.)
        enddo
-             
+       do i = 1, nThreadsGlobal-1
+          write(*,*) "rank ", i, " has ",np(i), " according to zeroth thread"
+       enddo
     else
        endLoop = .false.
        do while (.not.endLoop)
           
           call receivePhoton(thisPhoton, endLoop)
           
+          if (thisPhoton%position%x > 1.e20) then
+             thisOctal => grid%octreeRoot
+             call random_number(r)
+             call locateContProbAMR(r,thisOctal,subcell)
+             thisPhoton%position = randomPositionInCell(thisOctal, subcell)
+             if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) then
+                write(*,*) myrankGlobaL, &
+                     " Bug: octal not on thread from locatecontprobamr ",thisphoton%position
+             endif
 
+             call sendPhoton(thisPhoton, 0, endLoop = .false.)
+          endif
+          ninf = ninf + 1
           if (.not.endLoop) then
 
              if (thisPhoton%observerPhoton) then
@@ -4031,7 +4090,7 @@ end subroutine readHeIIrecombination
 777       continue
        enddo
     endif
-
+    write(*,*) "Rank ", myrankglobal, " had ", ninf, " photons"
     call collateImages(thisImage)
     if (myrankGlobal == 0) then
        call writeFitsImage(thisimage, "test.fits", 1.d0, "intensity")
@@ -4345,13 +4404,41 @@ end subroutine readHeIIrecombination
            
    end subroutine addPhotonToImageLocal
 
-   subroutine  computeProbDistAMRMpi(grid, totalEmission)
+   subroutine  computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
+     include 'mpif.h'
      type(GRIDTYPE) :: grid
      real(double) :: totalEmission, totalProb, biasCorrection
+     real(double) :: threadProbArray(:)
+     real(double), allocatable :: totalEmissionArray(:), totalProbArray(:), tArray(:)
+     integer :: ierr, i
 
      totalEmission = 0.d0
 
-     call computeProbDist2AMRMpi(grid%octreeRoot,totalEmission, totalProb)
+     allocate(totalEmissionArray(1:nThreadsGlobal), totalProbArray(1:nThreadsGlobal), &
+          tarray(1:nThreadsGlobal))
+     totalEmissionArray = 0.d0
+     totalProbArray = 0.d0
+
+     call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal+1), totalProbArray(myRankGlobal+1))
+
+     write(*,*) myrankGlobal, " total emission ", totalEmissionArray(myrankGlobal+1)
+     tArray = 0.d0
+     call MPI_ALLREDUCE(totalEmissionArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     totalEmissionArray = tArray
+
+     tArray = 0.d0
+     call MPI_ALLREDUCE(totalProbArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     totalProb = SUM(tArray(2:nThreadsGlobal))
+     
+     threadProbArray = tArray(2:nThreadsGlobal)
+     do i = 2, SIZE(threadProbArray)
+        threadProbArray(i) = threadProbArray(i) + threadProbArray(i-1)
+     enddo
+     threadProbArray = threadProbArray / threadProbArray(SIZE(threadProbArray))
+
+     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray
+
+     totalEmission = SUM(totalEmissionArray(2:nThreadsGlobal))
 
      if (totalProb /= 0.0) then
         biasCorrection = totalEmission / totalProb
@@ -4359,8 +4446,10 @@ end subroutine readHeIIrecombination
         biasCorrection = 1.0
      end if
      
-     call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProb)
+     call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal+1))
 
+     write(*,*) myrankGlobal, " prob ", grid%octreeRoot%probDistCont(1:8)
+     deallocate(totalEmissionArray, totalProbArray, tArray)
    end subroutine computeProbDistAMRMpi
 
 

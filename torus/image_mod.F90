@@ -818,6 +818,8 @@ module image_mod
             (yDist <= (image%yAxisCentre(image%ny)+image%dy/2.)) ) then
           call locate(image%xAxisLH, image%nx, xDist, ix)
           call locate(image%yAxisBottom, image%ny, yDist, iy)
+          if (xDist >= image%xAxisCentre(image%nx)-image%dx/2.) ix = image%nx
+          if (yDist >= image%yAxisCentre(image%ny)-image%dy/2.) iy = image%ny
        endif
      end subroutine pixelLocate
             
