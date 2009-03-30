@@ -433,14 +433,16 @@ contains
     integer :: newThread
     logical :: quickThermal
     logical, save :: firstTimeTables = .true.
-    logical, allocatable :: allDone(:)
-    integer :: iThreadDone
-
+    integer :: nEscaped, iSignal
+    logical :: photonsStillProcessing
+    integer, allocatable :: nEscapedArray(:)
+    integer :: status(MPI_STATUS_SIZE)
     quickThermal = .false.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
 
+    allocate(nEscapedArray(1:nThreads-1))
     
 !    write(*,*) "abundances ",grid%ion(1:5)%abundance
     
@@ -520,7 +522,6 @@ contains
        nTotScat = 0
        nPhot = 0
 
-       allocate(allDone(0:nThreadsGlobal-1))
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -554,24 +555,42 @@ contains
 
              end do mainloop
 
+             photonsStillProcessing = .true.
+             do while(photonsStillProcessing) 
+
+                do iThread = 1, nThreads - 1
+                   tempStorage(1) = HUGE(tempStorage(1))
+                   tempStorage(2) = 0.d0
+                   call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+                   call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                enddo
+                nEscaped = SUM(nEscapedArray(1:nThreads-1))
+                write(*,*) myrankGlobal, " thinks ",nEscaped, " photons have escaped "
+                if (nEscaped == nMonte) photonsStillProcessing = .false.
+             end do
+
              do iThread = 1, nThreads - 1
                 tempStorage(1) = HUGE(tempStorage(1))
-                tempStorage(2) = 0.d0
+                tempStorage(2) = HUGE(tempStorage(2))
                 call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
              enddo
 
+
           else
              endLoop = .false.
-             allDone = .false.
-             allDone(myRankGlobal) = .true.
+             nEscaped = 0
              do while(.not.endLoop)
-                call getNewMPIPhoton(rVec, uHat, thisFreq, iThreadDone)
+                call getNewMPIPhoton(rVec, uHat, thisFreq, iSignal)
 
-                if (iThreadDone >= 0) then
-                   write(*,*) myrankGlobal, " all done array ",alldone
-                   allDone(iThreadDone) = .true.
+                if (iSignal == 0) then
+                   endLoop = .true.
                    goto 777
                 endif
+                if (iSignal == 1) then
+                   call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+                   goto 777
+                endif
+
 
                 if (.not.endLoop) then
                    nScat = 0
@@ -584,6 +603,8 @@ contains
                          call sendMPIPhoton(rVec, uHat, thisFreq, newThread)
                          goto 777
                       endif
+
+                      if (escaped) nEscaped = nEscaped + 1
 
                       if (.not. escaped) then
                          
@@ -670,23 +691,8 @@ contains
                    nPhot = nPhot + 1
                 endif
 777             continue
-                if (iThreadDone == 0) then
-                   do iThread = 1, nThreadsGlobal - 1
-                      if (iThread /= myRankGlobal) then
-                         write(*,*) myrankGlobal, " sending done signal to ", ithread
-                         tempStorage(1) = HUGE(tempStorage(1))
-                         tempStorage(2) = dble(myRankglobal)
-                         call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
-                      endif
-                   enddo
-                endif
-                if (ALL(allDone)) then
-                   endLoop = .true.
-                   write(*,*) myrankglobal, " is all done."
-                endif
              enddo
           endif
-          deallocate(allDone)
 
           write(*,*) myrankglobal, "reached barrier"
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
@@ -3863,7 +3869,7 @@ end subroutine readHeIIrecombination
   end subroutine refineLambdaArray
 
 
-  subroutine getNewMPIPhoton(position, direction, frequency, iThreadDone)
+  subroutine getNewMPIPhoton(position, direction, frequency, iSignal)
     include 'mpif.h'
     integer :: ierr
     type(VECTOR) :: position, direction
@@ -3872,13 +3878,17 @@ end subroutine readHeIIrecombination
     real(double) :: tempstorage(nTemp)
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 41
-    integer :: iThreadDone
-    iThreadDone = -1
+    integer :: iSignal
+
+    iSignal = -1
 
     call MPI_RECV(tempStorage, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
     if (tempStorage(1) > 1.d30) then
-!       write(*,*) myRankGlobal, " finished receiving"
-       iThreadDone = nint(tempStorage(2))
+       if (tempStorage(2) > 1.d30) then
+          iSignal = 0
+       else
+          iSignal = 1
+       endif
        goto 666
     else
        position%x = tempStorage(1)
@@ -3950,12 +3960,15 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImage(grid, nSource, source, observerDirection, iLambdaPhoton)
+  subroutine createImage(grid, nSource, source, observerDirection, iLambdaPhoton, totalflux)
+    include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
+    real(double) :: totalFlux
+    real(double), allocatable :: totalFluxArray(:), tempTotalFlux(:)
     integer :: subcell
     integer :: iPhoton, nPhotons
     integer :: iLam
@@ -3966,19 +3979,31 @@ end subroutine readHeIIrecombination
     logical :: endLoop, addToiMage
     integer :: newthread
     type(IMAGETYPE) :: thisimage
-    logical :: escaped, absorbed, crossedBoundary
+    logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing
     real(double) :: totalEmission
     integer :: iLambdaPhoton, nInf, i
     real(double) :: lCore, probsource, r
     real(double), allocatable :: threadProbArray(:)
     integer :: np(10)
+    integer :: nDone
+    integer :: tag = 41
+    integer, allocatable :: nDoneArray(:)
+    integer :: ierr
+    integer :: status(MPI_STATUS_SIZE)
+    integer :: isignal
+    real(double) :: powerPerPhoton
 
     call init_random_seed()
 
 
+    allocate(nDoneArray(1:nThreadsGlobal-1))
+    allocate(totalFluxArray(1:nThreadsGlobal-1))
+    allocate(tempTotalFlux(1:nThreadsGlobal-1))
+
+    totalFluxArray = 0.d0
 
     call setupNeighbourPointers(grid, grid%octreeRoot)
-    call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &
+    if (iLambdaPhoton == 1) call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &
        "X", "Y", 3)
     call writeVtkFile(grid, "current.vtk", &
          valueTypeString=(/"rho        ","HI         " ,"temperature" /))
@@ -4010,7 +4035,8 @@ end subroutine readHeIIrecombination
     nPhotons = 10000
     nInf = 0
 
-
+    powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
+    
 
     if (myRankGlobal == 0) then
        np = 0
@@ -4040,11 +4066,10 @@ end subroutine readHeIIrecombination
                 iThread = iThread + 1
              endif
              np(iThread) = np (iThread) + 1
-             thisPhoton%position%x = 1.e30 ! flag to tell receiving thread to return a photon position
              thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
              thisPhoton%direction = randomUnitVector()
-             call sendPhoton(thisPhoton, iThread, endloop = .false.) 
-             call receivePhoton(thisPhoton, endLoop)
+             call sendPhoton(thisPhoton, iThread, endloop = .false., getPosition=.true.) 
+             call receivePhoton(thisPhoton, iSignal)
           endif
 
           observerPhoton = thisPhoton
@@ -4055,19 +4080,31 @@ end subroutine readHeIIrecombination
 
        end do mainloop
 
+       photonsStillProcessing = .true.
+       do while (photonsStillProcessing)
+          do iThread = 1, nThreadsGlobal-1
+             call sendPhoton(thisPhoton, iThread, endLoop = .false., report=.true.)
+             call MPI_RECV(nDoneArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          enddo
+          nDone = SUM(nDoneArray(1:nThreadsGlobal-1))
+          write(*,*) myrankglobal, " thinks ", nDone, " photons have completed"
+          if (nDone == nPhotons) photonsStillProcessing = .false.
+       enddo
        do iThread = 1, nThreadsGlobal-1
           call sendPhoton(thisPhoton, iThread, endLoop = .true.)
        enddo
-       do i = 1, nThreadsGlobal-1
-          write(*,*) "rank ", i, " has ",np(i), " according to zeroth thread"
-       enddo
+
+
     else
+       nDone = 0
        endLoop = .false.
        do while (.not.endLoop)
           
-          call receivePhoton(thisPhoton, endLoop)
+          call receivePhoton(thisPhoton, iSignal)
           
-          if (thisPhoton%position%x > 1.e20) then
+
+
+          if (iSignal == 0) then
              thisOctal => grid%octreeRoot
              call random_number(r)
              call locateContProbAMR(r,thisOctal,subcell)
@@ -4079,6 +4116,20 @@ end subroutine readHeIIrecombination
 
              call sendPhoton(thisPhoton, 0, endLoop = .false.)
           endif
+
+
+          if (iSignal == 1) then
+             endLoop = .true.
+             goto 777
+          end if
+
+          if (iSignal == 2) then
+             call MPI_SEND(nDone, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+             goto 777
+          end if
+
+
+
           ninf = ninf + 1
           if (.not.endLoop) then
 
@@ -4086,7 +4137,7 @@ end subroutine readHeIIrecombination
                 newThread = -1
                 call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
                 if (addToImage) then
-                   call addPhotonToImageLocal(observerDirection, thisImage, thisPhoton)
+                   call addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
                    goto 777
                 else
                    call sendPhoton(thisPhoton, newThread, endLoop = .false.)
@@ -4095,7 +4146,10 @@ end subroutine readHeIIrecombination
              else
                 call moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
                 
-                if (escaped.or.absorbed) goto 777
+                if (escaped.or.absorbed) then
+                   nDone = nDone + 1
+                   goto 777
+                endif
 
                 if (.not.crossedBoundary) then
                    call scatterPhotonLocal(grid, thisPhoton)
@@ -4106,7 +4160,7 @@ end subroutine readHeIIrecombination
                    newThread = -2
                    call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread)
                    if (addToImage) then
-                      call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton)
+                      call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
                       goto 777
                    else
                       call sendPhoton(observerPhoton, newThread, endLoop = .false.)
@@ -4121,19 +4175,23 @@ end subroutine readHeIIrecombination
 777       continue
        enddo
     endif
-    write(*,*) "Rank ", myrankglobal, " had ", ninf, " photons"
     call collateImages(thisImage)
+
+     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+     totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1)) * powerPerPhoton
     if (myrankGlobal == 0) then
        call writeFitsImage(thisimage, "test.fits", 1.d0, "intensity")
     endif
   end subroutine createImage
 
 
-  subroutine sendPhoton(thisPhoton, iThread, endLoop)
+  subroutine sendPhoton(thisPhoton, iThread, endLoop, report, getPosition)
     include 'mpif.h'
     type(PHOTON) :: thisPhoton
     integer :: iThread
     logical :: endLoop
+    logical, optional :: report, getPosition
     integer, parameter  :: nTemp = 15
     real(double) :: temp(nTemp)
     integer :: ierr
@@ -4156,11 +4214,17 @@ end subroutine readHeIIrecombination
 
     temp(11) = thisPhoton%lambda
 
+    temp(12) = 0.d0
     if (endLoop) then
-       temp(12) = 1.d30
-    else
-       temp(12) = 0.d0
+       temp(12) = 2.1d0
     endif
+    if (PRESENT(report)) then
+       if (report) temp(12) = 3.1d0
+    endif
+    if (PRESENT(getPosition)) then
+       if (getPosition) temp(12) = 1.1d0
+    endif
+
 
     temp(13) = thisPhoton%tau
     temp(14) = thisPhoton%iLam
@@ -4180,7 +4244,7 @@ end subroutine readHeIIrecombination
     
   end subroutine sendPhoton
 
-  subroutine receivePhoton(thisPhoton, endLoop)
+  subroutine receivePhoton(thisPhoton, iSignal)
     include 'mpif.h'
     type(PHOTON) :: thisPhoton
     integer :: iThread
@@ -4192,14 +4256,22 @@ end subroutine readHeIIrecombination
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 42
+    integer :: iSignal
 
     call MPI_RECV(temp, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
-
+    iSignal = -1
     if (temp(12) > 1.d0) then
-       endLoop = .true.
-    else
-       endLoop = .false.
+       iSignal = 0 ! newPhoton
     endif
+
+    if (temp(12) > 2.d0) then
+       iSignal = 1 ! abort loop
+    endif
+
+    if (temp(12) > 3.d0) then
+       iSignal = 2 ! report ndone
+    endif
+
     thisPhoton%stokes%i =     temp(1)  
     thisPhoton%stokes%q =     temp(2)  
     thisPhoton%stokes%u =     temp(3)  
@@ -4400,7 +4472,7 @@ end subroutine readHeIIrecombination
 
   end subroutine collateImages
 
-   subroutine addPhotonToImageLocal(observerDirection, thisImage, thisPhoton)
+   subroutine addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFlux)
      
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON) :: thisPhoton
@@ -4408,6 +4480,8 @@ end subroutine readHeIIrecombination
      real :: xDist, yDist
      integer :: xPix, yPix
      integer :: i
+     real(double) :: totalFlux
+
      type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
 
      xPix = 0; yPix = 0
@@ -4432,6 +4506,7 @@ end subroutine readHeIIrecombination
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
      endif
+     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau)
            
    end subroutine addPhotonToImageLocal
 
@@ -4452,7 +4527,6 @@ end subroutine readHeIIrecombination
 
      call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal+1), totalProbArray(myRankGlobal+1))
 
-     write(*,*) myrankGlobal, " total emission ", totalEmissionArray(myrankGlobal+1)
      tArray = 0.d0
      call MPI_ALLREDUCE(totalEmissionArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalEmissionArray = tArray
@@ -4467,7 +4541,6 @@ end subroutine readHeIIrecombination
      enddo
      threadProbArray = threadProbArray / threadProbArray(SIZE(threadProbArray))
 
-     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray
 
      totalEmission = SUM(totalEmissionArray(2:nThreadsGlobal))
 
@@ -4479,7 +4552,6 @@ end subroutine readHeIIrecombination
      
      call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal+1))
 
-     write(*,*) myrankGlobal, " prob ", grid%octreeRoot%probDistCont(1:8)
      deallocate(totalEmissionArray, totalProbArray, tArray)
    end subroutine computeProbDistAMRMpi
 

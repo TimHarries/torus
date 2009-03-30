@@ -153,6 +153,7 @@ program torus
   real :: theta1, theta2 
   type(SURFACETYPE) :: starSurface
 
+  real(double) :: totalFlux
 
   ! binary parameters
 
@@ -572,7 +573,11 @@ program torus
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
 
-        call createImage(grid, nSource, source, VECTOR(1.d0, 0.d0, 0.d0), 100)
+        do i = 1, nLambda
+           call createImage(grid, nSource, source, VECTOR(1.d0, 0.d0, 0.d0), i, totalflux)
+           write(67,*) grid%lamArray(i), totalFlux
+        enddo
+
         stop
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
