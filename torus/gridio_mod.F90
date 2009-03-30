@@ -13,7 +13,7 @@ module gridio_mod
   use ion_mod
   use mpi_global_mod
   use mpi_amr_mod
-
+  use parallel_mod, only : torus_mpi_barrier
   implicit none
 
   public
@@ -75,6 +75,45 @@ module gridio_mod
 contains
 
   subroutine writeAMRgrid(filename,fileFormatted,grid)
+    character(len=*) :: filename
+    logical :: fileFormatted
+    type(GRIDTYPE) :: grid
+    logical :: writeFile
+    integer :: iThread
+    writeFile = .true.
+
+#ifdef MPI
+    if (.not.grid%splitOverMPI) then
+       if (myrankGlobal == 0) then
+          writeFile = .true.
+       else
+          writeFile = .false.
+       endif
+    endif
+#endif
+
+    if (.not.grid%splitOverMPI) then
+       if (writeFile) call writeAMRgridSingle(filename, fileFormatted, grid)
+       goto 666
+    endif
+    
+#ifdef MPI
+    if (grid%splitOverMPI) then
+       do iThread = 0, nThreadsGlobal-1
+          if (iThread == myRankGlobal) then
+             call writeAmrGridSingle(filename, fileFormatted, grid)
+          endif
+          call torus_mpi_barrier
+       enddo
+    endif
+#endif
+
+
+
+666 continue
+  end subroutine writeAMRgrid
+
+  subroutine writeAMRgridSingle(filename,fileFormatted,grid)
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -86,72 +125,93 @@ contains
     
     integer, dimension(8) :: timeValues ! system date and time
     integer               :: error      ! error code
+    logical :: writeHeader
+    character(len=20) :: positionStatus
 
     updatedFilename = filename
 
-#ifdef MPI 
+!#ifdef MPI 
+!    if (grid%splitOverMPI) then
+!       write(updatedFilename,'(a,a,i3.3,a)') trim(filename),"_rank_",myrankGlobal
+!    endif
+!#endif
+
+    writeHeader = .true.
+    positionStatus = "rewind"
+
+#ifdef MPI
     if (grid%splitOverMPI) then
-       write(updatedFilename,'(a,a,i3.3,a)') trim(filename),"_rank_",myrankGlobal
+       if (myrankGlobal == 0) then 
+          writeHeader = .true.
+          positionStatus = "rewind"
+       else
+          writeHeader = .false.
+          positionStatus = "append"
+       endif
     endif
 #endif
+          
 
     if (fileFormatted) then 
-       open(unit=20,iostat=error, file=updatedfilename, form="formatted", status="replace")
+       open(unit=20,iostat=error, file=updatedfilename, form="formatted", status="unknown", position=positionStatus)
     else 
-       open(unit=20,iostat=error, file=updatedfilename, form="unformatted", status="replace")
+       open(unit=20,iostat=error, file=updatedfilename, form="unformatted", status="unknown", position=positionStatus)
     end if        
     call writeInfo("Writing AMR grid file to: "//trim(filename),TRIVIAL)
     
-    call date_and_time(values=timeValues)
-    if (fileFormatted) then
-       write(unit=20,fmt=*,iostat=error) timeValues(:)
-    else
-       write(unit=20,iostat=error) timeValues(:)
-    endif
+    if (writeHeader) then
+       call date_and_time(values=timeValues)
+       if (fileFormatted) then
+          write(unit=20,fmt=*,iostat=error) timeValues(:)
+       else
+          write(unit=20,iostat=error) timeValues(:)
+       endif
 
-    call writeFileTag(20, "GRIDBEGINS", fileFormatted)
-    call writeAttributeStaticFlexi(20,"nLambda", grid%nLambda, fileFormatted)
-    call writeAttributeStaticFlexi(20,"flatSpec", grid%flatSpec, fileFormatted)
-    call writeAttributeStaticFlexi(20,"adaptive", grid%adaptive, fileFormatted)
-    call writeAttributeStaticFlexi(20,"cartesian", grid%cartesian, fileFormatted)
-    call writeAttributeStaticFlexi(20,"isotropic", grid%isotropic, fileFormatted)
-    call writeAttributeStaticFlexi(20,"hitCore", grid%hitCore, fileFormatted)
-    call writeAttributeStaticFlexi(20,"diskRadius", grid%diskRadius, fileFormatted)
-    call writeAttributeStaticFlexi(20,"diskNormal", grid%diskNormal, fileFormatted)
-    call writeAttributeStaticFlexi(20,"DipoleOffset", grid%DipoleOffset, fileFormatted)
-    call writeAttributeStaticFlexi(20,"geometry", grid%geometry, fileFormatted)
-    call writeAttributeStaticFlexi(20,"rCore", grid%rCore, fileFormatted)
-    call writeAttributeStaticFlexi(20,"lCore", grid%lCore, fileFormatted)
-    call writeAttributeStaticFlexi(20,"chanceWind", grid%chanceWindOverTotalContinuum, fileFormatted)
-    call writeAttributeStaticFlexi(20,"lineEmission", grid%lineEmission, fileFormatted)
-    call writeAttributeStaticFlexi(20,"contEmission", grid%contEmission, fileFormatted)
-    call writeAttributeStaticFlexi(20,"doRaman", grid%doRaman, fileFormatted)
-    call writeAttributeStaticFlexi(20,"resonanceLine", grid%resonanceLine, fileFormatted)
-    call writeAttributeStaticFlexi(20,"rStar1", grid%rStar1, fileFormatted)
-    call writeAttributeStaticFlexi(20,"rStar2", grid%rStar2, fileFormatted)
-    call writeAttributeStaticFlexi(20,"lumRatio", grid%lumRatio, fileFormatted)
-    call writeAttributeStaticFlexi(20,"tempSource", grid%tempSource, fileFormatted)
-    call writeAttributeStaticFlexi(20,"starPos1", grid%starPos1, fileFormatted)
-    call writeAttributeStaticFlexi(20,"starPos2", grid%starPos2, fileFormatted)
-    call writeAttributeStaticFlexi(20,"lambda2", grid%lambda2, fileFormatted)
-    call writeAttributeStaticFlexi(20,"maxLevels", grid%maxLevels, fileFormatted)
-    call writeAttributeStaticFlexi(20,"maxDepth", grid%maxDepth, fileFormatted)
-    call writeAttributeStaticFlexi(20,"halfSmallestSubcell", grid%halfSmallestSubcell, fileFormatted)
-    call writeAttributeStaticFlexi(20,"nOctals", grid%nOctals, fileFormatted)
-    call writeAttributeStaticFlexi(20,"smoothingFactor", grid%smoothingFactor, fileFormatted)
-    call writeAttributeStaticFlexi(20,"oneKappa", grid%oneKappa, fileFormatted)
-    call writeAttributeStaticFlexi(20,"rInner", grid%rInner, fileFormatted)
-    call writeAttributeStaticFlexi(20,"rOuter", grid%rOuter, fileFormatted)
-    call writeAttributeStaticFlexi(20,"amr2dOnly", grid%amr2dOnly, fileFormatted)
-    call writeAttributeStaticFlexi(20,"photoionization", grid%photoionization, fileFormatted)
-    call writeAttributeStaticFlexi(20,"iDump", grid%iDump, fileFormatted)
-    call writeAttributeStaticFlexi(20,"currentTime", grid%currentTime, fileFormatted)
-    call writeAttributeStaticFlexi(20,"lamarray", grid%lamarray,fileFormatted)
-    call writeAttributePointerFlexi(20,"oneKappaAbs", grid%oneKappaAbs,fileFormatted)
-    call writeAttributePointerFlexi(20,"oneKappaSca", grid%oneKappaSca,fileFormatted)
-    call writeFileTag(20, "GRIDENDS", fileFormatted)
+       call writeFileTag(20, "GRIDBEGINS", fileFormatted)
+       call writeAttributeStaticFlexi(20,"nLambda", grid%nLambda, fileFormatted)
+       call writeAttributeStaticFlexi(20,"flatSpec", grid%flatSpec, fileFormatted)
+       call writeAttributeStaticFlexi(20,"adaptive", grid%adaptive, fileFormatted)
+       call writeAttributeStaticFlexi(20,"cartesian", grid%cartesian, fileFormatted)
+       call writeAttributeStaticFlexi(20,"isotropic", grid%isotropic, fileFormatted)
+       call writeAttributeStaticFlexi(20,"hitCore", grid%hitCore, fileFormatted)
+       call writeAttributeStaticFlexi(20,"diskRadius", grid%diskRadius, fileFormatted)
+       call writeAttributeStaticFlexi(20,"diskNormal", grid%diskNormal, fileFormatted)
+       call writeAttributeStaticFlexi(20,"DipoleOffset", grid%DipoleOffset, fileFormatted)
+       call writeAttributeStaticFlexi(20,"geometry", grid%geometry, fileFormatted)
+       call writeAttributeStaticFlexi(20,"rCore", grid%rCore, fileFormatted)
+       call writeAttributeStaticFlexi(20,"lCore", grid%lCore, fileFormatted)
+       call writeAttributeStaticFlexi(20,"chanceWind", grid%chanceWindOverTotalContinuum, fileFormatted)
+       call writeAttributeStaticFlexi(20,"lineEmission", grid%lineEmission, fileFormatted)
+       call writeAttributeStaticFlexi(20,"contEmission", grid%contEmission, fileFormatted)
+       call writeAttributeStaticFlexi(20,"doRaman", grid%doRaman, fileFormatted)
+       call writeAttributeStaticFlexi(20,"resonanceLine", grid%resonanceLine, fileFormatted)
+       call writeAttributeStaticFlexi(20,"rStar1", grid%rStar1, fileFormatted)
+       call writeAttributeStaticFlexi(20,"rStar2", grid%rStar2, fileFormatted)
+       call writeAttributeStaticFlexi(20,"lumRatio", grid%lumRatio, fileFormatted)
+       call writeAttributeStaticFlexi(20,"tempSource", grid%tempSource, fileFormatted)
+       call writeAttributeStaticFlexi(20,"starPos1", grid%starPos1, fileFormatted)
+       call writeAttributeStaticFlexi(20,"starPos2", grid%starPos2, fileFormatted)
+       call writeAttributeStaticFlexi(20,"lambda2", grid%lambda2, fileFormatted)
+       call writeAttributeStaticFlexi(20,"maxLevels", grid%maxLevels, fileFormatted)
+       call writeAttributeStaticFlexi(20,"maxDepth", grid%maxDepth, fileFormatted)
+       call writeAttributeStaticFlexi(20,"halfSmallestSubcell", grid%halfSmallestSubcell, fileFormatted)
+       call writeAttributeStaticFlexi(20,"nOctals", grid%nOctals, fileFormatted)
+       call writeAttributeStaticFlexi(20,"smoothingFactor", grid%smoothingFactor, fileFormatted)
+       call writeAttributeStaticFlexi(20,"oneKappa", grid%oneKappa, fileFormatted)
+       call writeAttributeStaticFlexi(20,"rInner", grid%rInner, fileFormatted)
+       call writeAttributeStaticFlexi(20,"rOuter", grid%rOuter, fileFormatted)
+       call writeAttributeStaticFlexi(20,"amr2dOnly", grid%amr2dOnly, fileFormatted)
+       call writeAttributeStaticFlexi(20,"photoionization", grid%photoionization, fileFormatted)
+       call writeAttributeStaticFlexi(20,"iDump", grid%iDump, fileFormatted)
+       call writeAttributeStaticFlexi(20,"currentTime", grid%currentTime, fileFormatted)
+       call writeAttributeStaticFlexi(20,"lamarray", grid%lamarray,fileFormatted)
+       call writeAttributePointerFlexi(20,"oneKappaAbs", grid%oneKappaAbs,fileFormatted)
+       call writeAttributePointerFlexi(20,"oneKappaSca", grid%oneKappaSca,fileFormatted)
+       call writeFileTag(20, "GRIDENDS", fileFormatted)
+    endif
     call writeOctreePrivateFlexi(grid%octreeRoot,fileFormatted, grid)
     close(unit=20)
+       
     
   contains
   
@@ -161,153 +221,194 @@ contains
        type(octal), intent(in), target :: thisOctal
        logical, intent(in)             :: fileFormatted
        type(gridtype) :: grid
-       type(octal), pointer :: thisChild
+       type(octal), pointer :: thisChild, thisOctalPointer
        integer              :: iChild
+       logical :: writeThisOctal
+       integer :: tempNChildren
+       integer :: tempIndexChild(8), i
+       logical :: tempHasChild(8)
 
-       call writeFileTag(20, "OCTALBEGINS", fileFormatted)
-       call writeAttributeStaticFlexi(20, "nDepth", thisOctal%nDepth, fileFormatted)
-       call writeAttributeStaticFlexi(20, "nChildren", thisOctal%nChildren, fileFormatted)
-       call writeAttributeStaticFlexi(20, "indexChild", thisOctal%indexChild, fileFormatted)
-       call writeAttributeStaticFlexi(20, "hasChild", thisOctal%hasChild, fileFormatted)
-       call writeAttributeStaticFlexi(20, "centre", thisOctal%centre, fileFormatted)
-       call writeAttributeStaticFlexi(20, "rho", thisOctal%rho, fileFormatted)
-       call writeAttributeStaticFlexi(20, "temperature", thisOctal%temperature, fileFormatted)
-       call writeAttributeStaticFlexi(20, "label", thisOctal%label, fileFormatted)
-       call writeAttributeStaticFlexi(20, "subcellSize", thisOctal%subcellSize, fileFormatted)
-       call writeAttributeStaticFlexi(20, "threeD", thisOctal%threeD, fileFormatted)
-       call writeAttributeStaticFlexi(20, "twoD", thisOctal%twoD, fileFormatted)
-       call writeAttributeStaticFlexi(20, "oneD", thisOctal%oneD, fileFormatted)
-       call writeAttributeStaticFlexi(20, "maxChildren", thisOctal%maxChildren, fileFormatted)
-       call writeAttributeStaticFlexi(20, "cylindrical", thisOctal%cylindrical, fileFormatted)
-       call writeAttributeStaticFlexi(20, "splitAzimuthally", thisOctal%splitAzimuthally, fileFormatted)
-       call writeAttributeStaticFlexi(20, "phi", thisOctal%phi, fileFormatted)
-       call writeAttributeStaticFlexi(20, "dphi", thisOctal%dphi, fileFormatted)
-       call writeAttributeStaticFlexi(20, "r", thisOctal%r, fileFormatted)
-       call writeAttributeStaticFlexi(20, "parentSubcell", thisOctal%parentSubcell, fileFormatted)
-       call writeAttributeStaticFlexi(20, "inStar", thisOctal%inStar, fileFormatted)
-       call writeAttributeStaticFlexi(20, "inFlow", thisOctal%inFlow, fileFormatted)
-       call writeAttributeStaticFlexi(20, "velocity", thisOctal%velocity, fileFormatted)
-       call writeAttributeStaticFlexi(20, "cornervelocity", thisOctal%cornervelocity, fileFormatted)
+       writeThisOctal = .true.
 
-       call writeAttributeStaticFlexi(20, "xMax", thisOctal%xMax, fileFormatted)
-       call writeAttributeStaticFlexi(20, "yMax", thisOctal%yMax, fileFormatted)
-       call writeAttributeStaticFlexi(20, "zMax", thisOctal%zMax, fileFormatted)
-       call writeAttributeStaticFlexi(20, "xMin", thisOctal%xMin, fileFormatted)
-       call writeAttributeStaticFlexi(20, "yMin", thisOctal%yMin, fileFormatted)
-       call writeAttributeStaticFlexi(20, "zMin", thisOctal%zMin, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "chiLine", thisOctal%chiLine, fileFormatted)
-       call writeAttributePointerFlexi(20, "etaLine", thisOctal%etaLine, fileFormatted)
-       call writeAttributePointerFlexi(20, "etaCont", thisOctal%etaCont, fileFormatted)
-       call writeAttributePointerFlexi(20, "biasLine3D", thisOctal%biasLine3D, fileFormatted)
-       call writeAttributePointerFlexi(20, "biasCont3D", thisOctal%biasCont3D, fileFormatted)
-       call writeAttributePointerFlexi(20, "probDistLine", thisOctal%probDistLine, fileFormatted)
-       call writeAttributePointerFlexi(20, "probDistCont", thisOctal%probDistCont, fileFormatted)
-       call writeAttributePointerFlexi(20, "ne", thisOctal%ne, fileFormatted)
-       call writeAttributePointerFlexi(20, "nH", thisOctal%nH, fileFormatted)
-       call writeAttributePointerFlexi(20, "nTot", thisOctal%nTot, fileFormatted)
-       call writeAttributePointerFlexi(20, "dustType", thisOctal%dustType, fileFormatted)
+       tempNChildren = thisOctal%nChildren
+       tempIndexChild = thisOctal%indexChild
+       tempHasChild = thisOctal%hasChild
 
 
-       call writeAttributePointerFlexi(20, "kappaAbs", thisOctal%kappaAbs, fileFormatted)
-       call writeAttributePointerFlexi(20, "kappaSca", thisOctal%kappaSca, fileFormatted)
+#ifdef MPI
+       if (grid%splitOverMPI) then
+          if (nThreadsGlobal > 9) then
+             write(*,*) "Grid IO for > 8 hydro threads not yet implemented!"
+             stop
+          endif
+          if (myrankGlobal == 0) then 
+             if (thisOctal%nDepth == 1) then
+                writeThisOctal = .true.
+             else
+                writeThisOctal = .false.
+             endif
+          else
+             if (thisOctal%nDepth == 1) then
+                writeThisOctal = .false.
+             else
+                thisOctalPointer => thisOctal
+                writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+             endif
+          endif
+       endif
 
-       call writeAttributePointerFlexi(20, "ionFrac", thisOctal%ionFrac, fileFormatted)
-       call writeAttributePointerFlexi(20, "photoIonCoeff", thisOctal%photoIonCoeff, fileFormatted)
+       if (grid%splitOverMpi) then
+          if (nThreadsGlobal == 9) then
+             if ((thisOctal%nDepth < 2) .and. (myRankGlobal==0)) then
+                tempNChildren = 8
+                do i = 1, 8
+                   tempIndexChild(i) = i
+                enddo
+                tempHasChild = .true.
+             endif
+          endif
+       endif
+#endif
 
-       call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
 
-       call writeAttributePointerFlexi(20, "nCrossings", thisOctal%nCrossings, fileFormatted)
-       call writeAttributePointerFlexi(20, "hHeating", thisOctal%hHeating, fileFormatted)
-       call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
-       call writeAttributePointerFlexi(20, "undersampled", thisOctal%undersampled, fileFormatted)
-       call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
-       call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
+       if (writeThisOctal) then
+          call writeFileTag(20, "OCTALBEGINS", fileFormatted)
+          call writeAttributeStaticFlexi(20, "nDepth", thisOctal%nDepth, fileFormatted)
+          call writeAttributeStaticFlexi(20, "nChildren", tempNchildren, fileFormatted)
+          call writeAttributeStaticFlexi(20, "indexChild", tempIndexChild, fileFormatted)
+          call writeAttributeStaticFlexi(20, "hasChild", tempHasChild, fileFormatted)
+          call writeAttributeStaticFlexi(20, "centre", thisOctal%centre, fileFormatted)
+          call writeAttributeStaticFlexi(20, "rho", thisOctal%rho, fileFormatted)
+          call writeAttributeStaticFlexi(20, "temperature", thisOctal%temperature, fileFormatted)
+          call writeAttributeStaticFlexi(20, "label", thisOctal%label, fileFormatted)
+          call writeAttributeStaticFlexi(20, "subcellSize", thisOctal%subcellSize, fileFormatted)
+          call writeAttributeStaticFlexi(20, "threeD", thisOctal%threeD, fileFormatted)
+          call writeAttributeStaticFlexi(20, "twoD", thisOctal%twoD, fileFormatted)
+          call writeAttributeStaticFlexi(20, "oneD", thisOctal%oneD, fileFormatted)
+          call writeAttributeStaticFlexi(20, "maxChildren", thisOctal%maxChildren, fileFormatted)
+          call writeAttributeStaticFlexi(20, "cylindrical", thisOctal%cylindrical, fileFormatted)
+          call writeAttributeStaticFlexi(20, "splitAzimuthally", thisOctal%splitAzimuthally, fileFormatted)
+          call writeAttributeStaticFlexi(20, "phi", thisOctal%phi, fileFormatted)
+          call writeAttributeStaticFlexi(20, "dphi", thisOctal%dphi, fileFormatted)
+          call writeAttributeStaticFlexi(20, "r", thisOctal%r, fileFormatted)
+          call writeAttributeStaticFlexi(20, "parentSubcell", thisOctal%parentSubcell, fileFormatted)
+          call writeAttributeStaticFlexi(20, "inStar", thisOctal%inStar, fileFormatted)
+          call writeAttributeStaticFlexi(20, "inFlow", thisOctal%inFlow, fileFormatted)
+          call writeAttributeStaticFlexi(20, "velocity", thisOctal%velocity, fileFormatted)
+          call writeAttributeStaticFlexi(20, "cornervelocity", thisOctal%cornervelocity, fileFormatted)
+          
+          call writeAttributeStaticFlexi(20, "xMax", thisOctal%xMax, fileFormatted)
+          call writeAttributeStaticFlexi(20, "yMax", thisOctal%yMax, fileFormatted)
+          call writeAttributeStaticFlexi(20, "zMax", thisOctal%zMax, fileFormatted)
+          call writeAttributeStaticFlexi(20, "xMin", thisOctal%xMin, fileFormatted)
+          call writeAttributeStaticFlexi(20, "yMin", thisOctal%yMin, fileFormatted)
+          call writeAttributeStaticFlexi(20, "zMin", thisOctal%zMin, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "chiLine", thisOctal%chiLine, fileFormatted)
+          call writeAttributePointerFlexi(20, "etaLine", thisOctal%etaLine, fileFormatted)
+          call writeAttributePointerFlexi(20, "etaCont", thisOctal%etaCont, fileFormatted)
+          call writeAttributePointerFlexi(20, "biasLine3D", thisOctal%biasLine3D, fileFormatted)
+          call writeAttributePointerFlexi(20, "biasCont3D", thisOctal%biasCont3D, fileFormatted)
+          call writeAttributePointerFlexi(20, "probDistLine", thisOctal%probDistLine, fileFormatted)
+          call writeAttributePointerFlexi(20, "probDistCont", thisOctal%probDistCont, fileFormatted)
+          call writeAttributePointerFlexi(20, "ne", thisOctal%ne, fileFormatted)
+          call writeAttributePointerFlexi(20, "nH", thisOctal%nH, fileFormatted)
+          call writeAttributePointerFlexi(20, "nTot", thisOctal%nTot, fileFormatted)
+          call writeAttributePointerFlexi(20, "dustType", thisOctal%dustType, fileFormatted)
+          
+          
+          call writeAttributePointerFlexi(20, "kappaAbs", thisOctal%kappaAbs, fileFormatted)
+          call writeAttributePointerFlexi(20, "kappaSca", thisOctal%kappaSca, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "ionFrac", thisOctal%ionFrac, fileFormatted)
+          call writeAttributePointerFlexi(20, "photoIonCoeff", thisOctal%photoIonCoeff, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "nCrossings", thisOctal%nCrossings, fileFormatted)
+          call writeAttributePointerFlexi(20, "hHeating", thisOctal%hHeating, fileFormatted)
+          call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
+          call writeAttributePointerFlexi(20, "undersampled", thisOctal%undersampled, fileFormatted)
+          call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
+          call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
+          
 
 
 
+          call writeAttributePointerFlexi(20, "molecularLevel", thisOctal%molecularLevel, fileFormatted)
+          call writeAttributePointerFlexi(20, "jnu", thisOctal%jnu, fileFormatted)
+          call writeAttributePointerFlexi(20, "bnu", thisOctal%bnu, fileFormatted)
+          call writeAttributePointerFlexi(20, "molAbundance", thisOctal%molAbundance, fileFormatted)
+          call writeAttributePointerFlexi(20, "nh2", thisOctal%nh2, fileFormatted)
+          call writeAttributePointerFlexi(20, "microTurb", thisOctal%microTurb, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "N", thisOctal%n, fileFormatted)
+          call writeAttributePointerFlexi(20, "departCoeff", thisOctal%departCoeff, fileFormatted)
+          call writeAttributePointerFlexi(20, "dustTypeFraction", thisOctal%dustTypeFraction, fileFormatted)
+          call writeAttributePointerFlexi(20, "scatteredIntensity", thisOctal%scatteredIntensity, fileFormatted)
+          
+          
+          call writeAttributePointerFlexi(20, "atomAbundance", thisOctal%atomAbundance, fileFormatted)
+          call writeAttributePointerFlexi(20, "atomLevel", thisOctal%atomLevel, fileFormatted)
+          call writeAttributePointerFlexi(20, "jnuCont", thisOctal%jnuCont, fileFormatted)
+          call writeAttributePointerFlexi(20, "jnuLine", thisOctal%jnuLine, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "q_i", thisOctal%q_i, fileFormatted)
+          call writeAttributePointerFlexi(20, "q_i_plus_1", thisOctal%q_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "q_i_minus_1", thisOctal%q_i_minus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "q_i_minus_2", thisOctal%q_i_minus_2, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "x_i", thisOctal%x_i, fileFormatted)
+          call writeAttributePointerFlexi(20, "x_i_plus_1", thisOctal%x_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "x_i_minus_1", thisOctal%x_i_minus_1, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "u_interface", thisOctal%u_interface, fileFormatted)
+          call writeAttributePointerFlexi(20, "u_i_plus_1", thisOctal%u_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "u_i_minus_1", thisOctal%u_i_minus_1, fileFormatted)
 
-       call writeAttributePointerFlexi(20, "molecularLevel", thisOctal%molecularLevel, fileFormatted)
-       call writeAttributePointerFlexi(20, "jnu", thisOctal%jnu, fileFormatted)
-       call writeAttributePointerFlexi(20, "bnu", thisOctal%bnu, fileFormatted)
-       call writeAttributePointerFlexi(20, "molAbundance", thisOctal%molAbundance, fileFormatted)
-       call writeAttributePointerFlexi(20, "nh2", thisOctal%nh2, fileFormatted)
-       call writeAttributePointerFlexi(20, "microTurb", thisOctal%microTurb, fileFormatted)
+          call writeAttributePointerFlexi(20, "flux_i", thisOctal%flux_i, fileFormatted)
+          call writeAttributePointerFlexi(20, "flux_i_plus_1", thisOctal%flux_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "flux_i_minus_1", thisOctal%flux_i_minus_1, fileFormatted)
 
-       call writeAttributePointerFlexi(20, "N", thisOctal%n, fileFormatted)
-       call writeAttributePointerFlexi(20, "departCoeff", thisOctal%departCoeff, fileFormatted)
-       call writeAttributePointerFlexi(20, "dustTypeFraction", thisOctal%dustTypeFraction, fileFormatted)
-       call writeAttributePointerFlexi(20, "scatteredIntensity", thisOctal%scatteredIntensity, fileFormatted)
+
+          call writeAttributePointerFlexi(20, "phiLimit", thisOctal%phiLimit, fileFormatted)
+       
+          call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
+          call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
+          call writeAttributePointerFlexi(20, "edgeCell", thisOctal%edgeCell, fileFormatted)
+          call writeAttributePointerFlexi(20, "refinedLastTime", thisOctal%refinedLastTime, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "pressure_i", thisOctal%pressure_i, fileFormatted)
+          call writeAttributePointerFlexi(20, "pressure_i_plus_1", thisOctal%pressure_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "pressure_i_minus_1", thisOctal%pressure_i_minus_1, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "rhou", thisOctal%rhou, fileFormatted)
+          call writeAttributePointerFlexi(20, "rhov", thisOctal%rhov, fileFormatted)
+          call writeAttributePointerFlexi(20, "rhow", thisOctal%rhow, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "rhoe", thisOctal%rhoe, fileFormatted)
+          call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
        
 
-       call writeAttributePointerFlexi(20, "atomAbundance", thisOctal%atomAbundance, fileFormatted)
-       call writeAttributePointerFlexi(20, "atomLevel", thisOctal%atomLevel, fileFormatted)
-       call writeAttributePointerFlexi(20, "jnuCont", thisOctal%jnuCont, fileFormatted)
-       call writeAttributePointerFlexi(20, "jnuLine", thisOctal%jnuLine, fileFormatted)
+          call writeAttributePointerFlexi(20, "phi_i", thisOctal%phi_i, fileFormatted)
+          call writeAttributePointerFlexi(20, "phi_i_plus_1", thisOctal%phi_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "phi_i_minus_1", thisOctal%phi_i_minus_1, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "rho_i_plus_1", thisOctal%rho_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "rho_i_minus_1", thisOctal%rho_i_minus_1, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
+          call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
+          call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
+          call writeAttributePointerFlexi(20, "rLimit", thisOctal%rLimit, fileFormatted)
+          
+          call writeAttributePointerFlexi(20, "iEquationOfState", thisOctal%iEquationOfState, fileFormatted)
+          call writeAttributePointerFlexi(20, "gamma", thisOctal%gamma, fileFormatted)
 
 
-
-
-
-       call writeAttributePointerFlexi(20, "q_i", thisOctal%q_i, fileFormatted)
-       call writeAttributePointerFlexi(20, "q_i_plus_1", thisOctal%q_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "q_i_minus_1", thisOctal%q_i_minus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "q_i_minus_2", thisOctal%q_i_minus_2, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "x_i", thisOctal%x_i, fileFormatted)
-       call writeAttributePointerFlexi(20, "x_i_plus_1", thisOctal%x_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "x_i_minus_1", thisOctal%x_i_minus_1, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "u_interface", thisOctal%u_interface, fileFormatted)
-       call writeAttributePointerFlexi(20, "u_i_plus_1", thisOctal%u_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "u_i_minus_1", thisOctal%u_i_minus_1, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "flux_i", thisOctal%flux_i, fileFormatted)
-       call writeAttributePointerFlexi(20, "flux_i_plus_1", thisOctal%flux_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "flux_i_minus_1", thisOctal%flux_i_minus_1, fileFormatted)
-
-
-       call writeAttributePointerFlexi(20, "phiLimit", thisOctal%phiLimit, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
-       call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
-       call writeAttributePointerFlexi(20, "edgeCell", thisOctal%edgeCell, fileFormatted)
-       call writeAttributePointerFlexi(20, "refinedLastTime", thisOctal%refinedLastTime, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "pressure_i", thisOctal%pressure_i, fileFormatted)
-       call writeAttributePointerFlexi(20, "pressure_i_plus_1", thisOctal%pressure_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "pressure_i_minus_1", thisOctal%pressure_i_minus_1, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "rhou", thisOctal%rhou, fileFormatted)
-       call writeAttributePointerFlexi(20, "rhov", thisOctal%rhov, fileFormatted)
-       call writeAttributePointerFlexi(20, "rhow", thisOctal%rhow, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "rhoe", thisOctal%rhoe, fileFormatted)
-       call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
-
-
-       call writeAttributePointerFlexi(20, "phi_i", thisOctal%phi_i, fileFormatted)
-       call writeAttributePointerFlexi(20, "phi_i_plus_1", thisOctal%phi_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "phi_i_minus_1", thisOctal%phi_i_minus_1, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "rho_i_plus_1", thisOctal%rho_i_plus_1, fileFormatted)
-       call writeAttributePointerFlexi(20, "rho_i_minus_1", thisOctal%rho_i_minus_1, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
-       call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
-       call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
-       call writeAttributePointerFlexi(20, "rLimit", thisOctal%rLimit, fileFormatted)
-
-       call writeAttributePointerFlexi(20, "iEquationOfState", thisOctal%iEquationOfState, fileFormatted)
-       call writeAttributePointerFlexi(20, "gamma", thisOctal%gamma, fileFormatted)
-
-
-
-
-
-
-       call writeAttributeStaticFlexi(20, "mpiThread", thisOctal%mpiThread, fileFormatted)
-       call writeFileTag(20, "OCTALENDS", fileFormatted)
+          call writeAttributeStaticFlexi(20, "mpiThread", thisOctal%mpiThread, fileFormatted)
+          call writeFileTag(20, "OCTALENDS", fileFormatted)
+       endif
        
        if (thisOctal%nChildren > 0) then 
           do iChild = 1, thisOctal%nChildren, 1
@@ -319,9 +420,39 @@ contains
      end subroutine writeOctreePrivateFlexi
     
     
-   end subroutine writeAMRgrid
+   end subroutine writeAMRgridSingle
+
 
   subroutine readAMRgrid(filename,fileFormatted,grid)
+    character(len=*) :: filename
+    logical :: fileFormatted
+    type(GRIDTYPE) :: grid
+    logical :: readFile
+    integer :: iThread
+    readFile = .true.
+
+    if (.not.grid%splitOverMPI) then
+       call readAMRgridSingle(filename, fileFormatted, grid)
+       goto 666
+    endif
+    
+#ifdef MPI
+    if (grid%splitOverMPI) then
+       do iThread = 0, nThreadsGlobal-1
+          if (iThread == myRankGlobal) then
+             call readAmrGridSingle(filename, fileFormatted, grid)
+          endif
+          call torus_mpi_barrier
+       enddo
+    endif
+#endif
+
+
+
+666 continue
+  end subroutine readAMRgrid
+
+  subroutine readAMRgridSingle(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
     use unix_mod, only: unixGetenv
     implicit none
@@ -337,6 +468,7 @@ contains
     integer :: nOctal
     character(len=80) :: absolutePath, inFile, updatedFilename
     character(len=20) :: tag
+    integer :: ithread
 
     absolutePath = " "
     error = 0
@@ -346,12 +478,6 @@ contains
 
 
   updatedFilename = inFile
-
-#ifdef MPI 
-  if (grid%splitOverMpi) then
-    write(updatedFilename,'(a,a,i3.3,a)') trim(inFile),"_rank_",myrankGlobal
- endif
-#endif
 
 
     if (fileFormatted) then
@@ -484,6 +610,7 @@ contains
 
 
        allocate(grid%octreeRoot)
+       grid%octreeRoot%nDepth = 1
        nOctal = 0
        call readOctreePrivateFlexi(grid%octreeRoot,null(),fileFormatted, nOctal, grid)
 
@@ -770,18 +897,65 @@ contains
 
       end do
 
+#ifdef MPI
+    if (grid%splitOverMPI) then
+       if (myrankGlobal == 0) then
+          thisOctal%nChildren = 0
+       else
+          if (thisOctal%nDepth == 1) then
+             thisOctal%nChildren = 1
+             thisOctal%hasChild = .false.
+             thisOctal%indexChild(1) = myRankGlobal
+             thisOctal%hasChild(myRankGlobal) = .true.
+          endif
+       endif
+    endif
+#endif
 
-      if (thisOctal%nChildren > 0) then 
-         allocate(thisOctal%child(1:thisOctal%nChildren)) 
-         do iChild = 1, thisOctal%nChildren, 1
-            thisChild => thisOctal%child(iChild)
-            call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)
-         end do
-      end if
+
+    if (.not.grid%splitOVerMPI) then
+       if (thisOctal%nChildren > 0) then 
+          allocate(thisOctal%child(1:thisOctal%nChildren)) 
+          do iChild = 1, thisOctal%nChildren, 1
+             
+             thisChild => thisOctal%child(iChild)
+             call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+          end do
+       end if
+    endif
+
+    if (grid%splitOVerMPI) then
+       if (thisOctal%nDepth > 1) then
+          if (thisOctal%nChildren > 0) then 
+             allocate(thisOctal%child(1:thisOctal%nChildren)) 
+             do iChild = 1, thisOctal%nChildren, 1
+                thisChild => thisOctal%child(iChild)
+                call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+             end do
+          end if
+       else
+          if (thisOctal%nChildren > 0) then 
+             allocate(thisOctal%child(1:thisOctal%nChildren)) 
+             do iChild = 1, thisOctal%nChildren, 1
+                do iThread = 1, myRankGlobal
+                   thisChild => thisOctal%child(iChild)
+                   call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                   if (iThread /= myRankGlobal) then
+                      call deleteOctreeBranch(thisChild,onlyChildren=.false., adjustParent=.false.)
+                   endif
+                enddo
+             end do
+          end if
+       endif
+    endif
+
+    
+    
+
 
     end subroutine readOctreePrivateFlexi
  
-  end subroutine readAMRgrid
+  end subroutine readAMRgridSingle
 
 
 

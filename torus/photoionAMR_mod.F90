@@ -433,6 +433,8 @@ contains
     integer :: newThread
     logical :: quickThermal
     logical, save :: firstTimeTables = .true.
+    logical, allocatable :: allDone(:)
+    integer :: iThreadDone
 
     quickThermal = .false.
 
@@ -487,7 +489,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 10000
 
     nIter = 0
     
@@ -518,11 +520,14 @@ contains
        nTotScat = 0
        nPhot = 0
 
+       allocate(allDone(0:nThreadsGlobal-1))
+
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
+
                 call randomSource(source, nSource, iSource)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
@@ -551,15 +556,23 @@ contains
 
              do iThread = 1, nThreads - 1
                 tempStorage(1) = HUGE(tempStorage(1))
+                tempStorage(2) = 0.d0
                 call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
              enddo
 
           else
              endLoop = .false.
+             allDone = .false.
+             allDone(myRankGlobal) = .true.
              do while(.not.endLoop)
-                call getNewMPIPhoton(rVec, uHat, thisFreq, endloop)
-!                write(*,*) "rank ",myrank, " getting photon with rvec%x ",rvec%x
-!                write(*,*) "Photon at freq ",thisFreq, " received by ",myrank
+                call getNewMPIPhoton(rVec, uHat, thisFreq, iThreadDone)
+
+                if (iThreadDone >= 0) then
+                   write(*,*) myrankGlobal, " all done array ",alldone
+                   allDone(iThreadDone) = .true.
+                   goto 777
+                endif
+
                 if (.not.endLoop) then
                    nScat = 0
                    escaped = .false.
@@ -657,8 +670,25 @@ contains
                    nPhot = nPhot + 1
                 endif
 777             continue
+                if (iThreadDone == 0) then
+                   do iThread = 1, nThreadsGlobal - 1
+                      if (iThread /= myRankGlobal) then
+                         write(*,*) myrankGlobal, " sending done signal to ", ithread
+                         tempStorage(1) = HUGE(tempStorage(1))
+                         tempStorage(2) = dble(myRankglobal)
+                         call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+                      endif
+                   enddo
+                endif
+                if (ALL(allDone)) then
+                   endLoop = .true.
+                   write(*,*) myrankglobal, " is all done."
+                endif
              enddo
           endif
+          deallocate(allDone)
+
+          write(*,*) myrankglobal, "reached barrier"
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        epsOverDeltaT = (lCore) / dble(nMonte)
@@ -3833,25 +3863,24 @@ end subroutine readHeIIrecombination
   end subroutine refineLambdaArray
 
 
-  subroutine getNewMPIPhoton(position, direction, frequency, endloop)
+  subroutine getNewMPIPhoton(position, direction, frequency, iThreadDone)
     include 'mpif.h'
     integer :: ierr
     type(VECTOR) :: position, direction
     real(double) :: frequency
     integer, parameter :: nTemp = 7
     real(double) :: tempstorage(nTemp)
-    logical :: endLoop
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 41
-    
+    integer :: iThreadDone
+    iThreadDone = -1
 
     call MPI_RECV(tempStorage, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
     if (tempStorage(1) > 1.d30) then
 !       write(*,*) myRankGlobal, " finished receiving"
-       endLoop = .true.
+       iThreadDone = nint(tempStorage(2))
        goto 666
     else
-       endLoop = .false.
        position%x = tempStorage(1)
        position%y = tempStorage(2)
        position%z = tempStorage(3)
@@ -3945,6 +3974,8 @@ end subroutine readHeIIrecombination
     integer :: np(10)
 
     call init_random_seed()
+
+
 
     call setupNeighbourPointers(grid, grid%octreeRoot)
     call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &

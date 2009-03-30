@@ -1,4 +1,5 @@
 MODULE amr_mod
+ 
 ! 21 nov
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
@@ -3942,8 +3943,6 @@ IF ( .NOT. gridConverged ) RETURN
 !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
           if(.not. suppresswarnings) then
-             write(*,*) sqrt(-2.d0)
-             DO ; END DO
                 STOP
           endif
           boundaryProblem = .TRUE.
