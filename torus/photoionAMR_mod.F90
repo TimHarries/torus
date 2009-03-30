@@ -4017,6 +4017,7 @@ end subroutine readHeIIrecombination
 
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
 
+    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
     totalEmission = totalEmission * 1.d30
 
     if (nSource > 0) then              
@@ -4049,7 +4050,6 @@ end subroutine readHeIIrecombination
           call random_number(r)
 
 
-          probsource = 0.d0
           if (r < probSource) then
              call randomSource(source, nSource, iSource)
              thisSource = source(iSource)
