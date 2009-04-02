@@ -123,7 +123,7 @@ use particle_pos_mod, only: particle_pos
   total_gas_mass = total_disc_mass / real(nproc) 
   b_num_gas      = npart / nproc  ! number of gas particles for this MPI process
 
-  if (my_rank == 0) write(*,*) "SPH benchmark: generating particles"
+  if (my_rank == 0) write(*,*) "SPH benchmark: generating", npart, "particles"
 
   if (my_rank == 0) then
      b_idim = b_num_gas + 1
