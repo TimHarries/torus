@@ -11,6 +11,9 @@ case ${SYSTEM} in
     zen)ln -s sphbench.f90 sphbench.F90
 	export MYF90="mpif90 -DMPI";;
 
+    zensingle) ln -s sphbench.f90 sphbench.F90
+              export MYF90="ifort";;
+
 	*) echo "Unrecognised system"
 	   exit 1 ;;
 
