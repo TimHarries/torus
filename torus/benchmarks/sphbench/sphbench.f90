@@ -12,7 +12,7 @@ use particle_pos_mod, only: particle_pos
 #endif
 
 ! Total number of particles
-  integer, parameter :: npart=1e5
+  integer:: npart
 
 ! loop and particle index
   integer :: ipart
@@ -91,6 +91,10 @@ use particle_pos_mod, only: particle_pos
   my_rank = 0
   nproc   = 1
 #endif
+
+  open(unit=20, status="old", file="sphbench_params.dat")
+  read(20,*) npart
+  close(20)
 
   if ( use_random_particles ) then 
 
