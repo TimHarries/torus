@@ -386,6 +386,34 @@ ifeq ($(SYSTEM), zen)
     KNOWN_SYSTEM=yes
 endif
 
+
+ifeq ($(SYSTEM), zensingle)
+    F95COMP= ifort
+    F77COMP= ifort
+    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+# Include run-time error checking using ifort. Use environment variable to avoid clash with
+# ITC -check option in version 3.1 of mpiifort/mpif90 scripts.
+    ifeq ($(debug), yes)
+      export F90FLAGS=-check all -check noarg_temp_created
+    endif
+    STATICFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.zensingle
+    F77FLAG=
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+    F2CLIB=
+    STATICLIBS= -Bstatic
+    STARLIBS= 
+    CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    MPIFLAG = 
+    KNOWN_SYSTEM=yes
+endif
+
+
 # Build using SGI's Message Passing Toolkit version of MPI. 
  ifeq ($(SYSTEM), zenmpt)
      F95COMP= ifort -lmpi
