@@ -3195,7 +3195,7 @@ endif
         use input_variables, only : npixels, imageside        
         use input_variables, only : griddistance 
         use input_variables, only : centrevecX, centrevecY, centrevecZ
-        use input_variables, only : rotateViewAboutX, rotateviewAboutZ
+        use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
 
         logical :: paraxial = .true.
         real(double) :: pixelwidth, theta
@@ -3215,6 +3215,10 @@ endif
         viewvec = rotateX(viewvec, -rotateViewAboutX * degtorad) ! This line controls inclination in a 2D geometry (e.g. IRAS04158, shakara) - ANTI-CLOCKWISE ROTATION
         imagebasis(1) = rotateX(imagebasis(1), -rotateViewAboutX * degtorad) ! Image bases are necessarily orthonormal and linearly independent
         imagebasis(2) = rotateX(imagebasis(2), -rotateViewAboutX * degtorad)
+
+        viewvec = rotateY(viewvec, -rotateViewAboutY * degtorad) 
+        imagebasis(1) = rotateY(imagebasis(1), -rotateViewAboutY * degtorad)
+        imagebasis(2) = rotateY(imagebasis(2), -rotateViewAboutY * degtorad)
 
         viewvec = rotateZ(viewvec, -rotateViewAboutZ * degtorad) ! This line varies 'longitude'. This should only affect 3D geometries
         imagebasis(1) = rotateZ(imagebasis(1), -rotateViewAboutZ * degtorad)! Image bases are necessarily orthonormal and linearly independent
@@ -3749,7 +3753,7 @@ end subroutine calculateConvergenceData
 
  subroutine make_h21cm_image(grid)
    
-   use input_variables, only : nsubpixels, itrans
+   use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset
 
    implicit none
 
@@ -3769,6 +3773,10 @@ end subroutine calculateConvergenceData
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
    call convertSpatialAxes(cube,'kpc')
+
+! Add velocity offset 
+   cube%vAxis(:) = cube%vAxis(:) + dataCubeVelocityOffset
+
 ! Output as brightness temperature
    cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
 

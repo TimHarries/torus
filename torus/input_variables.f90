@@ -32,7 +32,8 @@ module input_variables
   logical :: h21cm 
   real :: beamSize
   real :: eccentricity
-  real(double) :: rotateViewAboutX, rotateViewAboutZ
+  real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+  real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom
