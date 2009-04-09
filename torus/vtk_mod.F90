@@ -261,10 +261,12 @@ contains
       type(GRIDTYPE), intent(in) :: grid
       integer :: lunit = 69
       integer :: subcell, i
+      integer, save :: iLambda
       real :: value
-      real(double) :: kAbs
+      real(double) :: kAbs, kSca
       character(len=*) :: valueType
       real, parameter :: min_single_prec = 1.0e-37
+      logical, save :: firstTime = .true.
 
       kabs = 0.d0
       do subcell = 1, thisOctal%maxChildren
@@ -429,10 +431,23 @@ contains
                   write(lunit, *) max ( real(thisOctal%etaline(subcell)), min_single_prec )
 
                case("tau")
+                  if (firstTime) then
+                     call locate(grid%lamArray, grid%nLambda, 5500., ilambda)
+                     firstTime = .false.
+                  endif
+                  call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
+                       kappaSca=ksca, kappaAbs=kabs)
+                  value = thisOctal%subcellSize * (ksca + kabs)
+
+                  write(lunit, *) real(value)
+
+               case("ross")
+
                   call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
                   value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
-                  if (thisOctal%diffusionApprox(subcell)) value = 1.e10
+
                   write(lunit, *) real(value)
+
 
                case("dusttype")
                   write(lunit,*) real(thisOctal%dustTypeFraction(subcell,1))

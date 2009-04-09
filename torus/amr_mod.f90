@@ -594,6 +594,9 @@ CONTAINS
       STOP
     ENDIF
 
+!    call interpFromParent(subcellCentre(parent, iChild, parent%subcellSize, &
+!         grid, temperature, density, dusttypeFraction)
+
     CALL growChildArray(parent, nNewChildren=1, grid=grid )
 
     ! update the bookkeeping
@@ -4527,6 +4530,7 @@ IF ( .NOT. gridConverged ) RETURN
          splitInAzimuth = .true.
       endif
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+      if ((r-cellsize/2.d0) > rOuter) split = .false.
 
    case("molebench")
       cellCentre = subcellCentre(thisOctal, subcell)
@@ -4906,8 +4910,8 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+!           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -10323,51 +10327,6 @@ end function readparameterfrom2dmap
   end subroutine verticalDump
 
 
-  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, converged)
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    integer :: ilambda
-    real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i
-    logical :: unrefine, converged
-    integer :: nc
-    kappaAbs = 0.d0; kappaSca = 0.d0
-    unrefine = .true.
-    nc = 0
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call unrefineThinCells(child, grid, ilambda, converged)
-                exit
-             end if
-          end do
-       else
-          if (.not.ASSOCIATED(thisOctal%dustTypeFraction)) then
-             write(*,*) "unalloc dusttypefraction!!"
-          endif
-          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
-          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          nc = nc + 1
-          if (tau > 1.e-10) then
-             unrefine = .false.
-             exit
-          endif
-       endif
-    enddo
-!    write(*,*) thisOctal%nChildren,unrefine,tau, nc,thisOctal%maxChildren
-
-    if ((thisOctal%nChildren == 0).and.unrefine) then
-       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
-            grid = grid, adjustGridInfo = .true.)
-       converged = .false.
-    endif
-
-  end subroutine unrefineThinCells
-
   recursive subroutine unrefineThickCells(thisOctal, grid, ilambda, converged)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -10673,31 +10632,35 @@ end function readparameterfrom2dmap
     if (associated(parentOctal%ne)) parentOctal%ne(parentSubcell) =                    &
     SUM(childOctal%ne(1:nVals)) / nValsREAL
 
-    parentOctal%rhoe(parentSubcell) =                    &
+    if (associated(parentOctal%rhoe)) parentOctal%rhoe(parentSubcell) =  &
     SUM(childOctal%rhoe(1:nVals)) / nValsREAL
 
-    parentOctal%rhou(parentSubcell) =                    &
+    if (associated(parentOctal%rhou))     parentOctal%rhou(parentSubcell) = &
     SUM(childOctal%rhou(1:nVals)) / nValsREAL
  
-    parentOctal%rhov(parentSubcell) =                    &
+    if (associated(parentOctal%rhov))     parentOctal%rhov(parentSubcell) = &
     SUM(childOctal%rhov(1:nVals)) / nValsREAL
 
-    parentOctal%rhow(parentSubcell) =                    &
+    if (associated(parentOctal%rhow))     parentOctal%rhow(parentSubcell) = &
     SUM(childOctal%rhow(1:nVals)) / nValsREAL
    
-    parentOctal%temperature(parentSubcell) =            &
-    SUM(childOctal%temperature(1:nVals)) / nValsREAL
+    parentOctal%temperature(parentSubcell) = &
+     SUM(childOctal%temperature(1:nVals)) / nValsREAL
 
 
-    do i = 1, SIZE(parentOctal%ionFrac,2)
-       parentOctal%ionFrac(parentSubcell,i) =            &
-            SUM(childOctal%ionFrac(1:nVals,i)) / nValsREAL
-    enddo
+    if (associated(parentOctal%ionFrac)) then
+       do i = 1, SIZE(parentOctal%ionFrac,2)
+          parentOctal%ionFrac(parentSubcell,i) =            &
+               SUM(childOctal%ionFrac(1:nVals,i)) / nValsREAL
+       enddo
+    endif
     
-!    if (associated(parentOctal%dustTypeFraction)) then
-!       parentOctal%dustTypeFraction(parentSubcell,:) =     &
-!            SUM(childOctal%dustTypeFraction(1:nVals,:)) / nValsREAL
-!    endif
+    if (associated(parentOctal%dustTypeFraction)) then
+       do i = 1, SIZE(childOCtal%dustTypeFraction,2)
+          parentOctal%dustTypeFraction(parentSubcell,i) =     &
+               SUM(childOctal%dustTypeFraction(1:nVals,i)) / nValsREAL
+       enddo
+    endif
 
   END SUBROUTINE updateParentFromChild
   
@@ -12404,7 +12367,7 @@ end function readparameterfrom2dmap
     real, allocatable :: temp(:)
     type(VECTOR) :: centre, octVec
     real(double) :: r
-    integer :: j
+    integer :: j, i
 
     if (grid%octreeRoot%oneD) then
        write(*,*) "interp from parent not implemented for one-d case"
@@ -12451,20 +12414,15 @@ end function readparameterfrom2dmap
        call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:))
 
     endif
-    tdusttype=log10(max(1.d-30,tdusttype))
   
-    rho = log10(rho)
-    temp = log10(temp)
 
     density = sum(rho) / dble(j)
-    density = 10.d0**density
 
     temperature = sum(temp) / real(j)
-    temperature = 10.d0**temperature
 
-    dusttypeFraction=SUM(tdusttype(1:j,:)) / dble(j)
-    dusttypeFraction = 10.d0**dusttypeFraction
-
+    do i = 1, SIZE(dustTypefraction)
+       dusttypeFraction(i) = SUM(tdusttype(1:j,i)) / dble(j)
+    enddo
   end subroutine interpFromParent
 
   subroutine interpHydroProperties(grid, thisOctal, subcell)
@@ -13095,7 +13053,7 @@ end function readparameterfrom2dmap
 
 666    continue
 
-       tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+!       tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
 
 
      end subroutine distanceToCellBoundary

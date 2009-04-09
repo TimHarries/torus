@@ -58,7 +58,7 @@ program torus
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImage
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
-  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads
+  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
   use unix_mod, only: unixGetHostname
   use parallel_mod, only: sync_random_seed
 #endif
@@ -109,8 +109,7 @@ program torus
 
   ! vectors
 
-  type(VECTOR) :: originalViewVec
-
+  type(VECTOR) :: originalViewVec, viewVec, outVec
   ! output arrays
 
   integer :: iLambda
@@ -503,7 +502,11 @@ program torus
         if (grid%geometry(1:8) == 'windtest') call windtest
 
         ! Write the information on the grid to file using a routine in grid_mod.f90
-        if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+        if (grid%splitOverMPI) then
+           call grid_info_mpi(grid, "info_grid.dat")
+        else
+           if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+        endif
 
         ! Plotting the various values stored in the AMR grid.
         if ( plot_maps .and. myRankIsZero ) call writeVtkFile(grid, "rho.vtk")
@@ -540,7 +543,12 @@ program torus
      endif
 
      ! Write the information on the grid to file using a routine in grid_mod.f90
-     if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+
+     if (grid%splitOverMPI) then
+        call grid_info_mpi(grid, "info_grid.dat")
+     else
+        if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+     endif
 
   !=================================================================
   endif ! (gridusesAMR)
@@ -573,9 +581,15 @@ program torus
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
 
+       inclination = 77.5d0 * degToRad
+       viewVec%x = 0.
+       viewVec%y = -sin(inclination)
+       viewVec%z = -cos(inclination)
+       outVec = (-1.d0)*viewVec
+
         do i = 1, nLambda
-           call createImage(grid, nSource, source, VECTOR(1.d0, 0.d0, 0.d0), i, totalflux)
-           write(67,*) grid%lamArray(i), totalFlux
+           call createImage(grid, nSource, source, outVec, i, totalflux)
+           if (myrankglobal == 0) write(67,*) grid%lamArray(i), totalFlux
         enddo
 
         stop
@@ -1694,8 +1708,11 @@ end subroutine pre_initAMRGrid
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
-!        call grid_info(grid, "*")
-        if (myRankIsZero) call grid_info(grid, "info_grid.dat")
+        if (grid%splitOverMPI) then
+           call grid_info_mpi(grid, "info_grid.dat")
+        else
+           if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+        endif
 
 	if (lineEmission) then
            nu = cSpeed / (lamLine * angstromtocm)

@@ -120,6 +120,8 @@ contains
     real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
+    real(double) :: varDustSubFac
+    integer :: nUnrefine
 
 #ifdef USEMKL
     integer :: oldmode
@@ -169,7 +171,11 @@ contains
   if (nLucy /= 0) then
      nMonte = nLucy
   else
-     nMonte = nVoxels * 10
+     if (.not.variableDustSublimation) then
+        nMonte = nVoxels * 10
+     else
+        nMonte = nVoxels * 100
+     endif
   endif
 
 
@@ -240,7 +246,7 @@ contains
     endif
 
     if (variableDustSublimation) then
-       call stripDustAway(grid%octreeRoot, 1.d-5, 1.d30)
+       call stripDustAway(grid%octreeRoot, 1.d-7, 1.d30)
     endif
 
 
@@ -632,16 +638,13 @@ contains
        call writeInfo(message,IMPORTANT)
 
 
-       epsOverDeltaT = (lCore) / dble(nInf)
+       epsOverDeltaT = lCore / dble(nInf)
 
        nDT = 0
        nUndersampled = 0
 
 
        totalEmission = 0.
-
-! If we are doing the computation in 2D then we need to remap the distancegrid before
-! calculating the temperature corrections
 
 
        call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
@@ -745,8 +748,8 @@ contains
 !          if (smoothConverged) exit
 !       end do
 !       call writeInfo("Finished.",TRIVIAL)
-       nCellsinDiffusion = 0
-       call recountDiffusionCells(grid%octreeRoot, nCellsInDiffusion)
+!       nCellsinDiffusion = 0
+!       call recountDiffusionCells(grid%octreeRoot, nCellsInDiffusion)
 
 
        if (grid%geometry.eq."wr104") then
@@ -775,34 +778,39 @@ contains
           tauMax = 1.e30
 
 
-          if (mod(iIter_grand, 1) == 0) then
+          if (mod(iIter_grand, 3) == 0) then
 
-             if (iIter_grand < 9) tauMax = 0.1d0
-!             if (iIter_grand == 6) tauMax = 1.d0
-             if (iIter_grand == 9) tauMax = 1.d30
+             if (iIter_grand == 3) tauMax = 0.1
+             if (iIter_grand == 6) tauMax = 1.d0
+             if (iIter_grand == 9) tauMax = 1.e30
 
-             if (iIter_grand <= 9) then
-                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-             endif
+
+             if (iIter_Grand <= 9) &
+                  call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
              endif
-             !          if ((iIter_grand>=1).and.(iIter_grand <=20)) then
              
-             call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-             
+             if (iiter_grand == 9) then
+                
+                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+
+                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+                gridconverged = .false.
+                do while(.not.gridconverged)
+                   gridconverged = .true.
+                   nUnrefine = 0
+                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged, .false.)
+                   if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+                end do
+                if (writeoutput) then
+                   write(*,*) "done."
+                endif
+             endif
+                
              if (iiter_grand >= 9) then
-                
-                !                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-                !                gridconverged = .false.
-                !                do while(.not.gridconverged)
-                !                   gridconverged = .true.
-                !                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-                !                end do
-                !                if (writeoutput) then
-                !                   write(*,*) "done."
-                !                endif
-                
+                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
                 do j = iSmoothLam, iSmoothlam !nLambda, 5
                    do
@@ -823,14 +831,17 @@ contains
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
              endif
-          endif
           nCellsInDiffusion = 0
           call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
           write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
           call writeInfo(message,IMPORTANT)
 
+
+
        endif
 
+    endif
+       
 
 
     if (grid%geometry == "wr104") then
@@ -857,7 +868,7 @@ contains
     if (iIter_grand < iterlucy) converged = .false.
 
     if (variableDustSublimation) then
-       if (iIter_grand < 10) then
+       if (iIter_grand < 12) then
           converged = .false.
        endif
     endif
@@ -888,7 +899,7 @@ contains
  
 
       
- enddo
+    enddo
 
  if (storescattered) then 
     call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
@@ -2807,6 +2818,7 @@ contains
   end subroutine calcContinuumEmissivityLucyMono
 
 
+
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
 
   type(OCTAL), pointer :: thisOctal
@@ -3201,6 +3213,140 @@ subroutine setBiasOnTau(grid, iLambda)
 
     deallocate(iNuDOmega)
   end subroutine calcIntensityFromGrid
+
+  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, nUnrefine, converged, finalPass)
+    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: ilambda
+    real(double) :: kappaAbs, kappaSca, tau
+    integer :: subcell, i
+    logical :: unrefine, converged
+    integer :: nc
+    logical :: split
+    real(double) :: cellSize, r, hr
+    logical :: finalPass
+    integer :: oldNChildren
+    integer :: nUnrefine
+
+    type(VECTOR) :: cellCentre
+    
+
+    kappaAbs = 0.d0; kappaSca = 0.d0
+    unrefine = .true.
+    nc = 0
+
+    if ( thisOctal%nChildren > 0) then
+       do i = 1, thisOctal%nChildren
+          child => thisOctal%child(i)
+          oldNChildren = thisOctal%nChildren
+          call unrefineThinCells(child, grid, ilambda, nUnrefine, converged,  finalPass)
+          if (thisOctal%NChildren /= oldNChildren) return
+       end do
+    else
+       do subcell = 1, thisOctal%maxChildren
+          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
+          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
+          if (tau > 1.e-5) then
+             unrefine = .false.
+             exit
+          endif
+       enddo
+       split = .true.
+       if (.not.associated(thisOctal%parent).and.(myrankGlobal==1)) then
+          write(*,*) "Parent of thisoctal not assocaited ",thisOctal%nDepth
+       endif
+       if (associated(thisOctal%parent).and.unrefine) then
+          cellSize = thisOctal%parent%subcellSize 
+          cellCentre = subcellCentre(thisOctal%parent,thisOctal%parentSubcell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+          split = .false.
+          
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          
+          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
+               (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
+          
+          if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+          if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+          
+          if (finalPass) split = .false.
+       
+          if ((.not.split).and.(thisOctal%nDepth > minDepthAMR)) then
+             call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+               grid = grid, adjustGridInfo = .true.)
+             converged = .false.
+             nUnrefine = nUnrefine + 1
+          endif
+       endif
+    endif
+  end subroutine unrefineThinCells
+
+  recursive subroutine unrefineBack(thisOctal, grid, nUnrefine, converged)
+    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: kappaAbs, kappaSca, tau
+    integer :: subcell, i
+    logical :: unrefine, converged
+    integer :: nc
+    logical :: split
+    real(double) :: cellSize, r, hr
+    integer :: oldNChildren
+    integer :: nUnrefine
+
+    type(VECTOR) :: cellCentre
+    
+
+    unrefine = .true.
+
+    if ( thisOctal%nChildren > 0) then
+       do i = 1, thisOctal%nChildren
+          child => thisOctal%child(i)
+          oldNChildren = thisOctal%nChildren
+          call unrefineBack(child, grid, nUnrefine, converged)
+          if (thisOctal%NChildren /= oldNChildren) return
+       end do
+    else
+       split = .true.
+       if (.not.associated(thisOctal%parent).and.(myrankGlobal==1)) then
+          write(*,*) "Parent of thisoctal not assocaited ",thisOctal%nDepth
+       endif
+       if (associated(thisOctal%parent)) then
+          cellSize = thisOctal%parent%subcellSize 
+          cellCentre = subcellCentre(thisOctal%parent,thisOctal%parentSubcell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+          split = .false.
+          
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          
+          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
+               (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
+          
+          if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+          if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+          
+       
+          if ((.not.split).and.(thisOctal%nDepth > minDepthAMR)) then
+             call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+               grid = grid, adjustGridInfo = .true.)
+             converged = .false.
+             nUnrefine = nUnrefine + 1
+          endif
+       endif
+    endif
+  end subroutine unrefineBack
+
 
 end module lucy_mod
 

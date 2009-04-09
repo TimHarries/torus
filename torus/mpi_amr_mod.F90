@@ -22,6 +22,11 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRankGlobal, ierr)
 
+    if (nThreadsGlobal == 8) nHydroThreadsGlobal = 8
+    if (nThreadsGlobal == 9) nHydroThreadsGlobal = 8
+
+    if (nThreadsGlobal == 64) nHydroThreadsGlobal = 64
+    if (nThreadsGlobal == 65) nHydroThreadsGlobal = 64
 
   end subroutine setupAMRCOMMUNICATOR
 
@@ -1589,6 +1594,77 @@ contains
 666 continue
   end subroutine dumpValuesAlongLine
     
+  subroutine grid_info_mpi(thisGrid, filename)
+    use amr_mod, only:  countVoxels
+    include 'mpif.h'
+    type(gridtype), intent(in) :: thisGrid
+    character(LEN=*), intent(in) :: filename
+    integer :: UN
+    real(double) :: fac
+    integer :: nOctals,nVoxels
+    integer :: tempInt(1)
+    real(double) :: tempDouble(1)
+    real(double) :: halfSmallestSubcell
+    integer :: maxDepth
+    integer :: ierr
+    
+    if (myrankGlobal == 0) then
+       if (filename(1:1) == '*') then
+          UN = 6   ! prints on screen
+       else
+          UN = 69
+          open(unit=UN, file = TRIM(filename), status = 'replace',form='formatted')
+       end if
+    endif
+
+
+
+    nOctals=0; nVoxels=0
+    call countVoxels(thisGrid%octreeRoot,nOctals,nVoxels)
+    if (myrankGlobal == 0) then
+       nOctals = 0
+       nVoxels = 0
+    endif
+    write(*,*) myrankGlobal, " has ", noctals, " octals and ",nvoxels, " voxels"
+    call MPI_REDUCE(nOctals, tempInt,1,MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    nOctals = tempInt(1)
+    call MPI_REDUCE(nVoxels, tempInt,1,MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    nVoxels = tempInt(1)
+    call MPI_REDUCE(thisgrid%maxDepth, tempInt,1,MPI_INTEGER, MPI_MAX, 0, MPI_COMM_WORLD, ierr)
+    maxDepth = tempInt(1)
+    call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 0, MPI_COMM_WORLD, ierr)
+    halfSmallestSubcell = tempDouble(1)
+    
+    
+    if (myRankGlobal == 0) then
+       write(UN,'(a)') ' '
+       write(UN,'(a)') '######################################################'
+       write(UN,'(a)') 'Grid info :'
+       write(UN,'(a)') ' '
+       write(UN,*)     'geometry             = ', thisGrid%geometry
+       write(UN,*)     'maxDepth             = ', maxDepth
+       write(UN,*)     'halfSmallestSubcell  = ', halfSmallestSubcell, ' [10^10 cm]'
+       write(UN,*)     'nOctals              = ', nOctals
+       write(UN,*)     'nVoxels              = ', nVoxels
+       write(UN,*)     'smoothingFactor      = ', thisGrid%smoothingFactor
+       write(UN,*)     'grid center          =', thisGrid%octreeRoot%centre
+       write(UN,*)     'Size of largest cell =', thisGrid%octreeRoot%subcellSize*2.0, ' [10^10 cm]'
+       write(UN,'(a)') '#######################################################'
+       write(UN,'(a)') ' '
+       write(Un,'(a)') ' '
+       
+       fac = 1.d0/(2.d0**dble(maxDepth))
+       if (fac < epsilon(1.d0)) then
+          write(UN,'(a)') "**** WARNING: Grid cell depth is so great numerical problems may occur****"
+       endif
+    endif
+    if (myrankGlobal == 0) then
+       if (filename(1:1) /= '*')  close(UN)
+    endif
+    
+  end subroutine grid_info_mpi
+  
+
     
 
 #else

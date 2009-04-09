@@ -357,6 +357,8 @@ contains
     type(GRIDTYPE) :: grid
     real :: mStar, sigma0, rDisk, expectedMass
     integer :: nDustType
+    integer :: iSmoothLam
+    logical :: gridConverged
     logical :: converged
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -369,10 +371,10 @@ contains
     integer :: maxIter
     integer :: nIter, j, ilamsmooth
     real(double) totalMass
-    logical :: twoD, gridConverged
+    logical :: twoD
     real :: temp
     real :: rGapCM
-
+    integer :: nUnrefine
 
 
 
@@ -435,12 +437,33 @@ contains
 
     if(myRankIsZero) &
        write(*,*) "Maximum absolute change in density: ",drho
-
+  
 
 
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
        if (myRankisZero) write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
+
+
+       if (writeoutput) write(*,*) "Unrefining back to original gridding..."
+       gridconverged = .false.
+       do while(.not.gridconverged)
+          gridconverged = .true.
+          nUnrefine = 0
+          call unrefineBack(grid%octreeRoot, grid, nUnrefine, gridconverged)
+          if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+       end do
+       if (writeoutput) then
+          write(*,*) "done."
+       endif
+       call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+       do
+          gridConverged = .true.
+          call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+               gridConverged,  inheritProps = .false., interpProps = .true.)
+          if (gridConverged) exit
+       end do
+       call writeInfo("...grid smoothing complete", TRIVIAL)
 
 
 
@@ -492,8 +515,8 @@ contains
             call smoothAMRgrid(grid,smoothFactor, inheritProps=.false., interpProps=.true.)
      if(myRankIsZero) &
             write(*,*) "...grid smoothing complete"
-          end if
-
+  end if
+          
 
 
 
@@ -517,10 +540,14 @@ contains
        
     enddo
 
+
     ! final call to sort out temperature
 
     call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
          nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
+
+
+
 
     ! chris
     if(myRankIsZero) then

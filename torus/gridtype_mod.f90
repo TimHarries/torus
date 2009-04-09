@@ -144,6 +144,7 @@ module gridtype_mod
      
      ! adaptive mesh refinement stuff
      type(octal), POINTER :: octreeRoot => NULL()    ! root of adaptive mesh octree 
+     type(octal), pointer :: tempBranch => NULL()
      integer :: maxDepth                             ! maximum depth of octree
      real(oct) :: halfSmallestSubcell 
        ! 'halfSmallestSubcell' is half the vertex length of the grid's smallest

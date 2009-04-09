@@ -226,6 +226,7 @@ contains
        logical :: writeThisOctal
        integer :: tempNChildren
        integer :: tempIndexChild(8), i
+       integer :: iMod
        logical :: tempHasChild(8)
 
        writeThisOctal = .true.
@@ -236,30 +237,70 @@ contains
 
 
 #ifdef MPI
-       if (grid%splitOverMPI) then
-          if (nThreadsGlobal > 9) then
-             write(*,*) "Grid IO for > 8 hydro threads not yet implemented!"
-             stop
-          endif
-          if (myrankGlobal == 0) then 
-             if (thisOctal%nDepth == 1) then
-                writeThisOctal = .true.
+
+
+       if (grid%splitOverMPI) then ! this section chooses whether we need to write the octal
+
+          if (nHydroThreadsGlobal == 8) then
+             if (myrankGlobal == 0) then 
+                if (thisOctal%nDepth == 1) then
+                   writeThisOctal = .true.
+                else
+                   writeThisOctal = .false.
+                endif
              else
-                writeThisOctal = .false.
-             endif
-          else
-             if (thisOctal%nDepth == 1) then
-                writeThisOctal = .false.
-             else
-                thisOctalPointer => thisOctal
-                writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+                if (thisOctal%nDepth == 1) then
+                   writeThisOctal = .false.
+                else
+                   thisOctalPointer => thisOctal
+                   writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+                endif
              endif
           endif
+
+          if (nHydroThreadsGlobal == 64) then
+             writeThisOctal = .false.
+             if (myrankGlobal == 0) then 
+                writeThisOctal = .false.
+             else
+                if ((thisOctal%nDepth == 1).and.(myRankGlobal == 1)) then
+                   writeThisOctal = .true.
+                endif
+
+                if (thisOctal%nDepth == 2) then
+                   thisOctalPointer => thisOctal
+                   writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+                endif
+
+
+                if (thisOctal%nDepth >= 3) then
+                   thisOctalPointer => thisOctal
+                   writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+                endif
+             endif
+          endif
+
        endif
 
-       if (grid%splitOverMpi) then
-          if (nThreadsGlobal == 9) then
-             if ((thisOctal%nDepth < 2) .and. (myRankGlobal==0)) then
+       tempNChildren = thisOctal%nChildren
+       tempIndexChild = thisOctal%indexChild
+       tempHasChild = thisOctal%hasChild
+
+       if (grid%splitOverMpi) then ! this sets up the number of children for the zeroth thread
+
+
+          if (nHydroThreadsGlobal == 8) then
+             if ((thisOctal%nDepth == 1) .and. (myRankGlobal==0)) then
+                tempNChildren = 8
+                do i = 1, 8
+                   tempIndexChild(i) = i
+                enddo
+                tempHasChild = .true.
+             endif
+          endif
+
+          if (nHydroThreadsGlobal == 64) then
+             if (thisOctal%nDepth == 2) then
                 tempNChildren = 8
                 do i = 1, 8
                    tempIndexChild(i) = i
@@ -431,9 +472,13 @@ contains
     integer :: iThread
     readFile = .true.
 
+    if (associated(grid%octreeRoot)) then
+       call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+       grid%octreeRoot => null()
+    endif
+
     if (.not.grid%splitOverMPI) then
        call readAMRgridSingle(filename, fileFormatted, grid)
-       goto 666
     endif
     
 #ifdef MPI
@@ -441,11 +486,18 @@ contains
        do iThread = 0, nThreadsGlobal-1
           if (iThread == myRankGlobal) then
              call readAmrGridSingle(filename, fileFormatted, grid)
+             call updateMaxDepth(grid)
+             call setSmallestSubcell(grid)
+             call checkAMRgrid(grid, .false.)
           endif
           call torus_mpi_barrier
+          if (myrankGlobal == iThread) write(*,*) iThread, " finished reading"
        enddo
+       call grid_info_mpi(grid, "info_grid.dat")
     endif
 #endif
+
+    
 
 
 
@@ -613,16 +665,6 @@ contains
        grid%octreeRoot%nDepth = 1
        nOctal = 0
        call readOctreePrivateFlexi(grid%octreeRoot,null(),fileFormatted, nOctal, grid)
-
-    ! check that we are at the end of the file
-    if (fileFormatted) then
-       read(unit=20,fmt=*, iostat=error) dummy
-    else
-       read(unit=20, iostat=error) dummy
-    end if
-    if (error == 0) then
-       print *, 'Panic: read error (expected end of file) in readAMRgridflexi' ; stop
-    end if
     
     close(unit=20)
 
@@ -632,16 +674,21 @@ contains
       ! read in an octal to the grid octree
 
       implicit none
-      type(octal), pointer :: thisOctal
-      type(octal), pointer :: parent
+      type(octal), target :: thisOctal
+      type(octal), target :: parent
       type(gridtype) :: grid
 
       logical, intent(in)  :: fileFormatted
       integer :: nOctal
       character(len=20) :: tag
 
-      type(octal), pointer :: thisChild
+      type(octal), pointer :: thisChild => null()
+      type(octal), pointer :: tempChildPointer => null()
+      type(octal), pointer :: tempChildPointer2 => null()
       integer              :: iChild
+      logical :: foundBranch
+
+      
 
       nOctal = nOctal+1
       thisOctal%parent => parent
@@ -898,62 +945,149 @@ contains
       end do
 
 #ifdef MPI
-    if (grid%splitOverMPI) then
-       if (myrankGlobal == 0) then
-          thisOctal%nChildren = 0
-       else
-          if (thisOctal%nDepth == 1) then
-             thisOctal%nChildren = 1
-             thisOctal%hasChild = .false.
-             thisOctal%indexChild(1) = myRankGlobal
-             thisOctal%hasChild(myRankGlobal) = .true.
-          endif
-       endif
-    endif
+
+      if (grid%splitOverMPI) then ! this sets the nummber of children correctly for the threads
+
+         if (nHydroThreadsGlobal == 8) then
+            if (myrankGlobal == 0) then
+               thisOctal%nChildren = 0
+            else
+               if (thisOctal%nDepth == 1) then
+                  thisOctal%nChildren = 1
+                  thisOctal%hasChild = .false.
+                  thisOctal%indexChild(1) = myRankGlobal
+                  thisOctal%hasChild(myRankGlobal) = .true.
+               endif
+            endif
+         endif
+
+         if (nHydroThreadsGlobal == 64) then
+            if (myrankGlobal == 0) then
+               if (thisOctal%nDepth == 2) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               endif
+            else
+               if (thisOctal%nDepth == 2) then
+                  if (.not.octalOnThread(thisOctal%parent, thisOctal%parentSubcell, myrankGlobal)) then
+                     thisOctal%nChildren = 0
+                     thisOctal%hasChild = .false.
+                  else
+                     thisOctal%nChildren = 1
+                     thisOctal%hasChild = .false.
+                     iChild = thisOctal%parentSubcell
+                     thisOctal%indexChild(1) = iChild
+                     thisOctal%hasChild(iChild) = .true.
+                  endif
+               endif
+            endif
+         endif
+
+
+      endif
 #endif
 
 
-    if (.not.grid%splitOVerMPI) then
-       if (thisOctal%nChildren > 0) then 
-          allocate(thisOctal%child(1:thisOctal%nChildren)) 
-          do iChild = 1, thisOctal%nChildren, 1
-             
-             thisChild => thisOctal%child(iChild)
-             call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-          end do
-       end if
-    endif
+      if (.not.grid%splitOVerMPI) then
+         if (thisOctal%nChildren > 0) then 
+            allocate(thisOctal%child(1:thisOctal%nChildren)) 
+            do iChild = 1, thisOctal%nChildren, 1
 
-    if (grid%splitOVerMPI) then
-       if (thisOctal%nDepth > 1) then
-          if (thisOctal%nChildren > 0) then 
-             allocate(thisOctal%child(1:thisOctal%nChildren)) 
-             do iChild = 1, thisOctal%nChildren, 1
-                thisChild => thisOctal%child(iChild)
-                call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-             end do
-          end if
-       else
-          if (thisOctal%nChildren > 0) then 
-             allocate(thisOctal%child(1:thisOctal%nChildren)) 
-             do iChild = 1, thisOctal%nChildren, 1
-                do iThread = 1, myRankGlobal
-                   thisChild => thisOctal%child(iChild)
-                   call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-                   if (iThread /= myRankGlobal) then
-                      call deleteOctreeBranch(thisChild,onlyChildren=.false., adjustParent=.false.)
-                   endif
-                enddo
-             end do
-          end if
-       endif
-    endif
+               thisChild => thisOctal%child(iChild)
+               call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+            end do
+         end if
+      endif
 
-    
-    
+      if (grid%splitOVerMPI) then
+
+         if (nHydroThreadsGlobal == 8) then
+            if (thisOctal%nDepth > 1) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     thisChild => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else
+               if (myrankGlobal == 0) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               else
+                  if (thisOctal%nChildren > 0) then 
+                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                     do iChild = 1, thisOctal%nChildren, 1
+                        do iThread = 1, myRankGlobal
+                           thisChild => thisOctal%child(iChild)
+                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                           if (iThread /= myRankGlobal) then
+                              call deleteOctreeBranch(thisChild,onlyChildren=.false., adjustParent=.false.)
+                           else
+                              exit
+                           endif
+                        enddo
+                     end do
+                  end if
+               endif
+            endif
+         endif
+
+         if (nHydroThreadsGlobal == 64) then
+            if (thisOctal%nDepth > 2) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     tempChildPointer2 => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(tempChildPointer2,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else if (thisOctal%nDepth ==   1) then 
+               allocate(thisOctal%child(1:thisOctal%nChildren)) 
+               do iChild = 1, thisOctal%nChildren, 1
+                  thisChild => thisOctal%child(iChild)
+                  call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+               end do
+            else  if (thisOctal%nDepth ==  2) then 
+               if (thisOctal%nChildren == 1) then
+                  allocate(thisOctal%child(1))
+               endif
+               foundBranch = .false.
+               do iChild = 1, 8
 
 
-    end subroutine readOctreePrivateFlexi
+                  allocate(grid%tempBranch)
+                  tempChildPointer => grid%tempBranch
+
+                  call readOctreePrivateFlexi(tempChildPointer,thisOctal,fileFormatted, nOctal, grid)               
+
+                  if (thisOctal%mpiThread(iChild) /= myRankGlobal) then
+                     call deleteOctreeBranch(tempChildPointer,onlyChildren=.true., adjustParent=.false.)
+                     deallocate(grid%tempBranch)
+                     grid%tempBranch => null()
+!                     call skipOctalsToDepth(fileformatted, 2)
+
+                  else
+                     call insertOctreeBranch(thisOctal%child(1), grid%tempBranch, onlyChildren = .false.)
+
+!                     call readOctreePrivateFlexi(thisOctal%child(1),thisOctal,fileFormatted, nOctal, grid)               
+                     thisOctal%hasChild = .false.
+                     thisOctal%hasChild(iChild) = .true.
+                     thisOctal%indexChild(1) = iChild
+                     thisOctal%child(1)%parent => thisOctal
+                     thisOctal%child(1)%parentSubcell = iChild
+                  endif
+
+               end do
+            end if
+         endif
+
+
+
+      endif
+
+
+ end subroutine readOctreePrivateFlexi
  
   end subroutine readAMRgridSingle
 
@@ -1922,7 +2056,7 @@ contains
                allocate(lArray(1:n))
                read(lUnit) lArray(1:n)
             endif
-            deallocate(iArray)
+            deallocate(lArray)
          case("d2darray")
             if (fileFormatted) then
                read(lUnit,*) n,m
@@ -1933,7 +2067,7 @@ contains
                allocate(d2Array(1:n,1:m))
                read(lUnit) d2Array(1:n,1:m)
             endif
-            deallocate(dArray)
+            deallocate(d2Array)
          case("d3darray")
             if (fileFormatted) then
                read(lUnit,*) n,m,j
@@ -1952,5 +2086,43 @@ contains
        end subroutine readDummyData
             
 
+       subroutine skipOctalsToDepth(fileFormatted, nDepth)
+         logical :: fileFormatted
+         integer :: nDepth, thisNdepth
+         character(len=20) :: tag
+         logical :: runToEndofOctal
+         integer :: nChildren, iChildren
+
+
+         runToEndofOctal = .false.
+         iChildren = 0
+         do while (.true.)
+
+            if (fileFormatted) then
+               read(20, *, end = 666) tag
+            else
+               read(20, end = 666) tag
+            endif
+            tag = ADJUSTL(tag)
+            if (tag == "OCTALBEGINS") cycle
+            if ((tag == "OCTALENDS").and.(runToEndofOctal)) exit
+            if (tag == "OCTALENDS") cycle
+
+            select case (tag)
+               case ("nDepth") 
+                  call readSingleFlexi(20, thisNDepth, fileFormatted)
+                  if (thisNDepth == nDepth) then
+                     runToEndOfOctal = .true.
+                  endif
+               case DEFAULT
+                  call readDummyData(20, fileFormatted)
+            end select
+
+
+
+          enddo
+666 continue
+
+        end subroutine skipOctalsToDepth
 
 end module gridio_mod

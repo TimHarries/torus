@@ -491,7 +491,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 10000
+    nMonte = 10000000
 
     nIter = 0
     
@@ -694,7 +694,6 @@ contains
              enddo
           endif
 
-          write(*,*) myrankglobal, "reached barrier"
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        epsOverDeltaT = (lCore) / dble(nMonte)
@@ -961,22 +960,24 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! add on the distance to the next cell
 
-       rVec = rVec + tVal * uHat ! rvec is now at face of thisOctal, subcell
+       rVec = rVec + (tVal+1.d-3*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
 
-       call getNeighbourFromPointOnFace(rVec, uHat, thisOctal, subcell, nextOctal, nextSubcell)
-
-       rVec = rVec + (1.d-8*grid%halfSmallestSubcell) * uHat ! rvec is now in nextoctal
-
-
-       octVec = rVec
 
 
 ! check whether the photon has escaped from the grid
 
-       if (nextSubcell < 1) then
-          stillinGrid = .false.
+       if (inOctal(grid%octreeRoot,rVec)) then
+          nextOctal => thisOctal
+          nextSubcell = subcell
+          call findSubcellLocal(rVec, nextOctal, nextSubcell)
+       else
+          stillingrid = .false.
           escaped = .true.
        endif
+          
+       octVec = rVec
+
+
 
 ! check whether the photon has  moved across an MPI boundary
         
@@ -1773,132 +1774,137 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     real :: kappap
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
+    logical :: dustOnlyModel
 
 
-!    call solveIonizationBalance(grid, thisOctal, subcell,  temperature, epsOverdeltaT)
-                
-    nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
-    nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
-    nh = thisOctal%nh(subcell)
-    ne = thisOctal%ne(subcell)
-                
-
-
-    becool = 0.
+    dustOnlyModel = .true.
     coolingRate = 0.d0
 
-    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
-
-    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
-
-    thisLogT = log10(temperature)
-    log10te = thisLogT
-    teused = temperature
-
-
-    ! cooling of gas due to FF radiation from H+ 
-    ! fits to Hummer, MNRAS 268(1994) 109, Table 1. or  least square fitting to m=4
-
-    betaFF = 1.0108464E-11 + 9.7930778E-13*log10Te - &
-         & 6.6433144E-13*log10Te*log10Te + 2.4793747E-13*log10Te*log10Te*log10Te -&
-         & 2.3938215E-14*log10Te*log10Te*log10Te*log10Te
-    
-    coolFF = Nhii*Ne*betaFF*kerg*TeUsed/sqrt(TeUsed)
-
-    becool = becool + coolfF
-
-    ! cooling of gas due to recombination of H+
-    ! fits to Hummer, MNRAS 268(1994) 109, Table 1.  
-    ! least square fitting to m=4
-    betaRec = 9.4255985E-11 -4.04794384E-12*log10Te &
-         & -1.0055237E-11*log10Te*log10Te +  1.99266862E-12*log10Te*log10Te*log10Te&
-         & -1.06681387E-13*log10Te*log10Te*log10Te*log10Te
-    
-    coolRec = Nhii*Ne*betaRec*kerg*TeUsed/sqrt(TeUsed)
-    
-
-    becool = becool+ coolrec
-
-
-    ! collisional excitation of Hydrogen
-    ! Mathis, Ly alpha, beta
-    ch12 = 2.47e-8
-    ch13 = 1.32e-8
-    ex12 = -0.228
-    ex13 = -0.460
-    th12 = 118338.
-    th13 = 140252.
-    te4 = temperature / 1.e4
-    coolColl = 0.
-    if (TeUsed > 5000.) then 
+    if (.not.dustOnlyModel) then
+                
+       nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+       nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+       nh = thisOctal%nh(subcell)
+       ne = thisOctal%ne(subcell)
        
-       coolColl = (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
-            & ch13*exp(-th13/TeUsed)*Te4**ex13) * &
-            & hcRyd*(nh-nhii)*Ne
+
+
+       becool = 0.
        
-    else
+       gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
        
+       coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+       
+       thisLogT = log10(temperature)
+       log10te = thisLogT
+       teused = temperature
+       
+       
+       ! cooling of gas due to FF radiation from H+ 
+       ! fits to Hummer, MNRAS 268(1994) 109, Table 1. or  least square fitting to m=4
+       
+       betaFF = 1.0108464E-11 + 9.7930778E-13*log10Te - &
+            & 6.6433144E-13*log10Te*log10Te + 2.4793747E-13*log10Te*log10Te*log10Te -&
+            & 2.3938215E-14*log10Te*log10Te*log10Te*log10Te
+       
+       coolFF = Nhii*Ne*betaFF*kerg*TeUsed/sqrt(TeUsed)
+       
+       becool = becool + coolfF
+       
+       ! cooling of gas due to recombination of H+
+       ! fits to Hummer, MNRAS 268(1994) 109, Table 1.  
+       ! least square fitting to m=4
+       betaRec = 9.4255985E-11 -4.04794384E-12*log10Te &
+            & -1.0055237E-11*log10Te*log10Te +  1.99266862E-12*log10Te*log10Te*log10Te&
+            & -1.06681387E-13*log10Te*log10Te*log10Te*log10Te
+       
+       coolRec = Nhii*Ne*betaRec*kerg*TeUsed/sqrt(TeUsed)
+       
+       
+       becool = becool+ coolrec
+       
+       
+       ! collisional excitation of Hydrogen
+       ! Mathis, Ly alpha, beta
+       ch12 = 2.47e-8
+       ch13 = 1.32e-8
+       ex12 = -0.228
+       ex13 = -0.460
+       th12 = 118338.
+       th13 = 140252.
+       te4 = temperature / 1.e4
        coolColl = 0.
+       if (TeUsed > 5000.) then 
+          
+          coolColl = (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
+               & ch13*exp(-th13/TeUsed)*Te4**ex13) * &
+               & hcRyd*(nh-nhii)*Ne
+          
+       else
        
-    end if
-    coolingrate = coolingrate + coolcoll
-
-    becool = becool +coolcoll
-
-    if (PRESENT(debug)) then
-       if (debug) then
-          if (becool /= 0.) then
-             write(*,*) coolff/becool, coolrec/becool, coolcoll/becool
+          coolColl = 0.
+          
+       end if
+       coolingrate = coolingrate + coolcoll
+       
+       becool = becool +coolcoll
+       
+       if (PRESENT(debug)) then
+          if (debug) then
+             if (becool /= 0.) then
+                write(*,*) coolff/becool, coolrec/becool, coolcoll/becool
+             endif
           endif
        endif
+       
+       if (coolingRate < 0.) then
+          write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
+       endif
+       
+       call locate(logT, 31, thisLogT, n)
+       fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
+       
+       thisRootTbetaH = rootTbetaH(n) + (rootTbetaH(n+1)-rootTbetaH(n)) * fac
+       
+       
+       if (thisLogT < logT(18)) then
+          thisRootTbetaHe = rootTbetaHe(n) + (rootTbetaHe(n+1)-rootTbetaHe(n)) * fac
+       else
+          thisRootTbetaHe = 0.d0
+       endif
+       
+       betaH = thisrootTbetaH / sqrt(temperature)
+       betaHe = thisrootTbetaHe / sqrt(temperature)
+       
+       
+       
+       coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
+       
+       
+       
+       if (ne * nhii * kerg * temperature * betaH < 0.) then
+          write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
+       endif
+       
+       
+       coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
+       
+       if (ne * nheii * kerg * temperature * betaHe < 0.) then
+          write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
+       endif
+       
+       
+       call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
+       if (crate < 0.) then
+          write(*,*) "total negative metal cooling",crate
+       endif
+       !    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
+       coolingRate = coolingRate + crate
+       
     endif
-
-    if (coolingRate < 0.) then
-       write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
-    endif
-
-    call locate(logT, 31, thisLogT, n)
-    fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
-
-    thisRootTbetaH = rootTbetaH(n) + (rootTbetaH(n+1)-rootTbetaH(n)) * fac
-
-
-    if (thisLogT < logT(18)) then
-       thisRootTbetaHe = rootTbetaHe(n) + (rootTbetaHe(n+1)-rootTbetaHe(n)) * fac
-    else
-       thisRootTbetaHe = 0.d0
-    endif
-
-    betaH = thisrootTbetaH / sqrt(temperature)
-    betaHe = thisrootTbetaHe / sqrt(temperature)
-
-
-
-    coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
-
-
-
-    if (ne * nhii * kerg * temperature * betaH < 0.) then
-       write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
-    endif
-
-
-    coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
-
-    if (ne * nheii * kerg * temperature * betaHe < 0.) then
-       write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
-    endif
-
-
-    call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
-    if (crate < 0.) then
-       write(*,*) "total negative metal cooling",crate
-    endif
-!    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
-    coolingRate = coolingRate + crate
 
     call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-
+       
     dustCooling = fourPi * kappaP * (stefanBoltz/pi) * temperature**4
 
     coolingRate = coolingRate + dustCooling
@@ -3417,6 +3423,32 @@ subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
   enddo
 
 end subroutine addForbiddenLines
+subroutine findForbiddenLine(lambda, grid, iIon, iTrans)
+
+  integer :: iIon, iTrans
+  type(GRIDTYPE) :: grid
+  real(double) :: lambda, lineLambda
+  logical :: foundLine
+  integer :: i, j
+
+  foundLine = .false.
+  do i = 3, grid%nIon
+     do j = 1, grid%ion(iIon)%nTransitions
+        lineLambda  =  cspeed * hcgs / (grid%ion(i)%transition(j)%energy / ergtoEV) / (angstromToCm)
+        if (abs((lineLambda -lambda)/lambda) < 0.01d0) then
+           foundLine = .true.
+           iIon = i
+           iTrans = j
+         endif
+     enddo
+  enddo
+  if (.not.foundLine) then
+     write(*,*) "Error finding forbidden line at: ",lambda
+     stop
+  endif
+end subroutine findForbiddenLine
+
+        
   
 
 subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
@@ -3963,6 +3995,7 @@ end subroutine readHeIIrecombination
   subroutine createImage(grid, nSource, source, observerDirection, iLambdaPhoton, totalflux)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
+    character(len=80) :: imageFilename
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
@@ -3979,7 +4012,7 @@ end subroutine readHeIIrecombination
     logical :: endLoop, addToiMage
     integer :: newthread
     type(IMAGETYPE) :: thisimage
-    logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing
+    logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing, stillSCattering
     real(double) :: totalEmission
     integer :: iLambdaPhoton, nInf, i
     real(double) :: lCore, probsource, r
@@ -4002,11 +4035,27 @@ end subroutine readHeIIrecombination
 
     totalFluxArray = 0.d0
 
-    call setupNeighbourPointers(grid, grid%octreeRoot)
-    if (iLambdaPhoton == 1) call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &
-       "X", "Y", 3)
-    call writeVtkFile(grid, "current.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+
+
+
+    if (readlucy) then
+       if (ilambdaPhoton == 1) then
+          call readAMRgrid("lucy.dat", .false., grid)
+          call writeVtkFile(grid, "current.vtk", &
+               valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+       endif
+    endif
+
+    if (writeLucy) then
+       if (iLambdaPhoton == 1) then
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &
+               "X", "Y", 5)
+          call writeAMRgrid("lucy.dat", .false., grid)
+          call writeVtkFile(grid, "current.vtk", &
+               valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+       endif
+    endif
+
 
     thisImage = initImage(50, 50, real(2.*grid%octreeRoot%subcellSize), &
          real(2.*grid%octreeRoot%subcellSize), 0., 0.)
@@ -4033,7 +4082,7 @@ end subroutine readHeIIrecombination
        write(*,*) "Probability of photon from sources: ", probSource
     endif
 
-    nPhotons = 10000
+    nPhotons = 1000000
     nInf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
@@ -4087,7 +4136,7 @@ end subroutine readHeIIrecombination
              call MPI_RECV(nDoneArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
           enddo
           nDone = SUM(nDoneArray(1:nThreadsGlobal-1))
-          write(*,*) myrankglobal, " thinks ", nDone, " photons have completed"
+          write(*,*) myrankglobal, " thinks ", nDone, " photons have completed "
           if (nDone == nPhotons) photonsStillProcessing = .false.
        enddo
        do iThread = 1, nThreadsGlobal-1
@@ -4102,7 +4151,6 @@ end subroutine readHeIIrecombination
           
           call receivePhoton(thisPhoton, iSignal)
           
-
 
           if (iSignal == 0) then
              thisOctal => grid%octreeRoot
@@ -4129,9 +4177,9 @@ end subroutine readHeIIrecombination
           end if
 
 
-
+          stillScattering = .true.
           ninf = ninf + 1
-          if (.not.endLoop) then
+          do while ((.not.endLoop).and.stillScattering)
 
              if (thisPhoton%observerPhoton) then
                 newThread = -1
@@ -4147,8 +4195,9 @@ end subroutine readHeIIrecombination
                 call moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
                 
                 if (escaped.or.absorbed) then
+                   stillScattering = .false.
                    nDone = nDone + 1
-                   goto 777
+                   exit
                 endif
 
                 if (.not.crossedBoundary) then
@@ -4161,28 +4210,28 @@ end subroutine readHeIIrecombination
                    call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread)
                    if (addToImage) then
                       call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
-                      goto 777
                    else
                       call sendPhoton(observerPhoton, newThread, endLoop = .false.)
-                      goto 777
                    endif
                 else
                    call sendPhoton(thisPhoton, newThread, endLoop = .false.)
                    goto 777
                 endif
              endif
-          endif
+          end do
 777       continue
        enddo
     endif
     call collateImages(thisImage)
 
      call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-
+     totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1)) * powerPerPhoton
     if (myrankGlobal == 0) then
-       call writeFitsImage(thisimage, "test.fits", 1.d0, "intensity")
+       write(imageFilename, '(a,i4.4,a)') "test_",ilambdaPhoton,".fits"
+       call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
+    call freeImage(thisImage)
   end subroutine createImage
 
 
@@ -4401,7 +4450,20 @@ end subroutine readHeIIrecombination
              endif
           endif
        else
+
+          call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             write(*,*) myrankGlobal , " has an error as photon position is on wrong thread. ",thisPhoton%position
+          endif
+
           thisPhoton%position = thisPhoton%position + ((thisTau/tau)*tVal) * thisPhoton%direction
+
+          call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             write(*,*) myrankGlobal , " has an error as photon moved outside subcell. ",thistau,tau,tval
+             write(*,*) "halfsmallest ",grid%halfSmallestSubcell
+          endif
+
           endLoop = .true.
           albedo = kappaScaDust/kappaExt
           call random_number(r)
@@ -4526,6 +4588,7 @@ end subroutine readHeIIrecombination
      totalProbArray = 0.d0
 
      call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal+1), totalProbArray(myRankGlobal+1))
+     write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal+1)
 
      tArray = 0.d0
      call MPI_ALLREDUCE(totalEmissionArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -4539,7 +4602,11 @@ end subroutine readHeIIrecombination
      do i = 2, SIZE(threadProbArray)
         threadProbArray(i) = threadProbArray(i) + threadProbArray(i-1)
      enddo
-     threadProbArray = threadProbArray / threadProbArray(SIZE(threadProbArray))
+     if (threadProbArray(SIZE(threadPRobArray)) /= 0.d0) then
+        threadProbArray = threadProbArray / threadProbArray(SIZE(threadProbArray))
+     else
+        threadProbArray = 1.d0
+     endif
 
 
      totalEmission = SUM(totalEmissionArray(2:nThreadsGlobal))
@@ -4589,7 +4656,7 @@ end subroutine readHeIIrecombination
              totalProb = totalProb + dV * &
                   thisOctal%etaCont(subcell) * thisOctal%biasCont3D(subcell)
               
-             totalEmission = totalEmission + dV * thisOctal%etaLine(subcell)
+             totalEmission = totalEmission + dV * thisOctal%etaCont(subcell)
           endif
 
        end if

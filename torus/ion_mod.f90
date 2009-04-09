@@ -730,7 +730,6 @@ subroutine addTransition2(thisIon,term1, term2, lambda, a, t, gamma, nt)
   enddo
 end subroutine addTransition2
 
-        
 
 
 function returnLevel(ion, term) result(level)

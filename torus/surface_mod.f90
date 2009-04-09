@@ -234,70 +234,70 @@ contains
     real :: fillFactor
     real, dimension(:), allocatable :: meanTemp, area
     
-    print *, ''
-    print *, 'Stellar surface tests:'
-    if (surface%nElements /= SIZE(surface%element)) then
-      print *, 'In testSurface, surface%nElements /= SIZE(surface%element)'
-      stop
-    end if
+    if (writeoutput) then
+       print *, ''
+       print *, 'Stellar surface tests:'
+       if (surface%nElements /= SIZE(surface%element)) then
+          print *, 'In testSurface, surface%nElements /= SIZE(surface%element)'
+          stop
+       end if
+       
+       fillfactor = SUM(surface%element%area,MASK=surface%element%hot) / &
+            SUM(surface%element%area)
+       
+       write(*,*) "Surface area test (should be ~1): ", &
+            SUM(surface%element(1:surface%nElements)%area)/(fourPi * surface%radius**2)
+       
+       
+       write(*,'(a,e14.3)') "Photospheric luminosity (ergs/s): ",&
+            SUM(surface%totalPhotosphere) 
+       write(*,'(a,f14.3)') "Photospheric luminosity / solar luminosity: ",&
+            SUM(surface%totalPhotosphere) / lSol
 
-    fillfactor = SUM(surface%element%area,MASK=surface%element%hot) / &
-                 SUM(surface%element%area)
+       write(*,'(a,f14.1)') "Photospheric black-body temperature estimated to be about: ",&
+            (real(SUM(surface%totalPhotosphere),kind=db) / &
+            (fourPi*(surface%radius*1.e10)**2.*stefanBoltz))**0.25
     
-    write(*,*) "Surface area test (should be ~1): ", &
-               SUM(surface%element(1:surface%nElements)%area)/(fourPi * surface%radius**2)
-
-               
-    write(*,'(a,e14.3)') "Photospheric luminosity (ergs/s): ",&
-               SUM(surface%totalPhotosphere) 
-    write(*,'(a,f14.3)') "Photospheric luminosity / solar luminosity: ",&
-               SUM(surface%totalPhotosphere) / lSol
-
-    write(*,'(a,f14.1)') "Photospheric black-body temperature estimated to be about: ",&
-               (real(SUM(surface%totalPhotosphere),kind=db) / &
-               (fourPi*(surface%radius*1.e10)**2.*stefanBoltz))**0.25
-    
-    if (any(surface%element%hot)) then
-      print *, 'Surface contains accretion hotspots'
-      allocate(meanTemp(SIZE(surface%element)))
-      allocate(area(SIZE(surface%element)))
-      
-      where(surface%element%hot)
-        meanTemp = surface%element%temperature
-        area = surface%element%area
-        meanTemp = meanTemp * area
-      elsewhere
-        meanTemp = 0.0
-        area = 0.0
-      end where
-
-      if (Writeoutput) then
-      write (*,'(a,f12.3)') 'Hotspot filling factor: ',fillFactor
-                            
-      write (*,'(a,f12.3)') 'Min temperature of accretion region: ',&
-                            MINVAL(surface%element%temperature,MASK=surface%element%hot)
-      write (*,'(a,f12.3)') 'Max temperature of accretion region: ',&
-                            MAXVAL(surface%element%temperature,MASK=surface%element%hot)
-      
-      write (*,'(a,f12.3)') 'Mean temperature of accretion region: ',SUM(meanTemp) / SUM(area)
-      
-      write(*,'(a,e14.3)') "Accretion luminosity (ergs/s): ",&
-                 SUM(surface%totalAccretion)
-      write(*,'(a,f14.3)') "Accretion luminosity / solar luminosity: ",&
-                 SUM(surface%totalAccretion) / lSol
-      write(*,'(a,f14.3)') "Accretion luminosity / total photospheric luminosity: ",&
-                 SUM(surface%totalAccretion) / SUM(surface%totalPhotosphere)
-      write(*,'(a,f14.3)') "Accretion luminosity  / local photospheric luminosity (approximate!): ",&
-                 SUM(surface%totalAccretion) / (SUM(surface%totalPhotosphere) * fillfactor)
-      write(*,'(a,f14.1)') "Accretion black-body temperature estimated to be about: ",&
-                 (real(SUM(surface%totalAccretion),kind=db) / &
-                 ((fourPi*(surface%radius*1.e10)**2.*stefanBoltz)*fillFactor) )**0.25
-      endif
-    else
-      if (Writeoutput) print *, 'Surface does not contain accretion hotspots'
-    end if
-    print *, ''
-    
+       if (any(surface%element%hot)) then
+          print *, 'Surface contains accretion hotspots'
+          allocate(meanTemp(SIZE(surface%element)))
+          allocate(area(SIZE(surface%element)))
+          
+          where(surface%element%hot)
+             meanTemp = surface%element%temperature
+             area = surface%element%area
+             meanTemp = meanTemp * area
+          elsewhere
+             meanTemp = 0.0
+             area = 0.0
+          end where
+          
+          if (Writeoutput) then
+             write (*,'(a,f12.3)') 'Hotspot filling factor: ',fillFactor
+             
+             write (*,'(a,f12.3)') 'Min temperature of accretion region: ',&
+                  MINVAL(surface%element%temperature,MASK=surface%element%hot)
+             write (*,'(a,f12.3)') 'Max temperature of accretion region: ',&
+                  MAXVAL(surface%element%temperature,MASK=surface%element%hot)
+             
+             write (*,'(a,f12.3)') 'Mean temperature of accretion region: ',SUM(meanTemp) / SUM(area)
+             
+             write(*,'(a,e14.3)') "Accretion luminosity (ergs/s): ",&
+                  SUM(surface%totalAccretion)
+             write(*,'(a,f14.3)') "Accretion luminosity / solar luminosity: ",&
+                  SUM(surface%totalAccretion) / lSol
+             write(*,'(a,f14.3)') "Accretion luminosity / total photospheric luminosity: ",&
+                  SUM(surface%totalAccretion) / SUM(surface%totalPhotosphere)
+             write(*,'(a,f14.3)') "Accretion luminosity  / local photospheric luminosity (approximate!): ",&
+                  SUM(surface%totalAccretion) / (SUM(surface%totalPhotosphere) * fillfactor)
+             write(*,'(a,f14.1)') "Accretion black-body temperature estimated to be about: ",&
+                  (real(SUM(surface%totalAccretion),kind=db) / &
+                  ((fourPi*(surface%radius*1.e10)**2.*stefanBoltz)*fillFactor) )**0.25
+          endif
+       else
+          if (Writeoutput) print *, 'Surface does not contain accretion hotspots'
+       end if
+    endif
   end subroutine testSurface
 
   subroutine createTTauriSurface(surface, grid, lineFreq, &

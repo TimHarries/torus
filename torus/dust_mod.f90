@@ -977,7 +977,7 @@ contains
     integer :: subcell, i
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 1.
+    subrange = 1.d-3
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
