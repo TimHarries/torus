@@ -23,6 +23,7 @@ module constants_mod
   real(double), parameter :: radToDeg = 180.d0/pi
   real(double), parameter :: oneByRootTwo = 1.d0/1.4142136d0
   real(double), parameter :: radiansToArcSec = radToDeg * 60.d0 * 60.d0
+  real(double), parameter :: ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
   real(double), parameter :: arcsec = 1.d0/3600.d0 * degtorad
   real(double), parameter :: rootTwo = 1.4142136d0
   real(double), parameter :: oneOverrootTwo = 1.d0/1.4142136d0
