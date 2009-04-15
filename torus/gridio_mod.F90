@@ -337,6 +337,7 @@ contains
           call writeAttributeStaticFlexi(20, "inFlow", thisOctal%inFlow, fileFormatted)
           call writeAttributeStaticFlexi(20, "velocity", thisOctal%velocity, fileFormatted)
           call writeAttributeStaticFlexi(20, "cornervelocity", thisOctal%cornervelocity, fileFormatted)
+          call writeAttributeStaticFlexi(20, "cornerrho", thisOctal%cornerrho, fileFormatted)
           
           call writeAttributeStaticFlexi(20, "xMax", thisOctal%xMax, fileFormatted)
           call writeAttributeStaticFlexi(20, "yMax", thisOctal%yMax, fileFormatted)
@@ -765,6 +766,8 @@ contains
             call readArrayFlexi(20, thisOctal%velocity, fileFormatted)
          case("cornervelocity")
             call readArrayFlexi(20, thisOctal%cornervelocity, fileFormatted)
+         case("cornerrho")
+            call readArrayFlexi(20, thisOctal%cornerrho, fileFormatted)
          case("chiLine")
             call readPointerFlexi(20, thisOctal%chiLine, fileFormatted)
          case("etaLine")
