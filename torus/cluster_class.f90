@@ -341,22 +341,28 @@ contains
   ! This routine should be called only after the grid has been constructed, namely
   ! only in finishGrid routine in amr_mod.f90
   !
-  subroutine assign_grid_values(thisOctal,subcell)
+  subroutine assign_grid_values(thisOctal,subcell,grid)
 
     use sph_data_class, only: Clusterparameter, sphData
     use constants_mod, only: mhydrogen
     use input_variables, only: h21cm, tMinGlobal
     use h21cm_mod, only: hi_emop
+    use gridtype_mod, only: GRIDTYPE
 
     IMPLICIT NONE
-    
-    TYPE(octal), intent(inout) :: thisOctal
-    INTEGER, INTENT(IN) :: subcell
+
+    type(GRIDTYPE), optional :: grid
+    TYPE(octal), pointer :: thisOctal
+    type(octal), pointer, save :: previousOctal => null()
+    INTEGER :: subcell
     real(double), parameter :: density_crit = 1d13
     type(vector) :: point, clusterparam
 
+    thisoctal => null()
+
     point = subcellcentre(thisOctal, subcell)
-    clusterparam = Clusterparameter(point, theparam = 2)
+    ! density calculation
+    clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 2)
     
     if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
     if( associated(thisOctal%etaline)) thisOctal%etaCont(subcell) = 1.e-30
@@ -367,16 +373,16 @@ contains
     else
        thisOctal%temperature(subcell) =  max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
     end if
-
+    
     if ( associated(thisOctal%nh2) ) then
        thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
        thisOctal%molAbundance(subcell) = 4e-10
        if(thisOctal%rho(subcell) .lt. 1d-19) thisOctal%molAbundance(subcell) = 4e-9 ! 3e4/cm^3
        if(thisOctal%rho(subcell) .gt. 1.5d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
     endif
-
+    
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)
-
+    
 ! Velocities are not required for all configurations so check if they are required
 !    if ( associated(sphData%vxn)  ) then 
 !       clusterparam = Clusterparameter(point, theparam = 1, shouldreuse = .true.) ! use switch for storing velocity
@@ -552,26 +558,34 @@ contains
   ! function returns the number of gas particles which belongs to a subcell this
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
-  subroutine find_n_particle_in_subcell(n, rho_ave, node, subcell, rho_min, rho_max, n_pt)
-    use sph_data_class, only: sphData, get_position_pt_mass, get_position_gas_particle
+
+  subroutine find_n_particle_in_subcell(n, rho_ave, node, subcell, rho_min, rho_max, v_min, v_max, n_pt)
+    use sph_data_class, only: sphData, get_position_pt_mass, get_position_gas_particle, get_vel
+
     implicit none
     integer, intent(out) :: n                ! number of particles in the subcell
     integer, intent(out), optional :: n_pt   ! number of point masses in the subcell 
     real(double), intent(out) :: rho_ave ! average density of the subcell
     real(double), intent(out), optional :: rho_min, rho_max
+    type(VECTOR), intent(out), optional :: v_min, v_max
+    type(VECTOR) :: this_v
+    real(double) :: vxmin, vxmax, vymin, vymax, vzmin, vzmax
+
     real(double) :: this_rho
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
-    !
+
     integer :: npart
     integer :: i, j, counter
     real(double) :: x, y, z
-    !
-    !
+
+
     real(double), save :: umass, udist, udent  ! for units conversion  
     logical, save  :: first_time = .true.
-    !
+
     real(double), parameter    :: rho_null = 1.0e-30_db
+    TYPE(VECTOR), parameter    :: v_null = VECTOR(-1.44d-8,-1.44d-8,-1.44d-8)
+    TYPE(VECTOR), parameter    :: v_nullminus = VECTOR(1.44d-8,1.44d-8,1.44d-8)
 
     ! Carry out the initial calculations
     if (first_time) then       
@@ -584,7 +598,6 @@ contains
        udist = udist/1.0d10  ! [10^10cm]
 
        first_time = .false.
-
     end if
 
     if (associated(node%gas_particle_list)) then
@@ -598,6 +611,8 @@ contains
        rho_ave = 0.0d0
        if ( present(rho_min) ) rho_min = 1.0d30
        if ( present(rho_max) ) rho_max = 0.0d0
+       if ( present(v_min) ) v_min = VECTOR(9.9d99,9.d99,9.d99)
+       if ( present(v_max) ) v_max = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
        do i=1, npart
           ! Retriving the sph data index for this particle
@@ -614,12 +629,23 @@ contains
            
              counter = counter + 1
 
-             this_rho = get_rhon(j) 
-             !         rho_ave = rho_ave + this_rho
-             
+             this_rho = get_rhon(j)
+             this_v =  get_vel(j)
+
              rho_ave = rho_ave + this_rho
+
              if ( present(rho_min) ) rho_min = min(this_rho, rho_min)
              if ( present(rho_max) ) rho_max = max(this_rho, rho_max)
+             if ( present(v_min) ) then
+                vxmin = min(this_v%x, vxmin)
+                vymin = min(this_v%y, vymin)
+                vzmin = min(this_v%z, vzmin)
+             endif
+             if ( present(v_max) ) then
+                vxmax = max(this_v%x, vxmax)
+                vymax = max(this_v%y, vymax)
+                vzmax = max(this_v%z, vzmax)
+             endif
           end if
           
        end do
@@ -628,7 +654,7 @@ contains
        n = 0
     endif
     
-! Count the number of point masses if required
+    ! Count the number of point masses if required
     if ( present(n_pt) ) then
        n_pt = 0
        do i=1, sphData%nptmass
@@ -645,10 +671,15 @@ contains
        rho_ave = rho_ave*udent  ! [g/cm^3]
        if ( present(rho_min) ) rho_min = rho_min * udent
        if ( present(rho_max) ) rho_max = rho_max * udent
+       if ( present(v_min) ) v_min = VECTOR(vxmin,vymin,vzmin) * sphdata%codeVelocitytoTORUS
+       if ( present(v_max) ) v_max = VECTOR(vxmax,vymax,vzmax) * sphdata%codeVelocitytoTORUS
+
     else
        rho_ave = rho_null
        if ( present(rho_min) ) rho_min = rho_null
        if ( present(rho_max) ) rho_max = rho_null
+       if ( present(v_max) ) v_max = v_null
+       if ( present(v_min) ) v_min = v_nullminus
     end if
     
   end subroutine find_n_particle_in_subcell
