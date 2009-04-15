@@ -227,7 +227,7 @@ contains
 
 
     select case (valueType)
-       case("velocity","hydrovelocity")
+       case("velocity","hydrovelocity","linearvelocity","quadvelocity")
           scalar = .false.
           vector = .true.
        case DEFAULT
@@ -294,6 +294,10 @@ contains
                      write(lunit, *) thisOctal%rho(subcell)
 !                  endif
 
+! used for accuracy testing in molecular_mod
+               case("interprho")
+!                  write(lunit, *) thisOctal%interprho(subcell)
+
                case("J=0")
 !                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-37) then
 !                     write(lunit, *) 1e-37
@@ -325,6 +329,21 @@ contains
 
                case("J=16")
                   write(lunit, *) thisOctal%molecularlevel(subcell,16)
+
+               case("dI")
+                  write(lunit, *) thisOctal%newmolecularlevel(subcell,1)
+
+               case("dIattenuated")
+                  write(lunit, *) thisOctal%newmolecularlevel(subcell,2)
+
+               case("i0")
+                  write(lunit, *) thisOctal%newmolecularlevel(subcell,3)
+
+               case("crossing")
+                  write(lunit, *) thisOctal%newmolecularlevel(subcell,4)
+
+               case("tauacrosscell")
+                  write(lunit, *) thisOctal%newmolecularlevel(subcell,5)
 
                case("tau10")
                   write(lunit, *) thisOctal%tau(subcell,1)
@@ -417,6 +436,14 @@ contains
                      write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
                            thisOctal%velocity(subcell)%z*cspeed/1.e5, 0.
                      endif
+
+!               case("quadvelocity")
+!                     write(lunit, *) thisOctal%quadvelocity(subcell)%x*cspeed/1.e5, &
+!                          thisOctal%quadvelocity(subcell)%y*cspeed/1.e5, thisOctal%quadvelocity(subcell)%z*cspeed/1.e5
+
+!               case("linearvelocity")
+!                     write(lunit, *) thisOctal%linearvelocity(subcell)%x*cspeed/1.e5, &
+!                          thisOctal%linearvelocity(subcell)%y*cspeed/1.e5, thisOctal%linearvelocity(subcell)%z*cspeed/1.e5
 
                case("HI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
