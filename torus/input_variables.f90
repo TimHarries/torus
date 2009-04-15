@@ -17,6 +17,7 @@ module input_variables
 
   logical :: debug
   logical :: suppressWarnings
+  integer :: kerneltype
   integer :: idump ! hydrodynamics time step dump number
   logical :: doSelfGrav
   real(double) :: gridDistanceScale
@@ -46,6 +47,9 @@ module input_variables
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   real :: vturb ! Subsonic turbulent velocity
   logical :: lineEmission
+  logical :: lineimage
+  logical :: densitysubsample ! do you want to subsample density in your images?
+  logical :: maxrhocalc
   logical :: resonanceLine
   real :: probContPhoton
   ! If T, the first scattering is forced in torusMain. (Useful for optically thin case.)
@@ -470,6 +474,7 @@ module input_variables
   logical :: gridUsesAMR    ! true if grid is adaptive
   real(double) :: limitScalar  ! value for controlling grid subdivision 
   real(double) :: limitScalar2 ! value for controlling grid subdivision 
+  real(double) :: vturbmultiplier ! value for controlling grid subdivision  
   real :: amrGridSize          ! length of each side of the (cubic) grid 
   real(double) :: amrGridCentreX       ! x-coordinate of grid centre 
   real(double) :: amrGridCentreY       ! y-coordinate of grid centre 

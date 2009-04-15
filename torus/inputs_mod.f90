@@ -226,6 +226,8 @@ contains
             "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .false.) 
        call getDouble("limittwo", limitScalar2, cLine, nLines, &
             "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
+       call getDouble("vturbmultiplier", vturbmultiplier, cLine, nLines, &
+            "Max velocity across cell (in linewidths): ","(a,es9.3,1x,a)", 9.9d99, ok, .false.) 
        call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
             "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &
@@ -521,8 +523,6 @@ contains
             "Core profile: ","(a,a,1x,a)","none", ok, .false.)
        call getReal("vrot", vRot, cLine, nLines, &
             "Rotational velocity (km/s): ","(a,f5.1,a)", 0., ok, .true.)
-       call getLogical("lte", lte, cLine, nLines, &
-            "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("lycontthick", LyContThick, cLine, nLines, &
             "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
        call getString("contflux", contFluxFile, cLine, nLines, &
@@ -1215,7 +1215,6 @@ contains
     call getLogical("coreline", coreEmissionLine, cLine, nLines, &
          "Core Emission Line: ","(a,1l,a)", .false., ok, .false.)
 
-
     call getLogical("photoionization", photoionization, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
@@ -1287,6 +1286,9 @@ contains
     if (molecular) then
 
        onekappa = .true.
+
+       call getLogical("lte", lte, cLine, nLines, &
+            "Read in LTE grid: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("suppresswarnings", suppressWarnings, cLine, nLines, &
             "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.) 
        call getLogical("addnewmoldata", addnewmoldata, cLine, nLines, &
@@ -1320,25 +1322,36 @@ contains
             "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
        call getLogical("useDust", useDust, cLine, nLines, &
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
-       call getLogical("isinLTE", isinlte, cLine, nLines, &
+       call getLogical("isinlte", isinlte, cLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, cLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
        call getLogical("plotlevels", plotlevels, cLine, nLines, &
             "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("realdust", isinlte, cLine, nLines, &
+       call getLogical("realdust", realdust, cLine, nLines, &
             "Use realistic dust model: ", "(a,1l,1x,a)", .true., ok, .false.)
        
        
        if(geometry .eq. 'molcluster') then
           call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+          call getInteger("kerneltype", kerneltype, cLine, nLines, &
+               "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+
        endif
        
-
        ! Image parameters
        if(readmol) then
-          
+          call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
+               "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
+          call getLogical("maxrhocalc", maxrhocalc, cLine, nLines, &
+               "Max Rho Calc: ","(a,1l,a)", .true., ok, .true.)
+          call getLogical("lineimage", lineImage, cLine, nLines, &
+               "Line emission: ","(a,1l,a)", .true., ok, .true.)
+          call getReal("lamline", lamLine, cLine, nLines, &
+               "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
+
+          lamline = lamline * 1e4
           call getReal("imageside", imageside, cLine, nLines, &
                "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
           call getInteger("npixels", npixels, cLine, nLines, &
@@ -1383,13 +1396,21 @@ contains
        endif
        
        if((geometry .eq. 'molebench') .or. (geometry .eq. 'h2obench1') .or. &
-            (geometry .eq. 'h2obench2') .or. (geometry .eq. 'agbstar')) then
+            (geometry .eq. 'h2obench2') .or. (geometry .eq. 'agbstar') .or. &
+            (geometry .eq. 'ggtau')) then
           
           call getReal("rinner", rInner, cLine, nLines, &
                "Inner Radius for dumpresults (10^10cm): ","(a,f5.1,a)", 1e4, ok, .true.)
           
           call getReal("router", rOuter, cLine, nLines, &
                "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
+
+          if(geometry .eq. 'ggtau') then
+             rInner = rInner * autocm / 1.e10
+             rOuter = rOuter * autoCm / 1.e10
+          endif
+
+
        endif
        
     endif
