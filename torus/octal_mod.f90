@@ -159,6 +159,7 @@ MODULE octal_mod
     real(double)                       :: xMax, xMin, yMax, yMin, zMax, zMin
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
+!    REAL(double), DIMENSION(8)         :: interprho            ! density testing
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
     integer, pointer :: iEquationOfState(:)
     real(double), pointer :: gamma(:)
@@ -173,7 +174,10 @@ MODULE octal_mod
     integer, pointer :: neighbourSubcell(:,:,:)  => null()
 
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
+!    TYPE(vector), DIMENSION(8)         :: quadvelocity       ! DAR very temporary velocity expires 28 Feb 2009
+!    TYPE(vector), DIMENSION(8)         :: linearvelocity       ! DAR very temporary velocity expires 28 Feb 2009
     TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells
+    real(double), DIMENSION(27)    :: cornerrho ! velocity at corners of subcells
     real(double)               :: phi, dphi
     
     logical, dimension(:), pointer                 :: diffusionApprox => null()
@@ -215,6 +219,7 @@ MODULE octal_mod
     real(double), pointer :: molcellparam(:,:) => null()
     real(double), pointer :: newmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: oldmolecularLevel(:,:) => null() ! molecular level populations
+    real(double), pointer :: oldestmolecularLevel(:,:) => null() ! molecular level populations
 
     REAL, DIMENSION(:), pointer                 :: temperaturedust=> null() ! grid subcell dust temperatures
     REAL, DIMENSION(:), pointer                 :: temperaturegas => null() ! grid subcell gas temperatures
