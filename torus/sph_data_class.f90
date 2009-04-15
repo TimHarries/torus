@@ -5,10 +5,10 @@ module sph_data_class
   use messages_mod
   use utils_mod
   use timing
+  use gridtype_mod
   use math_mod2
   use constants_mod, only : OneOnFourPi, mSol
 
-!  use parallel_mod, only : torus_abort
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -28,7 +28,7 @@ module sph_data_class
        get_nptmass, &
        get_time, &
        get_position_gas_particle, &
-       put_position_gas_particle, &
+       Put_position_gas_particle, &
        get_rhon, &
        put_rhon, &
        get_position_pt_mass, &
@@ -48,8 +48,9 @@ module sph_data_class
   type sph_data
 !     private  ! Believe me. It's better to be private!    
      logical      :: inUse=.false.          ! Flag to indicate if this object is in use.
-     real(double) :: udist, umass, utime    ! Units of distance, mass, time in cgs
+     real(double) :: udist, umass, utime, uvel, utemp    ! Units of distance, mass, time in cgs
      real(double) :: codeVelocitytoTORUS    ! Conversion from SPH code velocity units to Torus units
+     real(double) :: codeEnergytoTemperature    ! Conversion from SPH code velocity units to Torus units
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Total number of gas particles (field+disc)
      real(double) :: time                   ! Time of sph data dump (in units of utime)
@@ -86,15 +87,24 @@ module sph_data_class
 
   end type sph_data
 
-  real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), oneoverHcubed(:), &
+  real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), MassArray(:), Harray(:)
   type(sph_data), save :: sphdata
   integer, save :: npart
-  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:)
-  integer, allocatable  :: indexArray(:)
+  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:), xarray(:)
+  Integer, allocatable :: indexArray(:)
+  integer,save :: nparticles
+  integer,save :: reusecounter = 0
+  integer,save :: usecounter = 0
+  integer,save :: count1 = 0
+  integer,save :: count2 = 0
+  real(double), save :: rcrit, rmax
+  type(VECTOR), save :: prevpos
+  
 
   private:: &
        kill_sph_data
+
 
   !
   !
@@ -102,6 +112,7 @@ module sph_data_class
      module procedure kill_sph_data
   end interface
   
+  type(OCTAL),pointer,save :: presentoctal
   
 contains  
 
@@ -109,10 +120,11 @@ contains
   ! 
   ! Initializes an object with parameters (if possible).
   ! 
-  subroutine init_sph_data(udist, umass, utime,  time, nptmass)
+  subroutine init_sph_data(udist, umass, utime,  time, nptmass, uvel, utemp)
     implicit none
 
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
+    real(double), optional  :: uvel, utemp    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
 !    integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
@@ -128,6 +140,13 @@ contains
     sphdata%udist = udist
     sphdata%umass = umass
     sphdata%utime = utime
+    if(present(uvel)) then
+       sphdata%uvel = uvel
+    endif
+    if(present(utemp)) then
+       sphdata%utemp = utemp
+    endif
+
     sphdata%npart = npart
     sphdata%time = time
     sphdata%nptmass = nptmass
@@ -144,7 +163,7 @@ contains
     ALLOCATE(sphdata%vyn(npart))
     ALLOCATE(sphdata%vzn(npart))
 
-    ALLOCATE(sphdata%rhon(npart))
+    Allocate(sphdata%rhon(npart))
     ALLOCATE(sphdata%temperature(npart))
     ALLOCATE(sphdata%gasmass(npart))
     ALLOCATE(sphdata%hn(npart))
@@ -343,18 +362,14 @@ contains
     character(LEN=*), intent(in)  :: filename
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-!    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
-!    integer*4 :: npart,  nsph, nptmass
-    real(double) :: udist, umass, utime,  time
-    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter, u, h
-!    real(double), allocatable :: xarray(:), harray(:)
-!    INTEGER, allocatable :: ind(:)
+    real(double) :: udist, umass, utime,  time, uvel, utemp
+    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h
     integer :: itype, ipart, icount, iptmass, igas, idead
     integer :: nptmass, n1, n2, nlines
     real(double) junk
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
-!    real(double) :: hcrit
+
 
     open(unit=LUIN, file=TRIM(filename), form="formatted")
 
@@ -366,35 +381,39 @@ contains
     read(LUIN,*)
     read(LUIN,*) junkchar, npart, n1, nptmass, n2
     read(LUIN,*)
-!    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, urho, uvel, junk, junk
-    read(LUIN,*) junkchar, udist, junk, junk, umass
+    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, uvel, junk, junk, utemp
+!    read(LUIN,*) junkchar, udist, junk, junk, umass
     read(LUIN,*)
     read(LUIN,*)
     read(LUIN,*)
 
-    write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
+    npart = npart + nptmass
+
+    write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
     call writeinfo(message, TRIVIAL)
-    call init_sph_data(udist, umass, utime, time, nptmass)
+    call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
     ! velocity unit is derived from distance and time unit (converted to seconds from years)
     sphdata%codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed 
+    sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
+    sphData%useSphTem = .true.
+    sphdata%totalgasmass = 0.d0
 
-    nlines = npart + n2 + nptmass + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
+    nlines = npart + n2 + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
 
     write(message,*) "Reading SPH data from ASCII...."
     call writeinfo(message, TRIVIAL)
 
     iptmass = 0
-    icount = 12
+    icount = 12 ! header lines
     igas = 0
     idead = 0
-    masscounter = 0.d0
 
     do ipart=1, nlines
 
-       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, vx, vy, vz, u, junk, junk, junk, itype
+       read(LUIN,'(tr1,12(es14.7,tr2),es14.7,tr1,i1)') xn, yn, zn, gaspartmass, h, rhon, vx, vy, vz, u, junk, junk, junk, itype
        icount = icount + 1
 
-       if(itype .eq. 1) then ! .or. itype .eq. 4) then
+       if(itype .ne. 4) then ! .or. itype .eq. 4) then
           igas = igas + 1
 
           sphdata%xn(igas) = xn
@@ -408,14 +427,13 @@ contains
           sphdata%vyn(igas) = vy
           sphdata%vzn(igas) = vz
 
-!         sphdata%temperature = 2. * 2.46 * (u * 1d-7) / (3. * 8.314472) ! 8.31 is gas constant
-          sphdata%temperature(igas) = 1.9725e-8 * u
+          sphdata%temperature(igas) = u
 
           sphdata%hn(igas) = h
 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
           
-       Elseif(itype .eq. 3 ) then
+       if(itype .eq. 3) then
 
           iptmass = iptmass + 1
 
@@ -430,30 +448,30 @@ contains
           sphdata%ptmass(iptmass) = gaspartmass 
           sphdata%hpt(iptmass) = h
 
-          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
+!          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
 
           write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas
           call writeinfo(message, TRIVIAL)
-          write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10
-
-       else
-
-          idead = idead + 1
-
+          write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10, gaspartmass
        endif
+    else
 
-    enddo
+       idead = idead + 1
+       
+    endif
 
-    write(message,*) "Read ",icount, " lines"
-    call writeinfo(message, TRIVIAL)
+ enddo
 
-    write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are dead"
-    call writeinfo(message, TRIVIAL)
+ write(message,*) "Read ",icount, " lines"
+ call writeinfo(message, TRIVIAL)
 
-    write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass, " Msol"
-    call writeinfo(message, TRIVIAL)
+ write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are dead"
+ call writeinfo(message, TRIVIAL)
+
+ write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass, " Msol"
+ call writeinfo(message, TRIVIAL)
     
-    close(LUIN)
+ close(LUIN)
    
   end subroutine new_read_sph_data
 
@@ -643,7 +661,6 @@ contains
     real(double), parameter :: M_sun = 1.989e33 ! [grams]
 
     open(unit=LUIN, file=TRIM(filename), status='old')
-    
 
     nstar = this%nptmass
 
@@ -690,7 +707,7 @@ contains
   
   ! returns program units of distance in cm 
 !  function get_udist(this) RESULT(out)
-  function get_udist() RESULT(out)
+  Function get_udist() RESULT(out)
     implicit none
     real(double) :: out
 !    type(sph_data), intent(in) :: this
@@ -755,7 +772,7 @@ contains
     integer, intent(in) :: i
     real(double), intent(out) :: x, y, z
     
-    x = sphdata%xn(i) 
+    X = sphdata%xn(i) 
     y = sphdata%yn(i)
     z = sphdata%zn(i)
     
@@ -818,7 +835,7 @@ contains
     implicit none
     real(double) :: out 
 !    type(sph_data), intent(in) :: this
-    integer, intent(in) :: i
+    Integer, intent(in) :: i
 
     out  = sphdata%temperature(i)
     
@@ -882,7 +899,7 @@ contains
   
 
   !
-  !  destructor
+  !  Destructor
   ! 
   !  Deallocates the array memories
 
@@ -946,7 +963,7 @@ contains
 
 
   !
-  ! retuns the minimum value of rhon
+  ! Retuns the minimum value of rhon
   !
   function get_rhon_min() RESULT(out)
     implicit none
@@ -1010,7 +1027,7 @@ contains
     ! time of the data dump
     tmp = get_time()*get_utime()/(60.0d0*60.0d0*24.0d0*365.0d0*1.0d6)
     
-    write(UN,'(a)') ' '
+    Write(UN,'(a)') ' '
     write(UN,'(a)') '######################################################'
     write(UN,'(a)') 'SPH data info :'
     write(UN,'(a)') ' '    
@@ -1138,7 +1155,7 @@ contains
       
     do i=1,npart
        ind(i) = i
-    enddo
+    Enddo
     
     call sortdouble2index(xarray,ind)
 
@@ -1157,18 +1174,18 @@ contains
 
     if(output .and. writeoutput) then
     
-       call writeinfo("Start sort", TRIVIAL)
-       call tune(6, "Sort")  ! start a stopwatch
+!       call writeinfo("Start sort", TRIVIAL)
+!       call tune(6, "Sort")  ! start a stopwatch
        call dquicksort(array)
-       call tune(6, "Sort")  ! stop a stopwatch
-       call writeinfo("Start sort", TRIVIAL)
+!       call tune(6, "Sort")  ! stop a stopwatch
+!       call writeinfo("Start sort", TRIVIAL)
 
-       open(unit=50, file='sortedarray.dat', status="replace")
-       open(unit=49, file='percentiles.dat', status="replace")
+!       open(unit=50, file='sortedarray.dat', status="replace")
+       open(unit=49, file='percentiles.dat', status="unknown")
     
-       do i=1,npart
-          write(50,*) array(i)
-       enddo
+!       do i=1,npart
+!          write(50,*) array(i)
+!       enddo
 
        do i=100,1,-1
           write(49,*) i,"%",array(nint((npart*i/100.)))
@@ -1186,7 +1203,7 @@ contains
 
   end subroutine FindCriticalValue
 
-  TYPE(vector)  function Clusterparameter(point, theparam, isdone, shouldreuse, d, RhoMin, RhoMax)
+  TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone, RhoMin, RhoMax)
     USE input_variables, only: hcritPercentile, hmaxPercentile
 
     type(vector), intent(in) :: point
@@ -1197,39 +1214,40 @@ contains
     integer, optional :: theparam
     integer :: param
 
-    logical, save :: firsttime = .true.
     logical, optional :: isdone
     logical :: done
     
     integer, allocatable, save :: ind(:)
-    real(double), save :: hcrit, hmax, rcrit, OneOverHcrit, OneOverhMax, rmax
+    Real(double), save :: hcrit, hmax, OneOverHcrit, OneOverhMax
     real(double) :: codeVelocitytoTORUS, codeLengthtoTORUS, codeDensitytoTORUS, udist, umass, utime
-    real(double) :: r
-    real(double), optional :: d
+    real(double), save :: r
+    real(double) :: d
     real(double) :: fac
     real(double), save :: sumWeight
     real(double) :: paramValue(4)
-    integer,save :: nparticles
     
     character(len=100) :: message
 
     logical, save :: notfound
-    logical, optional :: shouldreuse
     logical :: reuse
+
+    integer :: rcounter
 
     real(double), optional:: RhoMin, RhoMax
 
+    type(octal), pointer, save :: previousOctal => null()
+    type(octal), pointer :: thisOctal
+
+    logical, save :: firsttime = .true.
+    logical, save :: firsttime2 =.true.
+    integer :: subcell
+    integer, save :: prevsubcell
+    
     if(present(rhomin)) then
        rhomin = 1d30
        rhomax = -1d30
     endif
-
-    if(present(shouldreuse)) then
-       reuse = shouldreuse
-    else
-       reuse = .false.
-    endif
-
+   
     if(present(theparam)) then
        param = theparam
     else
@@ -1242,8 +1260,7 @@ contains
        done = .false.
     endif
 
-    if(firsttime) then
-!       call new_read_sph_data(tempsphdata, "newsph.dat.ascii") ! read in sphdata
+    if(firsttime .and. .not. done) then
 
        udist = get_udist()
        utime = get_utime()
@@ -1252,9 +1269,8 @@ contains
        codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
        codeDensitytoTORUS = umass / ((udist) ** 3)
 
-!       npart = get_npart() ! total gas particles
-
-       allocate(PositionArray(npart,3)) ! allocate memory
+       allocate(PositionArray(3,npart)) ! allocate memory
+       allocate(xArray(npart))
        allocate(q2Array(npart))
        allocate(RhoArray(npart))
        allocate(TemArray(npart))
@@ -1262,24 +1278,17 @@ contains
        allocate(Harray(npart))
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
-       allocate(OneOverHcubed(npart))
        allocate(tempPosArray(npart,3))
 
        PositionArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0
 
-       PositionArray(:,1) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+       Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+       xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
 
-       call sortbyx(PositionArray(:,1),ind(:)) ! sort the x's and recall their indices
+       call sortbyx(xarray(:),ind(:)) ! sort the x's and recall their indices
 
-       PositionArray(:,2) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
-       PositionArray(:,3) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
-
-       write(message, *) "Max abs(x)", max(abs(PositionArray(1,1)),abs(PositionArray(npart,1)))
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Max abs(y)", maxval(PositionArray(:,2))
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Max abs(z)", maxval(PositionArray(:,3))
-       call writeinfo(message, TRIVIAL)
+       PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
+       PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
 
 ! Decide if we need to set velocities for this configuration
        if ( associated(sphData%vxn) ) then 
@@ -1302,22 +1311,41 @@ contains
 !             call torus_abort("Error in function Clusterparameter: vxn is associated but vzn is not")
           end if
 
+          write(message, *) "Max/min Vx", maxval(VelocityArray(1,:)), minval(VelocityArray(1,:))
+          call writeinfo(message, TRIVIAL)
+          write(message, *) "Max/min Vy", maxval(VelocityArray(2,:)), minval(VelocityArray(2,:))
+          call writeinfo(message, TRIVIAL)
+          write(message, *) "Max/min Vz", maxval(VelocityArray(3,:)), minval(VelocityArray(3,:))
+          call writeinfo(message, TRIVIAL)
+          
        end if
 
+       write(message, *) "Max/min x", maxval(PositionArray(1,:)), minval(PositionArray(1,:)) 
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "Max/min y", maxval(PositionArray(2,:)), minval(PositionArray(2,:)) 
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "Max/min z", maxval(PositionArray(3,:)), minval(PositionArray(3,:))
+       call writeinfo(message, TRIVIAL)
+
        RhoArray(:) = sphdata%rhon(ind(:)) * codeDensitytoTORUS
-       TemArray(:) = sphdata%temperature(ind(:))
+       TemArray(:) = sphdata%temperature(ind(:)) * sphdata%codeEnergytoTemperature
+
+       write(message, *) "Max/min rho", maxval(RhoArray(:)), minval(RhoArray(:))
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))
+       call writeinfo(message, TRIVIAL)
 
        MassArray(:) = sphdata%gasmass(ind(:)) * umass! in case of unequal mass
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
-       call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .false.) ! find hcrit as percentile of total h
+       call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .true.) ! find hcrit as percentile of total h
        call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
        write(message, *) "Critical smoothing Length in code units", hcrit
        call writeinfo(message, TRIVIAL)
        write(message, *) "Maximum smoothing Length in code units", hmax
-       call writeinfo(message, TRIVIAL)
+       Call writeinfo(message, TRIVIAL)
 
        hcrit = hcrit * codeLengthtoTORUS
        OneOverHcrit = 1.d0 / hcrit
@@ -1327,7 +1355,6 @@ contains
 
        Harray(:) = Harray(:) * codeLengthtoTORUS  ! fill h array
        OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
-       OneOverHcubed(:) = 1.d0 / (Harray(:)**3)
 
        write(message,*) "Critical smoothing Length in 10^10cm", hcrit
        call writeinfo(message, TRIVIAL)
@@ -1337,62 +1364,106 @@ contains
        rcrit = 2.d0 * hcrit ! edge of smoothing sphere
        rmax = 2.d0 * hmax ! edge of smoothing sphere
 
-!       call kill() ! don't need harray anymore
        allocate(partarray(npart), indexarray(npart))
 
        firsttime = .false.
     endif
 
     if(done) then
+       if (allocated(PositionArray)) then
+          deallocate(xArray, PositionArray, MassArray, harray, RhoArray, Temarray, ind, tempPosArray, q2Array)
 
-       deallocate(PositionArray, MassArray, harray, RhoArray, Temarray, ind, tempPosArray, q2Array)
+          deallocate(OneOverHsquared)
+          deallocate(partarray, indexarray)
 
-       deallocate(OneOverHsquared, OneOverHcubed)
-       deallocate(partarray, indexarray)
-
-       if (allocated(VelocityArray)) deallocate (VelocityArray)
+          if (allocated(VelocityArray)) deallocate (VelocityArray)
+       endif
        firsttime = .true.
        return
     endif
-
+              
     posVec = point
-    r = rcrit ! CHECK HERE!!!
+    if(posvec .eq. prevpos) goto 500
 
-    if(present(d)) then
-       r = 1.75d0 * d + rcrit ! 1.75 is like sqrt(3)!
-!       r = rmax
+    if(associated(previousoctal)) then
+       if(thisoctal%centre .eq. previousoctal%centre .and. nparticles .ne. 0 .and. subcell .eq. prevsubcell) then 
+          reuse = .true.
+          reusecounter = reusecounter + 1
+       else
+          reuse = .false.
+          usecounter = usecounter + 1
+       endif
+    else
+       reuse = .false.
     endif
+
+    previousoctal => thisoctal
+    presentoctal => thisoctal
+    prevsubcell = subcell
+
+    if(thisoctal%rho(subcell) .gt. 1.d0) then
+       d = thisoctal%rho(subcell) ! using the placeholder h from splitgrid
+    else
+       d = thisoctal%subcellsize ! the splitgrid routine effectively picks the grid size based on smoothing length (mass condition)
+    endif
+
+    notfound = .false.
+    nparticles = 0
+    rcounter = 0
+    sumweight = 0.d0
 
     if(reuse) then
-       call doweights(posvec, nparticles, sumweight, qpresent = .false.)
-    else
        notfound = .false.
-       call findNearestParticles(posvec, nparticles, r, expkernel = .true.)
-       call doweights(posvec, nparticles, sumweight, qpresent = .true.)
+       call findNearestParticles(posvec, nparticles, r, shouldreuse = reuse) ! redo but with exponential kernel
+       if(nparticles .gt. 0) call doweights(sumweight)
+    else
+       ! tradeoff time for accuracy in low density regions
+       r = min(2.d0 * d, rcrit) ! 4d is far enough away to have particles with their smoothing lengths captured, rcrit puts an upper limit on time
+       ! 2 rcrit is essential for the mass to be correctly done... (in my case it had to be hcrit = 99%)
+ 
+       do while (sumweight .le. 1d-3)
+          call findNearestParticles(posvec, nparticles, r) ! redo but with exponential kernel
+          if(nparticles .gt. 0) call doweights(sumweight)
+          if(r .ge. rmax * 0.5d0) exit
+          rcounter = rcounter + 1
+          if(rcounter .eq. 1) then
+             r = min(max(r * 4.d0, 2.d0 * rcrit), rmax * 0.1)
+          elseif(rcounter .eq. 2) then
+             r = rmax * 0.5d0
+          endif
+       enddo
+
     endif
     
+500 continue
+
+    prevpos = point
+
     if(sumweight .le. 0.d0) notfound = .true.
     
     paramvalue(:) = 0.d0
 
     if(.not. notfound) then
-
-       if(sumweight .gt. 0.3d0) then
-          fac = 1.d0 / sumWeight
-       else
-          fac = 1.d0
-       endif
-
+       
        if(param .eq. 1) then
+
+          fac = 1.d0 / sumweight
+
           do i = 1, nparticles
-             paramValue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
+             Paramvalue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
              paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
              paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
           enddo
-
+          
           Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
-
+          
        elseif(param .eq. 2) then
+          
+          if(sumweight .gt. 0.3d0) then
+             fac = 1.d0 / sumWeight
+          else
+             fac = 1.d0
+          endif
           
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
@@ -1400,53 +1471,22 @@ contains
           enddo
           
           Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, 0.d0)  ! density ! stays as vector for moment
+          
        endif
     else
        if(param .eq. 1) then
-          if(.not. reuse) then
-             do while (nparticles .eq. 0)
-                call findNearestParticles(posvec, nparticles, rmax, expkernel = .true.) ! redo but with exponential kernel
-                rmax = 2.d0 * rmax
-             enddo
-             rmax = 2.d0 * hmax
-          endif
-          
-          call doweights(posvec, nparticles, sumweight, qpresent = .true.)
-          
-          if(sumweight .ne. 0.d0) then
-             fac = 1.d0 / sumWeight
-          else
-             fac = 1.d0
-          endif
-
-          do i = 1, nparticles
-             paramValue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
-             paramValue(2) = paramValue(2) + partArray(i) * VelocityArray(2, indexArray(i)) ! Vy
-             paramValue(3) = paramValue(3) + partArray(i) * VelocityArray(3, indexArray(i)) ! Vz
-          enddo
-
-          Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
-
+          Clusterparameter = VECTOR(1d-3,1d-3,1d-3) ! Velocity 
        elseif(param .eq. 2) then
-          if(.not. reuse) then
-             call findNearestParticles(posvec, nparticles, rmax, expkernel = .true.) ! redo but with exponential kernel
-          endif
-
-          call doweights(posvec, nparticles, sumweight, qpresent = .true.)
-  
-          do i = 1, nparticles
-             paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
-             paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
-          enddo
-
-          paramvalue(4) = max(1d-60, paramvalue(4))
-          Clusterparameter = VECTOR(paramValue(4), paramValue(3), 0.d0) ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(1d-37, tcbr, 0.d0)  ! density ! stays as vector for moment
        endif
     endif
 
-  end function Clusterparameter
+  End function Clusterparameter
 
-  subroutine findnearestparticles(pos, partcount, r, expkernel)
+  subroutine findnearestparticles(pos, partcount, r, shouldreuse)
+
+    use input_variables, only : kerneltype
+
     type(VECTOR) :: pos
     real(double) :: x,y,z
     integer :: i
@@ -1454,32 +1494,41 @@ contains
     integer, save :: closestXindex, testIndex
     integer, intent(out) :: partcount
     real(double) :: r2test, q2test, r
-    real(double) :: ydiff, zdiff, rr
-    logical, optional :: expkernel
-    logical :: doexpkernel
-    
-    real(double), parameter :: OneOversqrtPiCubed = 1.d0 / 5.568328000d0
-    real(double), parameter :: num = 125.d0 / 216.d0 ! (5/6)^3 ! (1/1.2^3)
-
+    real(double), save :: rtest
+    real(double) :: ydiff, zdiff
     integer :: stepsize, sense
     logical :: test, prevtest, up
+    logical, optional :: shouldreuse
+    logical :: reuse
+    real(double) :: fac, fac2
 
-    if(present(expkernel)) then
-       doexpkernel = expkernel
+    if(kerneltype .eq. 1) then
+       fac = 2.d0
+       fac2 = 4.d0
     else
-       doexpkernel = .false.
+       fac = 5.d0
+       fac2 = 25.d0
     endif
-  
+    
+    if(present(shouldreuse)) then
+       reuse = shouldreuse
+    else
+       reuse = .false.
+    endif
+
     x = pos%x
     y = pos%y
     z = pos%z
 
-    call locate_double_f90(PositionArray(:,1), x, closestXindex) ! find the nearest particle to your point
+    if(reuse) then
+!       rtest = max(2.d0 * maxval(harray(closestXindex+nlower:closestXindex+nupper)),rmax)
+       goto 1001
+    endif
+
+    call locate_double_f90(xarray, x, closestXindex) ! find the nearest particle to your point
   
     nupper = 1
     nlower = -1
-
-    rr = r**2
     
     closestxIndex = min(max(1, closestXindex), npart)
 
@@ -1487,12 +1536,12 @@ contains
   
     up = .true.
     nupper = 1
-    stepsize = 1
+    stepsize = 16 ! changed from 1 to reflect fact that number of neighbours for *MOST* particles is 50. Could use 32?
     sense = 1
     prevtest = .true.
 
     do while (stepsize .ge. 1)
-       test = abs(PositionArray(min(npart,closestXindex + nupper),1) - x) .le. r
+       test = abs(xArray(min(npart,closestXindex + nupper)) - x) .le. r
  
        if(test .and. (nupper .eq. npart - closestXindex)) exit
        if(closestXindex + nupper .ge. npart) nupper = npart - closestXindex
@@ -1522,7 +1571,7 @@ contains
        prevtest = test
     enddo
 
-    else
+    Else
        nupper = 0
     endif
 ! repeat for nlower
@@ -1530,14 +1579,14 @@ contains
 
     up = .true.
     nlower = -1
-    stepsize = 1
+    stepsize = 16
     sense = -1
     prevtest = .true.
 
     do while (stepsize .ge. 1)
-       test = abs(PositionArray(max(1,closestXindex + nlower),1) - x) .le. r
- 
-       if(test .and. (nlower .eq. 1 - closestXindex)) exit
+       test = abs(xArray(max(1,closestXindex + nlower)) - x) .le. r
+
+       If(test .and. (nlower .eq. 1 - closestXindex)) exit
        if(closestXindex + nlower .le. 1) nlower = 1 - closestXindex
 
        if(.not. (test .eqv. prevtest)) then
@@ -1568,78 +1617,70 @@ contains
     else
        nlower = 0
     endif
-       
-    partcount = 0
+
+    rtest = r
+1001 continue
+
+    partcount = 0          
 
     do i = nlower, nupper ! search over all those particles we just found
        
        testIndex = closestXindex + i
-       
-       zdiff = (PositionArray(testIndex,3) - z) ** 2
+             
+       ydiff = abs(PositionArray(2,testindex) - y)
 
-       if(zdiff .le. rr) then ! if it's near in y then
-          ydiff = (PositionArray(testIndex,2) - y)**2
+       if(ydiff .le. rtest) then ! if it's near in y then
+          zdiff = abs(PositionArray(3,testIndex) - z)
 
-          if(ydiff .le. rr) then !only if it's near in z as well then work out contribution
+          if(zdiff .le. rtest) then !only if it's near in z as well then work out contribution
 
-             r2test = (PositionArray(testIndex,1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
-                  ydiff + zdiff
+             r2test = (xarray(testIndex) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
+                  ydiff ** 2 + zdiff ** 2
 
              q2test = r2test * OneOverHsquared(testIndex) ! dimensionless parameter that we're interested in
-
-             if(q2test .lt. 4.d0) then
+             
+             if(q2test .lt. fac2) then
                 partcount = partcount + 1
                 indexArray(partcount) = testIndex
-                tempPosArray(partcount,1:3) = PositionArray(partcount,1:3)
+                tempPosArray(partcount,1:3) = PositionArray(1:3,testindex)
                 q2array(partcount) = q2test
-             else
-                if(q2test .lt. 100.d0) then
-                   if(doexpkernel) then
-                      partcount = partcount + 1
-                      indexArray(partcount) = testIndex
-                      tempPosArray(partcount,1:3) = PositionArray(partcount,1:3)
-                      q2array(partcount) = q2test
-                   endif
-                endif
              endif
           endif
        endif
     enddo
-
+    
   end subroutine findnearestparticles
 
-  subroutine doWeights(posvec, partcount, sumweight, qpresent)
+  Subroutine doWeights(sumweight)
 
-    type(VECTOR) :: posvec
-    integer :: partcount
-    real(double) :: x,y,z
-    logical, optional :: qpresent
-    logical :: q
-    real(double) :: r2test(3500000)
+    use input_variables, only : kerneltype
+
     real(double), parameter :: OneOversqrtPiCubed = 1.d0 / 5.568328000d0
-    real(double), parameter :: num = 125.d0 / 216.d0 ! (5/6)^3 ! (1/1.2^3)
+    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
+    real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed
+
     real(double) :: sumweight
 
-    if(present(qpresent)) then
-       q = qpresent
-    else
-       q = .false.
-    endif
+    integer :: i
+    real(double) :: sqrtq
 
-    if(partcount .gt. 0) then       
-    
-       x = posvec%x
-       y = posvec%y
-       z = posvec%z
+    if(nparticles .gt. 0) then
+              
+       if(kerneltype .eq. 0) then
        
-       if(.not. q) then
-          r2test(1:partcount) = (tempPosArray(1:partcount,1) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
-               (tempPosArray(1:partcount,2) - y)**2 + (tempPosArray(1:partcount,3) - z)**2
-          q2array(1:partcount) = r2test(1:partcount) * OneOverHsquared(indexArray(1:partcount)) ! dimensionless parameter that we're interested in
+          partarray(1:nparticles) = scalar * exp(-q2array(1:nparticles))
+       
+       elseif( kerneltype .eq. 1) then
+          
+          do i = 1, nparticles
+             sqrtq = sqrt(q2array(i))
+             partarray(i) = num * SmoothingKernel3d(sqrtq)
+          enddo
+          
        endif
        
-       partarray(1:partcount) = num * OneOversqrtPiCubed * exp(-q2array(1:partcount))
-       sumWeight = sum(partarray(1:partcount))
+       Sumweight = sum(partarray(1:nparticles))
+       
     else
        sumweight = 0.d0
     endif
