@@ -24,8 +24,10 @@ program torus
   use utils_mod
   use input_variables         ! variables filled by inputs subroutine
   use constants_mod
+
   use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
-       setupNeighbourPointers
+       setupNeighbourPointers, findtotalmass
+
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
   use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
@@ -184,6 +186,8 @@ program torus
   type(modelatom), allocatable :: thisAtom(:)
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
+
+  real(double) :: totalmass, totalmasstrap, minrho, maxrho
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -422,7 +426,7 @@ program torus
 
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
-
+  
   if (noScattering) then
      if (writeoutput) call writeWarning("Scattering opacity turned off in model")
      grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
@@ -490,7 +494,7 @@ program torus
         call readAMRgrid("atom_tmp.grid",.false.,grid)
      else if (photoionization.and.readlucy) then
         continue
-     elseif (molecular .and. ((.not. writemol) .or. addnewmoldata)) then
+     elseif (molecular .and. (readmol .or. addnewmoldata)) then
         continue
      else if (.not. restart ) then 
         ! Set up the AMR grid
@@ -501,12 +505,15 @@ program torus
         
         if (grid%geometry(1:8) == 'windtest') call windtest
 
-        ! Write the information on the grid to file using a routine in grid_mod.f90
+#ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif
+#else
+        if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+#endif
 
         ! Plotting the various values stored in the AMR grid.
         if ( plot_maps .and. myRankIsZero ) call writeVtkFile(grid, "rho.vtk")
@@ -543,12 +550,15 @@ program torus
      endif
 
      ! Write the information on the grid to file using a routine in grid_mod.f90
-
-     if (grid%splitOverMPI) then
-        call grid_info_mpi(grid, "info_grid.dat")
-     else
+#ifdef MPI
+        if (grid%splitOverMPI) then
+           call grid_info_mpi(grid, "info_grid.dat")
+        else
+           if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+        endif
+#else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
-     endif
+#endif
 
   !=================================================================
   endif ! (gridusesAMR)
@@ -635,6 +645,10 @@ program torus
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
   if (molecular) then
+     ! Plotting the various values stored in the AMR grid.
+     if ( geometry .eq. "molcluster" .and. plot_maps .and. myRankIsZero .and. .not. (restart .or. addnewmoldata)) &
+          call writeVtkFile(grid, "rho.vtk", "test.txt")
+
      if (writemol) call molecularLoop(grid, co)
      
      if(.not. writemol) then
@@ -642,12 +656,28 @@ program torus
            if(openlucy) then
               call readAMRgrid(lucyFileNamein,.false.,grid)
            else
+              if(lte) then
+                 write(molfilenamein,*) trim(co%molecule),"_lte.grid"
+              else
+                 write(molfilenamein,*) trim(co%molecule),"_grid.grid"
+              endif
               call readAMRgrid(molfilenamein,.false.,grid)
            endif
         endif
      endif
 
      if (readmol) then 
+        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap)
+        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+           call writeInfo(message, TRIVIAL)
+        if(geometry .eq. 'molcluster') then
+           write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
+           call writeInfo(message, TRIVIAL)
+           write(message,*) "Maximum Density: ",maxrho, " g/cm^3"
+           call writeInfo(message, TRIVIAL)
+           write(message,*) "Minimum Density: ",minrho, " g/cm^3"
+           call writeInfo(message, TRIVIAL)
+        endif
         call calculateMoleculeSpectrum(grid, co)
      endif
 
@@ -1707,12 +1737,17 @@ end subroutine pre_initAMRGrid
 
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
+        call howmanysplits()
 
+#ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif
+#else
+        if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+#endif
 
 	if (lineEmission) then
            nu = cSpeed / (lamLine * angstromtocm)
@@ -1853,7 +1888,7 @@ end subroutine pre_initAMRGrid
            ! using the routine in amr_mod.f90
 
           if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
-          dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),isdone = .true.)
+          dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
 
         elseif (geometry == "luc_cir3d") then
            call deallocate_zeus_data()
@@ -2316,7 +2351,7 @@ subroutine post_initAMRgrid
   use amr_mod, only: find_average_temperature, findTotalMass, scaleDensityAMR
 
   real         :: scaleFac
-  real(double) :: totalMass
+  real(double) :: totalMass, totalmasstrap, maxrho, minrho
   real(double) :: T_ave   ! average temperature of cluster
   real(double) :: T_mass  ! mass weighted temperature
 
@@ -2358,7 +2393,11 @@ subroutine post_initAMRgrid
   if (associated(grid%octreeRoot)) then
      totalMass =0.d0
      if (.not.grid%splitOverMpi) then
-        call findTotalMass(grid%octreeRoot, totalMass)
+        if(geometry .eq. 'molcluster') then 
+           call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, minrho = minrho, maxrho = maxrho)
+        else
+           call findTotalMass(grid%octreeRoot, totalMass, minrho = minrho, maxrho = maxrho)
+        endif
      else
 #ifdef MPI
         if (myrankglobal /= 0) then
@@ -2368,6 +2407,14 @@ subroutine post_initAMRgrid
      endif
      write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
      call writeInfo(message, TRIVIAL)
+     if(geometry .eq. 'molcluster') then
+        write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
+        call writeInfo(message, TRIVIAL)
+        write(message,*) "Maximum Density: ",maxrho, " g/cm^3"
+        call writeInfo(message, TRIVIAL)
+        write(message,*) "Minimum Density: ",minrho, " g/cm^3"
+        call writeInfo(message, TRIVIAL)
+     endif
   endif
         
 
