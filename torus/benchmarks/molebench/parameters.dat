@@ -7,7 +7,7 @@ molecular T
 beamsize 29.            % Convolution beamsize for model 2a in vdZadelhoff
 molAbundance 1.d-8      % Abundance of HCO+ : H2 - use
 vturb 0.3
-tolerance 0.005
+tolerance 0.01
 distance 250.0
 moleculefile hco_plus.mol
 
@@ -124,3 +124,6 @@ centrevecy 0.d7
 centrevecz 0.d7
 suppresswarnings T
 
+addnewmoldata F
+rotateviewaboutx 90.0
+rotateviewaboutz 0.0
