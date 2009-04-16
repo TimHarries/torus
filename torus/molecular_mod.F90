@@ -1319,7 +1319,8 @@ end subroutine molecularLoop
      integer :: subcell
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: tempds(maxray), tempphi(maxray), i0(maxray), nPops(maxray)
-     real(double) :: phids(maxray), temptauArray(maxray), opticaldepthArray(maxray), jbarinternalArray(maxray), jbarExternalArray(maxray)
+     real(double) :: phids(maxray), temptauArray(maxray), opticaldepthArray(maxray), jbarinternalArray(maxray), &
+          jbarExternalArray(maxray)
      integer :: iTrans
      real(double) :: jbar
      integer :: iRay
