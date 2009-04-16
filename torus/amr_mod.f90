@@ -1251,7 +1251,7 @@ CONTAINS
           endif
           
           CASE("molebench")
-             CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
+             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
 
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return. 

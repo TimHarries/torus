@@ -4387,8 +4387,72 @@ END SUBROUTINE GAUSSJ
 
  end subroutine bonnorEbertRun
       
+!!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974
+!!! coded by DAR Feb 09
+  function ngStep(q, r, s, t) result(out)
+
+    real(double) :: q(:), r(:), s(:), t(:)
+    real(double), allocatable :: diff1(:), diff2(:)
+    real(double), allocatable :: diff01(:), diff02(:), diff(:)
+    real(double) :: a,b,d,e,f ! matrix coefficients - matrix is symmetric (at least)
+    real(double) :: c1, c2
+    real(double), allocatable :: out(:)
+    real(double), allocatable :: rorig(:), sorig(:), torig(:)
+    real(double) :: det
    
+    integer :: vectorsize
+    
+    vectorsize = size(q)
+    
+    allocate(diff1(vectorsize), diff2(vectorsize), &
+         diff01(vectorsize), diff02(vectorsize), diff(vectorsize), out(vectorsize), &
+         rorig(vectorsize), sorig(vectorsize), torig(vectorsize))
+
+      rorig = r
+      sorig = s
+      torig = t
+
+      q = q / t
+      r = r / t
+      s = s / t
+      t = t / t
+
+      diff  =(t - s)
+      diff1 =(s - r)
+      diff2 =(r - q)
       
+      diff01 = (diff - diff1)
+      diff02 = (diff - diff2)
+      
+      a = sum(diff01**2)
+      b = sum(diff01 * diff02)
+      d = sum(diff02**2)
+      e = sum(diff * diff01)
+      f = sum(diff * diff02)
+      
+      det = a*d - b*b
+      
+      if(det .eq. 0.d0) then
+!         call writeinfo("det=0", TRIVIAL)
+!         call random_number(q)
+!         q = q / t
+!         diff2 =(r - q)
+!         diff02 = (diff - diff2)
+!         b = sum(diff01 * diff02)
+!         d = sum(diff02**2)
+!         f = sum(diff * diff02)
+!         det = a*d - b*b
+         out = torig
+         return
+      endif
+
+      c1 = (e*d-b*f) / det
+      c2 = (a*f-e*b) / det
+
+      out = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
+
+      deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig)
+    end function ngStep   
 
 end module utils_mod
 

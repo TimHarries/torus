@@ -27,11 +27,12 @@ module molecular_mod
    implicit none
 
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels
-   integer :: grand_iter, ngcounter, nray
+   integer :: grand_iter, ngcounter
+   integer :: nray
    Logical :: molebench, molcluster, chrisdisc, ggtau
    real(double), allocatable :: lamarray(:), lambda(:)
    integer :: ilambda
-
+   integer, parameter :: maxray = 409600
    integer :: accstep = 4 ! for ng acceleration
    integer :: accstepgrand = 5
    integer, allocatable :: iseedpublic(:)
@@ -356,7 +357,7 @@ module molecular_mod
 !                 thisoctal%linearvelocity(subcell) = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, linearinterp = .true.)
 !                 thisoctal%quadvelocity(subcell) = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, linearinterp = .false.)
 
-!                 thisoctal%interprho(subcell) = amrgriddensity(pos, grid, linearinterp =.true.)
+!                 thisoctal%interprho(subcell) = density(pos, grid, linearinterp =.true.)
 
 !                 counter = counter + 1
 !                 CALL CPU_TIME(T2)
@@ -932,8 +933,8 @@ module molecular_mod
 !                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
                 fac = sum(error(1:minlevel)**2) ! convergence criterion
 
-               if (fac < 1.d-20 .or. (iter .eq. maxiter)) then
-!                if (fac < 1.d-10 .or. (iter .eq. maxiter)) then
+               if (fac < 1.d-10 .or. (iter .eq. maxiter)) then
+!                if (fac < 1.d-20 .or. (iter .eq. maxiter)) then
                    popsConverged = .true.
                    if(iter .eq. maxiter) then
                       warncount = warncount + 1
@@ -1019,7 +1020,6 @@ module molecular_mod
         call writeinfo("Dumping results", FORINFO)
         if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
         if(myrankiszero .and. plotlevels .and. .not.(amr1d)) then
-           call writeinfo('Writing VTK file', TRIVIAL)
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
            write(message, *) "Wrote VTK file to", filename
            call writeinfo(message, TRIVIAL)
@@ -1040,7 +1040,7 @@ module molecular_mod
               write(message,'(a,i7,a)') "Now trying ",nRay," Rays"
               call writeInfo(message,FORINFO)
               call writeinfo("", FORINFO)
-              if (molebench .and. (nray .gt. 400000)) then 
+              if (molebench .and. (nray .gt. maxray)) then 
                 call writeinfo("Molebench Test Ended, Exiting...", TRIVIAL)
                 gridconverged = .true.
               endif
@@ -1318,8 +1318,8 @@ end subroutine molecularLoop
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      type(MOLECULETYPE) :: thisMolecule
-     real(double) :: tempds(nray), tempphi(nray), i0(:), nPops(:)
-     real(double) :: phids(nray), temptauArray(nray), opticaldepthArray(nray), jbarinternalArray(nray), jbarExternalArray(nray)
+     real(double) :: tempds(maxray), tempphi(maxray), i0(maxray), nPops(maxray)
+     real(double) :: phids(maxray), temptauArray(maxray), opticaldepthArray(maxray), jbarinternalArray(maxray), jbarExternalArray(maxray)
      integer :: iTrans
      real(double) :: jbar
      integer :: iRay
@@ -1406,13 +1406,13 @@ end subroutine molecularLoop
         jBarExternalArray(1:nRay) = i0(1:nRay) * opticaldepthArray(1:nRay) * tempphi(1:nRay)
         jBarInternalArray(1:nRay) = snu * (1.d0 - opticaldepthArray(1:nRay)) * tempphi(1:nRay)
 
-        sumPhi = SUM(tempphi(:))
+        sumPhi = SUM(tempphi(1:nray))
         jbar = (sum(jBarExternalArray(1:nRay)) + sum(jBarInternalArray(1:nRay)))/sumPhi
 
      endif
      
      if(usedust)then
-        sumPhi = SUM(tempphi(:))
+        sumPhi = SUM(tempphi(1:nray))
         jbar = (jBarExternal + jBarInternal)/sumPhi
      endif
    
@@ -1630,7 +1630,7 @@ end subroutine molecularLoop
    type(VECTOR) :: unitvec, observerVec, centrevec, viewvec, imagebasis(2)
    type(DATACUBE) ::  cube
 
-   character (len=80) :: filename
+   character (len=80) :: filename, message
    integer :: status
 
 #ifdef MPI
@@ -1661,10 +1661,30 @@ end subroutine molecularLoop
      if(writeoutput) call writeinfo('Setting observer parameters', TRIVIAL)
      call setObserverVectors(viewvec, observerVec, imagebasis)
 
-     write(*,*) "view", viewvec
-     write(*,*) "observervec", observervec
-     write(*,*) "v1", imagebasis(1)
-     write(*,*) "v2", imagebasis(2)
+     write(message,'(a,3(2x,es9.3))') "Observer Position : ", observervec
+     call writeinfo(message, FORINFO)
+
+     write(message,'(a,3(2x,es9.3))') "View Vector       : ", viewvec
+     call writeinfo(message, FORINFO)
+
+     write(message,'(a,3(2x,f9.6))') "Image X axis       : ", imagebasis(1) / modulus(imagebasis(1))
+     call writeinfo(message, FORINFO)
+
+     write(message,'(a,3(2x,f9.6))') "Image Y axis       : ", imagebasis(2) / modulus(imagebasis(2))
+     call writeinfo(message, FORINFO)
+
+     write(message,'(a,es9.3)')       "Pixel length      : ", modulus(imagebasis(1))
+     call writeinfo(message, FORINFO)
+
+     open(91, file="restart.dat",status="unknown",form="formatted")
+
+     write(91,'(a,3(2x,es9.3))') "Observer Position : ", observervec
+     write(91,'(a,3(2x,es9.3))') "View Vector       : ", viewvec
+     write(91,'(a,3(2x,f9.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
+     write(91,'(a,3(2x,f9.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
+     write(91,'(a,es9.3)')       "Pixel length      : ", modulus(imagebasis(1))
+
+     close(91)
 
      if(writeoutput) call writeinfo('Creating Image', TRIVIAL)
 
@@ -1690,7 +1710,6 @@ end subroutine molecularLoop
           thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
 
     end subroutine calculateMoleculeSpectrum
-
 
     subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, ObserverVec, viewvec, imagebasis, imagegrid, ix1, ix2)
 
@@ -1970,9 +1989,8 @@ end subroutine molecularLoop
            call makeImageGrid(grid, thisMolecule, itrans, deltaV, nSubpixels, ObserverVec, viewvec, imagebasis, temp, ix1, ix2) !
 
            if(plotlevels .and. myrankiszero) then
-              call writeinfo('Writing 3D image VTK file', TRIVIAL)
-              write(filename, '(a)') "cloud.vtk"
-              write(message, *) "Wrote VTK file to ", filename
+              write(filename, '(a)') "MolRT.vtk"
+              write(message, *) "Wrote 3d VTK file to ", filename
               call writeinfo(message, TRIVIAL)
               call writeVtkFile(grid, filename, "imagevtk.txt")
            endif
@@ -2405,7 +2423,7 @@ endif
         attenuateddIovercell = 0.d0
 
         if(densitysubsample) then
-           nmol = thisoctal%molabundance(subcell) * (amrgriddensity(currentposition, grid, linearinterp = .true.) / &
+           nmol = thisoctal%molabundance(subcell) * (densite(currentposition, grid) / &
                   (2.d0 * mhydrogen))
         else
            nMol = thisOctal%molcellparam(1,subcell)
@@ -2464,7 +2482,7 @@ endif
            end if
 
            if(densitysubsample) then
-              nmol = thisoctal%molabundance(subcell) * (amrgridDensity(thisposition, grid, linearinterp = .true.) / &
+              nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid) / &
                      (2.d0 * mhydrogen))
 
               if(usedust) then
@@ -2621,7 +2639,7 @@ endif
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
         
         if(densitysubsample) then
-           fac = (thisoctal%molabundance(subcell) * amrgriddensity(currentposition, grid, linearinterp = .true.)) / &
+           fac = (thisoctal%molabundance(subcell) * densite(currentposition, grid)) / &
                  ((thisOctal%molcellparam(1,subcell))*(2.d0 * mhydrogen))
         else
            fac = 1.d0
@@ -3322,6 +3340,37 @@ end subroutine plotdiscValues
 
   end function velocity
 
+  real(double) function densite(position, grid, startOctal, subcell) RESULT(out)
+    
+    implicit none
+    
+    type(VECTOR), intent(in) :: position
+    type(VECTOR), save :: oldposition
+    real(double) :: oldout = -8.8d88
+    type(gridtype), intent(in) :: grid
+    type(octal), pointer, optional :: startOctal
+    integer, optional :: subcell
+    integer, save :: savecounter = 0
+    
+    if(oldposition .eq. position) then
+       savecounter = savecounter + 1
+       out = oldout
+       return
+    endif
+    
+    if(molebench) then
+       Out = Molebenchdensity(Position, grid) 
+    elseif(molcluster) then
+       Out = amrGriddensity(position, grid, linearinterp = .true.)
+    else
+       Out = amrGridDensity(position, grid, linearinterp = .true.)
+    endif
+    
+    oldout = out
+    oldposition = position
+    
+  end function densite
+
   function calculatetau(grid, thisoctal, subcell, thismolecule, phi, ds) result(tauavg)
 
     use input_variables, only : usedust, realdust
@@ -3624,248 +3673,163 @@ end subroutine calculateConvergenceData
  end subroutine make_h21cm_image
 
 !-----------------------------------------------------------------------------------------------------------
-      recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
-        use input_variables, only : rinner, router
-        type(GRIDTYPE) :: grid
-        type(MOLECULETYPE) :: thisMolecule
-        type(octal), pointer   :: thisOctal
-        type(octal), pointer  :: child 
-        integer :: subcell, i
-        integer :: icount
-        real(double) :: mean(6),r
-        type(VECTOR) :: rvec
-        character(len=10) :: out
-        
-        do subcell = 1, thisOctal%maxChildren
-           if (thisOctal%hasChild(subcell)) then
-              ! find the child
-              do i = 1, thisOctal%nChildren, 1
-                 if (thisOctal%indexChild(i) == subcell) then
-                    child => thisOctal%child(i)
-                    call findtempdiff(grid, child, thisMolecule, mean, icount)
-                    exit
-                 end if
-              end do
-           else
-              rvec = subcellcentre(thisOctal, subcell)
-              r = sqrt(rvec%x**2 + rvec%y**2)
-              if(icount .ge.  1) then
-                 if(r .lt. router .and. r .gt. rinner) then
-                    if(icount .eq. 2) then 
-                       out='td'
-                       thisOctal%temperature(subcell) = readparameterfrom2dmap(rvec,out,.false.)
-                       out = 'nh2'           
-                       thisOctal%rho(subcell) = readparameterfrom2dmap(rvec,out,.true.) * 2. * mHydrogen
-                       out = 'abundance'
-                       thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-                    else
-                       out = 'abundance'
-                       thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-                    endif
-                 else
-                    thisOctal%temperature(subcell) = tcbr
-                    thisOctal%rho(subcell) = 1d-20
-                    thisOctal%molAbundance(subcell) = 1d-20
-                 endif
-              else
-                 
-                 out='td'
-                 thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.false.)
-                 thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
-                 thisOctal%temperature(subcell) = thisOctal%temperaturegas(subcell) / thisOctal%temperaturedust(subcell)
-                 
-                 out = 'nh2'
-                 
-                 thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.true.)
-                       
-                 thisOctal%nh2(subcell) = (thisOctal%temperaturegas(subcell) * 2. *mhydrogen) / thisOctal%rho(subcell)
-                 thisOctal%rho(subcell) = thisOctal%nh2(subcell)
-
-                 out = 'abundance'
-                 thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.false.)
-              end if
-           endif
-        end do
-
-      end subroutine findtempdiff
-
-  real(double) function bNum(nu,T)
-    
-    real(double) :: fac1, fac2, fac3, nu
-    real :: T
-    real(double), parameter :: twoHOverCSquared = 1.4745d-43 
-    
-    fac1 = twoHOverCSquared * nu**3
-    fac3 =  (hCgs*nu)/ (kErg * T) 
-    if (fac3 > 100.d0) then
-       fac2 = 0.d0
-    else
-       fac2 = 1.d0/(exp(fac3) - 1.d0)
-    endif
-    
-    bNum = fac1 * fac2
-  end function bNum
-
-  subroutine DecideOctalOrder(ioctal_beg, ioctal_end, iOctalArray, shouldinterlace)
-    
-    integer :: ioctal_beg, ioctal_end
-    integer :: iOctalArray(ioctal_end - ioctal_beg + 1)
-    logical, optional :: shouldinterlace
-    logical :: interlace
-    integer :: i
-    
-    if(present(shouldinterlace)) then
-       interlace = shouldinterlace
-    else
-       interlace = .false.
-    endif
-    
-    if(interlace) then
-       
-       do i = 1, (ioctal_end - iOctal_beg)/2 + 1
-          iOctalArray(i) = 2 * (iOctal_beg/2) + 1 + 2 * (i - 1)
-       enddo
-       
-       do i = (ioctal_end - iOctal_beg)/2 + 2, iOctal_end - iOctal_beg + 1
-          iOctalArray(i) = 2 * ((iOctal_beg + 1)/2) + 2 * (i - ((ioctal_end - iOctal_beg)/2 + 2))
-       enddo
-       
-    else
-       
-       do i = 1, size(iOctalArray)
-          iOctalArray(i) = i
-       enddo
-       
-    endif
-  end subroutine DecideOctalOrder
-
-   real function nextStep(cube, ivplusone) result (step)
-
-     type(DATACUBE) :: cube
-     integer :: iv,i,j,ivplusone
-     real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
-     real(double) :: xquad(3),yquad(3),xa(3)
-     real(double) :: sumx(4),sumxy(4)
-     real(double) :: a(3,3),b(3)
-     real(double) :: fac
-     real(double), save :: alty2
-     real(double), save :: oldstep = 4.d0
-
-     iv = ivplusone - 1
-
-     allocate(x(iv))
-     allocate(y(iv))
-     allocate(y2(iv))
-     allocate(intensitysum(iv))
-
-     do i = 1,iv
-        intensitysum(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
-     enddo
-
-     fac = intensitysum(1)
-     x = cube%vAxis(1:iv)
-     y =  intensitysum / fac 
-
-     call spline(x,y,iv,1.d31,1.d31,y2)
-
-     xquad = x(iv-3:iv-1)
-     yquad = y2(iv-3:iv-1)
-     xa = xquad
-
-     do i=1,4
-        sumx(i) = sum(xa)
-        sumxy(i) = sum(xa * yquad)
-
-        xa = xa*xquad
-     enddo
-
-     do i = 1,3
-       do j = 1,3
-          if(6-i-j .ne. 0) then 
-             a(i,j) = sumx(6-i-j)
-          else
-             a(i,j) = 3.d0
-          endif
-       enddo; enddo
-
-       b = (/sumxy(2),sumxy(1),sum(yquad)/)
-       call luSlv(a,b)
-
-         write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
-
-         alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
-
-          step = (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
-          oldstep = step
-
-   end function nextStep
-
-
-!!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974
-!!! coded by DAR Feb 09
-  function ngStep(q, r, s, t) result(out)
-
-    real(double) :: q(:), r(:), s(:), t(:)
-    real(double), allocatable :: diff1(:), diff2(:)
-    real(double), allocatable :: diff01(:), diff02(:), diff(:)
-    real(double) :: a,b,d,e,f ! matrix coefficients - matrix is symmetric (at least)
-    real(double) :: c1, c2
-    real(double), allocatable :: out(:)
-    real(double), allocatable :: rorig(:), sorig(:), torig(:)
-    real(double) :: det
+ recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
+   use input_variables, only : rinner, router
+   type(GRIDTYPE) :: grid
+   type(MOLECULETYPE) :: thisMolecule
+   type(octal), pointer   :: thisOctal
+   type(octal), pointer  :: child 
+   integer :: subcell, i
+   integer :: icount
+   real(double) :: mean(6),r
+   type(VECTOR) :: rvec
+   character(len=10) :: out
    
-    integer :: vectorsize
-    
-    vectorsize = size(q)
-    
-    allocate(diff1(vectorsize), diff2(vectorsize), &
-         diff01(vectorsize), diff02(vectorsize), diff(vectorsize), out(vectorsize), &
-         rorig(vectorsize), sorig(vectorsize), torig(vectorsize))
-
-      rorig = r
-      sorig = s
-      torig = t
-
-      q = q / t
-      r = r / t
-      s = s / t
-      t = t / t
-
-      diff  =(t - s)
-      diff1 =(s - r)
-      diff2 =(r - q)
-      
-      diff01 = (diff - diff1)
-      diff02 = (diff - diff2)
-      
-      a = sum(diff01**2)
-      b = sum(diff01 * diff02)
-      d = sum(diff02**2)
-      e = sum(diff * diff01)
-      f = sum(diff * diff02)
-      
-      det = a*d - b*b
-      
-      if(det .eq. 0.d0) then
-!         call writeinfo("det=0", TRIVIAL)
-!         call random_number(q)
-!         q = q / t
-!         diff2 =(r - q)
-!         diff02 = (diff - diff2)
-!         b = sum(diff01 * diff02)
-!         d = sum(diff02**2)
-!         f = sum(diff * diff02)
-!         det = a*d - b*b
-         out = torig
-         return
+   do subcell = 1, thisOctal%maxChildren
+      if (thisOctal%hasChild(subcell)) then
+         ! find the child
+         do i = 1, thisOctal%nChildren, 1
+            if (thisOctal%indexChild(i) == subcell) then
+               child => thisOctal%child(i)
+               call findtempdiff(grid, child, thisMolecule, mean, icount)
+               exit
+            end if
+         end do
+      else
+         rvec = subcellcentre(thisOctal, subcell)
+         r = sqrt(rvec%x**2 + rvec%y**2)
+         if(icount .ge.  1) then
+            if(r .lt. router .and. r .gt. rinner) then
+               if(icount .eq. 2) then 
+                  out='td'
+                  thisOctal%temperature(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+                  out = 'nh2'           
+                  thisOctal%rho(subcell) = readparameterfrom2dmap(rvec,out,.true.) * 2. * mHydrogen
+                  out = 'abundance'
+                  thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+               else
+                  out = 'abundance'
+                  thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+               endif
+            else
+               thisOctal%temperature(subcell) = tcbr
+               thisOctal%rho(subcell) = 1d-20
+               thisOctal%molAbundance(subcell) = 1d-20
+            endif
+         else
+            
+            out='td'
+            thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+            thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
+            thisOctal%temperature(subcell) = thisOctal%temperaturegas(subcell) / thisOctal%temperaturedust(subcell)
+            
+            out = 'nh2'
+            
+            thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+            
+            thisOctal%nh2(subcell) = (thisOctal%temperaturegas(subcell) * 2. *mhydrogen) / thisOctal%rho(subcell)
+            thisOctal%rho(subcell) = thisOctal%nh2(subcell)
+            
+            out = 'abundance'
+            thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+         end if
       endif
+   end do
+   
+ end subroutine findtempdiff
+ 
+ subroutine DecideOctalOrder(ioctal_beg, ioctal_end, iOctalArray, shouldinterlace)
+    
+   integer :: ioctal_beg, ioctal_end
+   integer :: iOctalArray(ioctal_end - ioctal_beg + 1)
+   logical, optional :: shouldinterlace
+   logical :: interlace
+   integer :: i
+   
+   if(present(shouldinterlace)) then
+      interlace = shouldinterlace
+   else
+      interlace = .false.
+   endif
+   
+   if(interlace) then
+      
+      do i = 1, (ioctal_end - iOctal_beg)/2 + 1
+         iOctalArray(i) = 2 * (iOctal_beg/2) + 1 + 2 * (i - 1)
+      enddo
+      
+      do i = (ioctal_end - iOctal_beg)/2 + 2, iOctal_end - iOctal_beg + 1
+         iOctalArray(i) = 2 * ((iOctal_beg + 1)/2) + 2 * (i - ((ioctal_end - iOctal_beg)/2 + 2))
+      enddo
+      
+   else
+      
+      do i = 1, size(iOctalArray)
+         iOctalArray(i) = i
+      enddo
+      
+   endif
+ end subroutine DecideOctalOrder
 
-      c1 = (e*d-b*f) / det
-      c2 = (a*f-e*b) / det
+ real function nextStep(cube, ivplusone) result (step)
+   
+   type(DATACUBE) :: cube
+   integer :: iv,i,j,ivplusone
+   real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
+   real(double) :: xquad(3),yquad(3),xa(3)
+   real(double) :: sumx(4),sumxy(4)
+   real(double) :: a(3,3),b(3)
+   real(double) :: fac
+   real(double), save :: alty2
+   real(double), save :: oldstep = 4.d0
+   
+   iv = ivplusone - 1
+   
+   allocate(x(iv))
+   allocate(y(iv))
+   allocate(y2(iv))
+   allocate(intensitysum(iv))
+   
+   do i = 1,iv
+      intensitysum(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
+   enddo
+   
+   fac = intensitysum(1)
+   x = cube%vAxis(1:iv)
+   y =  intensitysum / fac 
+   
+   call spline(x,y,iv,1.d31,1.d31,y2)
+   
+   xquad = x(iv-3:iv-1)
+   yquad = y2(iv-3:iv-1)
+   xa = xquad
+   
+   do i=1,4
+      sumx(i) = sum(xa)
+      sumxy(i) = sum(xa * yquad)
+      
+      xa = xa*xquad
+   enddo
+   
+   do i = 1,3
+      do j = 1,3
+         if(6-i-j .ne. 0) then 
+            a(i,j) = sumx(6-i-j)
+         else
+            a(i,j) = 3.d0
+         endif
+      enddo; enddo
+      
+      b = (/sumxy(2),sumxy(1),sum(yquad)/)
+      call luSlv(a,b)
 
-      out = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
-
-      deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig)
-    end function ngStep
-
-end module molecular_mod
+      write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
+      
+      alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
+      
+      step = (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
+      oldstep = step
+      
+    end function nextStep
+    
+  end module molecular_mod
