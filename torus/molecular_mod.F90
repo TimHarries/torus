@@ -2934,7 +2934,7 @@ end subroutine calculateOctalParams
 
         write(31,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
         write(310,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
-        write(32,'(es11.5e2,4x,14(f7.5,tr2))') r*1.e10, fracChange(1:min(14,maxlevel))
+        write(32,'(es11.5e2,4x,14(f7.5,tr2))') r*1.e10, fracChange(1:min(14,minlevel))
         write(34,'(es11.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)
 
      enddo
