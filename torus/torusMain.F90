@@ -691,7 +691,7 @@ program torus
      if (restart) then 
         call readAMRgrid("h21cm_grid",.false.,grid)
      else
-        if (writeoutput) call writeAMRgrid("h21cm_grid",.false.,grid)
+        call writeAMRgrid("h21cm_grid",.false.,grid)
      endif
 
      call make_h21cm_image(grid)
