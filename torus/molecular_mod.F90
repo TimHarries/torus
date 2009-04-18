@@ -2858,7 +2858,7 @@ end subroutine calculateOctalParams
      real(double) :: r, ang
      real(double), save :: logrinner, logrouter, OneOverNradiusMinusOne, OneOverNangle
      integer :: i
-     real(double) :: pops(maxlevel), dc(5), fracChange(minlevel), tauarray(60)!, convtestarray(:,:,:), tauarray(40)
+     real(double) :: pops(60), dc(5), fracChange(60), tauarray(60)!, convtestarray(:,:,:), tauarray(40)
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      integer :: j
@@ -2919,9 +2919,10 @@ end subroutine calculateOctalParams
 
            if(inoctal(grid%octreeroot, posvec)) then
               call findSubcellLocal(posVec, thisOctal,subcell) 
-              pops = pops + thisOctal%molecularLevel(1:maxlevel,subcell)
+              
+              pops(1:minlevel) = pops(1:minlevel) + thisOctal%molecularLevel(1:minlevel,subcell)
               dc = dc + (thisOctal%molecularLevel(1:5,subcell) * thisOctal%departcoeff(1:5,subcell))
-              fracChange = fracChange + abs(((thisOctal%molecularLevel(1:minlevel,subcell) - &
+              fracChange(1:minlevel) = fracChange(1:minlevel) + abs(((thisOctal%molecularLevel(1:minlevel,subcell) - &
                    thisOctal%oldmolecularLevel(1:minlevel,subcell)) / thisOctal%molecularlevel(1:minlevel,subcell)))
            else
               call torus_abort("something went wrong in dumpresults")
@@ -3520,9 +3521,12 @@ end subroutine plotdiscValues
        write(138,10012) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
             maxFracChange, maxavgFracChange/real(nVoxels)
     case default
-       write(138,10012) nray, maxFracChangePerLevel(1:9), fixedrays, real(convergenceCounter(1:3,minlevel))/real(nVoxels),  &
-            maxFracChange, maxavgFracChange/real(nVoxels)
     end select
+
+    if(minlevel .gt. 12) then
+       write(138,10012) nray, maxFracChangePerLevel(1:9), fixedrays, & 
+            real(convergenceCounter(1:3,minlevel))/real(nVoxels), maxFracChange, maxavgFracChange/real(nVoxels)
+    endif
        
     close(138)
   
