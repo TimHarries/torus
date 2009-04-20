@@ -1673,28 +1673,28 @@ end subroutine molecularLoop
      if(writeoutput) call writeinfo('Setting observer parameters', TRIVIAL)
      call setObserverVectors(viewvec, observerVec, imagebasis)
 
-     write(message,'(a,3(2x,es9.3))') "Observer Position : ", observervec
+     write(message,'(a,3(2x,es10.4))') "Observer Position : ", observervec
      call writeinfo(message, FORINFO)
 
-     write(message,'(a,3(2x,es9.3))') "View Vector       : ", viewvec
+     write(message,'(a,3(2x,es10.4))') "View Vector       : ", viewvec
      call writeinfo(message, FORINFO)
 
-     write(message,'(a,3(2x,f9.6))') "Image X axis       : ", imagebasis(1) / modulus(imagebasis(1))
+     write(message,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
      call writeinfo(message, FORINFO)
 
-     write(message,'(a,3(2x,f9.6))') "Image Y axis       : ", imagebasis(2) / modulus(imagebasis(2))
+     write(message,'(a,3(2x,f10.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
      call writeinfo(message, FORINFO)
 
-     write(message,'(a,es9.3)')       "Pixel length      : ", modulus(imagebasis(1))
+     write(message,'(a,es10.3)')       "Pixel length      : ", modulus(imagebasis(1))
      call writeinfo(message, FORINFO)
 
-     open(91, file="restart.dat",status="unknown",form="formatted")
+     open(91, file="imageparams.dat",status="unknown",form="formatted")
 
-     write(91,'(a,3(2x,es9.3))') "Observer Position : ", observervec
-     write(91,'(a,3(2x,es9.3))') "View Vector       : ", viewvec
-     write(91,'(a,3(2x,f9.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
-     write(91,'(a,3(2x,f9.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
-     write(91,'(a,es9.3)')       "Pixel length      : ", modulus(imagebasis(1))
+     write(91,'(a,3(2x,es10.3))') "Observer Position : ", observervec
+     write(91,'(a,3(2x,es10.3))') "View Vector       : ", viewvec
+     write(91,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
+     write(91,'(a,3(2x,f10.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
+     write(91,'(a,es10.3)')       "Pixel length      : ", modulus(imagebasis(1))
 
      close(91)
 
