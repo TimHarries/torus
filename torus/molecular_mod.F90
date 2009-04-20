@@ -1673,10 +1673,10 @@ end subroutine molecularLoop
      if(writeoutput) call writeinfo('Setting observer parameters', TRIVIAL)
      call setObserverVectors(viewvec, observerVec, imagebasis)
 
-     write(message,'(a,3(2x,es10.4))') "Observer Position : ", observervec
+     write(message,'(a,3(2x,es10.3))') "Observer Position : ", observervec
      call writeinfo(message, FORINFO)
 
-     write(message,'(a,3(2x,es10.4))') "View Vector       : ", viewvec
+     write(message,'(a,3(2x,es10.3))') "View Vector       : ", viewvec
      call writeinfo(message, FORINFO)
 
      write(message,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
