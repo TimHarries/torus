@@ -1765,10 +1765,11 @@ end subroutine molecularLoop
             pixelcorner = pixelcorner - (mydnpixels*imagebasis(1) + imagebasis(2))
          endif
          
-         do ipixels = 1, npixels
+         do ipixels = ix1, ix2
             index = (/ipixels,jpixels/)
             imagegrid(ipixels,jpixels,:) = PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
                  iTrans,deltaV, subpixels)
+
             pixelcorner = pixelcorner + imagebasis(1)
          enddo
       enddo
@@ -1884,7 +1885,6 @@ end subroutine molecularLoop
       endif
 
    enddo
-   
  end function PixelIntensity
 
  !!! This subroutine takes the parameters supplied to it and makes an image by calling more subroutines 
@@ -2018,6 +2018,8 @@ end subroutine molecularLoop
            tempArray = reshape(temp(:,:,2), (/ n /))
            call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
            temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
+
+           write(50+myrankglobal,*) temp(:,:,1)
 #endif           
 
            cube%intensity(:,:,iv) = real(temp(:,:,1))
@@ -2394,6 +2396,7 @@ endif
            write(message, *) direction
            call writeinfo(message, FORINFO)
            havebeenWarned = .true.
+
         endif
         
         i0 = 1.d-60
