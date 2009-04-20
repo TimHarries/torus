@@ -7995,19 +7995,15 @@ IF ( .NOT. gridConverged ) RETURN
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
     thisOctal%temperature(subcell) = tcbr
-
-    if(r1 > r(nr)) then 
-       thisOctal%nh2(subcell) = 1.d-20
-       thisOctal%rho(subcell) = 1.d-20 * 2. * mhydrogen
-    elseif(r1 < r(1)) then
-       thisOctal%nh2(subcell) = nh2(1)
-       thisOctal%rho(subcell) = nh2(1) * 2. * mhydrogen
-    endif
-
-    thisOctal%microTurb(subcell) = 1d-10 !0.159e5/cspeed
+    thisOctal%microTurb(subcell) = 1d-8 !0.159e5/cspeed
+    thisOctal%velocity(subcell) = VECTOR(-1d4,-1d4,-1d4)
     thisOctal%molAbundance(subcell) = molAbundance
 
-    if ((r1 > r(1)).and.(r1 < r(nr))) then
+    if(r1 > r(nr) .or. r1 < r(1)) then 
+       thisOctal%nh2(subcell) = 1.e-20
+       thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
+    else
+
        call locate(r, nr, r1, i)
        t2 = (r1 - r(i))/(r(i+1)-r(i)) ! linear but know its a power law so use better interpolation
 
@@ -8043,7 +8039,7 @@ IF ( .NOT. gridConverged ) RETURN
 
       thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + mu1**2) &
                                      / (cspeed * 1e-5)) ! mu is subsonic turbulence
-    endif
+   endif
   end subroutine molecularBenchmark
 
   subroutine WaterBenchmark1(thisOctal, subcell)
@@ -8577,10 +8573,7 @@ end function readparameterfrom2dmap
     endif
 
     moleBenchVelocity = VECTOR(0d4,0d4,0d4)
-    
-    if(point%x .gt. 1d7 .or. point%y .gt. 1d7 .or. point%z .gt. 1d7) return
-    if(point%x .lt. 4d6 .or. point%y .lt. 4d6 .or. point%z .lt. 4d6) return
-    
+      
     r1 = modulus(point)
     
     if ((r1 > r(1)).and.(r1 < r(nr))) then
@@ -17274,15 +17267,15 @@ end function readparameterfrom2dmap
     r1 = modulus(position)
 
     if(r1 > r(nr) .or. r1 < r(1)) then 
-!       nh2out = 1.d-20
-!       rho = 1.d-20 * 2. * mhydrogen
-       nh2out = nh2(1)
-       rho = nh2(1) * 2.d0 * mhydrogen
+       nh2out = 1.d-20
+       rho = 1.d-20 * 2. * mhydrogen
+!       nh2out = nh2(1)
+!       rho = nh2(1) * 2.d0 * mhydrogen
     endif
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
        call locate(r, nr, r1, i)
-       t2 = (r1 - r(i))/(r(i+1)-r(i)) ! linear but know its a power law so use better interpolation
+!       t2 = (r1 - r(i))/(r(i+1)-r(i)) ! linear but know its a power law so use better interpolation
        
        t1 = log(r1/r(i))/log(r(i+1)/r(i))
        

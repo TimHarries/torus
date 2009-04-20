@@ -4389,7 +4389,7 @@ END SUBROUTINE GAUSSJ
       
 !!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974
 !!! coded by DAR Feb 09
-  function ngStep(q, r, s, t) result(out)
+  function ngStep(q, r, s, t, doubleweight) result(out)
 
     real(double) :: q(:), r(:), s(:), t(:)
     real(double), allocatable :: diff1(:), diff2(:)
@@ -4401,7 +4401,15 @@ END SUBROUTINE GAUSSJ
     real(double) :: det
    
     integer :: vectorsize
-    
+    logical, optional :: doubleweight
+    logical :: dodoubleweight
+
+    if(present(doubleweight)) then
+       dodoubleweight = doubleweight
+    else
+       dodoubleweight = .false.
+    endif
+
     vectorsize = size(q)
     
     allocate(diff1(vectorsize), diff2(vectorsize), &
@@ -4416,6 +4424,13 @@ END SUBROUTINE GAUSSJ
       r = r / t
       s = s / t
       t = t / t
+
+      if(dodoubleweight) then
+         q = q * 0.125d0
+         r = r * 0.25d0
+         s = s * 0.5d0
+         t = t
+      endif
 
       diff  =(t - s)
       diff1 =(s - r)
