@@ -2018,8 +2018,6 @@ end subroutine molecularLoop
            tempArray = reshape(temp(:,:,2), (/ n /))
            call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
            temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
-
-           write(50+myrankglobal,*) temp(:,:,1)
 #endif           
 
            cube%intensity(:,:,iv) = real(temp(:,:,1))
