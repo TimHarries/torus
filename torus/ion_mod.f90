@@ -87,10 +87,13 @@ contains
     allocate(thisIon%freq(1:nFreq), thisIon%xSec(1:nFreq))
     thision%freq(1:nFreq) = freq(1:nFreq)
 
+    thisIon%Xsec = 0.d0
     do  i = 1, nFreq
        e = hCgs * freq(i) * ergtoEv
-       call phfit2(thisIon%z, thisIon%n, thisIon%outerShell , e , xsec)
-       thisIon%xSec(i) = dble(xSec)
+       if (e > thisIon%iPot) then
+          call phfit2(thisIon%z, thisIon%n, thisIon%outerShell , e , xsec)
+          thisIon%xSec(i) = dble(xSec)
+       endif
     enddo
   end subroutine addxSectionArray
 

@@ -7121,7 +7121,7 @@ IF ( .NOT. gridConverged ) RETURN
     r = modulus(rVec)
 
     thisOctal%rho(subcell) = 1.d-30
-    thisOctal%temperature(subcell) = 10.
+    thisOctal%temperature(subcell) = 10000.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
@@ -7144,7 +7144,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%ionFrac(subcell,3) = 1.e-10
        thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
-       thisOctal%temperature(subcell) = 10000.
+       thisOctal%temperature(subcell) = 6000.
        if ((r > radius(1)).and.(r < radius(it))) then
           call locate(radius, it, r, i)
           fac = (r-radius(i))/(radius(i+1)-radius(i))
