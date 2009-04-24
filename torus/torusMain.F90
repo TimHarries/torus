@@ -646,7 +646,7 @@ program torus
 
   if (molecular) then
      ! Plotting the various values stored in the AMR grid.
-     if ( geometry .eq. "molcluster" .and. plot_maps .and. myRankIsZero .and. .not. (restart .or. addnewmoldata)) &
+     if ( geometry .eq. "molcluster" .and. plot_maps .and. myRankIsZero .and. .not. (restart .or. addnewmoldata .or. readmol)) &
           call writeVtkFile(grid, "rho.vtk", "test.txt")
 
      if (writemol) call molecularLoop(grid, co)

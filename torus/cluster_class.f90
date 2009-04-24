@@ -358,8 +358,6 @@ contains
     real(double), parameter :: density_crit = 1d13
     type(vector) :: point, clusterparam
 
-    thisoctal => null()
-
     point = subcellcentre(thisOctal, subcell)
     ! density calculation
     clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 2)
