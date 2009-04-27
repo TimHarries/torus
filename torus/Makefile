@@ -360,8 +360,12 @@ endif
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
     F77COMP= mpif90
-    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+
+#    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces -check pointers
+    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+#    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+
 # Include run-time error checking using ifort. Use environment variable to avoid clash with 
 # ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
     ifeq ($(debug), yes)
@@ -384,10 +388,10 @@ ifeq ($(SYSTEM), zen)
     STARLIBS= #-DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
 #    -L/star/lib `ndf_link` 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
     KNOWN_SYSTEM=yes
 endif
-
 
 ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort

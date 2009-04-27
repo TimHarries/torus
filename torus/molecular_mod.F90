@@ -571,7 +571,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte
+          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, dongstep
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -787,7 +787,7 @@ module molecular_mod
          do while (.not.gridConverged)
 
             grand_iter = grand_iter + 1
-            ngcounter = ngcounter + 1
+            if(doNgstep) ngcounter = ngcounter + 1 ! controls Ng Acceleration, pronounced do-ng-step, not dongstep
             mintransold = mintrans
 
             if(.not. amr3d) then
