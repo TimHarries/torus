@@ -647,6 +647,10 @@ end if ! (my_rank /= 0)
 
     if (writeoutput) call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
+    if (writeoutput) &
+       call writeVtkFile(grid, "temp.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "HI         "/))
+
     if (niter == 10) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
@@ -4049,7 +4053,9 @@ end subroutine readHeIIrecombination
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
     use input_variables, only : readlucy, nlambda
+#ifdef MPI
     include 'mpif.h'
+#endif
     type(GRIDTYPE) :: grid
     character(len=80) :: imageFilename
     integer :: nSource

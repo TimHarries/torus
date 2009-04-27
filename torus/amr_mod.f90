@@ -8739,13 +8739,22 @@ end function readparameterfrom2dmap
     thisOctal%rho(subcell) = melvinDensity(rVec, grid)
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
-    thisOctal%inFlow(subcell) = .false.
-    if (thisOctal%rho(subcell) > 1.e-20) then
-       thisOctal%inFlow(subcell) = .true.
-    endif
+    thisOctal%inFlow(subcell) = .true.
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+
+    thisOctal%ionFrac(subcell,1) = 1.e-10
+    thisOctal%ionFrac(subcell,2) = 1.
+    thisOctal%ionFrac(subcell,3) = 1.e-10
+    thisOctal%ionFrac(subcell,4) = 1.       
+    thisOctal%etaCont(subcell) = 0.
+
+
+
   end subroutine assign_melvin
 
   subroutine assign_whitney(thisOctal,subcell,grid)

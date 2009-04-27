@@ -1032,7 +1032,7 @@ contains
     bigR = sqrt(point%x**2 + point%y**2)*1.e10
     H_R = H_0 * (bigR / (100.*auToCm))**beta
 
-    rhoEnv = 1.d-30
+    rhoEnv = 100.*mHydrogen
     if (r > r_c) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
        rhoEnv = (Mdot/(8. * pi * r_c * sqrt(bigG * Mstar)))  ! Equation 1
@@ -1047,12 +1047,12 @@ contains
 
     melvinDensity = max(rhoDisc, rhoEnv)
 
-    if (bigR < Rcav) melvinDensity = 1.e-30
+    if (bigR < Rcav) melvinDensity = 100.d0*mhydrogen
 
     if (bigR > Rcav) then
        cavZ = tan(pi/2.-0.5*openingAngle)*(bigR - Rcav) ! Eq 4
        if (abs(z) > cavZ) then
-          melvinDensity = 1.e-30
+          melvinDensity = 100. * mHydrogen !1.e-30
        endif
     endif
 
