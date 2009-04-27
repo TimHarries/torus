@@ -638,8 +638,8 @@ program torus
 #endif
 
   if (photoionization) then 
-     call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-       lucyfileNameout, lucyfileNamein)
+        call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
+             lucyfileNameout, lucyfileNamein)
   end if
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq

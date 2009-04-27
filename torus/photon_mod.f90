@@ -11,7 +11,6 @@
 
 module photon_mod
 
-  use photoion_mod, only :  getWavelengthBiasPhotoion ! test
   use vector_mod            ! the vector maths
   use constants_mod         ! physical constants
   use phasematrix_mod       ! phase matrix manipulation
@@ -1158,7 +1157,9 @@ contains
 
                    octVec = thisPhoton%position
                    call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
-                   call  getWavelengthBiasPhotoion(grid, thisOctal, subcell, lambda, dlam, nLambda, ilambda, fac, .true.)
+                   write(*,*) "deprecated"
+                   stop
+!                   call  getWavelengthBiasPhotoion(grid, thisOctal, subcell, lambda, dlam, nLambda, ilambda, fac, .true.)
                    thisPhoton%lambda = lambda(ilambda)
                    thisPhoton%stokes = thisPhoton%stokes * fac
 

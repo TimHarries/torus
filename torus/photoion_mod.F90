@@ -2,8 +2,10 @@
 
 module photoion_mod
 
+use math_mod
 use parallel_mod
 use gridio_mod
+use image_mod
 use source_mod
 use timing
 use grid_mod
@@ -11,14 +13,16 @@ use amr_mod
 use constants_mod
 use messages_mod
 use diffusion_mod
+use photon_mod
 use unix_mod, only: unixGetenv
 
 implicit none
 
-private :: intersectcubeamr
+private
 #ifdef MPI
  private :: updateGridMPIphoto
 #endif
+public :: photoIonizationLoop, createImage, refineLambdaArray
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -111,7 +115,7 @@ contains
     type(RECOMBTABLE) :: Hrecombtable
 
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
-    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
+    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat, totalFlux
 
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
@@ -203,20 +207,23 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
-    if (nLucy == 0) then
-       nMonte = nVoxels * 20
-    else
-       nMonte = nlucy
-    endif
 
     nIter = 0
     
     converged = .false.
 
     if (readlucy) then
+       call writeInfo("Reading lucy dumpfile")
        call readAmrGrid(lucyfilein,.false.,grid)
        converged = .true.
+    endif
+
+
+    call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
+    if (nLucy == 0) then
+       nMonte = nVoxels * 100
+    else
+       nMonte = nlucy
     endif
 
     do while(.not.converged)
@@ -330,7 +337,7 @@ contains
                          call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
 !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-!                         call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                         call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                       else
 !                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                       endif
@@ -460,7 +467,7 @@ contains
 
        do i = 1 , 3
           call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-!          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
        enddo
 
     enddo
@@ -640,7 +647,7 @@ end if ! (my_rank /= 0)
 
     if (writeoutput) call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
-    if (niter == 20) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 10) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
@@ -655,6 +662,9 @@ end if ! (my_rank /= 0)
  if (writelucy) then
     call writeAmrGrid(lucyfileout,.false.,grid)
  endif
+
+ call writeMultiImages(grid, nSource, source, VECTOR(1.d0,0.d0,0.d0))
+
 end subroutine photoIonizationloop
 
 
@@ -2743,7 +2753,7 @@ subroutine createGammaTable(table, thisfilename)
   enddo
 
   where (table%gamma(1:table%nFreq,1:table%nTemp) == 0.d0)
-     table%gamma(1:table%nFreq,1:table%nTemp) = 1.d-10
+     table%gamma(1:table%nFreq,1:table%nTemp) = 1.d-30
   end where
   table%gamma(1:table%nFreq,1:table%nTemp) =log10(table%gamma(1:table%nFreq,1:table%nTemp))
   table%freq(1:table%nFreq) = log10(table%freq(1:table%nFreq))
@@ -2791,7 +2801,7 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
   ! do Saha-Milne continua for H, HeI and HeII
 
-  do k = 1 , 2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  do k = 1 , 2 !3!!!!!!!!!!!!!!!!!
 
      if (k == 1) iIon = 1
      if (k == 2) iIon = 3
@@ -2799,9 +2809,6 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
      call locate(freq, nfreq, grid%ion(iIon)%nuThresh, n1)
      n2 = nFreq
-!     if (iIon == 3) then
-!        call locate(freq, nfreq, grid%ion(iIon+1)%nuThresh, n2)
-!     endif
      do i = n1, n2
         
         e = freq(i) * hcgs* ergtoev
@@ -2853,7 +2860,6 @@ subroutine addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
 
      call locate(freq, nFreq, grid%ion(iIon)%nuThresh, iEnd)
      do i = 1, iEnd
-!     do i = 1, nFreq
         fac = returnGamma(table(k), dble(thisOctal%temperature(subcell)) , freq(i))
         fac = fac*1.d-40 ! units of 10^-40 erg/s/cm/cm/cm/hz
         fac = fac * thisOctal%ne(subcell) * thisOctal%nh(subcell) &
@@ -3142,15 +3148,15 @@ subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal
      end do
   end do
 
-!  LymanAlpha = 10.d0**(-0.897*log10(thisOctal%temperature(subcell)) + 5.05d0) * &
-!       thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * &
-!       grid%ion(1)%abundance) * 1.d-25
-!  lineFreq = cSpeed/1215.67D-8
-!  if ((lineFreq > freq(1)).and.(lineFreq < freq(nfreq))) then
-!     call locate(freq, nFreq, lineFreq, i)
-!     i = i + 1
-!     spectrum(i) = spectrum(i) + lymanAlpha 
-!  endif
+  LymanAlpha = 10.d0**(-0.897*log10(thisOctal%temperature(subcell)) + 5.05d0) * &
+       thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * &
+       grid%ion(1)%abundance) * 1.d-25
+  lineFreq = cSpeed/1215.67D-8
+  if ((lineFreq > freq(1)).and.(lineFreq < freq(nfreq))) then
+     call locate(freq, nFreq, lineFreq, i)
+     i = i + 1
+     spectrum(i) = spectrum(i) + lymanAlpha
+  endif
   
 
 end subroutine addHydrogenRecombinationLines
@@ -4020,6 +4026,424 @@ end subroutine readHeIIrecombination
      end subroutine unpackIonFrac
 #endif
 
+  subroutine writeMultiImages(grid, nSource, source, observerDirection)
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: observerDirection
+    real(double) :: lambdaLine(6)
+    integer :: nLine , i
+    real(double) :: totalFlux
+
+    nLine = 6
+    lambdaLine(1) = 6300.d0
+    lambdaLine(2) = 6363.d0
+    lambdaLine(3) = 3726.d0
+    lambdaLine(4) = 3729.d0
+    lambdaLine(5) = 4959.d0
+    lambdaLine(6) = 5007.d0
+    do i = 1, nLine
+       call createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine(i))
+    enddo
+  end subroutine writeMultiImages
+
+  subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
+    use input_variables, only : readlucy, nlambda
+    type(GRIDTYPE) :: grid
+    character(len=80) :: imageFilename
+    integer :: nSource
+    real(double) :: lambdaLine
+    type(SOURCETYPE) :: source(:), thisSource
+    type(PHOTON) :: thisPhoton, observerPhoton
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: totalFlux, tempTotalFlux
+    integer :: subcell
+    integer :: iPhoton, nPhotons
+    integer :: iLam
+    integer :: iSource
+    integer :: iThread
+    type(VECTOR) :: rVec, uHat, rHat, observerDirection
+    real(double) :: wavelength, thisFreq
+    logical :: endLoop, addToiMage
+    integer :: newthread
+    type(IMAGETYPE) :: thisimage
+    logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing, stillSCattering
+    real(double) :: totalEmission
+    integer :: iLambdaPhoton, nInf, i
+    real(double) :: lCore, probsource, r
+    real(double), allocatable :: threadProbArray(:)
+    integer :: np(10)
+    integer :: nDone
+    real(double) :: powerPerPhoton
+    real(double) :: totalLineEmission, totalContEmission
+
+    call init_random_seed()
+
+
+
+
+    thisImage = initImage(50, 50, real(4.*grid%octreeRoot%subcellSize), &
+         real(4.*grid%octreeRoot%subcellSize), 0., 0.)
+
+    
+    call addEmissionLine(grid, 1.d0, lambdaLine)
+    call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
+    call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
+
+    totalEmission = totalEmission * 1.d30
+
+    if (nSource > 0) then              
+       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
+    else
+       lcore = tiny(lcore)
+    endif
+
+    write(*,*) "Total line emission ",totalEmission
+    write(*,*) "Total source emission ",lCore
+
+    Probsource = lCore / (lCore + totalEmission)
+
+    if (myRankGlobal == 0) then
+       write(*,*) "Probability of photon from sources: ", probSource
+    endif
+
+    nPhotons = 1000000
+    nInf = 0
+
+    powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
+    
+
+    mainloop: do iPhoton = 1, nPhotons
+
+       thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
+       thisPhoton%iLam = iLambdaPhoton
+       thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
+       thisPhoton%observerPhoton = .false.
+       call random_number(r)
+
+
+       if (r < probSource) then
+          call randomSource(source, nSource, iSource)
+          thisSource = source(iSource)
+          call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
+       else
+          call random_number(r)
+          thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
+          thisPhoton%direction = randomUnitVector()
+	  thisOctal => grid%octreeRoot
+          call locateContProbAMR(r,thisOctal,subcell)
+          thisPhoton%position = randomPositionInCell(thisOctal, subcell)
+       endif
+
+       observerPhoton = thisPhoton
+       observerPhoton%observerPhoton = .true.
+       observerPhoton%tau = 0.d0
+       observerPhoton%direction = observerDirection
+       
+       call propagateObserverPhoton(grid, observerPhoton)
+       call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
+
+       stillScattering = .true.
+       ninf = ninf + 1
+       endloop = .false.
+
+       do while ((.not.endLoop).and.stillScattering)
+          call moveToNextScattering(grid, thisPhoton, escaped, absorbed)
+                
+          if (escaped.or.absorbed) then
+             stillScattering = .false.
+             exit
+          endif
+          
+          call scatterPhotonLocal(grid, thisPhoton)
+          observerPhoton = thisPhoton
+          observerPhoton%observerPhoton = .true.
+          observerPhoton%tau = 0.d0
+          observerPhoton%direction = observerDirection
+          call propagateObserverPhoton(grid, observerPhoton)          
+          call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
+       end do
+    end do mainloop
+
+#ifdef MPI
+    call collateImages(thisImage)
+     call MPI_ALLREDUCE(totalFlux, tempTotalFlux, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     totalFlux = tempTotalFlux
+#endif
+
+    if (writeoutput) then
+       write(imageFilename, '(a,i4.4,a)') "test_",nint(lambdaLine),".fits"
+       call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
+    endif
+    call freeImage(thisImage)
+  end subroutine createImage
+
+
+  subroutine scatterPhotonLocal(grid, thisPhoton)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisPhoton
+
+    thisPhoton%direction = randomUnitVector() !isotropic scattering
+
+  end subroutine scatterPhotonLocal
+
+  subroutine propagateObserverPhoton(grid, thisPhoton)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisPhoton
+    logical :: addToImage
+    logical :: endLoop
+    integer :: newThread
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: tVal
+    real(double) :: kappaAbsGas, kappaScaGas, kappaExt
+    integer :: ilam
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+
+    endLoop = .false.
+    do while (.not.endLoop)
+       call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
+       call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
+            kappaAbs=kappaAbsGas, kappaSca=kappaScaGas)
+       kappaExt = kappaAbsGas + kappaScaGas
+       thisPhoton%tau = thisPhoton%tau + tval * kappaExt
+       thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
+       if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
+          endLoop = .true.
+       else
+          call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+       endif
+    enddo
+  end subroutine propagateObserverPhoton
+
+  subroutine moveToNextScattering(grid, thisPhoton, escaped, absorbed)
+    type(GRIDTYPE) :: grid
+    type(PHOTON) :: thisphoton
+    logical :: escaped, absorbed,  scattered
+    integer :: newThread
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: tau, thisTau, tVal, r, albedo
+    real(double) ::  kappaAbsGas, kappaScaGas,  kappaExt
+    logical :: endLoop
+    
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+    
+    absorbed = .false.
+    escaped = .false.
+    endLoop = .false.
+    scattered = .false.
+    do while (.not.endLoop)
+       call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
+       call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
+            kappaAbs=kappaAbsGas, kappaSca=kappaScaGas)
+       kappaExt = kappaAbsGas + kappaScaGas
+       tau = kappaExt * tVal
+
+       call random_number(r)
+       thisTau = -log(1.d0-r)
+
+       if (thisTau > tau) then ! photon crosses to boundary
+          thisPhoton%position = thisPhoton%position + (tVal + 1.d-2*grid%halfSmallestSubcell) * thisPhoton%direction
+          if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
+             escaped = .true.
+             endLoop = .true.
+          else
+             call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
+          endif
+       else
+
+          thisPhoton%position = thisPhoton%position + ((thisTau/tau)*tVal) * thisPhoton%direction
+
+          endLoop = .true.
+          albedo = kappaScaGas/kappaExt
+          call random_number(r)
+          if (r < albedo) then
+             scattered = .true.
+          else
+             absorbed = .true.
+          endif
+
+       endif
+    enddo
+  end subroutine moveToNextScattering
+
+
+#ifdef MPI
+
+  subroutine collateImages(thisImage)
+    include 'mpif.h'
+    type(IMAGETYPE) :: thisImage
+    real, allocatable :: tempRealArray(:), tempRealArray2(:)
+    real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:)
+    integer :: ierr
+
+     allocate(tempRealArray(SIZE(thisImage%pixel)))
+     allocate(tempRealArray2(SIZE(thisImage%pixel)))
+     allocate(tempDoubleArray(SIZE(thisImage%pixel)))
+     allocate(tempDoubleArray2(SIZE(thisImage%pixel)))
+     tempRealArray = 0.0
+     tempRealArray2 = 0.0
+     tempDoubleArray = 0.0_db
+     tempDoubleArray2 = 0.0_db
+
+     if (myrankGlobal == 1) write(*,*) "Collating images..."
+     tempDoubleArray = reshape(thisImage%pixel%i,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%i = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%i))
+
+     tempDoubleArray = reshape(thisImage%pixel%q,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%q = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%q))
+
+     tempDoubleArray = reshape(thisImage%pixel%u,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%u = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%u))
+
+     tempDoubleArray = reshape(thisImage%pixel%v,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%v = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%v))
+
+
+     tempRealArray = reshape(thisImage%vel,(/SIZE(tempRealArray)/))
+     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%vel = reshape(tempRealArray2,SHAPE(thisImage%vel))
+
+     tempRealArray = reshape(thisImage%totWeight,(/SIZE(tempRealArray)/))
+     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%totWeight = reshape(tempRealArray2,SHAPE(thisImage%totWeight))
+
+     if (myrankGlobal == 1) write(*,*) "Done."
+     deallocate(tempRealArray)
+     deallocate(tempRealArray2)
+     deallocate(tempDoubleArray)
+     deallocate(tempDoubleArray2)
+
+  end subroutine collateImages
+
+#endif
+
+   subroutine addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFlux)
+     
+     type(IMAGETYPE), intent(inout) :: thisImage
+     type(PHOTON) :: thisPhoton
+     type(VECTOR) :: observerDirection,  xProj, yProj, rotationAxis
+     real :: xDist, yDist
+     integer :: xPix, yPix
+     integer :: i
+     real(double) :: totalFlux
+
+     type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+
+     xPix = 0; yPix = 0
+
+
+     xProj =  zAxis .cross. observerDirection
+     call normalize(xProj)
+     yProj = observerDirection .cross. xProj
+     call normalize(yProj)
+     xDist = (thisPhoton%position) .dot. xProj
+     yDist = (thisPhoton%position) .dot. yProj
+           
+
+     call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
+
+     if ((xPix >= 1) .and. &
+          (yPix >= 1) .and. &
+          (xPix <= thisImage%nx) .and. &
+          (yPix <= thisImage%ny)) then
+
+              
+        thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
+             + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
+     endif
+     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau)
+           
+   end subroutine addPhotonToImageLocal
+
+
+   subroutine addEmissionLine(grid, dLambda, lineWavelength)
+     type(GRIDTYPE) :: grid
+     real(double) :: lineWavelength, dLambda
+     integer :: iIon, iTransition
+     logical :: ok
+
+     call identifyTransition(grid, lineWavelength, iIon, iTransition, ok)
+
+     if (ok) then
+        call addToEmission(grid, grid%octreeRoot, dLambda, iIon, iTransition)
+     endif
+
+     
+   end subroutine addEmissionLine
+
+
+   recursive subroutine addToEmission(grid, thisOctal, dLambda, iIon, iTransition)
+     type(GRIDTYPE) :: grid
+     real(double) :: dLambda, rate
+     real :: pops(10)
+     integer :: iIon, iTransition
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child 
+     integer :: subcell, i
+
+
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren, 1
+              if (thisOctal%indexChild(i) == subcell) then
+                 child => thisOctal%child(i)
+                 call addToEmission(grid, child, dLambda, iIon, iTransition)
+                 exit
+              end if
+           end do
+        else
+
+           call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
+                thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+           rate =  pops(grid%ion(iion)%transition(iTransition)%j) * grid%ion(iion)%transition(itransition)%energy * &
+                grid%ion(iion)%transition(itransition)%a/ergtoev
+           rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+
+           thisOctal%etaCont(subcell) =  rate/dLambda
+
+
+        endif
+     enddo
+   end subroutine addToEmission
+
+  subroutine identifyTransition(grid, lambda, iIon, iTransition, ok)
+    type(GRIDTYPE) :: grid
+    real(double) :: lambda
+    integer :: iIon, iTransition, i, j
+    character(len=80) :: message
+    logical :: ok
+
+    ok = .false.
+
+    do i = 1, grid%nIon
+       do j = 1, grid%ion(i)%nTransitions
+          if (abs(lambda-grid%ion(i)%transition(j)%lambda) < 1.d0) then
+             write(message, '(a, a, a)') "Transition of ", trim(grid%ion(i)%species), " identified."
+             call writeInfo(message)
+             iIon = i
+             iTransition = j
+             ok = .true.
+          end if
+       end do
+    enddo
+  end subroutine identifyTransition
+
+     
 
 end module
 

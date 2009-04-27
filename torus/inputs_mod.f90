@@ -1482,6 +1482,15 @@ contains
 
        call getInteger("mincrossings", minCrossings, cLine, nLines, &
             "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.true.)
+
+       call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getLogical("writelucy", writeLucy, cLine, nLines, &
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readlucy", readLucy, cLine, nLines, &
+            "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
 
     if (geometry == "starburst") then

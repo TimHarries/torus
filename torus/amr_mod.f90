@@ -7144,11 +7144,11 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%ionFrac(subcell,3) = 1.e-10
        thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
-       thisOctal%temperature(subcell) = 6000.
+       thisOctal%temperature(subcell) = 10000.
        if ((r > radius(1)).and.(r < radius(it))) then
           call locate(radius, it, r, i)
           fac = (r-radius(i))/(radius(i+1)-radius(i))
-!          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
+          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
        endif
 
     endif
@@ -12743,7 +12743,7 @@ end function readparameterfrom2dmap
        r2 = subcen%x + thisOctal%subcellSize/2.d0
        call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
        distToR2 = max(x1,x2)
-       !      write(*,*) "r2",x1,x2,disttor2
+!             write(*,*) "r2",x1,x2,disttor2
 
        !   inner radius
 
@@ -12756,7 +12756,7 @@ end function readparameterfrom2dmap
           call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
           distTor1 = min(x1,x2)
        endif
-       !      write(*,*) "r1",x1,x2,disttor1
+!             write(*,*) "r1",x1,x2,disttor1,mu,theta
 
        tval = min(distTor1, distTor2)
        goto 666
@@ -16036,6 +16036,8 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%probDistLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
