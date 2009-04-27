@@ -2367,7 +2367,7 @@ contains
 
        do i = 1, nPairs
           if (myrankglobal==1) &
-               write(*,'(a,i3,i3,a,i3,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
+            write(*,'(a,i3,i3,a,i3,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
        enddo
 
 
@@ -2563,7 +2563,8 @@ contains
 
           if (myrankGlobal /= 0) then
              write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
-             call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
+             call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
           endif
 
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"

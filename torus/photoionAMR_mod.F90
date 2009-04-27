@@ -4050,7 +4050,8 @@ end subroutine readHeIIrecombination
           call writeAMRgrid("lucy.dat", .false., grid)
           call writeVtkFile(grid, "current.vtk", &
                valueTypeString=(/"rho        ","HI         " ,"temperature" /))
-          call  dumpValuesAlongLine(grid, "radial.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
+          call  dumpValuesAlongLine(grid, "radial.dat", VECTOR(0.d0,0.d0,0.0d0), &
+               VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
        endif
     endif
 
