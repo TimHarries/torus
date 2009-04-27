@@ -621,16 +621,12 @@ program torus
         endif
 
 
-        if (myRankGlobal /= 0) then
-           if (grid%octreeRoot%twoD) then
-              call doHydrodynamics2d(grid)
-           else if (grid%octreeRoot%oneD) then
-              call doHydrodynamics1d(grid)
-           else if (grid%octreeRoot%threeD) then
-              call doHydrodynamics3d(grid)
-              goto 666
-           endif
-        else
+        if (grid%octreeRoot%twoD) then
+           call doHydrodynamics2d(grid)
+        else if (grid%octreeRoot%oneD) then
+           call doHydrodynamics1d(grid)
+        else if (grid%octreeRoot%threeD) then
+           call doHydrodynamics3d(grid)
            goto 666
         endif
 

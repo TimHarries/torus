@@ -4049,6 +4049,7 @@ end subroutine readHeIIrecombination
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
     use input_variables, only : readlucy, nlambda
+    include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=80) :: imageFilename
     integer :: nSource
@@ -4076,7 +4077,8 @@ end subroutine readHeIIrecombination
     integer :: nDone
     real(double) :: powerPerPhoton
     real(double) :: totalLineEmission, totalContEmission
-
+    integer :: iBeg, iEnd
+    integer :: ierr
     call init_random_seed()
 
 
@@ -4112,6 +4114,17 @@ end subroutine readHeIIrecombination
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     
+    iBeg = 1
+    iEnd = nPhotons
+
+
+#ifdef MPI
+    ibeg = myrankGlobal - 1
+    i = nPhotons/nThreadsGlobal
+    ibeg = (myrankGlobal * i) + 1
+    iend = ibeg + i
+    if (myRankGlobal == (nThreadsGlobal-1)) iEnd = nPhotons
+#endif
 
     mainloop: do iPhoton = 1, nPhotons
 

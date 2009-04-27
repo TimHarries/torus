@@ -7776,7 +7776,9 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%pressure_i(subcell) = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+
     thisOctal%boundaryCondition(subcell) = 2
+
     thisOctal%phi_i(subcell) = -bigG * 100.d0 * mSol / (modulus(rVec)*1.d10)
     thisOctal%gamma(subcell) = 2.d0
     thisOctal%iEquationOfState(subcell) = 3

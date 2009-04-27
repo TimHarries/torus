@@ -195,7 +195,7 @@ contains
           call writeInfo("Done",TRIVIAL)
        endif
 
-!       call testIonFront(grid%octreeRoot, grid%currentTime)
+       !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot, mu)
@@ -220,8 +220,8 @@ contains
           endif
 
 
-!          call writeVtkFile(grid, "beforegeneric.vtk", &
-!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+          !          call writeVtkFile(grid, "beforegeneric.vtk", &
+          !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -234,7 +234,7 @@ contains
              call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
              if (ALL(tConverged(1:nHydroThreads))) exit
           end do
-          
+
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -277,23 +277,22 @@ contains
           dumpThisTime = .true.
        endif
 
-       if (myRank /= 0) then
-          if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", &
-               grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
+       if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", &
+            grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
-          if (myrank == 1) write(*,*) "Time step", dt
+       if (myrank == 1) write(*,*) "Time step", dt
 
-          if (myRank == 1) call tune(6,"Hydrodynamics step")
-          call writeInfo("calling hydro step",TRIVIAL)
+       if (myRank == 1) call tune(6,"Hydrodynamics step")
+       call writeInfo("calling hydro step",TRIVIAL)
 
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
-          if (myRank == 1) call tune(6,"Hydrodynamics step")
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call resetNh(grid%octreeRoot)
-
+       if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+       if (myRank == 1) call tune(6,"Hydrodynamics step")
+       if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (myrank /= 0) call resetNh(grid%octreeRoot)
 
 
+       if (myrank /= 0) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 5) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
@@ -301,19 +300,17 @@ contains
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
-       
+
           call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
        endif
 
 
 
 
        call writeInfo("Calling photoionization loop",TRIVIAL)
-!       call ionizeGrid(grid%octreeRoot)
-!       call testIonFront(grid%octreeRoot, grid%currentTime)
+       !       call ionizeGrid(grid%octreeRoot)
+       !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
        call setupNeighbourPointers(grid, grid%octreeRoot)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
@@ -345,8 +342,8 @@ contains
 
        endif
 
-!          call writeVtkFile(grid, "current.vtk", &
-!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+       !          call writeVtkFile(grid, "current.vtk", &
+       !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
        grid%currentTime = grid%currentTime + dt
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
@@ -355,12 +352,12 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-!          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-!          call writeAmrGrid(mpiFilename, .false., grid)
+          !          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
+          !          call writeAmrGrid(mpiFilename, .false., grid)
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
-            valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-            "hydrovelocity"/))
+               valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+               "hydrovelocity"/))
 
 
        endif
@@ -4053,6 +4050,7 @@ end subroutine readHeIIrecombination
           call writeAMRgrid("lucy.dat", .false., grid)
           call writeVtkFile(grid, "current.vtk", &
                valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+          call  dumpValuesAlongLine(grid, "radial.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
        endif
     endif
 
