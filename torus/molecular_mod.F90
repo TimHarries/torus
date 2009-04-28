@@ -36,6 +36,7 @@ module molecular_mod
    integer :: accstep = 4 ! for ng acceleration
    integer :: accstepgrand = 6
    integer, allocatable :: iseedpublic(:)
+   real(double) :: r1(5) !! quasi random number generators
    
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
@@ -555,6 +556,16 @@ module molecular_mod
               allocate(thisoctal%tau(minlevel,1:thisoctal%maxchildren))
            endif
 
+           if(associated(thisOctal%levelconvergence)) then
+              h = size(thisoctal%levelconvergence(:,1))
+              temparray(1:h,1:thisoctal%maxchildren) = thisoctal%levelconvergence(1:h,1:thisoctal%maxchildren)
+              deallocate(thisoctal%levelconvergence)
+              allocate(thisoctal%levelconvergence(minlevel,1:thisoctal%maxchildren))
+              thisoctal%levelconvergence(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
+           else
+              allocate(thisoctal%levelconvergence(minlevel,1:thisoctal%maxchildren))
+           endif
+
            if(associated(thisOctal%convergence)) then
               continue
            else
@@ -571,7 +582,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, dongstep
+          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, dongstep, quasi
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -833,6 +844,7 @@ module molecular_mod
 
             if (fixedRays) then
                call random_seed(put=iseed)   ! same seed for fixed rays
+               if(quasi) call sobseq(r1, -1)
             else
                call init_random_seed()
             endif
@@ -895,8 +907,11 @@ module molecular_mod
              do while (.not. popsConverged)
                 iter = iter + 1
 
-                oldpops1(1:minlevel-2) = oldpops2(1:minlevel-2)
-                oldpops2(1:minlevel-2) = oldpops3(1:minlevel-2)
+                if(dongstep) then
+                   oldpops1(1:minlevel-2) = oldpops2(1:minlevel-2)
+                   oldpops2(1:minlevel-2) = oldpops3(1:minlevel-2)
+                endif
+                
                 oldpops3(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell) ! retain old pops before calculating new one
 
                 do iTrans = 1, maxtrans
@@ -911,7 +926,7 @@ module molecular_mod
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
                      thisMolecule, thisOctal%nh2(subcell))
                 
-                if(mod(iter, accstep) .eq. 0) then
+                if(mod(iter, accstep) .eq. 0 .and. dongstep) then
                    oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
                    thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2)))
@@ -928,7 +943,9 @@ module molecular_mod
 
                 maxlocerror = maxloc(error(1:minlevel-1))
                 maxerrorloc = maxlocerror(1)
-                thisoctal%convergence(subcell) = (100.d0 * iter) + dble(maxerrorloc-1) + min(0.99d0,maxval(error(1:minlevel-1))) 
+                thisoctal%convergence(subcell) = 100.0 * iter + &
+                                                 real(maxerrorloc-1) + &
+                                                 min(0.99,maxval(error(1:minlevel-1))) 
 
 !                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
                 fac = sum(error(1:minlevel)**2) ! convergence criterion
@@ -1070,7 +1087,7 @@ end subroutine molecularLoop
 
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
 
-     use input_variables, only : useDust, realdust
+     use input_variables, only : useDust, realdust, quasi
 
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
@@ -1100,11 +1117,10 @@ end subroutine molecularLoop
      integer :: ilambda
      integer :: iCount
 
-     real(double), save :: r1(5) !! quasi random number generators
      real(double), save :: OneOverNTauArray(maxsamplePoints)
 
      logical,save :: firsttime = .true.
-     logical :: quasi = .false.
+
      integer  :: iLower(maxTrans), iUpper(maxTrans)
      real(double),save :: BnuBckGrnd(128)
      real(double) :: balance(maxtrans), spontaneous(maxtrans)
@@ -1141,12 +1157,12 @@ end subroutine molecularLoop
        enddo
 
        firsttime =.false.
-       if (quasi) call sobseq(r1,-1)
     endif
 
      if(quasi) then     
         call sobseq(r1)    
         direction = specificUnitVector(r1(1),r1(2))
+        call normalize(direction)
         deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line centre
      else
         call random_number(r)
@@ -1536,7 +1552,7 @@ end subroutine molecularLoop
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
                           iter, nVoxels,fixedrays)
 
-     use input_variables, only : tolerance
+     use input_variables, only : tolerance, dongstep
 
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
@@ -1564,33 +1580,37 @@ end subroutine molecularLoop
            end do
         else
            ! do the ng Acceleration step here
-!           if(mod(ngcounter, accstepgrand) .eq. 0 .and. .not. fixedrays) then
-           if((fixedrays .and. (mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0)) &
-                .or. nray .eq. 12800 .or. nray .eq. 800) then
+           if(dongstep) then
+              if((fixedrays .and. mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) &
+                   .or. nray .eq. 12800 .or. nray .eq. 800) then
 
-              oldpops1(1:minlevel-2) = thisOctal%oldestmolecularLevel(1:minlevel-2,subcell)
-              oldpops2(1:minlevel-2) = thisOctal%oldmolecularLevel(1:minlevel-2,subcell)
-              oldpops3(1:minlevel-2) = thisOctal%molecularLevel(1:minlevel-2,subcell)
-              oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
+                 oldpops1(1:minlevel-2) = thisOctal%oldestmolecularLevel(1:minlevel-2,subcell)
+                 oldpops2(1:minlevel-2) = thisOctal%oldmolecularLevel(1:minlevel-2,subcell)
+                 oldpops3(1:minlevel-2) = thisOctal%molecularLevel(1:minlevel-2,subcell)
+                 oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
 
-              if(fixedrays) then
-              
-                 thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
-                      doubleweight = .false.))
-              else
-                 thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
-                      doubleweight = .true.))
+                 if(fixedrays) then
+                    
+                    thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
+                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
+                         doubleweight = .false.))
+                 else
+                    thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
+                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
+                         doubleweight = .true.))
+                 endif
+!              thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell) / &
+!                                                       sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
               endif
-              thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell) / &
-                                                       sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
            endif
 
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel-1,subcell) - &
                 thisOctal%molecularLevel(1:minlevel-1,subcell)) / &
                 thisOctal%newmolecularLevel(1:minlevel-1,subcell)))
 !           write(*,*) thisOctal%newMolecularLevel(1,subcell), thisOctal%MolecularLevel(1,subcell)
+
+           thisoctal%levelconvergence(1:minlevel-1,subcell) = int((max(min(log10(newFracChangePerLevel),1.0),-9.0) + 4.0) * 6553.6)
+
            maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel-1))
 
            temp = newFracChangePerLevel(1:minlevel-1)
@@ -2039,6 +2059,7 @@ end subroutine molecularLoop
 
 
            if(writeoutput) then
+              write(message,*) "Done ",iv," velocity"
               call tune(6, message)  ! stop a stopwatch
            endif
 
@@ -3477,7 +3498,7 @@ end subroutine plotdiscValues
   
   subroutine calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
     
-    use input_variables, only : tolerance
+    use input_variables, only : tolerance, dongstep
 
     integer :: nvoxels
     logical :: fixedrays
@@ -3504,9 +3525,11 @@ end subroutine plotdiscValues
     ConvergenceCounter    = 0
     avgFracChange = 0.d0
 
-!    if(mod(ngcounter, accstepgrand) .eq. 0 .and. .not. fixedrays) call writeinfo("Ng step", FORINFO)
-    if((fixedrays .and. (mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0)) .or. nray .eq. 12800 .or. nray .eq. 800) &
-         call writeinfo("Ng step", TRIVIAL)
+    if(dongstep .and.  &
+      ((fixedrays .and. (mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0)) &
+      .or. nray .eq. 12800 &
+      .or. nray .eq. 800)) &
+      call writeinfo("Ng step", TRIVIAL)
 
     call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
          convergenceCounter, grand_iter, nVoxels, fixedrays) ! compares level populations between this and previous levels 

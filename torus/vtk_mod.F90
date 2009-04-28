@@ -302,72 +302,87 @@ contains
 !                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-37) then
 !                     write(lunit, *) 1e-37
 !                  else
-                     write(lunit, *) thisOctal%molecularlevel(subcell,1)
+                     write(lunit, *) thisOctal%molecularlevel(1,subcell)
 !                  endif
 
                case("J=1")
 !                  if(thisOctal%molecularlevel(subcell,2) .lt. 1.d-37) then
 !                     write(lunit, *) 1e-37
 !                  else
-                     write(lunit, *) thisOctal%molecularlevel(subcell,2)
+                     write(lunit, *) thisOctal%molecularlevel(2,subcell)
 !                  endif
 
                case("J=2")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,3)
+                  write(lunit, *) thisOctal%molecularlevel(3,subcell)
 
                case("J=3")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,4)
+                  write(lunit, *) thisOctal%molecularlevel(4,subcell)
 
                case("J=4")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,5)
+                  write(lunit, *) thisOctal%molecularlevel(5,subcell)
 
                case("J=5")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,6)
+                  write(lunit, *) thisOctal%molecularlevel(6,subcell)
 
                case("J=10")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,10)
+                  write(lunit, *) thisOctal%molecularlevel(11,subcell)
 
                case("J=16")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,16)
+                  write(lunit, *) thisOctal%molecularlevel(17,subcell)
 
                case("dI")
-                  write(lunit, *) thisOctal%newmolecularlevel(subcell,1)
+                  write(lunit, *) thisOctal%newmolecularlevel(1,subcell)
 
                case("dIattenuated")
-                  write(lunit, *) thisOctal%newmolecularlevel(subcell,2)
+                  write(lunit, *) thisOctal%newmolecularlevel(2,subcell)
 
                case("i0")
-                  write(lunit, *) thisOctal%newmolecularlevel(subcell,3)
+                  write(lunit, *) thisOctal%newmolecularlevel(3,subcell)
 
                case("crossing")
-                  write(lunit, *) thisOctal%newmolecularlevel(subcell,4)
+                  write(lunit, *) thisOctal%newmolecularlevel(4,subcell)
 
                case("tauacrosscell")
-                  write(lunit, *) thisOctal%newmolecularlevel(subcell,5)
+                  write(lunit, *) thisOctal%newmolecularlevel(5,subcell)
 
                case("tau10")
-                  write(lunit, *) thisOctal%tau(subcell,1)
+                  write(lunit, *) thisOctal%tau(1,subcell)
 
                case("tau21")
-                  write(lunit, *) thisOctal%tau(subcell,2)
+                  write(lunit, *) thisOctal%tau(2,subcell)
 
                case("tau32")
-                  write(lunit, *) thisOctal%tau(subcell,3)
+                  write(lunit, *) thisOctal%tau(3,subcell)
 
                case("tau43")
-                  write(lunit, *) thisOctal%tau(subcell,4)
+                  write(lunit, *) thisOctal%tau(4,subcell)
 
                case("tau54")
-                  write(lunit, *) thisOctal%tau(subcell,5)
+                  write(lunit, *) thisOctal%tau(5,subcell)
 
                case("tau65")
-                  write(lunit, *) thisOctal%tau(subcell,6)
+                  write(lunit, *) thisOctal%tau(6,subcell)
 
                case("tau76")
-                  write(lunit, *) thisOctal%tau(subcell,7)
+                  write(lunit, *) thisOctal%tau(7,subcell)
 
                case("tau87")
-                  write(lunit, *) thisOctal%tau(subcell,8)
+                  write(lunit, *) thisOctal%tau(8,subcell)
+
+               case("level0error")
+                  write(lunit, *) 10**((real(thisOctal%levelconvergence(1,subcell)) / 6553.6) - 4)
+
+               case("level1error")
+                  write(lunit, *) 10**((real(thisOctal%levelconvergence(2,subcell)) / 6553.6) - 4)
+
+               case("level2error")
+                  write(lunit, *) 10**((real(thisOctal%levelconvergence(3,subcell)) / 6553.6) - 4)
+
+               case("level3error")
+                  write(lunit, *) 10**((real(thisOctal%levelconvergence(4,subcell)) / 6553.6) - 4)
+
+               case("level4error")
+                  write(lunit, *) 10**((real(thisOctal%levelconvergence(5,subcell)) / 6553.6) - 4)
 
                case("niter")
                   write(lunit, *) int(thisOctal%convergence(subcell)/100)
@@ -382,22 +397,22 @@ contains
                   write(lunit, *) thisOctal%molabundance(subcell)
 
                case("dc0")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,1) * thisOctal%departcoeff(subcell,1)
+                  write(lunit, *) thisOctal%molecularlevel(1,subcell) * thisOctal%departcoeff(1,subcell)
 
                case("dc1")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,2) * thisOctal%departcoeff(subcell,2)
+                  write(lunit, *) thisOctal%molecularlevel(2,subcell) * thisOctal%departcoeff(2,subcell)
 
                case("dc2")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,3) * thisOctal%departcoeff(subcell,3)
+                  write(lunit, *) thisOctal%molecularlevel(3,subcell) * thisOctal%departcoeff(3,subcell)
 
                case("dc3")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,4) * thisOctal%departcoeff(subcell,4)
+                  write(lunit, *) thisOctal%molecularlevel(4,subcell) * thisOctal%departcoeff(4,subcell)
 
                case("dc4")
-                  write(lunit, *) thisOctal%molecularlevel(subcell,5) * thisOctal%departcoeff(subcell,5)
+                  write(lunit, *) thisOctal%molecularlevel(5,subcell) * thisOctal%departcoeff(5,subcell)
 
                case("jnu10")
-                  write(lunit, *) thisOctal%jnu(subcell,1)
+                  write(lunit, *) thisOctal%jnu(1,subcell)
 
                case("dust1")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))

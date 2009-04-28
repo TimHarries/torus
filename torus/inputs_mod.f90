@@ -1313,7 +1313,11 @@ contains
             "Open Existing lucy file: ","(a,1l,1x,a)", .false., ok, .false.)
        call getReal("distance", gridDistance, cLine, nLines, &
             "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
-       
+       call getLogical("dongstep", dongstep, cLine, nLines, &
+               "Use Ng Acceleration: ","(a,1l,a)", .false., ok, .false.)
+       call getLogical("quasi", quasi, cLine, nLines, &
+               "Use Quasirandom numbers: ","(a,1l,a)", .false., ok, .false.)
+
        gridDistance = gridDistance * pcTocm   ! cm
        
        call getReal("tolerance", tolerance, cLine, nLines, &
@@ -1346,8 +1350,6 @@ contains
        if(readmol) then
           call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
                "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
-          call getLogical("dongstep", dongstep, cLine, nLines, &
-               "Use Ng Acceleration: ","(a,1l,a)", .false., ok, .false.)
           call getLogical("maxrhocalc", maxrhocalc, cLine, nLines, &
                "Max Rho Calc: ","(a,1l,a)", .true., ok, .true.)
           call getLogical("lineimage", lineImage, cLine, nLines, &

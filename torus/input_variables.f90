@@ -49,6 +49,7 @@ module input_variables
   real :: vturb ! Subsonic turbulent velocity
   logical :: lineEmission
   logical :: lineimage
+  logical :: quasi ! use quasirandom numbers
   logical :: dongstep ! controls Ng Acceleration
   logical :: densitysubsample ! do you want to subsample density in your images?
   logical :: maxrhocalc
