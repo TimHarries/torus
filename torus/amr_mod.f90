@@ -4224,7 +4224,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
-    use input_variables, only: planetgap, heightSplitFac, refineCentre
+    use input_variables, only: planetgap, heightSplitFac, refineCentre, h21cm
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4780,7 +4780,7 @@ IF ( .NOT. gridConverged ) RETURN
 !      endif
 
 
-      if(.not. split .and. (nparticle .ge. 2)) then
+      if(.not. split .and. (nparticle .ge. 2) .and. (.not. h21cm) ) then
          if(ave_density .gt. 1d-13) then
             T = 10.d0 * (ave_density * 1d13)**(0.4d0)
          Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5) ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO

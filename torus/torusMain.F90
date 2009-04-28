@@ -57,6 +57,7 @@ program torus
   use phaseloop_mod, only: do_phaseloop
   use timing, only: tune
   use ion_mod, only: addions
+  use angularImage, only: make_angular_image
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImage
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -690,7 +691,12 @@ program torus
         call writeAMRgrid("h21cm_grid",.false.,grid)
      endif
 
-     call make_h21cm_image(grid)
+     if ( internalView ) then 
+        call make_angular_image(grid)
+     else
+        call make_h21cm_image(grid)
+     end if
+
      goto 666
   end if
 

@@ -37,6 +37,7 @@ module datacube_mod
      real, pointer :: intensity(:,:,:) => null()
      real, pointer :: flux(:,:,:) => null()
      real, pointer :: tau(:,:,:) => null()
+     real, pointer :: nCol(:,:) => null()
   end type DATACUBE
 
 contains
@@ -194,6 +195,26 @@ contains
        
        !  Write the array to the FITS file.
        call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
+    endif
+
+    if(associated(thisCube%nCol)) then
+       write(*,*) "Writing ncol to fits file"
+       ! 8th HDU : nCol
+       call FTCRHD(unit, status)
+       bitpix=-32
+       naxis=2
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       nelements=naxes(1)*naxes(2)
+       
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+       !  Write the array to the FITS file.
+       call ftppre(unit,group,fpixel,nelements,thisCube%nCol,status)
+       call print_error(status)
+    else
+       write(*,*) "Not writing ncol to fits file"
     endif
 
     !  Close the file and free the unit number.
@@ -452,12 +473,14 @@ contains
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
     allocate(thisCube%flux(1:nx,1:ny,1:nv))
     allocate(thisCube%tau(1:nx,1:ny,1:nv))
+    allocate(thisCube%nCol(1:nx,1:ny))
 !    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
 !    allocate(thisCube%converged(1:nx,1:ny,1:nv))
 !    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
     thisCube%tau =  0.d0
+    thisCube%nCol = 0.d0
 !    thisCube%flux = 0.d0
 !    thisCube%nsubpixels = 0.d0
 !    thisCube%converged = 0

@@ -536,6 +536,7 @@ contains
     time=0.0
     call init_sph_data(udist, umass, utime, time, nptmass)
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
+    sphdata%codeEnergytoTemperature = 1.0 ! no conversion required
 
 ! Arrays
 

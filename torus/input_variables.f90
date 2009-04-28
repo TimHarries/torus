@@ -35,6 +35,7 @@ module input_variables
   real :: eccentricity
   real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
+  logical :: internalView ! observer is internal to the galaxy
   logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom

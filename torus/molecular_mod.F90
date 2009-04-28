@@ -1794,12 +1794,14 @@ end subroutine molecularLoop
 
    real(double) :: avgIntensityNew, avgIntensityOld
    real(double) :: varIntensityNew, varIntensityOld
+   real(double) :: avgNColNew, avgNColOld
    real(double) :: rtemp(2)
    real(double), save ::  r(10000,2)
+   real(double) :: nCol
 
    logical :: converged
    real(double) :: deltaV
-   real(double) :: out(2) 
+   real(double) :: out(3) 
    logical, save :: firsttime = .true.
    real(double) :: rhomax, i0max
    
@@ -1820,6 +1822,7 @@ end subroutine molecularLoop
   
    avgIntensityOld = 0.
    varIntensityOld = 0.
+   avgNColOld      = 0.0
    
    converged = .false. ! failed flag
      
@@ -1840,10 +1843,10 @@ end subroutine molecularLoop
          call intensityalongray(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, rhomax = rhomax)
          i0max = i0
          call intensityalongray(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, rhomax = rhomax, &
-                                                                                                             i0max = i0max)
+                                                                                                      i0max = i0max, nCol=nCol)
       else
          if(lineimage) then
-            call intensityalongray(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth)
+            call intensityalongray(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, nCol=nCol)
          else
             call continuumintensityalongray(rayposition,viewvec,grid,lamline,i0,tau = opticaldepth)
          endif
@@ -1856,22 +1859,24 @@ end subroutine molecularLoop
 
       avgIntensityNew = ((iray - 1) * avgIntensityOld + i0) / dble(iray)
       varIntensityNew = ((iray - 1) * varIntensityOld + ((i0 - avgIntensityNew) * (i0 - avgIntensityOld))) / dble(iray)
-      
+      avgNColNew      = ((iray - 1) * avgNColOld + nCol) / dble(iray)
+
       if(varIntensityNew .lt. iray * (tolerance* avgIntensityNew)**2 .and. iray .ge. 4) then
          converged = .true.
          out(1) = avgIntensityNew
          out(2) = opticaldepth ! not averaged, just last value
+         out(3) = avgNColNew
 
          iray = iray + 1
       elseif(iray .gt. 10000) then
          out(1) = avgIntensityNew
          out(2) = opticaldepth ! not averaged, just last value
+         out(3) = avgNColNew
          converged = .false.
          exit
       else
          avgIntensityOld = avgIntensityNew
          varIntensityOld = varIntensityNew
-
 
          if(maxrhocalc) then
             out(2) = avgIntensityNew
@@ -1880,11 +1885,13 @@ end subroutine molecularLoop
             out(1) = avgIntensityNew
             out(2) = opticaldepth ! not averaged, just last value
          endif
+         out(3) = avgNColNew
 
          iray = iray + 1
       endif
 
    enddo
+
  end function PixelIntensity
 
  !!! This subroutine takes the parameters supplied to it and makes an image by calling more subroutines 
@@ -1976,7 +1983,7 @@ end subroutine molecularLoop
 
      deltaV = minVel * 1.e5/cspeed_sgl
      
-     allocate(temp(npixels,npixels,2))
+     allocate(temp(npixels,npixels,3))
 
      if(nv .ne. 0) then
  
@@ -2018,10 +2025,18 @@ end subroutine molecularLoop
            tempArray = reshape(temp(:,:,2), (/ n /))
            call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
            temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
+
+           ! Communicate column density
+           tempArray = reshape(temp(:,:,3), (/ n /))
+           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+           temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
+
 #endif           
 
            cube%intensity(:,:,iv) = real(temp(:,:,1))
            cube%tau(:,:,iv) = real(temp(:,:,2))
+           cube%nCol(:,:)   = real(temp(:,:,3)) 
+
 
            if(writeoutput) then
               call tune(6, message)  ! stop a stopwatch
@@ -2330,7 +2345,7 @@ endif
 
    end subroutine tauAlongRay
 
-   subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max)
+   subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol)
 
      use input_variables, only : useDust, h21cm, densitysubsample
      type(VECTOR) :: position, direction, dsvector
@@ -2340,6 +2355,7 @@ endif
      integer :: itrans
      real(double) :: nMol
      real(double), intent(out) :: i0
+     real(double), optional, intent(out) :: nCol
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      type(VECTOR) :: currentPosition, thisPosition, endPosition
@@ -2409,6 +2425,7 @@ endif
 
      i0 = 0.d0
      tau = 0.d0
+     if (present(nCol)) nCol = 0.d0
 
      if(present(rhomax)) rhomax = 0.d0
 
@@ -2438,6 +2455,8 @@ endif
         if(densitysubsample) then
            nmol = thisoctal%molabundance(subcell) * (densite(currentposition, grid) / &
                   (2.d0 * mhydrogen))
+        else if ( h21cm ) then
+           nMol = 1.0
         else
            nMol = thisOctal%molcellparam(1,subcell)
         endif
@@ -2459,7 +2478,16 @@ endif
         Veldiff = endVel - startVel
 
         dvAcrossCell = (veldiff.dot.direction)
-        dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+
+        if ( h21cm ) then 
+           ! Calculate line width in cm/s.
+           sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+           ! Convert to Torus units (v/c)
+           sigma_thermal = sigma_thermal / cspeed
+           dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
+        else
+           dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+        end if
 
         if(densitysubsample) then ! should replace 5 with maxdensity/mindensity * fac
            nTau = min(max(5, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
@@ -2472,6 +2500,12 @@ endif
         
         ds = tval * OneOvernTauMinusOne
         
+! Calculate column density
+! Factor of 1.d10 is to convert ds to cm 
+        if (present(nCol)) then 
+           nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * ds * 1.d10
+        end if
+
         dsvector = ds * direction
 
         do i = 2, nTau 
@@ -2482,16 +2516,10 @@ endif
 
            dv = (thisVel .dot. direction) - deltaV
 
-           ! Use thermal line width for H 21cm lines or turbulent line widths otherwise
            if ( h21cm ) then 
-              ! Calculate line width in cm/s.
-              sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
-              ! Convert to Torus units (v/c)
-              sigma_thermal = sigma_thermal / cspeed
               phiprofval = gauss (sigma_thermal, real(dv) ) / thisMolecule%transfreq(1)
-           else
-  
-            phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+           else  
+              phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
            end if
 
            if(densitysubsample) then
@@ -3113,15 +3141,14 @@ end subroutine calculateOctalParams
 
       subroutine setObserverVectors(viewvec, observerVec, imagebasis)
 
-        use input_variables, only : npixels, imageside        
+        use input_variables, only : npixels, imageside, geometry
         use input_variables, only : griddistance 
         use input_variables, only : centrevecX, centrevecY, centrevecZ
         use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
 
         logical :: paraxial = .true.
-        real(double) :: pixelwidth, theta
-        type(VECTOR) :: centreVec, unitvec, viewvecprime, rotationaxis
-        
+        real(double) :: pixelwidth, theta, arbit_angle
+        type(VECTOR) :: centreVec, unitvec, viewvecprime, rotationaxis, arbit_axis
 
         type(VECTOR), intent(OUT) :: viewvec, observerVec, imagebasis(2)
         
@@ -3144,6 +3171,19 @@ end subroutine calculateOctalParams
         viewvec = rotateZ(viewvec, -rotateViewAboutZ * degtorad) ! This line varies 'longitude'. This should only affect 3D geometries
         imagebasis(1) = rotateZ(imagebasis(1), -rotateViewAboutZ * degtorad)! Image bases are necessarily orthonormal and linearly independent
         imagebasis(2) = rotateZ(imagebasis(2), -rotateViewAboutZ * degtorad)
+
+        if ( geometry == 'theGalaxy' ) then 
+! Incline the galaxy to be like M33 
+           arbit_axis = VECTOR(1.d0,0.d0,0.d0)
+           call normalize(arbit_axis)
+           arbit_angle = 40.0
+           write(*,*) "Rotating ", arbit_angle, " about ", arbit_axis
+           arbit_angle = arbit_angle * degtorad
+
+           viewVec       = arbitraryRotate(viewVec,       arbit_angle, arbit_axis )
+           imagebasis(1) = arbitraryRotate(imagebasis(1), arbit_angle, arbit_axis )
+           imagebasis(2) = arbitraryRotate(imagebasis(2), arbit_angle, arbit_axis )
+        end if
 
         call normalize(viewvec) 
         call normalize(imagebasis(1)) ! These lines should be unnecessary. Remove them if you feel lucky...
@@ -3659,7 +3699,7 @@ end subroutine calculateConvergenceData
 
  subroutine make_h21cm_image(grid)
    
-   use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset
+   use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc, densitySubSample
 
    implicit none
 
@@ -3668,6 +3708,13 @@ end subroutine calculateConvergenceData
    type(DATACUBE) ::  cube
    type(MOLECULETYPE) :: thisMolecule
    real, parameter :: thisWavelength=21.0
+
+   lineImage        = .true.
+   maxRhoCalc       = .false. 
+   densitySubSample = .false.
+
+! molecular weight is used for column density calculation
+   thisMolecule%molecularWeight = mHydrogen / amu
 
 ! Set up 21cm line
    allocate( thisMolecule%transfreq(1) )

@@ -1268,6 +1268,8 @@ contains
             "Data cube velocity offset:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
        call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
             "Input sph data file: ","(a,a,1x,a)","Torusdump", ok, .true.)
+       call getLogical("internalView", internalView, cLine, nLines, &
+            "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
 
     endif
 
