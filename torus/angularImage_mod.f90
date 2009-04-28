@@ -161,7 +161,7 @@ module angularImage
               
         endif
 
-        write(message,'(a,es11.4e1,tr3,a,f8.4,tr3,a,es12.4,a,es12.4,es12.4,es12.4)') &
+        write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4,a,es12.4,es12.4,es12.4)') &
              "DELTAV(v/c):",deltaV," V (km/s):",real(cube%vAxis(iv)), "Average Intensity:",intensitysum, &
              " FLUX: ", fluxsum, (fluxsum / thisMolecule%transfreq(itrans)) * 1e26, (fluxsum - background) &
              / thisMolecule%transfreq(itrans) * 1d26  
@@ -222,8 +222,9 @@ module angularImage
       end do
       theta_axis(:) = theta_axis(:) * degToRad
 
+! Reverse the order in which the longitude bins are populated 
       do ipixels=1, npixels
-         phi_axis(ipixels) = phi_min + ( real(ipixels) * delta_phi )
+         phi_axis(ipixels) = phi_min + ( real(npixels - ipixels + 1) * delta_phi )
       end do
       phi_axis(:) = phi_axis(:) * degToRad
 
