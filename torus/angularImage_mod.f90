@@ -37,6 +37,10 @@ module angularImage
       maxRhoCalc       = .false. 
       densitySubSample = .false.
 
+! molecular weight is used for column density calculation
+      thisMolecule%molecularWeight = mHydrogen / amu
+
+
       ! Set up 21cm line
       allocate( thisMolecule%transfreq(1) )
       thisMolecule%transfreq(1) = cSpeed / (21.0)
@@ -78,7 +82,7 @@ module angularImage
      real(double), allocatable :: fineweightedfluxmap(:,:)
      real(double) :: fineweightedfluxsum, fineweightedflux
      real(double), allocatable :: weight(:,:)
-     real, allocatable :: temp(:,:) ! max
+     real, allocatable :: temp(:,:,:) 
 
  ! SHOULD HAVE CASE(TELESCOPE) STATEMENT HERE
 
@@ -111,7 +115,7 @@ module angularImage
 
      deltaV = minVel * 1.e5/cspeed_sgl
      
-     allocate(temp(npixels,npixels))
+     allocate(temp(npixels,npixels,3))
 
      do iv = 1,nv
 
@@ -130,17 +134,19 @@ module angularImage
 
 !        if(usedust) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
 
-        temp = 0.d0
+        temp(:,:,:) = 0.d0
 
         call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp)
 
-        cube%intensity(:,:,iv) = real(temp(:,:))
+        cube%intensity(:,:,iv) = real(temp(:,:,1))
+        cube%tau(:,:,iv)       = real(temp(:,:,2))
+        cube%nCol(:,:)         = real(temp(:,:,3)) 
 
         if(writeoutput) then
            call tune(6, message)  ! stop a stopwatch
         endif
 
-        intensitysum = sum(temp(:,:)) / dble(npixels**2)
+        intensitysum = sum(temp(:,:,1)) / dble(npixels**2)
         fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance), thisMolecule)
 
         if(iv .eq. 1) then
@@ -185,7 +191,7 @@ module angularImage
       integer, intent(IN) :: nsubpixels
       type(VECTOR) :: viewvec, ObserverVec
       real(double) :: viewvec_x, viewvec_y, viewvec_z
-      real, intent(OUT) :: imagegrid(:,:)
+      real, intent(OUT) :: imagegrid(:,:,:)
 
       real(double) :: dnpixels ! npixels as a double, save conversion
       type(VECTOR) :: pixelcorner
@@ -231,7 +237,7 @@ module angularImage
             viewvec = VECTOR( viewvec_x, viewvec_y, viewvec_z )
             call normalize(viewvec)
 
-            imagegrid(ipixels,jpixels) = &
+            imagegrid(ipixels,jpixels,:) = &
                  AngPixelIntensity(cube,viewvec,grid,thisMolecule,iTrans,deltaV, subpixels, delta_theta, delta_phi)
 
          enddo
@@ -241,7 +247,8 @@ module angularImage
     end subroutine makeAngImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
- real(double) function AngPixelIntensity(cube,viewvec,grid,thisMolecule,iTrans,deltaV,subpixels,delta_theta, delta_phi)
+ function AngPixelIntensity(cube,viewvec,grid,thisMolecule,iTrans,deltaV,subpixels,delta_theta, delta_phi) &
+      result(out)
    
    use input_variables, only : tolerance, nsubpixels
    use molecular_mod, only: intensityAlongRay, sobseq
@@ -262,6 +269,7 @@ module angularImage
 
    real(double) :: avgIntensityNew, avgIntensityOld
    real(double) :: varIntensityNew, varIntensityOld
+   real(double) :: avgNColNew, avgNColOld
    real(double) :: rtemp(2)
    real(double), save ::  r(10000,2)
    real(double) :: nCol
@@ -270,6 +278,8 @@ module angularImage
    real(double) :: deltaV
    type(DATACUBE) :: cube
    logical, save :: firsttime = .true.
+
+   real(double) :: out(3) 
 
    if(firsttime) then
       
@@ -285,7 +295,8 @@ module angularImage
 
    avgIntensityOld = 0.
    varIntensityOld = 0.
-   
+   avgNColOld      = 0.0
+
    converged = .false. ! failed flag
      
    if(subpixels .ne. 0) then 
@@ -313,20 +324,27 @@ module angularImage
 
       avgIntensityNew = ((iray - 1) * avgIntensityOld + i0) / dble(iray)
       varIntensityNew = ((iray - 1) * varIntensityOld + ((i0 - avgIntensityNew) * (i0 - avgIntensityOld))) / dble(iray)
-      
+      avgNColNew      = ((iray - 1) * avgNColOld + nCol) / dble(iray)
+
       if(varIntensityNew .lt. iray * (tolerance* avgIntensityNew)**2 .and. iray .gt. 1) then
          converged = .true.
-         AngPixelIntensity = avgIntensityNew
          iray = iray + 1
+         out(1) = avgIntensityNew
+         out(2) = opticaldepth ! not averaged, just last value
+         out(3) = avgNColNew
       elseif(iray .gt. 10000) then
-         AngPixelIntensity = avgIntensityNew
          converged = .false.
+         out(1) = avgIntensityNew
+         out(2) = opticaldepth ! not averaged, just last value
+         out(3) = avgNColNew
          exit
       else
          avgIntensityOld = avgIntensityNew
          varIntensityOld = varIntensityNew
-         AngPixelIntensity = avgIntensityNew
          iray = iray + 1
+         out(1) = avgIntensityNew
+         out(2) = opticaldepth ! not averaged, just last value
+         out(3) = avgNColNew
       endif
 
    enddo
