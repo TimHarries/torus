@@ -1478,6 +1478,9 @@ contains
             "Minimum percentage of undersampled cell in lucy iteration: ", &
             "(a,f4.2,a)",0.0,ok,.false.)
 
+       call getReal("inclination", thisinclination, cLine, nLines, &
+            "Inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
+
        call getReal("diffdepth", diffDepth, cLine, nLines, &
             "Depth of diffusion zone (in Rosseland optical depths): ", &
             "(a,f5.1,a)",10.0,ok,.false.)

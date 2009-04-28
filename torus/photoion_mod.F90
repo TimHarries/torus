@@ -64,7 +64,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
-    use input_variables, only : nlucy, taudiff !, smoothFactor
+    use input_variables, only : nlucy, taudiff, thisinclination !, smoothFactor
 #ifdef MPI
     use input_variables, only : blockHandout
 #endif
@@ -94,7 +94,7 @@ contains
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
-    type(VECTOR) :: octVec
+    type(VECTOR) :: octVec, observerdirection
     real(double) :: r
     integer :: ilam
     integer :: nInf
@@ -651,23 +651,18 @@ end if ! (my_rank /= 0)
        call writeVtkFile(grid, "temp.vtk", &
             valueTypeString=(/"rho        ", "temperature", "HI         "/))
 
-    if (niter == 10) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 1) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
- thisOctal => grid%octreeRoot
- call writeInfo("Calculating continuum emissivities...",TRIVIAL)
-
-
-
-  call  calcContinuumEmissivity(grid, thisOctal, nlambda, lamArray)
  call writeInfo("Done.",TRIVIAL)
 
  if (writelucy) then
     call writeAmrGrid(lucyfileout,.false.,grid)
  endif
 
- call writeMultiImages(grid, nSource, source, VECTOR(1.d0,0.d0,0.d0))
+ observerDirection = VECTOR(dble(sin(thisinclination)), 0.d0, dble(cos(thisinclination)))
+ call writeMultiImages(grid, nSource, source, observerDirection)
 
 end subroutine photoIonizationloop
 
@@ -4052,7 +4047,7 @@ end subroutine readHeIIrecombination
   end subroutine writeMultiImages
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
-    use input_variables, only : readlucy, nlambda
+    use input_variables, only : readlucy, nlambda, nPhotons
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -4065,7 +4060,7 @@ end subroutine readHeIIrecombination
     type(OCTAL), pointer :: thisOctal
     real(double) :: totalFlux, tempTotalFlux
     integer :: subcell
-    integer :: iPhoton, nPhotons
+    integer :: iPhoton
     integer :: iLam
     integer :: iSource
     integer :: iThread
@@ -4082,7 +4077,7 @@ end subroutine readHeIIrecombination
     integer :: np(10)
     integer :: nDone
     real(double) :: powerPerPhoton
-    real(double) :: totalLineEmission, totalContEmission
+    real(double) :: totalLineEmission, totalContEmission, chanceSource, weightSource, weightEnv
     integer :: iBeg, iEnd
     integer :: ierr
     call init_random_seed()
@@ -4090,7 +4085,7 @@ end subroutine readHeIIrecombination
 
 
 
-    thisImage = initImage(50, 50, real(4.*grid%octreeRoot%subcellSize), &
+    thisImage = initImage(200, 200, real(4.*grid%octreeRoot%subcellSize), &
          real(4.*grid%octreeRoot%subcellSize), 0., 0.)
 
     
@@ -4109,13 +4104,18 @@ end subroutine readHeIIrecombination
     write(*,*) "Total line emission ",totalEmission
     write(*,*) "Total source emission ",lCore
 
-    Probsource = lCore / (lCore + totalEmission)
+    chanceSource = lCore / (lCore + totalEmission)
+
+    probSource = 0.1d0
+
+    weightSource = chanceSource / probSource
+    weightEnv = (1.d0 - chanceSource) / (1.d0 - probSource)
+
 
     if (myRankGlobal == 0) then
        write(*,*) "Probability of photon from sources: ", probSource
     endif
 
-    nPhotons = 1000000
     nInf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
@@ -4134,6 +4134,7 @@ end subroutine readHeIIrecombination
 
     mainloop: do iPhoton = 1, nPhotons
 
+       thisPhoton%weight = 1.d0
        thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
        thisPhoton%iLam = iLambdaPhoton
        thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
@@ -4145,6 +4146,7 @@ end subroutine readHeIIrecombination
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
+          thisPhoton%weight = weightSource
        else
           call random_number(r)
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
@@ -4152,6 +4154,7 @@ end subroutine readHeIIrecombination
 	  thisOctal => grid%octreeRoot
           call locateContProbAMR(r,thisOctal,subcell)
           thisPhoton%position = randomPositionInCell(thisOctal, subcell)
+          thisPhoton%weight = weightEnv
        endif
 
        observerPhoton = thisPhoton
@@ -4384,7 +4387,7 @@ end subroutine readHeIIrecombination
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
      endif
-     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau)
+     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
            
    end subroutine addPhotonToImageLocal
 

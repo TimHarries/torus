@@ -64,6 +64,7 @@ module input_variables
   integer :: nInclination  ! number of inclinations
   real :: firstInclination ! first inclination angle
   real :: lastInclination  !
+  real :: thisInclination
   real, allocatable :: inclinations(:)
 
   ! variables to do with dust
