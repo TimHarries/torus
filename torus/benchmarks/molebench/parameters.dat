@@ -127,3 +127,6 @@ suppresswarnings T
 addnewmoldata F
 rotateviewaboutx 90.0
 rotateviewaboutz 0.0
+
+quasi F
+dongstep T
