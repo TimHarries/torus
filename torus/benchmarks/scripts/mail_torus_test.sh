@@ -16,6 +16,8 @@ do
     if [[ ${file_size} -gt 1000 ]]; then
 	echo "Warning: file ${file} has size ${file_size} k" >> ${LOG_FILE}
 	echo "This file will not be mailed." >> ${LOG_FILE}
+    elif [[ ! -e ${file} ]]; then
+	echo "${file} does not exist"
     else
 	attach_list="${attach_list} -a ${file}"
     fi
