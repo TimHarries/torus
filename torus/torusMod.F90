@@ -26,44 +26,48 @@ contains
                    fix_source_R, fix_source_L, fix_source_T,      &  ! optional arguments
                    remove_radius )         
 
-  use kind_mod               ! variable type KIND parameters
-  use vector_mod             ! vector math
-  use photon_mod             ! photon manipulation
-  use gridtype_mod           ! type definition for the 3-d grid
-  use grid_mod               ! opacity grid routines
-  use phasematrix_mod        ! phase matrices and stokes vectors
-  use math_mod               ! misc maths subroutines
   use utils_mod
-  use stateq_mod
-  use inputs_mod
-  use cmfgen_class
-  use unix_mod
-  use path_integral
-  use puls_mod
   use input_variables         ! variables filled by inputs subroutine
-  use lucy_mod
-  use amr_mod
-  use dust_mod
-  use source_mod, only: SOURCETYPE
-  use spectrum_mod
-  use sph_data_class
+  use constants_mod
+
+  use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
+       setupNeighbourPointers, findtotalmass
+  use gridtype_mod, only: gridType         ! type definition for the 3-d grid
+  use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
+  use phasematrix_mod, only: phasematrix        ! phase matrices
+  use blob_mod, only: blobType
+  use inputs_mod, only: inputs
+  use TTauri_mod, only: infallenhancment, initInfallEnhancement 
+  use romanova_class, only: romanova
+  use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
+  use source_mod, only: sourceType, buildSphere 
+  use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter, npart
   use cluster_class
-  use timing
-  use isochrone_class
-  use cluster_utils
-  use surface_mod, only: SURFACETYPE
-  use disc_class
-  use gas_opacity_mod
-  use diffusion_mod
-  use messages_mod
-  use formal_solutions
-  use modelatom_mod
-  use cmf_mod
-  use mpi_global_mod
-  use parallel_mod
-  use vtk_mod
+  use surface_mod, only: surfaceType
+  use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
+  use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
+  use photoion_mod, only: photoIonizationloop
+  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image
+  use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
+  use cmf_mod, only: atomLoop, calculateAtomSpectrum
+  use vtk_mod, only: writeVtkfile
+  use parallel_mod, only: torus_mpi_barrier
+  use gridio_mod, only: writeAMRgrid, readamrgrid
+  use bitstring_mod, only: constructBitStrings
+  use gas_opacity_mod, only: createAllMolecularTables, readTsujiKPTable, readTsujiPPTable
+  use density_mod, only: calcPlanetMass
   use phaseloop_mod, only: do_phaseloop
-  use TTauri_mod, only: alpha_disc
+  use timing, only: tune
+  use ion_mod, only: addions
+  use isochrone_class, only: isochrone, read_isochrone_data, new
+#ifdef MPI
+  use mpi_global_mod, only: myRankGlobal
+  use photoionAMR_mod, only: radiationhydro, createImage
+  use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
+  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
+  use unix_mod, only: unixGetHostname
+  use parallel_mod, only: sync_random_seed
+#endif
 
   implicit none
 
@@ -607,6 +611,8 @@ CONTAINS
   subroutine amr_grid_setup
 
     use constants_mod, only: mSol
+    use amr_mod
+    use stateq_mod, only: amrStateq
 
     real(double) :: removedMass
     real(double) :: close_radius
@@ -676,7 +682,7 @@ CONTAINS
 
         !
         ! cleaning up unused memoryusing the routine in sph_data_class
-        somevector = Clusterparameter(amrGridCentre, isdone=.true.)
+        somevector = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
         call kill()
 
         if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
@@ -704,6 +710,7 @@ end subroutine amr_grid_setup
 
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
+  use source_mod, only: source_within_octal, randomSource
 
   integer      :: nstar
 
