@@ -93,7 +93,7 @@ module input_variables
   logical :: isinlte ! assume grid is in LTE
   real :: r0, rhoC ! Filamentry parameters
 
-  real(double) :: maxVel
+  real(double) :: minVel, maxVel
   real :: imageside ! molecular_mod image parameters
   integer :: itrans, npixels, nsubpixels !nv already exists
   real(double) :: centrevecx, centrevecy, centrevecz

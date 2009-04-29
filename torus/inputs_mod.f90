@@ -1256,6 +1256,9 @@ contains
                "Image Centre longitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecy", centrevecy, cLine, nLines, &
                "Image Centre latitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("minVel", minVel, cLine, nLines, &
+               "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)
+
        else
 
           call getReal("distance", gridDistance, cLine, nLines, &
