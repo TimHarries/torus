@@ -388,10 +388,10 @@ contains
                   write(lunit, *) int(thisOctal%convergence(subcell)/100)
 
                case("convergence")
-                  write(lunit, *) mod(thisOctal%convergence(subcell),1.d0)
+                  write(lunit, *) mod(thisOctal%convergence(subcell),1.e0)
 
                case("slowestlevel")
-                  write(lunit, *) floor(mod(thisoctal%convergence(subcell),100.d0))
+                  write(lunit, *) floor(mod(thisoctal%convergence(subcell),100.e0))
 
                case("molabundance")
                   write(lunit, *) thisOctal%molabundance(subcell)
