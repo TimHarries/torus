@@ -105,7 +105,6 @@ module angularImage
      call writeinfo(message, TRIVIAL) 
      write(message,'(a,f7.2,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
      call writeinfo(message, TRIVIAL) 
-     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0)
 
      if(nv .ne. 0) then 
         call addvelocityAxis(cube, minVel, maxVel) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
@@ -180,7 +179,7 @@ module angularImage
 
     subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid)
 
-      use input_variables, only : npixels
+      use input_variables, only : npixels, imageside, centrevecx, centrevecy
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid
@@ -200,10 +199,8 @@ module angularImage
       integer :: index(2)
       real(double) :: pixelside
 
-      real, parameter :: imageside_theta = 20.0 ! Angluar size of image
-      real, parameter :: imageside_phi   = 90.0 ! Angluar size of image
-      real, parameter :: theta_min =  80.0
-      real, parameter :: phi_min   =   0.0
+      real :: theta_min
+      real :: phi_min 
       real(double) :: delta_theta, delta_phi
       real(double) :: theta_axis(npixels), phi_axis(npixels)
 
@@ -213,8 +210,11 @@ module angularImage
          subpixels = 0
       endif
 
-      delta_theta = imageside_theta / real(npixels)
-      delta_phi   = imageside_phi   / real(npixels)
+      theta_min = ( 90.0 - centrevecy ) - 0.5 * imageside 
+      phi_min   = ( centrevecx - 90.0 ) - 0.5 * imageside
+
+      delta_theta = imageside / real(npixels)
+      delta_phi   = imageside / real(npixels)
 
 ! Set up axis arrays
       do jpixels=1, npixels
@@ -227,6 +227,10 @@ module angularImage
          phi_axis(ipixels) = phi_min + ( real(npixels - ipixels + 1) * delta_phi )
       end do
       phi_axis(:) = phi_axis(:) * degToRad
+
+! Convert to galactic co-ordinates for writing out to the FITS cube.
+      cube%xAxis(:) = 90.0 + ( phi_axis(:)   / degToRad )
+      cube%yAxis(:) = 90.0 - ( theta_axis(:) / degToRad )
 
       do jpixels = 1, npixels ! raster over image
          do ipixels = 1, npixels

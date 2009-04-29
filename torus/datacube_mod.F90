@@ -198,7 +198,6 @@ contains
     endif
 
     if(associated(thisCube%nCol)) then
-       write(*,*) "Writing ncol to fits file"
        ! 8th HDU : nCol
        call FTCRHD(unit, status)
        bitpix=-32
@@ -210,11 +209,11 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
 
+       call addWCSinfo
+
        !  Write the array to the FITS file.
        call ftppre(unit,group,fpixel,nelements,thisCube%nCol,status)
        call print_error(status)
-    else
-       write(*,*) "Not writing ncol to fits file"
     endif
 
     !  Close the file and free the unit number.

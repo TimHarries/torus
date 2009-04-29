@@ -1229,8 +1229,6 @@ contains
 
     if( geometry == "theGalaxy" ) then
 
-       call getReal("imageside", imageside, cLine, nLines, &
-            "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
        call getInteger("npixels", npixels, cLine, nLines, &
             "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
        call getInteger("nv", nv, cLine, nLines, &
@@ -1245,31 +1243,43 @@ contains
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
        itrans = 1
        
-       call getReal("distance", gridDistance, cLine, nLines, &
-            "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
-
-       gridDistance = gridDistance * pcTocm   ! cm
-
-
-       call getDouble("centrevecx", centrevecx, cLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("centrevecy", centrevecy, cLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("centrevecz", centrevecz, cLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
-
-       call getDouble("rotateViewAboutX", rotateViewAboutX, cLine, nLines, &
-            "Rotation angle about x-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("rotateViewAboutY", rotateViewAboutY, cLine, nLines, &
-            "Rotation angle about y-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("rotateViewAboutZ", rotateViewAboutZ, cLine, nLines, &
-            "Rotation angle about z-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, cLine, nLines, &
-            "Data cube velocity offset:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
        call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
             "Input sph data file: ","(a,a,1x,a)","Torusdump", ok, .true.)
        call getLogical("internalView", internalView, cLine, nLines, &
             "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
+
+       if ( internalView ) then 
+
+          call getReal("imageside", imageside, cLine, nLines, &
+               "Image size (degrees):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+          call getDouble("centrevecx", centrevecx, cLine, nLines, &
+               "Image Centre longitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, cLine, nLines, &
+               "Image Centre latitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+       else
+
+          call getReal("distance", gridDistance, cLine, nLines, &
+               "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
+          gridDistance = gridDistance * pcTocm   ! cm
+
+          call getDouble("rotateViewAboutX", rotateViewAboutX, cLine, nLines, &
+               "Rotation angle about x-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("rotateViewAboutY", rotateViewAboutY, cLine, nLines, &
+               "Rotation angle about y-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("rotateViewAboutZ", rotateViewAboutZ, cLine, nLines, &
+               "Rotation angle about z-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, cLine, nLines, &
+               "Data cube velocity offset:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getReal("imageside", imageside, cLine, nLines, &
+               "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+          call getDouble("centrevecx", centrevecx, cLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, cLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecz", centrevecz, cLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+
+       end if
 
     endif
 
