@@ -9,12 +9,15 @@ module angularImage
   use messages_mod
   use timing
   
-
   implicit none 
 
   public :: make_angular_image
 
   private 
+
+  type(VECTOR) :: observerVelocity
+  character(len=200) :: message
+  type(VECTOR), parameter :: rayposition=VECTOR(0.0, 2.1e12_db, 0.0)
 
   contains
 
@@ -24,6 +27,7 @@ module angularImage
       use datacube_mod, only: DATACUBE, writeDataCube
       use gridtype_mod, only: GRIDTYPE
       use molecular_mod, only:  moleculetype
+      use amr_mod, only: amrGridVelocity
 
       implicit none
 
@@ -40,10 +44,14 @@ module angularImage
 ! molecular weight is used for column density calculation
       thisMolecule%molecularWeight = mHydrogen / amu
 
-
       ! Set up 21cm line
       allocate( thisMolecule%transfreq(1) )
       thisMolecule%transfreq(1) = cSpeed / (21.0)
+
+! Get the observer's velocity from the grid
+      observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
+      write(message,*) "Observer's velocity is ", observerVelocity * (cspeed / 1.0e5), "km/s"
+      call writeinfo(message, TRIVIAL)
 
       call writeinfo('Generating internal view', TRIVIAL)
       call createAngImage(cube, grid, thisMolecule)
@@ -56,26 +64,27 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel, usedust, nsubpixels
+      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside,  minVel, maxVel, usedust, nsubpixels
       use datacube_mod, only: telescope, initCube, addSpatialAxes, addvelocityAxis
       use molecular_mod, only: calculateOctalParams, moleculetype, intensitytoflux
       use atom_mod, only: bnu
       use vector_mod
+      use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
 
       implicit none
-
+#ifdef MPI
+      include 'mpif.h'
+#endif
      type(TELESCOPE) :: mytelescope
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
      type(VECTOR) :: viewvec, observervec, imagebasis(2)
-     real(double) :: minVel
      real(double) :: deltaV
      integer :: iTrans = 1
      integer :: i
      integer :: iv
-     character(len=200) :: message
-     real(double) :: intensitysum, fluxsum, ddv!, dummy
+     real(double) :: intensitysum, fluxsum, ddv
      real(double), save :: background
      real(double), allocatable :: weightedfluxmap(:,:)
      real(double) :: weightedfluxsum, weightedflux
@@ -83,6 +92,14 @@ module angularImage
      real(double) :: fineweightedfluxsum, fineweightedflux
      real(double), allocatable :: weight(:,:)
      real, allocatable :: temp(:,:,:) 
+     integer :: ix1, ix2
+
+#ifdef MPI
+     ! For MPI implementations
+     integer :: ierr, n           ! error flag
+     real(double), allocatable :: tempArray(:), tempArray2(:)
+#endif
+
 
  ! SHOULD HAVE CASE(TELESCOPE) STATEMENT HERE
 
@@ -90,27 +107,24 @@ module angularImage
      mytelescope%diameter = 15.d2 ! diameter in cm
      mytelescope%beamsize = beamsize
 
-     minVel = (-1.d0) * maxVel
-
      call writeinfo("Initialising datacube",TRIVIAL)
 
-     if(nv .eq. 0) then
-        call initCube(cube, npixels, npixels, 200, mytelescope) ! Make cube
-     else
-        call initCube(cube, npixels, npixels, nv, mytelescope) ! Make cube
-     endif
+     call initCube(cube, npixels, npixels, nv, mytelescope) ! Make cube
 
-     cube%obsDistance = gridDistance * 1d10!(in cm) Additional information that will be useful
-     write(message,'(a,f7.2,a)') "Observer Distance        : ",gridDistance/pctocm, " pc"
-     call writeinfo(message, TRIVIAL) 
-     write(message,'(a,f7.2,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
-     call writeinfo(message, TRIVIAL) 
+     call addvelocityAxis(cube, minVel, maxVel) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
 
-     if(nv .ne. 0) then 
-        call addvelocityAxis(cube, minVel, maxVel) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
-     else
-        cube%vAxis(1) = minVel
-     endif
+! Divide up the image along the x axis for MPI case, otherwise work on the whole image
+#ifdef MPI
+     ix1 = (myRankGlobal)   * (cube%nx / (nThreadsGlobal)) + 1
+     ix2 = (myRankGlobal+1) * (cube%nx / (nThreadsGlobal))
+     if (myRankGlobal == (nThreadsGlobal-1)) ix2 = cube%nx
+
+     n = (npixels*npixels)
+     allocate(tempArray(1:n), tempArray2(1:n))
+#else
+     ix1 = 1
+     ix2 = npixels
+#endif
 
      deltaV = minVel * 1.e5/cspeed_sgl
      
@@ -135,7 +149,25 @@ module angularImage
 
         temp(:,:,:) = 0.d0
 
-        call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp)
+        call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp, ix1, ix2)
+
+#ifdef MPI
+        ! Communicate intensity
+        tempArray = reshape(temp(:,:,1), (/ n /))
+        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+        temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
+
+        ! Communicate tau
+        tempArray = reshape(temp(:,:,2), (/ n /))
+        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+        temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
+
+        ! Communicate column density
+        tempArray = reshape(temp(:,:,3), (/ n /))
+        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+        temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
+
+#endif        
 
         cube%intensity(:,:,iv) = real(temp(:,:,1))
         cube%tau(:,:,iv)       = real(temp(:,:,2))
@@ -146,7 +178,6 @@ module angularImage
         endif
 
         intensitysum = sum(temp(:,:,1)) / dble(npixels**2)
-        fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance), thisMolecule)
 
         if(iv .eq. 1) then
            background = Bnu(thisMolecule%transfreq(itrans), Tcbr)
@@ -160,24 +191,22 @@ module angularImage
               
         endif
 
-        write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4,a,es12.4,es12.4,es12.4)') &
-             "DELTAV(v/c):",deltaV," V (km/s):",real(cube%vAxis(iv)), "Average Intensity:",intensitysum, &
-             " FLUX: ", fluxsum, (fluxsum / thisMolecule%transfreq(itrans)) * 1e26, (fluxsum - background) &
-             / thisMolecule%transfreq(itrans) * 1d26  
-        open(10, file="tempfile.dat",status="unknown",form="formatted",position="append")
-        write(10,'(es11.4e1,f8.4,es12.4,es12.4,es12.4,es12.4)') &
-             real(cube%vAxis(iv)), deltaV, intensitysum, &
-             fluxsum / thisMolecule%transfreq(itrans)* 1e26, (fluxsum - background) / thisMolecule%transfreq(itrans) * 1e26 
-        close(10)
+        write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4)') &
+             "DELTAV(v/c):",deltaV," V (km/s):",real(cube%vAxis(iv)), "Average Intensity:",intensitysum
         call writeinfo(message,FORINFO)
+
      end do
+
+#ifdef MPI
+     deallocate(tempArray, tempArray2)
+#endif
 
    end subroutine createAngImage
 
 !-----------------------------------------------------------------------------------------------------------
 
 
-    subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid)
+    subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid, ix1, ix2)
 
       use input_variables, only : npixels, imageside, centrevecx, centrevecy
       use vector_mod
@@ -191,6 +220,7 @@ module angularImage
       type(VECTOR) :: viewvec, ObserverVec
       real(double) :: viewvec_x, viewvec_y, viewvec_z
       real, intent(OUT) :: imagegrid(:,:,:)
+      integer, intent(in) :: ix1, ix2
 
       real(double) :: dnpixels ! npixels as a double, save conversion
       type(VECTOR) :: pixelcorner
@@ -233,7 +263,7 @@ module angularImage
       cube%yAxis(:) = 90.0 - ( theta_axis(:) / degToRad )
 
       do jpixels = 1, npixels ! raster over image
-         do ipixels = 1, npixels
+         do ipixels = ix1, ix2
 
             viewvec_x = sin( theta_axis(jpixels) ) * cos( phi_axis(ipixels) ) 
             viewvec_y = sin( theta_axis(jpixels) ) * sin( phi_axis(ipixels) ) 
@@ -266,7 +296,6 @@ module angularImage
    real(double), intent(in) :: delta_theta, delta_phi
 
    type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner
-   type(VECTOR), parameter :: rayposition=VECTOR(0.0, 2.1e12_db, 0.0)
    type(VECTOR) :: thisViewVec
 
    integer :: subpixels, minrays
@@ -321,7 +350,9 @@ module angularImage
 !      thisViewvec = rotateX(thisViewVec, (r(iray,2) * delta_phi    * degtorad) )
 !      call normalize(thisViewVec)
 
-     call intensityalongray(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,tau=opticaldepth, nCol=nCol)
+     call intensityalongray(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,tau=opticaldepth, nCol=nCol, &
+          observerVelocity=observerVelocity )
+
      if (isnan(i0)) then
         write(*,*) "Got nan", opticaldepth, rayposition
         i0 = 0.d0
