@@ -1241,6 +1241,7 @@ CONTAINS
              if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
                 recentoctal => thisoctal
                 CALL fillDensityCorners(thisOctal,grid,clusterdensity, clustervelocity, thisOctal%threed)
+                thisOctal%velocity = thisoctal%cornervelocity(14)
              endif
 
              call assign_grid_values(thisOctal,subcell,grid)
