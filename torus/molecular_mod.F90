@@ -1592,11 +1592,11 @@ end subroutine molecularLoop
                  if(fixedrays) then
                     
                     thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
+                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2),&
                          doubleweight = .false.))
                  else
                     thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
+                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2),&
                          doubleweight = .true.))
                  endif
 !              thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell) / &
@@ -2366,7 +2366,8 @@ endif
 
    end subroutine tauAlongRay
 
-   subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol)
+   subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol, &
+     observerVelocity)
 
      use input_variables, only : useDust, h21cm, densitysubsample
      type(VECTOR) :: position, direction, dsvector
@@ -2377,6 +2378,7 @@ endif
      real(double) :: nMol
      real(double), intent(out) :: i0
      real(double), optional, intent(out) :: nCol
+     type(VECTOR), optional, intent(in) ::  observerVelocity
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      type(VECTOR) :: currentPosition, thisPosition, endPosition
@@ -2534,6 +2536,10 @@ endif
            thisPosition = thisPosition + dsvector
            if(.not. inoctal(grid%octreeroot, thisposition)) thisPosition = thisPosition - 0.99d0 * dsvector
            thisVel = Velocity(thisPosition, grid, startoctal = thisoctal, subcell = subcell)
+
+           if ( present(observerVelocity) ) then 
+              thisVel = thisVel - observerVelocity
+           end if
 
            dv = (thisVel .dot. direction) - deltaV
 
