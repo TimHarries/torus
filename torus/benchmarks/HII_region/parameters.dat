@@ -1,3 +1,9 @@
+probdust 1.
+lucyrad T
+nlucy 100000
+nmonte 10
+mindepthamr 8
+maxdepthamr 8
 hydrodynamics F
 usebias F
 blockhandout T
@@ -7,12 +13,12 @@ smoothfactor 2.
 taumin 1.
 taumax 10.
 lambdasmooth 900.
-nphotons 5000000
+nphotons 100
 amrgridcentrex 2.2e9
 amrgridcentrey 0.0000
 amrgridcentrez 0.0000
 probcont 1.
-mie F
+mie T
 iso_scatter F
 limitscalar 1.
 popfile junk
@@ -28,10 +34,12 @@ wavlin F
 filter_set_name step_functions
 lamstart 10.
 lamend  1.e5
-nlambda 200
+nlambda 1000
 gridtype octree
 gridusesamr T
-amr2d T
+amr1d T
+amr2d F
+amr3d F
 geometry lexington
 rinner 30.
 noscat F
@@ -49,3 +57,4 @@ lastinc 90.
 ninc 1
 maxscat 10
 hydro F
+dusttogas 1.e-20
