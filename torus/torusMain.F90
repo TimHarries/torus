@@ -624,8 +624,10 @@ program torus
 
         if (grid%octreeRoot%twoD) then
            call doHydrodynamics2d(grid)
+           goto 666
         else if (grid%octreeRoot%oneD) then
            call doHydrodynamics1d(grid)
+           goto 666
         else if (grid%octreeRoot%threeD) then
            call doHydrodynamics3d(grid)
            goto 666
@@ -637,6 +639,7 @@ program torus
   if (photoionization) then 
         call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
              lucyfileNameout, lucyfileNamein)
+        goto 666
   end if
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
@@ -736,6 +739,11 @@ program torus
 ! Tidy up and finish the run 
 
 666 continue
+
+#ifdef MPI
+write(*,*) myrankGlobal , " is waiting to finish"
+call torus_mpi_barrier
+#endif
 
 if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 

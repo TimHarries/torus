@@ -30,10 +30,10 @@ program compareSod
   tot = sqrt(tot/(real(nTorus-1)))
   write(*,*) "Sigma: ",tot
   if (tot < 1.d-2) then
-     write(*,*) "Test passed."
+     write(*,*) "TORUS: Test successful"
      
   else
-     write(*,*) "test failed."
+     write(*,*) "TORUS: Test failed"
   endif
 end program compareSod
 SUBROUTINE LOCATE(XX,N,X,J)

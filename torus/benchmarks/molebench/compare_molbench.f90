@@ -30,14 +30,14 @@ program compare_molbench
      read(60, *, iostat=status) bench_R, bench_J(:)
      if (status /= 0 ) then
         write(*,*) "Reached end of ", bench_file
-        write(*,*) "Test passed"
+        write(*,*) "TORUS: Test successful"
         exit
      end if
 
      read(61, *, iostat=status) model_R, model_J(:)
      if (status /= 0 ) then
         write(*,*) "Reached end of ", model_file, "before end of ", bench_file
-        write(*,*) "Test failed"
+        write(*,*) "TORUS: Test failed"
         exit
      end if
 
@@ -46,7 +46,7 @@ program compare_molbench
 
      if ( any(diff(1:ncheck) > max_diff) .and. model_R .lt. 4e17) then 
         write(*,*) "Difference of more than ", max_diff, "found."
-        write(*,*) "Test failed"
+        write(*,*) "TORUS: Test failed"
         exit
      end if
 

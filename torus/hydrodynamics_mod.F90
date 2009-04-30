@@ -2214,7 +2214,7 @@ contains
           call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:nHydroThreads))) exit
        end do
 
@@ -2248,7 +2248,7 @@ contains
        tc = 0.d0
        tc(myrank) = 1.d30
        call computeCourantTime(grid%octreeRoot, tc(myRank))
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
        !       write(*,*) "tc", tc(1:8)
        !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc

@@ -16224,6 +16224,7 @@ end function readparameterfrom2dmap
        call deallocateAttribute(thisOctal%neighbourOctal)
        call deallocateAttribute(thisOctal%neighbourSubcell)
 
+       call deallocateAttribute(thisOctal%mpiBoundaryStorage)
      end subroutine deallocateOctalDynamicAttributes
 
 
