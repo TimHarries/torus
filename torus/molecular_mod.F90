@@ -305,7 +305,7 @@ module molecular_mod
  ! stores the non-zero local emission coefficient   
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
-     use input_variables, only : vturb, restart, isinLTE, addnewmoldata, plotlevels
+     use input_variables, only : vturb, restart, isinLTE, addnewmoldata, plotlevels, setmaxlevel
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -385,7 +385,11 @@ module molecular_mod
            if(restart) then
 
               if(firsttime2) then
-                 maxlevel = size(thisOctal%molecularLevel(:,1))
+                 if(setmaxlevel .gt. 0) then
+                    maxlevel = size(thisOctal%molecularLevel(:,1))
+                 else
+                    maxlevel = setmaxlevel
+                 endif
                  maxtrans = maxlevel - 1
                  firsttime2 = .false.
               endif
@@ -409,7 +413,12 @@ module molecular_mod
 
               if(firsttime2) then
                  call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-                 call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, thismolecule%nlevels, nVoxels, lte = .true.)
+                 if(.not. setmaxlevel) then
+                    call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, thismolecule%nlevels, nVoxels, lte = .true.)
+                 else
+                    maxlevel = setmaxlevel
+                 endif
+                 
                  maxtrans = maxlevel - 1
                  firsttime2 = .false.
               endif
@@ -713,7 +722,7 @@ module molecular_mod
       endif
      
       write(message, *) "Maximum Interesting Level", maxlevel
-      call writeinfo(message, FORINFO)
+      call writeinfo(message, TRIVIAL)
 
       minlevel = min(10, maxlevel-2)
       mintrans = min(9, maxtrans-2)
