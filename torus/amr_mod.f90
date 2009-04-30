@@ -12620,6 +12620,95 @@ end function readparameterfrom2dmap
 
   end subroutine myTauSmooth
 
+  recursive subroutine myTemperatureSmooth(thisOctal, grid, converged, inheritProps, interpProps)
+    use input_variables, only :  maxDepthAmr
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    logical, optional :: inheritProps, interpProps
+    integer :: subcell, i
+    logical :: converged
+    real(double) :: kabs, ksca, r
+    type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
+    real :: thisTemperature, neighbourTemperature
+    integer :: neighbourSubcell, j, nDir
+    logical :: split
+    logical, save :: firsttime = .true.
+    character(len=30) :: message
+    real, parameter :: tolerance = 0.5 !50% change in temperature
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call myTemperatureSmooth(child, grid, converged, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+
+          split = .true.
+
+          thisTemperature  = thisOctal%temperature(subcell)
+
+          r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1d0
+          centre = subcellCentre(thisOctal, subcell) + &
+               (0.01d0*grid%halfSmallestsubcell)*VECTOR(+0.9d0,+0.8d0,+0.7d0)
+          if (.not.thisOctal%cylindrical) then
+             nDir = 6
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+          else
+             nDir = 4
+             aHat = VECTOR(centre%x, centre%y, 0.d0)
+             call normalize(aHat)
+
+             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = aHat
+             dirVec(3) = (-1.d0)*aHat
+             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+          endif
+          do j = 1, nDir
+             octVec = centre + r * dirvec(j)
+             if (inOctal(grid%octreeRoot, octVec)) then
+                startOctal => thisOctal
+                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                     foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
+                neighbourTemperature = neighbourOctal%temperature(neighbourSubcell)
+
+
+
+                if (thisOctal%nDepth == maxDepthamr) then
+                   split = .false.
+                   if (firstTime) then
+                      write(message,'(a,i3)') "AMR cell depth capped at: ",maxDepthamr
+                      call writeWarning(message)
+                      firstTime = .false.
+                   endif
+                endif
+
+
+                if (abs(thisTemperature-neighbourTemperature) < 10.) cycle ! dont worry if small absolute difference
+
+                if (abs(thisTemperature-neighbourTemperature)/thisTemperature > tolerance) then
+                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                        inherit=inheritProps, interp=interpProps)
+                   converged = .false.
+                   return
+                endif
+             endif
+          enddo
+       endif
+    end do
+
+  end subroutine myTemperatureSmooth
+
   recursive subroutine myScaleSmooth(factor, thisOctal, grid,  converged, &
        inheritProps, interpProps, stellar_cluster, romData)
     type(gridtype) :: grid
