@@ -12620,6 +12620,62 @@ end function readparameterfrom2dmap
 
   end subroutine myTauSmooth
 
+  recursive subroutine myTauSplit(thisOctal, grid, converged, inheritProps, interpProps)
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr!, rinner
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    logical, optional :: inheritProps, interpProps
+    integer :: subcell, i
+    logical :: converged
+    real(double) :: kabs, ksca, r
+    type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
+    real :: thisTau
+    integer :: neighbourSubcell, j, nDir
+    logical :: split
+    logical, save :: firsttime = .true.
+    character(len=30) :: message
+    kabs = 0.d0; ksca = 0.d0
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call myTauSplit(child, grid, converged, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+
+          split = .true.
+
+          call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
+          thisTau = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+
+          if (thisOctal%nDepth == maxDepthamr) then
+             split = .false.
+             if (firstTime) then
+                write(message,'(a,i3)') "AMR cell depth capped at: ",maxDepthamr
+                call writeWarning(message)
+                firstTime = .false.
+             endif
+          endif
+
+
+
+          if (split.and.(thisTau > 2.).and.(thisOctal%chiLine(subcell) < 100.)) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=inheritProps, interp=interpProps)
+             converged = .false.
+             return
+          endif
+       endif
+    enddo
+
+  end subroutine myTauSplit
+
   recursive subroutine myTemperatureSmooth(thisOctal, grid, converged, inheritProps, interpProps)
     use input_variables, only :  maxDepthAmr
     type(gridtype) :: grid

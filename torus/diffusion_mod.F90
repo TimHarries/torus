@@ -1078,8 +1078,8 @@ subroutine setDiffOnTau(grid)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: tau, thisTau
-  type(VECTOR) :: rVec, direction
-  integer :: i
+    type(VECTOR) :: rVec, direction
+    integer :: i
     integer :: subcell
     integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
@@ -1103,6 +1103,7 @@ subroutine setDiffOnTau(grid)
      np = 1
      my_rank = 1
 #endif
+
 
      iLambda = 0
      kappaAbs = 0.d0

@@ -34,7 +34,7 @@ contains
 #endif
     implicit none
 #ifdef MPI
- include 'mpif.h'
+    include 'mpif.h'
 #endif
     type(GRIDTYPE) :: grid
     integer :: nSource
@@ -60,7 +60,7 @@ contains
     integer :: nFreq
     integer :: i, j
     real(oct) :: freq(2000), dnu(2000), probDistJnu(2001)
-!    real(oct) :: probDistPlanck(nFreq)
+    !    real(oct) :: probDistPlanck(nFreq)
     real(double) :: kappaScadb, kappaAbsdb
     integer(double) :: nDiffusion
     integer(double) :: nDiffusion_sub
@@ -130,53 +130,53 @@ contains
 #endif
 
 #ifdef MPI
-  ! For MPI implementations =====================================================
-  integer ::   ierr           ! error flag
-!  integer ::   n_rmdr, m      !
-  integer, dimension(:), allocatable :: photonBelongsRank
-  integer, parameter :: tag = 0
-  logical :: rankComplete
-  ! data space to store values from all processors
-  real :: buffer_real(nThreadsGlobal)     
+    ! For MPI implementations =====================================================
+    integer ::   ierr           ! error flag
+    !  integer ::   n_rmdr, m      !
+    integer, dimension(:), allocatable :: photonBelongsRank
+    integer, parameter :: tag = 0
+    logical :: rankComplete
+    ! data space to store values from all processors
+    real :: buffer_real(nThreadsGlobal)     
 
-  ! FOR MPI IMPLEMENTATION=======================================================
-  writeoutput = .false.
-  if (myRankIsZero) then
-     writeoutput = .true.
+    ! FOR MPI IMPLEMENTATION=======================================================
+    writeoutput = .false.
+    if (myRankIsZero) then
+       writeoutput = .true.
 
-     print *, ' '
-     print *, 'Lucy radiative equilibrium rotuine computed by ', nThreadsGlobal, ' processors.'
-     print *, ' '
-  endif
-    
-  ! ============================================================================
+       print *, ' '
+       print *, 'Lucy radiative equilibrium rotuine computed by ', nThreadsGlobal, ' processors.'
+       print *, ' '
+    endif
+
+    ! ============================================================================
 #endif
 
 #ifdef USEMKL
-  call writeinfo('Using Intel MKL', TRIVIAL)
-  OneArray(1:nlambda) = 1.d0
+    call writeinfo('Using Intel MKL', TRIVIAL)
+    OneArray(1:nlambda) = 1.d0
 
-  oldmode = vmlgetmode()
-  oldmode = vmlsetmode(VML_LA)
+    oldmode = vmlgetmode()
+    oldmode = vmlsetmode(VML_LA)
 #endif
 
-  oldTotalEmission = 1.d30
-  kappaScaDb = 0.d0; kappaAbsDb = 0.d0
-  diffusionZoneTemp = 0.d0; foundSubcell = 0; iSource = 0
-  kAbsArray = 0.; kAbsArray2 = 0.; leftHandBoundary = .true.; ok = .true.
-  photonInDiffusionZone = .false.; rHat = VECTOR(0.d0, 0.d0, 0.d0);temp = 0.
-  wavelength = 0.;  nfreq = 0
-  call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+    oldTotalEmission = 1.d30
+    kappaScaDb = 0.d0; kappaAbsDb = 0.d0
+    diffusionZoneTemp = 0.d0; foundSubcell = 0; iSource = 0
+    kAbsArray = 0.; kAbsArray2 = 0.; leftHandBoundary = .true.; ok = .true.
+    photonInDiffusionZone = .false.; rHat = VECTOR(0.d0, 0.d0, 0.d0);temp = 0.
+    wavelength = 0.;  nfreq = 0
+    call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
 
-  if (nLucy /= 0) then
-     nMonte = nLucy
-  else
-     if (.not.variableDustSublimation) then
-        nMonte = nVoxels * 10
-     else
-        nMonte = nVoxels * 100
-     endif
-  endif
+    if (nLucy /= 0) then
+       nMonte = nLucy
+    else
+       if (.not.variableDustSublimation) then
+          nMonte = nVoxels * 10
+       else
+          nMonte = nVoxels * 100
+       endif
+    endif
 
 
     nFreq = nLambda
@@ -184,7 +184,7 @@ contains
        freq(nFreq-i+1) = cSpeed / (lamArray(i)*1.e-8)
     enddo
 
-! Set up factor which is used in bnu calculation
+    ! Set up factor which is used in bnu calculation
     fac1(:) = (2.d0*hCgs*freq(:)**3)/(cSpeed**2)
 
     do i = 2, nFreq-1
@@ -214,7 +214,7 @@ contains
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
     endif
 
-!    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
+    !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
     call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
@@ -265,508 +265,513 @@ contains
        ! ensure we do at least three iterations
        ! before removing the high temperature cells.
 
-!       if (variableDustSublimation) then
-!          nMonte = 10000000
-!          if (iIter_grand == 0) then
-!             nIter = 3
-!          else
-!             nIter = 1 !2
-!          endif
-!       endif
+       !       if (variableDustSublimation) then
+       !          nMonte = 10000000
+       !          if (iIter_grand == 0) then
+       !             nIter = 3
+       !          else
+       !             nIter = 1 !2
+       !          endif
+       !       endif
 
        nIter = 1
 
-    do iIter = 1, nIter
+       do iIter = 1, nIter
 
-       iIter_grand =  iIter_grand + 1  ! total number of iterations so far
-       
-
-       if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
-       
-       call zeroDistanceGrid(grid%octreeRoot)
-
-       write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
-       call writeInfo(message, TRIVIAL)
+          iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
 
-       call resetDirectGrid(grid%octreeRoot)
- 
-       nInf_sub = 0
-       nScat_sub = 0
-       nAbs_sub = 0
-       nDiffusion_sub = 0
-       nInf = 0
-       nScat = 0
-       nAbs = 0
-       nDiffusion = 0
-       nKilled = 0
+          call writeInfo("Splitting  adaptive grid structure on Tau...", TRIVIAL)
+          call setDiffOnTau(grid)
+          do
+             gridConverged = .true.
+             call myTauSplit(grid%octreeRoot, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .true.)
+             if (gridConverged) exit
+          end do
 
-       imonte_beg=1; imonte_end=nMonte  ! default value
+          do
+             gridConverged = .true.
+             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .true.)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+
+
+          if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
+
+          call zeroDistanceGrid(grid%octreeRoot)
+
+          write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
+          call writeInfo(message, TRIVIAL)
+
+
+          call resetDirectGrid(grid%octreeRoot)
+
+          nInf_sub = 0
+          nScat_sub = 0
+          nAbs_sub = 0
+          nDiffusion_sub = 0
+          nInf = 0
+          nScat = 0
+          nAbs = 0
+          nDiffusion = 0
+          nKilled = 0
+
+          imonte_beg=1; imonte_end=nMonte  ! default value
 
 #ifdef MPI
-!       ! Set the range of index for a photon loop used later.     
-!       n_rmdr = MOD(nMonte,np)
-!       m = nMonte/np
-!
-!       if (myRankGlobal .lt. n_rmdr ) then
-!          imonte_beg = (m+1)*myRankGlobal + 1
-!          imonte_end = imonte_beg + m
-!       else
-!          imonte_beg = m*myRankGlobal + 1 + n_rmdr
-!          imonte_end = imonte_beg + m -1
-!       end if
-!   !    print *, ' '
-!   !    print *, 'imonte_beg = ', imonte_beg
-!   !    print *, 'imonte_end = ', imonte_end
-!  
-!      
-!       !  Just for safety.
-!       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
-!          print *, 'Index out of range: i_beg and i_end must be ' 
-!          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
-!          print *, 'imonte_beg = ', imonte_beg
-!          print *, 'imonte_end = ', imonte_end
-!          stop
-!       end if
+          !       ! Set the range of index for a photon loop used later.     
+          !       n_rmdr = MOD(nMonte,np)
+          !       m = nMonte/np
+          !
+          !       if (myRankGlobal .lt. n_rmdr ) then
+          !          imonte_beg = (m+1)*myRankGlobal + 1
+          !          imonte_end = imonte_beg + m
+          !       else
+          !          imonte_beg = m*myRankGlobal + 1 + n_rmdr
+          !          imonte_end = imonte_beg + m -1
+          !       end if
+          !   !    print *, ' '
+          !   !    print *, 'imonte_beg = ', imonte_beg
+          !   !    print *, 'imonte_end = ', imonte_end
+          !  
+          !      
+          !       !  Just for safety.
+          !       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
+          !          print *, 'Index out of range: i_beg and i_end must be ' 
+          !          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
+          !          print *, 'imonte_beg = ', imonte_beg
+          !          print *, 'imonte_end = ', imonte_end
+          !          stop
+          !       end if
 
 
 
 
-  !====================================================================================
-  ! Splitting the innerPhoton loop for multiple processors.
-  if (myRankGlobal == 0) then
-     print *, ' '
-     print *, 'photonLoop computed by ', nThreadsGlobal-1, ' processors.'
-     print *, ' '
+          !====================================================================================
+          ! Splitting the innerPhoton loop for multiple processors.
+          if (myRankGlobal == 0) then
+             print *, ' '
+             print *, 'photonLoop computed by ', nThreadsGlobal-1, ' processors.'
+             print *, ' '
 
-     ! we will use an array to store the rank of the process
-     !   which will calculate each photon
-     allocate(photonBelongsRank(nMonte))
-    
-     call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=100,tag=tag,&
-                          setDebug=.false.)
-     deallocate(photonBelongsRank) ! we don't really need this here. 
-  end if
-  !====================================================================================
+             ! we will use an array to store the rank of the process
+             !   which will calculate each photon
+             allocate(photonBelongsRank(nMonte))
 
-    
-    
-  if (myRankGlobal /= 0) then
-    mpiBlockLoop: do  
-      call mpiGetBlock(myRankGlobal,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
-      if (rankComplete) exit mpiBlockLoop  
+             call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=100,tag=tag,&
+                  setDebug=.false.)
+             deallocate(photonBelongsRank) ! we don't really need this here. 
+          end if
+          !====================================================================================
+
+
+
+          if (myRankGlobal /= 0) then
+             mpiBlockLoop: do  
+                call mpiGetBlock(myRankGlobal,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
+                if (rankComplete) exit mpiBlockLoop  
 #endif    
 
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
-!$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
-!$OMP PRIVATE(thisOctal, albedo, r) &
-!$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
-!$OMP PRIVATE(i, j, T1) &
-!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
-!$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
-!$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
-!$OMP PRIVATE(oldUHat) &
-!$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
-!$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
-!$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
-!$OMP SHARED(scale, logNu1, fac1dnu) &
-!$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
-!$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
-!$OMP SHARED(dnu, nFreq, freq, nMonte) &
-!$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
+                !$OMP PARALLEL DEFAULT(NONE) &
+                !$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
+                !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
+                !$OMP PRIVATE(thisOctal, albedo, r) &
+                !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
+                !$OMP PRIVATE(i, j, T1) &
+                !$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
+                !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
+                !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
+                !$OMP PRIVATE(oldUHat) &
+                !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
+                !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
+                !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
+                !$OMP SHARED(scale, logNu1, fac1dnu) &
+                !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
+                !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
+                !$OMP SHARED(dnu, nFreq, freq, nMonte) &
+                !$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
 
 
-!$OMP DO SCHEDULE(runtime)
-       photonloop: do iMonte = imonte_beg, imonte_end
+                !$OMP DO SCHEDULE(runtime)
+                photonloop: do iMonte = imonte_beg, imonte_end
 
 
 #ifdef MPI
- !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
+                   !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
-          thisPhotonAbs = 0
-          call randomSource(source, nSource, iSource)
-          thisSource = source(iSource)
-          call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
-          thermalphoton = .true.
-          directPhoton = .true.
+                   thisPhotonAbs = 0
+                   call randomSource(source, nSource, iSource)
+                   thisSource = source(iSource)
+                   call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
+                   thermalphoton = .true.
+                   directPhoton = .true.
 
-          call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
-            foundSubcell=tempsubcell)
-          thisOctal => tempOctal
-          subcell = tempSubcell
+                   call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
+                        foundSubcell=tempsubcell)
+                   thisOctal => tempOctal
+                   subcell = tempSubcell
 
-          if (tempOctal%diffusionApprox(tempsubcell)) then
+                   if (tempOctal%diffusionApprox(tempsubcell)) then
 
-             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
-             if (.not.ok) cycle photonLoop ! abort photon if random walk has failed
-             directPhoton = .false.
-             rVec = subcellCentre(thisOctal, subcell)
-          endif
-          sOctal => thisOctal
+                      call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
+                      if (.not.ok) cycle photonLoop ! abort photon if random walk has failed
+                      directPhoton = .false.
+                      rVec = subcellCentre(thisOctal, subcell)
+                   endif
+                   sOctal => thisOctal
 
-          escaped = .false.
-          call getWavelength(thisSource%spectrum, wavelength)
-          thisFreq = cSpeed/(wavelength / 1.e8)
-          thislam = wavelength
+                   escaped = .false.
+                   call getWavelength(thisSource%spectrum, wavelength)
+                   thisFreq = cSpeed/(wavelength / 1.e8)
+                   thislam = wavelength
 
-          do while(.not.escaped)
+                   do while(.not.escaped)
 
-             ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
-             ilam = max(ilam, 1)
+                      ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
+                      ilam = max(ilam, 1)
 
-             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, &
-                  directPhoton, scatteredPhoton, thermalPhoton, &
-                  sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
+                      call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
+                           photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, &
+                           directPhoton, scatteredPhoton, thermalPhoton, &
+                           sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
-             If (escaped) nInf_sub = nInf_sub + 1
+                      If (escaped) nInf_sub = nInf_sub + 1
 
-             if (photonInDiffusionZone) then
-                nDiffusion_sub = nDiffusion_sub + 1
-             endif
-                
-             if (.not. escaped) then
+                      if (photonInDiffusionZone) then
+                         nDiffusion_sub = nDiffusion_sub + 1
+                      endif
 
-                thisOctal => foundOctal
-                subcell = foundSubcell
-!                thisLam = (cSpeed / thisFreq) * 1.e8
-!                call locate(lamArray, nLambda, real(thisLam), iLam)
-                octVec = rVec 
+                      if (.not. escaped) then
 
-                ! This call is dead because kappaabs and kappasca come from tonextevent amr
+                         thisOctal => foundOctal
+                         subcell = foundSubcell
+                         !                thisLam = (cSpeed / thisFreq) * 1.e8
+                         !                call locate(lamArray, nLambda, real(thisLam), iLam)
+                         octVec = rVec 
 
-!                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
-!                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
-                sOctal => thisOctal
+                         ! This call is dead because kappaabs and kappasca come from tonextevent amr
 
-                if (thisOctal%diffusionApprox(subcell)) then
-                   write(*,*) "photon in diffusion zone",photonindiffusionzone
-                endif
+                         !                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
+                         !                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
+                         sOctal => thisOctal
 
-                if (kappaScadb+kappaAbsdb /= 0.0d0) then
-                   albedo = kappaScadb / (kappaScadb + kappaAbsdb)
-                else
-                   albedo = 0.5
-                end if
+                         if (thisOctal%diffusionApprox(subcell)) then
+                            write(*,*) "photon in diffusion zone",photonindiffusionzone
+                         endif
 
-                directPhoton = .false.
-                
-                ! photon is always absorbed/reprocessed if it has come from diffusion zone
+                         if (kappaScadb+kappaAbsdb /= 0.0d0) then
+                            albedo = kappaScadb / (kappaScadb + kappaAbsdb)
+                         else
+                            albedo = 0.5
+                         end if
 
-                if (PhotonInDiffusionZone) albedo = 0. 
+                         directPhoton = .false.
 
-	        albedo = min(albedo,0.9999d0)
+                         ! photon is always absorbed/reprocessed if it has come from diffusion zone
 
-                call random_number(r)
+                         if (PhotonInDiffusionZone) albedo = 0. 
 
-                ! scattering case
-                if (r < albedo) then 
+                         albedo = min(albedo,0.9999d0)
 
-                   thermalPhoton = .false.
-                   scatteredPhoton = .true.
-                   vec_tmp = uhat
-                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
-                        thisOctal%dustTypeFraction(subcell, 1:nDusttype))
+                         call random_number(r)
 
-                   nScat_sub = nScat_sub + 1
-                   uHat = uNew
+                         ! scattering case
+                         if (r < albedo) then 
 
-                else
+                            thermalPhoton = .false.
+                            scatteredPhoton = .true.
+                            vec_tmp = uhat
+                            uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
+                                 thisOctal%dustTypeFraction(subcell, 1:nDusttype))
 
-                  nAbs_sub = nAbs_sub + 1
-                  thisPhotonAbs = thisPhotonAbs + 1
-                  if (thisPhotonAbs > 50000) then
-                     nKilled = nKilled + 1
-                     cycle photonLoop
-                  endif
+                            nScat_sub = nScat_sub + 1
+                            uHat = uNew
 
-                  call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
-                       actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
+                         else
 
-                  t1 = dble(treal)
+                            nAbs_sub = nAbs_sub + 1
+                            thisPhotonAbs = thisPhotonAbs + 1
+                            if (thisPhotonAbs > 50000) then
+                               nKilled = nKilled + 1
+                               cycle photonLoop
+                            endif
 
-                   ! if the photon has come from the diffusion zone then it has to be
-                   ! reprocessed using the appropriate temperature
+                            call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+                                 actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
 
-                  if (photonInDiffusionZone) then
-                      t1 = dble(diffusionZoneTemp)
-                  endif
+                            t1 = dble(treal)
 
-                  hrecip_kt = hcgs / (kErg * t1 )
+                            ! if the photon has come from the diffusion zone then it has to be
+                            ! reprocessed using the appropriate temperature
 
-                  logt = log(t1)
-                  logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
-                  logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
-                  icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
-                  icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
+                            if (photonInDiffusionZone) then
+                               t1 = dble(diffusionZoneTemp)
+                            endif
 
-                  
-                  do i = 1, icritupper
-                     iLam = nfreq - i + 1
-                     kAbsArray2(i) = kabsArray(ilam)
-                  enddo
-                  
-!                  do i = 1, icritupper
-!                     iLam = nfreq - i + 1
-!                     write(*,*) kabsarray2(i), kabsarray(ilam)
-!                  enddo
-!stop
-                  probDistJnu(1)  = 1.d-50
+                            hrecip_kt = hcgs / (kErg * t1 )
+
+                            logt = log(t1)
+                            logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
+                            logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
+                            icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
+                            icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
+
+
+                            do i = 1, icritupper
+                               iLam = nfreq - i + 1
+                               kAbsArray2(i) = kabsArray(ilam)
+                            enddo
+
+                            !                  do i = 1, icritupper
+                            !                     iLam = nfreq - i + 1
+                            !                     write(*,*) kabsarray2(i), kabsarray(ilam)
+                            !                  enddo
+                            !stop
+                            probDistJnu(1)  = 1.d-50
 #ifdef USEMKL
-                  hrecip_ktarray(1:icritupper) = hrecip_kt
-                  
-                  call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
-                  call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
-                  call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
-                  call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
+                            hrecip_ktarray(1:icritupper) = hrecip_kt
 
-                  call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
-                  
-                  call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
-                  call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
+                            call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
+                            call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
+                            call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
+                            call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
+
+                            call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
+
+                            call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
+                            call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
 #else             
-                  hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
+                            hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
 
-                  fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
-                  fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
-                   
-                  this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
-                  !this_bnu here is actually bnu * dnu * kabs
+                            fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
+                            fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
+
+                            this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
+                            !this_bnu here is actually bnu * dnu * kabs
 #endif
 
-                   do i = 2, icritupper
-                      probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
+                            do i = 2, icritupper
+                               probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
+                            enddo
+
+                            if (probDistJnu(icritupper) /= 0.d0) then
+                               call random_number(r)
+                               r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
+                               call locate(probDistJnu(1:icritupper), icritupper, r, j)
+                               if (j == nFreq) j = nFreq -1
+                               thisFreq = freq(j) + (freq(j+1) - freq(j))* &
+                                    (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j)) ! note that probdistjnu(nfreq) cancels here so it's fine
+                               thisLam = (cSpeed / thisFreq) * 1.e8
+                               !                      write(*,*) cSpeed/thisFreq/angstromtocm
+                            endif
+
+                            oldUhat = uHat
+                            uHat = randomUnitVector()
+                            thermalPhoton = .true.
+                            scatteredPhoton = .false.
+                            ! make sure diffused photon is moving out of diffusion zone
+
+                            if (photonInDiffusionZone) then
+                               if ((oldUhat.dot.uHat)  > 0.) then
+                                  uHat = (-1.d0) * uHat
+                               endif
+                            endif
+
+                         endif
+
+                      endif
                    enddo
 
-                   if (probDistJnu(icritupper) /= 0.d0) then
-                      call random_number(r)
-                      r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
-                      call locate(probDistJnu(1:icritupper), icritupper, r, j)
-                      if (j == nFreq) j = nFreq -1
-                      thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-                           (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j)) ! note that probdistjnu(nfreq) cancels here so it's fine
-                      thisLam = (cSpeed / thisFreq) * 1.e8
-!                      write(*,*) cSpeed/thisFreq/angstromtocm
-                   endif
-
-                   oldUhat = uHat
-                   uHat = randomUnitVector()
-                   thermalPhoton = .true.
-                   scatteredPhoton = .false.
-                   ! make sure diffused photon is moving out of diffusion zone
-
-                   if (photonInDiffusionZone) then
-                      if ((oldUhat.dot.uHat)  > 0.) then
-                         uHat = (-1.d0) * uHat
-                      endif
-                   endif
-
-                endif
-
-             endif
-          enddo
-
-       enddo photonLoop
-!$OMP END DO
-!$OMP CRITICAL (update)
+                enddo photonLoop
+                !$OMP END DO
+                !$OMP CRITICAL (update)
 
 #ifdef MPI
- if (.not.blockHandout) exit mpiblockloop        
-    end do mpiBlockLoop  
-  end if ! (myRankGlobal /= 0)
+                if (.not.blockHandout) exit mpiblockloop        
+             end do mpiBlockLoop
+          end if ! (myRankGlobal /= 0)
 #endif
 
-      nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
-      nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
-      nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
-      nDiffusion = nDiffusion_sub   + nDiffusion    ! sum from each thread for OpenMP
-!$OMP END CRITICAL (update)
+          nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
+          nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
+          nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
+          nDiffusion = nDiffusion_sub   + nDiffusion    ! sum from each thread for OpenMP
+          !$OMP END CRITICAL (update)
 
-!$OMP BARRIER
-!$OMP END PARALLEL
+          !$OMP BARRIER
+          !$OMP END PARALLEL
 
 
 
 #ifdef MPI
-       ! Summing the value in octal computed by each processors.
-       ! This is a recursive function which involves the many 
-       ! comunications between processors. It may take a while....
-       ! (Maybe faster to pack the values in 1D arrays and distribute.)
+          ! Summing the value in octal computed by each processors.
+          ! This is a recursive function which involves the many 
+          ! comunications between processors. It may take a while....
+          ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
-       if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-       if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
-    !   call update_octal_MPI(grid%octreeRoot, grid)
+          if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
+          if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
+          !   call update_octal_MPI(grid%octreeRoot, grid)
 
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
-       call updateGridMPI(grid)
-       if(myRankGlobal == 0) write(*,*) "Done update."
+          call updateGridMPI(grid)
+          if(myRankGlobal == 0) write(*,*) "Done update."
 
-       if(doTuning) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
+          if(doTuning) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 
-       ! collect some statical info from each node.
-       call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       nInf = INT(SUM(buffer_real), double)
+          ! collect some statical info from each node.
+          call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          nInf = INT(SUM(buffer_real), double)
 
-       call MPI_ALLGATHER(REAL(nScat), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       nScat = INT(SUM(buffer_real), double)
+          call MPI_ALLGATHER(REAL(nScat), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          nScat = INT(SUM(buffer_real), double)
 
-       call MPI_ALLGATHER(REAL(nAbs), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       nAbs = INT(SUM(buffer_real), double)
+          call MPI_ALLGATHER(REAL(nAbs), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          nAbs = INT(SUM(buffer_real), double)
 
-       call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       nKilled = INT(SUM(buffer_real))
+          call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          nKilled = INT(SUM(buffer_real))
 
-       call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       nDiffusion = INT(SUM(buffer_real), double)
+          call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          nDiffusion = INT(SUM(buffer_real), double)
 #endif
-       
-       write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
-       call writeInfo(message,TRIVIAL)
-       write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
-       call writeInfo(message,IMPORTANT)
-       write(message,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
-       call writeInfo(message,IMPORTANT)
-       write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
-       call writeInfo(message,IMPORTANT)
+
+          write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
+          call writeInfo(message,TRIVIAL)
+          write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
+          write(message,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
+          write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
 
 
-       epsOverDeltaT = lCore / dble(nInf)
+          epsOverDeltaT = lCore / dble(nInf)
 
-       nDT = 0
-       nUndersampled = 0
-
-
-       totalEmission = 0.
+          nDT = 0
+          nUndersampled = 0
 
 
-       call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
-       dT_sum, dT_min, dT_max, dT_over_T_max)
+          totalEmission = 0.
+
+
+          call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
+               nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
+               dT_sum, dT_min, dT_max, dT_over_T_max)
 
 
 
-       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
+          if (doTuning) call tune(6, "Gauss-Seidel sweeps")
+          call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
 
 
-       nCellsInDiffusion = 0
-       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+          nCellsInDiffusion = 0
+          call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
-       if (.not.variableDustSublimation) then
-          call solveArbitraryDiffusionZones(grid)
-       else
-          if (iITer_grand >= 9) then
+          if (.not.variableDustSublimation) then
              call solveArbitraryDiffusionZones(grid)
-          endif
-       endif
-
-       nCellsInDiffusion = 0
-       nUndersampled = 0
-       call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
-       percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
-
-
-       call calculateEtaCont(grid, grid%octreeRoot, nFreq, freq, dnu, lamarray, nLambda, kAbsArray)
-       dt_min = 1.d10
-       dt_max = -1.d10
-       dt_sum = 0.d0
-       totalEmission = 0.d0
-       call calculateDeltaTStats(grid%octreeRoot, dt_min, dt_max, dt_sum, dt_over_t_max, totalEmission, nDt)
-       dT_mean_old = dT_mean_new  ! save this for the next iteration
-       dT_mean_new = dT_sum/real(nDt)
-
-       if (myRankIsZero) then
-
-          write(message,*) "Number of photons entering diffusion zone", ndiffusion
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Minimum change in temperature : ", dT_min, " Kelvins"
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Maximum change in temperature : ", dT_max, " Kelvins"
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Fractional change in emissivity : ", abs(totalEmission-oldTotalEmission)/totalEmission
-          call writeInfo(message, TRIVIAL)
-          write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled
-          call writeInfo(message, TRIVIAL)
-          write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Total emission",totalEmission
-          call writeInfo(message, TRIVIAL)
-
-
-       !
-       ! writing the info above to a file.
-10        format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
-11        format(3x, i12, 6(2x, f12.2), (2x,f12.4), (2x, i12))
-          if (first_time_to_open_file) then
-             open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
-             first_time_to_open_file=.false.
-             write(LU_OUT, 10) "#", "iteration", "Mean dT [K]", "Min dT [K]", "Max dT [K]", &
-                  "% bad cells", "Eta dust/*", "Eta Total", "Max dT/T", "nMonte"
           else
-             open(unit=LU_OUT, file='convergence_lucy.dat', status='old', position='append')
+             if (iITer_grand >= 9) then
+                call solveArbitraryDiffusionZones(grid)
+             endif
+          endif
+
+          nCellsInDiffusion = 0
+          nUndersampled = 0
+          call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
+          percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
+
+
+          call calculateEtaCont(grid, grid%octreeRoot, nFreq, freq, dnu, lamarray, nLambda, kAbsArray)
+          dt_min = 1.d10
+          dt_max = -1.d10
+          dt_sum = 0.d0
+          totalEmission = 0.d0
+          call calculateDeltaTStats(grid%octreeRoot, dt_min, dt_max, dt_sum, dt_over_t_max, totalEmission, nDt)
+          dT_mean_old = dT_mean_new  ! save this for the next iteration
+          dT_mean_new = dT_sum/real(nDt)
+
+          if (myRankIsZero) then
+
+             write(message,*) "Number of photons entering diffusion zone", ndiffusion
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Minimum change in temperature : ", dT_min, " Kelvins"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Maximum change in temperature : ", dT_max, " Kelvins"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Fractional change in emissivity : ", abs(totalEmission-oldTotalEmission)/totalEmission
+             call writeInfo(message, TRIVIAL)
+             write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled
+             call writeInfo(message, TRIVIAL)
+             write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Total emission",totalEmission
+             call writeInfo(message, TRIVIAL)
+
+
+             !
+             ! writing the info above to a file.
+10           format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
+11           format(3x, i12, 6(2x, f12.2), (2x,f12.4), (2x, i12))
+             if (first_time_to_open_file) then
+                open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
+                first_time_to_open_file=.false.
+                write(LU_OUT, 10) "#", "iteration", "Mean dT [K]", "Min dT [K]", "Max dT [K]", &
+                     "% bad cells", "Eta dust/*", "Eta Total", "Max dT/T", "nMonte"
+             else
+                open(unit=LU_OUT, file='convergence_lucy.dat', status='old', position='append')
+             end if
+
+             write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
+                  percent_undersampled, totalEmission /lCore *1.e30, &
+                  totalEmission, dT_over_T_max, nMonte
+
+             close(LU_OUT)
+
           end if
 
-          write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
-               percent_undersampled, totalEmission /lCore *1.e30, &
-               totalEmission, dT_over_T_max, nMonte
-       
-          close(LU_OUT)
 
-       end if
-       
-
-       if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
+          if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
 
 
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
-!       call unsetOnDirect(grid%octreeRoot)
-       write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-       call writeInfo(message,IMPORTANT)
+          call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
+          !       call unsetOnDirect(grid%octreeRoot)
+          write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+          call writeInfo(message,IMPORTANT)
 
-       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
-
-
-!       call writeInfo("Starting adaptive smooth...",TRIVIAL)
-!       do
-!          smoothConverged = .true.
-!          call directPhotonSmooth(grid%octreeRoot, grid, smoothConverged, inheritProps = .true., interpProps = .false.)
-!          if (smoothConverged) exit
-!       end do
-!       call writeInfo("Finished.",TRIVIAL)
-!       nCellsinDiffusion = 0
-!       call recountDiffusionCells(grid%octreeRoot, nCellsInDiffusion)
+          if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
 
-       if (grid%geometry.eq."wr104") then
-          totalMass = 0.
-          call findTotalMass(grid%octreeRoot, totalMass)
-          scaleFac = massEnvelope / totalMass
-          if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-          call scaleDensityAMR(grid%octreeRoot, scaleFac)
-          call sublimateDustWR104(grid%octreeRoot)
-       endif
+
+          if (grid%geometry.eq."wr104") then
+             totalMass = 0.
+             call findTotalMass(grid%octreeRoot, totalMass)
+             scaleFac = massEnvelope / totalMass
+             if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+             call scaleDensityAMR(grid%octreeRoot, scaleFac)
+             call sublimateDustWR104(grid%octreeRoot)
+          endif
 
 
-!       if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-!       call writeInfo("Grid written",TRIVIAL)
 
-
-    enddo
+       enddo
 
        if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
           call fillDustUniform(grid, grid%octreeRoot)
@@ -790,9 +795,9 @@ contains
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
              endif
-             
+
              if (iiter_grand == 9) then
-                
+
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
@@ -807,7 +812,7 @@ contains
                    write(*,*) "done."
                 endif
              endif
-                
+
              if (iiter_grand >= 9) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
@@ -816,12 +821,12 @@ contains
                    do
                       gridConverged = .true.
                       call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .true.)
-                      
+
                       if (gridConverged) exit
                    end do
                 enddo
                 call writeInfo("...grid smoothing complete", TRIVIAL)
-                
+
                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
                 do
                    gridConverged = .true.
@@ -831,53 +836,53 @@ contains
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
              endif
-          nCellsInDiffusion = 0
-          call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
-          write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-          call writeInfo(message,IMPORTANT)
+             nCellsInDiffusion = 0
+             call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+             write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+             call writeInfo(message,IMPORTANT)
 
 
+
+          endif
 
        endif
 
-    endif
-       
 
 
-    if (grid%geometry == "wr104") then
+       if (grid%geometry == "wr104") then
 
-       totalMass = 0.
-       call findTotalMass(grid%octreeRoot, totalMass)
-       scaleFac = massEnvelope / totalMass
-       if (myRankIsZero) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-       call scaleDensityAMR(grid%octreeRoot, scaleFac)
+          totalMass = 0.
+          call findTotalMass(grid%octreeRoot, totalMass)
+          scaleFac = massEnvelope / totalMass
+          if (myRankIsZero) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+          call scaleDensityAMR(grid%octreeRoot, scaleFac)
 
-    endif
-
-
-    if (abs(totalEmission-oldTotalEmission)/totalEmission < 1.d-2) converged = .true.
-
-    oldTotalEmission = totalEmission
-
-    if (percent_undersampled > percent_undersampled_min) then
-       nMonte  = nMonte * 2
-       converged = .false.
-    endif
+       endif
 
 
-    if (iIter_grand < iterlucy) converged = .false.
+       if (abs(totalEmission-oldTotalEmission)/totalEmission < 1.d-2) converged = .true.
 
-    if (variableDustSublimation) then
-       if (iIter_grand < 12) then
+       oldTotalEmission = totalEmission
+
+       if (percent_undersampled > percent_undersampled_min) then
+          nMonte  = nMonte * 2
           converged = .false.
        endif
-    endif
-       
-! forceLucyConv is set in the parameters.dat file if required
-    if ( forceLucyConv ) then
-       converged = .true.
-       if (myRankIsZero) write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
-    end if
+
+
+       if (iIter_grand < iterlucy) converged = .false.
+
+       if (variableDustSublimation) then
+          if (iIter_grand < 12) then
+             converged = .false.
+          endif
+       endif
+
+       ! forceLucyConv is set in the parameters.dat file if required
+       if ( forceLucyConv ) then
+          converged = .true.
+          if (myRankIsZero) write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+       end if
 
 
        if (multiLucyFiles) then
@@ -885,27 +890,27 @@ contains
        else
           tfilename = "lucy.vtk"
        endif
-       
+
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                              "dust1      ", "deltaT     "/))
+            "dust1      ", "deltaT     "/))
 
-!    !
-!    ! Write grid structure to a tmp file.
-!    !
+       !    !
+       !    ! Write grid structure to a tmp file.
+       !    !
 
 
-!    if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
- 
+       !    if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 
-      
+
+
     enddo
 
- if (storescattered) then 
-    call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
-    call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
-    if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
- endif
+    if (storescattered) then 
+       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
+       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+    endif
   end subroutine lucyRadiativeEquilibriumAMR
 
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
