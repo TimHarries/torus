@@ -413,7 +413,7 @@ module molecular_mod
 
               if(firsttime2) then
                  call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-                 if(.not. setmaxlevel) then
+                 if(setmaxlevel .gt. 0) then 
                     call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, thismolecule%nlevels, nVoxels, lte = .true.)
                  else
                     maxlevel = setmaxlevel
@@ -1601,12 +1601,12 @@ end subroutine molecularLoop
                  if(fixedrays) then
                     
                     thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2),&
-                         doubleweight = .false.))
+                    abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
+                    doubleweight = .false.))
                  else
                     thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2),&
-                         doubleweight = .true.))
+                    abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
+                    doubleweight = .true.))
                  endif
 !              thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell) / &
 !                                                       sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
