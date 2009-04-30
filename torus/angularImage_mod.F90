@@ -248,7 +248,7 @@ module angularImage
 
 ! Set up axis arrays
       do jpixels=1, npixels
-         theta_axis(jpixels) = theta_min + ( real(jpixels) * delta_theta )
+         theta_axis(jpixels) = theta_min + ( real(npixels - jpixels + 1) * delta_theta )
       end do
       theta_axis(:) = theta_axis(:) * degToRad
 
