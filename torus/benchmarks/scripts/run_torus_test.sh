@@ -149,6 +149,13 @@ ${TORUS_FC} -o comparesod compareSod.f90
 ./comparesod > check_log_hydro.txt
 }
 
+check_hII()
+{
+echo Compiling comparelex code
+${TORUS_FC} -o comparelex comparelex.f90
+./comparelex > check_log_hII.txt
+}
+
 run_torus_test_suite()
 {
 if [[ -e ${TEST_DIR} ]]; then
@@ -201,9 +208,10 @@ for sys in ${SYS_TO_TEST}; do
 #    run_sphbench
 #    check_benchmark > check_log_sphbench.txt 2>&1 
 
-#    echo "Running HII region benchmark"
-#    export THIS_BENCH=HII_region
-#    run_bench
+    echo "Running HII region benchmark"
+    export THIS_BENCH=HII_region
+    run_bench
+    check_hII
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
