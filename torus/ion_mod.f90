@@ -56,6 +56,7 @@ contains
     real :: iPot
     character(len=2) :: element
     character(len=4) :: roman
+    character(len=30) :: message
 
     element = " "; roman = " "
     thisIon%z = z
@@ -65,6 +66,8 @@ contains
     call createRoman(i, roman)
     thisIon%species = trim(element)//" "//trim(roman)
     thisIon%abundance = returnAbundance(z)
+    write(message, '(a10,f10.8)') thisIon%species, thisIon%abundance
+    if (writeoutput) call writeInfo(message, TRIVIAL)
     thisIon%iPot = iPot
     thisIon%outerShell = returnOuterShell(n) 
     thisIon%nuThresh = (thisIon%iPot / dble(ergtoev)) / dble(hCgs)

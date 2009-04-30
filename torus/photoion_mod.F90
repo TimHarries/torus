@@ -339,10 +339,10 @@ contains
 !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                       else
-!                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                       endif
                    else ! non-ionizing photon must be absorbed by dust
-!                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                    endif
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
@@ -649,9 +649,10 @@ end if ! (my_rank /= 0)
 
     if (writeoutput) &
        call writeVtkFile(grid, "temp.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "HI         "/))
+            valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
+            "OII        ", "OIII       "/))
 
-    if (niter == 1) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 10) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
@@ -1321,7 +1322,7 @@ end subroutine photoIonizationloop
                             write(*,*) t1, t2, y1,y2,ym
                          endif
                          
-                         if (abs((t1-t2)/t1) .le. 1.e-2) then
+                         if (abs((t1-t2)/t1) .le. 1.e-3) then
                             converged = .true.
                          endif
                          niter = niter + 1
@@ -1507,7 +1508,7 @@ end subroutine photoIonizationloop
     endif
 
 
-    call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate, debug=.true.)
+    call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate, debug=.false.)
     if (crate < 0.) then
        write(*,*) "total negative metal cooling",crate
     endif
@@ -2671,7 +2672,6 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   type(OCTAL) :: thisOctal
   integer :: subcell
   real(double) :: hHeating, heHeating, totalHeating, v, epsOverDeltaT, dustHeating
-
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
@@ -4047,7 +4047,7 @@ end subroutine readHeIIrecombination
   end subroutine writeMultiImages
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
-    use input_variables, only : readlucy, nlambda, nPhotons
+    use input_variables, only : readlucy, nlambda, nPhotons, npix, setimageSize
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -4085,8 +4085,8 @@ end subroutine readHeIIrecombination
 
 
 
-    thisImage = initImage(200, 200, real(4.*grid%octreeRoot%subcellSize), &
-         real(4.*grid%octreeRoot%subcellSize), 0., 0.)
+    thisImage = initImage(npix, npix, setimagesize/1.e10, &
+         setimagesize/1.e10, 0., 0.)
 
     
     call addEmissionLine(grid, 1.d0, lambdaLine)

@@ -7102,20 +7102,20 @@ IF ( .NOT. gridConverged ) RETURN
     ethermal  = 0.;
     gamma = 5.d0/3.d0
 
-    if (firsttime) then
-       open(20,file="overview.txt", form="formatted",status="old")
-       it = 1
-77     continue
-       read(20,*,end=88) radius(it),temp(it)
-       radius(it) = (radius(it)+30.e17) / 1.e10
-       temp(it) = 10.**temp(it) 
-       it = it + 1
-       goto 77
-88     continue
-       it = it - 1
-       close(20)
-       firsttime = .false.
-    endif
+!    if (firsttime) then
+!       open(20,file="overview.txt", form="formatted",status="old")
+!       it = 1
+!77     continue
+!       read(20,*,end=88) radius(it),temp(it)
+!       radius(it) = (radius(it)+30.e17) / 1.e10
+!       temp(it) = 10.**temp(it) 
+!       it = it + 1
+!       goto 77
+!88     continue
+!       it = it - 1
+!       close(20)
+!       firsttime = .false.
+!    endif
 
 
     rVec = subcellCentre(thisOctal,subcell)
@@ -7146,11 +7146,11 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
        thisOctal%temperature(subcell) = 10000.
-       if ((r > radius(1)).and.(r < radius(it))) then
-          call locate(radius, it, r, i)
-          fac = (r-radius(i))/(radius(i+1)-radius(i))
-          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
-       endif
+!       if ((r > radius(1)).and.(r < radius(it))) then
+!          call locate(radius, it, r, i)
+!          fac = (r-radius(i))/(radius(i+1)-radius(i))
+!          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
+!       endif
 
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -8753,7 +8753,10 @@ end function readparameterfrom2dmap
     thisOctal%ionFrac(subcell,3) = 1.e-10
     thisOctal%ionFrac(subcell,4) = 1.       
     thisOctal%etaCont(subcell) = 0.
-
+    if (thisOctal%rho(subcell) < 110.d0*mHydrogen)  then ! in cavity
+       thisOctal%dustTypeFraction(subcell, :) = 1.d-20 ! no dust in cavity
+       thisOctal%temperature(subcell) = 1.d4 ! 10,000K in cavity
+    endif
 
 
   end subroutine assign_melvin

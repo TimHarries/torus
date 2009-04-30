@@ -2052,7 +2052,8 @@ subroutine set_up_sources
        source(1)%radius = 10.*rSol / 1.e10
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
+       fac = 1.e8*cspeed/5.d16
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
        rstar = source(1)%radius
 

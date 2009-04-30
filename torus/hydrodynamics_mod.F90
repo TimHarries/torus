@@ -2166,75 +2166,77 @@ contains
 
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
-    call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    if (myrankGlobal /= 0) then
+       call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-    do i = 1, nPairs
-       if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
-    enddo
-
-
-    call writeInfo("Calling exchange across boundary", TRIVIAL)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    call writeInfo("Done", TRIVIAL)
-
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call calculateRhoU(grid%octreeRoot, direction)
-    direction = VECTOR(0.d0, 1.d0, 0.d0)
-    call calculateRhoV(grid%octreeRoot, direction)
-    direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call calculateRhoW(grid%octreeRoot, direction)
-
-!    call calculateEnergy(grid%octreeRoot, gamma, mu)
-    call calculateRhoE(grid%octreeRoot, direction)
+       do i = 1, nPairs
+          if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
+       enddo
 
 
-
-
-
-    call writeInfo("Refining individual subgrids", TRIVIAL)
-    if (.not.grid%splitOverMpi) then
-       do
-          gridConverged = .true.
-          call setupEdges(grid%octreeRoot, grid)
-          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
-          call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, flag=.true.)
-          if (gridConverged) exit
-       end do
-    else
-       call evenUpGridMPI(grid,.false.,.true.)
-    endif
-
-    
-
-    call writeInfo("Refining grid part 2", TRIVIAL)    
-    do
-       globalConverged(myRank) = .true.
-       call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
+       call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-       call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-       if (ALL(tConverged(1:nHydroThreads))) exit
-    end do
+       call writeInfo("Done", TRIVIAL)
 
-    call writeInfo("Evening up grid", TRIVIAL)    
-    call evenUpGridMPI(grid, .false.,.true.)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       call calculateRhoU(grid%octreeRoot, direction)
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
+       call calculateRhoV(grid%octreeRoot, direction)
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
+       call calculateRhoW(grid%octreeRoot, direction)
+
+       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
+       call calculateRhoE(grid%octreeRoot, direction)
 
 
 
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call setupX(grid%octreeRoot, grid, direction)
-    call setupQX(grid%octreeRoot, grid, direction)
-!    call calculateEnergy(grid%octreeRoot, gamma, mu)
-    call calculateRhoE(grid%octreeRoot, direction)
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call calculateRhoU(grid%octreeRoot, direction)
-    direction = VECTOR(0.d0, 1.d0, 0.d0)
-    call calculateRhoV(grid%octreeRoot, direction)
-    direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call calculateRhoW(grid%octreeRoot, direction)
 
+
+       call writeInfo("Refining individual subgrids", TRIVIAL)
+       if (.not.grid%splitOverMpi) then
+          do
+             gridConverged = .true.
+             call setupEdges(grid%octreeRoot, grid)
+             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+             call unsetGhosts(grid%octreeRoot)
+             call setupGhostCells(grid%octreeRoot, grid, flag=.true.)
+             if (gridConverged) exit
+          end do
+       else
+          call evenUpGridMPI(grid,.false.,.true.)
+       endif
+
+
+
+       call writeInfo("Refining grid part 2", TRIVIAL)    
+       do
+          globalConverged(myRank) = .true.
+          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          if (ALL(tConverged(1:nHydroThreads))) exit
+       end do
+
+       call writeInfo("Evening up grid", TRIVIAL)    
+       call evenUpGridMPI(grid, .false.,.true.)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
+
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       call setupX(grid%octreeRoot, grid, direction)
+       call setupQX(grid%octreeRoot, grid, direction)
+       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
+       call calculateRhoE(grid%octreeRoot, direction)
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       call calculateRhoU(grid%octreeRoot, direction)
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
+       call calculateRhoV(grid%octreeRoot, direction)
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
+       call calculateRhoW(grid%octreeRoot, direction)
+
+    endif
     currentTime = 0.d0
     it = 0
     nextDumpTime = 0.d0
@@ -2247,8 +2249,8 @@ contains
        tc(myrank) = 1.d30
        call computeCourantTime(grid%octreeRoot, tc(myRank))
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
-!       write(*,*) "tc", tc(1:8)
-!       write(*,*) "temp tc",temptc(1:8)
+       !       write(*,*) "tc", tc(1:8)
+       !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
@@ -2256,48 +2258,48 @@ contains
        if (myrank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
 
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-       call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-
-       iUnrefine = iUnrefine + 1
-       if (iUnrefine == 5) then
-          if (myrankglobal == 1) call tune(6, "Unrefine grid")
-          nUnrefine = 0 
-          call unrefineCells(grid%octreeRoot, grid, nUnrefine)
-!          write(*,*) "Unrefined ", nUnrefine, " cells"
-          if (myrankglobal == 1) call tune(6, "Unrefine grid")
-          iUnrefine = 0
-       endif
-
-       if (myrank == 1) call tune(6,"Hydrodynamics step")
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-       call writeInfo("Refining grid part 2", TRIVIAL)    
-       do
-          globalConverged(myRank) = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
+       if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:nHydroThreads))) exit
-       end do
-       
 
-       call evenUpGridMPI(grid, .true., .true.)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
+          iUnrefine = iUnrefine + 1
+          if (iUnrefine == 5) then
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             nUnrefine = 0 
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine)
+             !          write(*,*) "Unrefined ", nUnrefine, " cells"
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             iUnrefine = 0
+          endif
+
+          if (myrank == 1) call tune(6,"Hydrodynamics step")
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+          call writeInfo("Refining grid part 2", TRIVIAL)    
+          do
+             globalConverged(myRank) = .true.
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+             if (ALL(tConverged(1:nHydroThreads))) exit
+          end do
+
+
+          call evenUpGridMPI(grid, .true., .true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       endif
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
        if (currentTime .gt. nextDumpTime) then
-          call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+          if (myrankGlobal /= 0) &
+               call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
           grid%iDump = it
           grid%currentTime = currentTime
-
        endif
 
 

@@ -463,6 +463,22 @@ contains
                case("HI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
 
+
+               case("HeI")
+                  write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon)))
+
+               case("HeII")
+                  write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("He II", grid%ion, grid%nIon)))
+
+               case("OI")
+                  write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon)))
+
+               case("OII")
+                  write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon)))
+
+               case("OIII")
+                  write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
+
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
