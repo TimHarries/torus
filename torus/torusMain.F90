@@ -1515,7 +1515,7 @@ end subroutine pre_initAMRGrid
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
           do
              gridConverged = .true.
-             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+             call myScaleSmooth(smoothFactor, grid, &
                   gridConverged,  inheritProps = .false., interpProps = .false.)
              if (gridConverged) exit
           end do
@@ -1667,7 +1667,7 @@ end subroutine pre_initAMRGrid
               do
                  gridConverged = .true.
                  ! The following is Tim's replacement for soomthAMRgrid.
-                 call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                 call myScaleSmooth(smoothFactor, grid, &
                       gridConverged,  inheritProps = .false., &
 		      interpProps = .false.,  &
                       stellar_cluster=young_cluster, romData=romData)
@@ -1677,10 +1677,10 @@ end subroutine pre_initAMRGrid
            endif
 
            ! Smooth the grid with respect to optical depth, if requested
-
            if (doSmoothGridTau.and.mie) then
+           do i = 1,3
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, iSmoothLam !nLambda
+              do j = iSmoothLam, iSmoothLam  !nLambda
                  write(message,*) "Smoothing at lam = ",xarray(j), " angs"
                  call writeInfo(message, TRIVIAL)
                  do
@@ -1699,15 +1699,17 @@ end subroutine pre_initAMRGrid
                  do
                     gridConverged = .true.
                  ! The following is Tim's replacement for soomthAMRgrid.
-                    call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                    call myScaleSmooth(smoothFactor, grid, &
                          gridConverged,  inheritProps = .false., interpProps = .false., &
                          stellar_cluster=young_cluster, romData=romData)
                     if (gridConverged) exit
                  end do
                  call writeInfo("...grid smoothing complete", TRIVIAL)
               endif
+           enddo
            end if
-        end select
+
+     end select
    
 !        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
 !        gridconverged = .false.

@@ -12531,6 +12531,7 @@ end function readparameterfrom2dmap
     logical :: split
     logical, save :: firsttime = .true.
     character(len=30) :: message
+    logical :: converged_tmp
     kabs = 0.d0; ksca = 0.d0
 
     do subcell = 1, thisOctal%maxChildren
@@ -12552,34 +12553,45 @@ end function readparameterfrom2dmap
 
           thisTau  = thisOctal%subcellSize * (ksca + kabs)
 
-          r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1d0
-          centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*VECTOR(+0.9d0,+0.8d0,+0.7d0)
-          if (.not.thisOctal%cylindrical) then
-             nDir = 6
-             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
-          else
+          r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.001d0
+          centre = subcellCentre(thisOctal, subcell)
+          if (thisOctal%threed) then
+             if (.not.thisOctal%cylindrical) then
+                nDir = 6
+                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+                dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+                dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+                dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+                dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+                dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+             else
+                nDir = 4
+                aHat = VECTOR(centre%x, centre%y, 0.d0)
+                call normalize(aHat)
+                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+                dirVec(2) = aHat
+                dirVec(3) = (-1.d0)*aHat
+                dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+             endif
+          else if (thisOctal%twod) then
              nDir = 4
-             aHat = VECTOR(centre%x, centre%y, 0.d0)
-             call normalize(aHat)
-
-             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = aHat
-             dirVec(3) = (-1.d0)*aHat
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)  
+             dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
              dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+          else
+             nDir = 2
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
+
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
                 startOctal => thisOctal
                 call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
                      foundOctal=neighbourOctal, foundsubcell=neighbourSubcell, kappaSca=ksca, kappaAbs=kabs, ilambda=ilambda)
-                neighbourTau = thisOctal%subcellSize * (ksca + kabs)
+                neighbourTau = neighbourOctal%subcellSize * (ksca + kabs)
 
                 if ((grid%geometry.eq."whitney").and.&
                      (modulus(subcellCentre(thisOctal,subcell)) > 0.9*erouter/1.e10)) split = .false.
@@ -12599,20 +12611,24 @@ end function readparameterfrom2dmap
                    endif
                 endif
 
-
-
+                
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
-!                   write(*,*) modulus(subcellCentre(neighbourOctal, neighboursubcell)),thisOctal%ndepth,neighbourOctal%ndepth
                    if (thisTau > neighbourTau) then
-!                      write(*,*) thisTau,neighbourTau
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps)
-!                      write(*,*) thisOctal%nDepth,thisTau, neighbourTau,sqrt(rVec%x**2+rVec%y**2)/rinner,&
-!                           sqrt(rVec%x**2+rVec%y**2)/router
                       converged = .false.
                       return
                    endif
                 endif
+
+                if (split.and.(thisTau < 1.d0).and.(thisTau > 0.2d0).and.(thisOctal%nDepth < 30)) then 
+                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                        inherit=inheritProps, interp=interpProps)
+                   converged = .false.
+                   return
+                endif
+
+
              endif
           enddo
        endif
@@ -12677,98 +12693,94 @@ end function readparameterfrom2dmap
 
   end subroutine myTauSplit
 
-  recursive subroutine myTemperatureSmooth(thisOctal, grid, converged, inheritProps, interpProps)
-    use input_variables, only :  maxDepthAmr
+
+  recursive subroutine myScaleSmooth(factor, grid, converged, &
+       inheritProps, interpProps, stellar_cluster, romData)
     type(gridtype) :: grid
+    real :: factor
+    integer :: nTagged
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
     logical, optional :: inheritProps, interpProps
+    !
+    TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
+    !
     integer :: subcell, i
-    logical :: converged
-    real(double) :: kabs, ksca, r
-    type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
-    real :: thisTemperature, neighbourTemperature
+    logical :: converged, converged_tmp
+    real(double) :: r
+    type(VECTOR) :: dirVec(6), centre, octVec, aHat
     integer :: neighbourSubcell, j, nDir
-    logical :: split
-    logical, save :: firsttime = .true.
-    character(len=30) :: message
-    real, parameter :: tolerance = 0.5 !50% change in temperature
 
-    do subcell = 1, thisOctal%maxChildren
+    call zeroChiLineLocal(grid%octreeRoot)
+    nTagged = 0
+    call tagScaleSmooth(nTagged, factor, grid%octreeRoot, grid,  converged, &
+         inheritProps, interpProps, stellar_cluster, romData)
+    call splitTagged(grid%octreeRoot, grid, inheritProps, interpProps, stellar_cluster, romData)
+
+  end subroutine myScaleSmooth
+
+  recursive subroutine zeroChiLineLocal(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call myTemperatureSmooth(child, grid, converged, inheritProps, interpProps)
+                call zeroChiLineLocal(child)
                 exit
              end if
           end do
        else
 
-          split = .true.
+          call allocateAttribute(thisOctal%chiLine,thisOctal%maxChildren)
+          thisOctal%chiLine = 0.d0
 
-          thisTemperature  = thisOctal%temperature(subcell)
-
-          r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1d0
-          centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*VECTOR(+0.9d0,+0.8d0,+0.7d0)
-          if (.not.thisOctal%cylindrical) then
-             nDir = 6
-             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
-          else
-             nDir = 4
-             aHat = VECTOR(centre%x, centre%y, 0.d0)
-             call normalize(aHat)
-
-             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = aHat
-             dirVec(3) = (-1.d0)*aHat
-             dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
-          endif
-          do j = 1, nDir
-             octVec = centre + r * dirvec(j)
-             if (inOctal(grid%octreeRoot, octVec)) then
-                startOctal => thisOctal
-                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
-                     foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
-                neighbourTemperature = neighbourOctal%temperature(neighbourSubcell)
-
-
-
-                if (thisOctal%nDepth == maxDepthamr) then
-                   split = .false.
-                   if (firstTime) then
-                      write(message,'(a,i3)') "AMR cell depth capped at: ",maxDepthamr
-                      call writeWarning(message)
-                      firstTime = .false.
-                   endif
-                endif
-
-
-                if (abs(thisTemperature-neighbourTemperature) < 10.) cycle ! dont worry if small absolute difference
-
-                if (abs(thisTemperature-neighbourTemperature)/thisTemperature > tolerance) then
-                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                        inherit=inheritProps, interp=interpProps)
-                   converged = .false.
-                   return
-                endif
-             endif
-          enddo
        endif
-    end do
+    enddo
+  end subroutine zeroChiLineLocal
 
-  end subroutine myTemperatureSmooth
+  recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps, stellar_cluster, romData)
+    type(GRIDTYPE) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+    logical, optional :: inheritProps, interpProps
+    !
+    TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitTagged(child, grid, inheritProps, interpProps, stellar_cluster, romData)
+                exit
+             end if
+          end do
+       else
 
-  recursive subroutine myScaleSmooth(factor, thisOctal, grid,  converged, &
+          if (thisOctal%chiline(subcell) > 0.d0) then
+             thisOctal%chiLine(subcell) = 0.d0
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=inheritProps, interp=interpProps)
+             return
+          endif
+       endif
+    enddo
+  end subroutine splitTagged
+
+
+  recursive subroutine tagScaleSmooth(ntagged, factor, thisOctal, grid,  converged, &
        inheritProps, interpProps, stellar_cluster, romData)
     type(gridtype) :: grid
+    integer :: nTagged
     real :: factor
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -12778,7 +12790,7 @@ end function readparameterfrom2dmap
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
     integer :: subcell, i
-    logical :: converged
+    logical :: converged, converged_tmp
     real(double) :: r
     type(VECTOR) :: dirVec(6), centre, octVec, aHat
     integer :: neighbourSubcell, j, nDir
@@ -12791,33 +12803,43 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call myScaleSmooth(factor, child, grid, converged, inheritProps, interpProps, &
+                call tagScaleSmooth(nTagged, factor, child, grid, converged, inheritProps, interpProps, &
                      stellar_cluster=stellar_cluster, romData=romData)
                 exit
              end if
           end do
        else
 
-          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
-          centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*VECTOR(+0.9d0,+0.8d0,+0.7d0)
-          if (.not.thisOctal%cylindrical) then
-             nDir = 6
-             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-             dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-             dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-             dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-             dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
-          else
+          r = thisOctal%subcellSize/2.d0 + 0.0001d0*grid%halfSmallestSubcell
+          centre = subcellCentre(thisOctal, subcell) 
+          if (thisOctal%threed) then
+             if (.not.thisOctal%cylindrical) then
+                nDir = 6
+                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+                dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+                dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+                dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+                dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+                dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+             else
+                nDir = 4
+                aHat = VECTOR(centre%x, centre%y, 0.d0)
+                call normalize(aHat)
+                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+                dirVec(2) = aHat
+                dirVec(3) = (-1.d0)*aHat
+                dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+             endif
+          else if (thisOctal%twod) then
              nDir = 4
-             aHat = VECTOR(centre%x*0.99d0, centre%y, 0.d0)
-             call normalize(aHat)
-
-             dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-             dirVec(2) = aHat
-             dirVec(3) = (-1.d0)*aHat
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)  
+             dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
              dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+          else
+             nDir = 2
+             dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
@@ -12827,13 +12849,16 @@ end function readparameterfrom2dmap
                 call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
                      foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
 
-!                if ((thisOctal%nDepth < (neighbourOctal%ndepth-1))) then
                 if ((thisOctal%subcellSize/neighbourOctal%subcellSize) > factor) then
-                      call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                           inherit=inheritProps, interp=interpProps, &
-                           stellar_cluster=stellar_cluster, romData=romData)
-                      converged = .false.
-                      return
+                   thisOctal%chiLine(subcell) = 1.d0
+                   converged = .false.
+                   nTagged = nTagged + 1
+                endif
+
+                if ((neighbourOctal%subcellSize/thisOctal%subcellSize) > factor) then
+                   neighbourOctal%chiLine(neighboursubcell) = 1.d0
+                   converged = .false.
+                   nTagged = nTagged + 1
                 endif
 
              endif
@@ -12841,7 +12866,7 @@ end function readparameterfrom2dmap
        endif
     end do
 
-  end subroutine myScaleSmooth
+  end subroutine tagScaleSmooth
 
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal, sSubcell)
 

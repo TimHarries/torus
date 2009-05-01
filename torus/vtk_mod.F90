@@ -253,8 +253,8 @@ contains
   contains
 
     recursive subroutine recursiveWriteValue(thisOctal, valueType, grid)
+      use input_variables, only : lambdasmooth
       type(OCTAL), pointer :: thisOctal, child
-
 #ifdef MPI
       include 'mpif.h'  
 #endif
@@ -490,7 +490,7 @@ contains
 
                case("tau")
                   if (firstTime) then
-                     call locate(grid%lamArray, grid%nLambda, 5500., ilambda)
+                     call locate(grid%lamArray, grid%nLambda, lambdaSmooth, ilambda)
                      firstTime = .false.
                   endif
                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&

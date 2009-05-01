@@ -214,6 +214,8 @@ contains
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
     endif
 
+
+
     !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
     call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
@@ -281,28 +283,25 @@ contains
           iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
 
-          call writeInfo("Splitting  adaptive grid structure on Tau...", TRIVIAL)
-          call setDiffOnTau(grid)
-          do
-             gridConverged = .true.
-             call myTauSplit(grid%octreeRoot, grid, &
-                  gridConverged,  inheritProps = .false., interpProps = .true.)
-             if (gridConverged) exit
-          end do
+!          call writeInfo("Splitting  adaptive grid structure on Tau...", TRIVIAL)
+!          call setDiffOnTau(grid)
+!          do
+!             gridConverged = .true.
+!             call myTauSplit(grid%octreeRoot, grid, &
+!                  gridConverged,  inheritProps = .false., interpProps = .true.)
+!             if (gridConverged) exit
+!          end do
+!
+!          do
+!             gridConverged = .true.
+!             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+!                  gridConverged,  inheritProps = .false., interpProps = .true.)
+!             if (gridConverged) exit
+!
+!
+!          end do
+!          call writeInfo("...grid smoothing complete", TRIVIAL)
 
-          do
-             gridConverged = .true.
-             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-                  gridConverged,  inheritProps = .false., interpProps = .true.)
-             if (gridConverged) exit
-
-
-          end do
-          call writeInfo("...grid smoothing complete", TRIVIAL)
-
-          call writeVtkFile(grid, "aftersplit.vtk", &
-               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-               "dust1      ", "deltaT     ","ross       ","chiline    "/))
 
           call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
 
@@ -838,7 +837,7 @@ contains
                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
                 do
                    gridConverged = .true.
-                   call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                   call myScaleSmooth(smoothFactor, grid, &
                         gridConverged,  inheritProps = .false., interpProps = .true.)
                    if (gridConverged) exit
                 end do

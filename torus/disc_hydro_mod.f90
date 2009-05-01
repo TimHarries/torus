@@ -459,7 +459,7 @@ contains
        call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
        do
           gridConverged = .true.
-          call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+          call myScaleSmooth(smoothFactor,  grid, &
                gridConverged,  inheritProps = .false., interpProps = .true.)
           if (gridConverged) exit
        end do
