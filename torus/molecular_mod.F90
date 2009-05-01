@@ -385,7 +385,7 @@ module molecular_mod
            if(restart) then
 
               if(firsttime2) then
-                 if(setmaxlevel .gt. 0) then
+                 if(setmaxlevel .eq. 0) then
                     maxlevel = size(thisOctal%molecularLevel(:,1))
                  else
                     maxlevel = setmaxlevel
@@ -413,7 +413,7 @@ module molecular_mod
 
               if(firsttime2) then
                  call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-                 if(setmaxlevel .gt. 0) then 
+                 if(setmaxlevel .eq. 0) then 
                     call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, thismolecule%nlevels, nVoxels, lte = .true.)
                  else
                     maxlevel = setmaxlevel
