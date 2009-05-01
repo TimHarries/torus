@@ -17,7 +17,7 @@ module angularImage
 
   type(VECTOR) :: observerVelocity
   character(len=200) :: message
-  type(VECTOR), parameter :: rayposition=VECTOR(0.0, 2.1e12_db, 0.0)
+  type(VECTOR), parameter :: rayposition=VECTOR(0.0, 2.2e12_db, 0.0)
 
   contains
 
@@ -270,6 +270,8 @@ module angularImage
             viewvec_z = cos( theta_axis(jpixels) )
 
             viewvec = VECTOR( viewvec_x, viewvec_y, viewvec_z )
+! Take out effect of rotating galaxy away from axes
+            viewvec  = rotateY( viewvec, 45.0*degToRad )
             call normalize(viewvec)
 
             imagegrid(ipixels,jpixels,:) = &

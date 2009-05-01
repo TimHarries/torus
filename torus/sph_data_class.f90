@@ -7,7 +7,7 @@ module sph_data_class
   use timing
   use gridtype_mod
   use math_mod2
-  use constants_mod, only : OneOnFourPi, mSol
+  use constants_mod, only : OneOnFourPi, mSol, degToRad
 
   ! 
   ! Class definition for Mathew's SPH data.
@@ -477,6 +477,8 @@ contains
 
 ! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
   subroutine read_galaxy_sph_data(filename)
+    use input_variables, only: internalView
+
     implicit none
     
     character(len=*), intent(in) :: filename
@@ -503,6 +505,8 @@ contains
     real*4, allocatable    :: rho(:)
     real*8, allocatable    :: h2rho(:)
     real*8, allocatable    :: h1rho(:)
+
+    type(VECTOR) :: orig_sph, rot_sph
 
 !
 ! Read in data from file
@@ -601,16 +605,41 @@ contains
 
           sphData%rhon(iiigas)        = h1rho(i)
 
-          sphdata%vxn(iiigas)         = vxyzu(1,i)
-          sphdata%vyn(iiigas)         = vxyzu(2,i)
-          sphdata%vzn(iiigas)         = vxyzu(3,i)
-          sphData%temperature(iiigas) = vxyzu(4,i)
+          if ( internalView ) then 
 
-          sphData%xn(iiigas)          = xyzmh(1,i)
-          sphData%yn(iiigas)          = xyzmh(2,i)
-          sphData%zn(iiigas)          = xyzmh(3,i)
-          sphData%gasmass(iiigas)     = xyzmh(4,i)
-          sphData%hn(iiigas)          = xyzmh(5,i)
+! For the internal view rotate the galaxy so that we are not looking along cell boundaries
+             orig_sph = VECTOR( vxyzu(1,i),  vxyzu(2,i),  vxyzu(3,i) )
+             rot_sph  = rotateY( orig_sph, 45.0*degToRad )
+
+             sphdata%vxn(iiigas)         = rot_sph%x
+             sphdata%vyn(iiigas)         = rot_sph%y
+             sphdata%vzn(iiigas)         = rot_sph%z
+             sphData%temperature(iiigas) = vxyzu(4,i)
+             
+             orig_sph = VECTOR( xyzmh(1,i),  xyzmh(2,i),  xyzmh(3,i) )
+             rot_sph  = rotateY( orig_sph, 45.0*degToRad )
+             
+             sphData%xn(iiigas)          = rot_sph%x
+             sphData%yn(iiigas)          = rot_sph%y
+             sphData%zn(iiigas)          = rot_sph%z
+             sphData%gasmass(iiigas)     = xyzmh(4,i)
+             sphData%hn(iiigas)          = xyzmh(5,i)
+
+          else
+
+             sphdata%vxn(iiigas)         = vxyzu(1,i)
+             sphdata%vyn(iiigas)         = vxyzu(2,i)
+             sphdata%vzn(iiigas)         = vxyzu(3,i)
+             sphData%temperature(iiigas) = vxyzu(4,i)
+
+             sphData%xn(iiigas)          = xyzmh(1,i)
+             sphData%yn(iiigas)          = xyzmh(2,i)
+             sphData%zn(iiigas)          = xyzmh(3,i)
+             sphData%gasmass(iiigas)     = xyzmh(4,i)
+             sphData%hn(iiigas)          = xyzmh(5,i)
+
+          end if
+
        end if
     end do
 

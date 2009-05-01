@@ -2485,13 +2485,19 @@ endif
         attenuateddIovercell = 0.d0
 
         if(densitysubsample) then
-           nmol = thisoctal%molabundance(subcell) * (densite(currentposition, grid) / &
-                  (2.d0 * mhydrogen))
-        else if ( h21cm ) then
-           nMol = 1.0
+           if ( h21cm) then
+              nmol = densite(currentposition, grid) / (thisOctal%rho(subcell))
+           else
+              nmol = thisoctal%molabundance(subcell) * (densite(currentposition, grid) / &
+                   (2.d0 * mhydrogen))
+           end if
         else
-           nMol = thisOctal%molcellparam(1,subcell)
-        endif
+           if ( h21cm ) then
+              nMol = 1.0
+           else
+              nMol = thisOctal%molcellparam(1,subcell)
+           endif
+        end if
 
         etaline = nmol * thisOctal%molcellparam(5,subcell)
 
@@ -2558,7 +2564,8 @@ endif
               phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
            end if
 
-           if(densitysubsample) then
+           
+           if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid) / &
                      (2.d0 * mhydrogen))
 
@@ -2568,6 +2575,11 @@ endif
               endif
 
               etaline = nmol * thisOctal%molcellparam(5,subcell)
+              alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
+
+           else if (densitysubsample .and. h21cm) then
+              nmol     = Densite(thisposition, grid) / (thisOctal%rho(subcell))
+              etaline  = nmol * thisOctal%molcellparam(5,subcell)
               alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
 
            else

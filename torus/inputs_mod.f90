@@ -1246,6 +1246,8 @@ contains
             "Input sph data file: ","(a,a,1x,a)","Torusdump", ok, .true.)
        call getLogical("internalView", internalView, cLine, nLines, &
             "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
+       call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
+            "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
 
        if ( internalView ) then 
 
