@@ -71,7 +71,7 @@ else
 fi
 
 # Test for success of hII region benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/hydro/check_log_hII.txt | /usr/bin/wc -l `
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/HII_region/check_log_hII.txt | /usr/bin/wc -l `
 
 if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} HII region benchmark successful. "
