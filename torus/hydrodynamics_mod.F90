@@ -2246,8 +2246,10 @@ contains
     iUnrefine = 0
     do while(currentTime <= tend)
        tc = 0.d0
-       tc(myrank) = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc(myRank))
+       if (myrank /= 0) then
+          tc(myrank) = 1.d30
+          call computeCourantTime(grid%octreeRoot, tc(myRank+1))
+       endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
        !       write(*,*) "tc", tc(1:8)
        !       write(*,*) "temp tc",temptc(1:8)
@@ -2450,8 +2452,10 @@ contains
     endif
 
     tc = 0.d0
+    if (myrank /= 0) then
     tc(myrank) = 1.d30
-    if (myrank /= 0) call computeCourantTime(grid%octreeRoot, tc(myRank))
+       call computeCourantTime(grid%octreeRoot, tc(myRank))
+    endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
 
 

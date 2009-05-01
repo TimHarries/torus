@@ -16086,7 +16086,7 @@ end function readparameterfrom2dmap
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
        thisOctal%dustTypeFraction = 0.d0
-       thisOctal%dustTypeFraction(:,1) = 1.d0
+       thisOctal%dustTypeFraction(:,:) = 1.d0
        thisOctal%inflow = .true.
 
        if (storescattered) allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
