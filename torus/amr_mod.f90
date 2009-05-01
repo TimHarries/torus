@@ -12666,6 +12666,7 @@ end function readparameterfrom2dmap
 
 
           if (split.and.(thisTau > 2.).and.(thisOctal%chiLine(subcell) < 100.)) then
+             write(*,*) "splitting cell with ",thisTau, " at depth ",thisOctal%chiline(subcell)
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=inheritProps, interp=interpProps)
              converged = .false.

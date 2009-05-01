@@ -295,8 +295,16 @@ contains
              call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
                   gridConverged,  inheritProps = .false., interpProps = .true.)
              if (gridConverged) exit
+
+
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
+
+          call writeVtkFile(grid, "aftersplit.vtk", &
+               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+               "dust1      ", "deltaT     ","ross       ","chiline    "/))
+
+          call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
 
 
           if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
