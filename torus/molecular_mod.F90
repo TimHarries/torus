@@ -32,12 +32,12 @@ module molecular_mod
    Logical :: molebench, molcluster, chrisdisc, ggtau
    real(double), allocatable :: lamarray(:), lambda(:)
    integer :: ilambda
+
    integer, parameter :: maxray = 409600
-   integer :: accstep = 4 ! for ng acceleration
-   integer :: accstepgrand = 6
    integer, allocatable :: iseedpublic(:)
    real(double) :: r1(5) !! quasi random number generators
-   
+   integer :: accstep = 4
+   integer :: accstepgrand = 4
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
 
@@ -316,8 +316,11 @@ module molecular_mod
      integer :: nOctal, nVoxels
      logical, save :: firsttime1 = .true.
      logical, save :: firsttime2 = .true.
+     logical :: inlte
      type(VECTOR) :: pos
 !     REAL T1, T2, TSTART
+     
+     inlte = isinlte
 
      if(firsttime1 .and. restart) then
         call writeinfo("Reading in previous grid", FORINFO)
@@ -427,7 +430,7 @@ module molecular_mod
                  allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
               endif
 
-              if(isinlte) then
+              if(inlte) then
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
                       thisOctal%molecularLevel(1:maxlevel,subcell))
               else 
@@ -462,7 +465,7 @@ module molecular_mod
                  allocate(thisOctal%jnu(1:maxtrans,1:thisOctal%maxChildren))
               endif
               
-              if(isinlte) then
+              if(inlte) then
                  thisOctal%jnu(:,subcell) = thisoctal%bnu(:,subcell)
               else
                  thisOctal%jnu(:,subcell) = 1.d-20 
@@ -591,7 +594,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, dongstep, quasi
+          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -643,6 +646,8 @@ module molecular_mod
       integer :: dummy, ijunk, ljunk, j
       logical :: juststarted = .true.
 
+      logical :: ng
+
       position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
  ! blockhandout must be off for fixed ray case, otherwise setting the
  ! seed is not enough to ensure the same directions are done for
@@ -655,6 +660,10 @@ module molecular_mod
       if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
       if(grid%geometry .eq. 'ggtau') ggtau = .true.
 
+      ng = dongstep
+      write(message,*) "Use Ng Acceleration: " , ng
+      call writeinfo(message,TRIVIAL)
+      
       blockHandout = .false. 
 
 #ifdef MPI
@@ -739,7 +748,10 @@ module molecular_mod
 
       nRay = 1 ! number of rays used to establish estimate of jnu and pops
 
-      if(((amr1d .or. amr2d) .or. molebench) .and. writeoutput .and. .not. restart) call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
+      if(((amr1d .or. amr2d) .or. molebench) .and. writeoutput .and. .not. restart .and. isinlte) then
+         call writeinfo("Writing LTE levels", TRIVIAL)
+         call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
+      endif
 
 ! critical density table
       write(142,*) "Critical Density @ 10K"
@@ -807,7 +819,7 @@ module molecular_mod
          do while (.not.gridConverged)
 
             grand_iter = grand_iter + 1
-            if(doNgstep) ngcounter = ngcounter + 1 ! controls Ng Acceleration, pronounced do-ng-step, not dongstep
+            if(ng) ngcounter = ngcounter + 1 ! controls Ng Acceleration, pronounced do-ng-step, not dongstep
             mintransold = mintrans
 
             if(.not. amr3d) then
@@ -916,12 +928,15 @@ module molecular_mod
              do while (.not. popsConverged)
                 iter = iter + 1
 
-                if(dongstep) then
+                if(ng) then
                    oldpops1(1:minlevel-2) = oldpops2(1:minlevel-2)
                    oldpops2(1:minlevel-2) = oldpops3(1:minlevel-2)
+                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
+                else
+                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
                 endif
-                
-                oldpops3(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell) ! retain old pops before calculating new one
+
+
 
                 do iTrans = 1, maxtrans
                    
@@ -935,13 +950,15 @@ module molecular_mod
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
                      thisMolecule, thisOctal%nh2(subcell))
                 
-                if(mod(iter, accstep) .eq. 0 .and. dongstep) then
-                   oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
-                   thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                        abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2)))
-                   thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell) / &
-                                                            sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
-                   oldpops3(1:minlevel-2) = oldpops4(1:minlevel-2)
+                if(ng) then
+                   if(mod(iter, accstep) .eq. 0) then
+                      oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
+                      thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
+                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2)))
+!                      thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell)! / &
+!                      sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
+!                      oldpops3(1:minlevel-2) = oldpops4(1:minlevel-2)
+                   endif
                 endif
 
 !                error(1:minlevel-1) = (thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops(1:minlevel-1)) &
@@ -1575,6 +1592,8 @@ end subroutine molecularLoop
      integer :: nVoxels
 
      logical :: fixedrays
+     logical :: ng
+     ng = dongstep
 
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
@@ -1589,7 +1608,7 @@ end subroutine molecularLoop
            end do
         else
            ! do the ng Acceleration step here
-           if(dongstep) then
+           if(ng) then
               if((fixedrays .and. mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) &
                    .or. nray .eq. 12800 .or. nray .eq. 800) then
 
@@ -3539,6 +3558,8 @@ end subroutine plotdiscValues
     integer :: i
 
     character(len=160) :: message
+
+    logical :: ng
     
 10006 format(i6,tr3,6(f8.5,1x), 27x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
 10007 format(i6,tr3,7(f8.5,1x), 18x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
@@ -3552,7 +3573,8 @@ end subroutine plotdiscValues
     ConvergenceCounter    = 0
     avgFracChange = 0.d0
 
-    if(dongstep .and.  &
+    ng = dongstep
+    if(ng .and.  &
       ((fixedrays .and. (mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0)) &
       .or. nray .eq. 12800 &
       .or. nray .eq. 800)) &

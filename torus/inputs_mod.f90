@@ -1337,7 +1337,7 @@ contains
        call getReal("vturb", vturb, cLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, nLines, &
-            "Maximum molecular level to be considered:","(a,f4.1,1x,a)", 0, ok, .false.)
+            "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
        call getReal("molAbundance", molAbundance, cLine, nLines, &
             "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
        call getLogical("useDust", useDust, cLine, nLines, &
