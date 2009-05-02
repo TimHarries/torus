@@ -116,7 +116,7 @@ opaquecore T
 mindepthamr 8
 
 restart F
-isinLTE T
+isinlte F
 plotlevels F
 
 centrevecx 0.d7
@@ -128,7 +128,7 @@ addnewmoldata F
 rotateviewaboutx 90.0
 rotateviewaboutz 0.0
 
-quasi F
+quasi T
 dongstep T
 
 setmaxlevel 10
