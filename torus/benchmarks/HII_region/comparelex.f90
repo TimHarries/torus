@@ -4,7 +4,7 @@ program compareLex
   real :: r, newT, oldT, newFrac(14), oldFrac(14), val
   logical :: failed
 
-  real, parameter :: tolerance = 0.2
+  real, parameter :: tolerance = 0.33
   open(20,file="lexington.dat", form="formatted",status="old")
   open(21,file="lexington_benchmark.dat", form="formatted",status="old")
   failed = .false.
@@ -13,9 +13,11 @@ program compareLex
      read(20,*) r, newT, newfrac(1:14)
      read(21,*) r, oldT, oldfrac(1:14)
      if ((newT) < 1.) cycle
-     if (abs((newT-oldT)/oldT) > tolerance) then
-        failed = .true.
-        val = max(val, abs((newT-oldT)/oldT))
+     if (oldT /= 0.) then
+        if (abs((newT-oldT)/oldT) > tolerance) then
+           failed = .true.
+           val = max(val, abs((newT-oldT)/oldT))
+        endif
      endif
      do j = 1, 1
         if ((10.d0**abs(newFrac(j)-oldFrac(j))-1.d0) > tolerance) then
