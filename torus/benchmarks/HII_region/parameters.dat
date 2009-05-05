@@ -19,7 +19,7 @@ amrgridcentrey 0.0000
 amrgridcentrez 0.0000
 probcont 1.
 mie T
-iso_scatter F
+iso_scatter T
 limitscalar 1.
 popfile junk
 distance 1.
@@ -51,10 +51,14 @@ vmin -100000.
 vmax +100000.                            
 teff 10000.
 mincrossings 50
-ndusttype 0
+ndusttype 1
 firstinc 90.
 lastinc 90.
 ninc 1
 maxscat 10
 hydro F
 dusttogas 1.e-20
+graintype1 sil_dl
+amin1 0.1
+amax1 0.11
+qdist1 0.0
