@@ -7,6 +7,7 @@
 #    5. make profile=yes : Make torus with profiler option
 #    6. make static=yes  : Make torus with static linking
 #    7. make trace=yes   : Make torus with ITAC profiling
+#    8. make openmp=yes  : Make torus with OpenMP 
 #-----------------------------------------------------------------
 
 USEMKL  = no
@@ -15,6 +16,7 @@ debug   = no
 profile = no
 static  = no
 trace   = no
+openmp  = no 
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -394,9 +396,9 @@ ifeq ($(SYSTEM), zen)
 endif
 
 ifeq ($(SYSTEM), zensingle)
-    F95COMP= ifort
-    F77COMP= ifort
-    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+    F95COMP= ifort -O0  #-check all
+    F77COMP= ifort -O0 #-check all
+    FASTFLAG= #-O3 -xT -mcmodel=medium -i-dynamic
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 # Include run-time error checking using ifort. Use environment variable to avoid clash with
 # ITC -check option in version 3.1 of mpiifort/mpif90 scripts.
@@ -668,6 +670,10 @@ ifeq ($(static), yes)
    ETCFLAG += $(STATICFLAG)
 else
    STATICLIBS =
+endif
+
+ifeq ($(openmp), yes)
+   ETCFLAG += -openmp 
 endif
 
 #

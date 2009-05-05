@@ -1404,6 +1404,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
+!$OMP PRIVATE(tempOctal, tempsubcell, thistaudble) &
 !$OMP SHARED(doTuning, iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
 !$OMP SHARED(grid) &
 !$OMP SHARED(meanr_Cont, meanr_line, ntot) &

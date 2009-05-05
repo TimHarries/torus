@@ -395,7 +395,8 @@ contains
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
-                !$OMP SHARED(scale, logNu1, fac1dnu) &
+                !$OMP PRIVATE(thermalPhoton, scatteredPhoton, loglam1, scalelam, scalenu) &
+                !$OMP SHARED(logNu1, fac1dnu) &
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
                 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
                 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
