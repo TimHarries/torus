@@ -1678,7 +1678,6 @@ end subroutine pre_initAMRGrid
 
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau.and.mie) then
-           do i = 1,3
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
               do j = iSmoothLam, iSmoothLam  !nLambda
                  write(message,*) "Smoothing at lam = ",xarray(j), " angs"
@@ -1706,7 +1705,6 @@ end subroutine pre_initAMRGrid
                  end do
                  call writeInfo("...grid smoothing complete", TRIVIAL)
               endif
-           enddo
            end if
 
      end select

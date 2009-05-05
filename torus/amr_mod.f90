@@ -4988,8 +4988,8 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-!           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -12610,7 +12610,7 @@ end function readparameterfrom2dmap
                       firstTime = .false.
                    endif
                 endif
-
+                   
                 
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
                    if (thisTau > neighbourTau) then
@@ -12620,6 +12620,7 @@ end function readparameterfrom2dmap
                       return
                    endif
                 endif
+
 
                 if (split.and.(thisTau < 1.d0).and.(thisTau > 0.2d0).and.(thisOctal%nDepth < 30)) then 
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
