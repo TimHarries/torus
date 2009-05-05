@@ -118,6 +118,7 @@ program torus
   integer :: iLambda
   real, allocatable :: xArray(:)
 
+  real :: lamSmoothArray(3)
 
   ! model flags
 
@@ -236,6 +237,7 @@ program torus
   call init_random_seed()
 
 
+  lamSmoothArray = (/5500., 1.e4, 2.e4/)
   co%molecule = " "
   indexAtom = 0
   indexRBBTrans = 0; nRBBTrans = 0
@@ -1679,12 +1681,15 @@ end subroutine pre_initAMRGrid
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau.and.mie) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, iSmoothLam  !nLambda
-                 write(message,*) "Smoothing at lam = ",xarray(j), " angs"
+              do j = 1, 3
+!              do j = iSmoothLam,  nLambda, 10
+                 write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
+                 call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
                  call writeInfo(message, TRIVIAL)
                  do
                     gridConverged = .true.
-                    call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
+                    call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
+                         inheritProps = .false., interpProps = .false.)
                     if (gridConverged) exit
                  end do
               enddo
