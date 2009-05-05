@@ -396,9 +396,9 @@ ifeq ($(SYSTEM), zen)
 endif
 
 ifeq ($(SYSTEM), zensingle)
-    F95COMP= ifort -O0  #-check all
-    F77COMP= ifort -O0 #-check all
-    FASTFLAG= #-O3 -xT -mcmodel=medium -i-dynamic
+    F95COMP= ifort
+    F77COMP= ifort
+    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 # Include run-time error checking using ifort. Use environment variable to avoid clash with
 # ITC -check option in version 3.1 of mpiifort/mpif90 scripts.
