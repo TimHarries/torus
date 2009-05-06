@@ -109,6 +109,7 @@ contains
     real :: diffusionZoneTemp, temp
     real(double) ::  dlambda
     logical :: directPhoton !, smoothconverged
+    logical :: thisSmooth
     logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
@@ -179,7 +180,7 @@ contains
        if (.not.variableDustSublimation) then
           nMonte = nVoxels * 10
        else
-          nMonte = nVoxels * 100
+          nMonte = nVoxels * 50
        endif
     endif
 
@@ -287,26 +288,38 @@ contains
 
           iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
+          thisSmooth = .false.
 
-!          call writeInfo("Splitting  adaptive grid structure on Tau...", TRIVIAL)
-!          call setDiffOnTau(grid)
-!          do
-!             gridConverged = .true.
-!             call myTauSplit(grid%octreeRoot, grid, &
-!                  gridConverged,  inheritProps = .false., interpProps = .true.)
-!             if (gridConverged) exit
-!          end do
-!
-!          do
-!             gridConverged = .true.
-!             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-!                  gridConverged,  inheritProps = .false., interpProps = .true.)
-!             if (gridConverged) exit
-!
-!
-!          end do
-!          call writeInfo("...grid smoothing complete", TRIVIAL)
+          if (iIter_grand <= 3) thisSmooth = .true.
 
+          if (variableDustSublimation) thisSmooth = .false.
+
+          if (thisSmooth) then
+                call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+                do j = 1, 3
+                 write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
+                 call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+                 call writeInfo(message, TRIVIAL)
+                   do
+                      gridConverged = .true.
+                      call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
+                           inheritProps = .false., interpProps = .true.)
+
+                      if (gridConverged) exit
+                   end do
+                enddo
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+
+                call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+                do
+                   gridConverged = .true.
+                   call myScaleSmooth(smoothFactor, grid, &
+                        gridConverged,  inheritProps = .false., interpProps = .true.)
+                   if (gridConverged) exit
+                end do
+                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+             endif
 
           call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
 
@@ -796,20 +809,20 @@ contains
           tauMax = 1.e30
 
 
-          if (mod(iIter_grand, 3) == 0) then
+          if (mod(iIter_grand, 2) == 0) then
 
-             if (iIter_grand == 3) tauMax = 0.1
-             if (iIter_grand == 6) tauMax = 1.d0
-             if (iIter_grand == 9) tauMax = 1.e30
+             if (iIter_grand == 2) tauMax = 0.1
+             if (iIter_grand == 4) tauMax = 1.d0
+             if (iIter_grand == 6) tauMax = 1.e30
 
 
-             if (iIter_Grand <= 9) &
+             if (iIter_Grand <= 6) &
                   call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
              endif
 
-             if (iiter_grand == 9) then
+             if (iiter_grand == 6) then
 
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
@@ -821,12 +834,13 @@ contains
                    call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged, .false.)
                    if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
                 end do
+                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
                 if (writeoutput) then
                    write(*,*) "done."
                 endif
              endif
 
-             if (iiter_grand >= 9) then
+             if (iiter_grand == 6) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -842,6 +856,7 @@ contains
                       if (gridConverged) exit
                    end do
                 enddo
+                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
@@ -852,6 +867,7 @@ contains
                    if (gridConverged) exit
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
+
              endif
              nCellsInDiffusion = 0
              call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
@@ -890,7 +906,7 @@ contains
        if (iIter_grand < iterlucy) converged = .false.
 
        if (variableDustSublimation) then
-          if (iIter_grand < 12) then
+          if (iIter_grand < 8) then
              converged = .false.
           endif
        endif

@@ -12517,7 +12517,7 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr!, rinner
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -12602,6 +12602,11 @@ end function readparameterfrom2dmap
                      (sqrt(rVec%x**2+rVec%y**2)) > 0.9*router) split = .false.
 
 
+                if ((grid%geometry.eq."shakara").and.&
+                     ((rVec%x+thisOctal%subcellsize/2.d0) < rinner)) split = .false.
+
+
+
                 if (thisOctal%nDepth == maxDepthamr) then
                    split = .false.
                    if (firstTime) then
@@ -12624,9 +12629,8 @@ end function readparameterfrom2dmap
                 fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &
                      thisOctal%temperature(subcell)
 
-                if (split.and.(thisTau > neighbourTau).and.(fac > 0.1d0).and.(thisOctal%temperature(subcell)>100.d0)) then
-                   write(*,*) "splitting cell of depth ",thisoctal%ndepth, " fac ", &
-                        fac, " temp " , thisOctal%temperature(subcell)
+                if (split.and.(thisTau > neighbourTau).and.(fac > 0.05d0).and. &
+                     (thisOctal%temperature(subcell)>100.d0).and.(thisTau > 1.d-4)) then
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                         inherit=inheritProps, interp=interpProps)
                    converged = .false.
