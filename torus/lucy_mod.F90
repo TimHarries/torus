@@ -122,6 +122,7 @@ contains
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
     real(double) :: varDustSubFac
     integer :: nUnrefine
+    real :: lamSmoothArray(3)
 
 #ifdef USEMKL
     integer :: oldmode
@@ -159,6 +160,7 @@ contains
     oldmode = vmlgetmode()
     oldmode = vmlsetmode(VML_LA)
 #endif
+    lamSmoothArray = (/5500., 1.e4, 2.e4/)
 
     oldTotalEmission = 1.d30
     kappaScaDb = 0.d0; kappaAbsDb = 0.d0
@@ -825,10 +827,13 @@ contains
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, iSmoothlam !nLambda, 5
+                do j = 1, 3
+                 write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
+                 call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+                 call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
-                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .true.)
+                      call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, inheritProps = .false., interpProps = .true.)
 
                       if (gridConverged) exit
                    end do
