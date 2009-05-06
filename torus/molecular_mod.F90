@@ -2523,6 +2523,8 @@ endif
         if(usedust) then
            alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
            dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+        else
+           alphanu2 =  0.0
         endif
 
         thisPosition = currentPosition
@@ -2591,6 +2593,8 @@ endif
               if(usedust) then
                  alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
                  dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
+              else
+                 alphanu2 = 0.0
               endif
 
               etaline = nmol * thisOctal%molcellparam(5,subcell)
