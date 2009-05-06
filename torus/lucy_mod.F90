@@ -26,7 +26,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
-    use input_variables, only : variableDustSublimation, iterlucy, amax, storeScattered
+    use input_variables, only : variableDustSublimation, iterlucy, amax, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -121,6 +121,9 @@ contains
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
     real(double) :: varDustSubFac
+    integer :: nTau
+    real(double), allocatable :: xArray(:), tauArray(:)
+    real(double) :: tau, subRadius
     integer :: nUnrefine
     real :: lamSmoothArray(3)
 
@@ -833,7 +836,8 @@ contains
                  call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
-                      call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, inheritProps = .false., interpProps = .true.)
+                      call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
+                           inheritProps = .false., interpProps = .true.)
 
                       if (gridConverged) exit
                    end do
@@ -897,7 +901,6 @@ contains
           if (myRankIsZero) write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
        end if
 
-
        if (multiLucyFiles) then
           write(tfilename, '(a,i2.2,a)') "lucy",iIter_grand,".vtk"
        else
@@ -918,6 +921,23 @@ contains
 
 
     enddo
+
+    if (grid%geometry == "shakara") then
+       allocate(tauArray(1:100000), xArray(1:100000))
+       call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), &
+            tau,  ross = .true., nTau = nTau, xArray = xArray, tauArray = tauArray)
+       if (tauArray(nTau) > 0.667d0) then
+          call locate(tauArray, nTau, 0.667d0, i)
+          subRadius = xArray(i) + ((0.667d0-tauArray(i))/(tauArray(i+1)-tauArray(i)))*(xArray(i+1) - xArray(i))
+          write(message, '(a, f7.3,a )') "Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+          call writeInfo(message, FORINFO)
+          write(message, '(a, f7.3,a )') "Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
+          call writeInfo(message, FORINFO)
+       else
+          call writeWarning("No tau_ross = 2/3 boundary")
+       endif
+       deallocate(tauArray, xArray)
+    endif
 
     if (storescattered) then 
        call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)

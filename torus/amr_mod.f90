@@ -12524,7 +12524,7 @@ end function readparameterfrom2dmap
     logical, optional :: inheritProps, interpProps
     integer :: subcell, i, ilambda
     logical :: converged
-    real(double) :: kabs, ksca, r
+    real(double) :: kabs, ksca, r, fac
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
@@ -12621,21 +12621,24 @@ end function readparameterfrom2dmap
                    endif
                 endif
 
+                fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &
+                     thisOctal%temperature(subcell)
 
-                if (split.and.(thisTau < 1.d0).and.(thisTau > 0.2d0).and.(thisOctal%nDepth < 30)) then 
+                if (split.and.(thisTau > neighbourTau).and.(fac > 0.1d0).and.(thisOctal%temperature(subcell)>100.d0)) then
+                   write(*,*) "splitting cell of depth ",thisoctal%ndepth, " fac ", &
+                        fac, " temp " , thisOctal%temperature(subcell)
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                         inherit=inheritProps, interp=interpProps)
                    converged = .false.
                    return
                 endif
-
-
              endif
           enddo
        endif
     end do
 
   end subroutine myTauSmooth
+
 
   recursive subroutine myTauSplit(thisOctal, grid, converged, inheritProps, interpProps)
     use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr!, rinner
@@ -15648,10 +15651,12 @@ end function readparameterfrom2dmap
   end function dist_from_closestEdge
 
 
-  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)
+  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, xArray, tauArray)
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    real(double), optional :: xArray(:), tauArray(:)
+    integer, optional :: nTau
     integer :: iLambda
     real(double) :: tau, distToNextCell
     real(double), optional :: tauMax
@@ -15666,7 +15671,11 @@ end function readparameterfrom2dmap
     kappaAbs = 0.d0; kappaSca = 0.d0
     tau = 0.d0
     currentPosition = rVec
-    
+    if (PRESENT(nTau)) then
+       xArray = 0.d0
+       tauArray = 0.d0
+       ntau = 1
+    endif
     planetGap  = .false.
     if (grid%geometry == "planetgap") planetgap = .true.
 
@@ -15712,6 +15721,11 @@ end function readparameterfrom2dmap
        endif
 
        tau = tau + distToNextCell*kappaExt
+       if (PRESENT(nTau)) then
+          nTau = nTau + 1
+          xArray(nTau) = xArray(nTau-1) + distToNextCell
+          tauArray(nTau) = tau
+       endif
        if (PRESENT(tauMax)) then
           if (tau > tauMax) exit
        endif
