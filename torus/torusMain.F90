@@ -619,7 +619,7 @@ program torus
            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
            write(message,'(a,i4.4,a)') "dump",idump,".grid"
            write(*,*) myrankglobal, " calling read ",trim(message)
-           call readAMRgridMpiALL(message,.false.,grid)
+           call readAMRgrid(message,.false.,grid)
            write(*,*) myrankglobal, " done reading ",trim(message)
         endif
 

@@ -375,6 +375,10 @@ contains
     real :: temp
     real :: rGapCM
     integer :: nUnrefine
+    real :: lamSmoothArray(3)
+    character(len=30) :: message
+    
+    lamSmoothArray = (/5500., 1.e4, 2.e4/)
 
 
 
@@ -385,16 +389,16 @@ contains
 
 
     if(myRankIsZero) &
-    write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
+         write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
 
 
     do while(.not.converged)
-    
-    if(myRankIsZero) then
-       write(*,*) "Starting iteration number",nIter
-       write(*,*) "Calling the lucy algorithm to get temperature..."
-    endif
+
+       if(myRankIsZero) then
+          write(*,*) "Starting iteration number",nIter
+          write(*,*) "Calling the lucy algorithm to get temperature..."
+       endif
 
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
@@ -413,31 +417,31 @@ contains
 
 
 
-    if(myRankIsZero) &
-       write(*,*) "Zeroing new density values..."
+       if(myRankIsZero) &
+            write(*,*) "Zeroing new density values..."
        call zeroChiline(grid%octreeRoot)       
 
-    if(myRankIsZero) then
-       if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) &
-          open(unit=137, file='surface_density.dat', status='replace', form='formatted')
-    endif
+       if(myRankIsZero) then
+          if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) &
+               open(unit=137, file='surface_density.dat', status='replace', form='formatted')
+       endif
 
-    if(myRankIsZero) &
-       write(*,*) "Solving the vertical hydrostatic equilibrium..."
+       if(myRankIsZero) &
+            write(*,*) "Solving the vertical hydrostatic equilibrium..."
        drho = 0.
        call throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
 
-    if(myRankIsZero) then
-       if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) close(137)
-    endif
+       if(myRankIsZero) then
+          if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) close(137)
+       endif
 
-    if(myRankIsZero) &
-       write(*,*) "Updating cell densities..."
+       if(myRankIsZero) &
+            write(*,*) "Updating cell densities..."
        call realPutDensity(grid, grid%octreeRoot)
 
-    if(myRankIsZero) &
-       write(*,*) "Maximum absolute change in density: ",drho
-  
+       if(myRankIsZero) &
+            write(*,*) "Maximum absolute change in density: ",drho
+
 
 
        totalMass = 0.
@@ -468,95 +472,86 @@ contains
 
 
 
-    if(myRankIsZero) then
+       if(myRankIsZero) then
 
-       ! chris
-       if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
-         if (geometry.ne."warpeddisc") then
-           rGapCM = rGap * autocm / 1.d10
-         end if
+          ! chris
+          if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
+             if (geometry.ne."warpeddisc") then
+                rGapCM = rGap * autocm / 1.d10
+             end if
 
-        end if
-     endif
+          end if
+       endif
 
        ! chris (26/05/04)
        ! Smooth the grid with respect to optical depth, if requested
 
 
        if (.not.variableDustSublimation) then
-          call locate(grid%lamArray, grid%nLambda,lambdasmooth,ilamsmooth)
 
-          !       if (.false.) then
-          if (doSmoothGridTau) then
-             
-!       write(*,*) "Tau smoothing switched off"
-!	if (.true.) then
-     if(myRankIsZero) &
-          write(*,*) "Smoothing adaptive grid structure for optical depth..."
-
-
-          do j = ilamsmooth, ilamsmooth !grid%nlambda
+          call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+          do j = 1, 3
+             write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
+             call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+             call writeInfo(message, TRIVIAL)
              do
                 gridConverged = .true.
-                call myTauSmooth(grid%octreeRoot, grid, j, gridconverged, inheritProps = .false., interpProps = .true.)
+                call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
+                     inheritProps = .false., interpProps = .true.)
+
                 if (gridConverged) exit
              end do
           enddo
-     if(myRankIsZero) &
-          write(*,*) "...grid smoothing complete"
-          ! The tau smoothing may result in large differences in the size
-          ! of neighbouring octals, so we smooth the grid again.
-          if (doSmoothGrid) then
-     if(myRankIsZero) &
-            write(*,*) "Smoothing adaptive grid structure (again)..."
+          call writeInfo("...grid smoothing complete", TRIVIAL)
 
+          call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+          do
+             gridConverged = .true.
+             call myScaleSmooth(smoothFactor, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .true.)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
 
+          if(myRankIsZero) &
+               write(*,*) "...grid smoothing complete"
 
-            call smoothAMRgrid(grid,smoothFactor, inheritProps=.false., interpProps=.true.)
-     if(myRankIsZero) &
-            write(*,*) "...grid smoothing complete"
-  end if
-          
-
-
-
-    if(myRankIsZero) &
-    write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
+          if(myRankIsZero) &
+               write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
        end if
-       endif
 
 
-       nIter = nIter + 1
+    nIter = nIter + 1
 
-       if (nIter > nHydro) then
-    if(myRankIsZero) &
-          write(*,*) "Maximum number of iterations exceeded. Aborting."
-          converged = .true.
-       else
-          temp = 20.
-          call setTemperature(grid%octreeRoot, temp)
-       endif
-       
-    enddo
+    if (nIter > nHydro) then
+       if(myRankIsZero) &
+            write(*,*) "Maximum number of iterations exceeded. Aborting."
+       converged = .true.
+    else
+       temp = 20.
+       call setTemperature(grid%octreeRoot, temp)
+    endif
 
-
-    ! final call to sort out temperature
-
-    call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-         nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
+ enddo
 
 
+ ! final call to sort out temperature
+
+ call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
+      nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
 
 
-    ! chris
-    if(myRankIsZero) then
+
+
+ ! chris
+ if(myRankIsZero) then
     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
 
     end if
-    endif
+ endif
 
-  end subroutine verticalHydrostatic
+end subroutine verticalHydrostatic
 
   recursive subroutine getxValues(thisOctal, nx, xAxis)
 

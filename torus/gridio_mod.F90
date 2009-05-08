@@ -470,6 +470,7 @@ contains
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: readFile
+    integer :: nOctals, nVoxels
     integer :: iThread
     readFile = .true.
 
@@ -490,6 +491,8 @@ contains
              call updateMaxDepth(grid)
              call setSmallestSubcell(grid)
              call checkAMRgrid(grid, .false.)
+             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+             grid%nOctals = nOctals
           endif
           call torus_mpi_barrier
           if (myrankGlobal == iThread) write(*,*) iThread, " finished reading"

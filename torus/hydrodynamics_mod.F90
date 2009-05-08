@@ -145,9 +145,9 @@ contains
           n = 8
        endif
 
-       where(.not.thisoctal%edgecell)
+!       where(.not.thisoctal%edgecell)
           thisoctal%phi_i = thisoctal%parent%phi_i(thisoctal%parentsubcell)
-       end where
+!       end where
 !       write(*,*) "phi ",thisoctal%phi_i(1:8)
     else
 
@@ -929,6 +929,7 @@ contains
 
 
    recursive subroutine computepressureu(thisoctal, direction)
+     use input_variables, only : dampingViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -941,6 +942,7 @@ contains
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = 3.d0
+    if (dampingViscosity) eta = eta * 2.d0
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -994,6 +996,7 @@ contains
   end subroutine computepressureu
 
    recursive subroutine computepressurev(thisoctal, direction)
+     use input_variables, only : dampingViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1005,6 +1008,7 @@ contains
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = 3.d0
+    if (dampingViscosity) eta = eta * 2.d0
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1056,6 +1060,7 @@ contains
   end subroutine computepressurev
 
    recursive subroutine computepressurew(thisoctal, direction)
+     use input_variables, only : dampingViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1068,6 +1073,7 @@ contains
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = 3.d0
+    if (dampingViscosity) eta = eta * 2.d0
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -2444,7 +2450,7 @@ contains
        if (doselfGrav) then
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
-          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
           if (myrank == 1) write(*,*) "Done"
           if (myrank == 1) call tune(6, "Self-Gravity")
        endif
@@ -4908,8 +4914,6 @@ end subroutine refineGridGeneric2
              if (thisOctal%phi_i(subcell) /= 0.d0) then
                 frac = abs((newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell))
                 fracChange = max(frac, fracChange)
-             else
-                fracChange = 1.d30
              endif
              thisOctal%phi_i(subcell) = newPhi
              
@@ -5018,11 +5022,11 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweepLevel
   
-  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
+  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid, boundaryLoop)
     use input_variables, only :  maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
-    logical, optional :: multigrid
+    logical, optional :: multigrid, boundaryLoop
     integer, parameter :: maxThreads = 100
     integer :: iDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
@@ -5030,8 +5034,13 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double), parameter :: tol = 1.d-5
     integer :: it, ierr
+    logical :: doBoundaryLoop
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
+
+
+    doBoundaryLoop = .false.
+    if (PRESENT(boundaryLoop)) doBoundaryLoop = boundaryLoop
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 
@@ -5057,12 +5066,16 @@ end subroutine refineGridGeneric2
              
              call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), iDepth)
 
-!             call imposeBoundary(grid%octreeRoot)
-!             call periodBoundary(grid)
-!             call transferTempStorage(grid%octreeRoot)
+             if (doBoundaryLoop) then
+                call imposeBoundary(grid%octreeRoot)
+                call periodBoundary(grid)
+                call transferTempStorage(grid%octreeRoot)
+             endif
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              
              fracChange = tempFracChange
+!             if (myrankGLobal == 1) write(*,*) "Self-gravity at depth ",iDepth," multigrid iteration ", it
+
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
           call updatePhiTree(grid%octreeRoot, iDepth)
@@ -5088,15 +5101,18 @@ end subroutine refineGridGeneric2
        
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
-!       call imposeBoundary(grid%octreeRoot)
-!       call periodBoundary(grid)
-!       call transferTempStorage(grid%octreeRoot)
+       if (doBoundaryLoop) then
+          call imposeBoundary(grid%octreeRoot)
+          call periodBoundary(grid)
+          call transferTempStorage(grid%octreeRoot)
+       endif
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        
        fracChange = tempFracChange
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !e           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!       if (myrankGLobal == 1) write(*,*) "Self-gravity no multigrid iteration ", it, maxval(fracChange(1:nHydroThreads))
     enddo
     if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 

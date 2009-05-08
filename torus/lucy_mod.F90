@@ -822,23 +822,22 @@ contains
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
              endif
 
-             if (iiter_grand == 6) then
-
-                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-
-                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-                gridconverged = .false.
-                do while(.not.gridconverged)
-                   gridconverged = .true.
-                   nUnrefine = 0
-                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged, .false.)
-                   if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
-                end do
-                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-                if (writeoutput) then
-                   write(*,*) "done."
-                endif
-             endif
+!             if (iiter_grand == 6) then
+!
+!                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+!                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+!                gridconverged = .false.
+!                do while(.not.gridconverged)
+!                   gridconverged = .true.
+!                   nUnrefine = 0
+!                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged, .false.)
+!                   if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+!                end do
+!                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+!                if (writeoutput) then
+!                   write(*,*) "done."
+!                endif
+!             endif
 
              if (iiter_grand == 6) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
@@ -3269,7 +3268,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine calcIntensityFromGrid
 
   recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, nUnrefine, converged, finalPass)
-    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac
+    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3325,6 +3324,9 @@ subroutine setBiasOnTau(grid, iLambda)
           
           if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
                (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
+
+          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
           
           if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
           if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
@@ -3342,7 +3344,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, nUnrefine, converged)
-    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac
+    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3383,6 +3385,10 @@ subroutine setBiasOnTau(grid, iLambda)
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+
+          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
           
           if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
                (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
