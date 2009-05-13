@@ -12,6 +12,8 @@ module gridtype_mod
 
   implicit none
 
+  
+
 !  integer, parameter :: statEqMaxLevels =   14   ! number of stateq levels
   integer, parameter :: statEqMaxLevels =   10    ! number of stateq levels
 !  integer, parameter :: statEqMaxLevels =   6    ! number of stateq levels
@@ -30,6 +32,7 @@ module gridtype_mod
 
 
   type GRIDTYPE
+     character(len=10) :: version                ! torus version as defined in torus_version_mod
      logical :: splitOverMPI                     ! if the grid distributed in memory over MPI
      integer :: iDump                            ! hydrodynamics step number
      real(double) :: currentTime                 ! time of dump

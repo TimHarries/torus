@@ -116,10 +116,8 @@ contains
   end function returnXsec
 
   subroutine addIons(ionArray, nIon)
-    use input_variables, only : useMetals
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
-    character(len=30) :: message
 
 
     nIon = 1

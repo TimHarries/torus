@@ -20,7 +20,7 @@
 ! RK : 07/07/05 Added the observed flux solver in oberver's frame. 
 ! TJH: 10/09/08 pgplot calls removed...
 program torus
-
+  use torus_version_mod
   use utils_mod
   use input_variables         ! variables filled by inputs subroutine
   use constants_mod
@@ -112,7 +112,7 @@ program torus
 
   ! vectors
 
-  type(VECTOR) :: originalViewVec, viewVec, outVec
+  type(VECTOR) :: originalViewVec
   ! output arrays
 
   integer :: iLambda
@@ -156,7 +156,7 @@ program torus
   real :: theta1, theta2 
   type(SURFACETYPE) :: starSurface
 
-  real(double) :: totalFlux
+
 
   ! binary parameters
 
@@ -189,15 +189,21 @@ program torus
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
-  real(double) :: totalmass, totalmasstrap, minrho, maxrho
+  real(double) :: totalmass, totalmasstrap, maxRho, minRho
+
 
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
   integer ::   tempInt        !
+  type(VECTOR) :: viewVec, outVec
 #endif
   
 ! Begin executable statements --------------------------------------------------
+
+  ! set the version number HERE!!!!!!
+
+  call setVersion("V1.2")
 
   myRankGlobal = 0 ! set rank to zero for single processor job
 
@@ -668,7 +674,7 @@ program torus
      endif
 
      if (readmol) then 
-        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap)
+        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
         write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
            call writeInfo(message, TRIVIAL)
         if(geometry .eq. 'molcluster') then
@@ -1324,7 +1330,6 @@ end subroutine pre_initAMRGrid
   subroutine amr_grid_setup
 
     use amr_mod
-    use input_variables, only : variableDustSublimation
     use spectrum_mod, only: fillSpectrumBB, normalizedSpectrum
     use stateq_mod, only: map_cmfgen_opacities, amrStateq, generateOpacitiesAMR
     use dust_mod, only: filldustshakara, filldustuniform, filldustwhitney

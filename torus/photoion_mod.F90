@@ -115,7 +115,7 @@ contains
     type(RECOMBTABLE) :: Hrecombtable
 
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
-    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat, totalFlux
+    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
 
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
@@ -2877,7 +2877,7 @@ subroutine addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell,
   integer :: subcell
   type(GRIDTYPE) :: grid
   integer :: i
-  real(double) :: fac, gauntFF, z
+  real(double) :: fac, z
   real(double), allocatable :: g(:), xlf(:)
   integer :: iflag
 
@@ -4047,7 +4047,7 @@ end subroutine readHeIIrecombination
   end subroutine writeMultiImages
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
-    use input_variables, only : readlucy, nlambda, nPhotons, npix, setimageSize
+    use input_variables, only : nPhotons, npix, setimagesize
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -4058,31 +4058,27 @@ end subroutine readHeIIrecombination
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
-    real(double) :: totalFlux, tempTotalFlux
+    real(double) :: totalFlux
     integer :: subcell
     integer :: iPhoton
-    integer :: iLam
     integer :: iSource
-    integer :: iThread
-    type(VECTOR) :: rVec, uHat, rHat, observerDirection
-    real(double) :: wavelength, thisFreq
-    logical :: endLoop, addToiMage
-    integer :: newthread
+    type(VECTOR) :: rHat, observerDirection
+    logical :: endLoop
     type(IMAGETYPE) :: thisimage
-    logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing, stillSCattering
+    logical :: escaped, absorbed, stillSCattering
     real(double) :: totalEmission
-    integer :: iLambdaPhoton, nInf, i
+    integer :: iLambdaPhoton, nInf
     real(double) :: lCore, probsource, r
-    real(double), allocatable :: threadProbArray(:)
-    integer :: np(10)
-    integer :: nDone
     real(double) :: powerPerPhoton
-    real(double) :: totalLineEmission, totalContEmission, chanceSource, weightSource, weightEnv
+    real(double) :: totalLineEmission, chanceSource, weightSource, weightEnv
     integer :: iBeg, iEnd
+#ifdef MPI
+    real(double) :: tempTotalFlux
+    integer :: i
     integer :: ierr
+#endif
+
     call init_random_seed()
-
-
 
 
     thisImage = initImage(npix, npix, setimagesize/1.e10, &
@@ -4212,14 +4208,12 @@ end subroutine readHeIIrecombination
   subroutine propagateObserverPhoton(grid, thisPhoton)
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton
-    logical :: addToImage
     logical :: endLoop
-    integer :: newThread
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tVal
     real(double) :: kappaAbsGas, kappaScaGas, kappaExt
-    integer :: ilam
+
     thisOctal => grid%octreeRoot
     call findSubcellLocal(thisPhoton%position, thisOctal, subcell)
 
@@ -4243,7 +4237,6 @@ end subroutine readHeIIrecombination
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisphoton
     logical :: escaped, absorbed,  scattered
-    integer :: newThread
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tau, thisTau, tVal, r, albedo
@@ -4357,10 +4350,9 @@ end subroutine readHeIIrecombination
      
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON) :: thisPhoton
-     type(VECTOR) :: observerDirection,  xProj, yProj, rotationAxis
+     type(VECTOR) :: observerDirection,  xProj, yProj
      real :: xDist, yDist
      integer :: xPix, yPix
-     integer :: i
      real(double) :: totalFlux
 
      type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)

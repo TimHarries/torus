@@ -4325,7 +4325,7 @@ END SUBROUTINE GAUSSJ
     integer :: nr
     real(double) :: r(:), rho(:)
     real(double), allocatable :: zeta(:), phi(:)
-    real(double) :: dphibydzeta, d2phibydzeta2, dzeta, r0
+    real(double) ::  r0
     real(double) :: mu, soundSpeed, mass, zinner, eThermal, eGrav, dv
     integer :: i
     real(double), parameter :: zetaCrit = 5.d0

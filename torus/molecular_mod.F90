@@ -620,6 +620,7 @@ module molecular_mod
      integer       ::   my_rank        ! my processor rank
      integer       ::   np             ! The number of processes
      integer       ::   ierr           ! error flag
+     integer       ::   j
      integer       ::   tag = 0 
      logical       ::   rankComplete
      integer, dimension(:), allocatable :: octalsBelongRank
@@ -643,7 +644,7 @@ module molecular_mod
 
       real(double) :: collrateatTen(60)
       integer :: ipart
-      integer :: dummy, ijunk, ljunk, j
+      integer :: dummy, ijunk, ljunk
       logical :: juststarted = .true.
 
       logical :: ng

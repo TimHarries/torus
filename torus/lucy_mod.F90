@@ -108,7 +108,6 @@ contains
     logical :: ok                             ! Did call to randomWalk complete OK?
     logical :: photonInDiffusionZone
     real :: diffusionZoneTemp, temp
-    real(double) ::  dlambda
     logical :: directPhoton !, smoothconverged
     logical :: thisSmooth
     logical :: thermalPhoton, scatteredPhoton
@@ -122,11 +121,9 @@ contains
     real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
-    real(double) :: varDustSubFac
     integer :: nTau
     real(double), allocatable :: xArray(:), tauArray(:)
     real(double) :: tau, subRadius
-    integer :: nUnrefine
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
 #ifdef USEMKL
@@ -930,7 +927,7 @@ contains
        call putTau(grid, 6.e4)
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     ", "etaline     "/))
+            "dust1      ", "deltaT     ", "etaline    "/))
 
        !    !
        !    ! Write grid structure to a tmp file.
@@ -1513,7 +1510,7 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    use input_variables, only : minCrossings, TMinGlobal, storeScattered
+    use input_variables, only : minCrossings, TMinGlobal
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -3195,7 +3192,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: uHat, thisVec, centre, position
+    type(VECTOR) :: uHat, thisVec, position
     real(double) :: tVal, thisTheta, thisPhi, ang
     integer :: nTheta, nPhi
     integer :: iTheta, iPhi
@@ -3354,10 +3351,8 @@ subroutine setBiasOnTau(grid, iLambda)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i
+    integer :: i
     logical :: unrefine, converged
-    integer :: nc
     logical :: split
     real(double) :: cellSize, r, hr
     integer :: oldNChildren
@@ -3437,9 +3432,9 @@ subroutine setBiasOnTau(grid, iLambda)
 
   subroutine integrateDownwards(grid, x, ilambda)
     type(GRIDTYPE) :: grid
-    real(double) :: x, tau, intensity
+    real(double) :: x, tau
     integer :: iLambda
-    real(double) ::  i0, dnu, snu, dtau, jnu
+    real(double) ::  i0, snu, dtau, jnu
     type(VECTOR) :: position, viewVec
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
@@ -3477,9 +3472,9 @@ subroutine setBiasOnTau(grid, iLambda)
 
   subroutine integrateUpwards(grid, x, ilambda)
     type(GRIDTYPE) :: grid
-    real(double) :: x, tau, intensity
+    real(double) :: x, tau
     integer :: iLambda
-    real(double) ::  i0, dnu, snu, dtau, jnu
+    real(double) ::  i0, snu, dtau, jnu
     type(VECTOR) :: position, viewVec
     type(OCTAL), pointer :: thisOctal
     integer :: subcell

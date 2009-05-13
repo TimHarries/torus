@@ -1,5 +1,6 @@
 module gridio_mod
   use gridtype_mod
+  use torus_version_mod
   use kind_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
@@ -79,7 +80,12 @@ contains
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: writeFile
+#ifdef MPI
     integer :: iThread
+#endif
+
+
+
     writeFile = .true.
 
 #ifdef MPI
@@ -168,6 +174,7 @@ contains
        endif
 
        call writeFileTag(20, "GRIDBEGINS", fileFormatted)
+       call writeAttributeStaticFlexi(20,"version", grid%version, fileFormatted)
        call writeAttributeStaticFlexi(20,"nLambda", grid%nLambda, fileFormatted)
        call writeAttributeStaticFlexi(20,"flatSpec", grid%flatSpec, fileFormatted)
        call writeAttributeStaticFlexi(20,"adaptive", grid%adaptive, fileFormatted)
@@ -221,13 +228,17 @@ contains
        type(octal), intent(in), target :: thisOctal
        logical, intent(in)             :: fileFormatted
        type(gridtype) :: grid
-       type(octal), pointer :: thisChild, thisOctalPointer
+       type(octal), pointer :: thisChild
        integer              :: iChild
        logical :: writeThisOctal
        integer :: tempNChildren
-       integer :: tempIndexChild(8), i
-       integer :: iMod
+       integer :: tempIndexChild(8)
        logical :: tempHasChild(8)
+
+#ifdef MPI
+       integer :: i
+       type(OCTAL), pointer :: thisOctalPointer
+#endif
 
        writeThisOctal = .true.
 
@@ -470,8 +481,10 @@ contains
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: readFile
-    integer :: nOctals, nVoxels
-    integer :: iThread
+#ifdef MPI
+    integer :: iThread, nOctals, nVoxels
+#endif
+
     readFile = .true.
 
     if (associated(grid%octreeRoot)) then
@@ -501,11 +514,6 @@ contains
     endif
 #endif
 
-    
-
-
-
-666 continue
   end subroutine readAMRgrid
 
   subroutine readAMRgridSingle(filename,fileFormatted,grid)
@@ -519,7 +527,6 @@ contains
     type(GRIDTYPE), intent(inout) :: grid
     
     integer, dimension(8) :: timeValues    ! system date and time
-    integer               :: dummy         
     integer               :: error         ! status code
     integer :: nOctal
     character(len=80) :: absolutePath, inFile, updatedFilename
@@ -579,6 +586,13 @@ contains
 
        select case (trim(tag))
           
+          case("version")
+             call readSingleFlexi(20, grid%version, fileFormatted)
+             if (grid%version /= torusVersion) then
+                write(message,'(a,a,a)') "This dump file written with ", trim(grid%version), " and read with ", trim(torusVersion)
+                call writeWarning(message)
+                grid%version = torusVersion
+             endif
           case("nLambda")
              call readSingleFlexi(20, grid%nLambda, fileFormatted)
           case("flatSpec")
@@ -2097,7 +2111,7 @@ contains
          integer :: nDepth, thisNdepth
          character(len=20) :: tag
          logical :: runToEndofOctal
-         integer :: nChildren, iChildren
+         integer :: iChildren
 
 
          runToEndofOctal = .false.

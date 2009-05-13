@@ -879,8 +879,7 @@ contains
     integer :: myRank, ierr, i
     integer, allocatable :: indx(:), itmp(:)
     real, allocatable :: sort(:)
-    integer :: list(1000), nList, nGroup, group(:), iStart ! , iPair
-    logical :: groupFound
+    integer :: list(1000), nList, nGroup, group(:)
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)

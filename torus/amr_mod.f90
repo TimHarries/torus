@@ -7095,10 +7095,8 @@ IF ( .NOT. gridConverged ) RETURN
     real :: r
     TYPE(vector) :: rVec
     real(double) :: ethermal, gamma
-    integer,save :: it
-    real :: fac
-    real,save :: radius(400),temp(400)
-    integer :: i
+!    integer,save :: it
+!    real,save :: radius(400),temp(400)
     logical,save :: firsttime = .true.
     ethermal  = 0.;
     gamma = 5.d0/3.d0
@@ -12499,9 +12497,9 @@ end function readparameterfrom2dmap
 
   subroutine interpHydroProperties(grid, thisOctal, subcell)
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, parentOctal, neighbourOctal
+    type(OCTAL), pointer :: thisOctal, parentOctal
     type(OCTAL),pointer :: neighbourOctalMinus, neighbourOctalPlus
-    integer :: subcell, parentSubcell, neighbourSubcell
+    integer :: subcell, parentSubcell
     type(VECTOR) :: direction, cellCentre, rVec, parentSubcellCentre
     real(double) :: xMinus, xMid, xPlus
     integer :: neighbourSubcellPlus, neighbourSubcellMinus
@@ -12544,7 +12542,7 @@ end function readparameterfrom2dmap
     logical :: split
     logical, save :: firsttime = .true.
     character(len=30) :: message
-    logical :: converged_tmp
+
     kabs = 0.d0; ksca = 0.d0
 
     do subcell = 1, thisOctal%maxChildren
@@ -12680,17 +12678,15 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine myTauSplit(thisOctal, grid, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr!, rinner
+    use input_variables, only : maxDepthAMR
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child
     logical, optional :: inheritProps, interpProps
     integer :: subcell, i
     logical :: converged
-    real(double) :: kabs, ksca, r
-    type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
+    real(double) :: kabs, ksca
     real :: thisTau
-    integer :: neighbourSubcell, j, nDir
     logical :: split
     logical, save :: firsttime = .true.
     character(len=30) :: message
@@ -12742,18 +12738,12 @@ end function readparameterfrom2dmap
     type(gridtype) :: grid
     real :: factor
     integer :: nTagged
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
     logical, optional :: inheritProps, interpProps
     !
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
-    integer :: subcell, i
-    logical :: converged, converged_tmp
-    real(double) :: r
-    type(VECTOR) :: dirVec(6), centre, octVec, aHat
-    integer :: neighbourSubcell, j, nDir
+    logical :: converged
 
     call zeroChiLineLocal(grid%octreeRoot)
     nTagged = 0
@@ -12833,7 +12823,7 @@ end function readparameterfrom2dmap
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
     integer :: subcell, i
-    logical :: converged, converged_tmp
+    logical :: converged
     real(double) :: r
     type(VECTOR) :: dirVec(6), centre, octVec, aHat
     integer :: neighbourSubcell, j, nDir
@@ -17521,7 +17511,7 @@ end function readparameterfrom2dmap
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
     real(double),save :: r(nr), nh2(nr), junk
-    real(double) :: r1, t1, t2, nh2out
+    real(double) :: r1, t1, nh2out
     integer :: i
 
     if (firsttime) then
@@ -17727,11 +17717,10 @@ end function readparameterfrom2dmap
   subroutine testToBoundary2(grid, rVec, uHat, totDist)
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, uHat, currentPosition
-    type(OCTAL), pointer :: thisOctal, sOctal, tempOctal
+    type(OCTAL), pointer :: thisOctal, sOctal
     integer :: subcell, sSubcell
     real(double) :: distToNextCell, totDist
     real(double) :: fudgeFac = 0.000001d0
-    integer :: tempSubcell
 
     totDist = 0.d0
     currentPosition = rVec

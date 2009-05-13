@@ -840,7 +840,7 @@ module image_mod
     real(double) :: cosTheta
     real(double) :: distToGrid, distToSource, currentDistance
     integer :: ix, iy
-    real(double) :: i0, tau, dtau, kappaAbs, jnu, snu, kappaSca, iScattered
+    real(double) :: i0, tau, dtau, kappaAbs, jnu, kappaSca, iScattered
     logical :: ok, hitsource
     integer, parameter :: nTheta = 11, nPhi = 10
     integer :: iTheta, iPhi

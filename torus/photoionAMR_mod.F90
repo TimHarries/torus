@@ -3962,7 +3962,7 @@ end subroutine readHeIIrecombination
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: gamma, mu, eThermal
+    real(double) :: mu, eThermal
     mu = 2.d0
   
     do subcell = 1, thisOctal%maxChildren
@@ -4001,17 +4001,15 @@ end subroutine readHeIIrecombination
     real(double), allocatable :: totalFluxArray(:), tempTotalFlux(:)
     integer :: subcell
     integer :: iPhoton, nPhotons
-    integer :: iLam
     integer :: iSource
     integer :: iThread
-    type(VECTOR) :: rVec, uHat, rHat, observerDirection
-    real(double) :: wavelength, thisFreq
+    type(VECTOR) ::  rHat, observerDirection
     logical :: endLoop, addToiMage
     integer :: newthread
     type(IMAGETYPE) :: thisimage
     logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing, stillSCattering
     real(double) :: totalEmission
-    integer :: iLambdaPhoton, nInf, i
+    integer :: iLambdaPhoton, nInf
     real(double) :: lCore, probsource, r
     real(double), allocatable :: threadProbArray(:)
     integer :: np(10)
@@ -4244,8 +4242,6 @@ end subroutine readHeIIrecombination
     real(double) :: temp(nTemp)
     integer :: ierr
     integer :: tag = 42
-    integer, parameter :: nLogic = 1
-    logical :: tLogic(nLogic)
 
     temp(1) = thisPhoton%stokes%i
     temp(2) = thisPhoton%stokes%q
@@ -4295,12 +4291,8 @@ end subroutine readHeIIrecombination
   subroutine receivePhoton(thisPhoton, iSignal)
     include 'mpif.h'
     type(PHOTON) :: thisPhoton
-    integer :: iThread
-    logical :: endLoop
     integer, parameter :: nTemp = 15
     real(double) :: temp(15)
-    integer :: nLogic
-    logical :: tLogic(1)
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 42
@@ -4363,8 +4355,8 @@ end subroutine readHeIIrecombination
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tVal
-    real(double) :: kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, kappaExt
-    integer :: ilam
+    real(double) :: kappaAbsDust, kappaScaDust, kappaExt
+
     thisOctal => grid%octreeRoot
     call findSubcellTD(thisPhoton%position, grid%octreeRoot, thisOctal, subcell)
     if (myRankGlobal /= thisOctal%mpiThread(subcell)) then
@@ -4405,7 +4397,7 @@ end subroutine readHeIIrecombination
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tau, thisTau, tVal, r, albedo
-    real(double) :: kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, kappaExt
+    real(double) :: kappaAbsDust, kappaScaDust,  kappaExt
     logical :: endLoop
     
     thisOctal => grid%octreeRoot
@@ -4537,10 +4529,9 @@ end subroutine readHeIIrecombination
      
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON) :: thisPhoton
-     type(VECTOR) :: observerDirection,  xProj, yProj, rotationAxis
+     type(VECTOR) :: observerDirection,  xProj, yProj
      real :: xDist, yDist
      integer :: xPix, yPix
-     integer :: i
      real(double) :: totalFlux
 
      type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)

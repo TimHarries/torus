@@ -369,7 +369,7 @@ contains
     real :: massEnvelope
     real :: tthresh, drho
     integer :: maxIter
-    integer :: nIter, j, ilamsmooth
+    integer :: nIter, j
     real(double) totalMass
     logical :: twoD
     real :: temp

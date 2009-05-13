@@ -679,7 +679,7 @@ endif
 #
 # Source files
 #
-F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
+F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             unix_mod.f90 inputs_mod.f90 utils_mod.f90 bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \

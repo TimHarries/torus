@@ -300,7 +300,7 @@ contains
     npixels=naxes(1)*naxes(2)*naxes(3)
     nbuffer=npixels
     ! read_image
-    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
+    call ftgpve(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
 
 
     !  Read keywords from the header.
@@ -444,7 +444,6 @@ contains
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
-    character(len=100) :: message
     if(present(mytelescope)) then
        
        thisCube%telescope = mytelescope
