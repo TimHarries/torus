@@ -148,7 +148,8 @@ CONTAINS
 
        parentOctal%hasChild(parentsubcell) = .false.
        call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
-            thisOctal%temperature(subcell), thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell, :), thisOctal%etaLine(subcell))
+            thisOctal%temperature(subcell), thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell, :), &
+            thisOctal%etaLine(subcell))
        parentOctal%hasChild(parentsubcell) = .true.
 
     else
@@ -12440,37 +12441,47 @@ end function readparameterfrom2dmap
        allocate(rho(1:j), temp(1:j), etaline(1:j))
 
        octVec = centre + r * VECTOR(1.d0, 0.d0, 0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:), etaline=etaLine(1))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:), &
+            etaline=etaLine(1))
        
        octVec = centre + r * VECTOR(-1.d0,0.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:), etaline=etaline(2))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:), &
+            etaline=etaline(2))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,-1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:), etaline=etaLine(3))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:), &
+            etaline=etaLine(3))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,+1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:), etaline=etaline(4))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:), &
+            etaline=etaline(4))
     else
        j = 6
        allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
        allocate(rho(1:j), temp(1:j),etaline(1:j))
        octVec = centre + r * VECTOR(1.d0, 0.d0, 0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:), etaline=etaline(1))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:), &
+            etaline=etaline(1))
        
        octVec = centre + r * VECTOR(-1.d0,0.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:), etaline=etaline(2))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:), &
+            etaline=etaline(2))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,-1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:), etaline=etaline(3))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:), &
+            etaline=etaline(3))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,+1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:), etaline=etaline(4))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:), &
+            etaline=etaline(4))
 
        octVec = centre + r * VECTOR(0.d0,+1.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(5), rho=rho(5), dusttypeFraction=tdusttype(5,:), etaline=etaline(5))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(5), rho=rho(5), dusttypeFraction=tdusttype(5,:), &
+            etaline=etaline(5))
 
        octVec = centre + r * VECTOR(0.d0,-1.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:), etaline=etaline(6))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:), &
+            etaline=etaline(6))
 
     endif
   
@@ -12645,7 +12656,8 @@ end function readparameterfrom2dmap
                          if ((j==3).or.(j==4)) then
                             fac = abs(neighbourOctal%etaLine(neighbourSubcell)-thisOctal%etaLine(subcell))
                             if (split.and.(fac > 0.2d0).and.(thisOctal%etaLine(subcell) > 0.1d0).and. & 
-                                 (thisOctal%etaLine(subcell) < 1.d0).and.(thisOctal%etaLine(subcell)>neighbourOctal%etaLine(neighbourSubcell))) then
+                                 (thisOctal%etaLine(subcell) < 1.d0).and. &
+                                 (thisOctal%etaLine(subcell)>neighbourOctal%etaLine(neighbourSubcell))) then
                                !                               write(*,*) " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
                                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                                     inherit=inheritProps, interp=interpProps)
