@@ -41,7 +41,7 @@ contains
   use romanova_class, only: romanova
   use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
   use source_mod, only: sourceType, buildSphere 
-  use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter, npart
+  use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter, npart, init_sph_data2, info
   use cluster_class
   use surface_mod, only: surfaceType
   use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
@@ -60,6 +60,7 @@ contains
   use timing, only: tune
   use ion_mod, only: addions
   use isochrone_class, only: isochrone, read_isochrone_data, new
+  use lucy_mod, only: lucyRadiativeEquilibriumAMR 
 #ifdef MPI
   use mpi_global_mod, only: myRankGlobal
   use photoionAMR_mod, only: radiationhydro, createImage
@@ -450,6 +451,7 @@ call torus_mpi_barrier
 CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------
   subroutine set_up_lambda_array
+    use photoion_mod, only: refineLambdaArray
 
     real :: deltaLambda
     real :: loglamStart, logLamEnd
