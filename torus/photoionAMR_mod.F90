@@ -286,7 +286,7 @@ contains
        call writeInfo("calling hydro step",TRIVIAL)
 
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+       if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrank /= 0) call resetNh(grid%octreeRoot)
@@ -352,8 +352,8 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-          !          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-          !          call writeAmrGrid(mpiFilename, .false., grid)
+          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
+          call writeAmrGrid(mpiFilename, .false., grid)
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","HI           " , "temperature  ", &
@@ -488,7 +488,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 10000000
+    nMonte = 1000000
 
     nIter = 0
     

@@ -600,12 +600,11 @@ program torus
        viewVec%z = -cos(inclination)
        outVec = (-1.d0)*viewVec
 
-        do i = 1, nLambda
-           call createImage(grid, nSource, source, outVec, i, totalflux)
-           if (myrankglobal == 0) write(67,*) grid%lamArray(i), totalFlux
-        enddo
+!        do i = 1, nLambda
+!           call createImage(grid, nSource, source, outVec, i, totalflux)
+!           if (myrankglobal == 0) write(67,*) grid%lamArray(i), totalFlux
+!        Enddo
 
-        stop
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
            call torus_mpi_barrier
@@ -1691,7 +1690,7 @@ end subroutine pre_initAMRGrid
                     gridConverged = .true.
                     call putTau(grid, grid%lamArray(j))
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                         inheritProps = .false., interpProps = .false., photosphereSplit = .not.variableDustSublimation)
+                         inheritProps = .false., interpProps = .false.)!, photosphereSplit = .not.variableDustSublimation)
                     if (gridConverged) exit
                  end do
               enddo
