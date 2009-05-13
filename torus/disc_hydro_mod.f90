@@ -375,10 +375,10 @@ contains
     real :: temp
     real :: rGapCM
     integer :: nUnrefine
-    real :: lamSmoothArray(3)
+    real :: lamSmoothArray(5)
     character(len=30) :: message
     
-    lamSmoothArray = (/5500., 1.e4, 2.e4/)
+    lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
 
 
@@ -489,15 +489,16 @@ contains
 
        if (.not.variableDustSublimation) then
 
+          call locate(grid%lamArray, nLambda, lambdaSmooth,ismoothlam)
           call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-          do j = 1, 3
-             write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
-             call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+          do j = iSmoothLam, nLambda
+             write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
              call writeInfo(message, TRIVIAL)
              do
+                call putTau(grid, grid%lamArray(j))
                 gridConverged = .true.
-                call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
-                     inheritProps = .false., interpProps = .true.)
+                call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                     inheritProps = .false., interpProps = .true., photospheresplit = .true.)
 
                 if (gridConverged) exit
              end do
@@ -539,7 +540,7 @@ contains
  ! final call to sort out temperature
 
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-      nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
+      nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter, finalpass = .true.)
 
 
 
@@ -553,33 +554,6 @@ contains
 
 end subroutine verticalHydrostatic
 
-  recursive subroutine getxValues(thisOctal, nx, xAxis)
-
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    type(VECTOR) :: rVec
-    integer :: nx, subcell, i
-    real(double) :: xAxis(:)
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call getxValues(child, nx, xAxis)
-                exit
-             end if
-          end do
-       else
-
-          rVec = subcellCentre(thisOctal, subcell)
-          nx = nx + 1
-          xAxis(nx) = rVec%x
-       end if
-    end do
-
-  end subroutine getxValues
 
   recursive subroutine setTemperature(thisOctal, temperature)
 

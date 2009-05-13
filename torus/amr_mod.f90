@@ -148,7 +148,7 @@ CONTAINS
 
        parentOctal%hasChild(parentsubcell) = .false.
        call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
-            thisOctal%temperature(subcell), thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell, :))
+            thisOctal%temperature(subcell), thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell, :), thisOctal%etaLine(subcell))
        parentOctal%hasChild(parentsubcell) = .true.
 
     else
@@ -12415,14 +12415,14 @@ end function readparameterfrom2dmap
     
   end subroutine setVerticalBias
 
-  subroutine interpFromParent(centre, cellSize, grid, temperature, density, dusttypeFraction)
+  subroutine interpFromParent(centre, cellSize, grid, temperature, density, dusttypeFraction, thisEtaLine)
     type(GRIDTYPE) :: grid
     real(double) :: cellSize
     real :: temperature
-    real(double) :: density
+    real(double) :: density, thisEtaLine
     real(double) :: dusttypeFraction(:)
     real(double), allocatable :: tdusttype(:,:)
-    real(double), allocatable :: rho(:)
+    real(double), allocatable :: rho(:), etaline(:)
     real, allocatable :: temp(:)
     type(VECTOR) :: centre, octVec
     real(double) :: r
@@ -12437,45 +12437,47 @@ end function readparameterfrom2dmap
     if (grid%octreeRoot%twod) then
        j = 4
        allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
-       allocate(rho(1:j), temp(1:j))
+       allocate(rho(1:j), temp(1:j), etaline(1:j))
 
        octVec = centre + r * VECTOR(1.d0, 0.d0, 0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:), etaline=etaLine(1))
        
        octVec = centre + r * VECTOR(-1.d0,0.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:), etaline=etaline(2))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,-1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:), etaline=etaLine(3))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,+1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:), etaline=etaline(4))
     else
        j = 6
        allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
-       allocate(rho(1:j), temp(1:j))
+       allocate(rho(1:j), temp(1:j),etaline(1:j))
        octVec = centre + r * VECTOR(1.d0, 0.d0, 0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:), etaline=etaline(1))
        
        octVec = centre + r * VECTOR(-1.d0,0.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:), etaline=etaline(2))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,-1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:), etaline=etaline(3))
        
        octVec = centre + r * VECTOR(0.d0,0.d0,+1.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:), etaline=etaline(4))
 
        octVec = centre + r * VECTOR(0.d0,+1.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(5), rho=rho(5), dusttypeFraction=tdusttype(5,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(5), rho=rho(5), dusttypeFraction=tdusttype(5,:), etaline=etaline(5))
 
        octVec = centre + r * VECTOR(0.d0,-1.d0,0.d0)
-       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:))
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:), etaline=etaline(6))
 
     endif
   
 
     density = sum(rho) / dble(j)
+
+    thisetaline = sum(etaline) / dble(j)
 
     temperature = sum(temp) / real(j)
 
@@ -12516,12 +12518,12 @@ end function readparameterfrom2dmap
 
 
 
-  recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
+  recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
     use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
-    logical, optional :: inheritProps, interpProps
+    logical, optional :: inheritProps, interpProps, photoSphereSplit
     integer :: subcell, i, ilambda
     logical :: converged
     real(double) :: kabs, ksca, r, fac
@@ -12540,7 +12542,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call myTauSmooth(child, grid, ilambda, converged, inheritProps, interpProps)
+                call myTauSmooth(child, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
                 exit
              end if
           end do
@@ -12636,6 +12638,27 @@ end function readparameterfrom2dmap
                    converged = .false.
                    return
                 endif
+
+                if (PRESENT(photosphereSplit)) then
+                   if (photosphereSplit) then
+                      if ((thisOctal%etaLine(subcell) /= 0.d0).and.(neighbourOctal%etaLine(neighbourSubcell)/=0.d0)) then
+                         if ((j==3).or.(j==4)) then
+                            fac = abs(neighbourOctal%etaLine(neighbourSubcell)-thisOctal%etaLine(subcell))
+                            if (split.and.(fac > 0.2d0).and.(thisOctal%etaLine(subcell) > 0.1d0).and. & 
+                                 (thisOctal%etaLine(subcell) < 1.d0).and.(thisOctal%etaLine(subcell)>neighbourOctal%etaLine(neighbourSubcell))) then
+                               !                               write(*,*) " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
+                               call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                                    inherit=inheritProps, interp=interpProps)
+                               converged = .false.
+                               return
+                            endif
+                         endif
+                      endif
+                   endif
+                endif
+
+
+
              endif
           enddo
        endif
@@ -14299,6 +14322,33 @@ end function readparameterfrom2dmap
 
   end SUBROUTINE startReturnSamples2
 
+  recursive subroutine getxValues(thisOctal, nx, xAxis)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rVec
+    integer :: nx, subcell, i
+    real(double) :: xAxis(:)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getxValues(child, nx, xAxis)
+                exit
+             end if
+          end do
+       else
+
+          rVec = subcellCentre(thisOctal, subcell)
+          nx = nx + 1
+          xAxis(nx) = rVec%x
+       end if
+    end do
+
+  end subroutine getxValues
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
 !    use input_variables, only : limitScalar

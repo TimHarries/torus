@@ -427,7 +427,7 @@ contains
                   write(lunit, *) real(thisOctal%boundaryCondition(subcell))
 
                case("deltaT")
-                  write(lunit, *) real(thisOctal%oldtemperature(subcell))
+                  write(lunit, *) real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell))
 
 
                case("scattered")

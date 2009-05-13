@@ -25,7 +25,7 @@ contains
 
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter)
+       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, amax, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 #ifdef MPI
@@ -41,6 +41,7 @@ contains
     integer :: iSmoothLam
     logical :: gridConverged
     integer :: nDustType
+    logical, optional :: finalPass
     type(SOURCETYPE) :: source(nsource), thisSource
     integer :: nLucy
     ! threshold value for undersampled cell in percent (for stopping iteration).
@@ -126,8 +127,8 @@ contains
     real(double), allocatable :: xArray(:), tauArray(:)
     real(double) :: tau, subRadius
     integer :: nUnrefine
-    real :: lamSmoothArray(3)
-
+    real :: lamSmoothArray(5)
+    logical :: thisIsFinalPass
 #ifdef USEMKL
     integer :: oldmode
     real(oct) :: hrecip_ktarray(nlambda)
@@ -164,7 +165,11 @@ contains
     oldmode = vmlgetmode()
     oldmode = vmlsetmode(VML_LA)
 #endif
-    lamSmoothArray = (/5500., 1.e4, 2.e4/)
+
+    thisIsFinalPass = .false.
+    if (PRESENT(finalPass)) thisIsFinalPass = finalPass
+
+    lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
     oldTotalEmission = 1.d30
     kappaScaDb = 0.d0; kappaAbsDb = 0.d0
@@ -295,15 +300,16 @@ contains
           if (variableDustSublimation) thisSmooth = .false.
 
           if (thisSmooth) then
+                 call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = 1, 3
-                 write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
-                 call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+                do j = iSmoothLam, nLambda, 2
+                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
                  call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
-                      call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
-                           inheritProps = .false., interpProps = .true.)
+                      call putTau(grid, grid%lamArray(j))
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
 
                       if (gridConverged) exit
                    end do
@@ -696,7 +702,6 @@ contains
                dT_sum, dT_min, dT_max, dT_over_T_max)
 
 
-
           if (doTuning) call tune(6, "Gauss-Seidel sweeps")
           call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
 
@@ -839,18 +844,18 @@ contains
 !                endif
 !             endif
 
-             if (iiter_grand == 6) then
+             if ((iiter_grand == 6).and.(thisIsFinalPass)) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = 1, 3
-                 write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
-                 call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+                do j = iSmoothLam, nLambda, 2
+                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
                  call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
-                      call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
-                           inheritProps = .false., interpProps = .true.)
+                      call putTau(grid, grid%lamArray(j))
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
 
                       if (gridConverged) exit
                    end do
@@ -921,10 +926,11 @@ contains
        else
           tfilename = "lucy.vtk"
        endif
-
+       
+       call putTau(grid, 6.e4)
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     "/))
+            "dust1      ", "deltaT     ", "etaline     "/))
 
        !    !
        !    ! Write grid structure to a tmp file.
@@ -3407,6 +3413,107 @@ subroutine setBiasOnTau(grid, iLambda)
     endif
   end subroutine unrefineBack
 
+
+  subroutine putTau(grid, wavelength)
+    type(GRIDTYPE) :: grid
+    real :: wavelength
+    integer :: nx
+    real(double), allocatable :: xAxis(:)
+    integer :: iLambda, i
+
+    call locate(grid%lamArray, grid%nLambda, wavelength, ilambda)
+    allocate(xAxis(1:1000000))
+    nx = 0
+    call getxValues(grid%octreeRoot,nx,xAxis)
+    call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
+    xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
+    do i = 1, nx
+       call integrateDownWards(grid, xAxis(i), iLambda)
+       call integrateUpWards(grid, xAxis(i), iLambda)
+    end do
+    deallocate(xAxis)
+
+  end subroutine putTau
+
+  subroutine integrateDownwards(grid, x, ilambda)
+    type(GRIDTYPE) :: grid
+    real(double) :: x, tau, intensity
+    integer :: iLambda
+    real(double) ::  i0, dnu, snu, dtau, jnu
+    type(VECTOR) :: position, viewVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: currentDistance, tVal
+    real(double) :: kappaAbs, kappaSca
+    viewVec = VECTOR(0.d0, 0.d0, -1.d0)
+
+    position = VECTOR(x, 0.d0, grid%octreeRoot%subcellSize-0.01d0*grid%halfSmallestSubcell)
+    thisOctal => grid%octreeRoot
+    subcell = 1
+    i0 = 0.d0
+    tau = 0.d0
+    currentDistance  = 0.d0
+    do while(inOctal(grid%octreeRoot, position).and.(position%z > 0.))
+       call findSubcelllocal(position, thisOctal, subcell)
+       call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
+       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
+       dTau = (kappaAbs + kappaSca) * tVal
+       
+       jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
+       
+       if (kappaAbs .ne. 0.d0) then
+          snu = jnu/kappaAbs
+          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+       else
+          snu = tiny(snu)
+          i0 = i0 + tiny(i0)
+       endif
+       
+       tau = tau + dtau
+       position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
+       thisOctal%etaLine(subcell) =  max(tau,1.d-30)
+    end do
+  end subroutine integrateDownwards
+
+  subroutine integrateUpwards(grid, x, ilambda)
+    type(GRIDTYPE) :: grid
+    real(double) :: x, tau, intensity
+    integer :: iLambda
+    real(double) ::  i0, dnu, snu, dtau, jnu
+    type(VECTOR) :: position, viewVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: currentDistance, tVal
+    real(double) :: kappaAbs, kappaSca
+    viewVec = VECTOR(0.d0, 0.d0, 1.d0)
+
+    position = VECTOR(x, 0.d0, -grid%octreeRoot%subcellSize+0.01d0*grid%halfSmallestSubcell)
+    thisOctal => grid%octreeRoot
+    subcell = 1
+    i0 = 0.d0
+    tau = 0.d0
+    currentDistance  = 0.d0
+    do while(inOctal(grid%octreeRoot, position).and.(position%z < 0.))
+       call findSubcelllocal(position, thisOctal, subcell)
+       call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
+       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
+       dTau = (kappaAbs + kappaSca) * tVal
+       
+       jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
+       
+       if (kappaAbs .ne. 0.d0) then
+          snu = jnu/kappaAbs
+          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+       else
+          snu = tiny(snu)
+          i0 = i0 + tiny(i0)
+       endif
+       
+       tau = tau + dtau
+       position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
+       thisOctal%etaLine(subcell) = max(tau,1.d-30)
+    end do
+  end subroutine integrateUpwards
 
 end module lucy_mod
 

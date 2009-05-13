@@ -118,7 +118,7 @@ program torus
   integer :: iLambda
   real, allocatable :: xArray(:)
 
-  real :: lamSmoothArray(3)
+  real :: lamSmoothArray(5)
 
   ! model flags
 
@@ -237,7 +237,7 @@ program torus
   call init_random_seed()
 
 
-  lamSmoothArray = (/5500., 1.e4, 2.e4/)
+  lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
   co%molecule = " "
   indexAtom = 0
   indexRBBTrans = 0; nRBBTrans = 0
@@ -1325,12 +1325,14 @@ end subroutine pre_initAMRGrid
   subroutine amr_grid_setup
 
     use amr_mod
+    use input_variables, only : variableDustSublimation
     use spectrum_mod, only: fillSpectrumBB, normalizedSpectrum
     use stateq_mod, only: map_cmfgen_opacities, amrStateq, generateOpacitiesAMR
     use dust_mod, only: filldustshakara, filldustuniform, filldustwhitney
     use cluster_class, only: remove_too_close_cells
     use surface_mod, only: createTTauriSurface, createTTauriSurface2, createSurface
     use luc_cir3d_class, only: deallocate_zeus_data
+    use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy, putTau
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -1681,20 +1683,21 @@ end subroutine pre_initAMRGrid
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau.and.mie) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = 1, 3
-!              do j = iSmoothLam,  nLambda, 10
-                 write(message,*) "Smoothing at lam = ",lamSmoothArray(j), " angs"
-                 call locate(grid%lamArray, nLambda,lamSmoothArray(j),ismoothlam)
+              call locate(grid%lamArray, nLambda,lambdaSmooth,ismoothlam)
+              do j = iSmoothLam,  nLambda, 2
+                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
                  call writeInfo(message, TRIVIAL)
                  do
                     gridConverged = .true.
-                    call myTauSmooth(grid%octreeRoot, grid, ismoothlam, gridConverged, &
-                         inheritProps = .false., interpProps = .false.)
+                    call putTau(grid, grid%lamArray(j))
+                    call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                         inheritProps = .false., interpProps = .false., photosphereSplit = .not.variableDustSublimation)
                     if (gridConverged) exit
                  end do
               enddo
               call writeInfo("...grid smoothing complete", TRIVIAL)
 
+              call writeVtkFile(grid, "aftersmooth.vtk")
               ! The tau smoothing may result in large differences in the size
               ! of neighbouring octals, so we smooth the grid again.
               
