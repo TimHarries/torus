@@ -59,7 +59,7 @@ program torus
   use ion_mod, only: addions
   use angularImage, only: make_angular_image
 #ifdef MPI
-  use photoionAMR_mod, only: radiationhydro, createImage
+  use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
   use unix_mod, only: unixGetHostname
@@ -604,12 +604,12 @@ program torus
        viewVec%x = 0.
        viewVec%y = -sin(inclination)
        viewVec%z = -cos(inclination)
+       viewVec = rotateZ(viewVec, 30.d0*degtorad)
        outVec = (-1.d0)*viewVec
 
-!        do i = 1, nLambda
-!           call createImage(grid, nSource, source, outVec, i, totalflux)
-!           if (myrankglobal == 0) write(67,*) grid%lamArray(i), totalFlux
-!        Enddo
+       call createImageSplitGrid(grid, nSource, source, outVec, i, fac)
+       call torus_mpi_barrier
+       stop
 
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
@@ -2156,7 +2156,7 @@ subroutine set_up_sources
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
 
-       source(1)%luminosity = source(1)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+       source(1)%luminosity = source(1)%luminosity * (2.d0*1.5d9*1.d10)**2 / &
             (fourPi*(50.d0* pctocm)**2)
        if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16

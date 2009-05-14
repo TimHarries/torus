@@ -1,4 +1,4 @@
-MODULE amr_mod
+module amr_mod
  
 ! 21 nov
   ! routines for adaptive mesh refinement. nhs
@@ -7656,7 +7656,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     rVec = subcellCentre(thisOctal, subcell)
     
-    if (abs(rVec%z) > 0.25d0) then
+    if (rVec%z > 0.d0) then
        thisOctal%velocity(subcell) = VECTOR(-0.50, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 1.d0
     else
@@ -7670,23 +7670,31 @@ IF ( .NOT. gridConverged ) RETURN
 !    u2 = (2.*u2-1.) * 0.005
 
     u1 = 0.d0
-!    if (abs(rVec%z-0.25d0) < 0.025d0) then
-!       u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+    if (abs(rVec%z) < 0.025d0) then
+       u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+    endif
 !    else if (abs(rVec%z+0.25d0) < 0.025d0) then
 !       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
 !    endif
-    u1 = -0.025d0
+!    u1 = -0.025d0
     
-    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)/cspeed
-    if (modulus(rvec) < 0.2d0) thisOctal%rho(subcell) = 0.5d0
+!    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)/cspeed
+!    if (modulus(rvec) < 0.2d0) thisOctal%rho(subcell) = 0.5d0
 !    if (inSubcell(thisOctal, subcell, VECTOR(0.295d0,0.d0, -0.005d0))) thisOctal%rho(subcell) = 0.5d0
     thisOctal%pressure_i(subcell) = 2.5d0
-!    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
+    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
 
-    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (gamma-1.d0) * thisOctal%rho(subcell))
     thisOctal%boundaryCondition(subcell) = 2
+    if (.not.inOctal(grid%octreeRoot, VECTOR(thisOctal%xmin-0.1d0*grid%halfSmallestSubcell,0.d0,0.d0))) then
+       thisOctal%boundaryCondition(subcell) = 2
+    endif
+    if (.not.inOctal(grid%octreeRoot, VECTOR(thisOctal%xmax+0.1d0*grid%halfSmallestSubcell,0.d0,0.d0))) then
+       thisOctal%boundaryCondition(subcell) = 2
+    endif
+
     thisOctal%gamma(subcell) = 7.d0/5.d0
     thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
   end subroutine calcKelvinDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)

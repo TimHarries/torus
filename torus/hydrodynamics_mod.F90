@@ -1976,7 +1976,6 @@ contains
     call transferTempStorage(grid%octreeRoot)
 
 
-
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupUi(grid%octreeRoot, grid, direction)
@@ -2081,7 +2080,7 @@ contains
              speed = sqrt(speed)/thisOctal%rho(subcell)
 
              tc = min(tc, dx / (cs + speed) )
-
+             if (tc < 1.e-5) write(*,*) "rhoe ",thisOctal%rhoe(subcell), "speed ",speed
 
           endif
  
@@ -2611,15 +2610,17 @@ contains
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
     logical :: dorefine
+
     integer :: nUnrefine, jt
 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    nHydroThreads = nThreadsGlobal - 1
+    dorefine = .true.
 
 
     if (myrankGlobal /= 0) then
 
-       dorefine = .true.
 
-       nHydroThreads = nThreadsGlobal - 1
 
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -2629,8 +2630,6 @@ contains
        !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
        viewVec = rotateY(viewVec, 25.d0*degtorad)
 
-
-       call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
        if (myRank == 1) write(*,*) "CFL set to ", cflNumber
@@ -2722,43 +2721,44 @@ contains
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
 
-       currentTime = 0.d0
-       it = 0
-       nextDumpTime = 0.d0
     endif
+
+    currentTime = 0.d0
+    it = 0
+    nextDumpTime = 0.d0
 
     call writeVTKfile(grid, "start.vtk")
 
-    if (myrankGlobal /= 0 ) then
-       tc = 0.d0
+    tc = 0.d0
+    if (myrank /= 0) then
        tc(myrank) = 1.d30
        call computeCourantTime(grid%octreeRoot, tc(myRank))
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
-       tc = tempTc
-       dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
-
-       tff = 1.d0 / sqrt(bigG * (0.1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
-       tDump = 1.d-2 * tff
-
-       tdump = 5.d0 * dt
-
-       write(*,*) "Setting tdump to: ", tdump
-
-       iUnrefine = 0
-       !    call writeInfo("Plotting grid", TRIVIAL)    
-
-       iUnrefine = 0
-
-       jt = 0
     endif
+    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+    tc = tempTc
+    dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+    
+    tff = 1.d0 / sqrt(bigG * (0.1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
+    tDump = 1.d-2 * tff
+    
+    tdump = 5.d0 * dt
+    
+    if (writeoutput) write(*,*) "Setting tdump to: ", tdump
+
+
+    iUnrefine = 0
+
+    jt = 0
 
     do while(.true.)
 
        jt = jt + 1
-       tc = 0.d0
-       tc(myrank) = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc(myRank))
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       if (myrank /= 0) then
+          tc = 0.d0
+          tc(myrank) = 1.d30
+          call computeCourantTime(grid%octreeRoot, tc(myRank))
+       endif
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
        !       write(*,*) "tc", tc(1:8)
        !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
@@ -2815,9 +2815,7 @@ contains
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-
+          
 
        endif
 
@@ -2836,7 +2834,7 @@ contains
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
 
-          call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+!          call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -5147,7 +5145,7 @@ end subroutine refineGridGeneric2
        case(1) ! isothermal
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
           getPressure =  (thisOctal%gamma(subcell) - 1.d0) * thisOctal%rho(subcell) * eThermal
-          getPressure = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+!          getPressure = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
 
        case(2) !  equation of state from Bonnell 1994
           if (thisOctal%rho(subcell) < rhoCrit) then

@@ -23,7 +23,7 @@ use image_mod
 implicit none
 
 private
-public :: photoIonizationloopAMR, radiationHydro, createImage
+public :: photoIonizationloopAMR, radiationHydro, createImagesplitgrid
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -3989,11 +3989,13 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImage(grid, nSource, source, observerDirection, iLambdaPhoton, totalflux)
+  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, iLambdaPhoton, totalflux)
+    use photoion_mod, only : addEmissionLine
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=80) :: imageFilename
     integer :: nSource
+    real(double) :: lambdaLine
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
@@ -4054,11 +4056,15 @@ end subroutine readHeIIrecombination
     endif
 
 
-    thisImage = initImage(50, 50, real(2.*grid%octreeRoot%subcellSize), &
-         real(2.*grid%octreeRoot%subcellSize), 0., 0.)
+    thisImage = initImage(100, 100, real(3.*grid%octreeRoot%subcellSize), &
+         real(3.*grid%octreeRoot%subcellSize), 0., 0.)
 
     allocate(threadProbArray(1:nThreadsGlobal-1))
     
+
+    lambdaLine = 5007.
+    call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
+    call addEmissionLine(grid, 1.d0, lambdaLine)
     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
 
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
@@ -4229,7 +4235,7 @@ end subroutine readHeIIrecombination
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
     call freeImage(thisImage)
-  end subroutine createImage
+  end subroutine createImageSplitGrid
 
 
   subroutine sendPhoton(thisPhoton, iThread, endLoop, report, getPosition)

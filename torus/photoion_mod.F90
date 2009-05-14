@@ -22,7 +22,7 @@ private
 #ifdef MPI
  private :: updateGridMPIphoto
 #endif
-public :: photoIonizationLoop, createImage, refineLambdaArray
+public :: photoIonizationLoop, createImage, refineLambdaArray, addEmissionLine, addToEmission
 
 type SAHAMILNETABLE
    integer :: nFreq 
