@@ -226,7 +226,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx, x_plus_half, x_minus_half
+    real(double) :: dt, dx
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
@@ -1750,7 +1750,7 @@ contains
 
   subroutine  hydrostep1d(grid, dt, npairs, thread1, thread2, nbound, group, ngroup)
     type(gridtype) :: grid
-    real(double) :: gamma, dt
+    real(double) :: dt
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
 
@@ -1794,7 +1794,7 @@ contains
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: idepth
-    real(double) :: gamma, timestep, nexttimestep
+    real(double) :: timestep, nexttimestep
     integer :: mindepth, maxdepth, nextdepth
 
 
@@ -1820,9 +1820,8 @@ contains
     logical, optional :: doSelfGrav
     logical :: selfGravity
     integer :: group(:), nGroup
-    real(double) :: gamma, dt
+    real(double) :: dt
     type(VECTOR) :: direction
-    integer :: minDepth, maxDepth
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     selfGravity = .true.
@@ -2590,11 +2589,11 @@ contains
   subroutine doHydrodynamics2d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt, tc(64), temptc(64), gamma, mu
+    real(double) :: dt, tc(64), temptc(64), mu
     real(double) :: currentTime
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
-    character(len=80) :: plotfile,tmp
+    character(len=80) :: plotfile
     real(double) :: tDump, nextDumpTime, tff !, ang
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
@@ -3101,10 +3100,10 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, bSubcell
     type(VECTOR) :: locator, dir
-    real(double) :: gamma, machNumber, Pr, rhor
+    real(double) :: machNumber, Pr, rhor, gamma
 
+    gamma = 5.d0/3.d0
     machNumber = 2.d0
-    gamma = 7.d0/5.d0
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -4040,7 +4039,7 @@ end subroutine refineGridGeneric2
     real(double) :: cs(8), mass
     real(double) :: rhocs, rhomean, rhoemean
     logical :: refinedLastTime, ghostCell
-    integer :: iEquationOfState
+
     limit  = 0.01d0
 
     unrefine = .true.
@@ -5108,7 +5107,7 @@ end subroutine refineGridGeneric2
   real(double) function getPressure(thisOctal, subcell)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real(double) :: eKinetic, eThermal, K, u2, gamma, eTot
+    real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
 
 

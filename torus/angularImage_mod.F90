@@ -34,7 +34,6 @@ module angularImage
       TYPE(gridtype), intent(in) :: grid
       type(DATACUBE) ::  cube
       type(MOLECULETYPE) :: thisMolecule
-      integer :: itrans, nSubpixels
       real, parameter :: thisWavelength=21.0
 
       lineImage        = .true.
@@ -64,12 +63,15 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside,  minVel, maxVel, usedust, nsubpixels
+      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside,  &
+           minVel, maxVel, nsubpixels
       use datacube_mod, only: telescope, initCube, addSpatialAxes, addvelocityAxis
       use molecular_mod, only: calculateOctalParams, moleculetype, intensitytoflux
       use atom_mod, only: bnu
       use vector_mod
+#ifdef MPI
       use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+#endif
 
       implicit none
 #ifdef MPI
@@ -79,18 +81,18 @@ module angularImage
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
-     type(VECTOR) :: viewvec, observervec, imagebasis(2)
+!     type(VECTOR) :: viewvec, observervec, imagebasis(2)
      real(double) :: deltaV
      integer :: iTrans = 1
-     integer :: i
+!     integer :: i
      integer :: iv
-     real(double) :: intensitysum, fluxsum, ddv
+     real(double) :: intensitysum !, fluxsum
      real(double), save :: background
-     real(double), allocatable :: weightedfluxmap(:,:)
-     real(double) :: weightedfluxsum, weightedflux
-     real(double), allocatable :: fineweightedfluxmap(:,:)
-     real(double) :: fineweightedfluxsum, fineweightedflux
-     real(double), allocatable :: weight(:,:)
+!     real(double), allocatable :: weightedfluxmap(:,:)
+!     real(double) :: weightedfluxsum, weightedflux
+!     real(double), allocatable :: fineweightedfluxmap(:,:)
+!     real(double) :: fineweightedfluxsum, fineweightedflux
+!     real(double), allocatable :: weight(:,:)
      real, allocatable :: temp(:,:,:) 
      integer :: ix1, ix2
 
@@ -148,7 +150,6 @@ module angularImage
 !        if(usedust) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
 
         temp(:,:,:) = 0.d0
-
         call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp, ix1, ix2)
 
 #ifdef MPI
@@ -217,17 +218,17 @@ module angularImage
       integer, intent(IN) :: itrans
       real(double), intent(IN) :: deltaV
       integer, intent(IN) :: nsubpixels
-      type(VECTOR) :: viewvec, ObserverVec
+      type(VECTOR) :: viewvec !, ObserverVec
       real(double) :: viewvec_x, viewvec_y, viewvec_z
       real, intent(OUT) :: imagegrid(:,:,:)
       integer, intent(in) :: ix1, ix2
 
-      real(double) :: dnpixels ! npixels as a double, save conversion
-      type(VECTOR) :: pixelcorner
+!      real(double) :: dnpixels ! npixels as a double, save conversion
+!      type(VECTOR) :: pixelcorner
       integer :: subpixels
-      integer :: ipixels, jpixels
-      integer :: index(2)
-      real(double) :: pixelside
+     integer :: ipixels, jpixels
+!      integer :: index(2)
+!      real(double) :: pixelside
 
       real :: theta_min
       real :: phi_min 
@@ -297,7 +298,7 @@ module angularImage
    real(double) :: i0, opticaldepth
    real(double), intent(in) :: delta_theta, delta_phi
 
-   type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner
+!   type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner
    type(VECTOR) :: thisViewVec
 
    integer :: subpixels, minrays
