@@ -7656,7 +7656,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     rVec = subcellCentre(thisOctal, subcell)
     
-    if (rVec%z > 0.d0) then
+    if (abs(rVec%z) > 0.25d0) then
        thisOctal%velocity(subcell) = VECTOR(-0.50, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 1.d0
     else
@@ -7670,12 +7670,11 @@ IF ( .NOT. gridConverged ) RETURN
 !    u2 = (2.*u2-1.) * 0.005
 
     u1 = 0.d0
-    if (abs(rVec%z) < 0.025d0) then
+    if (abs(rVec%z-0.25d0) < 0.025d0) then
        u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+    else if (abs(rVec%z+0.25d0) < 0.025d0) then
+       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
     endif
-!    else if (abs(rVec%z+0.25d0) < 0.025d0) then
-!       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
-!    endif
 !    u1 = -0.025d0
     
 !    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)/cspeed

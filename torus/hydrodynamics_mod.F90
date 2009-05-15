@@ -145,9 +145,9 @@ contains
           n = 8
        endif
 
-!       where(.not.thisoctal%edgecell)
+       where(.not.thisoctal%edgecell)
           thisoctal%phi_i = thisoctal%parent%phi_i(thisoctal%parentsubcell)
-!       end where
+       end where
 !       write(*,*) "phi ",thisoctal%phi_i(1:8)
     else
 
@@ -226,7 +226,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx
+    real(double) :: dt, dx, x_plus_half, x_minus_half
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
@@ -929,7 +929,6 @@ contains
 
 
    recursive subroutine computepressureu(thisoctal, direction)
-     use input_variables, only : dampingViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -942,7 +941,6 @@ contains
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = 3.d0
-    if (dampingViscosity) eta = eta * 2.d0
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -996,7 +994,6 @@ contains
   end subroutine computepressureu
 
    recursive subroutine computepressurev(thisoctal, direction)
-     use input_variables, only : dampingViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1008,7 +1005,6 @@ contains
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = 3.d0
-    if (dampingViscosity) eta = eta * 2.d0
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1060,7 +1056,6 @@ contains
   end subroutine computepressurev
 
    recursive subroutine computepressurew(thisoctal, direction)
-     use input_variables, only : dampingViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1073,7 +1068,6 @@ contains
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = 3.d0
-    if (dampingViscosity) eta = eta * 2.d0
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1756,7 +1750,7 @@ contains
 
   subroutine  hydrostep1d(grid, dt, npairs, thread1, thread2, nbound, group, ngroup)
     type(gridtype) :: grid
-    real(double) :: dt
+    real(double) :: gamma, dt
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
 
@@ -1800,9 +1794,9 @@ contains
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: idepth
-    real(double) :: timestep, nexttimestep
+    real(double) :: gamma, timestep, nexttimestep
     integer :: mindepth, maxdepth, nextdepth
-    maxdepth = 0; minDepth =0
+
 
     if (idepth /= maxdepth) then
        nexttimestep = timestep / 2.d0
@@ -1826,9 +1820,9 @@ contains
     logical, optional :: doSelfGrav
     logical :: selfGravity
     integer :: group(:), nGroup
-    real(double) :: dt
+    real(double) :: gamma, dt
     type(VECTOR) :: direction
-
+    integer :: minDepth, maxDepth
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     selfGravity = .true.
@@ -1976,6 +1970,7 @@ contains
     call transferTempStorage(grid%octreeRoot)
 
 
+
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupUi(grid%octreeRoot, grid, direction)
@@ -2080,7 +2075,7 @@ contains
              speed = sqrt(speed)/thisOctal%rho(subcell)
 
              tc = min(tc, dx / (cs + speed) )
-             if (tc < 1.e-5) write(*,*) "rhoe ",thisOctal%rhoe(subcell), "speed ",speed
+
 
           endif
  
@@ -2253,7 +2248,7 @@ contains
        tc = 0.d0
        if (myrank /= 0) then
           tc(myrank) = 1.d30
-          call computeCourantTime(grid%octreeRoot, tc(myRank))
+          call computeCourantTime(grid%octreeRoot, tc(myRank+1))
        endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
        !       write(*,*) "tc", tc(1:8)
@@ -2449,7 +2444,7 @@ contains
        if (doselfGrav) then
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
-          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
           if (myrank == 1) write(*,*) "Done"
           if (myrank == 1) call tune(6, "Self-Gravity")
        endif
@@ -2595,11 +2590,11 @@ contains
   subroutine doHydrodynamics2d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt, tc(64), temptc(64), mu
+    real(double) :: dt, tc(64), temptc(64), gamma, mu
     real(double) :: currentTime
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
-    character(len=80) :: plotfile
+    character(len=80) :: plotfile,tmp
     real(double) :: tDump, nextDumpTime, tff !, ang
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
@@ -2610,16 +2605,17 @@ contains
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
     logical :: dorefine
-
     integer :: nUnrefine, jt
 
+
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    nHydroThreads = nThreadsGlobal - 1
-    dorefine = .true.
+       nHydroThreads = nThreadsGlobal - 1
+
 
 
     if (myrankGlobal /= 0) then
 
+       dorefine = .true.
 
 
 
@@ -2629,7 +2625,6 @@ contains
        viewVec = VECTOR(-1.d0,0.d0,0.d0)
        !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
        viewVec = rotateY(viewVec, 25.d0*degtorad)
-
 
 
        if (myRank == 1) write(*,*) "CFL set to ", cflNumber
@@ -2723,10 +2718,9 @@ contains
 
     endif
 
-    currentTime = 0.d0
-    it = 0
-    nextDumpTime = 0.d0
-
+       currentTime = 0.d0
+       it = 0
+       nextDumpTime = 0.d0
     call writeVTKfile(grid, "start.vtk")
 
     tc = 0.d0
@@ -2734,36 +2728,35 @@ contains
        tc(myrank) = 1.d30
        call computeCourantTime(grid%octreeRoot, tc(myRank))
     endif
-    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
     tc = tempTc
     dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
-    
+
     tff = 1.d0 / sqrt(bigG * (0.1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
     tDump = 1.d-2 * tff
     
     tdump = 5.d0 * dt
-    
-    if (writeoutput) write(*,*) "Setting tdump to: ", tdump
 
+    write(*,*) "Setting tdump to: ", tdump
 
     iUnrefine = 0
+       !    call writeInfo("Plotting grid", TRIVIAL)    
+
 
     jt = 0
 
     do while(.true.)
 
        jt = jt + 1
+       tc = 0.d0
        if (myrank /= 0) then
-          tc = 0.d0
           tc(myrank) = 1.d30
           call computeCourantTime(grid%octreeRoot, tc(myRank))
        endif
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-       !       write(*,*) "tc", tc(1:8)
-       !       write(*,*) "temp tc",temptc(1:8)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
-
+       
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
        endif
@@ -2815,7 +2808,9 @@ contains
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          
+
+
+
 
        endif
 
@@ -2834,7 +2829,7 @@ contains
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
 
-!          call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+          call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -4045,6 +4040,7 @@ end subroutine refineGridGeneric2
     real(double) :: cs(8), mass
     real(double) :: rhocs, rhomean, rhoemean
     logical :: refinedLastTime, ghostCell
+    integer :: iEquationOfState
     limit  = 0.01d0
 
     unrefine = .true.
@@ -4911,6 +4907,8 @@ end subroutine refineGridGeneric2
              if (thisOctal%phi_i(subcell) /= 0.d0) then
                 frac = abs((newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell))
                 fracChange = max(frac, fracChange)
+             else
+                fracChange = 1.d30
              endif
              thisOctal%phi_i(subcell) = newPhi
              
@@ -5019,11 +5017,11 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweepLevel
   
-  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid, boundaryLoop)
+  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
     use input_variables, only :  maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
-    logical, optional :: multigrid, boundaryLoop
+    logical, optional :: multigrid
     integer, parameter :: maxThreads = 100
     integer :: iDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
@@ -5031,13 +5029,8 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double), parameter :: tol = 1.d-5
     integer :: it, ierr
-    logical :: doBoundaryLoop
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
-
-
-    doBoundaryLoop = .false.
-    if (PRESENT(boundaryLoop)) doBoundaryLoop = boundaryLoop
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 
@@ -5063,16 +5056,12 @@ end subroutine refineGridGeneric2
              
              call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), iDepth)
 
-             if (doBoundaryLoop) then
-                call imposeBoundary(grid%octreeRoot)
-                call periodBoundary(grid)
-                call transferTempStorage(grid%octreeRoot)
-             endif
+!             call imposeBoundary(grid%octreeRoot)
+!             call periodBoundary(grid)
+!             call transferTempStorage(grid%octreeRoot)
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              
              fracChange = tempFracChange
-!             if (myrankGLobal == 1) write(*,*) "Self-gravity at depth ",iDepth," multigrid iteration ", it
-
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
           call updatePhiTree(grid%octreeRoot, iDepth)
@@ -5098,18 +5087,15 @@ end subroutine refineGridGeneric2
        
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
-       if (doBoundaryLoop) then
-          call imposeBoundary(grid%octreeRoot)
-          call periodBoundary(grid)
-          call transferTempStorage(grid%octreeRoot)
-       endif
+!       call imposeBoundary(grid%octreeRoot)
+!       call periodBoundary(grid)
+!       call transferTempStorage(grid%octreeRoot)
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        
        fracChange = tempFracChange
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !e           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
-!       if (myrankGLobal == 1) write(*,*) "Self-gravity no multigrid iteration ", it, maxval(fracChange(1:nHydroThreads))
     enddo
     if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
@@ -5122,7 +5108,7 @@ end subroutine refineGridGeneric2
   real(double) function getPressure(thisOctal, subcell)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real(double) :: eKinetic, eThermal, K, u2, eTot
+    real(double) :: eKinetic, eThermal, K, u2, gamma, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
 
 
