@@ -63,7 +63,7 @@ contains
   use lucy_mod, only: lucyRadiativeEquilibriumAMR 
 #ifdef MPI
   use mpi_global_mod, only: myRankGlobal
-  use photoionAMR_mod, only: radiationhydro, createImage
+  use photoionAMR_mod, only: radiationhydro
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
   use unix_mod, only: unixGetHostname
