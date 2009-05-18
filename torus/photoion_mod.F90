@@ -2424,7 +2424,7 @@ end subroutine metalcoolingRate
 subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   type(IONTYPE) :: thisIon
   real(double) :: ne
-  real :: pops(*)
+  real, intent(out) :: pops(:)
   real :: temperature
   real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
   integer :: n, iTrans, i, j
@@ -2724,7 +2724,7 @@ subroutine createGammaTable(table, thisfilename)
 
 ! Ferland 1980 PASP 92 596
 
-  type(GAMMATABLE) :: table
+  type(GAMMATABLE), intent(out) :: table
   character(len=*) :: thisfilename
   character(len=200) :: dataDirectory, filename
   integer :: i
@@ -4058,7 +4058,7 @@ end subroutine readHeIIrecombination
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
-    real(double) :: totalFlux
+    real(double), intent(out) :: totalFlux
     integer :: subcell
     integer :: iPhoton
     integer :: iSource
@@ -4236,7 +4236,8 @@ end subroutine readHeIIrecombination
   subroutine moveToNextScattering(grid, thisPhoton, escaped, absorbed)
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisphoton
-    logical :: escaped, absorbed,  scattered
+    logical, intent(out) :: escaped, absorbed
+    logical :: scattered
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tau, thisTau, tVal, r, albedo
@@ -4438,9 +4439,10 @@ end subroutine readHeIIrecombination
   subroutine identifyTransition(grid, lambda, iIon, iTransition, ok)
     type(GRIDTYPE) :: grid
     real(double) :: lambda
-    integer :: iIon, iTransition, i, j
+    integer, intent(out) :: iIon, iTransition
+    integer :: i, j
     character(len=80) :: message
-    logical :: ok
+    logical, intent(out) :: ok
 
     ok = .false.
 

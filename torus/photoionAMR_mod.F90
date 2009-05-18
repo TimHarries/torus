@@ -593,7 +593,7 @@ contains
                    nScat = 0
                    escaped = .false.
                    do while(.not.escaped)
-                      
+                      currentSubcell = 1
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, nfreq, freq, crossedMPIboundary, currentOctal, currentSubcell, newThread)
                       if (crossedMPIBoundary) then
@@ -881,8 +881,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(OCTAL), pointer :: thisOctal, tempOctal, currentOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
-   integer :: newThread
-   integer :: endSubcell, currentSubcell
+   integer, intent(out) :: newThread
+   integer :: endSubcell
+   integer :: currentSubcell
    real(double) :: photonPacketWeight
    integer :: nFreq
    real(double) :: freq(:)
@@ -901,7 +902,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    real :: diffusionZoneTemp
 !   real :: lambda
 !   integer :: ilambda
-   logical :: crossedMPIboundary
+   logical, intent(out) :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
    logical :: ok
@@ -2586,7 +2587,8 @@ end subroutine dumpLexington
 
 subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate)
   type(IONTYPE) :: parentIon
-  real(double) :: nHI, nHII,  recombRate
+  real(double) :: nHI, nHII
+  real(double), intent(out) :: recombRate
   real :: t4, a, b, c, d
   real :: temperature
 
@@ -2628,7 +2630,8 @@ end subroutine getChargeExchangeRecomb
 
 subroutine getChargeExchangeIon(parentIon, temperature, nHI, nHII, IonRate)
   type(IONTYPE) :: parentIon
-  real(double) :: nHI, nHII, ionRate
+  real(double) :: nHI, nHII
+  real(double), intent(out) :: ionRate
   real :: temperature
   real :: t4, a, b, c, d
 
@@ -2669,7 +2672,7 @@ end function kingdonFerland96
   
 
 subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, deexcitation)
-  real :: excitation, deexcitation
+  real, intent(out) :: excitation, deexcitation
   type(IONTYPE) :: thisIon
   integer :: iTransition, i
   real :: temperature
@@ -2714,7 +2717,7 @@ subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
   character(len=*) :: species
   real(double) :: wavelength
   real(double) :: fac
-  real(double) :: luminosity
+  real(double), intent(out) :: luminosity
   integer :: iIon, iTrans, i
 
   iTrans = 0
@@ -2778,7 +2781,8 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   type(OCTAL) :: thisOctal
   real(double) :: ne, nh
   real :: temperature
-  real(double) :: rate, total
+  real(double) :: rate
+  real(double), intent(out) :: total
   real :: pops(10)
   integer :: i, j
   logical, optional :: debug
@@ -2813,7 +2817,7 @@ end subroutine metalcoolingRate
 subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   type(IONTYPE) :: thisIon
   real(double) :: ne
-  real :: pops(*)
+  real, intent(out) :: pops(:)
   real :: temperature
   real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
   integer :: n, iTrans, i, j
@@ -2920,7 +2924,7 @@ end subroutine calcHeRecombs
 
 
 subroutine createSahaMilneTables(hTable, heTable)
-  type(SAHAMILNETABLE) :: hTable, heTable
+  type(SAHAMILNETABLE), intent(out) :: hTable, heTable
   real(double) :: nu0_h, nu0_he, nufinal_h, nufinal_he
   integer :: nFreq, nTemp
   integer :: i, j
@@ -3060,7 +3064,8 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
-  real(double) :: hHeating, heHeating, totalHeating, v, epsOverDeltaT, dustHeating
+  real(double) :: v, epsOverDeltaT
+  real(double), intent(out) :: hHeating, heHeating, totalHeating, dustHeating
 
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
@@ -3079,7 +3084,7 @@ function rateFit(a,b,t) result (rate)
 end function rateFit
 
 subroutine createRecombTable(table, tablefilename)
-  type(RECOMBTABLE) :: table
+  type(RECOMBTABLE), intent(out) :: table
   character(len=*) :: tablefilename
   character(len=200) :: filename, datadirectory
   integer :: ia, ib, ne, ncut, i
@@ -3113,7 +3118,7 @@ subroutine createGammaTable(table, thisfilename)
 
 ! Ferland 1980 PASP 92 596
 
-  type(GAMMATABLE) :: table
+  type(GAMMATABLE), intent(out) :: table
   character(len=*) :: thisfilename
   character(len=200) :: dataDirectory, filename
   integer :: i
@@ -3907,7 +3912,7 @@ end subroutine readHeIIrecombination
     real(double) :: tempstorage(nTemp)
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 41
-    integer :: iSignal
+    integer, intent(out) :: iSignal
 
     iSignal = -1
 
@@ -4302,7 +4307,7 @@ end subroutine readHeIIrecombination
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 42
-    integer :: iSignal
+    integer, intent(out) :: iSignal
 
     call MPI_RECV(temp, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
     iSignal = -1
@@ -4355,9 +4360,9 @@ end subroutine readHeIIrecombination
   subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton
-    logical :: addToImage
+    logical,intent(out) :: addToImage
     logical :: endLoop
-    integer :: newThread
+    integer,intent(out) :: newThread
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tVal
@@ -4398,8 +4403,9 @@ end subroutine readHeIIrecombination
   subroutine moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisphoton
-    logical :: escaped, absorbed, crossedBoundary, scattered
-    integer :: newThread
+    logical, intent(out) :: escaped, absorbed, crossedBoundary
+    logical :: scattered
+    integer, intent(out) :: newThread
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tau, thisTau, tVal, r, albedo

@@ -8,7 +8,7 @@ contains
   subroutine unixGetenv(envVariable, directory, length, error)
 
     character(len=*) :: envVariable
-    character(len=*) :: directory
+    character(len=*), intent(out) :: directory
     integer, intent(out), optional :: length
     integer, intent(out), optional :: error
 
@@ -30,8 +30,8 @@ contains
 
   subroutine unixGetHostname(name, n)
 
-    character(len=*) :: name
-    integer :: n
+    character(len=*), intent(out) :: name
+    integer, intent(inout) :: n
     
     name = "XXX"
 !    call getHostname(name, n)
@@ -39,7 +39,7 @@ contains
   end subroutine unixGetHostname
 
   subroutine unixTimes(cpuTime, systemTime)
-    integer :: cpuTime, systemTime
+    integer,intent(out) :: cpuTime, systemTime
     integer :: count, countRate
     call system_clock(count, countRate)
     systemTime = count / countRate

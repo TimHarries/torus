@@ -25,7 +25,7 @@ module spectrum_mod
     subroutine getWavelength(spectrum, wavelength)
 
       type(SPECTRUMTYPE) :: spectrum
-      real(double) :: wavelength
+      real(double), intent(out) :: wavelength
       real(double) :: r, t
       integer :: i
 

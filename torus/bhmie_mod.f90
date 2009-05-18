@@ -16,10 +16,11 @@ contains
 ! Arguments:
 
     INTEGER NANG
-    REAL GSCA,QBACK,QEXT,QSCA,X
+    REAL, intent(out) :: GSCA,QBACK,QEXT,QSCA
+    real X
     DOUBLE PRECISION JUNK
     COMPLEX REFREL
-    COMPLEX S1(2*MXNANG-1),S2(2*MXNANG-1)
+    COMPLEX, intent(out) :: S1(2*MXNANG-1),S2(2*MXNANG-1)
 
 ! Local variables:
 

@@ -33,7 +33,7 @@ contains
   subroutine findMassOverAllThreads(grid, mass)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    real(double) :: mass
+    real(double), intent(out) :: mass
     real(double), allocatable :: massOnThreads(:), temp(:)
     integer :: ierr
 
@@ -299,7 +299,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
     integer :: nDepth
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, flux, pressure, phi
+    real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
@@ -874,12 +874,12 @@ contains
   subroutine returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer, intent(out) :: nPairs, thread1(:), thread2(:), nBound(:), nGroup, group(:)
     integer :: nThreads, iThread
     integer :: myRank, ierr, i
     integer, allocatable :: indx(:), itmp(:)
     real, allocatable :: sort(:)
-    integer :: list(1000), nList, nGroup, group(:)
+    integer :: list(1000), nList
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -951,9 +951,10 @@ contains
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
     type(VECTOR) :: direction, rVec
     integer :: subcell, neighbourSubcell, tSubcell
-    integer :: nBound, nDepth, nd
+    integer :: nBound, nDepth
+    integer, intent(out) :: nd
 
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
+    real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
     integer :: myRank, ierr
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1057,7 +1058,8 @@ contains
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
-    real(double) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi,fac
+    real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi
+    real(double) :: fac
     type(VECTOR) :: direction
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
@@ -1544,57 +1546,81 @@ contains
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
     integer :: nPoints
-    type(VECTOR) :: startPoint, endPoint, rVec
-    integer :: i
-    real(double), allocatable :: rho(:), x(:), temp(:), rhoe(:), rhou(:), temperature(:)
+    type(VECTOR) :: startPoint, endPoint, position, direction, cen
+    real(double) :: loc(3), rho
     character(len=*) :: thisFile
     integer :: ierr
-    if (myrankGlobal==0) goto 666
+    integer, parameter :: nStorage = 5
+    real(double) :: tempSTorage(nStorage), tval
+    integer, parameter :: tag = 50
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillLooping
+    integer :: sendThread
 
-    allocate(rho(1:nPoints), rhoe(1:nPoints),x(1:nPoints), rhou(1:nPoints), temp(1:nPoints), temperature(1:nPoints))
-    rho = 0.d0
-    rhoe = 0.d0
-    rhou = 0.d0
-    temperature = 0.d0
     thisOctal => grid%octreeRoot
-    subcell = 1
-    do i = 1, nPoints
-       rVec = startPoint+(endPoint-startPoint)*(dble(i-1)/dble(nPoints-1))
-       x(i) = modulus(endPoint - startPoint)*(dble(i-1)/dble(nPoints-1))
-       
-       call findSubcellLocal(rVec, thisOctal, subcell)
-       if (octalonThread(thisOctal, subcell, myRankGlobal)) then
-          rho(i) = thisOctal%rho(subcell)
-          rhoe(i)= thisOctal%rhoe(subcell)
-          rhou(i)= thisOctal%rhou(subcell)
-          temperature(i) = thisOctal%temperature(subcell)
-       endif
-    enddo
-    temp = 0.d0
-    call MPI_ALLREDUCE(rho, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-    rho = temp
-    temp = 0.d0
-    call MPI_ALLREDUCE(rhoe, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-    rhoe = temp
-    temp = 0.d0
-    call MPI_ALLREDUCE(rhou, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-    rhou = temp
-    temp = 0.d0
-    call MPI_ALLREDUCE(temperature, temp, nPoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-    temperature = temp
+    position = startPoint
+    direction = endPoint - startPoint
+    call normalize(direction)
 
-    if (myrankGlobal == 1) then
-       open(88, file=thisFile,status="unknown", form="formatted")
-       write(88, *) npoints
-       do i = 1, nPoints
-          write(88,'(5e12.4)') x(i), rho(i), rhoe(i)/rho(i),rhou(i)/rho(i),temperature(i)
+
+    if (myrankGlobal == 0) then
+
+       open(20, file=thisFile, form="formatted", status="unknown")
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+
+          cen%x = tempStorage(1)
+          cen%y = tempStorage(2)
+          cen%z = tempStorage(3)
+          rho = tempStorage(4)
+          tval = tempStorage(5)
+          write(20,*) cen%x, rho
+          position = cen
+          position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
        enddo
-       close(88)
+       do sendThread = 1, nThreadsGlobal-1
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+       enddo
+       close(20)
+       goto 666
+
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+             call findSubcellLocal(position, thisOctal, subcell)
+             sOctal => thisOctal
+             cen = subcellCentre(thisOctal, subcell)
+             call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+             tempStorage(1) = cen%x
+             tempStorage(2) = cen%y
+             tempStorage(3) = cen%z
+             tempStorage(4) = thisOctal%rho(subcell)             
+             tempStorage(5) = tVal
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+          endif
+       enddo
     endif
-    deallocate(x, rho, temp, rhoe, rhou, temperature)
+
 666 continue
   end subroutine dumpValuesAlongLine
     

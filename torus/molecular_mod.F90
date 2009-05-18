@@ -2435,7 +2435,8 @@ endif
      logical :: dotautest
 
      real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, opticaldepth, n
-     real(double), optional :: rhomax, i0max
+     real(double), optional, intent(out) :: rhomax
+     real(double), optional, intent(in) :: i0max
 
      if(present(tautest)) then
         dotautest = tautest

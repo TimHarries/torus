@@ -1595,7 +1595,7 @@ contains
 
     subroutine readSingleIntegerFlexi(lUnit, value, fileFormatted)
       integer :: lUnit
-      integer :: value
+      integer, intent(out) :: value
       logical :: fileFormatted
 
       call testDataType("isingle", fileFormatted)

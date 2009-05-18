@@ -874,13 +874,16 @@ end subroutine gaussSeidelSweep
 
   subroutine randomWalk(grid, startOctal, startSubcell,  endOctal, endSubcell, temp, ok)
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: startOctal, endOctal, walkOctal, sOctal
+    type(OCTAL), pointer :: startOctal
+    type(OCTAL), intent(out),  pointer :: endOctal
+    type(OCTAL), pointer :: walkOctal, sOctal
     type(VECTOR) :: rVec
     type(VECTOR) :: xAxis, yAxis, zAxis, rHat
-    logical :: ok
+    logical, intent(out) :: ok
 
-    real :: temp
-    integer :: startSubcell, endSubcell, walkSubcell, nWalk
+    real, intent(out) :: temp
+    integer :: startSubcell, walkSubcell, nWalk
+    integer, intent(out) :: endSubcell
     real :: r
     integer, parameter :: maxWalk = 10000
 

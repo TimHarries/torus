@@ -82,6 +82,7 @@ CONTAINS
     LOGICAL :: inheritProps
     LOGICAL :: interpolate
 
+
     inheritProps = .false.
     if (present(inherit)) then
        inheritProps = inherit
@@ -521,7 +522,7 @@ CONTAINS
 
 
   SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, &
-                         stellar_cluster, inherit, interp, splitAzimuthally, romData, &
+                         stellar_cluster, inherit, interp, amrHydroInterp, splitAzimuthally, romData, &
                          isample, stream)
     ! adds one new child to an octal
 
@@ -555,15 +556,16 @@ CONTAINS
     INTEGER       :: newChildIndex     ! the storage location for the new child
     integer :: i
     logical :: inheritProps, interpolate
+    logical, optional, intent(in) :: amrHydroInterp
+    logical :: doAmrHydroInterp
     type(VECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
 
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
-
-
-
+    doAMRhydroInterp = .false.
+    if (PRESENT(amrHydroInterp)) doAMRhydroInterp = amrHydroInterp
 
     inheritProps = .false.
     if (present(inherit)) then
@@ -762,13 +764,25 @@ CONTAINS
     endif
     
     ! put some data in the four/eight subcells of the new child
-    DO subcell = 1, parent%child(newChildIndex)%maxChildren
-      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, &
-                         stellar_cluster=stellar_cluster, inherit=inheritProps, &
-                         interp=interpolate, romData=romData, stream=stream)
-      parent%child(newChildIndex)%label(subcell) = counter
-      counter = counter + 1
-    END DO
+
+    if (.not.doAMRhydroInterp) then
+       DO subcell = 1, parent%child(newChildIndex)%maxChildren
+          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, &
+               stellar_cluster=stellar_cluster, inherit=inheritProps, &
+               interp=interpolate,  &
+               romData=romData, stream=stream)
+          parent%child(newChildIndex)%label(subcell) = counter
+          counter = counter + 1
+       END DO
+    else
+
+       thisOctal => parent%child(newChildIndex)
+       call AMRHydroInterpFromParent(thisOctal, grid)
+       DO subcell = 1, parent%child(newChildIndex)%maxChildren
+          parent%child(newChildIndex)%label(subcell) = counter
+          counter = counter + 1
+       END DO
+    endif
 
     IF ( adjustGridInfo ) THEN
       grid%nOctals = grid%nOctals + 1
@@ -2445,8 +2459,8 @@ CONTAINS
     TYPE(vector),INTENT(OUT),OPTIONAL :: velocity
     REAL,INTENT(OUT),OPTIONAL         :: velocityDeriv
     REAL,INTENT(OUT),OPTIONAL         :: temperature
-    REAL(double),OPTIONAL         :: kappaAbs
-    REAL(double),OPTIONAL         :: kappaSca
+    REAL(double),OPTIONAL,intent(out)         :: kappaAbs
+    REAL(double),OPTIONAL,intent(out)         :: kappaSca
     REAL(double),OPTIONAL         :: kappaAbsArray(nLambda)
     REAL(double),OPTIONAL         :: kappaScaArray(nLambda)
     REAL(double),OPTIONAL        :: rosselandKappa
@@ -2700,6 +2714,7 @@ CONTAINS
     logical, optional :: linearinterp
     logical :: linear
 
+    weights = 0.d0
     if(present(linearinterp)) then
        linear = linearinterp
     else
@@ -3612,11 +3627,19 @@ CONTAINS
     endif
 
     if (thisOctal%oneD) then
-       r = modulus(point)
-       if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
-       else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
+       if (.not.hydrodynamics) then
+          r = modulus(point)
+          if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
+          else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
+          else
+             inOctal = .true.
+          endif
        else
-          inOctal = .true.
+          if ( point%x < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
+          else if (point%x > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
+          else
+             inOctal = .true.
+          endif
        endif
        goto 666
     endif
@@ -4541,13 +4564,16 @@ IF ( .NOT. gridConverged ) RETURN
       if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       if ( (r+cellsize) < rgrid(1)) split = .false.
 
-   case("hydro1d",  "bonnor", "unisphere")
+   case("hydro1d")
 
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
-!      rVec = subcellCentre(thisOctal, subcell)
-!      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
-!      if ((rVec%x > 0.d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
+      if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+   case("bonnor", "unisphere")
+         
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("kelvin")
       rVec = subcellCentre(thisOctal, subcell)
@@ -7635,7 +7661,7 @@ IF ( .NOT. gridConverged ) RETURN
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
        endif
     endif
-
+ 
     thisOctal%phi_i(subcell) = 0.d0
     thisOctal%boundaryCondition(subcell) = 1
     thisOctal%gamma(subcell) = 7.d0/5.d0
@@ -7710,6 +7736,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double), save :: r(nr), rho(nr)
     integer :: i
 
+    r = 0.d0; rho = 0.d0
     if (firstTime) then
        firstTime = .false.
        call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen, 6.d0,  nr, r, rho)
@@ -9091,9 +9118,9 @@ end function readparameterfrom2dmap
   recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, minRho, maxRho)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(double) :: totalMass
-  real(double),optional :: totalMassTrap
-  real(double),optional :: minRho, maxRho
+  real(double), intent(inout) :: totalMass
+  real(double),optional, intent(inout) :: totalMassTrap
+  real(double),optional, intent(inout) :: minRho, maxRho
   real(double) :: dv
   integer :: subcell, i
   
@@ -11768,10 +11795,11 @@ end function readparameterfrom2dmap
     integer :: subcell
     integer, optional :: ilambda
     real, optional :: lambda
-    real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(grid%nLambda), kappaScaArray(grid%nLambda)
-    real(double), optional :: rosselandKappa
-    real(double), optional :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
-    real, optional :: kappap
+    real(double), intent(out), optional :: kappaSca, kappaAbs
+    real(double), optional, intent(out) :: kappaAbsArray(grid%nLambda), kappaScaArray(grid%nLambda)
+    real(double), optional, intent(out) :: rosselandKappa
+    real(double), optional, intent(out) :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
+    real, optional, intent(out) :: kappap
     real, optional :: atthistemperature
     real :: temperature
     real :: frac
@@ -12202,7 +12230,9 @@ end function readparameterfrom2dmap
     real(double), allocatable, save :: recip_sm(:)
     real(double)  :: udist
     logical, save :: first_time = .true.
-
+    temp = 0.d0
+    rho = 0.d0
+    rho_tmp = 0.d0
     if (first_time) then 
        allocate( recip_sm(sphData%npart) )
        
@@ -15718,10 +15748,11 @@ end function readparameterfrom2dmap
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
-    real(double), optional :: xArray(:), tauArray(:)
-    integer, optional :: nTau
+    real(double), optional,intent(out) :: xArray(:), tauArray(:)
+    integer, optional, intent(out) :: nTau
     integer :: iLambda
-    real(double) :: tau, distToNextCell
+    real(double), intent(out) :: tau
+    real(double) :: distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
     type(OCTAL), pointer, optional :: startOctal
@@ -15799,7 +15830,8 @@ end function readparameterfrom2dmap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     integer :: iLambda
-    real(double) :: tau, distToNextCell
+    real(double), intent(out) :: tau
+    real(double) :: distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
     type(OCTAL), pointer, optional :: startOctal
@@ -17108,6 +17140,8 @@ end function readparameterfrom2dmap
     logical, optional :: linearinterp
     logical :: linear
 
+    weights = 0.d0
+
     if(present(linearinterp)) then
        linear = linearinterp
     else
@@ -17700,7 +17734,8 @@ end function readparameterfrom2dmap
     type(VECTOR) :: rVec, uHat, currentPosition
     type(OCTAL), pointer :: thisOctal, sOctal
     integer :: subcell
-    real(double) :: distToNextCell, totDist
+    real(double) :: distToNextCell
+    real(double), intent(out) :: totDist
     real(double) :: fudgeFac = 0.01d0
 
     totDist = 0.d0
@@ -17753,5 +17788,84 @@ end function readparameterfrom2dmap
 
     end do
   end subroutine testToBoundary2
+
+
+  subroutine AMRHydroInterpFromParent(thisOctal, grid)
+    type(OCTAL), pointer :: thisOctal
+    type(GRIDTYPE) :: grid
+    integer :: parentSubcell
+    type(OCTAL), pointer :: parentOctal, probeOctal1, probeOctal2
+    integer :: probeSubcell1, probeSubcell2
+    type(VECTOR) :: parentCentre, probe1, probe2, rVec
+    real(double) :: x, x1, x2
+    real(double) :: y1rho, y1rhou, y1rhoe, y1energy
+    real(double) :: y2rho, y2rhou, y2rhoe, y2energy
+    integer :: iSubcell
+
+    parentOctal => thisOctal%parent
+    parentSubcell = thisOctal%parentSubcell
+    parentCentre = subcellCentre(parentOctal, parentSubcell)
+
+    thisOctal%boundaryCondition = parentOctal%boundaryCondition(parentSubcell)
+    thisOctal%gamma = parentOctal%gamma(parentSubcell)
+    thisOctal%iEquationOfState = parentOctal%iEquationofState(parentSubcell)
+    thisOctal%velocity = parentOctal%velocity(parentSubcell)
+
+    if (thisOctal%oneD) then
+
+       thisOctal%rhov = 0.d0
+       thisOctal%rhow = 0.d0
+
+       probe1 = VECTOR(parentOctal%xMin - 0.01d0*grid%halfSmallestSubcell, 0.d0, 0.d0)
+       if (inOctal(grid%octreeRoot, probe1)) then
+          probeOctal1 => thisOctal
+          call findSubcellLocal(probe1, probeOctal1, probeSubcell1)
+          rVec = subcellCentre(probeOctal1, probeSubcell1)
+          x1 = rVec%x
+          y1rho = probeOctal1%rho(probeSubcell1)
+          y1rhou = probeOctal1%rhou(probeSubcell1)
+          y1rhoe = probeOctal1%rhoe(probeSubcell1)
+          y1energy = probeOctal1%energy(probeSubcell1)
+       else
+          rVec = subcellCentre(thisOctal,1)
+          x1 = rVec%x
+          y1rho = parentOctal%rho(parentSubcell)
+          y1rhou = parentOctal%rhou(parentSubcell)
+          y1rhoe = parentOctal%rhoe(parentSubcell)
+          y1energy = parentOctal%energy(parentSubcell)
+       endif
+       probe2 = VECTOR(parentOctal%xMax + 0.01d0*grid%halfSmallestSubcell, 0.d0, 0.d0)
+       if (inOctal(grid%octreeRoot, probe2)) then
+          probeOctal2 => thisOctal
+          call findSubcellLocal(probe2, probeOctal2, probeSubcell2)
+          rVec = subcellCentre(probeOctal2, probeSubcell2)
+          x2 = rVec%x
+          y2rho = probeOctal2%rho(probeSubcell2)
+          y2rhou = probeOctal2%rhou(probeSubcell2)
+          y2rhoe = probeOctal2%rhoe(probeSubcell2)
+          y2energy = probeOctal2%energy(probeSubcell2)
+       else
+          rVec = subcellCentre(thisOctal,2)
+          x2 = rVec%x
+          y2rho = parentOctal%rho(parentSubcell)
+          y2rhou = parentOctal%rhou(parentSubcell)
+          y2rhoe = parentOctal%rhoe(parentSubcell)
+          y2energy = parentOctal%energy(parentSubcell)
+       endif
+       
+       do iSubcell = 1, thisOctal%maxChildren
+          rVec = subcellCentre(thisOctal, iSubcell)
+          x = rvec%x
+          thisOctal%rho(iSubcell)  = y1rho +  (y2rho -  y1rho)  * (x - x1)/(x2 - x1)
+          thisOctal%rhou(iSubcell) = (y1rhou + (y2rhou - y1rhou) * (x - x1)/(x2 - x1))
+          thisOctal%rhoe(iSubcell) = (y1rhoe + (y2rhoe - y1rhoe) * (x - x1)/(x2 - x1))
+          thisOctal%energy(iSubcell) = y1energy + (y2energy - y1energy) * (x - x1)/(x2 - x1)
+       enddo
+
+    else
+       call writeFatal("AMRhydrointerpfromparent not implemented (apart from 1-d case)")
+    endif
+  end subroutine AMRHydroInterpFromParent
+
 END MODULE amr_mod
 

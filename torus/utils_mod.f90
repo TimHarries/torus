@@ -1447,7 +1447,7 @@ contains
       integer :: nlambda, i
       real :: lambda
       real :: xArray(nLambda)
-      logical :: ok
+      logical, intent(out) :: ok
       
       ok = .true.
       

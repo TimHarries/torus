@@ -96,7 +96,7 @@ module source_mod
     subroutine randomSource(source, nSource, iSource, lamArray, nLambda, initialize)
       integer :: nSource
       type(SOURCETYPE) :: source(1:nSource)
-      integer :: iSource
+      integer, intent(out) :: iSource
       real, save, allocatable :: prob(:)
       real, optional :: lamArray(:)
       integer,optional :: nlambda
@@ -176,9 +176,10 @@ module source_mod
       integer :: nSource
       type(SOURCETYPE) :: source(nSource)
       type(VECTOR) :: rVec, uHat
-      integer, optional :: sourceNumber
-      real(double) :: distance, cosTheta, sintheta
-      logical :: hitSource
+      integer, optional, intent(out) :: sourceNumber
+      real(double), intent(out) :: distance
+      real(double) :: cosTheta, sintheta
+      logical, intent(out) :: hitSource
       integer :: i
 
       hitSource = .false.
@@ -203,7 +204,7 @@ module source_mod
       type(GRIDTYPE) :: grid
       real(double) :: r 
       type(SOURCETYPE) :: source
-      type(VECTOR) :: position, direction, rHat
+      type(VECTOR),intent(out) :: position, direction, rHat
 
       if (.not.source%outsideGrid) then
          if (pointSource) then
