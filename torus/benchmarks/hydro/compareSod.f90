@@ -5,6 +5,7 @@ program compareSod
   integer :: nTorus
   real :: tot, percent
   integer :: i,j 
+  integer :: nTorusMax = 100000
   real, allocatable :: xTorus(:), rhoTorus(:)
   open(20,file="sod_analytical.dat", status="old", form="formatted")
   do i = 1, nSodA
@@ -12,11 +13,14 @@ program compareSod
   enddo
   close(20)
   open(20,file="sod.dat", status="old", form="formatted")
-  read(20,*) nTorus
-  allocate(xTorus(1:nTorus), rhoTorus(1:nTorus))
-  do i = 1, nTorus
-     read(20,*) xTorus(i), rhoTorus(i)
-  enddo
+  allocate(xTorus(1:nTorusMax), rhoTorus(1:nTorusMax))
+  nTorus = 1
+10 continue
+  read(20,*,end=20) xTorus(nTorus), rhoTorus(nTorus)
+  nTorus = nTorus + 1
+  goto 10
+20 continue
+  nTorus = ntorus - 1
   close(20)
   tot = 0.d0
   percent = 0.d0
