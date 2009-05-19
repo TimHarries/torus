@@ -4577,6 +4577,10 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("kelvin")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
    case("sedov")
 

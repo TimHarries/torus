@@ -1503,7 +1503,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     logical :: sendLoop
-    real(double) :: loc(3), tempStorage(7)
+    real(double) :: loc(3), tempStorage(8)
     integer :: ierr, receiveThread
     integer :: status(MPI_STATUS_SIZE)
     integer :: subcell
@@ -1698,33 +1698,403 @@ contains
     
   end subroutine grid_info_mpi
   
+  subroutine addNewChildWithInterp(parent, iChild, grid)
+    include 'mpif.h'
+    type(OCTAL), pointer :: parent, thisOctal
+    integer :: iChild
+    type(GRIDTYPE) :: grid
+    integer :: nChildren
+    integer :: newChildIndex
+    integer :: i, iCorner, iDir, nCorner, nDir
+    integer :: nd, iSubcell, parentSubcell
+    type(VECTOR) :: dir(4), corner(4), position, rVec
+    real(double) :: rhoCorner(4)
+    real(double) :: rhoeCorner(4)
+    real(double) :: rhouCorner(4)
+    real(double) :: rhovCorner(4)
+    real(double) :: rhowCorner(4)
+    real(double) :: weight, totalWeight
+    real(double) :: rho, rhoe, rhou, rhov, rhow, r
+    real(double) :: x1, x2, z1, z2, u, v, x, z
 
+
+
+    ! store the number of children that already exist
+    nChildren = parent%nChildren
+
+    ! safety checks of child array
+    IF ( ASSOCIATED(parent%child) ) THEN
+      IF ( ( nChildren == 0 ) .OR.                  &
+           ( nChildren /= SIZE(parent%child) ) ) THEN
+        PRINT *, 'Panic: in addNewChild, %child array wrong size'
+        PRINT *, 'nChildren:',nChildren,' SIZE %child:', SIZE(parent%child)
+        STOP
+      END IF
+    END IF
+    IF ( (.NOT. ASSOCIATED(parent%child)) .AND. (nChildren > 0) ) THEN
+      PRINT *, 'Panic: in addNewChild, %child array wrong size'
+      PRINT *, 'nChildren:',nChildren,' ASSOCIATED %child:', ASSOCIATED(parent%child)
+      STOP
+    END IF
+
+    ! check that new child does not already exist
+    IF ( parent%hasChild(iChild) .EQV. .TRUE. ) THEN
+      PRINT *, 'Panic: in addNewChild, attempted to add a child ',&
+               '       that already exists'
+      STOP
+    ENDIF
+
+    CALL growChildArray(parent, nNewChildren=1, grid=grid )
+
+    ! update the bookkeeping
+    nChildren = nChildren + 1
+    newChildIndex = nChildren
+
+    ! update the parent octal
+    parent%nChildren = nChildren
+    parent%hasChild(iChild) = .TRUE.
+    parent%indexChild(newChildIndex) = iChild
+
+    ! allocate any variables that need to be  
+    IF (.NOT.grid%oneKappa) THEN
+       ! The kappa arrays should be allocated with grid%nopacity instead of grid%nlambda
+       ! because for line calculation, there is only one kappa needed.
+       ! (but grid%nlambda is not 1). If you allocate the arrays with grid%nlambda,
+       ! it will be a huge waste of RAM. ---  (RK) 
+       ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity))
+       ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity))
+       ! ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nlambda))
+       ! ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nlambda))
+       parent%child(newChildIndex)%kappaAbs = 1.e-30
+       parent%child(newChildIndex)%kappaSca = 1.e-30
+    ENDIF
+    NULLIFY(parent%child(newChildIndex)%child)
+
+
+    parent%child(newChildIndex)%nDepth = parent%nDepth + 1
+
+! setup mpiThread values
+
+
+
+    if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
+         ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
+         ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
+       parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+    else
+
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          if (parent%oneD) then
+             do i = 1, 2
+                parent%child(newChildIndex)%mpiThread(i) = 2 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          else if (parent%twoD) then
+             do i = 1, 4
+                parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          else if (parent%Threed) then
+             do i = 1, 8
+                parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          endif
+       endif
+    endif
+
+    if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 8
+             parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
+    ! set up the new child's variables
+    parent%child(newChildIndex)%threeD = parent%threeD
+    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%oneD = parent%oneD
+    parent%child(newChildIndex)%maxChildren = parent%maxChildren
+    parent%child(newChildIndex)%cylindrical = parent%cylindrical
+
+
+    parent%child(newChildIndex)%inFlow = parent%inFlow
+    parent%child(newChildIndex)%parent => parent
+    parent%child(newChildIndex)%parentSubcell = iChild
+    parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
+    parent%child(newChildIndex)%hasChild = .false.
+    parent%child(newChildIndex)%nChildren = 0
+    parent%child(newChildIndex)%indexChild = -999 ! values are undefined
+    parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
+    if (parent%cylindrical) then
+       parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
+    endif
+
+    parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
+
+    parent%child(newChildIndex)%xMax = parent%child(newChildIndex)%centre%x + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMax = parent%child(newChildIndex)%centre%y + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMax = parent%child(newChildIndex)%centre%z + parent%child(newChildIndex)%subcellSize
+
+    parentSubcell = iChild
+
+    thisOctal => parent%child(newChildIndex)
+    call allocateOctalAttributes(grid, thisOctal)
+
+    thisOctal%boundaryCondition = parent%boundaryCondition(parentSubcell)
+    thisOctal%gamma = parent%gamma(parentSubcell)
+    thisOctal%iEquationOfState = parent%iEquationofState(parentSubcell)
+
+
+    nDir = 4
+    r = 0.1d0*grid%halfSmallestSubcell
+    dir(1) = VECTOR(-r, 0.d0, -r)
+    dir(2) = VECTOR(+r, 0.d0, -r)
+    dir(3) = VECTOR(+r, 0.d0, +r)
+    dir(4) = VECTOR(-r, 0.d0, +r)
+
+    nCorner = 4
+    r = parent%subcellSize
+    corner(1) = parent%centre + VECTOR(-r, 0.d0, -r)
+    corner(2) = parent%centre + VECTOR(+r, 0.d0, -r)
+    corner(3) = parent%centre + VECTOR(-r, 0.d0, +r)
+    corner(4) = parent%centre + VECTOR(+r, 0.d0, +r)
+
+
+    rhoCorner = 0.d0
+    rhoeCorner = 0.d0
+    rhouCorner = 0.d0
+    rhovCorner = 0.d0
+    rhowCorner = 0.d0
+    do iCorner = 1, nCorner
+       totalWeight = 0.d0
+       do iDir = 1, nDir
+          position = corner(iCorner) + dir(iDir)
+          if (inOctal(grid%octreeRoot, position).and.(.not.inOctal(parent, position))) then
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow)
+             weight = abs(parent%ndepth - nd)+1.d0
+
+             totalWeight = totalWeight + weight
+             rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
+             rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe
+             rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
+             rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
+             rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
+          else
+             weight = 1.d0
+             totalWeight = totalWeight + weight
+             rhoCorner(iCorner) = rhoCorner(iCorner) + parent%rho(parentSubcell)
+             rhoeCorner(iCorner) = rhoeCorner(iCorner) + parent%rhoe(parentSubcell)
+             rhouCorner(iCorner) = rhouCorner(iCorner) + parent%rhou(parentSubcell)
+             rhovCorner(iCorner) = rhovCorner(iCorner) + parent%rhov(parentSubcell)
+             rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
+          endif
+
+       enddo
+       rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
+       rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
+       rhouCorner(iCorner) = rhouCorner(iCorner) / totalWeight
+       rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
+       rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
+    enddo
+    x1 = parent%xMin
+    x2 = parent%xMax
+    z1 = parent%zMin
+    z2 = parent%zMax
+
+    thisOctal%changed = .true.
+
+    do iSubcell = 1, thisOctal%maxChildren
+       rVec = subcellcentre(thisOctal, iSubcell)
+       x = rVec%x
+       z = rVec%z
+       u = (x - x1)/(x2 - x1)
+       v = (z - z1)/(z2 - z1)
+       thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoCorner(1) + &
+                                 (       u) * (1.d0 - v) * rhoCorner(2) + &
+                                 (1.d0 - u) * (       v) * rhoCorner(3) + &
+                                 (       u) * (       v) * rhoCorner(4)
+ 
+
+       thisOctal%rhoe(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoeCorner(1) + &
+                                 (       u) * (1.d0 - v) * rhoeCorner(2) + &
+                                 (1.d0 - u) * (       v) * rhoeCorner(3) + &
+                                 (       u) * (       v) * rhoeCorner(4)
+ 
+
+       thisOctal%rhou(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhouCorner(1) + &
+                                 (       u) * (1.d0 - v) * rhouCorner(2) + &
+                                 (1.d0 - u) * (       v) * rhouCorner(3) + &
+                                 (       u) * (       v) * rhouCorner(4)
+ 
+
+       thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
+                                 (       u) * (1.d0 - v) * rhovCorner(2) + &
+                                 (1.d0 - u) * (       v) * rhovCorner(3) + &
+                                 (       u) * (       v) * rhovCorner(4)
+ 
+       thisOctal%rhow(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhowCorner(1) + &
+                                 (       u) * (1.d0 - v) * rhowCorner(2) + &
+                                 (1.d0 - u) * (       v) * rhowCorner(3) + &
+                                 (       u) * (       v) * rhowCorner(4)
+ 
+    enddo
+      
+    grid%nOctals = grid%nOctals + 1
+
+    ! check for a new maximum depth 
+    IF (parent%child(newChildIndex)%nDepth > grid%maxDepth) THEN
+       grid%maxDepth = parent%child(newChildIndex)%nDepth
+       CALL setSmallestSubcell(grid)
+    END IF
+
+  end subroutine addNewChildWithInterp
+
+  subroutine shutdownServers()
+    include 'mpif.h'
+    integer :: iThread
+    real(double) :: loc(3)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    do iThread = 1, nThreadsGlobal-1
+       if (iThread /= myrankGlobal) then
+          loc = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+  end subroutine shutdownServers
+
+  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    integer, intent(out) :: nd
+    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow
+    type(VECTOR) :: position
+    real(double) :: loc(3)
+    type(OCTAL), pointer :: thisOctal, parent
+    integer :: iThread
+    integer, parameter :: nStorage = 6
+    real(double) :: tempStorage(nStorage)
+    integer :: subcell
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(position, thisOctal, subcell)
     
+    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
+       if (.not.thisOctal%changed(subcell)) then
+          rho = thisOctal%rho(subcell)
+          rhoe = thisOctal%rhoe(subcell)
+          rhou = thisOctal%rhou(subcell)
+          rhov = thisOctal%rhov(subcell)
+          rhow = thisOctal%rhow(subcell)
+          nd = thisOctal%nDepth
+       else
+          parent => thisOctal%parent
+          rho =  parent%rho(thisOctal%parentsubcell)
+          rhoe = parent%rhoe(thisOctal%parentsubcell)
+          rhou = parent%rhou(thisOctal%parentsubcell)
+          rhov = parent%rhov(thisOctal%parentsubcell)
+          rhow = parent%rhow(thisOctal%parentsubcell)
+          nd = parent%nDepth
+       endif
+    else
+       iThread = thisOctal%mpiThread(subcell)
+       loc(1) = position%x
+       loc(2) = position%y
+       loc(3) = position%z
+       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+       nd = nint(tempStorage(1))
+       rho = tempStorage(2)
+       rhoe = tempStorage(3)
+       rhou = tempStorage(4)
+       rhov = tempStorage(5)
+       rhow = tempStorage(6)
+    endif
+  end subroutine getHydroValues
+
+  subroutine hydroValuesServer(grid, iThread)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    logical :: stillServing
+    real(double) :: loc(3)
+    type(VECTOR) :: position
+    type(OCTAL), pointer :: thisOctal, parent
+    integer :: subcell
+    integer :: iThread
+    integer, parameter :: nStorage = 6
+    real(double) :: tempStorage(nStorage)
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    stillServing = .true.
+
+    thisOctal => grid%octreeroot
+    do while (stillServing)
+       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+       position%x = loc(1)
+       position%y = loc(2)
+       position%z = loc(3)
+       if (position%x > 1.d29) then
+          stillServing= .false.
+       else
+          call findSubcellLocal(position, thisOctal, subcell)
+          if (.not.thisOctal%changed(subcell)) then
+
+             tempStorage(1) = thisOctal%nDepth
+             tempStorage(2) = thisOctal%rho(subcell)
+             tempStorage(3) = thisOctal%rhoe(subcell)             
+             tempStorage(4) = thisOctal%rhou(subcell)             
+             tempStorage(5) = thisOctal%rhov(subcell)             
+             tempStorage(6) = thisOctal%rhow(subcell)        
+          else
+             parent => thisOctal%parent
+             tempStorage(1) = parent%nDepth
+             tempStorage(2) = parent%rho(thisOctal%parentSubcell)
+             tempStorage(3) = parent%rhoe(thisOctal%parentsubcell)             
+             tempStorage(4) = parent%rhou(thisOctal%parentsubcell)             
+             tempStorage(5) = parent%rhov(thisOctal%parentsubcell)             
+             tempStorage(6) = parent%rhow(thisOctal%parentsubcell)        
+          endif
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+
+  end subroutine hydroValuesServer
 
 #else
 
-  use messages_mod
-  use octal_mod
+    use messages_mod
+    use octal_mod
 
-  implicit none
+    implicit none
 
   contains
 
-! Stubbed version to allow non-MPI code to compile
-  function octalOnThread(thisOctal, subcell, myRank) result(check)
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    integer :: myRank
-    logical :: check
+    ! Stubbed version to allow non-MPI code to compile
+    function octalOnThread(thisOctal, subcell, myRank) result(check)
+      type(OCTAL), pointer :: thisOctal
+      integer :: subcell
+      integer :: myRank
+      logical :: check
 
-! Set return value of function to prevent a compiler warning. 
-    check=.false.
-    call writefatal("octalOnThread called in non-MPI code")
-    STOP
+      ! Set return value of function to prevent a compiler warning. 
+      check=.false.
+      call writefatal("octalOnThread called in non-MPI code")
+      STOP
 
-  end function octalOnThread
+    end function octalOnThread
 
 
 
 #endif
-end module mpi_amr_mod
+  end module mpi_amr_mod
