@@ -628,7 +628,9 @@ contains
              counter = counter + 1
 
              this_rho = get_rhon(j)
-             this_v =  get_vel(j)
+             if ( present(v_min) .or. present(v_max) ) then 
+                this_v =  get_vel(j)
+             end if
 
              rho_ave = rho_ave + this_rho
 

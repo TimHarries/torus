@@ -4248,11 +4248,12 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
-    use input_variables, only: planetgap, heightSplitFac, refineCentre, h21cm
+    use input_variables, only: planetgap, heightSplitFac, refineCentre, h21cm, doVelocitySplit 
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
     USE cluster_class, only:   find_n_particle_in_subcell
+    use sph_data_class, only:  sphVelocityPresent
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
 
     IMPLICIT NONE
@@ -4763,8 +4764,16 @@ IF ( .NOT. gridConverged ) RETURN
 
    case ("cluster","molcluster","theGalaxy")
 
-      call find_n_particle_in_subcell(nparticle, ave_density, &
-           thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell, v_min=minV, v_max=maxV)
+! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
+      if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
+
+      if ( doVelocitySplit ) then 
+         call find_n_particle_in_subcell(nparticle, ave_density, &
+              thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell, v_min=minV, v_max=maxV)
+      else
+         call find_n_particle_in_subcell(nparticle, ave_density, &
+              thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
+      end if
 
       total_mass = cellVolume(thisOctal, subcell)  * 1.d30
 
@@ -4801,7 +4810,7 @@ IF ( .NOT. gridConverged ) RETURN
 !      endif
 
 
-      if(.not. split .and. (nparticle .ge. 2) .and. (.not. h21cm) ) then
+      if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
          if(ave_density .gt. 1d-13) then
             T = 10.d0 * (ave_density * 1d13)**(0.4d0)
          Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5) ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO

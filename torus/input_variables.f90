@@ -481,6 +481,7 @@ module input_variables
   real(double) :: limitScalar  ! value for controlling grid subdivision 
   real(double) :: limitScalar2 ! value for controlling grid subdivision 
   real(double) :: vturbmultiplier ! value for controlling grid subdivision  
+  logical      :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   real :: amrGridSize          ! length of each side of the (cubic) grid 
   real(double) :: amrGridCentreX       ! x-coordinate of grid centre 
   real(double) :: amrGridCentreY       ! y-coordinate of grid centre 

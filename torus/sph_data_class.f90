@@ -871,6 +871,18 @@ contains
     
   end function get_temp
 
+  function sphVelocityPresent RESULT(out)
+    implicit none
+    logical :: out
+
+    if (associated(sphdata%vxn) .and. associated(sphdata%vyn) .and. associated(sphdata%vzn) ) then 
+       out = .true.
+    else
+       out=.false.
+    end if
+
+  end function sphVelocityPresent
+
   function get_vel(i) RESULT(out)
     implicit none
     type(VECTOR) :: out 
@@ -1565,7 +1577,7 @@ contains
     if(closestxIndex .lt. npart) then
   
     up = .true.
-    nupper = 1
+    nupper = 16
     stepsize = 16 ! changed from 1 to reflect fact that number of neighbours for *MOST* particles is 50. Could use 32?
     sense = 1
     prevtest = .true.
@@ -1608,7 +1620,7 @@ contains
     if(closestXindex .gt. 1) then
 
     up = .true.
-    nlower = -1
+    nlower = -16
     stepsize = 16
     sense = -1
     prevtest = .true.

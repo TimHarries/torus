@@ -230,6 +230,8 @@ contains
             "Max velocity across cell (in linewidths): ","(a,es9.3,1x,a)", 9.9d99, ok, .false.) 
        call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
             "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("doVelocitySplit", doVelocitySplit, cLine, nLines, &
+            "Split on SPH velocities: ","(a,1l,1x,a)", .true., ok, .false.)
        call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &
             "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
        if (dosmoothgridtau) then
@@ -1229,6 +1231,7 @@ contains
 
     if( geometry == "theGalaxy" ) then
 
+       itrans = 1
        call getInteger("npixels", npixels, cLine, nLines, &
             "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
        call getInteger("nv", nv, cLine, nLines, &
@@ -1241,7 +1244,6 @@ contains
             "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .false.)
        call getLogical("useDust", useDust, cLine, nLines, &
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
-       itrans = 1
        call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
             "Input sph data file: ","(a,a,1x,a)","Torusdump", ok, .true.)
        call getLogical("internalView", internalView, cLine, nLines, &
