@@ -1550,10 +1550,10 @@ contains
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen
-    real(double) :: loc(3), rho
+    real(double) :: loc(3), rho, rhou , rhoe
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 5
+    integer, parameter :: nStorage = 7
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 50
     integer :: status(MPI_STATUS_SIZE)
@@ -1583,7 +1583,9 @@ contains
           cen%z = tempStorage(3)
           rho = tempStorage(4)
           tval = tempStorage(5)
-          write(20,*) cen%x, rho
+          rhou = tempStorage(6)
+          rhoe = tempStorage(7)
+          write(20,'(4e14.5)') cen%x, rho, rhou, rhoe
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
        enddo
@@ -1614,8 +1616,10 @@ contains
              tempStorage(1) = cen%x
              tempStorage(2) = cen%y
              tempStorage(3) = cen%z
-             tempStorage(4) = thisOctal%rho(subcell)             
+             tempStorage(4) = thisOctal%rho(subcell)
              tempStorage(5) = tVal
+             tempStorage(6) = thisOctal%rhou(subcell)             
+             tempStorage(7) = thisOctal%rhoe(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
           endif
        enddo

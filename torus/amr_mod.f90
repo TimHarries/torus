@@ -783,7 +783,6 @@ CONTAINS
           counter = counter + 1
        END DO
     endif
-
     IF ( adjustGridInfo ) THEN
       grid%nOctals = grid%nOctals + 1
 
@@ -4576,13 +4575,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("kelvin")
-      rVec = subcellCentre(thisOctal, subcell)
-
-      if ((abs(rVec%x) < 0.3d0).and.(abs(rvec%z) < 0.3d0)) then
-         if (thisOctal%nDepth < (maxDepthAMR)) then
-            split = .true.
-         endif
-      endif
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("sedov")
 
@@ -10707,6 +10700,11 @@ end function readparameterfrom2dmap
     endif
 
     nValsREAL = REAL( nVals, KIND=double )
+
+
+    parentOctal%boundaryCondition(parentSubcell) = childOctal%boundaryCondition(1)
+    parentOctal%gamma(parentSubcell) = childOctal%gamma(1)
+    parentOctal%iEquationofState(parentSubcell) = childOctal%iEquationofState(1)
     
     parentOctal%rho(parentSubcell) =                    &
     SUM(childOctal%rho(1:nVals)) / nValsREAL
@@ -17800,12 +17798,16 @@ end function readparameterfrom2dmap
     real(double) :: x, x1, x2
     real(double) :: y1rho, y1rhou, y1rhoe, y1energy
     real(double) :: y2rho, y2rhou, y2rhoe, y2energy
+
+    real(double) :: r, u, v, y1, y2, y
+    real(double) :: v11(4), v12(4), v21(4), v22(4)
     integer :: iSubcell
 
     parentOctal => thisOctal%parent
     parentSubcell = thisOctal%parentSubcell
     parentCentre = subcellCentre(parentOctal, parentSubcell)
 
+    thisOctal%refinedLastTime = .true.
     thisOctal%boundaryCondition = parentOctal%boundaryCondition(parentSubcell)
     thisOctal%gamma = parentOctal%gamma(parentSubcell)
     thisOctal%iEquationOfState = parentOctal%iEquationofState(parentSubcell)
@@ -17861,6 +17863,107 @@ end function readparameterfrom2dmap
           thisOctal%rhoe(iSubcell) = (y1rhoe + (y2rhoe - y1rhoe) * (x - x1)/(x2 - x1))
           thisOctal%energy(iSubcell) = y1energy + (y2energy - y1energy) * (x - x1)/(x2 - x1)
        enddo
+
+    else if (thisOctal%twoD) then
+       r = parentOctal%subcellSize+grid%halfSmallestSubcell * 1.d-3
+       x1 = parentOctal%xmin
+       x2 = parentOctal%xMax
+       y1 = parentOctal%zMin
+       y2 = parentOctal%zMax
+       probeoctal1 => thisOctal
+
+       v11(1) = parentOctal%rho(parentSubcell)
+       v11(2) = parentOctal%rhoe(parentSubcell)
+       v11(3) = parentOctal%rhou(parentSubcell)
+       v11(4) = parentOctal%rhow(parentSubcell)
+       probe1 = parentOctal%centre + r * vector(-1.d0, 0.d0, -1.d0)
+       if (inOctal(grid%octreeRoot, probe1)) then
+          call findSubcellLocal(probe1, probeOctal1, probeSubcell1)
+!          if (octalOnThread(probeOctal1, probeSubcell1, myRankGlobal)) then
+             v11(1) = probeOctal1%rho(probesubcell1)
+             v11(2) = probeOctal1%rhoe(probesubcell1)
+             v11(3) = probeOctal1%rhou(probesubcell1)
+             v11(4) = probeOctal1%rhow(probesubcell1)
+!          endif
+       endif
+
+
+       v12(1) = parentOctal%rho(parentSubcell)
+       v12(2) = parentOctal%rhoe(parentSubcell)
+       v12(3) = parentOctal%rhou(parentSubcell)
+       v12(4) = parentOctal%rhow(parentSubcell)
+       probe1 = parentOctal%centre + r * vector(-1.d0, 0.d0, 1.d0)
+       if (inOctal(grid%octreeRoot, probe1)) then
+          call findSubcellLocal(probe1, probeOctal1, probeSubcell1)
+!          if (octalOnThread(probeOctal1, probeSubcell1, myRankGlobal)) then
+             v12(1) = probeOctal1%rho(probesubcell1)
+             v12(2) = probeOctal1%rhoe(probesubcell1)
+             v12(3) = probeOctal1%rhou(probesubcell1)
+             v12(4) = probeOctal1%rhow(probesubcell1)
+!          endif
+       endif
+
+       v22(1) = parentOctal%rho(parentSubcell)
+       v22(2) = parentOctal%rhoe(parentSubcell)
+       v22(3) = parentOctal%rhou(parentSubcell)
+       v22(4) = parentOctal%rhow(parentSubcell)
+       probe1 = parentOctal%centre + r * vector(1.d0, 0.d0, 1.d0)
+       if (inOctal(grid%octreeRoot, probe1)) then
+          call findSubcellLocal(probe1, probeOctal1, probeSubcell1)
+!          if (octalOnThread(probeOctal1, probeSubcell1, myRankGlobal)) then
+             v22(1) = probeOctal1%rho(probesubcell1)
+             v22(2) = probeOctal1%rhoe(probesubcell1)
+             v22(3) = probeOctal1%rhou(probesubcell1)
+             v22(4) = probeOctal1%rhow(probesubcell1)
+!          endif
+       endif
+
+       v21(1) = parentOctal%rho(parentSubcell)
+       v21(2) = parentOctal%rhoe(parentSubcell)
+       v21(3) = parentOctal%rhou(parentSubcell)
+       v21(4) = parentOctal%rhow(parentSubcell)
+       probe1 = parentOctal%centre + r * vector(1.d0, 0.d0, -1.d0)
+       if (inOctal(grid%octreeRoot, probe1)) then
+          call findSubcellLocal(probe1, probeOctal1, probeSubcell1)
+!          if (octalOnThread(probeOctal1, probeSubcell1, myRankGlobal)) then
+             v21(1) = probeOctal1%rho(probesubcell1)
+             v21(2) = probeOctal1%rhoe(probesubcell1)
+             v21(3) = probeOctal1%rhou(probesubcell1)
+             v21(4) = probeOctal1%rhow(probesubcell1)
+!          endif
+       endif
+
+       do iSubcell = 1, thisOctal%maxChildren
+          rVec = subcellCentre(thisOctal, iSubcell)
+          x = rvec%x
+          y = rvec%z
+
+          u = (x - x1)/(x2 - x1)
+          v = (y - y1)/(y2 - y1)
+
+          thisOctal%rho(iSubcell)  = v11(1) * (1.d0-u) * (1.d0-v) + &
+                                     v12(1) * (1.d0-u) * (     v) + &
+                                     v22(1) * (     u) * (     v) + &
+                                     v21(1) * (     u) * (1.d0-v)
+          write(*,*) "u ", u, " v ", v, "rho corners ", v11(1), v12(1), v22(1), v21(1), "rho ",thisOctal%rho(iSubcell)
+
+          thisOctal%rhoe(iSubcell)  =v11(2) * (1.d0-u) * (1.d0-v) + &
+                                     v12(2) * (1.d0-u) * (     v) + &
+                                     v22(2) * (     u) * (     v) + &
+                                     v21(2) * (     u) * (1.d0-v)
+
+          thisOctal%rhou(iSubcell)  =v11(3) * (1.d0-u) * (1.d0-v) + &
+                                     v12(3) * (1.d0-u) * (     v) + &
+                                     v22(3) * (     u) * (     v) + &
+                                     v21(3) * (     u) * (1.d0-v)
+
+          thisOctal%rhow(iSubcell)  =v11(4) * (1.d0-u) * (1.d0-v) + &
+                                     v12(4) * (1.d0-u) * (     v) + &
+                                     v22(4) * (     u) * (     v) + &
+                                     v21(4) * (     u) * (1.d0-v)
+       enddo
+
+
 
     else
        call writeFatal("AMRhydrointerpfromparent not implemented (apart from 1-d case)")
