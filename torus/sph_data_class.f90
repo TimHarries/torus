@@ -871,7 +871,7 @@ contains
     
   end function get_temp
 
-  function sphVelocityPresent RESULT(out)
+  function sphVelocityPresent () RESULT(out)
     implicit none
     logical :: out
 
