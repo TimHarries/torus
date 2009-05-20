@@ -1713,8 +1713,9 @@ contains
     real(double) :: rhouCorner(4)
     real(double) :: rhovCorner(4)
     real(double) :: rhowCorner(4)
+    real(double) :: eCorner(4)
     real(double) :: weight, totalWeight
-    real(double) :: rho, rhoe, rhou, rhov, rhow, r
+    real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy
     real(double) :: x1, x2, z1, z2, u, v, x, z
 
 
@@ -1867,6 +1868,7 @@ contains
 
     rhoCorner = 0.d0
     rhoeCorner = 0.d0
+    eCorner = 0.d0
     rhouCorner = 0.d0
     rhovCorner = 0.d0
     rhowCorner = 0.d0
@@ -1875,7 +1877,7 @@ contains
        do iDir = 1, nDir
           position = corner(iCorner) + dir(iDir)
           if (inOctal(grid%octreeRoot, position).and.(.not.inOctal(parent, position))) then
-             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow)
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy)
              weight = abs(parent%ndepth - nd)+1.d0
 
              totalWeight = totalWeight + weight
@@ -1884,6 +1886,7 @@ contains
              rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
              rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
              rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
+             eCorner(iCorner) = eCorner(iCorner) + weight * energy
           else
              weight = 1.d0
              totalWeight = totalWeight + weight
@@ -1892,6 +1895,7 @@ contains
              rhouCorner(iCorner) = rhouCorner(iCorner) + parent%rhou(parentSubcell)
              rhovCorner(iCorner) = rhovCorner(iCorner) + parent%rhov(parentSubcell)
              rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
+             eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
           endif
 
        enddo
@@ -1900,6 +1904,7 @@ contains
        rhouCorner(iCorner) = rhouCorner(iCorner) / totalWeight
        rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
        rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
+       eCorner(iCorner) = eCorner(iCorner) / totalWeight
     enddo
     x1 = parent%xMin
     x2 = parent%xMax
@@ -1941,6 +1946,11 @@ contains
                                  (       u) * (1.d0 - v) * rhowCorner(2) + &
                                  (1.d0 - u) * (       v) * rhowCorner(3) + &
                                  (       u) * (       v) * rhowCorner(4)
+
+       thisOctal%energy(iSubcell) = (1.d0 - u) * (1.d0 - v) * eCorner(1) + &
+                                 (       u) * (1.d0 - v) * eCorner(2) + &
+                                 (1.d0 - u) * (       v) * eCorner(3) + &
+                                 (       u) * (       v) * eCorner(4)
  
     enddo
       
@@ -1966,19 +1976,19 @@ contains
           loc = 1.d30
           call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
-    enddo
+300    enddo
   end subroutine shutdownServers
 
-  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow)
+  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
-    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow
+    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy
     type(VECTOR) :: position
     real(double) :: loc(3)
     type(OCTAL), pointer :: thisOctal, parent
     integer :: iThread
-    integer, parameter :: nStorage = 6
+    integer, parameter :: nStorage = 7
     real(double) :: tempStorage(nStorage)
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
@@ -1996,6 +2006,7 @@ contains
           rhov = thisOctal%rhov(subcell)
           rhow = thisOctal%rhow(subcell)
           nd = thisOctal%nDepth
+          energy = thisOctal%energy(subcell)
        else
           parent => thisOctal%parent
           rho =  parent%rho(thisOctal%parentsubcell)
@@ -2004,6 +2015,7 @@ contains
           rhov = parent%rhov(thisOctal%parentsubcell)
           rhow = parent%rhow(thisOctal%parentsubcell)
           nd = parent%nDepth
+          energy = parent%energy(thisOctal%parentSubcell)
        endif
     else
        iThread = thisOctal%mpiThread(subcell)
@@ -2018,6 +2030,7 @@ contains
        rhou = tempStorage(4)
        rhov = tempStorage(5)
        rhow = tempStorage(6)
+       energy = tempStorage(7)
     endif
   end subroutine getHydroValues
 
@@ -2030,7 +2043,7 @@ contains
     type(OCTAL), pointer :: thisOctal, parent
     integer :: subcell
     integer :: iThread
-    integer, parameter :: nStorage = 6
+    integer, parameter :: nStorage = 7
     real(double) :: tempStorage(nStorage)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -2056,6 +2069,7 @@ contains
              tempStorage(4) = thisOctal%rhou(subcell)             
              tempStorage(5) = thisOctal%rhov(subcell)             
              tempStorage(6) = thisOctal%rhow(subcell)        
+             tempStorage(7) = thisOctal%energy(subcell)
           else
              parent => thisOctal%parent
              tempStorage(1) = parent%nDepth
@@ -2064,6 +2078,7 @@ contains
              tempStorage(4) = parent%rhou(thisOctal%parentsubcell)             
              tempStorage(5) = parent%rhov(thisOctal%parentsubcell)             
              tempStorage(6) = parent%rhow(thisOctal%parentsubcell)        
+             tempStorage(7) = parent%energy(thisOctal%parentsubcell)        
           endif
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif

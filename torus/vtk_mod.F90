@@ -533,6 +533,19 @@ contains
                case("q_i-1")
                   write(lunit, *) real(thisOctal%q_i_minus_1(subcell))
 
+               case("ghosts")
+                  if (thisOctal%ghostCell(subcell)) then
+                     write(lunit, *) 1.
+                  else
+                     write(lunit,*) 0.
+                  endif
+
+               case("edges")
+                  if (thisOctal%edgeCell(subcell)) then
+                     write(lunit, *) 1.
+                  else
+                     write(lunit,*) 0.
+                  endif
 
                case DEFAULT
                   write(*,*) "Cannot write vtk type ",trim(valueType)
