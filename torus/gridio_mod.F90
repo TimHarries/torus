@@ -589,7 +589,7 @@ contains
           case("version")
              call readSingleFlexi(20, grid%version, fileFormatted)
              if (grid%version /= torusVersion) then
-                write(message,'(a,a,a)') "This dump file written with ", trim(grid%version), " and read with ", trim(torusVersion)
+                write(message,'(a,a,a,a)') "This dump file written with ", trim(grid%version), " and read with ", trim(torusVersion)
                 call writeWarning(message)
                 grid%version = torusVersion
              endif
