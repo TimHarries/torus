@@ -1659,7 +1659,6 @@ contains
        nOctals = 0
        nVoxels = 0
     endif
-    write(*,*) myrankGlobal, " has ", noctals, " octals and ",nvoxels, " voxels"
     call MPI_REDUCE(nOctals, tempInt,1,MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
     nOctals = tempInt(1)
     call MPI_REDUCE(nVoxels, tempInt,1,MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)

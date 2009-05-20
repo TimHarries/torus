@@ -1958,25 +1958,16 @@ contains
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup
     integer, optional :: jt
-    character(len=80) :: plotfile
     real(double) :: dt
     type(VECTOR) :: direction
 
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
-    write(plotfile, '(a,i4.4,a)') "beforefirstimpose",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" ,"ghosts "/))
 
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
-
-
-    write(plotfile, '(a,i4.4,a)') "afterfirstimpose",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -1997,10 +1988,6 @@ contains
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call pressureForceU(grid%octreeRoot, dt/2.d0)
-
-    write(plotfile, '(a,i4.4,a)') "afterxsweep",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -2022,10 +2009,6 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call pressureForceW(grid%octreeRoot, dt)
 
-    write(plotfile, '(a,i4.4,a)') "afterwsweep",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
-
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupUi(grid%octreeRoot, grid, direction)
@@ -2046,20 +2029,9 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
-    write(plotfile, '(a,i4.4,a)') "aftersecondxsweep",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
-
-    write(plotfile, '(a,i4.4,a)') "beforesecondimpose",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
-
-    write(plotfile, '(a,i4.4,a)') "aftersecondimpose",jt,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
  
   end subroutine hydroStep2d
 
@@ -2624,7 +2596,6 @@ contains
     character(len=80) :: plotfile
     real(double) :: tDump, nextDumpTime, tff !, ang
     type(VECTOR) :: direction, viewVec
-    logical :: gridConverged
     integer :: nSource = 0
     integer :: thread1(100), thread2(100), nBound(100), nPairs
     integer :: nGroup, group(100)
@@ -2633,7 +2604,6 @@ contains
     integer :: nHydroThreads 
     logical :: dorefine
     integer :: nUnrefine, jt
-    integer :: istep
 
     nUnrefine = 0
 
@@ -2794,13 +2764,7 @@ contains
 !             if (ALL(tConverged(1:nHydroThreads))) exit
 !         end do
 
-          write(plotfile, '(a,i4.4,a)') "beforesplit",jt,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
           call refinegridGeneric(grid)
-          write(plotfile, '(a,i4.4,a)') "split",jt,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3619,9 +3583,10 @@ contains
           do iProbe = 1, nProbes
              locator = rVec + &
                   (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
-             if (.not.inOctal(grid%octreeRoot, locator).or. &
-                  (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &
-                  nProbeOutside = nProbeOutside + 1
+             if (.not.inOctal(grid%octreeRoot, locator)) then
+                nProbeOutside = nProbeOutside + 1
+                thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
+             endif
           enddo
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
@@ -3633,10 +3598,10 @@ contains
   recursive subroutine setupGhosts(thisOctal, grid)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell
-    type(VECTOR) :: locator, rVec
+    integer :: subcell, i, neighbourSubcell, tempSubcell
+    type(VECTOR) :: locator, rVec, tVec
     integer :: nProbes, iProbe
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
@@ -3652,7 +3617,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call setupEdges(child,  grid)
+                call setupGhosts(child,  grid)
                 exit
              end if
           end do
@@ -3683,7 +3648,9 @@ contains
                 probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
                 probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
              endif
+
              rVec = subcellCentre(thisOctal, subcell)
+
              nProbeOutside = 0
              do iProbe = 1, nProbes
                 locator = rVec + &
@@ -3691,13 +3658,82 @@ contains
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighboursubcell)
                 if (neighbourOctal%edgeCell(neighbourSubcell)) then
-                   thisOctal%ghostCell(subcell) = .true.
-                   exit
+                   tVec = subcellCentre(thisOctal, subcell) + &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)* &
+                           ((-1.d0)*probe(iProbe))
+                   if (inOctal(grid%octreeRoot, tVec)) then
+                      thisOctal%ghostCell(subcell) = .true.
+                      thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
+                      exit
+                   endif
                 endif
              enddo
           else
              thisOctal%ghostCell(subcell) = .true.
           endif
+
+          if (thisOctal%ghostCell(subcell)) then
+             select case(thisOctal%boundaryCondition(subcell))
+             case(1, 4)
+                
+                if (thisOctal%edgeCell(subcell)) then
+                   call locatorToNeighbour(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator)
+                   thisOctal%boundaryPartner(subcell) = locator
+                   tempOctal => thisOctal
+                   tempSubcell = 1
+                   call findSubcellLocal(locator, tempOctal, tempSubcell)
+                   tempOctal%feederCell(tempsubcell) = .true.
+                endif
+                if (.not.thisOctal%edgeCell(subcell)) then
+                   call locatorToNeighbour(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 1, locator)
+                   thisOctal%boundaryPartner(subcell) = locator
+                   tempOctal => thisOctal
+                   tempSubcell = 1
+                   call findSubcellLocal(locator, tempOctal, tempSubcell)
+                   tempOctal%feederCell(tempsubcell) = .true.
+                endif
+
+
+                case(2)
+                   
+                   if (thisOctal%edgeCell(subcell)) then
+                      locator = subcellCentre(thisOctal, subcell) + &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize) &
+                           * thisOctal%boundaryPartner(subcell)
+                      thisOctal%boundaryPartner(subcell) = locator
+                      if (.not.(inOctal(grid%octreeRoot,locator))) then
+                         write(*,*) "BUG1: locator ",locator
+                      endif
+
+                      tempOctal => thisOctal
+                      tempSubcell = 1
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      tempOctal%feederCell(tempsubcell) = .true.
+                   endif
+
+                   
+                   if (.not.thisOctal%edgeCell(subcell)) then
+                      tVec = thisOctal%boundaryPartner(Subcell)
+                      locator = subcellCentre(thisOctal, subcell) + &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)* &
+                           thisOctal%boundaryPartner(subcell)
+                      thisOctal%boundaryPartner(subcell) = locator
+                      if (.not.(inOctal(grid%octreeRoot,locator))) then
+                         write(*,*) "BUG2: locator ",locator
+                         write(*,*) "cell centre ", subcellCentre(thisOctal,subcell)
+                         write(*,*) "direction ",tVec
+                      endif
+                      tempOctal => thisOctal
+                      tempSubcell = 1
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      tempOctal%feederCell(tempsubcell) = .true.
+                   endif
+
+                   
+                case DEFAULT
+                   write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
+             end select
+           endif
        endif
     enddo
   end subroutine setupGhosts
@@ -3861,14 +3897,14 @@ contains
                 endif
                 if (thisOctal%twoD) then
                    if (split) then
-                      if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
+                      if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth < nd)) then
                          call addNewChildWithInterp(thisOctal, subcell, grid)
                          exit
                       endif
                    
                       if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
                            octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
-                           (neighbourOctal%nDepth <= thisOctal%nDepth)) then
+                           (neighbourOctal%nDepth < thisOctal%nDepth)) then
                          call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                          converged = .false.
                          exit
@@ -4330,22 +4366,25 @@ end subroutine refineGridGeneric2
     do while(.not.globalConverged)
        localChanged = .false.
 
-       call setupEdges(grid%octreeRoot, grid)
        call unsetGhosts(grid%octreeRoot)
+       call setupEdges(grid%octreeRoot, grid)
        call setupGhosts(grid%octreeRoot, grid)
        write(vtkfilename,'(a)') "afterghosts.vtk"
        call writeVtkFile(grid, vtkfilename, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" ,"ghosts ", "edges"/))
+         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" ,&
+         "ghosts       ", "edges        "/))
 
        do
           gridConverged = .true.
+          
           call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
-          call setupEdges(grid%octreeRoot, grid)
           call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid)!, flag=.true.)
+          call setupEdges(grid%octreeRoot, grid)
+          call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
           if (gridConverged) exit
        end do
 
+       
        if (evenAcrossThreads) then
           nLocs = 0
           call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
@@ -4373,7 +4412,7 @@ end subroutine refineGridGeneric2
                 endif
              endif
           enddo
-          !       write(*,*) myrank, " entering receive loop"
+
           do iThread = 1, nThreads - 1
              if (iThread /= myRank) then
                 !                          write(*,*) "rank ",myRank," receiving message from ",ithread
@@ -4408,9 +4447,9 @@ end subroutine refineGridGeneric2
              gridConverged = .true.
              call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
              if (.not.gridConverged) localChanged(myRank) = .true.
-             call setupEdges(grid%octreeRoot, grid)
              call unsetGhosts(grid%octreeRoot)
-             call setupGhostCells(grid%octreeRoot, grid) !, flag=.true.)
+             call setupEdges(grid%octreeRoot, grid)
+             call setupGhosts(grid%octreeRoot, grid) !, flag=.true.)
              if (gridConverged) exit
           end do
 
@@ -4503,26 +4542,17 @@ end subroutine refineGridGeneric2
                    if (neighbourOctal%mpiThread(neighbourSubcell) == myRank) then
 
                       if ((neighbourOctal%nDepth-thisOctal%nDepth) > 1) then
-
-
                          call addNewChildWithInterp(thisOctal, subcell, grid)
                          converged = .false.
                          exit
                       endif
                       
                       if ((thisOctal%nDepth-neighbourOctal%nDepth) > 1) then
-                         call addNewChildWithInterp(thisOctal, subcell, grid)
+                         call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                          converged = .false.
                          exit
                       endif
                       
-!                      if (thisOctal%edgeCell(subcell).and.(.not.neighbourOctal%edgeCell(neighboursubcell))  &
-!                           .and.(thisOctal%nDepth < neighbourOctal%nDepth)) then
-!                         call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-!                              inherit=inherit, interp=.false.)
-!                         converged = .false.
-!                         exit
-!                      endif
                    endif
                 end if
              enddo

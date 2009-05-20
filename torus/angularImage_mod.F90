@@ -23,7 +23,7 @@ module angularImage
 
     subroutine make_angular_image(grid)
 
-      use input_variables, only : lineImage, maxRhoCalc, densitySubSample
+!      use input_variables, only : lineImage
       use datacube_mod, only: DATACUBE, writeDataCube
       use gridtype_mod, only: GRIDTYPE
       use molecular_mod, only:  moleculetype
