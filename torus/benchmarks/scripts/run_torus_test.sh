@@ -18,6 +18,7 @@ if [[ $? -eq 0 ]]; then
     echo "Compilation completed with ${num_warn} warnings."
 else
     echo "Compilation failed."
+    exit 1
 fi
 
 cd ..
@@ -42,6 +43,7 @@ if [[ $? -eq 0 ]]; then
     echo "Compilation completed with ${num_warn} warnings."
 else
     echo "Compilation failed."
+    exit 1
 fi
 cd ..
 
@@ -105,6 +107,8 @@ case ${SYSTEM} in
     ompi) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1;; 
 
     intelmac) ./sphbench > run_log_sphbench.txt 2>&1;;
+
+    zen) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1 ;;
 
     *) echo "Unrecognised SYSTEM type. Aborting"
        exit 1;;
@@ -188,25 +192,11 @@ for sys in ${SYS_TO_TEST}; do
     run_hydro
     check_hydro
 
-# Run benchmark tests
+# Run 2D disc
     echo "Running disc benchmark"
     export THIS_BENCH=disc
     run_bench 
     check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
-
-#    if [[ ${SYSTEM} == ompi ]]; then
-#	echo "Running cylindrical polar disc benchmark"
-#	export THIS_BENCH=disc_cylindrical
-#	run_bench
-#	check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
-#    fi
-
-# SPH-Bench and HII region benchmark have been commented out 
-# when running Torus v1.1 stable version tests. 
-
-#    echo "Running SPH-Bench"
-#    run_sphbench
-#    check_benchmark > check_log_sphbench.txt 2>&1 
 
     echo "Running HII region benchmark"
     export THIS_BENCH=HII_region
@@ -218,6 +208,20 @@ for sys in ${SYS_TO_TEST}; do
     mkdir ${WORKING_DIR}/benchmarks/molebench/plots 
     run_bench
     check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
+
+# Only run these tests for MPI systems and not in the daily test
+    if [[ ${SYSTEM} != intelmac && ${MODE} != daily ]]; then
+
+	echo "Running cylindrical polar disc benchmark"
+	export THIS_BENCH=disc_cylindrical
+	run_bench
+	check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+
+	echo "Running SPH-Bench"
+	run_sphbench
+	check_benchmark > check_log_sphbench.txt 2>&1 
+
+    fi
 
 done
 }
@@ -234,6 +238,15 @@ echo ""
 
 # Default mode is daily test
 export MODE=daily
+
+# If we're running on Zen then set the appropriate mode
+this_host=`hostname`
+if [[ ${this_host} == service0 ]]; then
+    echo "Don't run this script on the log in node!"
+    exit 1
+elif [[ ${this_host} == service2 ]]; then
+    export MODE=zen
+fi
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -267,7 +280,7 @@ case ${MODE} in
 	    echo;;
 
     zen) export SYS_TO_TEST="zen"
-	 export DEBUG_OPTS="yes"
+	 export DEBUG_OPTS="no yes"
 	 export TORUS_FC="ifort"
 	 echo TORUS zen tests started on `date`
 	 echo -------------------------------------------------------------------
