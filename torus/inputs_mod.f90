@@ -1268,19 +1268,26 @@ contains
        else
 
           call getReal("distance", gridDistance, cLine, nLines, &
-               "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
+               "Grid distance (pc): ","(a,e10.4,1x,a)", 1., ok, .true.)
           gridDistance = gridDistance * pcTocm   ! cm
 
           call getDouble("rotateViewAboutX", rotateViewAboutX, cLine, nLines, &
-               "Rotation angle about x-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Rotation angle about x-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
           call getDouble("rotateViewAboutY", rotateViewAboutY, cLine, nLines, &
-               "Rotation angle about y-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Rotation angle about y-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
           call getDouble("rotateViewAboutZ", rotateViewAboutZ, cLine, nLines, &
-               "Rotation angle about z-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Rotation angle about z-axis:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+
+! Default orientation is like M33
+          call getDouble("galaxyInclination", galaxyInclination, cLine, nLines, &
+               "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
+          call getDouble("galaxyPositionAngle", galaxyPositionAngle, cLine, nLines, &
+               "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
+
           call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, cLine, nLines, &
-               "Data cube velocity offset:", "(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Data cube velocity offset:", "(a,f8.1,1x,a)", 0.d0, ok, .true.)
           call getReal("imageside", imageside, cLine, nLines, &
-               "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+               "Image size (x10^10cm):","(a,e10.4,1x,a)", 5e7, ok, .true.)
           call getDouble("centrevecx", centrevecx, cLine, nLines, &
                "Image Centre Coordinate (10^10cm): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecy", centrevecy, cLine, nLines, &
@@ -1393,6 +1400,11 @@ contains
                "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
           call getDouble("rotateviewaboutz", rotateViewAboutZ, cLine, nLines, &
                "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+! Not required so make sure galaxyInclination and galaxyPositionAngle have no effect 
+          call getDouble("galaxyInclination", galaxyInclination, cLine, nLines, &
+               "Galaxy Inclination:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+          call getDouble("galaxyPositionAngle", galaxyPositionAngle, cLine, nLines, &
+               "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
           call getDouble("maxVel", maxVel, cLine, nLines, &
                "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
           call getDouble("centrevecx", centrevecx, cLine, nLines, &

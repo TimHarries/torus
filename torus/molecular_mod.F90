@@ -3214,14 +3214,15 @@ end subroutine calculateOctalParams
 
       subroutine setObserverVectors(viewvec, observerVec, imagebasis)
 
-        use input_variables, only : npixels, imageside, geometry
+        use input_variables, only : npixels, imageside
         use input_variables, only : griddistance 
         use input_variables, only : centrevecX, centrevecY, centrevecZ
         use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
+        use input_variables, only : galaxyPositionAngle, galaxyInclination
 
         logical :: paraxial = .true.
-        real(double) :: pixelwidth, theta, arbit_angle
-        type(VECTOR) :: centreVec, unitvec, viewvecprime, rotationaxis, arbit_axis
+        real(double) :: pixelwidth, theta
+        type(VECTOR) :: centreVec, unitvec, viewvecprime, rotationaxis
 
         type(VECTOR), intent(OUT) :: viewvec, observerVec, imagebasis(2)
         
@@ -3245,18 +3246,15 @@ end subroutine calculateOctalParams
         imagebasis(1) = rotateZ(imagebasis(1), -rotateViewAboutZ * degtorad)! Image bases are necessarily orthonormal and linearly independent
         imagebasis(2) = rotateZ(imagebasis(2), -rotateViewAboutZ * degtorad)
 
-        if ( geometry == 'theGalaxy' ) then 
-! Incline the galaxy to be like M33 
-           arbit_axis = VECTOR(1.d0,0.d0,0.d0)
-           call normalize(arbit_axis)
-           arbit_angle = 40.0
-           write(*,*) "Rotating ", arbit_angle, " about ", arbit_axis
-           arbit_angle = arbit_angle * degtorad
+! Apply rotations to orientate a disc in the x-y plane with a given position angle and inclination. 
+        viewvec       = rotateY(viewvec,       -1.0*(90.0 + galaxyPositionAngle) * degtorad)
+        imagebasis(1) = rotateY(imagebasis(1), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
+        imagebasis(2) = rotateY(imagebasis(2), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
 
-           viewVec       = arbitraryRotate(viewVec,       arbit_angle, arbit_axis )
-           imagebasis(1) = arbitraryRotate(imagebasis(1), arbit_angle, arbit_axis )
-           imagebasis(2) = arbitraryRotate(imagebasis(2), arbit_angle, arbit_axis )
-        end if
+        viewvec       = rotateX(viewvec,       -1.0*(90.0 - galaxyInclination) * degtorad) 
+        imagebasis(1) = rotateX(imagebasis(1), -1.0*(90.0 - galaxyInclination) * degtorad)
+        imagebasis(2) = rotateX(imagebasis(2), -1.0*(90.0 - galaxyInclination) * degtorad)
+
 
         call normalize(viewvec) 
         call normalize(imagebasis(1)) ! These lines should be unnecessary. Remove them if you feel lucky...
