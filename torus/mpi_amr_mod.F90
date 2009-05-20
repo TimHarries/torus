@@ -1976,7 +1976,7 @@ contains
           loc = 1.d30
           call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
-300    enddo
+    enddo
   end subroutine shutdownServers
 
   subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy)
