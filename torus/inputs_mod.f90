@@ -1232,6 +1232,9 @@ contains
     if( geometry == "theGalaxy" ) then
 
        itrans = 1
+       lineImage        = .true.
+       maxRhoCalc       = .false. 
+
        call getInteger("npixels", npixels, cLine, nLines, &
             "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
        call getInteger("nv", nv, cLine, nLines, &

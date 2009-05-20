@@ -36,10 +36,6 @@ module angularImage
       type(MOLECULETYPE) :: thisMolecule
       real, parameter :: thisWavelength=21.0
 
-      lineImage        = .true.
-      maxRhoCalc       = .false. 
-      densitySubSample = .false.
-
 ! molecular weight is used for column density calculation
       thisMolecule%molecularWeight = mHydrogen / amu
 
