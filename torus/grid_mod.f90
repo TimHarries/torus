@@ -510,7 +510,7 @@ contains
     character(len=80), intent(out) :: newContFile
     logical, intent(in) :: flatspec        ! is the spectrum flat
     logical, intent(inout) :: ok           ! function done ok?
-    type(GRIDTYPE), intent(out) :: grid                 ! the grid
+    type(GRIDTYPE), intent(inout) :: grid                 ! the grid
     real, intent(out)   :: theta1, theta2
     
     integer :: ilambda                   ! counters
