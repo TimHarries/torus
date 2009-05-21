@@ -204,6 +204,7 @@ program torus
   ! set the version number HERE!!!!!!
 
   call setVersion("V1.2")
+  grid%version = torusVersion
 
   myRankGlobal = 0 ! set rank to zero for single processor job
 
@@ -623,9 +624,7 @@ program torus
         if (idump /= 1) then
            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
            write(message,'(a,i4.4,a)') "dump",idump,".grid"
-           write(*,*) myrankglobal, " calling read ",trim(message)
-           call readAMRgrid(message,.false.,grid)
-           write(*,*) myrankglobal, " done reading ",trim(message)
+           call readAMRgrid(message, .false., grid)
         endif
 
 
@@ -1693,7 +1692,7 @@ end subroutine pre_initAMRGrid
                  call writeInfo(message, TRIVIAL)
                  do
                     gridConverged = .true.
-                    call putTau(grid, grid%lamArray(j))
+!                    call putTau(grid, grid%lamArray(j))
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
                          inheritProps = .false., interpProps = .false.)!, photosphereSplit = .not.variableDustSublimation)
                     if (gridConverged) exit

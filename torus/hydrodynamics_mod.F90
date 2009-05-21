@@ -2187,31 +2187,9 @@ contains
 
 
 
-       call writeInfo("Refining individual subgrids", TRIVIAL)
-       if (.not.grid%splitOverMpi) then
-          do
-             gridConverged = .true.
-             call setupEdges(grid%octreeRoot, grid)
-             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
-             call unsetGhosts(grid%octreeRoot)
-             call setupGhostCells(grid%octreeRoot, grid, flag=.true.)
-             if (gridConverged) exit
-          end do
-       else
-          call evenUpGridMPI(grid,.false.,.true.)
-       endif
-
-
-       globalConverged = .false.
-       call writeInfo("Refining grid part 2", TRIVIAL)    
-       do
-          globalConverged(myRank) = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:nHydroThreads))) exit
-       end do
+       call evenUpGridMPI(grid,.false.,.true.)
+       
+       call refineGridGeneric(grid)
 
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid, .false.,.true.)
@@ -2277,16 +2255,7 @@ contains
 
 
           call zeroRefinedLastTime(grid%octreeRoot)
-          globalConverged = .false.
-          do
-             globalConverged(myRank) = .true.
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-             if (ALL(tConverged(1:nHydroThreads))) exit
-          end do
-
+          call refineGridGeneric(grid)
 
           call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2608,10 +2577,15 @@ contains
     nUnrefine = 0
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-       nHydroThreads = nThreadsGlobal - 1
+    nHydroThreads = nThreadsGlobal - 1
 
+    it = grid%iDump
+    currentTime = grid%currentTime
+    nextDumpTime = 0.d0
 
-
+    if (it /= 1) then
+       call writeVTKfile(grid, "readin.vtk")
+    endif
     if (myrankGlobal /= 0) then
 
        dorefine = .true.
@@ -2643,52 +2617,50 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call calculateRhoU(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 1.d0, 0.d0)
-       call calculateRhoV(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 0.d0, 1.d0)
-       call calculateRhoW(grid%octreeRoot, direction)
-
+       if (it == 1) then
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call calculateRhoU(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 1.d0, 0.d0)
+          call calculateRhoV(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 0.d0, 1.d0)
+          call calculateRhoW(grid%octreeRoot, direction)
+          
        !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-       call calculateRhoE(grid%octreeRoot, direction)
+          call calculateRhoE(grid%octreeRoot, direction)
+          
+          
+          call writeInfo("Refining individual subgrids", TRIVIAL)
+          call evenUpGridMPI(grid,.false., dorefine)
+          
+          
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
-       call writeInfo("Refining individual subgrids", TRIVIAL)
-       call evenUpGridMPI(grid,.false., dorefine)
+          call refinegridGeneric(grid)
+          call writeVTKfile(grid, "split.vtk")
+          
+          call writeInfo("Evening up grid", TRIVIAL)    
+          call evenUpGridMPI(grid, .false.,dorefine)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
 
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call refinegridGeneric(grid)
-       call writeVTKfile(grid, "split.vtk")
-
-       call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid, .false.,dorefine)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call setupX(grid%octreeRoot, grid, direction)
+          call setupQX(grid%octreeRoot, grid, direction)
+          !    call calculateEnergy(grid%octreeRoot, gamma, mu)
 
 
-
-
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call setupX(grid%octreeRoot, grid, direction)
-       call setupQX(grid%octreeRoot, grid, direction)
-       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-
-
-!       call calculateRhoE(grid%octreeRoot, direction)
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call calculateRhoU(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 1.d0, 0.d0)
-       call calculateRhoV(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 0.d0, 1.d0)
-       call calculateRhoW(grid%octreeRoot, direction)
-
+          !       call calculateRhoE(grid%octreeRoot, direction)
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call calculateRhoU(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 1.d0, 0.d0)
+          call calculateRhoV(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 0.d0, 1.d0)
+          call calculateRhoW(grid%octreeRoot, direction)
+          
+       endif
     endif
-
-       currentTime = 0.d0
-       it = 0
-       nextDumpTime = 0.d0
     call writeVTKfile(grid, "start.vtk")
 
     tc = 0.d0
@@ -2706,6 +2678,11 @@ contains
     tdump = 5.d0 * dt
 
     if (writeoutput) write(*,*) "Setting tdump to: ", tdump
+
+    if (it /= 1) then
+       nextDumpTime = grid%currentTime + tdump
+    endif
+
 
     iUnrefine = 0
        !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -2740,9 +2717,9 @@ contains
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, jt=jt)
 
           iUnrefine = iUnrefine + 1
-          if (iUnrefine == 5) then
+          if (iUnrefine == 10) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-!             call unrefineCells(grid%octreeRoot, grid, nUnrefine)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -2754,19 +2731,9 @@ contains
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call writeInfo("Refining grid part 2", TRIVIAL)    
-!          globalConverged = .false.
-!          do
-!             globalConverged(myRank) = .true.
-!             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
-!             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-!             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-!             if (ALL(tConverged(1:nHydroThreads))) exit
-!         end do
 
           call refinegridGeneric(grid)
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
-
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
@@ -2779,12 +2746,13 @@ contains
 
 
        if (currentTime .ge. nextDumpTime) then
-          nextDumpTime = nextDumpTime + tDump
           it = it + 1
+          nextDumpTime = nextDumpTime + tDump
           grid%iDump = it
           grid%currentTime = currentTime
-          !          write(plotfile,'(a,i4.4,a,i3.3,a)') "dump",it,"_rank_",myrankglobal,".grid"
-          !          call writeAMRgrid(plotfile,.false. ,grid)
+          call hydrovelocityConvert(grid%octreeRoot)
+          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+          call writeAMRgrid(plotfile,.false. ,grid)
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
@@ -2817,6 +2785,29 @@ contains
        endif
     enddo
   end subroutine zeroRefinedLastTime
+
+  recursive subroutine hydroVelocityconvert(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call hydroVelocityConvert(child)
+                exit
+             end if
+          end do
+       else 
+          thisOctal%velocity(subcell)%x = (thisOctal%rhou(subcell)/thisOctal%rho(subcell))/cSpeed
+          thisOctal%velocity(subcell)%y = (thisOctal%rhov(subcell)/thisOctal%rho(subcell))/cSpeed
+          thisOctal%velocity(subcell)%z = (thisOctal%rhow(subcell)/thisOctal%rho(subcell))/cSpeed
+       endif
+    enddo
+  end subroutine hydroVelocityconvert
 
 
   recursive subroutine transferTempStorage(thisOctal)
@@ -3754,7 +3745,7 @@ contains
        call setAllUnchanged(grid%octreeRoot)
        globalConverged(myRankGlobal) = .true.
        do iThread = 1, nThreadsGlobal-1
-          if (myrankGlobal /= iThread) then
+          if (myrankGlobal /= iThread) then 
              call hydroValuesServer(grid, iThread)
           else
              call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), inheritval=.false.)
@@ -3864,7 +3855,6 @@ contains
                    split = .true.
                 endif
 
-
                 thisSpeed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                      + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
                 speed = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
@@ -3950,7 +3940,7 @@ contains
 
                 if ((thisOctal%ionFrac(subcell,1) < 0.4d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) > 0.6d0) .and. &
                      (neighbourOctal%nDepth < maxDepthAMR) ) then
-                   call addNewChildWithInterp(thisOctal, subcell, grid)
+                   call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                    converged = .false.
                    exit
                 endif
@@ -4333,7 +4323,7 @@ end subroutine refineGridGeneric2
     integer :: myRank, nThreads
     include 'mpif.h'  
     integer :: ierr
-    logical :: globalConverged, localChanged(64)
+    logical :: globalConverged(64), localChanged(64), tConverged(64)
     type(VECTOR) :: locs(200000), eLocs(200000)
     integer :: nLocs(64), tempNlocs(20000)
     integer :: thread(100000), nLocsGlobal,i, depth(200000)
@@ -4346,6 +4336,7 @@ end subroutine refineGridGeneric2
     logical :: globalChanged(64)
     integer :: status(MPI_STATUS_SIZE)
     logical :: evenAcrossThreads
+    logical :: allThreadsConverged
     character(len=30) :: vtkFilename
 
 !    character(len=20) :: plotfile
@@ -4363,28 +4354,38 @@ end subroutine refineGridGeneric2
        call writeVtkFile(grid, vtkFilename)
     endif
 
-    do while(.not.globalConverged)
+
+
+    call unsetGhosts(grid%octreeRoot)
+    call setupEdges(grid%octreeRoot, grid)
+    call setupGhosts(grid%octreeRoot, grid)
+
+    allThreadsConverged = .false.
+    do while(.not.allThreadsConverged)
        localChanged = .false.
 
-       call unsetGhosts(grid%octreeRoot)
-       call setupEdges(grid%octreeRoot, grid)
-       call setupGhosts(grid%octreeRoot, grid)
-       write(vtkfilename,'(a)') "afterghosts.vtk"
-       call writeVtkFile(grid, vtkfilename, &
-         valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" ,&
-         "ghosts       ", "edges        "/))
-
+       globalConverged = .false.
        do
-          gridConverged = .true.
-          
-          call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
-          call unsetGhosts(grid%octreeRoot)
-          call setupEdges(grid%octreeRoot, grid)
-          call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
-          if (gridConverged) exit
-       end do
+          call setAllUnchanged(grid%octreeRoot)
+          globalConverged(myRankGlobal) = .true.
+          do iThread = 1, nThreadsGlobal-1
+             if (myrankGlobal /= iThread) then
+                call hydroValuesServer(grid, iThread)
+             else
+                call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), inherit=inheritFlag)
+                call unsetGhosts(grid%octreeRoot)
+                call setupEdges(grid%octreeRoot, grid)
+                call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
+                call shutdownServers()
+             endif
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          enddo
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+          if (ALL(tConverged(1:nthreadsGlobal-1))) exit
+       enddo
 
-       
+
        if (evenAcrossThreads) then
           nLocs = 0
           call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
@@ -4429,30 +4430,51 @@ end subroutine refineGridGeneric2
                 endif
                 nExternalLocs = nSent(1)
 
-                call setAllUnchanged(grid%octreeRoot)
-
-                do i = 1, nExternalLocs
-                   call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank), inherit=inheritflag)
-                enddo
 
              endif
           enddo
+
+
+          do iThread = 1, nThreadsGlobal-1
+             if (myrankGlobal /= iThread) then
+                call hydroValuesServer(grid, iThread)
+                call setAllUnchanged(grid%octreeRoot)
+                do i = 1, nExternalLocs
+                   call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank), inherit=inheritflag)
+                enddo
+             else
+                call shutdownServers()
+             endif
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          enddo
+
+
 
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftersplit",dumpfiles,"_",iter,".vtk"
              call writeVtkFile(grid, vtkFilename)
           endif
 
+          globalConverged = .false.
           do
-             gridConverged = .true.
-             call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
-             if (.not.gridConverged) localChanged(myRank) = .true.
-             call unsetGhosts(grid%octreeRoot)
-             call setupEdges(grid%octreeRoot, grid)
-             call setupGhosts(grid%octreeRoot, grid) !, flag=.true.)
-             if (gridConverged) exit
-          end do
-
+             call setAllUnchanged(grid%octreeRoot)
+             globalConverged(myRankGlobal) = .true.
+             do iThread = 1, nThreadsGlobal-1
+                if (myrankGlobal /= iThread) then
+                   call hydroValuesServer(grid, iThread)
+                else
+                   call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), inherit=inheritFlag)
+                   call unsetGhosts(grid%octreeRoot)
+                   call setupEdges(grid%octreeRoot, grid)
+                   call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
+                   call shutdownServers()
+                endif
+                call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             enddo
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+             if (ALL(tConverged(1:nthreadsGlobal-1))) exit
+          enddo
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftereven",dumpfiles,"_",iter,".vtk"
              call writeVtkFile(grid, vtkFilename)
@@ -4461,19 +4483,20 @@ end subroutine refineGridGeneric2
           call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 
           if (ANY(globalChanged(1:nThreadsGlobal-1))) then
-             globalConverged = .false.
+             allThreadsConverged = .false.
           else
-             globalConverged = .true.
+             allThreadsConverged = .true.
           endif
           iter = iter + 1
        else
-          globalConverged = .true.
+          allThreadsConverged = .true.
        endif
+
     end do
   end subroutine evenUpGridMPI
 
   recursive subroutine evenUpGrid(thisOctal, grid,  converged, inherit)
-
+    use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -4488,7 +4511,6 @@ end subroutine refineGridGeneric2
     integer :: myRank, ierr
     converged = .true.
     converged_tmp=.true.
-
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -4508,7 +4530,6 @@ end subroutine refineGridGeneric2
           if (.not.converged_tmp) converged=converged_tmp
        else
 
-!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
@@ -4539,15 +4560,15 @@ end subroutine refineGridGeneric2
                    neighbourOctal => thisOctal
                    call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
 
-                   if (neighbourOctal%mpiThread(neighbourSubcell) == myRank) then
+                   if (octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
 
-                      if ((neighbourOctal%nDepth-thisOctal%nDepth) > 1) then
+                      if (((neighbourOctal%nDepth-thisOctal%nDepth) > 1).and. (thisOCtal%ndepth < maxDepthAMR)) then
                          call addNewChildWithInterp(thisOctal, subcell, grid)
                          converged = .false.
                          exit
                       endif
                       
-                      if ((thisOctal%nDepth-neighbourOctal%nDepth) > 1) then
+                      if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
                          call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                          converged = .false.
                          exit
@@ -4584,8 +4605,7 @@ end subroutine refineGridGeneric2
     endif
 !    WRITE(*,*) "ATTEMPTNG TO SPLIT",depth,thisOctal%nDepth, maxdepth
     if (((depth-thisOctal%nDepth) > 1).and.(thisOctal%nDepth < maxDepthAMR)) then
-       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-            inherit=.false., interp=.false., amrHydroInterp = .true.)
+       call addNewChildWithInterp(thisOctal,subcell,grid)
        localChanged = .true.
 !       write(*,*) "split at locator"
     endif

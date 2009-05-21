@@ -3971,6 +3971,7 @@ IF ( .NOT. gridConverged ) RETURN
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
 !      type(vector) :: rVec
+      real(double) :: fac
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
@@ -4054,6 +4055,8 @@ IF ( .NOT. gridConverged ) RETURN
                 thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
            write(*,*) "size ",thisOctal%subcellsize
+            fac = -2.d0
+            write(*,*) sqrt(fac)
 !           rVec = subcellCentre(thisOctal,subcell)
 !           write(*,*) rVec%x+thisOctal%subcellSize/2.
 !           write(*,*) rVec%x-thisOctal%subcellSize/2.

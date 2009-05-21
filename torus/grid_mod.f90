@@ -545,7 +545,7 @@ contains
     grid%amr2dOnly = amr2dOnly
     grid%geometry = geometry
 
-    grid%idump = 1
+    grid%idump = 0
     grid%currentTime = 0.d0
 
 

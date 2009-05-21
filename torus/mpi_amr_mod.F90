@@ -22,6 +22,14 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRankGlobal, ierr)
 
+
+    if (nThreadsGlobal == 2) nHydroThreadsGlobal = 2
+    if (nThreadsGlobal == 3) nHydroThreadsGlobal = 2
+
+    if (nThreadsGlobal == 4) nHydroThreadsGlobal = 4
+    if (nThreadsGlobal == 5) nHydroThreadsGlobal = 4
+
+
     if (nThreadsGlobal == 8) nHydroThreadsGlobal = 8
     if (nThreadsGlobal == 9) nHydroThreadsGlobal = 8
 
@@ -1698,6 +1706,7 @@ contains
   end subroutine grid_info_mpi
   
   subroutine addNewChildWithInterp(parent, iChild, grid)
+    use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(OCTAL), pointer :: parent, thisOctal
     integer :: iChild
@@ -1716,8 +1725,15 @@ contains
     real(double) :: weight, totalWeight
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy
     real(double) :: x1, x2, z1, z2, u, v, x, z
+    logical, save :: firstTime = .true.
 
-
+    if (parent%ndepth == maxDepthAMR) then
+       if (firstTime) then
+          call writeWarning("Cell depth capped in addNewChildWithInterp")
+          firstTime = .false.
+       endif
+       goto 666
+    endif
 
     ! store the number of children that already exist
     nChildren = parent%nChildren
@@ -1850,20 +1866,33 @@ contains
     thisOctal%iEquationOfState = parent%iEquationofState(parentSubcell)
 
 
-    nDir = 4
-    r = 0.1d0*grid%halfSmallestSubcell
-    dir(1) = VECTOR(-r, 0.d0, -r)
-    dir(2) = VECTOR(+r, 0.d0, -r)
-    dir(3) = VECTOR(+r, 0.d0, +r)
-    dir(4) = VECTOR(-r, 0.d0, +r)
+    if (thisOctal%twod) then
+       nDir = 4
+       r = 0.1d0*grid%halfSmallestSubcell
+       dir(1) = VECTOR(-r, 0.d0, -r)
+       dir(2) = VECTOR(+r, 0.d0, -r)
+       dir(3) = VECTOR(+r, 0.d0, +r)
+       dir(4) = VECTOR(-r, 0.d0, +r)
+       
+       nCorner = 4
+       r = parent%subcellSize
+       corner(1) = parent%centre + VECTOR(-r, 0.d0, -r)
+       corner(2) = parent%centre + VECTOR(+r, 0.d0, -r)
+       corner(3) = parent%centre + VECTOR(-r, 0.d0, +r)
+       corner(4) = parent%centre + VECTOR(+r, 0.d0, +r)
+    endif
 
-    nCorner = 4
-    r = parent%subcellSize
-    corner(1) = parent%centre + VECTOR(-r, 0.d0, -r)
-    corner(2) = parent%centre + VECTOR(+r, 0.d0, -r)
-    corner(3) = parent%centre + VECTOR(-r, 0.d0, +r)
-    corner(4) = parent%centre + VECTOR(+r, 0.d0, +r)
-
+    if (thisOctal%oneD) then
+       nDir = 2
+       r = 0.1d0*grid%halfSmallestSubcell
+       dir(1) = VECTOR(-r, 0.d0, 0.d0)
+       dir(2) = VECTOR(+r, 0.d0, 0.d0)
+       
+       nCorner = 2
+       r = parent%subcellSize
+       corner(1) = parent%centre + VECTOR(-r, 0.d0, 0.d0)
+       corner(2) = parent%centre + VECTOR(+r, 0.d0, 0.d0)
+    endif
 
     rhoCorner = 0.d0
     rhoeCorner = 0.d0
@@ -1913,44 +1942,71 @@ contains
     thisOctal%changed = .true.
 
     do iSubcell = 1, thisOctal%maxChildren
-       rVec = subcellcentre(thisOctal, iSubcell)
-       x = rVec%x
-       z = rVec%z
-       u = (x - x1)/(x2 - x1)
-       v = (z - z1)/(z2 - z1)
-       thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoCorner(1) + &
+
+       if (thisOctal%twod) then
+          rVec = subcellcentre(thisOctal, iSubcell)
+          x = rVec%x
+          z = rVec%z
+          u = (x - x1)/(x2 - x1)
+          v = (z - z1)/(z2 - z1)
+          thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoCorner(1) + &
                                  (       u) * (1.d0 - v) * rhoCorner(2) + &
                                  (1.d0 - u) * (       v) * rhoCorner(3) + &
                                  (       u) * (       v) * rhoCorner(4)
- 
+          
+          
+          thisOctal%rhoe(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoeCorner(1) + &
+               (       u) * (1.d0 - v) * rhoeCorner(2) + &
+               (1.d0 - u) * (       v) * rhoeCorner(3) + &
+               (       u) * (       v) * rhoeCorner(4)
+          
+          
+          thisOctal%rhou(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhouCorner(1) + &
+               (       u) * (1.d0 - v) * rhouCorner(2) + &
+               (1.d0 - u) * (       v) * rhouCorner(3) + &
+               (       u) * (       v) * rhouCorner(4)
+          
+          
+          thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
+               (       u) * (1.d0 - v) * rhovCorner(2) + &
+               (1.d0 - u) * (       v) * rhovCorner(3) + &
+               (       u) * (       v) * rhovCorner(4)
+          
+          thisOctal%rhow(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhowCorner(1) + &
+               (       u) * (1.d0 - v) * rhowCorner(2) + &
+               (1.d0 - u) * (       v) * rhowCorner(3) + &
+               (       u) * (       v) * rhowCorner(4)
+          
+          thisOctal%energy(iSubcell) = (1.d0 - u) * (1.d0 - v) * eCorner(1) + &
+               (       u) * (1.d0 - v) * eCorner(2) + &
+               (1.d0 - u) * (       v) * eCorner(3) + &
+               (       u) * (       v) * eCorner(4)
+       endif
 
-       thisOctal%rhoe(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoeCorner(1) + &
-                                 (       u) * (1.d0 - v) * rhoeCorner(2) + &
-                                 (1.d0 - u) * (       v) * rhoeCorner(3) + &
-                                 (       u) * (       v) * rhoeCorner(4)
- 
+       if (thisOctal%twod) then
+          rVec = subcellcentre(thisOctal, iSubcell)
+          x = rVec%x
+          u = (x - x1)/(x2 - x1)
+          thisOctal%rho(iSubcell) = (1.d0 - u) * rhoCorner(1) + &
+                                    (       u) * rhoCorner(2)
 
-       thisOctal%rhou(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhouCorner(1) + &
-                                 (       u) * (1.d0 - v) * rhouCorner(2) + &
-                                 (1.d0 - u) * (       v) * rhouCorner(3) + &
-                                 (       u) * (       v) * rhouCorner(4)
- 
+          thisOctal%rhoe(iSubcell) = (1.d0 - u) * rhoeCorner(1) + &
+                                    (       u) * rhoeCorner(2)
 
-       thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
-                                 (       u) * (1.d0 - v) * rhovCorner(2) + &
-                                 (1.d0 - u) * (       v) * rhovCorner(3) + &
-                                 (       u) * (       v) * rhovCorner(4)
- 
-       thisOctal%rhow(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhowCorner(1) + &
-                                 (       u) * (1.d0 - v) * rhowCorner(2) + &
-                                 (1.d0 - u) * (       v) * rhowCorner(3) + &
-                                 (       u) * (       v) * rhowCorner(4)
 
-       thisOctal%energy(iSubcell) = (1.d0 - u) * (1.d0 - v) * eCorner(1) + &
-                                 (       u) * (1.d0 - v) * eCorner(2) + &
-                                 (1.d0 - u) * (       v) * eCorner(3) + &
-                                 (       u) * (       v) * eCorner(4)
- 
+          thisOctal%rhou(iSubcell) = (1.d0 - u) * rhouCorner(1) + &
+                                    (       u) *  rhouCorner(2)
+
+          thisOctal%rhov(iSubcell) = (1.d0 - u) * rhovCorner(1) + &
+                                    (       u) *  rhovCorner(2)
+
+          thisOctal%rhow(iSubcell) = (1.d0 - u) * rhowCorner(1) + &
+                                    (       u) *  rhowCorner(2)
+
+          thisOctal%energy(iSubcell) = (1.d0 - u) * eCorner(1) + &
+                                    (       u) *  eCorner(2)
+       endif
+
     enddo
       
     grid%nOctals = grid%nOctals + 1
@@ -1960,7 +2016,7 @@ contains
        grid%maxDepth = parent%child(newChildIndex)%nDepth
        CALL setSmallestSubcell(grid)
     END IF
-
+666 continue
   end subroutine addNewChildWithInterp
 
   subroutine shutdownServers()

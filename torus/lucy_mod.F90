@@ -300,16 +300,24 @@ contains
                  call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
                 do j = iSmoothLam, nLambda, 2
-                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-                 call writeInfo(message, TRIVIAL)
-                   do
-                      gridConverged = .true.
-                      call putTau(grid, grid%lamArray(j))
-                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
-
-                      if (gridConverged) exit
-                   end do
+                   write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                   call writeInfo(message, TRIVIAL)
+                   if (grid%octreeRoot%twoD) then
+                      do
+                         gridConverged = .true.
+                         call putTau(grid, grid%lamArray(j))
+                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                              inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                         if (gridConverged) exit
+                      end do
+                   else
+                      do
+                         gridConverged = .true.
+                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                              inheritProps = .false., interpProps = .true.)
+                         if (gridConverged) exit
+                      end do
+                   endif
                 enddo
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 

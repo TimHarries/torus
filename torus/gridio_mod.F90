@@ -136,11 +136,6 @@ contains
 
     updatedFilename = filename
 
-!#ifdef MPI 
-!    if (grid%splitOverMPI) then
-!       write(updatedFilename,'(a,a,i3.3,a)') trim(filename),"_rank_",myrankGlobal
-!    endif
-!#endif
 
     writeHeader = .true.
     positionStatus = "rewind"
@@ -252,6 +247,23 @@ contains
 
        if (grid%splitOverMPI) then ! this section chooses whether we need to write the octal
 
+          if (nHydroThreadsGlobal == 4) then
+             if (myrankGlobal == 0) then 
+                if (thisOctal%nDepth == 1) then
+                   writeThisOctal = .true.
+                else
+                   writeThisOctal = .false.
+                endif
+             else
+                if (thisOctal%nDepth == 1) then
+                   writeThisOctal = .false.
+                else
+                   thisOctalPointer => thisOctal
+                   writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+                endif
+             endif
+          endif
+
           if (nHydroThreadsGlobal == 8) then
              if (myrankGlobal == 0) then 
                 if (thisOctal%nDepth == 1) then
@@ -299,6 +311,16 @@ contains
 
        if (grid%splitOverMpi) then ! this sets up the number of children for the zeroth thread
 
+          if (nHydroThreadsGlobal == 4) then
+             if ((thisOctal%nDepth == 1) .and. (myRankGlobal==0)) then
+                tempNChildren = 2
+                do i = 1, 2
+                   tempIndexChild(i) = i
+                enddo
+                tempHasChild = .true.
+             endif
+          endif
+
 
           if (nHydroThreadsGlobal == 8) then
              if ((thisOctal%nDepth == 1) .and. (myRankGlobal==0)) then
@@ -309,6 +331,7 @@ contains
                 tempHasChild = .true.
              endif
           endif
+
 
           if (nHydroThreadsGlobal == 64) then
              if (thisOctal%nDepth == 2) then
@@ -508,7 +531,6 @@ contains
              grid%nOctals = nOctals
           endif
           call torus_mpi_barrier
-          if (myrankGlobal == iThread) write(*,*) iThread, " finished reading"
        enddo
        call grid_info_mpi(grid, "info_grid.dat")
     endif
@@ -968,6 +990,19 @@ contains
 
       if (grid%splitOverMPI) then ! this sets the nummber of children correctly for the threads
 
+         if (nHydroThreadsGlobal == 4) then
+            if (myrankGlobal == 0) then
+               thisOctal%nChildren = 0
+            else
+               if (thisOctal%nDepth == 1) then
+                  thisOctal%nChildren = 1
+                  thisOctal%hasChild = .false.
+                  thisOctal%indexChild(1) = myRankGlobal
+                  thisOctal%hasChild(myRankGlobal) = .true.
+               endif
+            endif
+         endif
+
          if (nHydroThreadsGlobal == 8) then
             if (myrankGlobal == 0) then
                thisOctal%nChildren = 0
@@ -1020,6 +1055,38 @@ contains
       endif
 
       if (grid%splitOVerMPI) then
+
+         if (nHydroThreadsGlobal == 4) then
+            if (thisOctal%nDepth > 1) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     thisChild => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else
+               if (myrankGlobal == 0) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               else
+                  if (thisOctal%nChildren > 0) then 
+                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                     do iChild = 1, thisOctal%nChildren, 1
+                        do iThread = 1, myRankGlobal
+                           thisChild => thisOctal%child(iChild)
+                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                           if (iThread /= myRankGlobal) then
+                              call deleteOctreeBranch(thisChild,onlyChildren=.false., adjustParent=.false.)
+                           else
+                              exit
+                           endif
+                        enddo
+                     end do
+                  end if
+               endif
+            endif
+         endif
 
          if (nHydroThreadsGlobal == 8) then
             if (thisOctal%nDepth > 1) then
