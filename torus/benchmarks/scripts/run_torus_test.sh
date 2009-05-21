@@ -68,7 +68,7 @@ case ${SYSTEM} in
 
     intelmac) ./torus.intelmac  > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
-    zen) mpirun -np 4 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
+    zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
     *) echo "Unrecognised SYSTEM type. Aborting"
        exit 1;;
@@ -98,6 +98,7 @@ esac
 run_sphbench()
 {
 cd ${WORKING_DIR}/benchmarks/sphbench
+echo 1e5 > sphbench_params.dat
 ln -s ${WORKING_DIR}/lib/libtorus.a 
 ln -s ${WORKING_DIR}/lib/torus_mod.mod 
 ln -s ${TEST_DIR}/torus/isochrones/iso* .
@@ -108,7 +109,7 @@ case ${SYSTEM} in
 
     intelmac) ./sphbench > run_log_sphbench.txt 2>&1;;
 
-    zen) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1 ;;
+    zen) mpirun -np 8 sphbench > run_log_sphbench.txt 2>&1 ;;
 
     *) echo "Unrecognised SYSTEM type. Aborting"
        exit 1;;
