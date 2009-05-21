@@ -492,6 +492,7 @@ module input_variables
   logical :: doSmoothGridTau! smooth according to chris's algorithm
   real :: smoothFactor      ! maximum ratio between adjacent cell sizes before
                             !   smoothing is applied 
+  logical :: suppressLucySmooth ! Suppress grid smoothing in lucy_mod? 
   real :: sampleFreq        ! maximum number of samples made per subcell
   logical :: readFileFormatted  ! whether 'grid' input  file is formatted
   logical :: writeFileFormatted ! whether 'grid' output file is formatte

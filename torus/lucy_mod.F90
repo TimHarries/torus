@@ -28,6 +28,7 @@ contains
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, amax, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
+    use input_variables, only : suppressLucySmooth
 #ifdef MPI
     use input_variables, only : blockhandout
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
@@ -295,6 +296,8 @@ contains
           if (iIter_grand <= 3) thisSmooth = .true.
 
           if (variableDustSublimation) thisSmooth = .false.
+
+          if ( suppressLucySmooth ) thisSmooth = .false.
 
           if (thisSmooth) then
                  call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
