@@ -93,6 +93,8 @@ case ${SYSTEM} in
        exit 1;;
 esac
 
+ln -s tune.dat tune_hydro.txt
+
 }
 
 run_sphbench()
