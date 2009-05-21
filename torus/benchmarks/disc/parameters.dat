@@ -1,3 +1,4 @@
+suppressLucySmooth T
 usebias F
 nphotons 500000
 amrgridcentrex 2.e6
