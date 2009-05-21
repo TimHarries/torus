@@ -2134,9 +2134,6 @@ contains
     real(double) :: currentTime
     integer :: i
     type(VECTOR) :: direction
-    logical :: gridConverged
-    logical :: globalConverged(10)
-    logical :: tConverged(10)
     integer :: nHydroThreads
     real(double) :: tc(10)
     integer :: it
@@ -4318,7 +4315,7 @@ end subroutine refineGridGeneric2
   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
 
     type(GRIDTYPE) :: grid
-    logical :: gridConverged, inheritFlag
+    logical :: inheritFlag
     integer, optional :: dumpfiles
     integer :: myRank, nThreads
     include 'mpif.h'  
