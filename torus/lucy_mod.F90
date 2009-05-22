@@ -935,7 +935,7 @@ contains
           tfilename = "lucy.vtk"
        endif
        
-       call putTau(grid, 6.e4)
+       if ( .not. suppressLucySmooth ) call putTau(grid, 6.e4)
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
             "dust1      ", "deltaT     ", "etaline    "/))
