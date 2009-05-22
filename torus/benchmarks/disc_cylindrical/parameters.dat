@@ -1,3 +1,4 @@
+suppressLucySmooth T
 usebias F
 nphotons 500000
 amrgridcentrex 2.e6
@@ -8,7 +9,7 @@ amrgridsize 4.0e6
 dosmoothgrid T
 taumax 0.5
 taumin 0.001
-smoothgridtau T
+smoothgridtau F
 smoothfactor 2.
 limitscalar 5.e23
 samplefreq 2.
