@@ -1,4 +1,5 @@
 2 !verbosity
+suppressLucySmooth T
 forceLucyConv F
 tminglobal 3.0
 taudiff 1000.
