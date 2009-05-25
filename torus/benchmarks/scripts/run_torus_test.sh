@@ -70,8 +70,7 @@ case ${SYSTEM} in
 
     zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
-    *) echo "Unrecognised SYSTEM type. Aborting"
-       exit 1;;
+    *) echo "Unrecognised SYSTEM type. Skipping this test";;
 esac
 
 #Tag the tune.dat file 
@@ -89,8 +88,7 @@ case ${SYSTEM} in
 
     zen) mpirun -np 3 torus.zen > run_log_hydro.txt 2>&1 ;;
 
-    *) echo "Unrecognised SYSTEM type. Aborting"
-       exit 1;;
+    *) echo "Hydro benchmark does not run on this system. Skipping";;
 esac
 
 ln -s tune.dat tune_hydro.txt
@@ -100,7 +98,6 @@ ln -s tune.dat tune_hydro.txt
 run_sphbench()
 {
 cd ${WORKING_DIR}/benchmarks/sphbench
-echo 1e5 > sphbench_params.dat
 ln -s ${WORKING_DIR}/lib/libtorus.a 
 ln -s ${WORKING_DIR}/lib/torus_mod.mod 
 ln -s ${TEST_DIR}/torus/isochrones/iso* .
@@ -113,8 +110,7 @@ case ${SYSTEM} in
 
     zen) mpirun -np 8 sphbench > run_log_sphbench.txt 2>&1 ;;
 
-    *) echo "Unrecognised SYSTEM type. Aborting"
-       exit 1;;
+    *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
 }
@@ -274,8 +270,8 @@ case ${MODE} in
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    stable) export SYS_TO_TEST="ompi intelmac"
-            export DEBUG_OPTS="no yes"
+    stable) export SYS_TO_TEST="intelmac ompi"
+            export DEBUG_OPTS="yes no"
 	    export TORUS_FC="g95"
 	    export PATH=/sw/bin:/usr/local/bin:${PATH}
 	    echo TORUS stable version tests started on `date`
