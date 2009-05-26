@@ -911,12 +911,22 @@ end subroutine pre_initAMRGrid
           call writeInfo("Reading wavelength points from file.", TRIVIAL)
           open(77, file=lamfilename, status="old", form="formatted")
           nLambda = 1
+          ! Count the number of entries
 333       continue
           read(77,*,end=334) junk
-          xArray(nLambda) = junk
           nLambda = nLambda + 1
           goto 333
 334       continue
+          nlambda = nlambda - 1
+          allocate(xArray(nlambda))
+          ! Rewind the file and read them in
+          rewind(77)
+          nlambda=1
+335       continue
+          read(77,*,end=336) xArray(nlambda)
+          nLambda = nLambda + 1
+          goto 335
+336       continue
           nlambda = nlambda - 1
           close(77)
           goto 777

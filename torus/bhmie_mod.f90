@@ -6,7 +6,7 @@ MODULE bhmie_mod
   private :: NMXX
 
   integer, parameter :: MXNANG=1000
-  integer, parameter :: NMXX=400000
+  integer, parameter :: NMXX=4000000
 
 contains
 
