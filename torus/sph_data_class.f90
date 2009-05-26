@@ -1281,7 +1281,6 @@ contains
     type(octal), pointer :: thisOctal
 
     logical, save :: firsttime = .true.
-    logical, save :: firsttime2 =.true.
     integer :: subcell
     integer, save :: prevsubcell
     

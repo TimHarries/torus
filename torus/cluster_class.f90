@@ -353,7 +353,6 @@ contains
 
     type(GRIDTYPE), optional :: grid
     TYPE(octal), pointer :: thisOctal
-    type(octal), pointer, save :: previousOctal => null()
     INTEGER :: subcell
     real(double), parameter :: density_crit = 1d13
     type(vector) :: point, clusterparam
