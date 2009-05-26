@@ -372,7 +372,11 @@ contains
     end select
 
     do i = 1, nLambda 
-       if (lambda(i)*real(angsToMicrons) <= lamRef(nRef)) then
+       if (lambda(i)*real(angsToMicrons) < lamRef(1)) then
+          mReal(i) = tempReal(1)
+          mImg(i) = tempIm(1)
+       elseif (((lambda(i)*real(angsToMicrons)) >= lamRef(1)).and. &
+            (lambda(i)*real(angsToMicrons) <= lamRef(nRef))) then
           call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
           t = (lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j))
           mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
@@ -390,7 +394,6 @@ contains
                (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
           mImg(i) = 10.d0**mImg(i)
        endif
-
     enddo
 
   end subroutine getRefractiveIndex

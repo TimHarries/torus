@@ -2614,7 +2614,7 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
-       if (it == 1) then
+       if (it == 0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 1.d0, 0.d0)
@@ -2633,7 +2633,6 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           call refinegridGeneric(grid)
-          call writeVTKfile(grid, "split.vtk")
           
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,dorefine)
@@ -2658,7 +2657,6 @@ contains
           
        endif
     endif
-    call writeVTKfile(grid, "start.vtk")
 
     tc = 0.d0
     if (myrank /= 0) then
@@ -2676,7 +2674,7 @@ contains
 
     if (writeoutput) write(*,*) "Setting tdump to: ", tdump
 
-    if (it /= 1) then
+    if (it /= 0) then
        nextDumpTime = grid%currentTime + tdump
     endif
 
@@ -2711,6 +2709,7 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
+
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, jt=jt)
 
           iUnrefine = iUnrefine + 1
@@ -2727,7 +2726,6 @@ contains
 
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call writeInfo("Refining grid part 2", TRIVIAL)    
 
           call refinegridGeneric(grid)
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
@@ -4426,8 +4424,6 @@ end subroutine refineGridGeneric2
                    enddo
                 endif
                 nExternalLocs = nSent(1)
-
-
              endif
           enddo
 

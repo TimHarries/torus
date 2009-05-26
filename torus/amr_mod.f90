@@ -4025,6 +4025,8 @@ IF ( .NOT. gridConverged ) RETURN
           write(*,*) thisOctal%subcellSize
 !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+          fac = -2.d0
+          fac = sqrt(fac)
        endif
           if(.not. suppresswarnings) then
                 STOP
@@ -7729,6 +7731,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%gamma(subcell) = 7.d0/5.d0
     thisOctal%iEquationOfState(subcell) = 1
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
   end subroutine calcKelvinDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)

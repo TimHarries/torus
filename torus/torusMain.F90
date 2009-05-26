@@ -906,6 +906,22 @@ end subroutine pre_initAMRGrid
        deallocate(xArray)
     endif
 
+
+       if (lamFile) then
+          call writeInfo("Reading wavelength points from file.", TRIVIAL)
+          open(77, file=lamfilename, status="old", form="formatted")
+          nLambda = 1
+333       continue
+          read(77,*,end=334) junk
+          xArray(nLambda) = junk
+          nLambda = nLambda + 1
+          goto 333
+334       continue
+          nlambda = nlambda - 1
+          close(77)
+          goto 777
+       endif
+
      if (lucyradiativeEq) then
         call writeInfo("Doing radiative equilibrium so setting own wavelength arrays", TRIVIAL)
         nLambda = 200
@@ -1028,19 +1044,6 @@ end subroutine pre_initAMRGrid
      endif
 
 
-       if (lamFile) then
-          call writeInfo("Reading wavelength points from file.", TRIVIAL)
-          open(77, file=lamfilename, status="old", form="formatted")
-          nLambda = 1
-333       continue
-          read(77,*,end=334) junk
-          xArray(nLambda) = junk
-          nLambda = nLambda + 1
-          goto 333
-334       continue
-          nlambda = nlambda - 1
-          close(77)
-       endif
 
 777 continue
     !
