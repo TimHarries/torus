@@ -7728,7 +7728,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%boundaryCondition(subcell) = 2
     endif
 
-    thisOctal%gamma(subcell) = 7.d0/5.d0
+    thisOctal%gamma(subcell) = 5.d0/3.d0
     thisOctal%iEquationOfState(subcell) = 1
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)

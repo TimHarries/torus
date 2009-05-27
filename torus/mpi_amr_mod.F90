@@ -1983,7 +1983,7 @@ contains
                (       u) * (       v) * eCorner(4)
        endif
 
-       if (thisOctal%twod) then
+       if (thisOctal%oned) then
           rVec = subcellcentre(thisOctal, iSubcell)
           x = rVec%x
           u = (x - x1)/(x2 - x1)

@@ -4339,7 +4339,6 @@ end subroutine refineGridGeneric2
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
     ! first even up the local part of the grid
 
-    call setAllUnchanged(grid%octreeRoot)
 
     globalConverged = .false.
     iter = 0
@@ -4357,11 +4356,11 @@ end subroutine refineGridGeneric2
 
     allThreadsConverged = .false.
     do while(.not.allThreadsConverged)
+       call setAllUnchanged(grid%octreeRoot)
        localChanged = .false.
 
        globalConverged = .false.
        do
-          call setAllUnchanged(grid%octreeRoot)
           globalConverged(myRankGlobal) = .true.
           do iThread = 1, nThreadsGlobal-1
              if (myrankGlobal /= iThread) then
@@ -4377,6 +4376,7 @@ end subroutine refineGridGeneric2
           enddo
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nThreadsGlobal-1)
           if (ALL(tConverged(1:nthreadsGlobal-1))) exit
        enddo
 
@@ -4431,11 +4431,10 @@ end subroutine refineGridGeneric2
           do iThread = 1, nThreadsGlobal-1
              if (myrankGlobal /= iThread) then
                 call hydroValuesServer(grid, iThread)
-                call setAllUnchanged(grid%octreeRoot)
+             else
                 do i = 1, nExternalLocs
                    call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank), inherit=inheritflag)
                 enddo
-             else
                 call shutdownServers()
              endif
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -4450,7 +4449,6 @@ end subroutine refineGridGeneric2
 
           globalConverged = .false.
           do
-             call setAllUnchanged(grid%octreeRoot)
              globalConverged(myRankGlobal) = .true.
              do iThread = 1, nThreadsGlobal-1
                 if (myrankGlobal /= iThread) then
@@ -4466,6 +4464,7 @@ end subroutine refineGridGeneric2
              enddo
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+             if (myrank == 1) write(*,*) "second evenup ",tConverged(1:nThreadsGlobal-1)
              if (ALL(tConverged(1:nthreadsGlobal-1))) exit
           enddo
           if (PRESENT(dumpfiles)) then
@@ -4475,6 +4474,7 @@ end subroutine refineGridGeneric2
 
           call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 
+          if (myrank == 1) write(*,*) "globalChanged ",globalChanged(1:nThreadsGlobal-1)
           if (ANY(globalChanged(1:nThreadsGlobal-1))) then
              allThreadsConverged = .false.
           else

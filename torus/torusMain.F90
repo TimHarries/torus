@@ -918,16 +918,13 @@ end subroutine pre_initAMRGrid
           goto 333
 334       continue
           nlambda = nlambda - 1
+          write(*,*) "LAMBDA FILE HAS ",nLAMBDA, " points"
           allocate(xArray(nlambda))
           ! Rewind the file and read them in
           rewind(77)
-          nlambda=1
-335       continue
-          read(77,*,end=336) xArray(nlambda)
-          nLambda = nLambda + 1
-          goto 335
-336       continue
-          nlambda = nlambda - 1
+          do i = 1, nLambda
+             read(77,*) xArray(i)
+          enddo
           close(77)
           goto 777
        endif
