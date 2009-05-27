@@ -1349,7 +1349,6 @@ end subroutine pre_initAMRGrid
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
-    real(double) :: removedMass
     real         :: sigmaExt0
     logical      :: gridConverged  ! true when adaptive grid structure has 
                                    !   been finalised
