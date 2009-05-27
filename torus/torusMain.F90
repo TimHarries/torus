@@ -1501,12 +1501,6 @@ end subroutine pre_initAMRGrid
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-!          call estimateRhoOfEmpty(grid, grid%octreeRoot)	
-           !Removing the cells within 10^14 cm from the stars.
-          removedMass = 0.0
-          call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4, removedMass, amr_min_rho, 's')
-          write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
-          call writeInfo(message, TRIVIAL)
 
        case("molcluster")
           if(.not. readmol) then
