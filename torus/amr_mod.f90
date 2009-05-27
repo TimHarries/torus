@@ -10721,9 +10721,12 @@ end function readparameterfrom2dmap
     nValsREAL = REAL( nVals, KIND=double )
 
 
-    parentOctal%boundaryCondition(parentSubcell) = childOctal%boundaryCondition(1)
-    parentOctal%gamma(parentSubcell) = childOctal%gamma(1)
-    parentOctal%iEquationofState(parentSubcell) = childOctal%iEquationofState(1)
+    if (associated(childOctal%boundaryCondition)) &
+         parentOctal%boundaryCondition(parentSubcell) = childOctal%boundaryCondition(1)
+    if (associated(childOctal%gamma)) &
+         parentOctal%gamma(parentSubcell) = childOctal%gamma(1)
+    if (associated(childOctal%iEquationOfState)) &
+         parentOctal%iEquationofState(parentSubcell) = childOctal%iEquationofState(1)
     
     parentOctal%rho(parentSubcell) =                    &
     SUM(childOctal%rho(1:nVals)) / nValsREAL

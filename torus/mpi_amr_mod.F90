@@ -1715,7 +1715,7 @@ contains
     integer :: newChildIndex
     integer :: i, iCorner, iDir, nCorner, nDir
     integer :: nd, iSubcell, parentSubcell
-    type(VECTOR) :: dir(4), corner(4), position, rVec
+    type(VECTOR) :: dir(4), corner(4), position, rVec, testvec
     real(double) :: rhoCorner(4)
     real(double) :: rhoeCorner(4)
     real(double) :: rhouCorner(4)
@@ -1726,7 +1726,12 @@ contains
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy
     real(double) :: x1, x2, z1, z2, u, v, x, z
     logical, save :: firstTime = .true.
+    logical :: debug
 
+    debug = .false.
+
+    testVec = VECTOR(0.290d0, 0.d0, 0.253d0)
+    if (inOctal(parent, testVec)) debug = .true.
     if (parent%ndepth == maxDepthAMR) then
        if (firstTime) then
           call writeWarning("Cell depth capped in addNewChildWithInterp")
@@ -1900,6 +1905,10 @@ contains
     rhouCorner = 0.d0
     rhovCorner = 0.d0
     rhowCorner = 0.d0
+
+    if (debug) then
+       write(*,*) "addnewchild with interp debug"
+    endif
     do iCorner = 1, nCorner
        totalWeight = 0.d0
        do iDir = 1, nDir
@@ -1910,6 +1919,7 @@ contains
 
              totalWeight = totalWeight + weight
              rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
+             if (debug) write(*,*) "from get hydro values corner ", icorner, " rho ", rho
              rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe
              rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
              rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
@@ -1919,13 +1929,13 @@ contains
              weight = 1.d0
              totalWeight = totalWeight + weight
              rhoCorner(iCorner) = rhoCorner(iCorner) + parent%rho(parentSubcell)
+             if (debug) write(*,*) "from parent values corner ", icorner, " rho ", parent%rho(parentsubcell)
              rhoeCorner(iCorner) = rhoeCorner(iCorner) + parent%rhoe(parentSubcell)
              rhouCorner(iCorner) = rhouCorner(iCorner) + parent%rhou(parentSubcell)
              rhovCorner(iCorner) = rhovCorner(iCorner) + parent%rhov(parentSubcell)
              rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
              eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
           endif
-
        enddo
        rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
        rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
