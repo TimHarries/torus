@@ -121,7 +121,6 @@ contains
     call getInteger("nlambda", nlambdaInput, cLine, nLines, &
          "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 0, ok, .false.)
 
-
     call getReal("lambdatau", lambdatau, cLine, nLines, &
          "Lambda for tau test: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
 
@@ -144,12 +143,6 @@ contains
        call getReal("imagearcsec", imageSizeinArcsec, cLine, nLines, &
             "Image size in arcseconds: ","(a,f10.3,1x,a)", 0., ok, .false.)
     endif
-
-    call getLogical("sed", sed, cLine, nLines, &
-         "Write spectrum as normalized lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getLogical("jansky", jansky, cLine, nLines, &
-         "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("npix", npix, cLine, nLines, &
          "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .false.)
