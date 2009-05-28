@@ -12,14 +12,16 @@ attach_list=""
 for file in cvs_log.txt  benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt
  
 do
-    file_size=`du -ks ${file} | awk '{print $1}'`
-    if [[ ${file_size} -gt 1000 ]]; then
-	echo "Warning: file ${file} has size ${file_size} k" >> ${LOG_FILE}
-	echo "This file will not be mailed." >> ${LOG_FILE}
-    elif [[ ! -e ${file} ]]; then
+    if [[ ! -e ${file} ]]; then 
 	echo "${file} does not exist"
     else
-	attach_list="${attach_list} -a ${file}"
+	file_size=`du -ks ${file} | awk '{print $1}'`
+	if [[ ${file_size} -gt 1000 ]]; then
+	    echo "Warning: file ${file} has size ${file_size} k" >> ${LOG_FILE}
+	    echo "This file will not be mailed." >> ${LOG_FILE}
+	else
+	    attach_list="${attach_list} -a ${file}"
+	fi
     fi
 done
 
