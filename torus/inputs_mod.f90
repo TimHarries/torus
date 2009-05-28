@@ -2283,10 +2283,10 @@ contains
             "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
        call getReal("rcore", rCore, cLine, nLines, &
-            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
 
        call getReal("rinner", rInner, cLine, nLines, &
-            "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
 
        call getReal("router", rOuter, cLine, nLines, &
             "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)

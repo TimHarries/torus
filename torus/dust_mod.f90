@@ -375,7 +375,7 @@ contains
        if (lambda(i)*real(angsToMicrons) < lamRef(1)) then
           mReal(i) = tempReal(1)
           mImg(i) = tempIm(1)
-       elseif (((lambda(i)*real(angsToMicrons)) >= lamRef(1)).and. &
+       elseif (((lambda(i)*real(angsToMicrons)) >= lamRef(1)) .and. &
             (lambda(i)*real(angsToMicrons) <= lamRef(nRef))) then
           call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
           t = (lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j))
