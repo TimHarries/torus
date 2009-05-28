@@ -923,6 +923,11 @@ contains
           endif
        endif
 
+       if (iIter_grand > 20) then
+          write(message,'(a)') "Lucy loop exceeded 20 iterations. Forcing convergence"
+          converged = .true.
+       endif
+
        ! forceLucyConv is set in the parameters.dat file if required
        if ( forceLucyConv ) then
           converged = .true.

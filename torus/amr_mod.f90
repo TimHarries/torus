@@ -208,6 +208,9 @@ CONTAINS
     CASE("kelvin")
        call calcKelvinDensity(thisOctal, subcell, grid)
 
+    CASE("rtaylor")
+       call calcRTaylorDensity(thisOctal, subcell, grid)
+
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell, grid)
 
@@ -4587,6 +4590,11 @@ IF ( .NOT. gridConverged ) RETURN
       if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
+   case("rtaylor")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+
    case("sedov")
 
       ! Split is decided using mindepthAMR defined globally
@@ -7733,6 +7741,48 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
   end subroutine calcKelvinDensity
+
+  subroutine calcRTaylorDensity(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(VECTOR) :: rVec
+    real :: u1 !, u2
+    real(double), parameter :: gamma = 5.d0/3.d0
+    
+
+    rVec = subcellCentre(thisOctal, subcell)
+    
+    if (rVec%z > 0.0d0) then
+       thisOctal%rho(subcell) = 2.d0
+    else
+       thisOctal%rho(subcell) = 1.d0
+    endif
+    
+    u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))
+    thisOctal%velocity = VECTOR(0.d0, 0.d0, u1)/cSpeed
+
+
+    thisOctal%pressure_i(subcell) = 2.5d0 - thisOctal%rho(subcell) * rVec%z
+    thisOctal%phi_i(subcell) = rvec%z
+
+
+
+    thisOctal%boundaryCondition(subcell) = 2
+
+    thisOctal%gamma(subcell) = 7.d0/5.d0
+    thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+    zplusbound = 2
+    zminusbound = 2
+    xplusbound = 1
+    xminusbound = 1
+    yplusbound = 1
+    yminusbound = 1
+  end subroutine calcRTaylorDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
 

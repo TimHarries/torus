@@ -2298,6 +2298,7 @@ contains
     doSelfGrav = .true.
 
     if (grid%geometry == "shakara") doSelfGrav = .false.
+    if (grid%geometry == "rtaylor") doSelfGrav = .false.
 
     dorefine = .true.
 
@@ -2358,31 +2359,14 @@ contains
 
 
        call writeInfo("Refining individual subgrids", TRIVIAL)
-       if (.not.grid%splitOverMpi) then
-          do
-             gridConverged = .true.
-             call setupEdges(grid%octreeRoot, grid)
-             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
-             call unsetGhosts(grid%octreeRoot)
-             call setupGhostCells(grid%octreeRoot, grid)
-             if (gridConverged) exit
-          end do
-       else
-          call evenUpGridMPI(grid, .false., dorefine)
-       endif
+       call evenUpGridMPI(grid, .false., dorefine)
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Refining grid part 2", TRIVIAL)    
        globalConverged = .false.
-       do
-          globalConverged(myRank) = .true.
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:nHydroThreads))) exit
-       end do
 
+
+       call refineGridGeneric(grid)
 
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid,.false., dorefine)
@@ -2418,15 +2402,14 @@ contains
 
     tc = 0.d0
     if (myrank /= 0) then
-    tc(myrank) = 1.d30
+       tc(myrank) = 1.d30
        call computeCourantTime(grid%octreeRoot, tc(myRank))
     endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
 
 
     dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
-
-    if (grid%geometry == "shakara") then
+    if ((grid%geometry == "shakara").or.(grid%geometry=="rtaylor")) then
        tdump =  dt
     endif
 
@@ -2442,9 +2425,10 @@ contains
          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          " /))
 
     do while(.true.)
-       tc = 0.d0
-       tc(myrank) = 1.d30
-       if (myrank /= 0) call computeCourantTime(grid%octreeRoot, tc(myRank))
+       if (myrank /= 0) then
+          tc(myrank) = 1.d30
+          call computeCourantTime(grid%octreeRoot, tc(myRank))
+       endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
        !       write(*,*) "tc", tc(1:8)
        !       if (myrank==1)write(*,*) "temp tc",temptc(1:nHydroThreads)
@@ -2496,16 +2480,7 @@ contains
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call writeInfo("Refining grid part 2", TRIVIAL)    
-          globalConverged = .false.
-          do
-             globalConverged(myRank) = .true.
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
-             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-             if (ALL(tConverged(1:nHydroThreads))) exit
-          end do
-
+          call refineGridGeneric(grid)
           !          
           call evenUpGridMPI(grid, .true., dorefine)
 
@@ -2532,12 +2507,13 @@ contains
           grid%iDump = it
           grid%currentTime = currentTime
 
-          if (myrankGlobal /= 0) then
-             write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
-             call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
-                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
-          endif
+!          if (myrankGlobal /= 0) then
+!             write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
+!             call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
+!                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
+!          endif
 
+          write(*,*) myrankglobal, " entering dump writing"
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
 
@@ -3523,7 +3499,7 @@ contains
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
     integer :: myRank, ierr
-
+    character(len=10) :: boundary
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -3572,10 +3548,48 @@ contains
              if (.not.inOctal(grid%octreeRoot, locator)) then
                 nProbeOutside = nProbeOutside + 1
                 thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
+
+
+                if (thisOctal%oneD) then
+                   if (iProbe == 1) then
+                      boundary = "xplus"
+                   else
+                      boundary = "xminus"
+                   endif
+                endif
+                if (thisOctal%twoD) then
+                   select case (iProbe)
+                      case(1) 
+                         boundary = "xplus"
+                      case(2)
+                         boundary = "xminus"
+                      case(3)
+                         boundary = "zplus"
+                      case(4)
+                         boundary = "zminus"
+                   end select
+                endif
+                if (thisOctal%threeD) then
+                   select case (iProbe)
+                      case(1) 
+                         boundary = "xplus"
+                      case(2)
+                         boundary = "xminus"
+                      case(3)
+                         boundary = "yplus"
+                      case(4)
+                         boundary = "yminus"
+                      case(5)
+                         boundary  = "zplus"
+                      case(6)
+                         boundary = "zminus"
+                   end select
+                endif
              endif
           enddo
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
+             thisOctal%boundaryCondition(subcell) = getBoundary(boundary)
           endif
        endif
     enddo
@@ -3650,6 +3664,8 @@ contains
                    if (inOctal(grid%octreeRoot, tVec)) then
                       thisOctal%ghostCell(subcell) = .true.
                       thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
+                      thisOctal%boundaryCondition(subcell) = &
+                           neighbourOctal%boundaryCondition(neighbourSubcell)
                       exit
                    endif
                 endif
@@ -3724,10 +3740,29 @@ contains
     enddo
   end subroutine setupGhosts
 
+  integer function getBoundary(boundary) result(i)
+    use input_variables, only : xplusbound, yplusbound, zplusbound, &
+         xminusbound, yminusbound, zminusbound 
+    character(len=*) :: boundary
 
-
-
-
+    select case (boundary)
+       case("xminus")
+          i = xminusbound
+       case("yminus")
+          i = yminusbound
+       case("zminus")
+          i = zminusbound
+       case("xplus")
+          i = xplusbound
+       case("yplus")
+          i = yplusbound
+       case("zplus")
+          i = zplusbound
+       case DEFAULT
+          call writeFatal("Boundary not recognised in get boundary: "//trim(boundary))
+          stop
+     end select
+   end function getBoundary
 
   subroutine refineGridGeneric(grid)
     include 'mpif.h'
@@ -4376,7 +4411,7 @@ end subroutine refineGridGeneric2
           enddo
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nThreadsGlobal-1)
+!          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nThreadsGlobal-1)
           if (ALL(tConverged(1:nthreadsGlobal-1))) exit
        enddo
 
@@ -4464,7 +4499,7 @@ end subroutine refineGridGeneric2
              enddo
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-             if (myrank == 1) write(*,*) "second evenup ",tConverged(1:nThreadsGlobal-1)
+!             if (myrank == 1) write(*,*) "second evenup ",tConverged(1:nThreadsGlobal-1)
              if (ALL(tConverged(1:nthreadsGlobal-1))) exit
           enddo
           if (PRESENT(dumpfiles)) then
@@ -4474,7 +4509,7 @@ end subroutine refineGridGeneric2
 
           call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 
-          if (myrank == 1) write(*,*) "globalChanged ",globalChanged(1:nThreadsGlobal-1)
+!          if (myrank == 1) write(*,*) "globalChanged ",globalChanged(1:nThreadsGlobal-1)
           if (ANY(globalChanged(1:nThreadsGlobal-1))) then
              allThreadsConverged = .false.
           else

@@ -1731,7 +1731,7 @@ contains
     debug = .false.
 
     testVec = VECTOR(0.290d0, 0.d0, 0.253d0)
-    if (inOctal(parent, testVec)) debug = .true.
+    if (inSubcell(parent, ichild, testVec)) debug = .true.
     if (parent%ndepth == maxDepthAMR) then
        if (firstTime) then
           call writeWarning("Cell depth capped in addNewChildWithInterp")
@@ -1880,11 +1880,11 @@ contains
        dir(4) = VECTOR(-r, 0.d0, +r)
        
        nCorner = 4
-       r = parent%subcellSize
-       corner(1) = parent%centre + VECTOR(-r, 0.d0, -r)
-       corner(2) = parent%centre + VECTOR(+r, 0.d0, -r)
-       corner(3) = parent%centre + VECTOR(-r, 0.d0, +r)
-       corner(4) = parent%centre + VECTOR(+r, 0.d0, +r)
+       r = thisOctal%subcellSize
+       corner(1) = thisOctal%centre + VECTOR(-r, 0.d0, -r)
+       corner(2) = thisOctal%centre + VECTOR(+r, 0.d0, -r)
+       corner(3) = thisOctal%centre + VECTOR(-r, 0.d0, +r)
+       corner(4) = thisOctal%centre + VECTOR(+r, 0.d0, +r)
     endif
 
     if (thisOctal%oneD) then
@@ -1894,9 +1894,9 @@ contains
        dir(2) = VECTOR(+r, 0.d0, 0.d0)
        
        nCorner = 2
-       r = parent%subcellSize
-       corner(1) = parent%centre + VECTOR(-r, 0.d0, 0.d0)
-       corner(2) = parent%centre + VECTOR(+r, 0.d0, 0.d0)
+       r = thisOctal%subcellSize
+       corner(1) = thisOctal%centre + VECTOR(-r, 0.d0, 0.d0)
+       corner(2) = thisOCtal%centre + VECTOR(+r, 0.d0, 0.d0)
     endif
 
     rhoCorner = 0.d0
@@ -1913,7 +1913,7 @@ contains
        totalWeight = 0.d0
        do iDir = 1, nDir
           position = corner(iCorner) + dir(iDir)
-          if (inOctal(grid%octreeRoot, position).and.(.not.inOctal(parent, position))) then
+          if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(parent, parentSubcell, position))) then
              call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy)
              weight = abs(parent%ndepth - nd)+1.d0
 

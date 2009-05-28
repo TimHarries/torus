@@ -723,6 +723,9 @@ contains
     case("kelvin")
        grid%geometry = "kelvin"
 
+    case("rtaylor")
+       grid%geometry = "rtaylor"
+
     case("bonnor")
        grid%geometry = "bonnor"
 
