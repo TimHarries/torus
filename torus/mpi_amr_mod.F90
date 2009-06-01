@@ -1542,7 +1542,7 @@ contains
           tempStorage(5) = thisOctal%rhow(Subcell)
           tempStorage(6) = thisOctal%energy(Subcell)
           tempStorage(7) = thisOctal%pressure_i(Subcell)
-!          tempStorage(8) = thisOctal%phi_i(Subcell)
+          tempStorage(8) = thisOctal%phi_i(Subcell)
 !          write(*,*) myRankGlobal, " sending tempstorage to ", receiveThread
           call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
        endif
@@ -1715,23 +1715,24 @@ contains
     integer :: newChildIndex
     integer :: i, iCorner, iDir, nCorner, nDir
     integer :: nd, iSubcell, parentSubcell
-    type(VECTOR) :: dir(4), corner(4), position, rVec, testvec
-    real(double) :: rhoCorner(4)
-    real(double) :: rhoeCorner(4)
-    real(double) :: rhouCorner(4)
-    real(double) :: rhovCorner(4)
-    real(double) :: rhowCorner(4)
-    real(double) :: eCorner(4)
+    type(VECTOR) :: dir(8), corner(8), position, rVec, testvec
+    real(double) :: rhoCorner(8)
+    real(double) :: rhoeCorner(8)
+    real(double) :: rhouCorner(8)
+    real(double) :: rhovCorner(8)
+    real(double) :: rhowCorner(8)
+    real(double) :: eCorner(8)
+    real(double) :: phiCorner(8)
     real(double) :: weight, totalWeight
-    real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy
-    real(double) :: x1, x2, z1, z2, u, v, x, z
+    real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
+    real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z
     logical, save :: firstTime = .true.
     logical :: debug
 
     debug = .false.
 
     testVec = VECTOR(0.290d0, 0.d0, 0.253d0)
-    if (inSubcell(parent, ichild, testVec)) debug = .true.
+!    if (inSubcell(parent, ichild, testVec)) debug = .true.
     if (parent%ndepth == maxDepthAMR) then
        if (firstTime) then
           call writeWarning("Cell depth capped in addNewChildWithInterp")
@@ -1871,6 +1872,30 @@ contains
     thisOctal%iEquationOfState = parent%iEquationofState(parentSubcell)
 
 
+    if (thisOctal%threed) then
+       nDir = 8
+       r = 0.1d0*grid%halfSmallestSubcell
+       dir(1) = VECTOR(-r, -r, -r)
+       dir(2) = VECTOR(+r, -r, -r)
+       dir(3) = VECTOR(-r, -r, +r)
+       dir(4) = VECTOR(+r, -r, +r)
+       dir(5) = VECTOR(-r, +r, -r)
+       dir(6) = VECTOR(+r, +r, -r)
+       dir(7) = VECTOR(-r, +r, +r)
+       dir(8) = VECTOR(+r, +r, +r)
+       
+       nCorner = 8
+       r = thisOctal%subcellSize
+       corner(1) = thisOctal%centre + VECTOR(-r, -r, -r)
+       corner(2) = thisOctal%centre + VECTOR(+r, -r, -r)
+       corner(3) = thisOctal%centre + VECTOR(-r, -r, +r)
+       corner(4) = thisOctal%centre + VECTOR(+r, -r, +r)
+       corner(5) = thisOctal%centre + VECTOR(-r, +r, -r)
+       corner(6) = thisOctal%centre + VECTOR(+r, +r, -r)
+       corner(7) = thisOctal%centre + VECTOR(-r, +r, +r)
+       corner(8) = thisOctal%centre + VECTOR(+r, +r, +r)
+    endif
+
     if (thisOctal%twod) then
        nDir = 4
        r = 0.1d0*grid%halfSmallestSubcell
@@ -1914,7 +1939,7 @@ contains
        do iDir = 1, nDir
           position = corner(iCorner) + dir(iDir)
           if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(parent, parentSubcell, position))) then
-             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy)
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
              weight = abs(parent%ndepth - nd)+1.d0
 
              totalWeight = totalWeight + weight
@@ -1925,6 +1950,7 @@ contains
              rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
              rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
              eCorner(iCorner) = eCorner(iCorner) + weight * energy
+             phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
           else
              weight = 1.d0
              totalWeight = totalWeight + weight
@@ -1935,6 +1961,7 @@ contains
              rhovCorner(iCorner) = rhovCorner(iCorner) + parent%rhov(parentSubcell)
              rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
              eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
+             phiCorner(iCorner) = phiCorner(iCorner) + parent%phi_i(parentSubcell)
           endif
        enddo
        rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
@@ -1943,16 +1970,91 @@ contains
        rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
        rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
        eCorner(iCorner) = eCorner(iCorner) / totalWeight
+       phiCorner(iCorner) = phiCorner(iCorner) / totalWeight
     enddo
-    x1 = parent%xMin
-    x2 = parent%xMax
-    z1 = parent%zMin
-    z2 = parent%zMax
+    x1 = thisOctal%xMin
+    x2 = thisOctal%xMax
+    y1 = thisOctal%yMin
+    y2 = thisOctal%yMax
+    z1 = thisOctal%zMin
+    z2 = thisOctal%zMax
 
     thisOctal%changed = .true.
 
     do iSubcell = 1, thisOctal%maxChildren
 
+       if (thisOctal%threed) then
+          rVec = subcellcentre(thisOctal, iSubcell)
+          x = rVec%x
+          y = rVec%y
+          z = rVec%z
+          u = (x - x1)/(x2 - x1)
+          v = (y - y1)/(y2 - y1)
+          w = (z - z1)/(z2 - z1)
+          thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * rhoCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * rhoCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * rhoCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * rhoCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * rhoCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * rhoCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * rhoCorner(7) + &
+                                    (       u) * (       v) * (       w) * rhoCorner(8) 
+
+          thisOctal%rhoe(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * rhoeCorner(1) + &
+                                     (       u) * (1.d0 - v) * (1.d0 - w) * rhoeCorner(2) + &
+                                     (1.d0 - u) * (1.d0 - v) * (       w) * rhoeCorner(3) + &
+                                     (       u) * (1.d0 - v) * (       w) * rhoeCorner(4) + &
+                                     (1.d0 - u) * (       v) * (1.d0 - w) * rhoeCorner(5) + &
+                                     (       u) * (       v) * (1.d0 - w) * rhoeCorner(6) + &
+                                     (1.d0 - u) * (       v) * (       w) * rhoeCorner(7) + &
+                                     (       u) * (       v) * (       w) * rhoeCorner(8) 
+
+          thisOctal%rhou(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * rhouCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * rhouCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * rhouCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * rhouCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * rhouCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * rhouCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * rhouCorner(7) + &
+                                    (       u) * (       v) * (       w) * rhouCorner(8) 
+
+          thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * rhovCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * rhovCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * rhovCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * rhovCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * rhovCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * rhovCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * rhovCorner(7) + &
+                                    (       u) * (       v) * (       w) * rhovCorner(8) 
+
+          thisOctal%rhow(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * rhowCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * rhowCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * rhowCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * rhowCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * rhowCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * rhowCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * rhowCorner(7) + &
+                                    (       u) * (       v) * (       w) * rhowCorner(8) 
+
+          thisOctal%energy(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * eCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * eCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * eCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * eCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * eCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * eCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * eCorner(7) + &
+                                    (       u) * (       v) * (       w) * eCorner(8) 
+
+          thisOctal%phi_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * phiCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * phiCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * phiCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * phiCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * phiCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * phiCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * phiCorner(7) + &
+                                    (       u) * (       v) * (       w) * phiCorner(8) 
+
+       endif
        if (thisOctal%twod) then
           rVec = subcellcentre(thisOctal, iSubcell)
           x = rVec%x
@@ -1991,6 +2093,12 @@ contains
                (       u) * (1.d0 - v) * eCorner(2) + &
                (1.d0 - u) * (       v) * eCorner(3) + &
                (       u) * (       v) * eCorner(4)
+
+
+          thisOctal%phi_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * phiCorner(1) + &
+               (       u) * (1.d0 - v) * phiCorner(2) + &
+               (1.d0 - u) * (       v) * phiCorner(3) + &
+               (       u) * (       v) * phiCorner(4)
        endif
 
        if (thisOctal%oned) then
@@ -2044,16 +2152,16 @@ contains
     enddo
   end subroutine shutdownServers
 
-  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy)
+  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
-    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy
+    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi
     type(VECTOR) :: position
     real(double) :: loc(3)
     type(OCTAL), pointer :: thisOctal, parent
     integer :: iThread
-    integer, parameter :: nStorage = 7
+    integer, parameter :: nStorage = 8
     real(double) :: tempStorage(nStorage)
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
@@ -2072,6 +2180,7 @@ contains
           rhow = thisOctal%rhow(subcell)
           nd = thisOctal%nDepth
           energy = thisOctal%energy(subcell)
+          phi = thisOctal%phi_i(subcell)
        else
           parent => thisOctal%parent
           rho =  parent%rho(thisOctal%parentsubcell)
@@ -2081,6 +2190,7 @@ contains
           rhow = parent%rhow(thisOctal%parentsubcell)
           nd = parent%nDepth
           energy = parent%energy(thisOctal%parentSubcell)
+          phi = parent%phi_i(thisOctal%parentSubcell)
        endif
     else
        iThread = thisOctal%mpiThread(subcell)
@@ -2096,6 +2206,7 @@ contains
        rhov = tempStorage(5)
        rhow = tempStorage(6)
        energy = tempStorage(7)
+       phi = tempStorage(8)
     endif
   end subroutine getHydroValues
 
@@ -2108,7 +2219,7 @@ contains
     type(OCTAL), pointer :: thisOctal, parent
     integer :: subcell
     integer :: iThread
-    integer, parameter :: nStorage = 7
+    integer, parameter :: nStorage = 8
     real(double) :: tempStorage(nStorage)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -2135,6 +2246,7 @@ contains
              tempStorage(5) = thisOctal%rhov(subcell)             
              tempStorage(6) = thisOctal%rhow(subcell)        
              tempStorage(7) = thisOctal%energy(subcell)
+             tempStorage(8) = thisOctal%phi_i(subcell)
           else
              parent => thisOctal%parent
              tempStorage(1) = parent%nDepth
@@ -2144,6 +2256,7 @@ contains
              tempStorage(5) = parent%rhov(thisOctal%parentsubcell)             
              tempStorage(6) = parent%rhow(thisOctal%parentsubcell)        
              tempStorage(7) = parent%energy(thisOctal%parentsubcell)        
+             tempStorage(8) = parent%phi_i(thisOctal%parentsubcell)        
           endif
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif

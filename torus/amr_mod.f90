@@ -7686,6 +7686,9 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%gamma(subcell) = 7.d0/5.d0
     thisOctal%iEquationOfState(subcell) = 0
 
+    xplusbound = 1
+    xminusbound = 1
+
   end subroutine calcHydro1DDensity
 
   subroutine calcKelvinDensity(thisOctal,subcell,grid)
@@ -7740,6 +7743,12 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%iEquationOfState(subcell) = 1
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 2
+    xminusbound = 2
+
   end subroutine calcKelvinDensity
 
   subroutine calcRTaylorDensity(thisOctal,subcell,grid)
@@ -7761,9 +7770,13 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = 1.d0
     endif
     
-    u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))
+    if (thisOctal%threed) then
+       u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
+    else
+       u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%z))/4.d0
+    endif
     thisOctal%velocity = VECTOR(0.d0, 0.d0, u1)/cSpeed
-
+!    thisOctal%velocity = VECTOR(0.d0, 0.d0, 0.d0)
 
     thisOctal%pressure_i(subcell) = 2.5d0 - thisOctal%rho(subcell) * rVec%z
     thisOctal%phi_i(subcell) = rvec%z
@@ -7776,12 +7789,12 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%iEquationOfState(subcell) = 1
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-    zplusbound = 2
-    zminusbound = 2
-    xplusbound = 1
-    xminusbound = 1
-    yplusbound = 1
-    yminusbound = 1
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 2
+    xminusbound = 2
+    yplusbound = 2
+    yminusbound = 2
   end subroutine calcRTaylorDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)

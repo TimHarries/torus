@@ -2351,23 +2351,14 @@ contains
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
 
-       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
 
        if (myrank == 1) call tune(6, "Initial refine")
 
 
-       call writeInfo("Refining individual subgrids", TRIVIAL)
-       call evenUpGridMPI(grid, .false., dorefine)
-
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call writeInfo("Refining grid part 2", TRIVIAL)    
-       globalConverged = .false.
-
 
        call refineGridGeneric(grid)
-
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid,.false., dorefine)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2380,15 +2371,6 @@ contains
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
-       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-       call calculateRhoE(grid%octreeRoot, direction)
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call calculateRhoU(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 1.d0, 0.d0)
-       call calculateRhoV(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 0.d0, 1.d0)
-       call calculateRhoW(grid%octreeRoot, direction)
-
 
        if (doselfGrav) then
           if (myrank == 1) call tune(6, "Self-Gravity")
@@ -2410,7 +2392,7 @@ contains
 
     dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
     if ((grid%geometry == "shakara").or.(grid%geometry=="rtaylor")) then
-       tdump =  dt
+       tdump =  20.d0 * dt
     endif
 
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
@@ -2486,6 +2468,7 @@ contains
 
           !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+          if (myrank == 1) call tune(6, "Loop refine")
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2513,13 +2496,16 @@ contains
 !                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
 !          endif
 
-          write(*,*) myrankglobal, " entering dump writing"
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
 
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          " /))
+               valueTypeString=(/"rho          ",&
+               "hydrovelocity", &
+               "rhoe         ", &
+               "u_i          ", &
+               "phi          "/))
           if (myrank==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -2602,7 +2588,6 @@ contains
           call calculateRhoE(grid%octreeRoot, direction)
           
           
-          call writeInfo("Refining individual subgrids", TRIVIAL)
           call evenUpGridMPI(grid,.false., dorefine)
           
           
@@ -2610,7 +2595,6 @@ contains
 
           call refinegridGeneric(grid)
           
-          call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
@@ -2646,7 +2630,7 @@ contains
     tff = 1.d0 / sqrt(bigG * (0.1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
     tDump = 1.d-2 * tff
     
-    tdump = 5.d0 * dt
+    tdump = 20.d0 * dt
 
     if (writeoutput) write(*,*) "Setting tdump to: ", tdump
 
@@ -2689,7 +2673,7 @@ contains
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, jt=jt)
 
           iUnrefine = iUnrefine + 1
-          if (iUnrefine == 10) then
+          if (iUnrefine == 20) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
@@ -3804,11 +3788,11 @@ contains
     logical :: split
     integer :: neighbourSubcell, nDir
     real(double) :: r, grad, maxGradient
-    real(double), parameter :: limit = 0.01d0
+    real(double), parameter :: limit = 0.1d0
 !    real(double) :: cs, rhocs
     integer :: myRank, ierr
     logical :: refineOnMass, refineOnIonization, refineOnGradient
-    real(double) :: rho, rhoe, rhou, rhov, rhow, energy
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi
     real(double) :: speed, thisSpeed
     integer :: nd
 
@@ -3873,7 +3857,7 @@ contains
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
-                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
                 
 
                 split = .false.
@@ -3885,59 +3869,39 @@ contains
                    split = .true.
                 endif
 
-                thisSpeed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
-                     + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
-                speed = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
-                if (thisSpeed > 0.d0) then
-                   grad = abs(thisSpeed-speed) / thisSpeed
-                   maxGradient = max(grad, maxGradient)
-                   if (grad > limit) then
-                      split = .true.
-                   endif
-                endif
+!                thisSpeed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
+!                     + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
+!                speed = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
+!                if (thisSpeed > 0.d0) then
+!                   grad = abs(thisSpeed-speed) / thisSpeed
+!                   maxGradient = max(grad, maxGradient)
+!                   if (grad > limit) then
+!                      split = .true.
+!                   endif
+!                endif
                 
-                if (thisOctal%oneD) then
-                   if (split) then
-                      if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= neighbourOctal%nDepth)) then
-                         call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                              inherit=.false., interp=.false., amrHydroInterp = .true.)
-                         converged = .false.
-                         exit
-                      endif
+                if (split) then
+                   if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
+                      call addNewChildWithInterp(thisOctal, subcell, grid)
+                      exit
+                   endif
                    
-                      if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
-                           octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
-                           (neighbourOctal%nDepth <= thisOctal%nDepth)) then
-                         call addNewChild(neighbourOctal,neighboursubcell,grid,adjustGridInfo=.TRUE., &
-                              inherit=.false., interp=.false., amrHydroInterp = .true.)
-                         converged = .false.
-                         exit
-                      endif
+                   if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
+                        octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
+                        (neighbourOctal%nDepth < thisOctal%nDepth)) then
+                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+                      converged = .false.
+                      exit
                    endif
                 endif
-                if (thisOctal%twoD) then
-                   if (split) then
-                      if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth < nd)) then
-                         call addNewChildWithInterp(thisOctal, subcell, grid)
-                         exit
-                      endif
-                   
-                      if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
-                           octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
-                           (neighbourOctal%nDepth < thisOctal%nDepth)) then
-                         call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
-                         converged = .false.
-                         exit
-                      endif
-                   endif
-                endif
+
 
 
 
 
              endif
-       enddo
-    endif
+          enddo
+       endif
 !
 
     if (converged.and.refineOnMass) then
@@ -4119,7 +4083,7 @@ end subroutine refineGridGeneric2
     logical :: refinedLastTime, ghostCell, split
     real(double) :: r, maxGradient
     real(double) :: rho1, rhoe1, rhou1, rhov1, rhow1, grad, speed, thisSpeed, meanrho, meancs
-    real(double), parameter :: splitLimit = 1.d-5
+    real(double), parameter :: splitLimit = 1.d-3
     integer :: ndir
     logical :: debug
     type(VECTOR) :: dirvec(6), locator, centre
