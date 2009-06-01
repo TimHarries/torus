@@ -7760,7 +7760,9 @@ IF ( .NOT. gridConverged ) RETURN
     type(VECTOR) :: rVec
     real :: u1 !, u2
     real(double), parameter :: gamma = 5.d0/3.d0
-    
+    real(double) :: g
+
+    g = 0.1d0
 
     rVec = subcellCentre(thisOctal, subcell)
     
@@ -7778,8 +7780,8 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%velocity = VECTOR(0.d0, 0.d0, u1)/cSpeed
 !    thisOctal%velocity = VECTOR(0.d0, 0.d0, 0.d0)
 
-    thisOctal%pressure_i(subcell) = 2.5d0 - thisOctal%rho(subcell) * rVec%z
-    thisOctal%phi_i(subcell) = rvec%z
+    thisOctal%pressure_i(subcell) = 2.5d0 - g * thisOctal%rho(subcell) * rVec%z
+    thisOctal%phi_i(subcell) = rvec%z * g 
 
 
 

@@ -2284,11 +2284,9 @@ contains
     character(len=80) :: plotfile
     real(double) :: tDump, nextDumpTime, tff,totalMass !, ang
     type(VECTOR) :: direction, viewVec
-    logical :: gridConverged
     integer :: nSource = 0
     integer :: nUnrefine
     integer :: thread1(200), thread2(200), nBound(200), nPairs
-    logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
     integer :: nGroup, group(200)
     logical :: doRefine
@@ -3793,7 +3791,6 @@ contains
     integer :: myRank, ierr
     logical :: refineOnMass, refineOnIonization, refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi
-    real(double) :: speed, thisSpeed
     integer :: nd
 
     converged = .true.
