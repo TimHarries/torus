@@ -1,21 +1,21 @@
+#ifdef USENDF
 
-
-C
-C ********************************************************************
-C
-      SUBROUTINE WRTSP(NPTS,STOKES_I,STOKES_Q,STOKES_QV,STOKES_U,
-     &                 STOKES_UV,LAMBDA,FILENAME)
-C
-C This routine reads in a polarization spectrum from a TSP format file
-C and puts it into the 'current' arrays
-C
+!
+! ********************************************************************
+!
+      SUBROUTINE WRTSP(NPTS,STOKES_I,STOKES_Q,STOKES_QV,STOKES_U, &
+                      STOKES_UV,LAMBDA,FILENAME)
+!
+! This routine reads in a polarization spectrum from a TSP format file
+! and puts it into the 'current' arrays
+!
       IMPLICIT NONE
       INTEGER OUT_LU
       INCLUDE '/star/include/DAT_PAR'
       INCLUDE '/star/include/SAE_PAR'
-C
-C The current arrays
-C
+!
+! The current arrays
+!
       INTEGER NPTS
       REAL STOKES_I(*)
       REAL STOKES_Q(*)
@@ -23,12 +23,11 @@ C
       REAL STOKES_U(*)
       REAL STOKES_UV(*)
       REAL LAMBDA(*)
-C
-C Misc.
-C
+!
+! Misc.
+!
       INTEGER SP
       INTEGER NDF
-      ! CHARACTER*(*) CPARAM ! Unused? Commented out by nhs.
       CHARACTER*80 PATH,FILENAME
       CHARACTER*64 NAME
       CHARACTER*80 ERROR
@@ -40,18 +39,18 @@ C
       INTEGER PTRQ,PTRQV,PTRU,PTRUV,APTR
       CHARACTER*(DAT__SZLOC) PLOC,DLOC,QLOC,LOC      
       INTEGER STATUS
-C
+
       STATUS = SAI__OK
       LBND(1) = 1
       UBND(1) = NPTS
-C
-C Begin the ndf and hds systems
-C
+!
+! Begin the ndf and hds systems
+!
       CALL NDF_BEGIN
       CALL HDS_START(STATUS)
-C
-C Create a new tsp ndf and map it
-C
+!
+! Create a new tsp ndf and map it
+!
       CALL HDS_NEW(FILENAME,'OUTPUT','NDF',0,0,LOC,STATUS)
       CALL DAT_NEW(LOC,'DATA_ARRAY','_REAL',1,UBND,STATUS)
       CALL NDF_IMPRT(LOC,NDFO,STATUS)
@@ -71,34 +70,34 @@ C
       CALL NDF_MAP(NDFU,'DATA','_REAL','WRITE',UPTR,UBND,STATUS)
       CALL NDF_MAP(NDFQ,'VARIANCE','_REAL','WRITE',QVPTR,UBND,STATUS)
       CALL NDF_MAP(NDFU,'VARIANCE','_REAL','WRITE',UVPTR,UBND,STATUS)
-C
-C If everything is oK then write out the arrays
-C
+!
+! If everything is oK then write out the arrays
+!
       IF (STATUS.EQ.SAI__OK) THEN
-      CALL WRITE_IT(NPTS,LAMBDA,STOKES_I,STOKES_Q,STOKES_QV,STOKES_U,
-     &              STOKES_UV,
-     &UBND(1),%VAL(IPTR),%VAL(QPTR),%VAL(QVPTR),%VAL(UPTR),
-     &%VAL(UVPTR),%VAL(OAXISP))
+      CALL WRITE_IT(NPTS,LAMBDA,STOKES_I,STOKES_Q,STOKES_QV,STOKES_U, &
+                    STOKES_UV, &
+      UBND(1),%VAL(IPTR),%VAL(QPTR),%VAL(QVPTR),%VAL(UPTR), &
+      %VAL(UVPTR),%VAL(OAXISP))
       ENDIF
-C
-C Close down the ndf and hds
-C
+!
+! Close down the ndf and hds
+!
       CALL DAT_ANNUL(PLOC,STATUS)
       CALL NDF_END(STATUS)
       CALL HDS_CLOSE(LOC,STATUS)
       CALL HDS_STOP(STATUS)
-      END
+    END SUBROUTINE WRTSP
 
 
-C
-C ********************************************************************
-C
+!
+! ********************************************************************
+!
 
-      SUBROUTINE WRITE_IT(NPTS,LAMBDA,STOKES_I,STOKES_Q,STOKES_QV,
-     &STOKES_U,STOKES_UV,N,IAR,Q,QV,U,UV,WA)
-C
-C Writes out the array mapped previously
-C
+      SUBROUTINE WRITE_IT(NPTS,LAMBDA,STOKES_I,STOKES_Q,STOKES_QV, &
+      STOKES_U,STOKES_UV,N,IAR,Q,QV,U,UV,WA)
+!
+! Writes out the array mapped previously
+!
       INTEGER NPTS
       REAL STOKES_I(*)
       REAL STOKES_Q(*)
@@ -118,4 +117,28 @@ C
        U(I) = STOKES_U(I)
        UV(I) = STOKES_UV(I)
       ENDDO
-      END
+    END SUBROUTINE WRITE_IT
+
+#else
+
+!
+! Stub routine to use when NDF support is not required. 
+!
+      SUBROUTINE WRTSP(NPTS,STOKES_I,STOKES_Q,STOKES_QV,STOKES_U,STOKES_UV,LAMBDA,FILENAME)
+
+      IMPLICIT NONE
+
+      INTEGER NPTS
+      REAL STOKES_I(*)
+      REAL STOKES_Q(*)
+      REAL STOKES_QV(*)
+      REAL STOKES_U(*)
+      REAL STOKES_UV(*)
+      REAL LAMBDA(*)
+
+      CHARACTER*80 FILENAME
+
+    END SUBROUTINE WRTSP
+
+#endif
+

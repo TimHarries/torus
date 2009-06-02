@@ -1,5 +1,6 @@
-      subroutine writeImagef77(thisImageI, thisImageQ, thisImageU,
-     &thisImageV, thisImageVel, scale, nPix, filename)
+#ifdef USENDF
+      subroutine writeImagef77(thisImageI, thisImageQ, thisImageU, &
+      thisImageV, thisImageVel, scale, nPix, filename)
       implicit none
       include '/star/include/DAT_PAR'
       include '/star/include/SAE_PAR'
@@ -45,10 +46,8 @@
       call ndf_acput('rstar',ndfo,'unit',1,status)
       call ndf_acput('yaxis',ndfo,'lab',2,status)
       call ndf_acput('rstar',ndfo,'unit',2,status)
-      call ndf_amap(ndfo,'centre',1,'_real','update',oaxisp1,
-     &ubnd(1),status)
-      call ndf_amap(ndfo,'centre',2,'_real','update',oaxisp2,
-     &ubnd(1),status)
+      call ndf_amap(ndfo,'centre',1,'_real','update',oaxisp1,ubnd(1),status)
+      call ndf_amap(ndfo,'centre',2,'_real','update',oaxisp2,ubnd(1),status)
       call ndf_map(ndfo,'data','_real','write',iptr,nelm,status)
 
       if (status .ne. sai__ok) then
@@ -57,8 +56,7 @@
       endif
 
 
-      call fillNdfImage(scale,%val(iptr),%val(oaxisp1), %val(oaxisp2), 
-     &npix, thisImageI)
+      call fillNdfImage(scale,%val(iptr),%val(oaxisp1), %val(oaxisp2),npix, thisImageI)
 
       CALL NDF_XNEW(NDFO,'POLARIMETRY','EXT',0,0,PLOC,STATUS)
       CALL NDF_PLACE(PLOC,'STOKES_Q',PLACE,STATUS)
@@ -89,11 +87,10 @@
       call hds_stop(status)
 
 
-      end 
+    end subroutine writeImagef77
        
 
-      subroutine fillNdfImage(scale, ndfimage, axis1, axis2, nPix, 
-     & thisImage)
+      subroutine fillNdfImage(scale, ndfimage, axis1, axis2, nPix, thisImage)
       implicit none
       integer  nPix
       real thisImage(nPix,nPix), scale
@@ -106,11 +103,10 @@
          axis1(i) = real(i) * scale
          do j = 1, npix
             axis2(j) = real(j) * scale
-            ndfImage(i,j) = 
-     &           thisImage(i,j)
+            ndfImage(i,j) = thisImage(i,j)
          enddo
       enddo
-      end 
+    end subroutine fillNdfImage
  
       subroutine fillNdfImageQUV(ndfimage,  nPix, thisImage)
       implicit none
@@ -123,14 +119,12 @@
 
       do i = 1, npix
          do j = 1, npix
-            ndfImage(i,j) = 
-     &           thisImage(i,j)
+            ndfImage(i,j) = thisImage(i,j)
          enddo
       enddo
       end 
           
-      subroutine writePVimageF77(nx, ny, array, xaxis, yaxis,
-     &                           filename)
+      subroutine writePVimageF77(nx, ny, array, xaxis, yaxis, filename)
       implicit none
       include '/star/include/DAT_PAR'
       include '/star/include/SAE_PAR'
@@ -168,10 +162,8 @@
       call ndf_acput('km/s',ndfo,'unit',1,status)
       call ndf_acput('p',ndfo,'lab',2,status)
       call ndf_acput('arcsec',ndfo,'unit',2,status)
-      call ndf_amap(ndfo,'centre',1,'_real','update',oaxisp1,
-     &ubnd(1),status)
-      call ndf_amap(ndfo,'centre',2,'_real','update',oaxisp2,
-     &ubnd(1),status)
+      call ndf_amap(ndfo,'centre',1,'_real','update',oaxisp1,ubnd(1),status)
+      call ndf_amap(ndfo,'centre',2,'_real','update',oaxisp2,ubnd(1),status)
       call ndf_map(ndfo,'data','_real','write',iptr,nelm,status)
 
       if (status .ne. sai__ok) then
@@ -179,18 +171,16 @@
          stop
       endif
 
-      call copyImage(nx, ny, array, xAxis, yAxis, %val(iptr),
-     &               %val(oaxisp1), %val(oaxisp2))
+      call copyImage(nx, ny, array, xAxis, yAxis, %val(iptr),%val(oaxisp1), %val(oaxisp2))
 
 
       call ndf_end(status)
       call hds_close(loc,status)
       call hds_stop(status)
 
-      end
+    end subroutine writePVimageF77
           
-      subroutine copyImage(nx, ny, inArray, inX, inY, outArray,
-     &                     outX, outY)
+      subroutine copyImage(nx, ny, inArray, inX, inY, outArray, outX, outY)
       implicit none
       integer nx, ny
       real inArray(nx,ny), outArray(nx,ny)
@@ -208,12 +198,60 @@
       do j = 1, ny
          outY(j) = inY(j)
       enddo
-      end
+    end subroutine copyImage
 
-            
+#else
+
+      subroutine writeImagef77(thisImageI, thisImageQ, thisImageU,&
+        thisImageV, thisImageVel, scale, nPix, filename)
+      implicit none
+      integer npix,  i , j
+      real thisImageI(nPix, nPix)
+      real thisImageQ(nPix, nPix)
+      real thisImageU(nPix, nPix)
+      real thisImageV(nPix, nPix)
+      real thisImageVel(nPix, nPix)
+      character*(*)  filename
+      character*80 datfilename
+      real scale
+
+      write(*,'(a,i3,a,i3)') "Writing image: ",npix," by ",npix
+      
+      i = index(filename, " ")
+      if (i .ne. 0) then
+         datfilename = filename(1:i-1)//".dat"
+      else
+         ! there is no extra space, so simply append the string.
+         datfilename = filename//".dat"
+      end if
+
+      open(20, file=datfilename, status="unknown", form="formatted")
+
+      write(20,'(2I4)') npix
+      write(20, '(1p,e13.5)') scale
+
+      do i = 1, npix
+         do j = 1, npix
+            write(20, '(1p,5e13.5)') thisImageI(i,j), &
+                 thisImageQ(i,j), &
+                 thisImageU(i,j), &
+                 thisImageV(i,j), &
+                 thisImageVel(i,j)
+         enddo
+      enddo
+      close(20)
+    end subroutine writeImagef77
                          
 
+      subroutine writePVimageF77(nx, ny, array, xaxis, yaxis,filename)
+      implicit none
+      integer nx, ny
+      real array(nx,ny)
+      real xaxis(nx)
+      real yaxis(ny)
+      character*(*) filename
+
+    end subroutine writePVimageF77
 
 
-
-
+#endif
