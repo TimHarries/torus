@@ -36,7 +36,7 @@ module surface_mod
      real, dimension(:), pointer :: hotFlux => null()
      real :: temperature
      real :: prob
-     logical :: hot
+     logical :: hot = .false. 
   end type ELEMENTTYPE
 
   type SURFACETYPE
