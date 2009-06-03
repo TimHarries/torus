@@ -126,6 +126,7 @@ ifeq ($(SYSTEM), gfortran)
 #    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 endif
 
 ifeq ($(SYSTEM), macmpi)
