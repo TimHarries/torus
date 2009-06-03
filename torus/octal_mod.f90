@@ -161,8 +161,8 @@ MODULE octal_mod
     REAL(double), DIMENSION(8)         :: rho            ! density
 !    REAL(double), DIMENSION(8)         :: interprho            ! density testing
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
-    integer, pointer :: iEquationOfState(:)
-    real(double), pointer :: gamma(:)
+    integer, pointer :: iEquationOfState(:)  => null()
+    real(double), pointer :: gamma(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
 
@@ -196,7 +196,7 @@ MODULE octal_mod
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
 
-    INTEGER, DIMENSION(:), pointer                :: dusttype
+    INTEGER, DIMENSION(:), pointer                :: dusttype => null()
     real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
 
 
@@ -230,7 +230,7 @@ MODULE octal_mod
 
 
     real(double), pointer :: atomLevel(:,:,:) => null() ! atom level populations
-    real(double), pointer :: atomAbundance(:,:) ! abundances
+    real(double), pointer :: atomAbundance(:,:) => null() ! abundances
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: jnu(:,:) => null() ! Molecular radiation field
     real(double), pointer :: jnuCont(:,:) => null()

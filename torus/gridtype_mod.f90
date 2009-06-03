@@ -63,12 +63,12 @@ module gridtype_mod
      type(VECTOR) :: diskNormal
      real :: dipoleOffset
      character(len=20) :: geometry               ! type of geometry
-     type(vector), pointer :: dVbydr(:,:,:)            ! velocity gradient
+     type(vector), pointer :: dVbydr(:,:,:)  => null()           ! velocity gradient
 
-     real(double),pointer :: oneProbLine(:)
-     real(double),pointer :: oneProbCont(:)
+     real(double),pointer :: oneProbLine(:) => null()
+     real(double),pointer :: oneProbCont(:) => null()
      integer :: nProb
-     integer, pointer :: cellIndex(:,:)
+     integer, pointer :: cellIndex(:,:) => null()
      real, pointer :: rho(:,:,:) => null()       ! density grid
      real, pointer :: kappaAbs(:,:,:,:) => null()! cont absorption opacities
      real, pointer :: kappaSca(:,:,:,:) => null()! scattering opacities
@@ -84,8 +84,8 @@ module gridtype_mod
      real, pointer :: biasCont(:) => null()      ! radial bias for cont
      real, pointer :: biasLine(:) => null()      ! radial bias for line
 
-     real, pointer :: muAxis(:) => null()                 ! mu-axis
-     real, pointer :: phiAxis(:)                 ! phi-axis
+     real, pointer :: muAxis(:) => null()        ! mu-axis
+     real, pointer :: phiAxis(:) => null()       ! phi-axis
      real          :: dMu, dPhi                  ! spacing of mu and phi axes
      real, pointer :: xAxis(:) => null()         ! x-axis
      real, pointer :: yAxis(:) => null()         ! y-axis
@@ -155,7 +155,7 @@ module gridtype_mod
      integer :: nOctals                              ! total number of octals 
      real    :: smoothingFactor                      ! inter-cell maximum ratio before smooth
      integer :: ng
-     type(GAUSSIAN), pointer :: gArray(:)
+     type(GAUSSIAN), pointer :: gArray(:) => null()
 
      logical :: statEq2d                             ! can do statEq in 2-D
      logical :: amr2dOnly                            ! only do statEq in 2-D

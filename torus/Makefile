@@ -122,8 +122,8 @@ ifeq ($(SYSTEM), gfortran)
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-    STARLIBS = -L/star/lib `ndf_link`
-    F2CLIB   = -L/usr/local/lib -lg2c
+#    STARLIBS = -L/star/lib `ndf_link`
+#    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
 endif
