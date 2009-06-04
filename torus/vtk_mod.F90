@@ -217,10 +217,9 @@ contains
   end subroutine writeIndices
 
 
-  subroutine writeValue(grid, vtkFilename, valueType, nCells)
+  subroutine writeValue(grid, vtkFilename, valueType)
     type(GRIDTYPE) :: grid
     integer :: lunit = 69
-    integer :: nCells
     character(len=*) :: valueType
     character(len=*) :: vtkFilename
     logical :: vector, scalar
@@ -712,7 +711,7 @@ contains
 
     do iType = 1, nValueType
     
-       if (.not.grid%splitOverMPI) call writeValue(grid, vtkFilename, valueType(iType), nCells)
+       if (.not.grid%splitOverMPI) call writeValue(grid, vtkFilename, valueType(iType))
 
 #ifdef MPI
     if (grid%splitOverMpi) then
@@ -720,7 +719,7 @@ contains
        do iThread = 1, nThreadsGlobal
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           if (iThread == myRankGlobal) then
-             call writeValue(grid, vtkFilename, valueType(iType), nCells)
+             call writeValue(grid, vtkFilename, valueType(iType))
           endif
        enddo
     endif
