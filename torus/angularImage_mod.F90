@@ -23,7 +23,6 @@ module angularImage
 
     subroutine make_angular_image(grid)
 
-!      use input_variables, only : lineImage
       use datacube_mod, only: DATACUBE, writeDataCube
       use gridtype_mod, only: GRIDTYPE
       use molecular_mod, only:  moleculetype
@@ -77,18 +76,11 @@ module angularImage
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
-!     type(VECTOR) :: viewvec, observervec, imagebasis(2)
      real(double) :: deltaV
      integer :: iTrans = 1
-!     integer :: i
      integer :: iv
      real(double) :: intensitysum !, fluxsum
      real(double), save :: background
-!     real(double), allocatable :: weightedfluxmap(:,:)
-!     real(double) :: weightedfluxsum, weightedflux
-!     real(double), allocatable :: fineweightedfluxmap(:,:)
-!     real(double) :: fineweightedfluxsum, fineweightedflux
-!     real(double), allocatable :: weight(:,:)
      real, allocatable :: temp(:,:,:) 
      integer :: ix1, ix2
 
@@ -142,8 +134,6 @@ module angularImage
            call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
            call writeinfo("Done filling Octal parameters for first time",TRIVIAL)
         endif
-
-!        if(usedust) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
 
         temp(:,:,:) = 0.d0
         call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp, ix1, ix2)
@@ -219,12 +209,8 @@ module angularImage
       real, intent(OUT) :: imagegrid(:,:,:)
       integer, intent(in) :: ix1, ix2
 
-!      real(double) :: dnpixels ! npixels as a double, save conversion
-!      type(VECTOR) :: pixelcorner
       integer :: subpixels
-     integer :: ipixels, jpixels
-!      integer :: index(2)
-!      real(double) :: pixelside
+      integer :: ipixels, jpixels
 
       real :: theta_min
       real :: phi_min 
@@ -272,7 +258,7 @@ module angularImage
             call normalize(viewvec)
 
             imagegrid(ipixels,jpixels,:) = &
-                 AngPixelIntensity(cube,viewvec,grid,thisMolecule,iTrans,deltaV, subpixels, delta_theta, delta_phi)
+                 AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV, subpixels)
 
          enddo
 
@@ -281,50 +267,31 @@ module angularImage
     end subroutine makeAngImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
- function AngPixelIntensity(cube,viewvec,grid,thisMolecule,iTrans,deltaV,subpixels,delta_theta, delta_phi) &
-      result(out)
+ function AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV,subpixels) result(out)
    
    use input_variables, only : tolerance, nsubpixels
-   use molecular_mod, only: intensityAlongRay, sobseq
+   use molecular_mod, only: intensityAlongRay
 
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    integer :: itrans
    type(VECTOR), intent(in) :: viewVec
    real(double) :: i0, opticaldepth
-   real(double), intent(in) :: delta_theta, delta_phi
 
-!   type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner
    type(VECTOR) :: thisViewVec
 
    integer :: subpixels, minrays
-   integer :: i, iray
+   integer :: iray
 
    real(double) :: avgIntensityNew, avgIntensityOld
    real(double) :: varIntensityNew, varIntensityOld
    real(double) :: avgNColNew, avgNColOld
-   real(double) :: rtemp(2)
-   real(double), save ::  r(10000,2)
    real(double) :: nCol
 
    logical :: converged
    real(double) :: deltaV
-   type(DATACUBE) :: cube
-   logical, save :: firsttime = .true.
 
    real(double) :: out(3) 
-
-   if(firsttime) then
-      
-      call sobseq(rtemp,-1)
-      
-      do i = 1, 10000
-         call sobseq(rtemp)
-         r(i,:) = dble(rtemp)
-      enddo
-      
-      firsttime = .false.
-   endif
 
    avgIntensityOld = 0.
    varIntensityOld = 0.
@@ -343,11 +310,7 @@ module angularImage
    
    do while((.not. converged) .or. (iray .le. minrays))  
 
-      ! Generate rotated viewvec to sample angular cell
       thisViewVec = viewVec
-!      thisViewvec = rotateZ(thisViewVec, (r(iray,1) * delta_theta  * degtorad) )
-!      thisViewvec = rotateX(thisViewVec, (r(iray,2) * delta_phi    * degtorad) )
-!      call normalize(thisViewVec)
 
      call intensityalongray(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,tau=opticaldepth, nCol=nCol, &
           observerVelocity=observerVelocity )
