@@ -7142,7 +7142,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: ethermal, gamma
 !    integer,save :: it
 !    real,save :: radius(400),temp(400)
-    logical,save :: firsttime = .true.
+!    logical,save :: firsttime = .true.
     ethermal  = 0.;
     gamma = 5.d0/3.d0
 
@@ -17651,7 +17651,7 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer :: thisOctal, sOctal
     integer :: subcell, sSubcell
     real(double) :: distToNextCell, totDist
-    real(double) :: fudgeFac = 0.000001d0
+!    real(double) :: fudgeFac = 0.000001d0
 
     totDist = 0.d0
     currentPosition = rVec
