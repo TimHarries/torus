@@ -427,55 +427,6 @@ contains
 
     endif
 
-    if (geometry .eq. "spiralwind") then
-       call getReal("rcore", rCore, cLine, nLines, &
-            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-       call getReal("teff", teff, cLine, nLines, &
-            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("v0", v0, cLine, nLines, &
-            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("vterm", vTerm, cLine, nLines, &
-            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("beta", beta, cLine, nLines, &
-            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("mdot", mdot, cLine, nLines, &
-            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-       rCore = rCore * rSol
-       v0 = v0 * 1.e5
-       vTerm = vTerm * 1.e5
-       mdot = mdot*msol/(365.25*24.*3600.)
-       vRot = vRot * 1.e5
-       call getString("contflux", contFluxFile, cLine, nLines, &
-            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
-
-
-    endif
-
-
-    if (geometry .eq. "spiralwind") then
-       call getReal("rcore", rCore, cLine, nLines, &
-            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-       call getReal("teff", teff, cLine, nLines, &
-            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("v0", v0, cLine, nLines, &
-            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("vterm", vTerm, cLine, nLines, &
-            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("beta", beta, cLine, nLines, &
-            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("mdot", mdot, cLine, nLines, &
-            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-       rCore = rCore * rSol
-       v0 = v0 * 1.e5
-       vTerm = vTerm * 1.e5
-       mdot = mdot*msol/(365.25*24.*3600.)
-       vRot = vRot * 1.e5
-       call getString("contflux", contFluxFile, cLine, nLines, &
-            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
-
-
-    endif
-
 
     if (geometry .eq. "spiralwind") then
        call getReal("rcore", rCore, cLine, nLines, &
