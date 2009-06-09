@@ -329,7 +329,6 @@ module input_variables
   logical :: readLucy, writeLucy, openLucy
   logical :: readMol, writeMol ! molecular_mod equivalents of read/writelucy
   real :: tThresh
-  character(len=80) :: lucyFilename
   logical :: redolucy
   character(len=80) :: lucyFilenameIn
   character(len=80) :: lucyFilenameOut
