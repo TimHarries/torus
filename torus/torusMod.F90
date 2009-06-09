@@ -90,9 +90,6 @@ contains
   integer, parameter :: nMuMie = 1000
   type(PHASEMATRIX), pointer :: miePhase(:,:,:)
 
-  ! filenames
-  character(len=80) :: phasePopFilename
-
   ! model flags
   logical :: flatSpec
   logical :: ok
