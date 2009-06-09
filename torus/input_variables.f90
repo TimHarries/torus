@@ -235,7 +235,6 @@ module input_variables
   real :: mdot1, mdot2
   real :: Mbol
   real :: radius, kfac, xfac
-  real :: contrast
   real :: rCore, rInner
   real :: rTorus, rOuter
   real :: rho, rho0

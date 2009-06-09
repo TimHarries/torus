@@ -48,7 +48,6 @@ contains
     ok = .true.
     oneKappa = .false.
 
-    contrast = 1.
     grainSize = 1.
     nDustType = 1
 
@@ -1030,8 +1029,7 @@ contains
           call getReal("usephotonwavelength", usePhotonWavelength, cLine, nLines, &
                "Force photons to be produced at wavelength: ","(a,f4.2,a)", 5500., ok, .true.)
        endif
-    endif
-    if (mie) then
+
        call getLogical("lucyrad", lucyRadiativeEq, cLine, nLines, &
             "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
        call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
