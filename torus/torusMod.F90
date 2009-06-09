@@ -691,19 +691,6 @@ CONTAINS
 
      end if ! (readPops .or. readPhasePops)
 
-
-  if (myRankIsZero)  then
-     ! writing pop files after statEq routines
-     if (writePhasePops) then
-        write(tempChar,'(i3.3)') nStartPhase
-        phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
-        call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
-     end if
-     if (writePops) then
-        call writeAMRgrid(popFilename,writeFileFormatted,grid)
-     end if
-
-  end if
   call torus_mpi_barrier ! sync here
   
   if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
