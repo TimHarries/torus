@@ -173,9 +173,6 @@ contains
     !    call getReal("scale", scale, cLine, nLines, &
     !         "Scale (rsolar): ","(a,f6.1,1x,a)", 1000., ok, .false.) 
 
-    call getString("gridtype", gridcoords, cLine, nLines, &
-         "Grid type: ","(a,a,a)","cartesian",ok, .true.)
-
     call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
          "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -293,6 +290,9 @@ contains
             "Recalculate opacities for different line transition: ","(a,1l,1x,a)", .false., ok, .false.)
 
     else    
+
+       call getString("gridtype", gridcoords, cLine, nLines, &
+            "Grid type: ","(a,a,a)","cartesian",ok, .true.)
 
        if (gridcoords.eq."cartesian") then
           call getInteger("nx", nx, cLine, nLines, &
