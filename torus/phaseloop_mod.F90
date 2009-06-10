@@ -1353,15 +1353,15 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 #ifdef MPI
   !====================================================================================
   ! Splitting the innerPhoton loop for multiple processors.
-  if (myRankGlobal == 0) then
-     print *, ' '
-     print *, 'innerPhotonLoop computed by ', nThreadsGlobal, ' processors.'
-     print *, ' '
-  endif
+ ! if (myRankGlobal == 0) then
+ !    print *, ' '
+ !    print *, 'innerPhotonLoop computed by ', nThreadsGlobal, ' processors.'
+ !    print *, ' '
+ ! endif
   
   iInner_beg = myRankGlobal * (nInnerLoop/nThreadsGlobal) + 1
   iInner_end = (myrankGlobal+1) * (nInnerLoop/nThreadsGlobal) 
-  write(*,*) "rank ", myrankglobal, " doing ", iInner_beg, " to " , iinner_end
+!  write(*,*) "rank ", myrankglobal, " doing ", iInner_beg, " to " , iinner_end
 
 
 !  ! No need to use some processors if there are more processors

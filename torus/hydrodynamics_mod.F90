@@ -54,8 +54,6 @@ contains
 
           
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
-!             write(*,*) myrankglobal,dq,subcellcentre(thisoctal,subcell), &
-!                  thisoctal%q_i(subcell), thisoctal%q_i_minus_1(subcell), thisoctal%u_interface(subcell)
              if (dq /= 0.d0) then
                 if (thisoctal%u_interface(subcell) .ge. 0.d0) then
                    thisoctal%rlimit(subcell) = (thisoctal%q_i_minus_1(subcell) - thisoctal%q_i_minus_2(subcell)) / dq
@@ -83,7 +81,7 @@ contains
                 call writefatal(message)
                 stop
              end select
-             if (thisoctal%ghostcell(subcell)) thisoctal%philimit(subcell) = 1.d0
+!             if (thisoctal%ghostcell(subcell)) thisoctal%philimit(subcell) = 1.d0
 !                        thisoctal%philimit(subcell) = 1.d0
 !          endif
       endif
@@ -1978,16 +1976,27 @@ contains
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
     call computePressureU(grid%octreeRoot, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call pressureForceU(grid%octreeRoot, dt/2.d0)
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -1998,16 +2007,27 @@ contains
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+
     call computePressureW(grid%octreeRoot, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call pressureForceW(grid%octreeRoot, dt)
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, usethisBound=2)
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2018,7 +2038,14 @@ contains
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, usethisBound=2)
+
+
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2708,7 +2735,13 @@ contains
           call writeAMRgrid(plotfile,.false. ,grid)
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"rho          ","velocity     ","rhoe         " ,"u_i          ","hydrovelocity" /))
+               valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+               "u_i          ", &
+               "hydrovelocity", &
+               "rhou         ", &
+               "rhov         ", &
+               "rhow         ", &
+               "phi          "/))
 
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -3180,6 +3213,65 @@ contains
 
                    endif
 
+                case(5) ! constant density, not velocity reflection
+                   locator = thisOctal%boundaryPartner(subcell)
+                   bOctal => thisOctal
+                   call findSubcellLocal(locator, bOctal, bSubcell)
+
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                   call normalize(dir)
+                   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
+
+                   thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                   thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                   thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+
+                   thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
+                   thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
+                   thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bSubcell)
+
+! NB confusion regarding 2d being x,z rather than x,y
+
+                   if (thisOctal%twod.or.thisOctal%oneD) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if ((abs(dir%x) > 0.5d0).and.abs(dir%z) > 0.5d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                   else if (thisOctal%threed) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (abs(dir%y) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if ((abs(dir%x) > 0.2d0).and.abs(dir%z) > 0.2d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                   endif
+
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)
              end select
@@ -3283,7 +3375,7 @@ contains
                    
                    ! now a case to determine the boundary cell relations
                    select case (thisOctal%boundaryCondition(subcell))
-                   case(1)
+                   case(1, 5)
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
@@ -3405,7 +3497,7 @@ contains
                    
              ! now a case to determine the boundary cell relations
              select case (thisOctal%boundaryCondition(subcell))
-             case(1, 4)
+             case(1, 4, 5)
                  dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
                 
@@ -3658,7 +3750,7 @@ contains
 
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
-             case(1, 4)
+             case(1, 4, 5)
                 
                 if (thisOctal%edgeCell(subcell)) then
                    call locatorToNeighbour(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator)

@@ -189,7 +189,7 @@ program torus
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
-  real(double) :: totalmass, totalmasstrap, maxRho, minRho
+  real(double) :: totalmass, totalmasstrap, maxRho, minRho, betaFit, heightAt100AU
 
 
 #ifdef MPI
@@ -918,7 +918,6 @@ end subroutine pre_initAMRGrid
           goto 333
 334       continue
           nlambda = nlambda - 1
-          write(*,*) "LAMBDA FILE HAS ",nLAMBDA, " points"
           allocate(xArray(nlambda))
           ! Rewind the file and read them in
           rewind(77)
@@ -2495,12 +2494,14 @@ subroutine do_lucyRadiativeEq
 
   use benchmark_mod, only: check_benchmark_values
   use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy
-  use disc_hydro_mod, only: verticalHydrostatic
+  use disc_hydro_mod, only: verticalHydrostatic, getbetavalue
   use cluster_utils, only: analyze_cluster
   use cluster_class, only: reassign_10k_temperature, restrict, kill_all
 
   type(VECTOR) :: outVec
   outVec = (-1.d0)* originalViewVec
+
+!  call getBetaValue(grid, betaFit, heightat100AU)
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  

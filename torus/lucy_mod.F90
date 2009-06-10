@@ -175,17 +175,6 @@ contains
     kAbsArray = 0.; kAbsArray2 = 0.; leftHandBoundary = .true.; ok = .true.
     photonInDiffusionZone = .false.; rHat = VECTOR(0.d0, 0.d0, 0.d0);temp = 0.
     wavelength = 0.;  nfreq = 0
-    call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-
-    if (nLucy /= 0) then
-       nMonte = nLucy
-    else
-       if (.not.variableDustSublimation) then
-          nMonte = nVoxels * 10
-       else
-          nMonte = nVoxels * 50
-       endif
-    endif
 
 
     nFreq = nLambda
@@ -237,19 +226,19 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
-       if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
-          call writeInfo("Filling dust with large dust in midplane", FORINFO)
-          call fillDustShakara(grid, grid%octreeRoot)
-       else
-          call writeInfo("Filling disc with uniform dust fractions", FORINFO)
-          call fillDustUniform(grid, grid%octreeRoot)
-       endif
-    endif
-
-    if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
-       call fillDustUniform(grid, grid%octreeRoot)
-    endif
+!    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
+!       if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
+!          call writeInfo("Filling dust with large dust in midplane", FORINFO)
+!          call fillDustShakara(grid, grid%octreeRoot)
+!       else
+!          call writeInfo("Filling disc with uniform dust fractions", FORINFO)
+!          call fillDustUniform(grid, grid%octreeRoot)
+!       endif
+!    endif
+!
+!    if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
+!       call fillDustUniform(grid, grid%octreeRoot)
+!    endif
 
     if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
@@ -302,7 +291,7 @@ contains
           if (thisSmooth) then
                  call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, nLambda, 2
+                do j = iSmoothLam, iSmoothLam !nLambda, 2
                    write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
                    call writeInfo(message, TRIVIAL)
                    if (grid%octreeRoot%twoD) then
@@ -310,7 +299,7 @@ contains
                          gridConverged = .true.
                          call putTau(grid, grid%lamArray(j))
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                          if (gridConverged) exit
                       end do
                    else
@@ -333,6 +322,7 @@ contains
                 end do
                 call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
                 call writeInfo("...grid smoothing complete", TRIVIAL)
+
              endif
 
           call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
@@ -342,8 +332,6 @@ contains
 
           call zeroDistanceGrid(grid%octreeRoot)
 
-          write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
-          call writeInfo(message, TRIVIAL)
 
 
           call resetDirectGrid(grid%octreeRoot)
@@ -357,6 +345,20 @@ contains
           nAbs = 0
           nDiffusion = 0
           nKilled = 0
+
+          call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+          if (nLucy /= 0) then
+             nMonte = nLucy
+          else
+             if (.not.variableDustSublimation) then
+                nMonte = nVoxels * 10
+             else
+                nMonte = nVoxels * 50
+             endif
+          endif
+
+          write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
+          call writeInfo(message, TRIVIAL)
 
           imonte_beg=1; imonte_end=nMonte  ! default value
 
@@ -852,7 +854,7 @@ contains
 !                endif
 !             endif
 
-             if ((iiter_grand == 6).and.(thisIsFinalPass)) then
+             if (iiter_grand == 6) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -863,7 +865,7 @@ contains
                       gridConverged = .true.
                       call putTau(grid, grid%lamArray(j))
                       call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                           inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
 
                       if (gridConverged) exit
                    end do
@@ -914,6 +916,18 @@ contains
           converged = .false.
        endif
 
+       
+       if ((grid%geometry == "shakara").and.variableDustSublimation.and.(iIter_grand > 2)) then
+          call getSublimationRadius(grid, subRadius)
+          write(message, '(a, i3, a, f7.3,a )') "End of lucy iteration ",iIter_grand,&
+               ": Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+          call writeInfo(message, FORINFO)
+          write(message, '(a, i3, a, f7.3,a )') "End of lucy iteration ",iIter_grand,&
+               ": Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
+          call writeInfo(message, FORINFO)
+       endif
+
+
 
        if (iIter_grand < iterlucy) converged = .false.
 
@@ -957,20 +971,11 @@ contains
     enddo
 
     if (grid%geometry == "shakara") then
-       allocate(tauArray(1:100000), xArray(1:100000))
-       call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), &
-            tau,  ross = .true., nTau = nTau, xArray = xArray, tauArray = tauArray)
-       if (tauArray(nTau) > 0.667d0) then
-          call locate(tauArray, nTau, 0.667d0, i)
-          subRadius = xArray(i) + ((0.667d0-tauArray(i))/(tauArray(i+1)-tauArray(i)))*(xArray(i+1) - xArray(i))
-          write(message, '(a, f7.3,a )') "Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
-          call writeInfo(message, FORINFO)
-          write(message, '(a, f7.3,a )') "Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
-          call writeInfo(message, FORINFO)
-       else
-          call writeWarning("No tau_ross = 2/3 boundary")
-       endif
-       deallocate(tauArray, xArray)
+       call getSublimationRadius(grid, subRadius)
+       write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+       call writeInfo(message, FORINFO)
+       write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
+       call writeInfo(message, FORINFO)
     endif
 
     if (storescattered) then 
@@ -979,6 +984,26 @@ contains
        if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
     endif
   end subroutine lucyRadiativeEquilibriumAMR
+
+  subroutine getSublimationRadius(grid, subRadius)
+    use input_variables, only : rCore
+    type(GRIDTYPE) :: grid
+    real(double) :: subRadius, tau
+    real(double), allocatable :: tauArray(:), xArray(:)
+    integer :: nTau, i
+    character(len=80) :: message
+    allocate(tauArray(1:100000), xArray(1:100000))
+
+    call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), &
+         tau,  ross = .true., nTau = nTau, xArray = xArray, tauArray = tauArray)
+    if (tauArray(nTau) > 0.667d0) then
+       call locate(tauArray, nTau, 0.667d0, i)
+       subRadius = xArray(i) + ((0.667d0-tauArray(i))/(tauArray(i+1)-tauArray(i)))*(xArray(i+1) - xArray(i))
+    else
+       call writeWarning("No tau_ross = 2/3 boundary")
+    endif
+    deallocate(tauArray, xArray)
+  end subroutine getSublimationRadius
 
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
 
@@ -3362,15 +3387,15 @@ subroutine setBiasOnTau(grid, iLambda)
     endif
   end subroutine unrefineThinCells
 
-  recursive subroutine unrefineBack(thisOctal, grid, nUnrefine, converged)
-    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
+  recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
+    use input_variables, only : rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: i
     logical :: unrefine, converged
     logical :: split
-    real(double) :: cellSize, r, hr
+    real(double) :: cellSize, r, hr, beta, height, rSub
     integer :: oldNChildren
     integer :: nUnrefine
 
@@ -3383,7 +3408,7 @@ subroutine setBiasOnTau(grid, iLambda)
        do i = 1, thisOctal%nChildren
           child => thisOctal%child(i)
           oldNChildren = thisOctal%nChildren
-          call unrefineBack(child, grid, nUnrefine, converged)
+          call unrefineBack(child, grid, beta, height, rSub, nUnrefine, converged)
           if (thisOctal%NChildren /= oldNChildren) return
        end do
     else
@@ -3395,7 +3420,7 @@ subroutine setBiasOnTau(grid, iLambda)
           cellSize = thisOctal%parent%subcellSize 
           cellCentre = subcellCentre(thisOctal%parent,thisOctal%parentSubcell)
           r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          hr = height * (r / (100.d0*autocm/1.d10))**beta
 
           split = .false.
           
@@ -3404,8 +3429,8 @@ subroutine setBiasOnTau(grid, iLambda)
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
 
-          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+!          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
+!               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
           
           if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
                (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -3415,10 +3440,10 @@ subroutine setBiasOnTau(grid, iLambda)
           
        
           if ((.not.split).and.(thisOctal%nDepth > minDepthAMR)) then
+             nUnrefine = nUnrefine + thisOctal%parent%nChildren
              call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
                grid = grid, adjustGridInfo = .true.)
              converged = .false.
-             nUnrefine = nUnrefine + 1
           endif
        endif
     endif
@@ -3525,6 +3550,71 @@ subroutine setBiasOnTau(grid, iLambda)
        thisOctal%etaLine(subcell) = max(tau,1.d-30)
     end do
   end subroutine integrateUpwards
+
+  recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
+    use input_variables, only : maxDepthAMR, rOuter, heightsplitfac
+    logical :: gridConverged
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: cellCentre
+    logical, optional :: inheritProps, interpProps
+    integer :: subcell, i
+    logical :: converged
+    real(double) :: rSub, cellSize, hr, r, beta, height
+    real :: thisTau
+    logical :: split
+    logical, save :: firsttime = .true.
+    character(len=30) :: message
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call refineDiscGrid(child, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+
+          split = .false.
+
+
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (100.d0*autocm/1.d10))**beta
+
+
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+!          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
+!               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+
+          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
+               (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
+
+          if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+          if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+
+
+
+          if (split) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=inheritProps, interp=interpProps)
+             gridconverged = .false.
+             return
+          endif
+
+
+       endif
+    enddo
+
+  end subroutine refineDiscGrid
 
 end module lucy_mod
 

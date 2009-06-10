@@ -530,6 +530,15 @@ contains
                case("rhoe")
                   write(lunit, *) real(thisOctal%rhoe(subcell))
 
+               case("rhou")
+                  write(lunit, *) real(thisOctal%rhou(subcell))
+
+               case("rhov")
+                  write(lunit, *) real(thisOctal%rhov(subcell))
+
+               case("rhow")
+                  write(lunit, *) real(thisOctal%rhow(subcell))
+
                case("q_i-1")
                   write(lunit, *) real(thisOctal%q_i_minus_1(subcell))
 

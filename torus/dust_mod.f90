@@ -1141,6 +1141,9 @@ contains
           if (r < radius) then
              thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * fac
              thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+             if (.not.associated(thisOctal%oldFrac)) then
+                allocate(thisOctal%oldFrac(1:thisOctal%maxChildren))
+             endif
              thisOctal%oldFrac(subcell) = fac
           endif
        end if

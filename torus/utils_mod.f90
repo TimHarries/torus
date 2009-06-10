@@ -4469,5 +4469,79 @@ END SUBROUTINE GAUSSJ
       deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig)
     end function ngStep   
 
+      SUBROUTINE LINFIT(X,Y,SIGMAY,NPTS,MODE,A,SIGMAA,B,SIGMAB,R)
+        implicit none
+        integer :: npts, mode, i
+        real(double) ::  X(NPTS),Y(NPTS),SIGMAY(NPTS)
+        real(double) :: sum, sumx, sumy, sumx2,sumy2, sumxy, xi, yi, weight, r
+        real(double) :: c, varnce, delta
+        real(double) :: a, b, sigmaa, sigmab
+!
+!     MAKES LEAST-SQUARES FIT TO DATA WITH A STRAIGHT LINE  Y = A + B*X
+!
+!     X      - ARRAY OF DATA POINTS FOR INDEPENDENT VARIABLE
+!     Y      - ARRAY OF DATA POINTS FOR DEPENDENT VARIABLE
+!     SIGMAY - ARRAY OF STANDARD DEVIATIONS FOR Y DATA POINTS
+!     NPTS   - NUMBER OF PAIRS OF DATA POINTS
+!     MODE   - DETERMINES METHOD OF WEIGHTING LEAST-SQUARES FIT
+!              +1 (INSTRUMENTAL) WEIGHT(I) = 1/SIGMAY(I)**2
+!              0  (NO WEIGHTING) WEIGHT(I) = 1
+!              -1 (STATISTICAL)  WEIGHT(I) = 1/Y(I)
+!     A      - Y INTERCEPT OF FITTED STRAIGHT LINE
+!     SIGMAA - STANDARD DEVIATION OF A
+!     B      - SLOPE OF FITTED STRAIGHT LINE
+!     SIGMAB - STANDARD DEVIATION OF B
+!     R      - LINEAR CORRELATION COEFFICIENT
+!
+!     ACCUMULATE WEIGHTED SUMS
+!
+      SUM = 0.
+      SUMX = 0.
+      SUMY = 0.
+      SUMX2 = 0.
+      SUMY2 = 0.
+      SUMXY = 0.
+      DO I = 1,NPTS
+        XI = X(I)
+        YI = Y(I)
+        IF (MODE .LT. 0) THEN
+          IF (YI .LT. 0) THEN
+            WEIGHT = 1/(-YI)
+          ELSEIF (YI .EQ. 0) THEN
+            WEIGHT = 1
+          ELSE
+            WEIGHT = 1/YI
+          ENDIF
+        ELSEIF (MODE .EQ. 0) THEN
+          WEIGHT = 1
+        ELSE
+          WEIGHT = 1/SIGMAY(I)**2
+        ENDIF
+        SUM = SUM + WEIGHT
+        SUMX = SUMX + WEIGHT*XI
+        SUMY = SUMY + WEIGHT*YI
+        SUMX2 = SUMX2 + WEIGHT*XI*XI
+        SUMY2 = SUMY2 + WEIGHT*YI*YI
+        SUMXY = SUMXY + WEIGHT*XI*YI
+      ENDDO
+!
+!     CALCULATE COEFFICIENTS AND STANDARD DEVIATIONS
+!
+      DELTA = SUM*SUMX2 - SUMX*SUMX
+      A = (SUMX2*SUMY-SUMX*SUMXY)/DELTA
+      B = (SUMXY*SUM-SUMX*SUMY)/DELTA
+      IF (MODE .NE. 0) THEN
+        VARNCE = 1.
+      ELSE
+        C = NPTS - 2
+        VARNCE = (SUMY2+A*A*SUM+B*B*SUMX2 &
+                -2*(A*SUMY+B*SUMXY-A*B*SUMX))/C
+      ENDIF
+      SIGMAA = SQRT(VARNCE*SUMX2/DELTA)
+      SIGMAB = SQRT(VARNCE*SUM/DELTA)
+      R = (SUM*SUMXY-SUMX*SUMY)/SQRT(DELTA*(SUM*SUMY2-SUMY*SUMY))
+    END SUBROUTINE LINFIT
+
+
 end module utils_mod
 

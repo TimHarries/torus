@@ -138,7 +138,7 @@ CONTAINS
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
 !       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
-       thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
+!       thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
        if (associated(thisOctal%ionFrac)) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
@@ -5034,8 +5034,8 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+!           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -7749,7 +7749,7 @@ IF ( .NOT. gridConverged ) RETURN
     xplusbound = 2
     xminusbound = 2
 
-  end subroutine calcKelvinDensity
+  end subroutine Calckelvindensity
 
   subroutine calcRTaylorDensity(thisOctal,subcell,grid)
 
@@ -7760,13 +7760,15 @@ IF ( .NOT. gridConverged ) RETURN
     type(VECTOR) :: rVec
     real :: u1 !, u2
     real(double), parameter :: gamma = 5.d0/3.d0
-    real(double) :: g
-
+    real(double) :: g, eKinetic
+    real(double) :: zpos
+    
     g = 0.1d0
+    zpos = 0.0d0
 
     rVec = subcellCentre(thisOctal, subcell)
     
-    if (rVec%z > 0.0d0) then
+    if (rVec%z > zPos) then
        thisOctal%rho(subcell) = 2.d0
     else
        thisOctal%rho(subcell) = 1.d0
@@ -7775,21 +7777,26 @@ IF ( .NOT. gridConverged ) RETURN
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
-       u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%z))/4.d0
+       u1 = 0.1d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
-    thisOctal%velocity = VECTOR(0.d0, 0.d0, u1)/cSpeed
-!    thisOctal%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+!    if (abs(rVec%z) < 0.02d0) then
+       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed
+!    else
+!       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+!    endif
 
     thisOctal%pressure_i(subcell) = 2.5d0 - g * thisOctal%rho(subcell) * rVec%z
     thisOctal%phi_i(subcell) = rvec%z * g 
 
-
-
     thisOctal%boundaryCondition(subcell) = 2
 
     thisOctal%gamma(subcell) = 7.d0/5.d0
-    thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%iEquationOfState(subcell) = 0
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
+    eKinetic = 0.5d0 * &
+         (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOCtal%rhow(subcell)**2) &
+         /thisOctal%rho(subcell)**2
+    thisOctal%energy(subcell) = thisOctal%energy(subcell) + eKinetic
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
     zplusbound = 1
     zminusbound = 1
@@ -12461,7 +12468,7 @@ end function readparameterfrom2dmap
     logical, optional :: inheritProps, interpProps, photoSphereSplit
     integer :: subcell, i, ilambda
     logical :: converged
-    real(double) :: kabs, ksca, r, fac
+    real(double) :: kabs, ksca, r, fac, tauRoss
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
@@ -12563,6 +12570,18 @@ end function readparameterfrom2dmap
                    endif
                 endif
 
+
+                call returnKappa(grid, thisOctal, subcell, ilambda, rosselandKappa = kAbs)
+                tauross = thisOctal%subcellSize*kAbs*thisOctal%rho(subcell)*1.d10
+                if ((tauRoss > 500.d0).and.split) then
+                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
+                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                        inherit=inheritProps, interp=interpProps)
+                   converged = .false.
+                   return
+                endif
+
+
                 fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &
                      thisOctal%temperature(subcell)
 
@@ -12657,6 +12676,7 @@ end function readparameterfrom2dmap
     enddo
 
   end subroutine myTauSplit
+
 
 
   recursive subroutine myScaleSmooth(factor, grid, converged, &

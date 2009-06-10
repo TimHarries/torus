@@ -20,6 +20,7 @@ module disc_hydro_mod
   use source_mod
   use phasematrix_mod
   use lucy_mod
+  use vtk_mod
 
   implicit none
 
@@ -371,12 +372,13 @@ contains
     integer :: maxIter
     integer :: nIter, j
     real(double) totalMass
+    real(double) :: rSub, betaEstimate, heightEstimate
     logical :: twoD
     real :: temp
     real :: rGapCM
     integer :: nUnrefine
     real :: lamSmoothArray(5)
-    character(len=30) :: message
+    character(len=80) :: message
     
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
@@ -448,13 +450,32 @@ contains
        call findTotalMass(grid%octreeRoot, totalMass)
        if (myRankisZero) write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
+       call getBetaValue(grid, betaEstimate, heightEstimate)
+       call getSublimationRadius(grid, rSub)
+       write(message, '(a, f7.3,a )') "After hydro adjustment: Dust Sublimation radius is: ",(1.d10*rSub/rSol), " solar radii"
+       call writeInfo(message, FORINFO)
+       write(message, '(a, f7.3,a )') "After hydro adjustment: Dust Sublimation radius is: ",(rSub/rCore), " core radii"
+       call writeInfo(message, FORINFO)
 
-       if (writeoutput) write(*,*) "Unrefining back to original gridding..."
+       if (writeoutput) write(*,*) "Refining on new estimates of disc parameters"
        gridconverged = .false.
        do while(.not.gridconverged)
           gridconverged = .true.
           nUnrefine = 0
-          call unrefineBack(grid%octreeRoot, grid, nUnrefine, gridconverged)
+          call refineDiscGrid(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, gridconverged, inheritprops = .false., interpProps = .true.)
+       end do
+       if (writeoutput) then
+          write(*,*) "done."
+       endif
+
+       
+
+       if (writeoutput) write(*,*) "Unrefining back to current gridding..."
+       gridconverged = .false.
+       do while(.not.gridconverged)
+          gridconverged = .true.
+          nUnrefine = 0
+          call unrefineBack(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, nUnrefine, gridconverged)
           if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
        end do
        if (writeoutput) then
@@ -469,8 +490,10 @@ contains
        end do
        call writeInfo("...grid smoothing complete", TRIVIAL)
 
-
-
+       call writeVtkFile(grid, "aftersmooth.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust1      ", "deltaT     ", "etaline    "/))
+       
 
        if(myRankIsZero) then
 
@@ -539,6 +562,8 @@ contains
 
  ! final call to sort out temperature
 
+ temp = 20.
+ call setTemperature(grid%octreeRoot, temp)
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
       nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter, finalpass = .true.)
 
@@ -605,6 +630,48 @@ end subroutine verticalHydrostatic
     enddo
   end subroutine zerochiline
 
+
+  subroutine getBetaValue(grid, beta, heightat100AU)
+    use input_variables, only : rinner, router
+    type(GRIDTYPE) :: grid
+    real(double) :: beta, height(100), r(100), heightat100AU
+    real(double) :: a, sigmaa, b, sigmab, rCoeff, rhoMid, rhoScale
+    real(double), allocatable :: zAxis(:), rho(:), subcellsize(:)
+    real, allocatable :: temperature(:)
+    integer :: nz
+    integer :: i, j
+    integer, parameter :: m =  100000
+
+    allocate(zAxis(m), rho(m), temperature(m), subcellsize(m))
+    do i = 1, 100
+       r(i) = log10(rInner*1.1) + (log10(rOuter*0.99) - log10(Rinner*1.1))*dble(i-1)/99.d0
+       r(i) = 10.d0**r(i)
+       call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(r(i)), 0., nz, 1.)
+       
+       rhoMid = rho(1)
+       rhoScale = rhoMid * exp(-0.5d0)
+       do j = 1, nz-1
+          if ((rhoScale < rho(j)).and.(rhoScale >= rho(j+1))) then
+             height(i) = zAxis(j+1) + (zAxis(j)-zAxis(j+1)) * (rhoScale - rho(j+1))/(rho(j) - rho(j+1))
+             exit
+          endif
+       enddo
+    enddo
+    r = log10(r)
+    height = log10(height)-10.d0 ! factor 10^10
+
+    
+    call LINFIT(r,height,height,100, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
+    heightAt100AU = (10.d0**a) * (100.d0*autocm/1.d10)**b
+    beta = b
+
+    if (writeoutput) then
+       write(*,*) "Disc beta value: ",beta
+       write(*,*) "Height at 100 AU: ",1.d10*heightAt100AU/autocm
+    endif
+  end subroutine getBetaValue
+
+  
 
 end module disc_hydro_mod
 
