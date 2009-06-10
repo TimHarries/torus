@@ -75,10 +75,7 @@ fi
 
 # 1.3 Set up the build directories
 # Specify libraries for linking (used by sphNG Makefile)
-case ${SYSTEM} in 
-    zen) export TORUS_LIB="${sphtorus_dir}/lib -ltorus -L${HOME}/lib/pgplot -lpgplot -L${HOME}/cfitsio/lib -lcfitsio -lpng" ;;
-    *)   export TORUS_LIB="${sphtorus_dir}/lib -ltorus -L${HOME}/lib/pgplot -lpgplot -L${HOME}/cfitsio/lib -lcfitsio" ;;
-esac
+export TORUS_LIB="${sphtorus_dir}/lib -ltorus -L${HOME}/cfitsio/lib -lcfitsio"
 
 if [[ -e ${sphtorus_dir} ]]; then
     if [ ${overwrite} -eq 1 ]; then
