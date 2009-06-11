@@ -462,7 +462,8 @@ contains
        do while(.not.gridconverged)
           gridconverged = .true.
           nUnrefine = 0
-          call refineDiscGrid(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, gridconverged, inheritprops = .false., interpProps = .true.)
+          call refineDiscGrid(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, gridconverged, &
+               inheritprops = .false., interpProps = .true.)
        end do
        if (writeoutput) then
           write(*,*) "done."

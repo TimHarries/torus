@@ -98,7 +98,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nMuMie = 1800
+  integer, parameter :: nMuMie = 20
   type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
 
   ! variables for clumped wind models
@@ -189,7 +189,7 @@ program torus
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
-  real(double) :: totalmass, totalmasstrap, maxRho, minRho, betaFit, heightAt100AU
+  real(double) :: totalmass, totalmasstrap, maxRho, minRho
 
 
 #ifdef MPI

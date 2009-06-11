@@ -26,7 +26,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter, finalPass)
-    use input_variables, only : variableDustSublimation, iterlucy, amax, storeScattered, rCore
+    use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth
 #ifdef MPI
@@ -122,9 +122,7 @@ contains
     real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
-    integer :: nTau
-    real(double), allocatable :: xArray(:), tauArray(:)
-    real(double) :: tau, subRadius
+    real(double) :: subRadius
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
 #ifdef USEMKL
@@ -986,12 +984,10 @@ contains
   end subroutine lucyRadiativeEquilibriumAMR
 
   subroutine getSublimationRadius(grid, subRadius)
-    use input_variables, only : rCore
     type(GRIDTYPE) :: grid
     real(double) :: subRadius, tau
     real(double), allocatable :: tauArray(:), xArray(:)
     integer :: nTau, i
-    character(len=80) :: message
     allocate(tauArray(1:100000), xArray(1:100000))
 
     call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), &
@@ -3388,7 +3384,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
-    use input_variables, only : rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
+    use input_variables, only : rOuter, minDepthAMR, heightSplitFac
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3552,7 +3548,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine integrateUpwards
 
   recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
-    use input_variables, only : maxDepthAMR, rOuter, heightsplitfac
+    use input_variables, only : rOuter, heightsplitfac
     logical :: gridConverged
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -3560,12 +3556,9 @@ subroutine setBiasOnTau(grid, iLambda)
     type(VECTOR) :: cellCentre
     logical, optional :: inheritProps, interpProps
     integer :: subcell, i
-    logical :: converged
     real(double) :: rSub, cellSize, hr, r, beta, height
-    real :: thisTau
     logical :: split
     logical, save :: firsttime = .true.
-    character(len=30) :: message
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
