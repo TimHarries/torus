@@ -218,6 +218,8 @@ contains
 
 ! Use temperature from SPH particles to initialise temperature grid
     sphData%useSphTem = .true. 
+! no conversion required
+    sphdata%codeEnergytoTemperature = 1.0 
 
     ! save these values in this object
     sphData%udist = udist
