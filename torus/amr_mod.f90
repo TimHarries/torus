@@ -7699,6 +7699,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real :: u1 !, u2
+    real(double) :: eKinetic
     real(double), parameter :: gamma = 5.d0/3.d0
 
 
@@ -7740,8 +7741,12 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
     thisOctal%gamma(subcell) = 5.d0/3.d0
-    thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%iEquationOfState(subcell) = 0
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
+    eKinetic = 0.5d0 * &
+         (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOCtal%rhow(subcell)**2) &
+         /thisOctal%rho(subcell)**2
+    thisOctal%energy(subcell) = thisOctal%energy(subcell) + eKinetic
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
 
     zplusbound = 1
@@ -7777,7 +7782,7 @@ IF ( .NOT. gridConverged ) RETURN
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
-       u1 = 0.1d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+       u1 = 0.01d0*(1.d0+cos(fourPi*(rVec%x+0.25d0)))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
 !    if (abs(rVec%z) < 0.02d0) then
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed

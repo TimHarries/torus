@@ -927,6 +927,7 @@ contains
 
 
    recursive subroutine computepressureu(thisoctal, direction)
+     use input_variables, only : etaViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -938,7 +939,7 @@ contains
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
-    eta = 3.d0
+    eta = etaViscosity
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -967,6 +968,8 @@ contains
 !                  useviscosity = .true.
 
 
+
+
              if (useviscosity) then
                 biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
                      * thisoctal%rho(subcell)
@@ -992,6 +995,7 @@ contains
   end subroutine computepressureu
 
    recursive subroutine computepressurev(thisoctal, direction)
+     use input_variables, only : etaViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1002,7 +1006,7 @@ contains
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
-    eta = 3.d0
+    eta = etaViscosity
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1016,7 +1020,6 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
@@ -1054,6 +1057,7 @@ contains
   end subroutine computepressurev
 
    recursive subroutine computepressurew(thisoctal, direction)
+     use input_variables, only : etaViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1065,7 +1069,7 @@ contains
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
-    eta = 3.d0
+    eta = etaViscosity
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1979,24 +1983,12 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-
-    call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
     call computePressureU(grid%octreeRoot, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call pressureForceU(grid%octreeRoot, dt/2.d0)
-
-    call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -2010,24 +2002,12 @@ contains
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-
-    call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
     call computePressureW(grid%octreeRoot, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call pressureForceW(grid%octreeRoot, dt)
-
-    call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, usethisBound=2)
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2038,14 +2018,6 @@ contains
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-
-    call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, usethisBound=2)
-
-
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)

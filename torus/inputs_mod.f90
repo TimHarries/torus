@@ -1402,8 +1402,9 @@ contains
     call getLogical("doselfgrav", doselfgrav, cLine, nLines, &
          "Solve self-gravity: ","(a,1l,a)", .false., ok, .false.)
 
-    call getLogical("damping", dampingViscosity, cLine, nLines, &
-         "Use damping viscosity: ","(a,1l,a)", .false., ok, .false.)
+    call getDouble("etaviscosity", etaViscosity, cLine, nLines, &
+         "Distance grid scale:","(a,e12.3,1x,a)", 3.d0, ok, .false.)
+
 
     call getReal("cfl", cflNumber, cLine, nLines, &
          "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
