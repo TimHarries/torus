@@ -1419,6 +1419,7 @@ contains
 
           if (allocated(VelocityArray)) deallocate (VelocityArray)
        endif
+       nullify(previousOctal)
        firsttime = .true.
        return
     endif
