@@ -224,7 +224,6 @@ program torus
   !===============================================================================
 #endif
 
-
   writeoutput    = .true.
   outputwarnings = .true.
   outputinfo     = .true.
@@ -1905,7 +1904,8 @@ end subroutine pre_initAMRGrid
 
         !
         ! cleaning up unused memory here ....
-        if ((geometry(1:7) == "cluster").or.(geometry(1:5)=="wr104") .or. geometry == "molcluster") then
+        if ((geometry(1:7) == "cluster").or.(geometry(1:5)=="wr104") .or. geometry == "molcluster" &
+             .or. geometry == "theGalaxy") then
            ! using the routine in sph_data_class
            call kill()
            ! using the routine in amr_mod.f90
