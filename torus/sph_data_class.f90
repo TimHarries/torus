@@ -65,8 +65,7 @@ module sph_data_class
      real(double), pointer, dimension(:) :: rhon
      ! Temperature of the gas particles
      real(double), pointer, dimension(:) :: temperature
-     ! Smoothing lengths of the gas/sink particles
-     real(double), pointer, dimension(:) :: h
+     ! Smoothing lengths of the sink particles
      real(double), pointer, dimension(:) :: hpt
      ! Positions of stars
      real(double), pointer, dimension(:) :: x,y,z
@@ -969,6 +968,41 @@ contains
     if ( ASSOCIATED(sphdata%hn) ) then 
        DEALLOCATE(sphdata%hn)
        NULLIFY(sphdata%hn)
+    end if
+
+    if ( ASSOCIATED(sphdata%vxn) ) then 
+       DEALLOCATE(sphdata%vxn)
+       NULLIFY(sphdata%vxn)
+    end if
+
+    if ( ASSOCIATED(sphdata%vyn) ) then 
+       DEALLOCATE(sphdata%vyn)
+       NULLIFY(sphdata%vyn)
+    end if
+
+    if ( ASSOCIATED(sphdata%vzn) ) then 
+       DEALLOCATE(sphdata%vzn)
+       NULLIFY(sphdata%vzn)
+    end if
+
+    if ( ASSOCIATED(sphdata%hpt) ) then 
+       DEALLOCATE(sphdata%hpt)
+       NULLIFY(sphdata%hpt)
+    end if
+
+    if ( ASSOCIATED(sphdata%vx) ) then 
+       DEALLOCATE(sphdata%vx)
+       NULLIFY(sphdata%vx)
+    end if
+
+    if ( ASSOCIATED(sphdata%vy) ) then 
+       DEALLOCATE(sphdata%vy)
+       NULLIFY(sphdata%vy)
+    end if
+
+    if ( ASSOCIATED(sphdata%vz) ) then 
+       DEALLOCATE(sphdata%vz)
+       NULLIFY(sphdata%vz)
     end if
 
     sphdata%inUse = .false.
