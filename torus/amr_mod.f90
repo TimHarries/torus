@@ -1217,7 +1217,8 @@ CONTAINS
     TYPE(octal), POINTER   :: child
   
     INTEGER :: subcell, iChild
-    REAL T1, T2, TSTART
+    REAL T1, T2
+    real, save :: TSTART 
     logical, save :: firsttime = .true.
     integer, save :: counter = 0
      
