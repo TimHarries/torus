@@ -97,7 +97,7 @@ contains
     real :: totFrac
     integer :: nFrac
     integer, parameter :: LU_OUT = 42
-    integer :: iIter_grand
+    integer :: iIter_grand, iMultiplier
     real(oct)::  dT_mean_new, dT_mean_old ! [Kelvins]
     logical :: converged
     real:: percent_undersampled
@@ -258,6 +258,7 @@ contains
     converged = .false.
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
+    iMultiplier = 1
 
     do while (.not.converged)
        ! ensure we do at least three iterations
@@ -273,6 +274,7 @@ contains
        !       endif
 
        nIter = 1
+      
 
        do iIter = 1, nIter
 
@@ -354,6 +356,7 @@ contains
                 nMonte = nVoxels * 50
              endif
           endif
+          nMonte = nMonte * iMultiplier
 
           write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
           call writeInfo(message, TRIVIAL)
@@ -910,7 +913,7 @@ contains
        oldTotalEmission = totalEmission
 
        if (percent_undersampled > percent_undersampled_min) then
-          nMonte  = nMonte * 2
+          iMultiplier  = iMultiplier * 2
           converged = .false.
        endif
 
