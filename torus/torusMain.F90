@@ -527,9 +527,6 @@ program torus
         ! Plotting the various values stored in the AMR grid.
         if ( plot_maps .and. myRankIsZero ) call writeVtkFile(grid, "rho.vtk")
 
-        ! Output H 21cm emissivity and opacity 
-        if ( h21cm ) call writeVtkFile(grid, "h21cm.vtk", valueTypeString=(/"etaline","chiline"/) )
-
      end if
 
   !=================================================================
@@ -704,6 +701,9 @@ program torus
      else
         call make_h21cm_image(grid)
      end if
+
+     ! Output H 21cm emissivity and opacity 
+     call writeVtkFile(grid, "h21cm.vtk", valueTypeString=(/"etaline","chiline", "dI", "galLon", "galLat"/) )
 
      goto 666
   end if

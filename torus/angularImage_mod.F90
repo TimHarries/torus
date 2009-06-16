@@ -18,6 +18,7 @@ module angularImage
   type(VECTOR) :: observerVelocity
   character(len=200) :: message
   type(VECTOR), parameter :: rayposition=VECTOR(0.0, 2.2e12_db, 0.0)
+  real(double) :: this_gal_lat, this_gal_lon
 
   contains
 
@@ -27,20 +28,20 @@ module angularImage
       use gridtype_mod, only: GRIDTYPE
       use molecular_mod, only:  moleculetype
       use amr_mod, only: amrGridVelocity
+      use h21cm_mod, only: h21cm_lambda
 
       implicit none
 
       TYPE(gridtype), intent(in) :: grid
       type(DATACUBE) ::  cube
       type(MOLECULETYPE) :: thisMolecule
-      real, parameter :: thisWavelength=21.0
 
 ! molecular weight is used for column density calculation
       thisMolecule%molecularWeight = mHydrogen / amu
 
       ! Set up 21cm line
       allocate( thisMolecule%transfreq(1) )
-      thisMolecule%transfreq(1) = cSpeed / (21.0)
+      thisMolecule%transfreq(1) = cSpeed / (h21cm_lambda)
 
 ! Get the observer's velocity from the grid
       observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
@@ -49,7 +50,7 @@ module angularImage
 
       call writeinfo('Generating internal view', TRIVIAL)
       call createAngImage(cube, grid, thisMolecule)
-      cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
+      cube%intensity(:,:,:) = cube%intensity(:,:,:) * (h21cm_lambda**2) / (2.0 * kErg)
       if(writeoutput) call writedatacube(cube, "theGalaxy.fits")
 
     end subroutine make_angular_image
@@ -248,6 +249,9 @@ module angularImage
       do jpixels = 1, npixels ! raster over image
          do ipixels = ix1, ix2
 
+            this_gal_lon = cube%xAxis(ipixels)
+            this_gal_lat = cube%yAxis(jpixels)
+
             viewvec_x = sin( theta_axis(jpixels) ) * cos( phi_axis(ipixels) ) 
             viewvec_y = sin( theta_axis(jpixels) ) * sin( phi_axis(ipixels) ) 
             viewvec_z = cos( theta_axis(jpixels) )
@@ -270,7 +274,6 @@ module angularImage
  function AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV,subpixels) result(out)
    
    use input_variables, only : tolerance, nsubpixels
-   use molecular_mod, only: intensityAlongRay
 
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
@@ -312,7 +315,7 @@ module angularImage
 
       thisViewVec = viewVec
 
-     call intensityalongray(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,tau=opticaldepth, nCol=nCol, &
+     call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,tau=opticaldepth, nCol=nCol, &
           observerVelocity=observerVelocity )
 
      if (isnan(i0)) then
@@ -348,5 +351,295 @@ module angularImage
    enddo
    
  end function AngPixelIntensity
+
+   subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol, &
+     observerVelocity)
+
+     use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize
+     use octal_mod 
+     use atom_mod, only: Bnu
+     use amr_mod
+     use molecular_mod, only: densite, velocity, phiprof
+     use h21cm_mod, only: h21cm_lambda
+
+     type(VECTOR) :: position, direction, dsvector, otherDirection
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: disttoGrid
+     integer :: itrans
+     real(double) :: nMol
+     real(double), intent(out) :: i0
+     real(double) :: previous_i0
+     real(double), optional, intent(out) :: nCol
+     type(VECTOR), optional, intent(in) ::  observerVelocity
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+     type(VECTOR) :: currentPosition, thisPosition, endPosition, otherSide
+     type(VECTOR) :: startVel, endVel, thisVel, veldiff
+     real(double) :: alphanu1, alphanu2, jnu, snu
+     real(double) :: alpha
+     real(double)  :: dv, deltaV, dVacrossCell
+     integer :: i, icount
+     real(double) :: tval
+     integer :: nTau
+     real(double) ::  OneOvernTauMinusOne, ds
+
+     real(double) :: dTau, etaline, dustjnu
+     real(double), intent(out), optional :: tau
+     real(double),save :: BnuBckGrnd
+
+     real(double) :: phiProfVal
+     real         :: sigma_thermal
+     real(double) :: deps, origdeps
+
+     logical,save :: firsttime = .true.
+     logical,save :: havebeenWarned = .false.
+     character(len = 80) :: message
+     logical, optional :: tautest
+     logical :: dotautest
+
+     real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, n
+     real(double), optional, intent(out) :: rhomax
+     real(double), optional, intent(in) :: i0max
+     real(double) :: distToObs
+
+     if(present(tautest)) then
+        dotautest = tautest
+     else
+        dotautest = .false.
+     endif
+
+     if(firsttime .or. dotautest) then
+        BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
+        if(.not. dotautest) firsttime = .false.
+     endif
+     
+     if(inOctal(grid%octreeRoot, Position)) then
+        disttogrid = 0.
+     else
+        distToGrid = distanceToGridFromOutside(grid, position, direction) 
+     endif
+
+     if (distToGrid > 1.e29) then
+        if (.not. haveBeenWarned) then
+           call writewarning("ray does not intersect grid")
+           write(message, *) position
+           call writeinfo(message, FORINFO)
+           write(message, *) direction
+           call writeinfo(message, FORINFO)
+           havebeenWarned = .true.
+
+        endif
+        
+        i0 = 1.d-60
+        tau = 1.d-60
+        goto 666
+     endif
+     
+     ! Find a position on the other side of the grid. 
+     otherSide      = position + (distToGrid * direction) + (2.0 * real(amrgridsize,db) * direction)
+     otherDirection%x = -1.0 * direction%x
+     otherDirection%y = -1.0 * direction%y
+     otherDirection%z = -1.0 * direction%z
+
+     ! Work out distance to grid from new position 
+     distToGrid = distanceToGridFromOutside(grid, otherSide, otherDirection)
+
+     deps = 5.d-4 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     origdeps = deps
+
+
+     currentPosition = otherside + (distToGrid + deps) * otherDirection
+     distToObs = (currentPosition - position) .dot. direction
+
+     i0  = BnuBckGrnd
+     tau = 0.d0
+     if (present(nCol)) nCol = 0.d0
+
+     if(present(rhomax)) rhomax = 0.d0
+
+     thisOctal => grid%octreeRoot
+     icount = 0
+
+     do while((.not. inOctal(grid%octreeRoot, currentPosition)) .and. icount .eq. 0 .and. deps .lt. 1d30)
+        deps = 10.d0 * deps
+        currentPosition = otherSide + (distToGrid + deps) * otherDirection
+     enddo
+   
+     ingrid_loop: do while(inOctal(grid%octreeRoot, currentPosition) .and. distToObs > 0 )
+
+        icount = icount + 1
+           
+        call findSubcelllocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, otherDirection, tVal, sOctal=thisOctal)
+
+        if(present(rhomax)) then
+           rhomax = max(rhomax, thisoctal%rho(subcell))
+        endif
+
+        dtauovercell = 0.d0
+        dIovercell = 0.d0
+        attenuateddIovercell = 0.d0
+
+        if(densitysubsample) then
+           if ( h21cm) then
+              nmol = densite(currentposition, grid) / (thisOctal%rho(subcell))
+           else
+              nmol = thisoctal%molabundance(subcell) * (densite(currentposition, grid) / &
+                   (2.d0 * mhydrogen))
+           end if
+        else
+           if ( h21cm ) then
+              nMol = 1.0
+           else
+              nMol = thisOctal%molcellparam(1,subcell)
+           endif
+        end if
+
+        etaline = nmol * thisOctal%molcellparam(5,subcell)
+
+        if(usedust) then
+           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+        else
+           alphanu2 =  0.0
+        endif
+
+        thisPosition = currentPosition
+
+        startVel = Velocity(currentPosition, grid, startoctal = thisoctal, subcell = subcell)
+        endPosition = currentPosition + tval * otherDirection
+
+        endVel = Velocity(endPosition, grid, startoctal = thisoctal, subcell = subcell)
+
+        Veldiff = endVel - startVel
+
+        dvAcrossCell = (veldiff.dot.direction)
+
+        if ( h21cm ) then 
+           ! Calculate line width in cm/s.
+           sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+           ! Convert to Torus units (v/c)
+           sigma_thermal = sigma_thermal / cspeed
+           dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
+        else
+           dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
+        end if
+
+        if(densitysubsample) then ! should replace 5 with maxdensity/mindensity * fac
+           nTau = min(max(5, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
+        else
+           nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
+        endif
+        
+        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
+        
+        ds = tval * OneOvernTauMinusOne
+        
+! Calculate column density
+! Factor of 1.d10 is to convert ds to cm 
+        if (present(nCol)) then 
+           nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * ds * 1.d10
+        end if
+
+        dsvector = ds * otherDirection
+
+        previous_i0 = i0 
+
+        ntau_loop: do i = 2, nTau 
+
+           thisPosition = thisPosition + dsvector
+           if(.not. inoctal(grid%octreeroot, thisposition)) thisPosition = thisPosition - 0.99d0 * dsvector
+           thisVel = Velocity(thisPosition, grid, startoctal = thisoctal, subcell = subcell)
+
+           if ( present(observerVelocity) ) then 
+              thisVel = thisVel - observerVelocity
+           end if
+
+           dv = (thisVel .dot. direction) - deltaV
+
+           if ( h21cm ) then 
+              phiprofval = gauss (sigma_thermal, real(dv) ) / thisMolecule%transfreq(1)
+           else  
+              phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+           end if
+
+           
+           if(densitysubsample .and. .not. h21cm ) then
+              nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid) / &
+                     (2.d0 * mhydrogen))
+
+              if(usedust) then
+                 alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+                 dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
+              else
+                 alphanu2 = 0.0
+              endif
+
+              etaline = nmol * thisOctal%molcellparam(5,subcell)
+              alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
+
+           else if (densitysubsample .and. h21cm) then
+              nmol     = Densite(thisposition, grid) / (thisOctal%rho(subcell))
+              etaline  = nmol * thisOctal%molcellparam(5,subcell)
+              alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
+
+           else
+              alphanu1 = (nmol * thisOctal%molcellparam(6,subcell)) * phiprofval
+           endif
+
+           alpha = alphanu1 + alphanu2
+           dTau = alpha * ds * 1.d10
+           dtauovercell = dtauovercell + dtau
+
+           jnu = etaLine * phiProfVal
+
+           if(useDust) jnu = jnu + dustjnu
+
+           if (alpha .ne. 0.d0) then
+              snu = jnu/alpha
+           else
+              snu = tiny(snu)
+              i0 = i0 + tiny(i0)
+           endif
+
+           dI = (1.d0-exp(-dtau))*snu
+
+           tau = tau + dtau
+
+           attenuateddIovercell = attenuateddIovercell + dI
+
+           i0 = i0 * exp(-1.0*dtau) + dI
+
+        end do ntau_loop
+
+        ! Change in brightness temperature over this cell
+        dIovercell = (i0 - previous_i0) * (h21cm_lambda**2) / (2.0 * kErg)
+
+        if(present(i0max) .and. i0 .gt. 0.99d0 * i0max) then 
+           exit
+        endif
+
+        n = thisoctal%newmolecularlevel(4,subcell)
+                    
+        thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0)
+
+        ! average change in brightness temperaure over this cell
+        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0) 
+
+        ! Image co-ordinates        
+        thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + this_gal_lon) / (n + 1.d0)
+        thisoctal%newmolecularlevel(3,subcell) = (n * thisoctal%newmolecularlevel(3,subcell) + this_gal_lat) / (n + 1.d0)
+
+        thisoctal%newmolecularlevel(4,subcell) = thisoctal%newmolecularlevel(4,subcell) + 1.d0
+
+        currentPosition = currentPosition + (tval + origdeps) * otherDirection
+        distToObs = (currentPosition - position) .dot. direction
+        
+     enddo ingrid_loop
+         
+666  continue
+
+   end subroutine intensityAlongRayRev
 
 end module angularImage

@@ -3775,6 +3775,7 @@ end subroutine calculateConvergenceData
  subroutine make_h21cm_image(grid)
    
    use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc, densitySubSample
+   use h21cm_mod, only: h21cm_lambda
 
    implicit none
 
@@ -3782,7 +3783,6 @@ end subroutine calculateConvergenceData
    type(VECTOR)    :: observervec, viewvec, imagebasis(2)
    type(DATACUBE) ::  cube
    type(MOLECULETYPE) :: thisMolecule
-   real, parameter :: thisWavelength=21.0
 
    lineImage        = .true.
    maxRhoCalc       = .false. 
@@ -3793,7 +3793,7 @@ end subroutine calculateConvergenceData
 
 ! Set up 21cm line
    allocate( thisMolecule%transfreq(1) )
-   thisMolecule%transfreq(1) = cSpeed / thisWavelength
+   thisMolecule%transfreq(1) = cSpeed / h21cm_lambda
 
    call writeinfo('Generating H 21cm image', TRIVIAL)
    call setObserverVectors(viewvec, observerVec, imagebasis)
@@ -3806,7 +3806,7 @@ end subroutine calculateConvergenceData
    cube%vAxis(:) = cube%vAxis(:) + dataCubeVelocityOffset
 
 ! Output as brightness temperature
-   cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
+   cube%intensity(:,:,:) = cube%intensity(:,:,:) * (h21cm_lambda**2) / (2.0 * kErg)
 
    if(writeoutput) call writedatacube(cube, "h21cm.fits")
 

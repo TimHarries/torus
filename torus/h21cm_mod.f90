@@ -7,8 +7,9 @@ module h21cm_mod
 
   use kind_mod
 
-  
   implicit none
+
+  real(double), public, parameter :: h21cm_lambda = 21.12
 
   public :: hi_emop
 

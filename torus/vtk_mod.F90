@@ -338,6 +338,13 @@ contains
                case("i0")
                   write(lunit, *) thisOctal%newmolecularlevel(3,subcell)
 
+! galLon and galLat re-use storage used for i0 and dIattenuated 
+               case("galLon")
+                  write(lunit, *) thisOctal%newmolecularlevel(2,subcell)
+
+               case("galLat")
+                  write(lunit, *) thisOctal%newmolecularlevel(3,subcell)
+
                case("crossing")
                   write(lunit, *) thisOctal%newmolecularlevel(4,subcell)
 
