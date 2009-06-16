@@ -2416,7 +2416,7 @@ endif
      real(double) :: alpha
      real(double)  :: dv, deltaV, dVacrossCell
      integer :: i, icount
-     real(double) :: distArray(2000), tval
+     real(double) :: tval
      integer :: nTau
      real(double) ::  OneOvernTauMinusOne, ds
 
@@ -2556,7 +2556,6 @@ endif
            nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
         endif
         
-        distArray(1) = 0.d0
         OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
         
         ds = tval * OneOvernTauMinusOne
