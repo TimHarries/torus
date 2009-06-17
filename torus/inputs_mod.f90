@@ -1164,9 +1164,6 @@ contains
     call getLogical("photoionization", photoionization, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
-    call getLogical("usemetals", usemetals, cLine, nLines, &
-         "Include metals in photoion calculation: ","(a,1l,a)", .true., ok, .false.)
-
     call getLogical("molecular", molecular, cLine, nLines, &
          "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
@@ -1208,6 +1205,12 @@ contains
                "Image Centre latitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("minVel", minVel, cLine, nLines, &
                "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)
+          call getDouble("intPosX", intPosX,  cLine, nLines, "Observer x position (x10^10cm)", &
+               "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+          call getDouble("intPosY", intPosY,  cLine, nLines, "Observer y position (x10^10cm)", &
+               "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
+          call getDouble("intPosZ", intPosZ,  cLine, nLines, "Observer z position (x10^10cm)", &
+               "(a,e10.4,1x,a)", 0.d0, ok, .false.)
 
        else
 

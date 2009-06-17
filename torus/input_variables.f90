@@ -28,7 +28,6 @@ module input_variables
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
   logical :: photoionization
-  logical :: useMetals
   logical :: molecular
   logical :: h21cm 
   real :: beamSize
@@ -37,6 +36,7 @@ module input_variables
   real(double) :: galaxyInclination, galaxyPositionAngle 
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: internalView ! observer is internal to the galaxy
+  real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
   logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom

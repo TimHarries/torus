@@ -17,7 +17,7 @@ module angularImage
 
   type(VECTOR) :: observerVelocity
   character(len=200) :: message
-  type(VECTOR), parameter :: rayposition=VECTOR(0.0, 2.2e12_db, 0.0)
+  type(VECTOR) :: rayposition
   real(double) :: this_gal_lat, this_gal_lon
 
   contains
@@ -26,9 +26,9 @@ module angularImage
 
       use datacube_mod, only: DATACUBE, writeDataCube
       use gridtype_mod, only: GRIDTYPE
-      use molecular_mod, only:  moleculetype
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
+      use input_variables, only: intPosX, intPosY, intPosZ
 
       implicit none
 
@@ -42,6 +42,11 @@ module angularImage
       ! Set up 21cm line
       allocate( thisMolecule%transfreq(1) )
       thisMolecule%transfreq(1) = cSpeed / (h21cm_lambda)
+
+! Set up the observer's position 
+      rayposition = VECTOR(intPosX, intPosY, intPosZ)
+      write(message,'(a,3(ES12.3,2x),a)') "Observer's position is ", rayposition, "(x10^10cm)" 
+      call writeinfo(message, TRIVIAL)
 
 ! Get the observer's velocity from the grid
       observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
@@ -62,7 +67,7 @@ module angularImage
       use input_variables, only : gridDistance, beamsize, npixels, nv, imageside,  &
            minVel, maxVel, nsubpixels
       use datacube_mod, only: telescope, initCube, addSpatialAxes, addvelocityAxis
-      use molecular_mod, only: calculateOctalParams, moleculetype, intensitytoflux
+      use molecular_mod, only: calculateOctalParams, intensitytoflux
       use atom_mod, only: bnu
       use vector_mod
 #ifdef MPI
