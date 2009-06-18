@@ -1170,6 +1170,9 @@ contains
     call getLogical("h21cm", h21cm, cLine, nLines, &
          "Compute 21cm emission: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("splitCubes", splitCubes, cLine, nLines, &
+         "Split data cubes: ","(a,1l,a)", .false., ok, .false.)
+
     if( geometry == "theGalaxy" ) then
 
        itrans = 1

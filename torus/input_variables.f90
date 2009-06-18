@@ -33,8 +33,6 @@ module input_variables
   real :: beamSize
   real :: eccentricity
   real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
-  real(double) :: galaxyInclination, galaxyPositionAngle 
-  real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: internalView ! observer is internal to the galaxy
   real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
   logical :: cmf, sobolev
@@ -63,6 +61,11 @@ module input_variables
   real(double) :: etaViscosity
   logical :: opticallyThickContinuum
   logical :: sed, jansky, SIsed, inArcsec, dustySED
+
+  ! Data cube parameters
+  real(double) :: galaxyInclination, galaxyPositionAngle 
+  real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
+  logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
 
   ! variables to do with dust
 

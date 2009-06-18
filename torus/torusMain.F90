@@ -703,7 +703,7 @@ program torus
      end if
 
      ! Output H 21cm emissivity and opacity 
-     call writeVtkFile(grid, "h21cm.vtk", valueTypeString=(/"etaline","chiline", "dI", "galLon", "galLat"/) )
+     if (plot_maps) call writeVtkFile(grid, "h21cm.vtk", valueTypeString=(/"etaline","chiline", "dI", "galLon", "galLat"/) )
 
      goto 666
   end if

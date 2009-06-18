@@ -65,7 +65,7 @@ module angularImage
     subroutine createAngImage(cube, grid, thisMolecule)
 
       use input_variables, only : gridDistance, beamsize, npixels, nv, imageside,  &
-           minVel, maxVel, nsubpixels
+           minVel, maxVel, nsubpixels, splitCubes
       use datacube_mod, only: telescope, initCube, addSpatialAxes, addvelocityAxis
       use molecular_mod, only: calculateOctalParams, intensitytoflux
       use atom_mod, only: bnu
@@ -85,14 +85,16 @@ module angularImage
      real(double) :: deltaV
      integer :: iTrans = 1
      integer :: iv
-     real(double) :: intensitysum !, fluxsum
+     real(double) :: intensitysum
      real(double), save :: background
      real, allocatable :: temp(:,:,:) 
      integer :: ix1, ix2
+     integer, parameter :: temp_dim=5 ! number of elements in temp array
 
 #ifdef MPI
      ! For MPI implementations
      integer :: ierr, n           ! error flag
+     integer :: itemp ! loop counter for MPI communication
      real(double), allocatable :: tempArray(:), tempArray2(:)
 #endif
 
@@ -124,7 +126,7 @@ module angularImage
 
      deltaV = minVel * 1.e5/cspeed_sgl
      
-     allocate(temp(npixels,npixels,3))
+     allocate(temp(npixels,npixels,temp_dim))
 
      do iv = 1,nv
 
@@ -145,26 +147,20 @@ module angularImage
         call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp, ix1, ix2)
 
 #ifdef MPI
-        ! Communicate intensity
-        tempArray = reshape(temp(:,:,1), (/ n /))
-        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
-        temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
-
-        ! Communicate tau
-        tempArray = reshape(temp(:,:,2), (/ n /))
-        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
-        temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
-
-        ! Communicate column density
-        tempArray = reshape(temp(:,:,3), (/ n /))
-        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
-        temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
-
+        do itemp = 1, temp_dim
+           tempArray = reshape(temp(:,:,itemp), (/ n /))
+           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+           temp(:,:,itemp) = reshape(tempArray2, (/ npixels, npixels /))
+        end do
 #endif        
 
         cube%intensity(:,:,iv) = real(temp(:,:,1))
         cube%tau(:,:,iv)       = real(temp(:,:,2))
         cube%nCol(:,:)         = real(temp(:,:,3)) 
+        if ( splitCubes ) then 
+           cube%i0_pos(:,:,iv) = real(temp(:,:,4))
+           cube%i0_neg(:,:,iv) = real(temp(:,:,5))
+        end if
 
         if(writeoutput) then
            call tune(6, message)  ! stop a stopwatch
@@ -284,7 +280,7 @@ module angularImage
    type(MOLECULETYPE) :: thisMolecule
    integer :: itrans
    type(VECTOR), intent(in) :: viewVec
-   real(double) :: i0, opticaldepth
+   real(double) :: i0, opticaldepth, i0_pos, i0_neg
 
    type(VECTOR) :: thisViewVec
 
@@ -299,7 +295,7 @@ module angularImage
    logical :: converged
    real(double) :: deltaV
 
-   real(double) :: out(3) 
+   real(double) :: out(5) 
 
    avgIntensityOld = 0.
    varIntensityOld = 0.
@@ -320,8 +316,8 @@ module angularImage
 
       thisViewVec = viewVec
 
-     call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,tau=opticaldepth, nCol=nCol, &
-          observerVelocity=observerVelocity )
+     call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
+          tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
 
      if (isnan(i0)) then
         write(*,*) "Got nan", opticaldepth, rayposition
@@ -338,11 +334,15 @@ module angularImage
          out(1) = avgIntensityNew
          out(2) = opticaldepth ! not averaged, just last value
          out(3) = avgNColNew
+         out(4) = i0_pos
+         out(5) = i0_neg
       elseif(iray .gt. 10000) then
          converged = .false.
          out(1) = avgIntensityNew
          out(2) = opticaldepth ! not averaged, just last value
          out(3) = avgNColNew
+         out(4) = i0_pos
+         out(5) = i0_neg
          exit
       else
          avgIntensityOld = avgIntensityNew
@@ -351,14 +351,16 @@ module angularImage
          out(1) = avgIntensityNew
          out(2) = opticaldepth ! not averaged, just last value
          out(3) = avgNColNew
+         out(4) = i0_pos
+         out(5) = i0_neg
       endif
 
    enddo
    
  end function AngPixelIntensity
 
-   subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol, &
-     observerVelocity)
+   subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau,tautest, &
+        rhomax, i0max, nCol, observerVelocity)
 
      use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize
      use octal_mod 
@@ -373,7 +375,7 @@ module angularImage
      real(double) :: disttoGrid
      integer :: itrans
      real(double) :: nMol
-     real(double), intent(out) :: i0
+     real(double), intent(out) :: i0, i0_pos, i0_neg
      real(double) :: previous_i0
      real(double), optional, intent(out) :: nCol
      type(VECTOR), optional, intent(in) ::  observerVelocity
@@ -459,6 +461,8 @@ module angularImage
 
      i0  = BnuBckGrnd
      tau = 0.d0
+     i0_pos = BnuBckGrnd
+     i0_neg = 0.d0 
      if (present(nCol)) nCol = 0.d0
 
      if(present(rhomax)) rhomax = 0.d0
@@ -620,6 +624,12 @@ module angularImage
 
         ! Change in brightness temperature over this cell
         dIovercell = (i0 - previous_i0) * (h21cm_lambda**2) / (2.0 * kErg)
+
+        if ( dIovercell > 0 ) then 
+           i0_pos = i0_pos + dIovercell
+        else
+           i0_neg = i0_neg + dIovercell
+        end if
 
         if(present(i0max) .and. i0 .gt. 0.99d0 * i0max) then 
            exit

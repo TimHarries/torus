@@ -38,6 +38,9 @@ module datacube_mod
      real, pointer :: flux(:,:,:) => null()
      real, pointer :: tau(:,:,:) => null()
      real, pointer :: nCol(:,:) => null()
+     real, pointer :: i0_pos(:,:,:) => null() ! Positive contribution to flux
+     real, pointer :: i0_neg(:,:,:) => null() ! Negative contribution to flux
+
   end type DATACUBE
 
 contains
@@ -216,6 +219,47 @@ contains
        call print_error(status)
     endif
 
+    if(associated(thisCube%i0_pos)) then
+
+       ! 9th HDU : positive intensity contribution
+       call FTCRHD(unit, status)
+       bitpix=-32
+       naxis=3
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       naxes(3)=thisCube%nv
+       nelements=naxes(1)*naxes(2)*naxes(3)
+
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       call addWCSinfo
+
+       !  Write the array to the FITS file.
+       call ftppre(unit,group,fpixel,nelements,thisCube%i0_pos,status)
+    endif
+
+
+    if(associated(thisCube%i0_neg)) then
+
+       ! 10th HDU : negative intensity contribution
+       call FTCRHD(unit, status)
+       bitpix=-32
+       naxis=3
+       naxes(1)=thisCube%nx
+       naxes(2)=thisCube%ny
+       naxes(3)=thisCube%nv
+       nelements=naxes(1)*naxes(2)*naxes(3)
+
+       !  Write the required header keywords.
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       
+       call addWCSinfo
+
+       !  Write the array to the FITS file.
+       call ftppre(unit,group,fpixel,nelements,thisCube%i0_neg,status)
+    endif
+
     !  Close the file and free the unit number.
     call ftclos(unit, status)
     call ftfiou(unit, status)
@@ -225,6 +269,7 @@ contains
        call print_error(status)
     end if
     
+
     contains
 
       subroutine addWCSinfo
@@ -441,6 +486,7 @@ contains
 
 ! Initialises cube - sets intensity for cube to 0 
   subroutine initCube(thisCube, nx, ny, nv, mytelescope)
+    use input_variables, only: splitCubes
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
@@ -479,10 +525,22 @@ contains
     thisCube%intensity = 0.d0
     thisCube%tau =  0.d0
     thisCube%nCol = 0.d0
+
 !    thisCube%flux = 0.d0
 !    thisCube%nsubpixels = 0.d0
 !    thisCube%converged = 0
 !    thisCube%weight = 1.d0
+
+    if (splitCubes) then 
+       ! flux component not required in configurations which use split cubes 
+       deallocate (thisCube%flux)
+       nullify (thisCube%flux)
+       allocate(thisCube%i0_pos(1:nx,1:ny,1:nv))
+       allocate(thisCube%i0_neg(1:nx,1:ny,1:nv))
+       thisCube%i0_pos(:,:,:) = 0.0
+       thisCube%i0_neg(:,:,:) = 0.0
+    end if
+
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
