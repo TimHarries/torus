@@ -162,7 +162,7 @@ contains
   subroutine getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    integer :: nz
+    integer, intent(out) :: nz
     real(double) :: rho(:)
     real :: temperature(:)
     real(double) :: zAxis(:), subcellsize(:)
@@ -635,7 +635,8 @@ end subroutine verticalHydrostatic
   subroutine getBetaValue(grid, beta, heightat100AU)
     use input_variables, only : rinner, router
     type(GRIDTYPE) :: grid
-    real(double) :: beta, height(100), r(100), heightat100AU
+    real(double), intent(out) :: beta, heightat100AU
+    real(double) :: height(100), r(100)
     real(double) :: a, sigmaa, b, sigmab, rCoeff, rhoMid, rhoScale
     real(double), allocatable :: zAxis(:), rho(:), subcellsize(:)
     real, allocatable :: temperature(:)

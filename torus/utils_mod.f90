@@ -4473,9 +4473,9 @@ END SUBROUTINE GAUSSJ
         implicit none
         integer :: npts, mode, i
         real(double) ::  X(NPTS),Y(NPTS),SIGMAY(NPTS)
-        real(double) :: sum, sumx, sumy, sumx2,sumy2, sumxy, xi, yi, weight, r
+        real(double) :: sum, sumx, sumy, sumx2,sumy2, sumxy, xi, yi, weight
         real(double) :: c, varnce, delta
-        real(double) :: a, b, sigmaa, sigmab
+        real(double), intent(out) :: a, b, sigmaa, sigmab,r 
 !
 !     MAKES LEAST-SQUARES FIT TO DATA WITH A STRAIGHT LINE  Y = A + B*X
 !

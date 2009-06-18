@@ -4590,7 +4590,8 @@ IF ( .NOT. gridConverged ) RETURN
       if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
+!      if ((thisOctal%xMax < 0.75d0).and.(thisOctal%xMin > 0.25d0).and.&
+!           (thisOctal%zMax < 0.1d0).and.(thisOctal%zMin > -0.1d0)) split = .true.
    case("rtaylor")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
       if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
@@ -7728,7 +7729,7 @@ IF ( .NOT. gridConverged ) RETURN
 !    u1 = -0.025d0
     
 !    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)/cspeed
-!    if (modulus(rvec) < 0.2d0) thisOctal%rho(subcell) = 0.5d0
+!    if (modulus(rvec-VECTOR(0.5d0,0.d0, 0.d0)) < 0.2d0) thisOctal%rho(subcell) = 0.5d0
 !    if (inSubcell(thisOctal, subcell, VECTOR(0.295d0,0.d0, -0.005d0))) thisOctal%rho(subcell) = 0.5d0
     thisOctal%pressure_i(subcell) = 2.5d0
     thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed

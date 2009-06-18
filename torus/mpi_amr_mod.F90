@@ -1726,6 +1726,8 @@ contains
     real(double) :: weight, totalWeight
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z
+    real(double) :: oldMass, newMass, factor
+    real(double) :: oldEnergy, newEnergy, oldMom, newMom
     logical, save :: firstTime = .true.
     logical :: debug
 
@@ -1944,24 +1946,26 @@ contains
 
              totalWeight = totalWeight + weight
              rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
-             if (debug) write(*,*) "from get hydro values corner ", icorner, " rho ", rho
              rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe
              rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
+             if (debug) write(*,*) "from get hydro values corner ", icorner, " rhou ", rhou
              rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
              rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
              eCorner(iCorner) = eCorner(iCorner) + weight * energy
              phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
+             write(*,*) dir(idir), " phicorner ",icorner, phi, weight
           else
              weight = 1.d0
              totalWeight = totalWeight + weight
              rhoCorner(iCorner) = rhoCorner(iCorner) + parent%rho(parentSubcell)
-             if (debug) write(*,*) "from parent values corner ", icorner, " rho ", parent%rho(parentsubcell)
              rhoeCorner(iCorner) = rhoeCorner(iCorner) + parent%rhoe(parentSubcell)
              rhouCorner(iCorner) = rhouCorner(iCorner) + parent%rhou(parentSubcell)
+             if (debug) write(*,*) "from parent values corner ", icorner, " rhou ", parent%rhou(parentsubcell)
              rhovCorner(iCorner) = rhovCorner(iCorner) + parent%rhov(parentSubcell)
              rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
              eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
              phiCorner(iCorner) = phiCorner(iCorner) + parent%phi_i(parentSubcell)
+             write(*,*) dir(idir)," phicorner ",icorner, parent%phi_i(parentSubcell), weight
           endif
        enddo
        rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
@@ -2077,7 +2081,8 @@ contains
                (       u) * (1.d0 - v) * rhouCorner(2) + &
                (1.d0 - u) * (       v) * rhouCorner(3) + &
                (       u) * (       v) * rhouCorner(4)
-          
+          if (debug) write(*,*) "interped rhou ",thisOctal%rhou(iSubcell), " u ", u, " v ",v, &
+               " corners ",rhoucorner(1:4)
           
           thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
                (       u) * (1.d0 - v) * rhovCorner(2) + &
@@ -2099,6 +2104,7 @@ contains
                (       u) * (1.d0 - v) * phiCorner(2) + &
                (1.d0 - u) * (       v) * phiCorner(3) + &
                (       u) * (       v) * phiCorner(4)
+          write(*,*) "interp phi ", thisOctal%phi_i(isubcell), " corners ", phiCorner(1:4), " uv ",u,v
        endif
 
        if (thisOctal%oned) then
@@ -2126,7 +2132,54 @@ contains
        endif
 
     enddo
-      
+    
+    ! conservation normalizations
+
+    ! mass
+    oldMass = parent%rho(parentSubcell) * cellVolume(parent, parentSubcell)
+    newMass = 0.d0
+    do iSubcell = 1, thisOctal%maxChildren
+       newMass = newMass + thisOctal%rho(isubcell) * cellVolume(thisOctal, iSubcell)
+    enddo
+    factor = oldMass / newMass
+    thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
+
+    ! energy
+
+    oldEnergy = parent%rhoe(parentSubcell)
+    newEnergy = SUM(thisOctal%rhoe(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    factor = oldEnergy/newEnergy
+    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
+
+    ! momentum (u)
+
+    oldMom = parent%rhou(parentSubcell)
+    newMom = SUM(thisOctal%rhou(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    if (newMom /= 0.d0) then
+       factor = oldMom / newMom
+       thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
+    endif
+    
+
+    ! momentum (v)
+
+    oldMom = parent%rhov(parentSubcell)
+    newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    if (newMom /= 0.d0) then
+       factor = oldMom / newMom
+       thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+    endif
+
+    ! momentum (w)
+
+    oldMom = parent%rhow(parentSubcell)
+    newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    if (newMom /= 0.d0) then
+       factor = oldMom / newMom
+       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
+    endif
+    
+  
     grid%nOctals = grid%nOctals + 1
 
     ! check for a new maximum depth 

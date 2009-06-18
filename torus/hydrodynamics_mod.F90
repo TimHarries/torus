@@ -721,6 +721,22 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
              thisoctal%flux_i_minus_1(subcell) = flux
+
+! new stuff added by tjh
+
+             if (thisoctal%ndepth >= nd) then ! this is a coarse-to-fine cell boundary
+                thisoctal%flux_i_minus_1(subcell) = flux
+             else
+                ! now we need to do the fine-to-coarse flux
+                if (thisoctal%u_i_minus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
+                   thisoctal%flux_i_minus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_minus_1(subcell)
+                else
+                   thisoctal%flux_i_minus_1(subcell) = flux ! flow is from neighbour into this one
+                endif
+             endif
+
+
+
           endif
        endif
     enddo
@@ -2590,8 +2606,7 @@ contains
           
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          call refinegridGeneric(grid)
-          
+          call refinegridGeneric(grid)          
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
@@ -2603,14 +2618,6 @@ contains
           call setupQX(grid%octreeRoot, grid, direction)
           !    call calculateEnergy(grid%octreeRoot, gamma, mu)
 
-
-          !       call calculateRhoE(grid%octreeRoot, direction)
-          direction = VECTOR(1.d0, 0.d0, 0.d0)
-          call calculateRhoU(grid%octreeRoot, direction)
-          direction = VECTOR(0.d0, 1.d0, 0.d0)
-          call calculateRhoV(grid%octreeRoot, direction)
-          direction = VECTOR(0.d0, 0.d0, 1.d0)
-          call calculateRhoW(grid%octreeRoot, direction)
           
        endif
     endif
@@ -2683,7 +2690,6 @@ contains
 
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
           call refinegridGeneric(grid)
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)

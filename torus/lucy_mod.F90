@@ -988,7 +988,8 @@ contains
 
   subroutine getSublimationRadius(grid, subRadius)
     type(GRIDTYPE) :: grid
-    real(double) :: subRadius, tau
+    real(double), intent(out) :: subRadius
+    real(double) :: tau
     real(double), allocatable :: tauArray(:), xArray(:)
     integer :: nTau, i
     allocate(tauArray(1:100000), xArray(1:100000))
