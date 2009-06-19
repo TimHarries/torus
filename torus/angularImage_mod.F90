@@ -24,11 +24,11 @@ module angularImage
 
     subroutine make_angular_image(grid)
 
-      use datacube_mod, only: DATACUBE, writeDataCube
+      use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, writeDataCube, freeDataCube
       use gridtype_mod, only: GRIDTYPE
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
-      use input_variables, only: intPosX, intPosY, intPosZ
+      use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel
 
       implicit none
 
@@ -39,7 +39,7 @@ module angularImage
 ! molecular weight is used for column density calculation
       thisMolecule%molecularWeight = mHydrogen / amu
 
-      ! Set up 21cm line
+! Set up 21cm line
       allocate( thisMolecule%transfreq(1) )
       thisMolecule%transfreq(1) = cSpeed / (h21cm_lambda)
 
@@ -53,23 +53,31 @@ module angularImage
       write(message,*) "Observer's velocity is ", observerVelocity * (cspeed / 1.0e5), "km/s"
       call writeinfo(message, TRIVIAL)
 
-      call writeinfo('Generating internal view', TRIVIAL)
+      call writeinfo("Initialising datacube",TRIVIAL)
+      call initCube(cube, npixels, npixels, nv)
+      call addvelocityAxis(cube, minVel, maxVel) 
+
+      call writeinfo("Generating internal view", TRIVIAL)
       call createAngImage(cube, grid, thisMolecule)
-      cube%intensity(:,:,:) = cube%intensity(:,:,:) * (h21cm_lambda**2) / (2.0 * kErg)
+
+      call writeinfo("Writing data cube", TRIVIAL)
       if(writeoutput) call writedatacube(cube, "theGalaxy.fits")
 
+      call freeDataCube(cube)
+     
     end subroutine make_angular_image
 
 !-----------------------------------------------------------------------------------------------------------
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside,  &
+      use input_variables, only : gridDistance, npixels, nv, imageside,  &
            minVel, maxVel, nsubpixels, splitCubes
-      use datacube_mod, only: telescope, initCube, addSpatialAxes, addvelocityAxis
-      use molecular_mod, only: calculateOctalParams, intensitytoflux
+      use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
+      use h21cm_mod, only: h21cm_lambda
+
 #ifdef MPI
       use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
 #endif
@@ -78,7 +86,6 @@ module angularImage
 #ifdef MPI
       include 'mpif.h'
 #endif
-     type(TELESCOPE) :: mytelescope
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
@@ -98,18 +105,6 @@ module angularImage
      real(double), allocatable :: tempArray(:), tempArray2(:)
 #endif
 
-
- ! SHOULD HAVE CASE(TELESCOPE) STATEMENT HERE
-
-     mytelescope%label = 'JCMT'
-     mytelescope%diameter = 15.d2 ! diameter in cm
-     mytelescope%beamsize = beamsize
-
-     call writeinfo("Initialising datacube",TRIVIAL)
-
-     call initCube(cube, npixels, npixels, nv, mytelescope) ! Make cube
-
-     call addvelocityAxis(cube, minVel, maxVel) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
 
 ! Divide up the image along the x axis for MPI case, otherwise work on the whole image
 #ifdef MPI
@@ -154,7 +149,8 @@ module angularImage
         end do
 #endif        
 
-        cube%intensity(:,:,iv) = real(temp(:,:,1))
+! Intensity as brightness temperature
+        cube%intensity(:,:,iv) = real(temp(:,:,1)) * (h21cm_lambda**2) / (2.0 * kErg)
         cube%tau(:,:,iv)       = real(temp(:,:,2))
         cube%nCol(:,:)         = real(temp(:,:,3)) 
         if ( splitCubes ) then 
@@ -172,12 +168,6 @@ module angularImage
            background = Bnu(thisMolecule%transfreq(itrans), Tcbr)
            write(message, *) "Background Intensity: ",background
            call writeinfo(message, TRIVIAL)
-           background = intensitytoflux(background, dble(imageside), dble(gridDistance), thisMolecule)
-           write(message, *) "Background Flux: ",background
-           call writeinfo(message, TRIVIAL)
-           write(message, *) ""
-           call writeinfo(message, TRIVIAL)
-              
         endif
 
         write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4)') &

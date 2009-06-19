@@ -715,15 +715,65 @@ end subroutine TranslateCubeIntensity
 subroutine freeDataCube(thiscube)
   type(DATACUBE) :: thiscube
 
-    if (associated(thisCube%xAxis)) deallocate(thiscube%xAxis)
-    if (associated(thisCube%yAxis)) deallocate(thiscube%yAxis)
-    if (associated(thisCube%vAxis)) deallocate(thiscube%vAxis)
+    if (associated(thisCube%nsubpixels)) then
+       deallocate(thiscube%nSubpixels)
+       nullify(thiscube%nSubpixels)
+    end if
 
-    if (associated(thisCube%intensity)) deallocate(thiscube%intensity)
-    if (associated(thisCube%flux)) deallocate(thiscube%flux)
-    if (associated(thisCube%nsubpixels)) deallocate(thiscube%nSubpixels)
-    if (associated(thisCube%converged)) deallocate(thiscube%converged)
-    if (associated(thisCube%weight)) deallocate(thiscube%weight)
+    if (associated(thisCube%converged)) then 
+       deallocate(thiscube%converged)
+       nullify(thiscube%converged)
+    end if
+
+    if (associated(thisCube%weight)) then 
+       deallocate(thiscube%weight)
+       nullify(thiscube%weight)
+    end if
+
+    if (associated(thisCube%xAxis)) then 
+       deallocate(thiscube%xAxis)
+       nullify(thiscube%xAxis)
+    end if
+
+    if (associated(thisCube%yAxis)) then 
+       deallocate(thiscube%yAxis)
+       nullify(thiscube%yAxis)
+    end if
+
+    if (associated(thisCube%vAxis)) then 
+       deallocate(thiscube%vAxis)
+       nullify(thiscube%vAxis)
+    end if
+
+    if (associated(thisCube%intensity)) then 
+       deallocate(thiscube%intensity)
+       nullify(thiscube%intensity)
+    end if
+
+    if (associated(thisCube%flux)) then 
+       deallocate(thiscube%flux)
+       nullify(thiscube%flux)
+    end if
+
+    if (associated(thisCube%tau)) then 
+       deallocate(thiscube%tau)
+       nullify(thiscube%tau)
+    end if
+
+    if (associated(thisCube%nCol)) then 
+       deallocate(thiscube%nCol)
+       nullify(thiscube%nCol)
+    end if
+
+    if (associated(thisCube%i0_pos)) then 
+       deallocate(thiscube%i0_pos)
+       nullify(thiscube%i0_pos)
+    end if
+
+    if (associated(thisCube%i0_neg)) then 
+       deallocate(thiscube%i0_neg)
+       nullify(thiscube%i0_neg)
+    end if
 
   end subroutine freeDataCube
 
