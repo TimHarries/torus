@@ -179,6 +179,19 @@ module angularImage
      deallocate(tempArray, tempArray2)
 #endif
 
+
+! Set up cube to be read by kvis
+!
+! FITS keywords for an angular image
+     cube%xUnit     = "degrees"
+     cube%xAxisType = "GLON-CAR"
+     cube%yAxisType = "GLAT-CAR"
+     cube%vAxisType = "VELO-LSR"
+     cube%intensityUnit = "K"
+! kvis assumes that the velocity axis is in m/s 
+     cube%vAxis(:) = cube%vAxis(:) * 1000.0 
+     cube%vUnit    = "m/s      "
+
    end subroutine createAngImage
 
 !-----------------------------------------------------------------------------------------------------------

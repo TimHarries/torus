@@ -34,6 +34,9 @@ module datacube_mod
      real(double), pointer :: xAxis(:)
      real(double), pointer :: yAxis(:)
      real(double), pointer :: vAxis(:)
+     character(len=8) :: xaxisType ! To be written as a FITS keyword
+     character(len=8) :: yaxisType ! To be written as a FITS keyword
+     character(len=8) :: vaxisType ! To be written as a FITS keyword
      real, pointer :: intensity(:,:,:) => null()
      real, pointer :: flux(:,:,:) => null()
      real, pointer :: tau(:,:,:) => null()
@@ -278,19 +281,19 @@ contains
         ! Write WCS keywords to the header
         call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
         call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
-        call ftpkys(unit,'CTYPE1','x',"x axis",status)
+        call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
         call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
         call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
 
         call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
         call ftpkyd(unit,'CDELT2',thisCube%yAxis(2)-thisCube%yAxis(1),-3,'coordinate increment at reference point',status)
-        call ftpkys(unit,'CTYPE2','y',"y axis",status)
+        call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
         call ftpkyd(unit,'CRVAL2',thisCube%yAxis(1),-3,'coordinate value at reference point',status)
         call ftpkys(unit,'CUNIT2', thisCube%xUnit, "y axis unit", status)
 
         call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
         call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
-        call ftpkys(unit,'CTYPE3','velocity',"velocity axis",status)
+        call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
         call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
 
       end subroutine addWCSinfo
@@ -502,11 +505,14 @@ contains
 
     endif
 
-    thisCube%label=" "
-    thisCube%vUnit="km/s"
-    thisCube%xUnit="10^10cm "
-    thisCube%IntensityUnit=" "
-    thisCube%FluxUnit=" "
+    thisCube%label        = " "
+    thisCube%vaxisType    = "velocity"
+    thisCube%vUnit        = "km/s"
+    thisCube%xAxisType    = "x"
+    thisCube%yAxisType    = "y"
+    thisCube%xUnit        = "10^10cm "
+    thisCube%IntensityUnit= " "
+    thisCube%FluxUnit     = " "
 
     thisCube%nx = nx
     thisCube%ny = ny
