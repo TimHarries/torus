@@ -70,8 +70,7 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : gridDistance, npixels, nv, imageside,  &
-           minVel, maxVel, nsubpixels, splitCubes
+      use input_variables, only : npixels, nv, minVel, nsubpixels, splitCubes
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
