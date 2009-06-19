@@ -11,7 +11,7 @@ module angularImage
   
   implicit none 
 
-  public :: make_angular_image
+  public :: make_angular_image, map_dI_to_particles
 
   private 
 
@@ -25,7 +25,6 @@ module angularImage
     subroutine make_angular_image(grid)
 
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, writeDataCube, freeDataCube
-      use gridtype_mod, only: GRIDTYPE
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
       use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel
@@ -646,5 +645,72 @@ module angularImage
 666  continue
 
    end subroutine intensityAlongRayRev
+
+!-----------------------------------------------------------------------------------------
+
+   subroutine map_dI_to_particles(grid)
+
+    use input_variables, only: sphdatafilename
+    use sph_data_class, only: sphdata, read_galaxy_sph_data
+    use octal_mod, only: octal 
+    use amr_mod, only: inOctal, findSubcellTD
+
+    TYPE(gridtype), intent(in) :: grid
+    integer :: ipart
+    TYPE(vector) :: position, positionTorus
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell 
+
+    real(double) :: dI, n_sample
+    real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
+
+    character(len=*), parameter :: outfilename="particle_dI.dat"
+    integer, parameter  :: LUIN = 10 ! unit number of output file
+
+! All processes have all particles so only do this on one thread
+    if ( .not. myRankIsZero ) return
+
+! Re-read particle data which has been deleted to save memory
+     call read_galaxy_sph_data(sphdatafilename)
+
+     open (unit=LUIN, status="replace", form="formatted", file=outfilename)
+
+     distTotorus = sphdata%udist / 1.0e10_db
+
+     particles: do ipart=1, sphdata%npart
+
+        position = VECTOR(sphData%xn(ipart), sphData%yn(ipart), sphData%zn(ipart) )
+        positionTorus = distTotorus * position
+
+        if(inOctal(grid%octreeRoot, positionTorus)) then
+           
+           call findSubcellTD(positionTorus,grid%octreeRoot,thisOctal,subcell)
+           
+           dI       =  thisOctal%newmolecularlevel(1,subcell)
+           n_sample =  thisOctal%newmolecularlevel(4,subcell)
+
+           write(LUIN,'(7(e15.8,2x))') position, sphdata%gasmass(ipart), sphdata%hn(ipart), sphdata%rhon(ipart), dI !, n_sample
+
+        end if
+
+     end do particles
+
+     close (LUIN)
+
+! Write splash columns file
+     open(unit=LUIN, status="replace", form="formatted", file="columns")
+     write(LUIN,*) "x"
+     write(LUIN,*) "y"
+     write(LUIN,*) "z"
+     write(LUIN,*) "pmass"
+     write(LUIN,*) "h"
+     write(LUIN,*) "rho"
+     write(LUIN,*) "dI"
+!     write(LUIN,*) "nsample"
+     close (LUIN)
+
+   end subroutine map_dI_to_particles
+
+!-----------------------------------------------------------------------------------------
 
 end module angularImage

@@ -57,7 +57,7 @@ program torus
   use phaseloop_mod, only: do_phaseloop
   use timing, only: tune
   use ion_mod, only: addions
-  use angularImage, only: make_angular_image
+  use angularImage, only: make_angular_image, map_dI_to_particles
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -704,6 +704,8 @@ program torus
 
      ! Output H 21cm emissivity and opacity 
      if (plot_maps) call writeVtkFile(grid, "h21cm.vtk", valueTypeString=(/"etaline","chiline", "dI", "galLon", "galLat"/) )
+
+     call map_dI_to_particles(grid)
 
      goto 666
   end if
