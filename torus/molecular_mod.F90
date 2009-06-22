@@ -3801,14 +3801,31 @@ end subroutine calculateConvergenceData
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
    call convertSpatialAxes(cube,'kpc')
-
-! Add velocity offset 
-   cube%vAxis(:) = cube%vAxis(:) + dataCubeVelocityOffset
-
-! Output as brightness temperature
-   cube%intensity(:,:,:) = cube%intensity(:,:,:) * (h21cm_lambda**2) / (2.0 * kErg)
+   call process_for_kvis_external
 
    if(writeoutput) call writedatacube(cube, "h21cm.fits")
+
+ contains
+
+   subroutine process_for_kvis_external
+
+! Include units in axis title as a workaround. 
+     cube%xAxisType = "X (kpc) "
+     cube%yAxisType = "Y (kpc) "
+     cube%xUnit = "          " 
+
+     ! Add velocity offset 
+     cube%vAxis(:)  = cube%vAxis(:) + dataCubeVelocityOffset
+     cube%vAxisType = "VELO-LSR"
+     ! kvis assumes that the velocity axis is in m/s 
+     cube%vAxis(:) = cube%vAxis(:) * 1000.0 
+     cube%vUnit    = "m/s      "
+
+     ! Output as brightness temperature
+     cube%intensity(:,:,:) = cube%intensity(:,:,:) * (h21cm_lambda**2) / (2.0 * kErg)
+     cube%intensityUnit    = "Tb (K)"
+
+   end subroutine process_for_kvis_external
 
  end subroutine make_h21cm_image
 

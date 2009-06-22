@@ -59,6 +59,8 @@ module angularImage
       call writeinfo("Generating internal view", TRIVIAL)
       call createAngImage(cube, grid, thisMolecule)
 
+      call process_cube_for_kvis(cube)
+
       call writeinfo("Writing data cube", TRIVIAL)
       if(writeoutput) call writedatacube(cube, "theGalaxy.fits")
 
@@ -178,18 +180,6 @@ module angularImage
      deallocate(tempArray, tempArray2)
 #endif
 
-
-! Set up cube to be read by kvis
-!
-! FITS keywords for an angular image
-     cube%xUnit     = "degrees"
-     cube%xAxisType = "GLON-CAR"
-     cube%yAxisType = "GLAT-CAR"
-     cube%vAxisType = "VELO-LSR"
-     cube%intensityUnit = "K"
-! kvis assumes that the velocity axis is in m/s 
-     cube%vAxis(:) = cube%vAxis(:) * 1000.0 
-     cube%vUnit    = "m/s      "
 
    end subroutine createAngImage
 
@@ -657,6 +647,27 @@ module angularImage
 666  continue
 
    end subroutine intensityAlongRayRev
+
+!-----------------------------------------------------------------------------------------
+
+   subroutine process_cube_for_kvis(cube)
+
+     TYPE(datacube), intent(inout) :: cube 
+
+! Set up cube to be read by kvis
+!
+! FITS keywords for an angular image
+     cube%xUnit     = "degrees"
+     cube%xAxisType = "GLON-CAR"
+     cube%yAxisType = "GLAT-CAR"
+     cube%vAxisType = "VELO-LSR"
+     cube%intensityUnit = "K (Tb)  "
+
+! kvis assumes that the velocity axis is in m/s 
+     cube%vAxis(:) = cube%vAxis(:) * 1000.0 
+     cube%vUnit    = "m/s      "
+
+   end subroutine process_cube_for_kvis
 
 !-----------------------------------------------------------------------------------------
 

@@ -117,7 +117,7 @@ contains
 
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+       call ftpkys(unit,'BUNIT',"Optical depth","Optical depth unit",status)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -214,7 +214,7 @@ contains
        
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-
+       call ftpkys(unit,'BUNIT',"cm^-2","Column density unit",status)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -508,8 +508,8 @@ contains
     thisCube%label        = " "
     thisCube%vaxisType    = "velocity"
     thisCube%vUnit        = "km/s"
-    thisCube%xAxisType    = "x"
-    thisCube%yAxisType    = "y"
+    thisCube%xAxisType    = "X"
+    thisCube%yAxisType    = "Y"
     thisCube%xUnit        = "10^10cm "
     thisCube%IntensityUnit= " "
     thisCube%FluxUnit     = " "
@@ -577,6 +577,10 @@ contains
   end subroutine addSpatialAxes
 
   subroutine convertSpatialAxes(cube, newUnit)
+
+! Purpose: Convert spatial axis units from torus length units to something else
+! Author: D. Acreman
+
     use constants_mod, only: autocm, pctocm
     type(DATACUBE) :: cube
     character(len=*), intent(in) :: newUnit
@@ -597,6 +601,16 @@ contains
        cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / autocm
        cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / autocm
        cube%xUnit    = "AU"
+
+    case('cm')
+       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db
+       cube%xUnit    = "cm"
+
+    case('m')
+       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / 100.0
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / 100.0 
+       cube%xUnit    = "m"
 
     case DEFAULT 
        call writewarning('Unrecognised unit in convertSpatialAxes')
