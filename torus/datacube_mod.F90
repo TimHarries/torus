@@ -94,7 +94,7 @@ contains
        call ftpkys(unit,'LABEL',thisCube%label,"Telescope label",status) 
        call ftpkys(unit,'VUNIT',thisCube%vUnit,"Velocity unit",status)
        call ftpkys(unit,'XUNIT',thisCube%xUnit,"Spatial unit",status)
-       call ftpkys(unit,'IUNIT',thisCube%IntensityUnit,"Intensity unit",status)
+       call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
        
        call addWCSinfo
@@ -235,7 +235,7 @@ contains
 
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+       call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -256,7 +256,7 @@ contains
 
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+       call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call addWCSinfo
 
        !  Write the array to the FITS file.
