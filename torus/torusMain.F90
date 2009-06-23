@@ -700,7 +700,7 @@ program torus
      if ( internalView ) then 
         call make_angular_image(grid)
         call map_dI_to_particles(grid)
-        if (plot_maps) call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI", "galLon", "galLat"/) )
+        if (plot_maps) call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI", "galLon", "galLat", "crossing"/) )
      else
         call make_h21cm_image(grid)
      end if
