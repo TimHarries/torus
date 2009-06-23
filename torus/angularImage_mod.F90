@@ -720,7 +720,12 @@ module angularImage
            dI       =  thisOctal%newmolecularlevel(1,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
 
-           write(LUIN,'(7(e15.8,2x))') position, sphdata%gasmass(ipart), sphdata%hn(ipart), sphdata%rhon(ipart), dI !, n_sample
+           write(LUIN,'(8(e15.8,2x))') position, sphdata%gasmass(ipart), sphdata%hn(ipart), sphdata%rhon(ipart), dI, n_sample
+
+        else
+
+! Flag particles outside the grid with -1.0 in the sample column. 
+           write(LUIN,'(8(e15.8,2x))') position, sphdata%gasmass(ipart), sphdata%hn(ipart), sphdata%rhon(ipart), 0.0, -1.0 
 
         end if
 
@@ -737,7 +742,7 @@ module angularImage
      write(LUIN,*) "h"
      write(LUIN,*) "rho"
      write(LUIN,*) "dI"
-!     write(LUIN,*) "nsample"
+     write(LUIN,*) "nsample"
      close (LUIN)
 
    end subroutine map_dI_to_particles
