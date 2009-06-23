@@ -42,6 +42,9 @@ module molecular_mod
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
 
    character(len=20) :: molgridfilename, molgridltefilename
+
+   logical, save :: nobg = .false. ! switch off background when ray tracing
+
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
 
@@ -2424,6 +2427,7 @@ endif
      real(double), intent(out), optional :: tau
      real(double),save :: BnuBckGrnd
 
+
      real(double) :: phiProfVal
      real         :: sigma_thermal
      real(double) :: deps, origdeps
@@ -2448,6 +2452,7 @@ endif
         BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
         if(.not. dotautest) firsttime = .false.
      endif
+     if (nobg) BnuBckGrnd = 0.0_db
      
      if(inOctal(grid%octreeRoot, Position)) then
         disttogrid = 0.
@@ -3794,6 +3799,9 @@ end subroutine calculateConvergenceData
 ! Set up 21cm line
    allocate( thisMolecule%transfreq(1) )
    thisMolecule%transfreq(1) = cSpeed / h21cm_lambda
+
+! Switch off background in ray trace
+   nobg = .true.
 
    call writeinfo('Generating H 21cm image', TRIVIAL)
    call setObserverVectors(viewvec, observerVec, imagebasis)

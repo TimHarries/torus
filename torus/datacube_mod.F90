@@ -48,7 +48,7 @@ module datacube_mod
 
 contains
 
-  subroutine writeDataCube(thisCube, filename)
+  subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol)
 
     implicit none
     
@@ -62,6 +62,61 @@ contains
     integer :: group,fpixel,nelements
     logical :: simple, extend
     
+! Optional arguments which allow allocated components of the data cube to not be written.
+    logical, optional, intent(in) :: write_Intensity
+    logical, optional, intent(in) :: write_ipos
+    logical, optional, intent(in) :: write_ineg
+    logical, optional, intent(in) :: write_Tau
+    logical, optional, intent(in) :: write_nCol
+
+    logical :: do_write_Intensity
+    logical :: do_write_ipos
+    logical :: do_write_ineg
+    logical :: do_write_Tau
+    logical :: do_write_nCol
+
+! Decide which arrays to write. Default is to write all which are allocated.
+! Optional arguments override the defaults. 
+    if ( .not. associated(thiscube%intensity) ) then 
+       do_write_Intensity = .false. 
+    else if ( present(write_Intensity) ) then 
+       do_write_Intensity = write_Intensity
+    else
+       do_write_Intensity = .true. 
+    end if
+
+    if ( .not. associated(thisCube%tau) ) then 
+       do_write_Tau = .false.
+    else if ( present(write_Tau) ) then 
+       do_write_Tau = write_Tau
+    else
+       do_write_Tau = .true. 
+    end if
+
+    if ( .not. associated(thisCube%nCol) ) then 
+       do_write_nCol = .false.
+    else if ( present(write_nCol) ) then 
+       do_write_nCol = write_nCol
+    else
+       do_write_nCol = .true. 
+    end if
+
+    if ( .not. associated(thisCube%i0_pos) ) then 
+       do_write_ipos = .false.
+    else if ( present(write_ipos) ) then 
+       do_write_ipos = write_ipos
+    else
+       do_write_ipos = .true. 
+    end if
+
+    if ( .not. associated(thisCube%i0_neg) ) then 
+       do_write_ineg = .false.
+    else if ( present(write_ineg) ) then 
+       do_write_ineg = write_ineg
+    else
+       do_write_ineg = .true. 
+    end if
+
     status=0
     
     !  Get an unused Logical Unit Number to use to open the FITS file.
@@ -78,7 +133,7 @@ contains
     fpixel=1
 
     ! 1st HDU : flux
-    if(associated(thiscube%intensity)) then
+    if( do_write_Intensity ) then
 
        bitpix=-32
        naxis=3
@@ -104,7 +159,7 @@ contains
               
     endif
 
-    if(associated(thisCube%tau)) then
+    if( do_write_Tau ) then
 
        ! 2nd HDU : tau
        call FTCRHD(unit, status)
@@ -203,7 +258,7 @@ contains
        call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
     endif
 
-    if(associated(thisCube%nCol)) then
+    if( do_write_nCol ) then
        ! 8th HDU : nCol
        call FTCRHD(unit, status)
        bitpix=-32
@@ -222,7 +277,7 @@ contains
        call print_error(status)
     endif
 
-    if(associated(thisCube%i0_pos)) then
+    if( do_write_ipos) then
 
        ! 9th HDU : positive intensity contribution
        call FTCRHD(unit, status)
@@ -243,7 +298,7 @@ contains
     endif
 
 
-    if(associated(thisCube%i0_neg)) then
+    if( do_write_ineg) then
 
        ! 10th HDU : negative intensity contribution
        call FTCRHD(unit, status)

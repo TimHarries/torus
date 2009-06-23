@@ -61,8 +61,25 @@ module angularImage
 
       call process_cube_for_kvis(cube)
 
-      call writeinfo("Writing data cube", TRIVIAL)
-      if(writeoutput) call writedatacube(cube, "theGalaxy.fits")
+      call writeinfo("Writing data cubes", TRIVIAL)
+      if(writeoutput) then
+
+         call writedatacube(cube, "intensity.fits", write_Intensity=.true., write_ipos=.false., &
+              write_ineg=.false., write_Tau=.false., write_nCol=.false.)
+
+         call writedatacube(cube, "intensity_pos.fits", write_Intensity=.false., write_ipos=.true., &
+              write_ineg=.false., write_Tau=.false., write_nCol=.false.)
+
+         call writedatacube(cube, "intensity_neg.fits", write_Intensity=.false., write_ipos=.false., &
+              write_ineg=.true., write_Tau=.false., write_nCol=.false.)
+
+         call writedatacube(cube, "tau.fits", write_Intensity=.false., write_ipos=.false., &
+              write_ineg=.false., write_Tau=.true., write_nCol=.false.)
+
+         call writedatacube(cube, "nCol.fits", write_Intensity=.false., write_ipos=.false., &
+              write_ineg=.false., write_Tau=.false., write_nCol=.true.)
+
+      end if
 
       call freeDataCube(cube)
      
@@ -308,7 +325,7 @@ module angularImage
       thisViewVec = viewVec
 
      call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
-          tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
+          tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity, nobg=.true. )
 
      if (isnan(i0)) then
         write(*,*) "Got nan", opticaldepth, rayposition
@@ -350,8 +367,8 @@ module angularImage
    
  end function AngPixelIntensity
 
-   subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau,tautest, &
-        rhomax, i0max, nCol, observerVelocity)
+   subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
+        rhomax, i0max, nCol, observerVelocity, nobg)
 
      use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize
      use octal_mod 
@@ -385,33 +402,25 @@ module angularImage
      real(double) :: dTau, etaline, dustjnu
      real(double), intent(out), optional :: tau
      real(double),save :: BnuBckGrnd
+     logical, optional, intent(in) :: nobg ! switch off background 
 
      real(double) :: phiProfVal
      real         :: sigma_thermal
      real(double) :: deps, origdeps
 
-     logical,save :: firsttime = .true.
      logical,save :: havebeenWarned = .false.
      character(len = 80) :: message
-     logical, optional :: tautest
-     logical :: dotautest
 
      real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, n
      real(double), optional, intent(out) :: rhomax
      real(double), optional, intent(in) :: i0max
      real(double) :: distToObs
 
-     if(present(tautest)) then
-        dotautest = tautest
-     else
-        dotautest = .false.
-     endif
+     BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
+     if ( present(nobg) ) then
+        if (nobg) BnuBckGrnd = 0.0_db
+     end if
 
-     if(firsttime .or. dotautest) then
-        BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
-        if(.not. dotautest) firsttime = .false.
-     endif
-     
      if(inOctal(grid%octreeRoot, Position)) then
         disttogrid = 0.
      else
