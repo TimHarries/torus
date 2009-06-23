@@ -1948,7 +1948,7 @@ end subroutine molecularLoop
 
  !!! This subroutine takes the parameters supplied to it and makes an image by calling more subroutines 
 
-   subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis)
+   subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel, usedust, lineimage, lamline, plotlevels
 #ifdef MPI
@@ -1976,6 +1976,8 @@ end subroutine molecularLoop
      real, allocatable :: temp(:,:,:)
 
      character(len=80) :: filename
+     logical, optional, intent(in) :: revVel
+     logical :: doRevVel
 
 #ifdef MPI
      ! For MPI implementations
@@ -2014,8 +2016,18 @@ end subroutine molecularLoop
      call writeinfo(message, TRIVIAL) 
      call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0)
 
+     if ( present(revVel) ) then 
+        doRevVel = revVel
+     else
+        doRevVel = .false.
+     end if
+
      if(nv .ne. 0) then 
-        call addvelocityAxis(cube, minVel, maxVel) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
+        if ( doRevVel ) then 
+           call addvelocityAxis(cube, maxVel, minVel)
+        else
+           call addvelocityAxis(cube, minVel, maxVel) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
+        end if
      else
         cube%vAxis(1) = minVel
      endif
@@ -3806,7 +3818,7 @@ end subroutine calculateConvergenceData
    call writeinfo('Generating H 21cm image', TRIVIAL)
    call setObserverVectors(viewvec, observerVec, imagebasis)
 
-   call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
+   call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis, revVel=.true.)
 
    call convertSpatialAxes(cube,'kpc')
    call process_for_kvis_external

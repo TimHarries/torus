@@ -54,7 +54,8 @@ module angularImage
 
       call writeinfo("Initialising datacube",TRIVIAL)
       call initCube(cube, npixels, npixels, nv)
-      call addvelocityAxis(cube, minVel, maxVel) 
+      ! Reverse velocity axis 
+      call addvelocityAxis(cube, maxVel, minVel) 
 
       call writeinfo("Generating internal view", TRIVIAL)
       call createAngImage(cube, grid, thisMolecule)
@@ -89,7 +90,7 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : npixels, nv, minVel, nsubpixels, splitCubes
+      use input_variables, only : npixels, nv, nsubpixels, splitCubes
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
@@ -136,8 +137,6 @@ module angularImage
      ix2 = npixels
 #endif
 
-     deltaV = minVel * 1.e5/cspeed_sgl
-     
      allocate(temp(npixels,npixels,temp_dim))
 
      do iv = 1,nv
