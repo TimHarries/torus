@@ -435,6 +435,24 @@ particles. The representation of the central region of the disc not
 only has a significant impact on the SEDs but also on the temperature
 distribution within the disc. 
 
+To allow a more quantitative comparison the fractional difference in
+mid-plane temperature, compared with the results of
+\cite{pascucci_2004}, is plotted in
+Fig.~\ref{fig:n_part_tem_diff_midpane}.
+\begin{figure*}
+  \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/mp_comp1}}
+  \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/mp_comp2}}
+  \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/mp_comp3}}
+  \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/mp_comp4}}
+  \caption{Fractional temperature error in the mid-plane for discs represented by
+    different numbers of SPH particles.} 
+  \label{fig:n_part_tem_diff_midpane}
+\end{figure*}
+In each case the particles are binned into 1~AU bins and the particle
+closest to the mid-plane in that bin is found. The mid-plane
+temperature from \cite{pascucci_2004} is linearly interpolated to the
+cyclindrical radius of the particle and the fractional temperature
+error is calculated. 
 
 \section{Coupled SPH and Monte-Carlo radiative transfer simulation of
   a circumstellar disc}
