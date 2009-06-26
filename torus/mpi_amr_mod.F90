@@ -63,6 +63,7 @@ contains
   end subroutine findMassOverAllThreads
     
   recursive subroutine findTotalMassMPI(thisOctal, totalMass, minRho, maxRho)
+    use input_variables, only : hydrodynamics
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: totalMass
@@ -84,6 +85,13 @@ contains
 
           if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
              dv = cellVolume(thisOctal, subcell)
+             if (hydrodynamics) then
+                if (thisOctal%twoD) then
+                   dv = thisOctal%subcellSize**2/1.d30
+                else if (thisOctal%oned) then
+                   dv = thisOctal%subcellSize/1.d30
+                endif
+             endif
              totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
              if (PRESENT(minRho)) then
                 if (thisOctal%rho(subcell) > 1.d-20) then
@@ -95,6 +103,63 @@ contains
        endif
     enddo
   end subroutine findTotalMassMPI
+
+  subroutine findEnergyOverAllThreads(grid, energy)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: energy
+    real(double), allocatable :: energyOnThreads(:), temp(:)
+    integer :: ierr
+
+    allocate(energyOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    energyOnThreads = 0.d0
+    temp = 0.d0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findEnergyOverAllThreads: grid not split over MPI")
+       energy = 0.d0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findtotalEnergyMPI(grid%octreeRoot, energyOnThreads(myRankGlobal))
+       call MPI_ALLREDUCE(energyOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       energy = SUM(temp(1:nThreadsGlobal))
+    end if
+666 continue
+  end subroutine findEnergyOverAllThreads
+    
+  recursive subroutine findTotalEnergyMPI(thisOctal, totalEnergy)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: totalEnergy
+  real(double) :: dv
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalEnergyMPI(child, totalEnergy)
+                exit
+             end if
+          end do
+       else
+
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             if (thisOctal%threed) then
+                dv = cellVolume(thisOctal, subcell)
+             else if (thisOctal%twoD) then
+                dv = thisOctal%subcellSize**2
+             else if (thisOctal%oneD) then
+                dv = thisOctal%subcellSize
+             endif
+             totalEnergy = totalEnergy + thisOctal%rhoe(subcell) * dv
+          endif
+       endif
+    enddo
+  end subroutine findTotalEnergyMPI
 
 
   
@@ -1558,10 +1623,10 @@ contains
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen
-    real(double) :: loc(3), rho, rhou , rhoe
+    real(double) :: loc(3), rho, rhou , rhoe, p
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 7
+    integer, parameter :: nStorage = 8
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 50
     integer :: status(MPI_STATUS_SIZE)
@@ -1593,7 +1658,8 @@ contains
           tval = tempStorage(5)
           rhou = tempStorage(6)
           rhoe = tempStorage(7)
-          write(20,'(4e14.5)') cen%x, rho, rhou, rhoe
+          p = tempStorage(8)
+          write(20,'(5e14.5)') cen%x, rho, rhou/rho, rhoe,p
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
        enddo
@@ -1628,6 +1694,7 @@ contains
              tempStorage(5) = tVal
              tempStorage(6) = thisOctal%rhou(subcell)             
              tempStorage(7) = thisOctal%rhoe(subcell)             
+             tempStorage(8) = thisOctal%pressure_i(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
           endif
        enddo
@@ -1705,11 +1772,12 @@ contains
     
   end subroutine grid_info_mpi
   
-  subroutine addNewChildWithInterp(parent, iChild, grid)
+  subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
     use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(OCTAL), pointer :: parent, thisOctal
     integer :: iChild
+    logical, optional :: constantGravity
     type(GRIDTYPE) :: grid
     integer :: nChildren
     integer :: newChildIndex
@@ -1953,7 +2021,6 @@ contains
              rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
              eCorner(iCorner) = eCorner(iCorner) + weight * energy
              phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
-             write(*,*) dir(idir), " phicorner ",icorner, phi, weight
           else
              weight = 1.d0
              totalWeight = totalWeight + weight
@@ -1965,7 +2032,6 @@ contains
              rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
              eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
              phiCorner(iCorner) = phiCorner(iCorner) + parent%phi_i(parentSubcell)
-             write(*,*) dir(idir)," phicorner ",icorner, parent%phi_i(parentSubcell), weight
           endif
        enddo
        rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
@@ -2104,7 +2170,6 @@ contains
                (       u) * (1.d0 - v) * phiCorner(2) + &
                (1.d0 - u) * (       v) * phiCorner(3) + &
                (       u) * (       v) * phiCorner(4)
-          write(*,*) "interp phi ", thisOctal%phi_i(isubcell), " corners ", phiCorner(1:4), " uv ",u,v
        endif
 
        if (thisOctal%oned) then
@@ -2144,39 +2209,47 @@ contains
     factor = oldMass / newMass
     thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
 
-    ! energy
+!    ! energy
+!
+!    oldEnergy = parent%rhoe(parentSubcell)
+!    newEnergy = SUM(thisOctal%rhoe(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+!    factor = oldEnergy/newEnergy
+!    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
+!
+!    ! momentum (u)
+!
+!    oldMom = parent%rhou(parentSubcell)
+!    newMom = SUM(thisOctal%rhou(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+!    if (newMom /= 0.d0) then
+!       factor = oldMom / newMom
+!       thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
+!    endif
+!    
+!
+!    ! momentum (v)
+!
+!    oldMom = parent%rhov(parentSubcell)
+!    newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+!    if (newMom /= 0.d0) then
+!       factor = oldMom / newMom
+!       thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+!    endif
+!
+!    ! momentum (w)
+!
+!    oldMom = parent%rhow(parentSubcell)
+!    newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+!    if (newMom /= 0.d0) then
+!       factor = oldMom / newMom
+!       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
+!    endif
 
-    oldEnergy = parent%rhoe(parentSubcell)
-    newEnergy = SUM(thisOctal%rhoe(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    factor = oldEnergy/newEnergy
-    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
-
-    ! momentum (u)
-
-    oldMom = parent%rhou(parentSubcell)
-    newMom = SUM(thisOctal%rhou(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    if (newMom /= 0.d0) then
-       factor = oldMom / newMom
-       thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
-    endif
-    
-
-    ! momentum (v)
-
-    oldMom = parent%rhov(parentSubcell)
-    newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    if (newMom /= 0.d0) then
-       factor = oldMom / newMom
-       thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
-    endif
-
-    ! momentum (w)
-
-    oldMom = parent%rhow(parentSubcell)
-    newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    if (newMom /= 0.d0) then
-       factor = oldMom / newMom
-       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
+    if (PRESENT(constantGravity)) then
+       if (constantGravity) then
+          do i = 1, thisOctal%maxChildren
+             thisOctal%phi_i(i) =  getPhiValue(thisOctal, i, grid%geometry)
+          enddo
+       endif
     endif
     
   

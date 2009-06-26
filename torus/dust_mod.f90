@@ -939,7 +939,7 @@ contains
     type(OCTAL), pointer :: thisOctal, child
     integer :: subcell, i
     real(double) :: temperature
-    real(double), parameter :: subRange = 1.d-3
+    real(double), parameter :: subRange = 1.d0
     real(double) :: frac
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -980,7 +980,7 @@ contains
     integer :: subcell, i
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 1.d-3
+    subrange = 1.d0
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

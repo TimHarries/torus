@@ -163,7 +163,7 @@ contains
        do
           globalConverged(myRank) = .true.
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.false.)
+          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), 1.d-2, inheritval=.false.)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:nHydroThreads))) exit
@@ -229,7 +229,7 @@ contains
           do
              globalConverged(myRank) = .true.
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), 1.d-2, inheritval=.true.)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
              if (ALL(tConverged(1:nHydroThreads))) exit
@@ -330,7 +330,7 @@ contains
           do
              globalConverged(myRank) = .true.
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), inheritval=.true.)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), 1.d-2, inheritval=.true.)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
              if (ALL(tConverged(1:nHydroThreads))) exit

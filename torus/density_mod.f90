@@ -1047,12 +1047,15 @@ contains
 
     melvinDensity = max(rhoDisc, rhoEnv)
 
-    if (bigR < Rcav) melvinDensity = 100.d0*mhydrogen
+    ! cavity density flagged at very high value, and correct cavity density
+    ! is set in assign_melvin in amr_mod.f90
+
+    if (bigR < Rcav) melvinDensity = 1.d30
 
     if (bigR > Rcav) then
        cavZ = tan(pi/2.-0.5*openingAngle)*(bigR - Rcav) ! Eq 4
        if (abs(z) > cavZ) then
-          melvinDensity = 100. * mHydrogen !1.e-30
+          melvinDensity = 1.d30
        endif
     endif
 

@@ -191,7 +191,7 @@ contains
          & "(a,i3,a)",5,ok,.false.)
 
     call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Maximum cell depth of AMR grid: ", &
-         & "(a,i3,a)",30,ok,.false.)
+         & "(a,i3,a)",31,ok,.false.)
 
     if (gridUsesAMR) then
        call getReal("amrgridsize", amrGridSize, cLine, nLines, &

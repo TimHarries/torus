@@ -723,7 +723,7 @@ contains
           if (.not.variableDustSublimation) then
              call solveArbitraryDiffusionZones(grid)
           else
-             if (iITer_grand >= 9) then
+             if (iITer_grand >= 6) then
                 call solveArbitraryDiffusionZones(grid)
              endif
           endif
@@ -829,10 +829,11 @@ contains
 
              if (iIter_grand == 2) tauMax = 0.1
              if (iIter_grand == 4) tauMax = 1.d0
-             if (iIter_grand == 6) tauMax = 1.e30
+             if (iIter_grand == 6) tauMax = 10.d0
+             if (iIter_grand == 8) tauMax = 1.e30
 
 
-             if (iIter_Grand <= 6) &
+             if (iIter_Grand <= 8) &
                   call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
@@ -855,7 +856,7 @@ contains
 !                endif
 !             endif
 
-             if (iiter_grand == 6) then
+             if (iiter_grand == 8) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -933,7 +934,7 @@ contains
        if (iIter_grand < iterlucy) converged = .false.
 
        if (variableDustSublimation) then
-          if (iIter_grand < 8) then
+          if (iIter_grand < 9) then
              converged = .false.
           endif
        endif
@@ -3388,7 +3389,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
-    use input_variables, only : rOuter, minDepthAMR, heightSplitFac
+    use input_variables, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3429,8 +3430,12 @@ subroutine setBiasOnTau(grid, iLambda)
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
 
-!          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
-!               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+
+          if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+
           
           if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
                (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -3552,7 +3557,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine integrateUpwards
 
   recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
-    use input_variables, only : rOuter, heightsplitfac
+    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner
     logical :: gridConverged
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -3589,8 +3594,12 @@ subroutine setBiasOnTau(grid, iLambda)
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-!          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
-!               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+
+          if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+
 
           if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
                (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.

@@ -84,8 +84,8 @@ contains
 !             if (thisoctal%ghostcell(subcell)) thisoctal%philimit(subcell) = 1.d0
 !                        thisoctal%philimit(subcell) = 1.d0
 !          endif
-      endif
-    enddo
+          endif
+       enddo
   end subroutine fluxlimiter
 
 
@@ -203,7 +203,7 @@ contains
              endif
 
              dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
-             dx = thisoctal%subcellsize * griddistancescale
+!             dx = thisoctal%subcellsize * griddistancescale
 
              thisoctal%flux_i(subcell) = thisoctal%flux_i(subcell) + &
                   0.5d0 * abs(thisoctal%u_interface(subcell)) * &
@@ -245,22 +245,23 @@ contains
 
 
           if (.not.thisoctal%ghostcell(subcell)) then
-             dx = thisoctal%subcellsize * griddistancescale
+!             dx = thisoctal%subcellsize * griddistancescale
+!             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
 
 !             x_minus_half = 0.5d0*(thisoctal%x_i(subcell)+thisoctal%x_i_minus_1(subcell))
 !             x_plus_half = 0.5d0*(thisoctal%x_i(subcell)+thisoctal%x_i_plus_1(subcell))
 !             dx = x_plus_half - x_minus_half
 
-!             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
-!                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / &
-!                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
+                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / &
+                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
 
 
 !             dx = thisoctal%subcellsize * griddistancescale
 
 !             write(*,*) "old q ",thisoctal%q_i(subcell)
-             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
-                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / dx
+!             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
+!                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / dx
 
 
 
@@ -1169,8 +1170,8 @@ contains
 
              rhou = thisoctal%rhou(subcell)
 
-             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-             dx = thisoctal%subcellsize * griddistancescale
+             dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+!             dx = thisoctal%subcellsize * griddistancescale
 
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
@@ -1266,8 +1267,8 @@ contains
 
              rhou = thisoctal%rhov(subcell)
 
-             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-             dx = thisoctal%subcellsize * griddistancescale
+             dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+!             dx = thisoctal%subcellsize * griddistancescale
 
 
              thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
@@ -1364,8 +1365,8 @@ contains
              rhow = thisoctal%rhow(subcell)
 
 
-             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-             dx = thisoctal%subcellsize * griddistancescale
+             dx = 0.5d0 * (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+!             dx = thisoctal%subcellsize * griddistancescale
 
              thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
                   (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
@@ -2201,7 +2202,7 @@ contains
 
        call evenUpGridMPI(grid,.false.,.true.)
        
-       call refineGridGeneric(grid)
+       call refineGridGeneric(grid, 1.d-2)
 
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid, .false.,.true.)
@@ -2255,7 +2256,7 @@ contains
           if (iUnrefine == 100) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              nUnrefine = 0 
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
 !             write(*,*) "Unrefined ", nUnrefine, " cells"
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              call evenUpGridMPI(grid, .true., .true.)
@@ -2267,7 +2268,7 @@ contains
 
 
           call zeroRefinedLastTime(grid%octreeRoot)
-          call refineGridGeneric(grid)
+          call refineGridGeneric(grid, 1.d-2)
 
           call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2371,7 +2372,7 @@ contains
 
 
 
-       call refineGridGeneric(grid)
+       call refineGridGeneric(grid, 1.d-2)
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid,.false., dorefine)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2466,7 +2467,7 @@ contains
           if (iUnrefine == 5) then
              if (myrank == 1)call tune(6, "Unrefine grid")
              nUnrefine = 0
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
              !          write(*,*) "Unrefined ", nUnrefine, " cells"
              if (myrank == 1)call tune(6, "Unrefine grid")
              iUnrefine = 0
@@ -2475,7 +2476,7 @@ contains
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call writeInfo("Refining grid part 2", TRIVIAL)    
-          call refineGridGeneric(grid)
+          call refineGridGeneric(grid, 1.d-2)
           !          
           call evenUpGridMPI(grid, .true., dorefine)
 
@@ -2535,7 +2536,8 @@ contains
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=80) :: plotfile
-    real(double) :: tDump, nextDumpTime, tff !, ang
+    real(double) :: tDump, nextDumpTime, tff, tend !, ang
+    real(double) :: totalEnergy, totalMass
     type(VECTOR) :: direction, viewVec
     integer :: nSource = 0
     integer :: thread1(100), thread2(100), nBound(100), nPairs
@@ -2546,6 +2548,7 @@ contains
     logical :: dorefine
     integer :: nUnrefine, jt
 
+    tend = 1.d30
     nUnrefine = 0
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -2606,7 +2609,7 @@ contains
           
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          call refinegridGeneric(grid)          
+          call refinegridGeneric(grid, 1.d-1)          
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
@@ -2636,6 +2639,11 @@ contains
     
     tdump = 20.d0 * dt
 
+    if (grid%geometry == "sedov") then
+       tEnd = 0.05d0
+       tdump = 0.01d0
+    endif
+
     if (writeoutput) write(*,*) "Setting tdump to: ", tdump
 
     if (it /= 0) then
@@ -2649,8 +2657,8 @@ contains
 
     jt = 0
 
-    do while(.true.)
-
+    do while(currentTime < tEnd)
+       if (myrank == 1) write(*,*) "current time " ,currentTime
        jt = jt + 1
        tc = 0.d0
        if (myrank /= 0) then
@@ -2660,6 +2668,16 @@ contains
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+
+!       if ((jt < 2000).and.(grid%geometry=="sedov")) then
+!          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
+!       endif
+          
+       
+       if ((currentTime + dt).gt.tEnd) then
+          nextDumpTime = tEnd
+          dt = nextDumpTime - currentTime
+       endif
        
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
@@ -2676,10 +2694,14 @@ contains
 
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, jt=jt)
 
+          call findEnergyOverAllThreads(grid, totalenergy)
+          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+          call findMassOverAllThreads(grid, totalmass)
+          if (writeoutput) write(*,*) "Total energy: ",totalMass
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 20) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-2)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -2690,7 +2712,7 @@ contains
 
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call refinegridGeneric(grid)
+          call refinegridGeneric(grid, 1.d-1)
           call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2720,6 +2742,8 @@ contains
                "rhov         ", &
                "rhow         ", &
                "phi          "/))
+
+          call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(1.d-6,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 1.0d0), 1000)
 
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -3816,12 +3840,13 @@ contains
      end select
    end function getBoundary
 
-  subroutine refineGridGeneric(grid)
+  subroutine refineGridGeneric(grid, tol)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iThread
     logical :: globalConverged(64), tConverged(64)
     integer :: ierr
+    real(double) :: tol
     globalConverged = .false.
     do
        call setAllUnchanged(grid%octreeRoot)
@@ -3830,7 +3855,7 @@ contains
           if (myrankGlobal /= iThread) then 
              call hydroValuesServer(grid, iThread)
           else
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), inheritval=.false.)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, inheritval=.false.)
              call shutdownServers()
           endif
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -3842,7 +3867,7 @@ contains
   end subroutine refineGridGeneric
 
 
-  recursive subroutine refineGridGeneric2(thisOctal, grid, converged, inheritval)
+  recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
     use input_variables, only : maxDepthAMR, photoionization
     include 'mpif.h'
     type(gridtype) :: grid
@@ -3856,8 +3881,7 @@ contains
     logical :: split
     integer :: neighbourSubcell, nDir
     real(double) :: r, grad, maxGradient
-    real(double), parameter :: limit = 0.1d0
-!    real(double) :: cs, rhocs
+    real(double) :: limit 
     integer :: myRank, ierr
     logical :: refineOnMass, refineOnIonization, refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi
@@ -3880,7 +3904,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call refineGridGeneric2(child, grid, converged, inheritval)
+                call refineGridGeneric2(child, grid, converged, limit, inheritval)
                 if (.not.converged) return
                 if (.not.converged) converged_tmp = converged
                 exit
@@ -4136,7 +4160,7 @@ end subroutine refineGridGeneric2
     locator = rVec
   end subroutine locatorToNeighbour
        
-  recursive subroutine unrefineCells(thisOctal, grid, nUnrefine)
+  recursive subroutine unrefineCells(thisOctal, grid, nUnrefine, splitLimit)
     use input_variables, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -4150,7 +4174,7 @@ end subroutine refineGridGeneric2
     logical :: refinedLastTime, ghostCell, split
     real(double) :: r, maxGradient
     real(double) :: rho1, rhoe1, rhou1, rhov1, rhow1, grad, speed, thisSpeed, meanrho, meancs
-    real(double), parameter :: splitLimit = 1.d-3
+    real(double) :: splitLimit
     integer :: ndir
     logical :: debug
     type(VECTOR) :: dirvec(6), locator, centre
@@ -4169,7 +4193,7 @@ end subroutine refineGridGeneric2
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unrefineCells(child, grid, nUnrefine)
+                call unrefineCells(child, grid, nUnrefine, splitLimit)
                 exit
              end if
           end do
@@ -5322,7 +5346,10 @@ end subroutine refineGridGeneric2
           eKinetic = u2 / 2.d0
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
-
+          if (eThermal < 0.d0) then
+             write(*,*) "eThermal problem: ",ethermal
+             ethermal = TINY(ethermal)
+          endif
 
           getPressure =  (thisOctal%gamma(subcell) - 1.d0) * thisOctal%rho(subcell) * eThermal
 !          write(*,*) "gamma, ethermal",thisOctal%gamma(subcell), ethermal

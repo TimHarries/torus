@@ -4257,7 +4257,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
-    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit 
+    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, variableDustSublimation
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4598,6 +4598,14 @@ IF ( .NOT. gridConverged ) RETURN
       if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
    case("sedov")
+      rInner = 0.02d0
+      rVec = subcellCentre(thisOctal, subcell)
+      if (sqrt(rVec%x**2 + rVec%z**2) < rInner) then
+         split = .true.
+      endif
+      if ((sqrt(rVec%x**2 + rVec%z**2)-thisOctal%subcellSize/2.d0*sqrt(2.d0)) < rInner) then
+         split = .true.
+      endif
 
       ! Split is decided using mindepthAMR defined globally
 
@@ -5036,8 +5044,8 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-!           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -7784,7 +7792,7 @@ IF ( .NOT. gridConverged ) RETURN
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
-       u1 = 0.01d0*(1.d0+cos(fourPi*(rVec%x+0.25d0)))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+       u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
 !    if (abs(rVec%z) < 0.02d0) then
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed
@@ -7922,39 +7930,34 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: blast
     type(VECTOR) :: lVec, offset
 
-    if (thisOctal%threed) then
-       lVec = VECTOR(0., 0., 2.)
-    else
-       lVec = VECTOR(0., 2., 0.)
-    endif
+    rinner = 0.01d0
 
-    offset = vector(0., 0., 0.)
+    gamma = 7.d0/5.d0
+    thisOctal%gamma(subcell) = gamma
+    thisOctal%iEquationOfState(subcell) = 0
 
-    gamma = 7.d0/3.d0
     rVec = subcellCentre(thisOctal, subcell)
-    cVec = VECTOR(0.d0, 0.0d0, -0.d0)
     blast = .false.
+    if (modulus(rVec) < rInner) then
+       blast = .true.
+    endif
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-
-    if (modulus(rvec-cVec) < 0.45d0) blast = .true.
+    thisOctal%rho(subcell) = 1.d0
 
     if (blast) then
-       thisOctal%rho(subcell) = 0.1
-       ethermal = 1.d-4
-       thisOctal%velocity(subcell) = (1./cspeed) * ((rVec .cross. lVec)+offset)
-       thisOctal%energy(subcell) = ethermal + 0.5 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
-       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
+       ethermal = 4.d0
+       thisOctal%energy(subcell) = eThermal/(pi*rInner**2)
     else
-       thisOctal%rho(subcell) = 1.d-4
-       ethermal = 0.1d0
-       thisOctal%velocity(subcell) = (1./cspeed) * ((rVec .cross. lVec)+offset)
-       thisOctal%energy(subcell) = ethermal + 0.5 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
-       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
+       eThermal = 1.d-5
+       thisOctal%energy(subcell) = eThermal
     endif
-    thisOctal%energy(subcell) = 0.1d0
 
-    thisOctal%boundaryCondition(subcell) = 4
-    Thisoctal%phi_i(subcell) = 0.d0!-1.d-1 / modulus(rVec-cVec)
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 1
+    xminusbound = 1
   end subroutine calcSedovDensity
 
   subroutine calcProtoBinDensity(thisOctal,subcell,grid)
@@ -8877,7 +8880,8 @@ end function readparameterfrom2dmap
     thisOctal%ionFrac(subcell,3) = 1.e-10
     thisOctal%ionFrac(subcell,4) = 1.       
     thisOctal%etaCont(subcell) = 0.
-    if (thisOctal%rho(subcell) < 110.d0*mHydrogen)  then ! in cavity
+    if (thisOctal%rho(subcell) > 1.e29)  then ! in cavity
+       thisOctal%rho(subcell) = 100.d0 * mHydrogen
        thisOctal%dustTypeFraction(subcell, :) = 1.d-20 ! no dust in cavity
        thisOctal%temperature(subcell) = 1.d4 ! 10,000K in cavity
     endif
@@ -17888,5 +17892,21 @@ end function readparameterfrom2dmap
     endif
   end subroutine AMRHydroInterpFromParent
 
+  function getPhiValue(thisOctal, subcell, geometry) result(phi)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    character(len=*) :: geometry
+    real(double) :: phi
+    type(VECTOR) :: rVec
+
+    rVec = subcellCentre(thisOctal,subcell)
+    select case (geometry)
+       case("rtaylor")
+          phi = rvec%z * 0.1d0
+       case DEFAULT
+          call writeWarning("Unrecognized geometry: "//trim(geometry)//" in get phi value. zero returned.")
+          phi = 0.d0
+    end select
+  end function getPhiValue
 END MODULE amr_mod
 
