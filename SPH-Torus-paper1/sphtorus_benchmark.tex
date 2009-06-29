@@ -272,7 +272,7 @@ combination of these two conditions it is possible to add extra
 resolution in high contrast regions and still maintain an accurate
 total mass.
  
-\section{SED generation and temperature distribution}
+\section{Temperature distribution and SED generation}
 
 \label{section:seds}
 
@@ -367,11 +367,51 @@ give a sufficiently accurate density distribution within the central
 $1.0\times10^{15}$~cm of the disc. 
 
 Further calculations were performed using different numbers of SPH
-particles and the enhanced grid resolution described above. SEDs are
-plotted in Fig.~\ref{fig:n_part_sed_013} for a viewing angle of 12.5
-degrees and Fig.~\ref{fig:n_part_sed_077} for a viewing angle of 77.5
-degrees. The density distribution in the central region is plotted in
-Fig.~\ref{fig:n_part_central_dens}.
+particles and the enhanced grid resolution described
+above. Figure~\ref{fig:n_part_tem_diff} shows fractional errors in the
+temperature distribution for different numbers of
+particles. {\small{TORUS}} calculates the temperature distribution
+using a high resolution 2D geometry, in order to determine the correct
+temperature as a function of cylindrical polar $r$ and $z$
+co-ordinates. This is then compared to the temperature from the SPH
+disc for each SPH particle. Positive values of the fractional error
+indicate that the SPH disc is hotter than the expected value.
+\begin{figure*}
+  \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run1}}
+  \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run2}}
+  \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run3}}
+  \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run4}}
+  \caption{Fractional temperature error for discs represented by
+    different numbers of SPH particles. Axis units are AU.} 
+  \label{fig:n_part_tem_diff}
+\end{figure*}
+When using $10^5$ particles to represent the disc there is a too much
+heating in the disc mid plane and insufficient heating further out of
+the mid plane. The effect is reduced when $10^6$ particles are used
+but is only reduced to a low level with $10^8$ particles. 
+
+To allow a more quantitative comparison the mid-plane temperature and
+the benchmark mid-plane temperature are plotted in
+Fig.~\ref{fig:n_part_tem_diff_midpane} for all particles within 0.01
+scale heights of the mid-plane. The fractional temperature error for
+each particle is also plotted where a positive error indicates a
+temperature hotter than the benchmark value.
+\begin{figure*}
+  \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/mp_comp1}}
+  \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/mp_comp2}}
+  \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/mp_comp3}}
+  \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/mp_comp4}}
+  \caption{Fractional temperature error in the mid-plane for discs represented by
+    different numbers of SPH particles.} 
+  \label{fig:n_part_tem_diff_midpane}
+\end{figure*}
+SEDs are plotted in Fig.~\ref{fig:n_part_sed_013} for a viewing angle
+of 12.5 degrees and Fig.~\ref{fig:n_part_sed_077} for a viewing angle
+of 77.5 degrees. 
+
+
+The density distribution in the central region is
+plotted in Fig.~\ref{fig:n_part_central_dens}.
 %
 \begin{figure*}
   \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e5}}
@@ -405,54 +445,14 @@ Fig.~\ref{fig:n_part_central_dens}.
   \label{fig:n_part_central_dens}
 \end{figure*}
 With $10^5$ and $10^6$ particles a central gap is present but is too
-large. With $10^7$ particles there
-is more material close in to the source but the gap itself is not
-represented and the source is obscured. Only with $10^8$ particles is
-a gap of approximately the correct size present. 
-
-Figure~\ref{fig:n_part_tem_diff} shows fractional errors in the
-temperature distribution for different numbers of particles. {\small{TORUS}}
-calculates the temperature distribution using a high resolution 2D
-geometry, in order to determine the correct temperature as a function
-of cylindrical polar $r$ and $z$ co-ordinates. This is then
-compared to the temperature from the SPH disc for each SPH
-particle. Positive values of the fractional error indicate that the
-SPH disc is hotter than the expected value.
-\begin{figure*}
-  \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run1}}
-  \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run2}}
-  \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run3}}
-  \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/tdiff_run4}}
-  \caption{Fractional temperature error for discs represented by
-    different numbers of SPH particles. Axis units are AU.} 
-  \label{fig:n_part_tem_diff}
-\end{figure*}
-When using $10^5$ particles to represent the disc there is a
-too much heating in the disc mid plane and insufficient heating
-further out of the mid plane. The effect is reduced when $10^6$
-particles are used but is only reduced to a low level with $10^8$
-particles. The representation of the central region of the disc not
-only has a significant impact on the SEDs but also on the temperature
-distribution within the disc. 
-
-To allow a more quantitative comparison the fractional difference in
-mid-plane temperature, compared with the results of
-\cite{pascucci_2004}, is plotted in
-Fig.~\ref{fig:n_part_tem_diff_midpane}.
-\begin{figure*}
-  \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/mp_comp1}}
-  \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/mp_comp2}}
-  \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/mp_comp3}}
-  \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/mp_comp4}}
-  \caption{Fractional temperature error in the mid-plane for discs represented by
-    different numbers of SPH particles.} 
-  \label{fig:n_part_tem_diff_midpane}
-\end{figure*}
-In each case the particles are binned into 1~AU bins and the particle
-closest to the mid-plane in that bin is found. The mid-plane
-temperature from \cite{pascucci_2004} is linearly interpolated to the
-cyclindrical radius of the particle and the fractional temperature
-error is calculated. 
+large. With $10^7$ particles there is more material close in to the
+source but the gap itself is not represented and the source is
+obscured. Only with $10^8$ particles is a gap of approximately the
+correct size present.  The representation of the central region of the
+disc is significantly affected by the number of particles used to
+represent the disc. The representation of the central region has a
+significant impact on both the temperature distribution within the
+disc and the emergent SEDs.
 
 \section{Coupled SPH and Monte-Carlo radiative transfer simulation of
   a circumstellar disc}
@@ -499,10 +499,10 @@ dynamical time scale of the disc.
 
 The SPH code uses a non-dimensionalised unit system and the radiative
 transfer step is called after an elapsed time of 1.0 code units (1.89
-years). This time interval was chosen to allow the hydrodynamics to
-respond to the radiative heating and achieve a suitable balance
-between the hydrodynamics and the slower radiative transfer
-calculation. 
+years) which corresponds to 3 hydrodynamics time steps. This time
+interval was chosen to allow the hydrodynamics to respond to the
+radiative heating and achieve a suitable balance between the
+hydrodynamics and the slower radiative transfer calculation.
 
 The AMR grid is constructed using a maximum mass per cell of
 $5.0\times10^{26}~\rm{g}$, corresponding approximately to the mass of
