@@ -331,7 +331,7 @@ ifeq ($(SYSTEM), zen)
     F77COMP= mpif90
 
 #    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
-    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
 #    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 
@@ -364,7 +364,7 @@ ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort
     F77COMP= ifort
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
-    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
 # Include run-time error checking using ifort. Use environment variable to avoid clash with
 # ITC -check option in version 3.1 of mpiifort/mpif90 scripts.
     ifeq ($(debug), yes)
@@ -390,7 +390,7 @@ endif
      F95COMP= ifort -lmpi
      F77COMP= ifort -lmpi
      FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
-     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
  # Include run-time error checking using ifort. Use environment variable to avoid clash with 
  # ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
      ifeq ($(debug), yes)
