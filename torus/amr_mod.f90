@@ -4257,7 +4257,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
-    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, variableDustSublimation
+    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -7925,10 +7925,9 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    type(VECTOR) :: rVec, cVec
+    type(VECTOR) :: rVec
     real(double) :: gamma, ethermal
     logical :: blast
-    type(VECTOR) :: lVec, offset
 
     rinner = 0.01d0
 
