@@ -224,7 +224,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx
+    real(double) :: dt !, dx
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   

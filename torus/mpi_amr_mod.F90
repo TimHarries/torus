@@ -1795,7 +1795,7 @@ contains
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z
     real(double) :: oldMass, newMass, factor
-    real(double) :: oldEnergy, newEnergy, oldMom, newMom
+!    real(double) :: oldEnergy, newEnergy, oldMom, newMom
     logical, save :: firstTime = .true.
     logical :: debug
 
