@@ -35,6 +35,7 @@ module input_variables
   real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
   logical :: internalView ! observer is internal to the galaxy
   real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
+  real(double) :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
   logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom

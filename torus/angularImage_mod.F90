@@ -27,7 +27,7 @@ module angularImage
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, writeDataCube, freeDataCube
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
-      use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel
+      use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz
 
       implicit none
 
@@ -49,7 +49,14 @@ module angularImage
 
 ! Get the observer's velocity from the grid
       observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
-      write(message,*) "Observer's velocity is ", observerVelocity * (cspeed / 1.0e5), "km/s"
+      write(message,*) "Observer's velocity from grid: ", observerVelocity * (cspeed / 1.0e5), "km/s"
+      call writeinfo(message, TRIVIAL)
+
+! Add velocity offset 
+      observerVelocity%x = observerVelocity%x + ( intDeltaVx * (1.0e5 / cspeed) )
+      observerVelocity%y = observerVelocity%y + ( intDeltaVy * (1.0e5 / cspeed) )
+      observerVelocity%z = observerVelocity%z + ( intDeltaVz * (1.0e5 / cspeed) )
+      write(message,*) "Modified observer velocity: ", observerVelocity * (cspeed / 1.0e5), "km/s"
       call writeinfo(message, TRIVIAL)
 
       call writeinfo("Initialising datacube",TRIVIAL)
