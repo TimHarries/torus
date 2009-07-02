@@ -35,8 +35,7 @@ contains
     !
     implicit none
     
-    integer :: max_id                     ! max # of IDs
-    parameter (max_id=200)
+    integer, parameter :: max_id=500      ! max # of IDs
     integer :: lu_error                   ! file unit # for error messages
     character*(*) :: id                   ! ID name 
     character*30  :: id_stored(max_id)    ! names of id stored
