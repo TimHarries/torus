@@ -507,7 +507,15 @@ CONTAINS
     real(double) :: d, dp, dm, r, phi, r0, phi0, dphi
     real(double), parameter :: eps = 0.0d0
     
-    d = (this%subcellSize)*0.5d0
+! Either use a subcell or the whole octal if subcell=0
+    if ( subcell > 0 ) then 
+       d = (this%subcellSize)*0.5d0
+       cellCenter = subcellCentre(this,subcell)
+    else
+       d = this%subcellSize
+       cellCenter = this%centre
+    end if
+
     dp = d+eps
     dm = d-eps
 
@@ -516,7 +524,6 @@ CONTAINS
        stop
     endif
     
-    cellCenter = subcellCentre(this,subcell)
     x0=dble(cellCenter%x); y0=dble(cellCenter%y); z0=dble(cellCenter%z)
 
     ! Fortran check the condidtion from

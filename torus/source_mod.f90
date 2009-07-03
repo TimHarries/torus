@@ -281,31 +281,12 @@ module source_mod
       real(oct) :: d          ! size of the subcell
       real(oct) :: x, y, z    ! position of the source.
       
-      xc = an_octal%centre%x
-      yc = an_octal%centre%y
-      zc = an_octal%centre%z
-      d  = an_octal%subcellsize
-
       x = this%position%x
       y = this%position%y
       z = this%position%z
-      
-    if ( x > (xc+d) ) then
-       out = .false.
-    else if ( x < (xc-d)) then
-       out = .false.      
-    elseif ( y > (yc+d) ) then
-       out = .false.
-    elseif ( y < (yc-d)) then
-       out = .false.
-    elseif ( z > (zc+d) ) then
-       out = .false.
-    elseif ( z < (zc-d)) then
-       out = .false.
-    else
-       out = .true.
-    end if
-
+ 
+      out = within_subcell(an_octal, 0, x, y, z)
+ 
   end function source_within_octal
 
 

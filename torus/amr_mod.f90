@@ -976,6 +976,7 @@ CONTAINS
           enddo
        endif
         
+
        IF (PRESENT(setChanged)) THEN
           IF (setChanged) THEN
              
@@ -4285,7 +4286,7 @@ IF ( .NOT. gridConverged ) RETURN
     REAL                  :: x, y, z
     REAL(double) :: hr, rd, fac, warpHeight, phi
     INTEGER               :: i
-    real(double)      :: total_mass
+    real(double)      :: total_mass, massPerCell, n_bin_az
     real(double), save :: rgrid(1000)
     real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
@@ -4791,6 +4792,12 @@ IF ( .NOT. gridConverged ) RETURN
 
    case ("cluster","molcluster","theGalaxy")
 
+! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 45.1)) then
+         split = .true.
+         splitInAzimuth = .true.
+      endif
+
 ! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
       if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
 
@@ -4804,11 +4811,18 @@ IF ( .NOT. gridConverged ) RETURN
 
       total_mass = cellVolume(thisOctal, subcell)  * 1.d30
 
+      if ( thisOctal%cylindrical ) then
+         n_bin_az = twoPi / thisOctal%dPhi
+         massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
+      else
+         massPerCell = amrlimitscalar
+      end if
+
       thisOctal%rho(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0) ! placeholder for maximum expected smoothing length (not rho!) 
 
       total_mass = ave_density * total_mass
 
-      if (total_mass > amrlimitscalar) then
+      if (total_mass > massPerCell) then
          split = .true.
          mass_split = mass_split + 1
       endif
@@ -4871,14 +4885,28 @@ IF ( .NOT. gridConverged ) RETURN
          cellSize   = thisOctal%subcellSize
          cellCentre = subcellCentre(thisOctal,subCell)
 
-         if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
-              < 40.0*grid%rCore ) then 
-            if ( cellSize > grid%rCore ) split = .true. 
-         end if
+         if ( thisOctal%cylindrical ) then 
+            
+            if ( abs(thisOctal%r) < 1.0e4 .and.  abs(cellCentre%z) < 1.0e4 ) then 
+               if ( cellSize > 1.0e3 ) split = .true.
+            end if
 
-         if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
-              abs(cellCentre%z) < 20.0*grid%rCore ) then 
-            if ( cellSize > 0.5*grid%rCore ) split = .true. 
+            if ( abs(thisOctal%r) < 4.0e3 .and.  abs(cellCentre%z) < 4.0e3 ) then 
+               if ( cellSize > 4.0e2 ) split = .true.
+            end if
+
+         else
+
+            if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
+                 < 40.0*grid%rCore ) then 
+               if ( cellSize > grid%rCore ) split = .true. 
+            end if
+
+            if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
+                 abs(cellCentre%z) < 20.0*grid%rCore ) then 
+               if ( cellSize > 0.5*grid%rCore ) split = .true. 
+            end if
+
          end if
 
       end if

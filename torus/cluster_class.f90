@@ -811,6 +811,7 @@ contains
              end if
           end do
        else
+          if ( thisOctal%cylindrical .and. (.not. thisOctal%splitAzimuthally) .and. subcell > 4) cycle
           if (.not. thisCluster%disc_on) then
              ! checks if it's too close 
              if (cell_too_close_to_star(thisCluster,thisOctal, subcell, R_max, axis) ) then
