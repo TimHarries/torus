@@ -268,7 +268,7 @@ module source_mod
 
 
     !
-    ! For a given octal and sourcetyupe objects, this routine checks 
+    ! For a given octal and sourcetype objects, this routine checks 
     ! if the source is with in the range this octal.
     
     function source_within_octal(this, an_octal) RESULT(out)
@@ -277,8 +277,6 @@ module source_mod
       type(sourcetype), intent(in) :: this
       type(octal), intent(in) :: an_octal 
       
-      real(oct) :: xc, yc, zc ! position of the octal center.
-      real(oct) :: d          ! size of the subcell
       real(oct) :: x, y, z    ! position of the source.
       
       x = this%position%x
