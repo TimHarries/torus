@@ -4833,7 +4833,14 @@ IF ( .NOT. gridConverged ) RETURN
 ! This allows testing of the grid generation method without recompiling the code
 
       if ( amrlimitscalar2 > 0.0 ) then 
-         if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) split =.true.
+         if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) then 
+            if(split) then
+               both_split = both_split + 1
+            else
+               density_split = density_split + 1
+               split = .true.
+            endif
+         end if
       elseif (amrlimitscalar2 < 0.0 ) then
          if (  (maxDensity / minDensity) > abs(amrlimitscalar2) ) then 
             if(split) then
