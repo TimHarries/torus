@@ -259,7 +259,6 @@ program torus
 
   ! initialize
 
-  useNdf = .true.
   sed = .false.
   jansky = .false.
   SIsed = .false.

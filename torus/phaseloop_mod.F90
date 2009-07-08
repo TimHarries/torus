@@ -2748,29 +2748,29 @@ endif ! (doPvimage)
     if (nPhase == 1) then
 
        call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
-            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_direct"
        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, nOuterLoop, &
-            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_scattered"
        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered,  nOuterLoop, &
-            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_direct"
        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect,  nOuterLoop, &
-            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_scattered"
        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, nOuterLoop, &
-            .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
           
        
        if (velocitySpace) then
           specFile = trim(outfile)//"_v"
           call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
-               .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+               .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
        endif
        
     else
@@ -2778,12 +2778,12 @@ endif ! (doPvimage)
        specFile = trim(outfile)//trim(tempChar)
        
         call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
-             .false., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+             .false., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         
         if (velocitySpace) then
            tempChar = trim(specFile)//"_v"
            call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, nOuterLoop, &
-                .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+                .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         endif
         
         
