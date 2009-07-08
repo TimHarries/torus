@@ -25,7 +25,7 @@ contains
 
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, maxIter, finalPass)
+       source, nSource, nLucy, massEnvelope, percent_undersampled_min, maxIter, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth
@@ -75,7 +75,6 @@ contains
     real(oct) :: t1, hrecip_kt
     real(oct) :: thisLam,wavelength
     integer :: iSource
-    real :: Tthresh
     integer :: iLam
     integer(double) :: nInf
     integer :: iIter, nIter
@@ -2372,36 +2371,6 @@ contains
 666 continue
 
  end subroutine toNextEventAMR
-
-  recursive subroutine removeDust(thisOctal, Tthresh, nRemoved)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real :: Tthresh
-  integer :: nRemoved
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call removeDust(child, Tthresh, nRemoved)
-                exit
-             end if
-          end do
-       else
-          if (thisOctal%temperature(subcell) > Tthresh) then
-             write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
-             thisOctal%inFlow(subcell) = .false.
-             thisOctal%etaCont(subcell) = 1.e-30
-             thisOctal%rho(subcell) = 1.e-27
-             thisOctal%temperature(subcell) = 1.e-3
-             nRemoved = nRemoved + 1
-          endif
-       endif
-    enddo
-  end subroutine removeDust
 
 
 #ifdef MPI

@@ -404,7 +404,7 @@ contains
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
   call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-       nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope, tthresh, &
+       nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope,  &
        lucy_undersampled, IterLucy )
 
   if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)

@@ -1343,7 +1343,7 @@ end subroutine pre_initAMRGrid
     use cluster_class, only: remove_too_close_cells
     use surface_mod, only: createTTauriSurface, createTTauriSurface2, createSurface
     use luc_cir3d_class, only: deallocate_zeus_data
-    use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy, putTau
+    use lucy_mod, only: allocateMemoryForLucy, putTau
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -2516,10 +2516,10 @@ subroutine do_lucyRadiativeEq
 
            if (solveVerticalHydro) then
               call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope, tThresh, .false., mDisc)
+                   source, nSource, nLucy, massEnvelope, .false., mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, &
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, &
                    lucy_undersampled, IterLucy )
            endif
 

@@ -349,7 +349,7 @@ contains
   end subroutine throughoutMidpane
 
   subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tThresh, twoD, expectedMass)
+       source, nSource, nLucy, massEnvelope, twoD, expectedMass)
 
     use input_variables, only : variableDustsublimation, rGap
     use messages_mod, only: myRankIsZero
@@ -368,7 +368,7 @@ contains
     type(PHASEMATRIX):: miePhase(1:nDusttype,1:nLambda, 1:nMuMie)
     real  :: lamArray(:)
     real :: massEnvelope
-    real :: tthresh, drho
+    real :: drho
     integer :: maxIter
     integer :: nIter, j
     real(double) totalMass
@@ -415,7 +415,7 @@ contains
 
 
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-            nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter)
+            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, maxIter)
 
 
 
@@ -566,7 +566,7 @@ contains
  temp = 20.
  call setTemperature(grid%octreeRoot, temp)
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-      nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, maxIter, finalpass = .true.)
+      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, maxIter, finalpass = .true.)
 
 
 
