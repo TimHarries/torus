@@ -1,88 +1,76 @@
-2 !verbosity
-suppressLucySmooth T
-forceLucyConv F
-tminglobal 3.0
-taudiff 1000.
-amrgridcentrex 0.0
-amrgridcentrey 0.0
-amrgridcentrez 0.0
-inarcsec F
-amrgridsize 5.0e6
-dosmoothgrid T
-taumax 0.5 
-smoothfactor 2.
-smoothgridtau T
-lambdasmooth 5500.
-limitscalar 5.e26
-limittwo 0.0
-samplefreq 2.
-popfile lucy4.dat
-readpops F
-writepops T
-nphase 1
-filter_set_name step_functions
-narrowband F
-lambdafile F
-lamfilename lambda.dat
-tthresh 10000.
-gridtype octree
+! Torus parameter file for sphbench 
+
+! AMR grid parameters
 gridusesamr T
+amrgridcentrex 0.0000
+amrgridcentrey 0.0000
+amrgridcentrez 0.0000
+amrgridsize 5.0e6
 amr2d F
 amr3d T
+
+! Geometry specific parameters
 geometry cluster
-rcore 215.0                               
-rinner 3.
-router 800.
-height 10.18
-rho 1.83e-10
-maxscat 1000000
-stokesimage F
-vmin -100000.                            
-vmax +100000.                            
-teff 5800.
-probcont 1.                              
-mie T                                    
+rcore 215.0  
+! miniumum temperature on AMR grid
+tminglobal 3.0
+! No discs added
+disc_on F
+! Grid splitting parameters 
+limitscalar 5.e26
+limittwo 0.0
+
+! SED parameters
+ninc 2
+firstinc 12.5
+lastinc 77.5
+
+! SED output filename
+filename test
+
+! use isotropic mie scattering
+mie T    
 iso_scatter T
-line F                              
-opaquecore T
+
+! Use lucyradiative equlibrium 
 lucyrad T
+
+! number of photons to use for generating SEDs
+nphotons 500000
+
+! Don't read wavelengths from file
+lambdafile F
+
+! Specify wavelength array properties
+wavlin F
+lamstart 1200.
+lamend  2.e7
+nlambda 200
+
+! Distance to grid from observer
+distance 2.25558e-8
+
+! Write spectrum as lambda vs F lambda in SI units
+sised T
+
+! grid smoothing parameters
+suppressLucySmooth T
+
+! maximum number of scatters before photon is aborted
+maxscat 1000000
+
+! Variance reduction (required parameter)
 usebias F
-twod F
-lucyfile lucy.dat
-writelucy F
-readlucy F
-probdust 0.1	
+
+! Dust grain properties
 graintype1 sil_dl
 amin1 0.12
 amax1 0.1201
 qdist1 0.01
-imagesize 0.
-plane_for_plot x-z
-plot_maps T
-hydro F
-nhydro 5
-dustfile F
-kappafile kmh.dat
-mcore 0.5
-mdisc 1.e-4
-imagearcsec 10.
-disc_on F
 
-filename test
-ninc 2
-firstinc 12.5
-lastinc 77.5
-ndf F
-nphase 1
-sised T
-nlambda 200
-wavlin F
-lamstart 1200.
-lamend  2.e7
-distance 2.25558e-8
-taumax 0.5
-taumin 0.001
-nphotons 500000
-forceFirstScat F
-tthresh 2000.
+! probability of contiuum photon
+probcont 1.0 	
+! Probability of photon from dusty envelope
+probdust 0.1
+
 
