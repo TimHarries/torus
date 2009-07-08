@@ -399,7 +399,7 @@ contains
   call init_random_seed()
 
   filename = trim ( "torus_in_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
-  if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
+  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho","temperature"/) )
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
@@ -412,7 +412,7 @@ contains
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
   filename = trim ( "torus_out_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
-  if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
+  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho","temperature"/))
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
 
