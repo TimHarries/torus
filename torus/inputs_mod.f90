@@ -1952,9 +1952,9 @@ contains
 
 
 
-
+! Used by phaseloop_mod
     call getString("filename", outFile, cLine, nLines, &
-         "Output spectrum filename: ","(a,a,1x,a)","spectrum.dat", ok, .true.)
+         "Output spectrum filename: ","(a,a,1x,a)","spectrum.dat", ok, .false.)
     call replaceDots(outFile, done)
     if (done) then
        if (writeoutput) write(*,'(a,a)') "!!! Filename now: ",trim(outFile)
