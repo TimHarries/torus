@@ -18,10 +18,11 @@ echo "-p   Compile with profiling options enabled"
 echo "-mpi Compile for multi-processor running using MPI"
 }
 # Set up the build information here -----------------------------------------------------------------
+BASE_DIR=${PWD}
 
-sph_cvs=${HOME}/sphNG            # This is the directory where the sphNG source code can be found
-torus_cvs=${HOME}/torus          # This is the directory where the torus source code can be found
-sphtorus_dir=${HOME}/sphtorus    # Build will be carried out in this directory
+sph_cvs=${BASE_DIR}/sphNG            # This is the directory where the sphNG source code can be found
+torus_cvs=${BASE_DIR}/torus          # This is the directory where the torus source code can be found
+sphtorus_dir=${BASE_DIR}/sphtorus    # Build will be carried out in this directory
 
 #----------------------------------------------------------------------------------------------------
 echo "INFO: This is build_sphtorus"
