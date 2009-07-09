@@ -369,7 +369,6 @@ contains
     real  :: lamArray(:)
     real :: massEnvelope
     real :: drho
-    integer :: maxIter
     integer :: nIter, j
     real(double) totalMass
     real(double) :: rSub, betaEstimate, heightEstimate
@@ -407,15 +406,9 @@ contains
 
        call torus_mpi_barrier()
 
-       if (nIter == 1) then
-          maxIter = 2
-       else
-          maxIter = 5
-       endif
-
 
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, maxIter)
+            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled )
 
 
 
@@ -566,7 +559,7 @@ contains
  temp = 20.
  call setTemperature(grid%octreeRoot, temp)
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, maxIter, finalpass = .true.)
+      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, finalpass = .true.)
 
 
 

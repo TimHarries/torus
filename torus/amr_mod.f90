@@ -1263,7 +1263,7 @@ CONTAINS
                 thisOctal%velocity = thisoctal%cornervelocity(14)
              endif
 
-             call assign_grid_values(thisOctal,subcell,grid)
+             call assign_grid_values(thisOctal,subcell)
 
              counter = counter + 1
              CALL CPU_TIME(T2)

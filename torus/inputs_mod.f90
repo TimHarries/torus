@@ -156,7 +156,7 @@ contains
     call findRealArray("inclinations", inclinations, cLine, nLines, ok)
     if (ok) then
        call getRealArray("inclinations", inclinations, cLine, nLines, &
-            "Inclinations (deg): ",'(a,4i4,1x,a)',90., ok, .false.)
+            "Inclinations (deg): ",90., ok, .false.)
        inclinations(:) = inclinations(:) * degToRad
     else
        deallocate(inclinations)
@@ -3155,7 +3155,7 @@ end subroutine getBigInteger
   endif
  end subroutine getLogical
 
- subroutine getRealArray(name, rval, cLine, nLines, message, format, rdef, ok, &
+ subroutine getRealArray(name, rval, cLine, nLines, message, rdef, ok, &
                       musthave)
   character(len=*) :: name
   real :: rval(:)
@@ -3163,7 +3163,7 @@ end subroutine getBigInteger
   character(len=80) :: cLine(*)
   character(len=100) :: output
   integer :: nLines
-  character(len=*) :: message, format
+  character(len=*) :: message
   character(len=10) :: default
   real :: rdef
   logical :: ok

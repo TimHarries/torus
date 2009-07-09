@@ -401,7 +401,7 @@ contains
     enddo
   end subroutine fixMiePhase
 
-  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, nOuterLoop, &
+  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, &
        normalizeSpectrum, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
     use input_variables, only: useNdf
 
@@ -411,7 +411,6 @@ contains
     !  character(len=80) :: tfile
     real, intent(in) :: xArray(nLambda)
     logical, intent(in) :: jansky
-    integer, intent(in) :: nOuterLoop
     logical, intent(in) :: normalizeSpectrum, sed, velocitySpace
     real(double), intent(in) :: objectDistance
     real(double) :: area

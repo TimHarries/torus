@@ -2519,7 +2519,7 @@ subroutine do_lucyRadiativeEq
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
                    nLambda, xArray, source, nSource, nLucy, massEnvelope, &
-                   lucy_undersampled, IterLucy )
+                   lucy_undersampled )
            endif
 
         endif

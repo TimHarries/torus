@@ -404,7 +404,7 @@ contains
   
   call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
        nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope,  &
-       lucy_undersampled, IterLucy )
+       lucy_undersampled )
 
   if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
 

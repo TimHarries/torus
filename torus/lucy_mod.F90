@@ -25,7 +25,7 @@ contains
 
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, percent_undersampled_min, maxIter, finalPass)
+       source, nSource, nLucy, massEnvelope, percent_undersampled_min, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth
@@ -102,7 +102,6 @@ contains
     real:: percent_undersampled
     integer(double) :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: nKilled
-    integer :: maxIter
     integer       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
     real(double)  :: kAbsArray(nlambda),kAbsArray2(nlambda)
     logical :: ok                             ! Did call to randomWalk complete OK?
@@ -2876,7 +2875,7 @@ contains
           thisOctal%etaCont(subcell) = 1.d-40
           if (thisOctal%temperature(subcell) > 1.d-3) then
 
-             call addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray, iPhotonLambda)
+             call addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, iPhotonLambda)
              
           endif
 
@@ -2917,12 +2916,11 @@ end subroutine addDustContinuumLucy
 
 !-------------------------------------------------------------------------------
 
-subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray, iPhotonLambda)
+subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, iPhotonLambda)
 
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
-  integer :: nLambda
   integer :: iPhotonLambda
   real :: lamArray(:)
   real(double) :: kappaAbs
@@ -3536,7 +3534,6 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: subcell, i
     real(double) :: rSub, cellSize, hr, r, beta, height
     logical :: split
-    logical, save :: firsttime = .true.
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

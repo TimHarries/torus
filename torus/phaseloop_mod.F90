@@ -121,7 +121,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR), parameter :: xAxis = VECTOR(1.,0.,0.)
   real :: wtot0_line =0., wtot0_cont = 0.
   real :: meanr0_line = 0., meanr0_cont = 0.
-  real :: meanr_line = 0., meanr_cont = 0.
+!  real :: meanr_line = 0., meanr_cont = 0.
 
   logical :: escaped, absorbed
   real(double) :: albedo
@@ -1407,7 +1407,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble) &
 !$OMP SHARED(doTuning, iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
 !$OMP SHARED(grid) &
-!$OMP SHARED(meanr_Cont, meanr_line, ntot) &
+!$OMP SHARED(ntot) &
 !$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
 !$OMP SHARED(weightLinePhoton, flatSpec, vRot, secondSource, secondSourcePosition) &
 !$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
@@ -2747,29 +2747,29 @@ endif ! (doPvimage)
  if (myRankIsZero) then 
     if (nPhase == 1) then
 
-       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
+       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, &
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, &
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered,  nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, &
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect,  nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect, &
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, nOuterLoop, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, &
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
           
        
        if (velocitySpace) then
           specFile = trim(outfile)//"_v"
-          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, &
                .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
        endif
        
@@ -2777,12 +2777,12 @@ endif ! (doPvimage)
        write(tempChar,'(i3.3)') iPhase
        specFile = trim(outfile)//trim(tempChar)
        
-        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, nOuterLoop, &
+        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, &
              .false., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         
         if (velocitySpace) then
            tempChar = trim(specFile)//"_v"
-           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, nOuterLoop, &
+           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, &
                 .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         endif
         
@@ -2821,7 +2821,7 @@ endif ! (doPvimage)
         endif
         if (get_filter_set_name(filters) == "pn") then
            write(specFile,'(a,a,i3.3,a)') trim(outfile),"_image",iPhase,".ppm"
-           call writeFalseColourPPM(trim(specfile), obsImageSet, 3)
+           call writeFalseColourPPM(trim(specfile), obsImageSet)
         endif
 
      endif

@@ -507,9 +507,8 @@ module image_mod
        close(33)
      end subroutine writePPMAimage
 
-     subroutine writeFalseColourPPM(tfile, image, nImage)
+     subroutine writeFalseColourPPM(tfile, image)
        character(len=*) :: tfile
-       integer :: nImage
        type(IMAGETYPE) :: image(:)
        integer, allocatable :: rImage(:,:), gImage(:,:), bImage(:,:)
        integer :: nx, ny

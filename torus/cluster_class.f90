@@ -341,17 +341,15 @@ contains
   ! This routine should be called only after the grid has been constructed, namely
   ! only in finishGrid routine in amr_mod.f90
   !
-  subroutine assign_grid_values(thisOctal,subcell,grid)
+  subroutine assign_grid_values(thisOctal,subcell)
 
     use sph_data_class, only: Clusterparameter, sphData
     use constants_mod, only: mhydrogen
     use input_variables, only: h21cm, tMinGlobal
     use h21cm_mod, only: hi_emop
-    use gridtype_mod, only: GRIDTYPE
 
     IMPLICIT NONE
 
-    type(GRIDTYPE), optional :: grid
     TYPE(octal), pointer :: thisOctal
     INTEGER :: subcell
     real(double), parameter :: density_crit = 1d13
