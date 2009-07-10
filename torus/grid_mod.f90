@@ -17,15 +17,16 @@
 
 module grid_mod
 
-  use gridtype_mod                    ! type definition for the 3-d grid
+  use gridtype_mod, only: GRIDTYPE    ! type definition for the 3-d grid
   use kind_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
   use amr_mod, only: deleteOctreeBranch, deleteOctal
-  use octal_mod                       ! octal type for amr
+  use octal_mod
   use messages_mod
-  use mpi_global_mod
-  use mpi_amr_mod
+  use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+  use mpi_amr_mod, only: octalOnThread
+  use utils_mod, only: locate
 
   implicit none
 
@@ -502,6 +503,7 @@ contains
     use cmfgen_class, only: get_cmfgen_data_array_element
     use jets_mod, only: initJetsAMR
     use amr_mod, only: initTTauriAMR, initWindTestAMR
+    use gridtype_mod, only: statEqMaxLevels
 
     implicit none
 
@@ -1920,6 +1922,7 @@ contains
 
 
   subroutine fillGridStateq(grid, filename, xfac, scaleDensity)
+    use utils_mod, only: logInterp
 
     character(len=*) :: filename
     type(GRIDTYPE) :: grid
@@ -2537,6 +2540,7 @@ contains
 
 
   subroutine getIndices_single(grid, rVec, i1, i2, i3, t1, t2, t3)
+    use utils_mod, only: hunt
     ! making this PURE may cause problems with XL Fortran
     type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in)   :: rVec
@@ -2620,6 +2624,7 @@ contains
 
 
   subroutine getIndices_octal(grid, rVec, i1, i2, i3, t1, t2, t3)
+    use utils_mod, only: hunt
     ! making this PURE may cause problems with XL Fortran
     type(GRIDTYPE), intent(in)          :: grid
     type(VECTOR), intent(in)       :: rVec
@@ -4057,7 +4062,7 @@ contains
 
 
   subroutine fillGridRolf(grid, mdot, vterm, o6width)
-
+    use utils_mod, only: logInt
     type(GRIDTYPE) :: grid
     character(len=80) :: tmp
     integer :: i, j, k, ix, iy, iz, ierr
@@ -4839,6 +4844,7 @@ contains
 
 
   subroutine fillGridDonati(grid, resonanceLine)
+    use utils_mod, only: hunt
     type(GRIDTYPE) :: grid
     integer :: i, j, k
     integer :: i1, i2, i3, j1, j2
@@ -5100,6 +5106,7 @@ contains
   end subroutine fillGridDonati
 
   subroutine fillGridDonati2(grid, resonanceLine, misc)
+    use utils_mod, only: hunt
     type(GRIDTYPE) :: grid
     integer :: i, j
     integer :: i1, i2, i3, j1, j2

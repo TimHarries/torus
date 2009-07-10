@@ -4,17 +4,18 @@ module amr_mod
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
 
-  USE unix_mod
-  USE octal_mod
-  use utils_mod
+  use vector_mod
+  use messages_mod
   USE constants_mod
+  USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
+       allocateattribute, copyattribute, deallocateattribute
+  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint
   use density_mod, only:    density, TTauriInFlow
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
-  use surface_mod, ONLY:    SURFACETYPE
   USE cluster_class, only:  cluster
   USE parallel_mod, ONLY:   torus_abort
-  use mpi_global_mod
+  use mpi_global_mod, only: myRankGlobal
 
   IMPLICIT NONE
 
@@ -533,6 +534,7 @@ CONTAINS
     USE cluster_class, only: update_particle_list
     USE sph_data_class, only: isAlive
     use mpi_global_mod, only: nThreadsGlobal
+    use octal_mod, only: subcellRadius
 
     IMPLICIT NONE
     
@@ -6572,6 +6574,7 @@ IF ( .NOT. gridConverged ) RETURN
     !   between the values in the published figure 6.
 
     USE unix_mod, only: unixGetEnv
+    USE utils_mod, only: polint
 
     REAL             :: hartmannTemp2
     REAL, INTENT(IN) :: rM ! normalized (0=inside, 1=outside)
@@ -7859,6 +7862,7 @@ IF ( .NOT. gridConverged ) RETURN
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
 
     use input_variables, only : photoionization
+    use utils_mod, only: bonnorebertrun
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -11589,6 +11593,7 @@ end function readparameterfrom2dmap
     ! if onlyChanged is True, we ignore cells without the Changed flag
 
     USE vector_mod
+    USE octal_mod, only: octalListElement
     
     IMPLICIT NONE
 
@@ -11685,7 +11690,8 @@ end function readparameterfrom2dmap
     ! if onlyChanged is True, we ignore cells without the Changed flag
 
     USE vector_mod
-    
+    USE octal_mod, only: octalListElement
+
     IMPLICIT NONE
 
     TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
@@ -11764,7 +11770,8 @@ end function readparameterfrom2dmap
   SUBROUTINE moveOctalListToArray(listHead,octalArray)
     ! copies all the pointers (to octals) from a linked list into an array.
     ! assumes that the SIZE of octalArray is the number of list elements.
-  
+    USE octal_mod, only: octalListElement
+
     IMPLICIT NONE 
     
     TYPE(octalListElement), POINTER :: listHead
@@ -12893,6 +12900,7 @@ end function readparameterfrom2dmap
   end subroutine tagScaleSmooth
 
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal, sSubcell)
+    use octal_mod, only: returndPhi
 
     implicit none
     type(GRIDTYPE), intent(in)    :: grid
@@ -13593,6 +13601,8 @@ end function readparameterfrom2dmap
 
 
   type(VECTOR) function randomPositionInCell(thisOctal, subcell)
+    use octal_mod, only: returndPhi
+
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(VECTOR) :: octalCentre
@@ -16092,7 +16102,7 @@ end function readparameterfrom2dmap
 
   subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion)
 
-    USE surface_mod, only: createProbs, sumSurface
+    USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
 
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
@@ -17640,6 +17650,8 @@ end function readparameterfrom2dmap
   end function averagerhofromoctal
 
   subroutine pathTest(grid)
+    use unix_mod, only: unixTimes
+
     type(GRIDTYPE) :: grid
     integer :: i, nPaths
     type(VECTOR) :: rVec, uHat

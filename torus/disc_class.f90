@@ -1,12 +1,10 @@
 module disc_class
   
   use kind_mod
-  use octal_mod
-  use gridtype_mod
-  use grid_mod
   use vector_mod
   use constants_mod
-  use dust_mod
+  use octal_mod, only: OCTAL, subcellCentre
+  use gridtype_mod, only: GRIDTYPE
 
   !  
   ! Class definition for a accreation disc (not including the central object)

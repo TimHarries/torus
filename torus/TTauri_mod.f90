@@ -8,14 +8,9 @@ module ttauri_mod
   use kind_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
-  use atom_mod                        ! LTE atomic physics
-  use utils_mod
-  use gridtype_mod
-  use grid_mod
-  use stateq_mod
-  use math_mod
-  use octal_mod
-  use amr_mod
+  use gridtype_mod, only: GRIDTYPE
+  use stateq_mod, only: beta_mn, initgridstateq
+  use grid_mod, only: integratedDensity, getIndices, writeAxes
 
   implicit none
   
@@ -30,6 +25,7 @@ contains
   subroutine fillGridMagneticAccretion(grid,contfile1, popFileName, &
          readPops, writePops, lte, lamLine, Laccretion, Taccretion, &
          sAccretion, curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
+    use utils_mod, only: blackBody
 
     type(GRIDTYPE) :: grid
     character(len=*) :: contFile1, popFileName
@@ -345,6 +341,8 @@ contains
             
   subroutine infallEnhancment(grid, distortionVec, nVec, nPhi, timeStep, doDistortion,&
                               particleMass, alreadyDoneInfall)
+    use amr_mod, only: infallEnhancmentAMR
+    use math_mod, only: interpGridVelocity
 
     type(GRIDTYPE), intent(inout) :: grid
     integer, intent(in) :: nVec, nPhi

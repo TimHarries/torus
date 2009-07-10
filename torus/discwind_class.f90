@@ -1,11 +1,11 @@
 module discwind_class
   
   use kind_mod
-  use octal_mod
-  use gridtype_mod
-  use grid_mod
   use vector_mod
   use constants_mod
+  use octal_mod, only: OCTAL, subcellCentre
+  use gridtype_mod, only: GRIDTYPE
+
 
   !  
   ! Class definition for a simple disc wind model of 
@@ -740,6 +740,7 @@ contains
   !
   ! Split using the log-scaled radial grid.
   logical function need_to_split2(thisOctal,subcell, this)
+    use utils_mod, only: locate 
 
     IMPLICIT NONE
 

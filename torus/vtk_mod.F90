@@ -44,6 +44,8 @@ contains
   contains
 
     recursive subroutine recursiveWritePoints(thisOctal,lunit, grid)
+      use octal_mod, only: returndPhi
+
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI

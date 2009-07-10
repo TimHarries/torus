@@ -7,7 +7,8 @@ module path_integral
   use photon_mod             ! the photon module
   use constants_mod          ! physical constants
   use amr_mod
-  
+  use source_mod, only: SOURCETYPE
+
   implicit none
 
   public::  &

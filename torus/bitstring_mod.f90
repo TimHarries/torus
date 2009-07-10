@@ -1,7 +1,7 @@
 module bitstring_mod
 
   use kind_mod
-  use octal_mod
+  use octal_mod, only: OCTAL
 
   implicit none
 

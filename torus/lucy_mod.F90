@@ -1,20 +1,19 @@
 module lucy_mod
 
   use constants_mod
-  use grid_mod
-  use gridio_mod
-  use dust_mod
-  use vector_mod
-  use phasematrix_mod
-  use amr_mod
-  use source_mod
-  use spectrum_mod
-  use parallel_mod
-  use timing
-  use diffusion_mod
   use messages_mod
-  use vtk_mod
-
+  use vector_mod
+  use amr_mod, only: addNewChild, inOctal, distanceToCellBoundary, returnKappa, amrGridValues, &
+       countvoxels, findsubcelllocal, findsubcelltd
+  use utils_mod, only: hunt, locate, solvequaddble
+  use gridtype_mod, only: GRIDTYPE
+  use octal_mod, only: OCTAL, octalWrapper, subcellCentre, cellVolume
+  use grid_mod, only: getindices
+  use spectrum_mod, only: bnu, blambda, getwavelength
+  use timing, only: tune
+  use diffusion_mod, only: randomwalk
+  use vtk_mod, only: writeVtkFile
+  use mpi_global_mod, only: myRankGlobal
   implicit none
 
 #ifdef USEMKL
@@ -29,9 +28,15 @@ contains
     use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth
+    use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
+    use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
+    use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled
+    use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
+    use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104
 #ifdef MPI
     use input_variables, only : blockhandout
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
 #endif
     implicit none
 #ifdef MPI
@@ -986,6 +991,7 @@ contains
   end subroutine lucyRadiativeEquilibriumAMR
 
   subroutine getSublimationRadius(grid, subRadius)
+    use amr_mod, only: tauAlongPath
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: subRadius
     real(double) :: tau
@@ -1005,6 +1011,8 @@ contains
   end subroutine getSublimationRadius
 
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
+    use source_mod, only: random_direction_from_sphere
+    use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
 
     type(GRIDTYPE) :: grid
     type(VECTOR) :: uHat, uNew
@@ -2939,9 +2947,11 @@ end subroutine addDustContinuumLucyMono
 
 subroutine setBiasOnTau(grid, iLambda)
     use input_variables, only : cylindrical
+    use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
-    use input_variables, only : blockHandout, cylindrical
+    use input_variables, only : blockHandout
+    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     include 'mpif.h'
 #endif
     type(gridtype) :: grid
@@ -3163,6 +3173,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unpackBias
 
   recursive subroutine allocateMemoryForLucy(thisOctal)
+    use octal_mod, only: allocateattribute
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3281,6 +3292,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
   recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, nUnrefine, converged, finalPass)
     use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
+    use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3357,6 +3369,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
     use input_variables, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR
+    use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3423,6 +3436,8 @@ subroutine setBiasOnTau(grid, iLambda)
 
 
   subroutine putTau(grid, wavelength)
+    use amr_mod, only: getxValues
+    use utils_mod, only: stripSimilarValues
     type(GRIDTYPE) :: grid
     real :: wavelength
     integer :: nx

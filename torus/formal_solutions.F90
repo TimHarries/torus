@@ -10,18 +10,14 @@ module formal_solutions
   !----------------------------------------------------------------------------------
 
 
+  use constants_mod
   use vector_mod             ! vector maths 
-  use gridtype_mod           ! opacity grid
+  use gridtype_mod, only: GRIDTYPE ! opacity grid
   use path_integral          ! 
   use octal_mod
-  use kind_mod
-  use constants_mod
   use surface_mod
-  use density_mod
-  use image_mod
-  use disc_class
-  use utils_mod
-  use timing
+  use image_mod, only: IMAGETYPE, initImage
+  use timing, only: tune
   
   implicit none
 
@@ -1477,6 +1473,7 @@ contains
   ! Creates NDF image of flux map
   subroutine create_obs_flux_map(flux_ray, ray, dA, dr, dphi, &
        nlam, nray, nphi, R_star, R_max, dir_obs, filename, npix)
+    use image_mod, only: simply_writeimage, freeImage
     implicit none
     integer, intent(in) :: nlam  ! number of wavelength points
     integer, intent(in) :: nray  ! total number of rays

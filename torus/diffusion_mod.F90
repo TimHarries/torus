@@ -5,13 +5,12 @@
 module diffusion_mod
 
 use constants_mod
-use gridtype_mod
-use amr_mod
 use vector_mod
 use messages_mod
-use grid_mod
-use parallel_mod
-use vtk_mod
+use gridtype_mod, only: GRIDTYPE
+use vtk_mod, only: writeVTKfile
+use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, returndPhi
+use amr_mod, only: returnKappa, tauAlongPath, inOctal, amrGridValues, countVoxels, getOctalArray
 implicit none
 
 
@@ -151,6 +150,7 @@ contains
   subroutine gaussSeidelSweep(grid,  tol, demax, converged)
 #ifdef MPI
     use input_variables, only : blockhandout
+    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     use mpi_global_mod, only : myRankGlobal, nThreadsGlobal
     include 'mpif.h'
 #endif
@@ -1076,6 +1076,7 @@ subroutine setDiffOnTau(grid)
     use input_variables, only : tauForce, cylindrical
 #ifdef MPI
     use input_variables, only : blockHandout
+    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     include 'mpif.h'
 #endif
     type(gridtype) :: grid

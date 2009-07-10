@@ -308,6 +308,7 @@ module molecular_mod
  ! stores the non-zero local emission coefficient   
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
+     use sph_data_class, only: Clusterparameter
      use input_variables, only : vturb, restart, isinLTE, addnewmoldata, plotlevels, setmaxlevel
 
      type(GRIDTYPE) :: grid
@@ -596,6 +597,7 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
+     use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
           usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep
      use messages_mod, only : myRankIsZero
@@ -2900,6 +2902,7 @@ end subroutine calculateOctalParams
    recursive subroutine addDustToOctalParams(grid, thisOctal, thisMolecule)
 
      use input_variables, only : iTrans, lineimage, lamline, nlambda, lamstart, lamend
+     use dust_mod, only: createDustCrossSectionPhaseMatrix
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule

@@ -2459,6 +2459,7 @@ contains
   subroutine mnewt_stateq_v1(grid, ntrial,x,n,tolx,tolf, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
                    rVec, i1, i2, i3, visFrac1, visFrac2, isBinary, thisOctal, thisSubcell, &
                    needRestart, maxNegatives, be_gentle)
+    use math_mod2, only: lubksb_f77, ludcmp_f77
     implicit none
 
     type(GRIDTYPE), intent(inout)  :: grid
@@ -3105,7 +3106,8 @@ contains
     ! takes an array of pointers to octals, and calculates the statistical 
     !   equilibrium. 
     use messages_mod, only : myRankIsZero
-    
+    use surface_mod, only: photoFluxIntegral
+
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -4311,6 +4313,7 @@ contains
   subroutine mnewt_stateq_v2(grid, ntrial,x,n, tolx, tolf, Hnu1, nuArray1,&
        nNu1, Hnu2, nuArray2, nNu2, rVec, i1, i2, i3, visFrac1, visFrac2,  &
        isBinary, thisOctal, thisSubcell, needRestart, maxNegatives, be_gentle)
+    use math_mod2, only: lubksb_f77, ludcmp_f77
     implicit none
 
     type(GRIDTYPE), intent(inout)  :: grid

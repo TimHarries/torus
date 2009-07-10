@@ -6,7 +6,7 @@ subroutine contread(filename,line_freq,hnu)
   ! this subroutine reads in the continuum flux distribution from a list
   ! formatted file.
   !
-  use math_mod
+  use utils_mod, only: logInt, locate
   use kind_mod
   
   implicit none

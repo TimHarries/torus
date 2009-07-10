@@ -5,16 +5,13 @@ module cluster_utils
   ! cluster_class.f90 
 
 
-
-  use formal_solutions
-  use cluster_class
-  use vector_mod
-  use grid_mod
-  use atom_mod
-  use source_mod
-  use filter_set_class
   use kind_mod  
-  use path_integral
+  use vector_mod
+  use formal_solutions, only: formal_sol_dust_AMR
+  use cluster_class, only: get_nstar, get_a_star, cluster
+  use atom_mod, only: bLambda
+  use gridtype_mod, only: GRIDTYPE
+  use source_mod, only: SOURCETYPE
 
   implicit none
 
@@ -41,6 +38,7 @@ contains
   ! magnitudes the stars and the flux at the pass band of SIRTF
   ! (instruments:MIPS & IRAC).  
   subroutine analyze_cluster(a_cluster, dir_obs, distance, grid)
+    use filter_set_class, only: make_filter_set, filter_set
     implicit none
     type(cluster), intent(in) :: a_cluster 
     type(VECTOR), intent(in) :: dir_obs
@@ -340,6 +338,8 @@ contains
   ! It also computes Av (extinction)
   ! The results will be written in a output file.
   subroutine compute_colors(a_cluster, dir_obs, distance, grid, filters)
+    use filter_set_class, only:  get_filter_set_name, get_filter_name, get_nfilter, &
+         FWHM_filters, lambda_eff_filters, filter_set
     implicit none
 
     type(cluster), intent(in) :: a_cluster 

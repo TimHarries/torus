@@ -2,19 +2,19 @@
 
 module photoion_mod
 
-use math_mod
-use parallel_mod
-use gridio_mod
-use image_mod
-use source_mod
-use timing
-use grid_mod
-use amr_mod
 use constants_mod
 use messages_mod
-use diffusion_mod
 use photon_mod
+use phasematrix_mod 
+use timing, only: tune
 use unix_mod, only: unixGetenv
+use vtk_mod, only: writeVtkFile
+use amr_mod, only: returnKappa, inOctal
+use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, cellVolume
+use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcelllocal
+use source_mod, only: SOURCETYPE, sumSourceLuminosityMonochromatic
+use mpi_global_mod, only: myRankGlobal
+use ion_mod, only: IONTYPE
 
 implicit none
 
@@ -65,8 +65,15 @@ contains
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
     use input_variables, only : nlucy, taudiff, thisinclination !, smoothFactor
+    use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
+    use gridio_mod, only: readAmrGrid, writeAmrGrid
+    use ion_mod, only: addXsectionArray
+    use amr_mod, only: countVoxels, getOctalArray
+    use source_mod, only: randomSource, getphotonpositiondirection
+    use spectrum_mod, only: getwavelength
 #ifdef MPI
     use input_variables, only : blockHandout
+    use parallel_mod, only: mpiBlockHandout, mpiGetblock
 #endif
     implicit none
 #ifdef MPI
@@ -669,6 +676,7 @@ end subroutine photoIonizationloop
 
 
  SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, nfreq, freq)
+   use diffusion_mod, only: randomWalk
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec, tvec
@@ -1085,6 +1093,7 @@ end subroutine photoIonizationloop
   end subroutine intersectCubeAMR
 
   subroutine intersectCubeAMR2D(grid, posVec, direction, tval)
+    use utils_mod, only: solvequaddble
 
 ! this is to find a cell intersection for a 2D AMR grid
 ! which is essentially a 2D-grid that projects into
@@ -1524,6 +1533,7 @@ end subroutine photoIonizationloop
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq)
+    use ion_mod, only: returnxSec
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: nFreq, iFreq
@@ -2078,6 +2088,7 @@ function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
 end function returnNe
 
 subroutine dumpLexington(grid, epsoverdt)
+  use ion_mod, only: returnIonNumber, returnAbundance
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
@@ -2323,6 +2334,7 @@ end subroutine getCollisionalRates
 
 
 subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
+  use ion_mod, only: returnIonNumber
   type(GRIDTYPE) :: grid
   character(len=*) :: species
   real(double) :: wavelength
@@ -2422,6 +2434,7 @@ end subroutine metalcoolingRate
   
 
 subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
+  use utils_mod, only: luSlv
   type(IONTYPE) :: thisIon
   real(double) :: ne
   real, intent(out) :: pops(:)
@@ -3307,6 +3320,8 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
 end subroutine addHeRecombinationLines
 
 subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+  use atom_mod, only: bnu
+  use utils_mod, only: hunt
 
   integer :: nFreq
   real(double) :: spectrum(:), freq(:), dfreq(:)
@@ -3386,6 +3401,7 @@ end subroutine readHeIIrecombination
 
 #ifdef MPI
   subroutine updateGridMPIphoto(grid)
+    use amr_mod, only: countVoxels
     implicit none
     include 'mpif.h'
     type(gridtype) :: grid
@@ -3780,6 +3796,7 @@ end subroutine readHeIIrecombination
   end subroutine getWavelengthBiasPhotoion
 
   subroutine refineLambdaArray(lamArray, nLambda, grid)
+    use utils_mod, only: insertBin
     type(GRIDTYPE) :: grid
     real :: lamArray(:)
     integer :: nLambda
@@ -4048,7 +4065,13 @@ end subroutine readHeIIrecombination
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
     use input_variables, only : nPhotons, npix, setimagesize
+    use image_mod, only: initImage, writeFitsImage, freeImage, IMAGETYPE
+    use utils_mod, only: init_random_seed
+    use math_mod, only: computeprobdist
+    use source_mod, only: randomSource, getphotonpositiondirection
+    use amr_mod, only: locatecontprobamr
 #ifdef MPI
+    use mpi_global_mod, only: nThreadsGlobal
     include 'mpif.h'
 #endif
     type(GRIDTYPE) :: grid
@@ -4290,6 +4313,7 @@ end subroutine readHeIIrecombination
 #ifdef MPI
 
   subroutine collateImages(thisImage)
+    use image_mod, only: IMAGETYPE
     include 'mpif.h'
     type(IMAGETYPE) :: thisImage
     real, allocatable :: tempRealArray(:), tempRealArray2(:)
@@ -4348,7 +4372,8 @@ end subroutine readHeIIrecombination
 #endif
 
    subroutine addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFlux)
-     
+     use image_mod, only: pixelLocate, IMAGETYPE
+
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON) :: thisPhoton
      type(VECTOR) :: observerDirection,  xProj, yProj

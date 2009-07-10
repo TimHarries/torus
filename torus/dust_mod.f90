@@ -1,12 +1,12 @@
 module dust_mod
 
-  use gridtype_mod
-  use phasematrix_mod
-  use grid_mod
   use constants_mod
-  use octal_mod
-  use amr_mod
   use messages_mod
+  use vector_mod
+  use gridtype_mod, only: GRIDTYPE
+  use utils_mod, only: locate
+  use octal_mod, only: OCTAL, subcellCentre
+  use amr_mod, only: amrGridValues, returnKappa
 
   implicit none
   public
@@ -799,6 +799,7 @@ contains
   end subroutine fillAMRgridMie
 
   subroutine dustPropertiesfromFile(filename, nlambda, lambda, kappaAbs, kappaSca)
+    use utils_mod, only: logInt
     implicit none
     character(len=*) :: filename
     integer :: nlambda
@@ -1378,6 +1379,7 @@ contains
   subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
     use mieDistPhaseMatrix_mod
+    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX
     use input_variables, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
@@ -1556,6 +1558,7 @@ contains
 
   recursive subroutine allocateMemoryForDust(thisOctal)
     use input_variables, only : nDustType
+    use octal_mod, only: allocateAttribute
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i

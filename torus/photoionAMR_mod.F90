@@ -3,6 +3,9 @@
 module photoionAMR_mod
 
 #ifdef MPI
+use constants_mod
+use messages_mod
+
 use hydrodynamics_mod
 use parallel_mod
 use lucy_mod, only : calcContinuumEmissivityLucyMono
@@ -11,8 +14,6 @@ use source_mod
 use timing
 use grid_mod
 use amr_mod
-use constants_mod
-use messages_mod
 use diffusion_mod
 use mpi_amr_mod
 use mpi_global_mod

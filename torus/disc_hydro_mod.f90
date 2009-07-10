@@ -8,19 +8,14 @@
 
 module disc_hydro_mod
 
-  use input_variables
-  use gridtype_mod
   use kind_mod
   use constants_mod
   use vector_mod
-  use utils_mod
-  use octal_mod
-  use amr_mod
-  use density_mod
-  use source_mod
-  use phasematrix_mod
-  use lucy_mod
-  use vtk_mod
+  use messages_mod
+  use input_variables
+  use gridtype_mod, only: GRIDTYPE
+  use octal_mod, only: OCTAL, subcellCentre
+  use lucy_mod, only: lucyRadiativeEquilibriumAMR
 
   implicit none
 
@@ -31,6 +26,7 @@ contains
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
 
+    use density_mod, only: fractgap, fractgap2 
     use input_variables, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap
     integer, intent(in) :: nz ! number of vertical grid points
     real(double),intent(in) :: subcellSize(1:nz)  ! size of this subcell
@@ -160,6 +156,7 @@ contains
 
 
   subroutine getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
+    use amr_mod, only: amrGridValues
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer, intent(out) :: nz
@@ -200,6 +197,7 @@ contains
   end subroutine getTemperatureDensityRun
 
   subroutine putDensityRun(grid, zAxis, rho, nz, xPos, yPos, direction)
+    use amr_mod, only: amrGridValues
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer :: nz
@@ -260,6 +258,8 @@ contains
   end subroutine realPutDensity
 
   subroutine throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
+    use amr_mod, only: getxValues
+    use utils_mod, only: stripSimilarValues
 
     type(GRIDTYPE) :: grid
     integer, parameter :: maxvals = 100000
@@ -353,7 +353,13 @@ contains
 
     use input_variables, only : variableDustsublimation, rGap
     use messages_mod, only: myRankIsZero
-
+    use parallel_mod, only: torus_mpi_barrier
+    use source_mod, only: SOURCETYPE
+    use phasematrix_mod, only: PHASEMATRIX
+    use lucy_mod, only: refineDiscGrid, getSublimationRadius, putTau, unrefineBack
+    use vtk_mod, only: writeVtkFile
+    use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass
+    use utils_mod, only: locate
 
     type(GRIDTYPE) :: grid
     real :: mStar, sigma0, rDisk, expectedMass
@@ -627,6 +633,8 @@ end subroutine verticalHydrostatic
 
   subroutine getBetaValue(grid, beta, heightat100AU)
     use input_variables, only : rinner, router
+    use utils_mod, only: linfit 
+
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: beta, heightat100AU
     real(double) :: height(100), r(100)

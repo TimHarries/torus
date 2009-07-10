@@ -1774,6 +1774,7 @@ contains
   
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
     use input_variables, only : maxDepthAMR
+    use octal_mod, only: subcellRadius
     include 'mpif.h'
     type(OCTAL), pointer :: parent, thisOctal
     integer :: iChild

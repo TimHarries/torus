@@ -5,10 +5,10 @@ module gridtype_mod
 !   some dependancy problems. nhs
 
   use kind_mod
-  use vector_mod                      ! vector math
-  use octal_mod                       ! octal type for amr  
-  use gaussian_mod
-  use ion_mod
+  use vector_mod, only: VECTOR      ! vector math
+  use octal_mod, only: OCTAL        ! octal type for amr  
+  use gaussian_mod, only: GAUSSIAN
+  use ion_mod, only: IONTYPE
 
   implicit none
 

@@ -10,12 +10,9 @@
 
 module blob_mod
 
-  use gridtype_mod          ! The density grid
-  use grid_mod              ! density grid routines
   use vector_mod            ! Vector maths
   use constants_mod         ! Physical constants
-  use math_mod              ! Misc maths
-  use amr_mod         ! instead of math_mod
+  use gridtype_mod, only: GRIDTYPE  ! The density grid
 
   implicit none
 
@@ -56,7 +53,7 @@ contains
   ! subroutine to initialize an individual blob
 
   subroutine initBlob(blobs, grid, iBlob, atBase, blobContrast)
-
+    use utils_mod, only: locate
 
     integer :: iBlob               ! The blob to init
     logical :: atBase              ! Start the blob at the base?
@@ -127,6 +124,8 @@ contains
   ! timeStart and timeEnd
 
   subroutine moveBlobs(maxBlobs, blobs, timeStart, timeEnd, grid)
+    USE math_mod, only: interpGridVelocity
+    USE grid_mod, only: getIndices
 
     real :: timeStart, timeEnd           ! the times
     integer :: maxBlobs                  ! the number of blobs in the array
@@ -326,6 +325,7 @@ contains
 
 
   subroutine addNewBlobs(grid, maxBlobs, blobs, blobTime, dTime, nCurr, blobContrast)
+    USE utils_mod, only: poidev
 
     integer :: maxBlobs               ! max no of blobs
     type(BLOBTYPE) :: blobs(maxBlobs) ! blob array

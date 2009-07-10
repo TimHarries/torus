@@ -10,11 +10,10 @@
 
 module distortion_mod
 
-  use gridtype_mod          ! opacity grid
-  use grid_mod              ! opacity grid routines
   use constants_mod         ! physical constants
   use vector_mod            ! vector math
-  use blob_mod              ! blob module
+  use gridtype_mod, only: GRIDTYPE ! opacity grid
+  use utils_mod, only: locate
 
   implicit none
 
@@ -26,7 +25,8 @@ contains
   ! two stellar radii on the positive x-axis
 
   subroutine distortGridTest(grid)
-  
+    use blob_mod              ! blob module
+
     type(GRIDTYPE) :: grid                   ! the opacity grid
     integer, parameter :: maxBlobs = 1       ! just one blob
     type(BLOBTYPE) :: blob(maxBlobs)
@@ -385,6 +385,8 @@ contains
 
   subroutine distortStrom(grid, hotSourcePosition, concave, flatten, zScale, coolStarPosition, &
        ramanDist)
+    use grid_mod, only: insideGrid
+    USE utils_mod, only: hunt
     type(GRIDTYPE) :: grid
     type(VECTOR) :: hotSourcePosition
     logical :: concave, convex, flatten
@@ -716,7 +718,8 @@ contains
   end subroutine distortStrom
 
   subroutine distortWindCollision(grid, momRatio, binarySep)
-    
+    use grid_mod, only: getIndices
+
     type(GRIDTYPE) :: grid
     real :: momratio
     real :: binarySep, binarySep10

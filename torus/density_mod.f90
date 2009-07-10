@@ -8,18 +8,13 @@ module density_mod
   ! in the list in 
   !
   
-  use utils_mod
+  use constants_mod
   use vector_mod
-  use gridtype_mod
-  use jets_mod
-  use wr104_mod
-  use ostar_mod
-  use luc_cir3d_class
-  use cmfgen_class
+  use gridtype_mod, only: GRIDTYPE
 
   implicit none
   
-  public :: density,spiralWindDensity
+  public :: density
   ! the specific definition of density functions should really be private, 
   ! but for now they are public... Better yet, they should be in their own module.
   ! See jets_mod for example. 
@@ -34,6 +29,11 @@ contains
   !  For a given point (as a vector) with each component in
   !  10^10 cm and gridtype object, it will return the density in g/cm^3
   function density(r_vec, grid,timenow) RESULT(out)
+    use cmfgen_class, only: cmfgen_density
+    use luc_cir3d_class, only: luc_cir3d_density
+    use jets_mod, only: JetsDensity
+    use ostar_mod, only: spiralWindDensity
+
     implicit none
     real(double) :: out
     real(double), optional :: timenow
@@ -846,6 +846,7 @@ contains
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use input_variables
+    use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
@@ -1097,6 +1098,7 @@ contains
 !  end function Equation2
 
   function clumpyDisc(rVec, grid) result (rhoOut)
+    use gaussian_mod, only: findFactor
     type(VECTOR) :: rVec
     type(GRIDTYPE) :: grid
     real :: rhoOut

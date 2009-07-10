@@ -4,6 +4,7 @@ subroutine fillGridTorus(Grid, xAxis, yAxis, zAxis, nx, ny, nz, rho, scale, &
 
 use vector_mod
 use constants_mod
+use utils_mod, only: locate
 
  implicit none
  integer :: nx, ny, nz

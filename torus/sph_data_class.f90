@@ -1283,6 +1283,7 @@ contains
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone, RhoMin, RhoMax)
     USE input_variables, only: hcritPercentile, hmaxPercentile
+    USE constants_mod, only: tcbr
 
     type(vector), intent(in) :: point
     type(vector) :: posvec

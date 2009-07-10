@@ -30,6 +30,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use formal_solutions
   use distortion_mod
   use unix_mod, only: unixTimes
+  use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
+  use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
 
   implicit none
 

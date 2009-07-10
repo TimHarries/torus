@@ -5,8 +5,9 @@ module cluster_class
   ! Class definition and method for stellar cluster (multiple sources).
   !
   
-  use sph_data_class, only: get_utime, get_time, get_umass, get_pt_mass, get_udist, get_rhon
-  use source_mod, only: SOURCETYPE, stellar_disc_exists
+  use sph_data_class, only: get_utime, get_time, get_umass, get_pt_mass, get_udist, get_rhon, &
+       stellar_disc_exists
+  use source_mod, only: SOURCETYPE
   use octal_mod, only: octal, subcellCentre, cellVolume, within_subcell
   use vector_mod
   

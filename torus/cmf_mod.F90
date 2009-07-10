@@ -4,18 +4,21 @@ module cmf_mod
 
 
   use kind_mod
-  use gridio_mod
   use constants_mod
-  use utils_mod
   use messages_mod
-  use grid_mod
-  use math_mod
-  use modelatom_mod
-  use source_mod
-  use datacube_mod
-  use timing
-  use parallel_mod
-  use vtk_mod
+  use vector_mod
+  use octal_mod, only: octal, octalWrapper, subcellCentre
+  use amr_mod, only: inOctal, distanceToCellBoundary, findsubcellLocal, amrGridVelocity
+  use gridtype_mod, only: GRIDTYPE
+  use utils_mod, only: myexp, init_random_seed, gaussj, locate
+  use modelatom_mod, only: MODELATOM, BoltzSahaGeneral, bfOpacity, bfEmissivity, photoCrossSection, collisionRate, &
+        addcrosssectionstoatom, createcontfreqarray, createrbbarrays, returneinsteincoeffs
+  use source_mod, only: SOURCETYPE, I_nu, insideSource, distanceToSource
+  use surface_mod, only: getElement
+  use timing, only: tune
+  use parallel_mod, only: torus_mpi_barrier
+  use vtk_mod, only: writeVtkfile
+
 
   implicit none
 
@@ -383,6 +386,7 @@ contains
        hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom, nHAtom, nHeIAtom, nHeIIAtom, &
        nFreq, freq, iCont)
     use input_variables, only : opticallyThickContinuum
+    use amr_mod, only: randomPositionInCell
     type(SOURCETYPE) :: source(:)
     integer :: nfreq
     real(double) :: freq(:)
@@ -926,8 +930,12 @@ contains
 
     use input_variables, only : debug, rcore
     use messages_mod, only : myRankIsZero
+    use gridio_mod, only : writeAmrGrid
+    use mpi_global_mod, only: myRankGlobal
+    use amr_mod, only: countVoxels, getOctalArray
 #ifdef MPI
     use input_variables, only : blockhandout
+    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     include 'mpif.h'
 #endif
 
@@ -1714,6 +1722,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray) result (i0)
+    use amr_mod, only: distanceToGridFromOutside
 
     type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
@@ -2024,6 +2033,7 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile)
     use messages_mod, only : myRankIsZero
+    use datacube_mod, only: DATACUBE, writeDataCube, freedatacube
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -2220,6 +2230,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
+    use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
 #endif

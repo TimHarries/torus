@@ -1,13 +1,14 @@
 module angularImage
 
-  use gridtype_mod, only: GRIDTYPE
-  use molecular_mod, only:  moleculetype
   use kind_mod
   use vector_mod
-  use datacube_mod, only: datacube
   use constants_mod
   use messages_mod
-  use timing
+  use gridtype_mod, only: GRIDTYPE
+  use molecular_mod, only:  moleculetype
+  use datacube_mod, only: datacube
+
+  use timing, only: tune
   
   implicit none 
 
@@ -377,11 +378,12 @@ module angularImage
         rhomax, i0max, nCol, observerVelocity, nobg)
 
      use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize
-     use octal_mod 
+     use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
-     use amr_mod
+     use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
      use molecular_mod, only: densite, velocity, phiprof
      use h21cm_mod, only: h21cm_lambda
+     use utils_mod, only: gauss
 
      type(VECTOR) :: position, direction, dsvector, otherDirection
      type(GRIDTYPE) :: grid

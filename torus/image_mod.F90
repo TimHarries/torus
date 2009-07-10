@@ -6,6 +6,7 @@ module image_mod
   use constants_mod
   use photon_mod
   use filter_set_class
+  use source_mod, only: SOURCETYPE, I_nu, getElement
 
   implicit none
 
@@ -824,6 +825,10 @@ module image_mod
             
   subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
     use input_variables, only : npix, setimageSize, vmin, vmax, griddistance
+    use amr_mod, only: distanceToGridFromOutside, distanceToCellBoundary, findSubcellLocal, returnKappa, inOctal, &
+         returnScatteredIntensity
+    use atom_mod, only: bnu
+    use source_mod, only: distanceToSource
     type(OCTAL), pointer :: thisOctal
     type(SOURCETYPE) :: source(:)
     integer :: nSource

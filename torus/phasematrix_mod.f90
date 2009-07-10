@@ -10,8 +10,10 @@
 
 module phasematrix_mod
 
-  use utils_mod
-  use kind_mod
+  use constants_mod
+  use vector_mod
+  use messages_mod 
+
   implicit none
 
   public
@@ -298,6 +300,7 @@ contains
 
   type(VECTOR) function newDirectionMie(oldDirection, wavelength, &
        lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
+    use utils_mod, only: locate
     type(VECTOR), intent(in) :: oldDirection
     real, intent(in) :: wavelength
     real(double) :: dustTypeFraction(:)
@@ -404,6 +407,7 @@ contains
   subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, &
        normalizeSpectrum, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
     use input_variables, only: useNdf
+    use utils_mod, only: convertToJanskies
 
     implicit none
     integer, intent(in) :: nLambda

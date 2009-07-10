@@ -13,18 +13,15 @@ module photon_mod
 
   use vector_mod            ! the vector maths
   use constants_mod         ! physical constants
-  use phasematrix_mod       ! phase matrix manipulation
-  use gridtype_mod          ! type definition for the 3-d grid
-  use grid_mod              ! opacity grid routines
-  use math_mod              ! maths utils
-  use amr_mod               ! adaptive grid routines
-  use utils_mod
-  use phasematrix_mod
-  use disc_class
-  use source_mod
-  use filter_set_class
-  use surface_mod
-  use kind_mod
+  use gridtype_mod, only: GRIDTYPE  ! type definition for the 3-d grid
+  use math_mod, only: thermalElectronVelocity, interpGridVelocity, interpGridScalar2, thermalHydrogenVelocity
+  use amr_mod, only: amrGridValues, amrGridVelocity, amrGridTemperature
+  use disc_class, only: alpha_disc, in_alpha_disc, new
+  use surface_mod, only: SURFACETYPE
+  use phasematrix_mod, only: STOKESVECTOR
+  use grid_mod, only: outsideGrid
+  use octal_mod, only: OCTAL
+  use utils_mod, only: locate
 
   implicit none
 
@@ -67,7 +64,8 @@ contains
   ! on a stokes vector (see phasematrix_mod)
 
   subroutine rotate(thisPhoton, cosx, sinx)
-
+    use phasematrix_mod
+    
     type(PHOTON), intent(inout) :: thisPhoton          ! the photon
     real, intent(in) :: cosx, sinx       ! x should be twice theta
     real :: qdash, udash                 ! the rotated stokes vector
@@ -94,8 +92,10 @@ contains
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
         miePhase, nDustType, nLambda, lamArray, nMuMie, ttau_disc_on, alpha_disc_param, &
         currentOctal, currentSubcell)
+    use phasematrix_mod
+    use utils_mod, only: locate
+    use grid_mod, only: getIndices
 
-    
     type(OCTAL), pointer, optional :: currentOctal
     integer, optional :: currentSubcell
     type(GRIDTYPE) :: grid                       ! the opacity grid
@@ -398,6 +398,14 @@ contains
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf, dirObs,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
     use input_variables, only : photoionization
+    use atom_mod, only: bLambda
+    use amr_mod
+    use phasematrix_mod
+    use filter_set_class
+    use source_mod, only: randomSource, getphotonpositiondirection, SOURCETYPE
+    use surface_mod, only: getPhotoVec
+    use grid_mod, only: getIndices
+    use math_mod, only: getlineposition
 
     implicit none
 
@@ -1717,6 +1725,7 @@ contains
 
 
   subroutine findPosition(thisPhoton, grid, i1,i2,i3)
+    use utils_mod, only: locate 
 
     type(PHOTON) :: thisPhoton
     type(GRIDTYPE) :: grid
@@ -1787,6 +1796,7 @@ contains
   end subroutine getDiskVelocity
 
   subroutine initPlanetPhoton(thisPhoton, grid, lamLine)
+    use utils_mod, only: solveQuad
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton
     real ::  r
@@ -1847,6 +1857,9 @@ contains
 
 
   subroutine testscatterPhoton(grid, miePhase, nDustType, nLambda, lamArray, nMuMie)
+    use phasematrix_mod
+    use amr_mod, only: findSubcellTD
+
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton, outPhoton
     type(VECTOR) :: givenVec
