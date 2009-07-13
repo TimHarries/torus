@@ -48,13 +48,20 @@ module datacube_mod
 
 contains
 
-  subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol)
+  subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
     implicit none
     
     type(DATACUBE), intent(in) :: thisCube
-
     character(len=*) :: filename
+
+! Optional arguments which allow allocated components of the data cube to not be written.
+    logical, optional, intent(in) :: write_Intensity
+    logical, optional, intent(in) :: write_ipos
+    logical, optional, intent(in) :: write_ineg
+    logical, optional, intent(in) :: write_Tau
+    logical, optional, intent(in) :: write_nCol
+    logical, optional, intent(in) :: write_axes
 
 #ifdef USECFITSIO
     integer :: status,unit,blocksize,bitpix,naxis
@@ -62,18 +69,15 @@ contains
     integer :: group,fpixel,nelements
     logical :: simple, extend
     
-! Optional arguments which allow allocated components of the data cube to not be written.
-    logical, optional, intent(in) :: write_Intensity
-    logical, optional, intent(in) :: write_ipos
-    logical, optional, intent(in) :: write_ineg
-    logical, optional, intent(in) :: write_Tau
-    logical, optional, intent(in) :: write_nCol
-
     logical :: do_write_Intensity
     logical :: do_write_ipos
     logical :: do_write_ineg
     logical :: do_write_Tau
     logical :: do_write_nCol
+    logical :: do_write_xaxis
+    logical :: do_write_yaxis
+    logical :: do_write_vaxis
+
 
 ! Decide which arrays to write. Default is to write all which are allocated.
 ! Optional arguments override the defaults. 
@@ -115,6 +119,32 @@ contains
        do_write_ineg = write_ineg
     else
        do_write_ineg = .true. 
+    end if
+
+    if ( .not. associated(thisCube%xAxis) ) then 
+       do_write_xaxis = .false.
+    else
+       do_write_xaxis = .true.
+    end if
+
+    if ( .not. associated(thisCube%yAxis) ) then 
+       do_write_yaxis = .false.
+    else
+       do_write_yaxis = .true.
+    end if
+
+    if ( .not. associated(thisCube%vAxis) ) then 
+       do_write_vaxis = .false.
+    else
+       do_write_vaxis = .true.
+    end if
+
+    if ( present(write_axes) ) then 
+       if (.not. write_axes ) then 
+          do_write_xaxis = .false.
+          do_write_yaxis = .false.
+          do_write_vaxis = .false.
+       end if
     end if
 
     status=0
@@ -196,7 +226,7 @@ contains
        call ftpprd(unit,group,fpixel,nelements,thisCube%weight,status)
     endif
 
-    if(associated(thisCube%xAxis)) then
+    if( do_write_xaxis ) then
        ! 4th HDU : xAxis
        call FTCRHD(unit, status)
        bitpix=-64
@@ -211,7 +241,7 @@ contains
        call ftpprd(unit,group,fpixel,nelements,thisCube%xAxis,status)
     endif
 
-    if(associated(thisCube%yAxis)) then
+    if( do_write_yaxis ) then
        ! 5th HDU : yAxis
        call FTCRHD(unit, status)
        bitpix=-64
@@ -226,7 +256,7 @@ contains
        call ftpprd(unit,group,fpixel,nelements,thisCube%yAxis,status)
     endif
 
-    if(associated(thisCube%vAxis)) then
+    if( do_write_vaxis) then
        ! 6th HDU : vAxis
        call FTCRHD(unit, status)
        bitpix=-64 

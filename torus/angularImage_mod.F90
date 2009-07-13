@@ -74,19 +74,19 @@ module angularImage
       if(writeoutput) then
 
          call writedatacube(cube, "intensity.fits", write_Intensity=.true., write_ipos=.false., &
-              write_ineg=.false., write_Tau=.false., write_nCol=.false.)
+              write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
          call writedatacube(cube, "intensity_pos.fits", write_Intensity=.false., write_ipos=.true., &
-              write_ineg=.false., write_Tau=.false., write_nCol=.false.)
+              write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
          call writedatacube(cube, "intensity_neg.fits", write_Intensity=.false., write_ipos=.false., &
-              write_ineg=.true., write_Tau=.false., write_nCol=.false.)
+              write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
          call writedatacube(cube, "tau.fits", write_Intensity=.false., write_ipos=.false., &
-              write_ineg=.false., write_Tau=.true., write_nCol=.false.)
+              write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
 
          call writedatacube(cube, "nCol.fits", write_Intensity=.false., write_ipos=.false., &
-              write_ineg=.false., write_Tau=.false., write_nCol=.true.)
+              write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
 
       end if
 
