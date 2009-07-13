@@ -4814,7 +4814,7 @@ IF ( .NOT. gridConverged ) RETURN
       total_mass = cellVolume(thisOctal, subcell)  * 1.d30
 
       if ( thisOctal%cylindrical ) then
-         n_bin_az = twoPi / thisOctal%dPhi
+         n_bin_az = nint(twoPi / thisOctal%dPhi)
          massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
       else
          massPerCell = amrlimitscalar
