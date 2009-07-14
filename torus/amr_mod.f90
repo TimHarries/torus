@@ -1269,7 +1269,7 @@ CONTAINS
 
              counter = counter + 1
              CALL CPU_TIME(T2)
-             write(112, *) counter, t2 - t1, t2 - tstart
+             if (writeoutput) write(112, *) counter, t2 - t1, t2 - tstart
           endif
           
           CASE("molebench")

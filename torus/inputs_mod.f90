@@ -2791,6 +2791,14 @@ contains
           call getDouble("intDeltaVz", intDeltaVz,  cLine, nLines, "Observer z velocity boost (km/s)", &
                "(a,f8.2x,a)", 0.d0, ok, .false.)
 
+! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
+! Rotation about y-axis
+          call getDouble("galaxyInclination", galaxyInclination, cLine, nLines, &
+               "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
+! Rotation about z-axis
+          call getDouble("galaxyPositionAngle", galaxyPositionAngle, cLine, nLines, &
+               "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+
        else
 
           call getReal("distance", gridDistance, cLine, nLines, &

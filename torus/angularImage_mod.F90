@@ -212,7 +212,7 @@ module angularImage
 
     subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid, ix1, ix2)
 
-      use input_variables, only : npixels, imageside, centrevecx, centrevecy
+      use input_variables, only : npixels, imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination 
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid
@@ -273,8 +273,10 @@ module angularImage
             viewvec_z = cos( theta_axis(jpixels) )
 
             viewvec = VECTOR( viewvec_x, viewvec_y, viewvec_z )
-! Take out effect of rotating galaxy away from axes
-            viewvec  = rotateY( viewvec, 45.0*degToRad )
+! Take out effect of rotating galaxy away from axes in read_galaxy_sph_data
+! Apply same transformation to viewvec as was carried out on particles
+            viewVec  = rotateZ( viewvec, galaxyPositionAngle*degToRad )
+            viewvec  = rotateY( viewvec, galaxyInclination*degToRad )
             call normalize(viewvec)
 
             imagegrid(ipixels,jpixels,:) = &
