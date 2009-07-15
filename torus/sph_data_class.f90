@@ -610,8 +610,8 @@ contains
 
 ! For the internal view rotate the galaxy so that we are not looking along cell boundaries
              orig_sph = VECTOR( vxyzu(1,i),  vxyzu(2,i),  vxyzu(3,i) )
-             rot_sph  = rotateZ( rot_sph,  galaxyPositionAngle*degToRad )
-             rot_sph  = rotateY( orig_sph, galaxyInclination*degToRad )
+             rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
+             rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
 
              sphdata%vxn(iiigas)         = rot_sph%x
              sphdata%vyn(iiigas)         = rot_sph%y
@@ -619,8 +619,8 @@ contains
              sphData%temperature(iiigas) = vxyzu(4,i)
              
              orig_sph = VECTOR( xyzmh(1,i),  xyzmh(2,i),  xyzmh(3,i) )
-             rot_sph  = rotateZ( rot_sph,  galaxyPositionAngle*degToRad )
-             rot_sph  = rotateY( orig_sph, galaxyInclination*degToRad )
+             rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
+             rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
              
              sphData%xn(iiigas)          = rot_sph%x
              sphData%yn(iiigas)          = rot_sph%y
