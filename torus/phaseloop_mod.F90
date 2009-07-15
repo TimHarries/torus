@@ -470,9 +470,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (geometry == "ttauri") then
            call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
         elseif (geometry == "romanova") then
-           call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
+           call createTTauriSurface2(starSurface,  romData, nu, coreContinuumFlux,fAccretion) 
         else
-           call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion)            
+           call createSurface(starSurface, nu, coreContinuumFlux,fAccretion)            
         end if           
         call testSurface(starSurface)
 

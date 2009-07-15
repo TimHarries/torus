@@ -28,7 +28,7 @@ contains
   !
   !  For a given point (as a vector) with each component in
   !  10^10 cm and gridtype object, it will return the density in g/cm^3
-  function density(r_vec, grid,timenow) RESULT(out)
+  function density(r_vec, grid) RESULT(out)
     use cmfgen_class, only: cmfgen_density
     use luc_cir3d_class, only: luc_cir3d_density
     use jets_mod, only: JetsDensity
@@ -36,7 +36,6 @@ contains
 
     implicit none
     real(double) :: out
-    real(double), optional :: timenow
     type(VECTOR), intent(in) :: r_vec
     type(gridtype), intent(in) :: grid
 
@@ -731,10 +730,12 @@ contains
   real function whitneyDensity(point, grid)
     use input_variables
     TYPE(VECTOR), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
+    TYPE(gridtype), INTENT(IN), optional   :: grid
     real :: r, mu, mu_0, rhoEnv, r_c
     real :: h, rhoDisc, alpha
     real(double) :: fac, theta
+    logical :: withGrid
+    if (PRESENT(grid)) withGrid = .true.
 
     r = modulus(point)*1.e10
 
@@ -785,8 +786,10 @@ contains
   real function planetgapDensity(point, grid) result(rhoDisc)
     use input_variables
     TYPE(VECTOR), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
+    TYPE(gridtype), INTENT(IN), optional    :: grid
     real(double) :: r, h, fac
+    logical :: withGrid
+    if (PRESENT(grid)) withGrid = .true.
 
     rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
          * (rCore*1.e10)**(alphaDisc-betaDisc) * &
@@ -826,9 +829,11 @@ contains
   real function benchmarkDensity(point, grid)
 
     use input_variables
-    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(gridtype), optional, INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real :: r, hr, rd
+    logical :: withGrid
+    if (PRESENT(grid)) withGrid = .true.
     
     rd = rOuter / 2.
     benchmarkDensity = 1.e-30
@@ -970,12 +975,14 @@ contains
 
   function warpedDisc(point, grid) result (rhoOut)
     use input_variables
-    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight
     real(double) :: fac
     real(double) :: phi
+    logical :: withgrid
 
+    if (PRESENT(grid)) withGrid = .true.
     rhoOut = 1.d-30
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
@@ -1001,7 +1008,7 @@ contains
   real(double) function melvinDensity(point, grid) 
 
     use input_variables
-    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real :: r,  mStar, rCav, r_c, r_d
     real :: openingAngle, mu, mu_0, bigR
@@ -1009,10 +1016,12 @@ contains
     real :: rhoEnv, rhoDisc
     real :: cavZ
     real :: rstar
+    logical :: withGrid
+    if (PRESENT(grid)) withGrid = .true.
 
 ! Envelope with cavity plus alpha disc model, as presented
 ! by Alvarez, Hoare and Lucas (2004).
-    
+
     rStar = 10. * rSol
     H_0 = 10. * autocm
     mStar = 10. * mSol

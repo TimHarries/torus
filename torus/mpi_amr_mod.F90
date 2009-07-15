@@ -579,6 +579,7 @@ contains
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    if (myrankGlobal == 0) goto 666
 
     do iGroup = 1, nGroup
 
@@ -620,7 +621,7 @@ contains
        enddo
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     enddo
-
+666 continue
   end subroutine exchangeAcrossMPIboundary
 
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
@@ -1480,22 +1481,28 @@ contains
     endif
   end function octalOnThread
 
-  subroutine periodBoundary(grid)
+  subroutine periodBoundary(grid, justGrav)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iThread
     integer :: ierr, i
     real(double) :: loc(3)
     integer :: tag = 78
+    logical, optional :: justGrav
+
+    logical :: doJustGrav
+
+    doJustGrav = .false.
+    if (PRESENT(justGrav)) doJustGrav = justGrav
 
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     do iThread = 1, nThreadsGlobal - 1
        if (iThread /= myRankGlobal) then
 !          write(*,*) myRankGlobal, " calling boundaryreceiverequests"
-          call periodBoundaryReceiveRequests(grid, iThread)
+          call periodBoundaryReceiveRequests(grid, iThread, doJustGrav)
        else
 !          write(*,*) "now doing ", myRankGlobal
-          call recursivePeriodSend(grid%octreeRoot)
+          call recursivePeriodSend(grid%octreeRoot, doJustGrav)
           loc(1) = 1.d30
           do i = 1, nThreadsGlobal-1
              if (i /= iThread) then
@@ -1512,13 +1519,52 @@ contains
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
   end subroutine periodBoundary
 
-  recursive subroutine recursivePeriodSend(thisOctal)
+  subroutine periodBoundaryLevel(grid, nDepth, justGrav)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    integer :: iThread
+    integer :: ierr, i, nDepth
+    real(double) :: loc(3)
+    integer :: tag = 78
+    logical, optional :: justGrav
+
+    logical :: doJustGrav
+
+    doJustGrav = .false.
+    if (PRESENT(justGrav)) doJustGrav = justGrav
+
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    do iThread = 1, nThreadsGlobal - 1
+       if (iThread /= myRankGlobal) then
+!          write(*,*) myRankGlobal, " calling boundaryreceiverequests"
+          call periodBoundaryReceiveRequestsLevel(grid, iThread, nDepth, doJustGrav)
+       else
+!          write(*,*) "now doing ", myRankGlobal
+          call recursivePeriodSendLevel(grid%octreeRoot, nDepth, doJustGrav)
+          loc(1) = 1.d30
+          do i = 1, nThreadsGlobal-1
+             if (i /= iThread) then
+!                write(*,*) myRankGlobal, " sending terminate to ", i
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
+             endif
+          enddo
+       endif
+!       write(*,*) myrankGlobal, " waiting at barrier"
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!       write(*,*) myrankGlobal, " dropped through barrier"
+    enddo
+!    write(*,*) myRankGlobal, " HAS REACHED THE BARRIER"
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+  end subroutine periodBoundaryLevel
+
+  recursive subroutine recursivePeriodSend(thisOctal, doJustGrav)
 
     include 'mpif.h'
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
     real(double) :: loc(3), tempStorage(8)
     integer :: subcell, i
+    logical :: doJustGrav
     integer :: tag1 = 78, tag2 = 79
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
@@ -1531,30 +1577,34 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call recursivePeriodSend(child)
+                call recursivePeriodSend(child, doJustGrav)
                 exit
              end if
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-          if (thisOctal%ghostCell(subcell).and.thisOctal%boundaryCondition(subcell)==2) then
-             loc(1) = thisOctal%boundaryPartner(subcell)%x
-             loc(2) = thisOctal%boundaryPartner(subcell)%y
-             loc(3) = thisOctal%boundaryPartner(subcell)%z
-
-
-             tSubcell = 1
-             tOctal => thisOctal
-             call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal, tSubcell)
-             if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
-                write(*,*) "locator problem2 ",myRankGlobal
-                stop
+          if ( (thisOctal%ghostCell(subcell).and.thisOctal%boundaryCondition(subcell)==2) .or. &
+               (thisOctal%ghostCell(subcell).and.doJustGrav) ) then
+             if (.not.doJustGrav) then
+                loc(1) = thisOctal%boundaryPartner(subcell)%x
+                loc(2) = thisOctal%boundaryPartner(subcell)%y
+                loc(3) = thisOctal%boundaryPartner(subcell)%z
+             else
+                loc(1) = thisOctal%gravboundaryPartner(subcell)%x
+                loc(2) = thisOctal%gravboundaryPartner(subcell)%y
+                loc(3) = thisOctal%gravboundaryPartner(subcell)%z
              endif
 
+
+
              tOctal => thisOctal
              tSubcell = 1
-             call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal,tsubcell)
+             if (.not.doJustGrav) then
+                call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal,tsubcell)
+             else
+                call findSubcellLocal(thisOctal%gravboundaryPartner(subcell), tOctal,tsubcell)
+             endif
 !             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
 !             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
@@ -1562,16 +1612,92 @@ contains
              call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
-                allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
-                thisOctal%tempStorage = 0.d0
+                if (.not.doJustGrav) then
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                   thisOctal%tempStorage = 0.d0
+                else
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
+                   thisOctal%tempStorage = 0.d0
+                endif
              endif
-             thisOctal%tempStorage(subcell,1:8) = tempStorage(1:8)
+             thisOctal%tempStorage(subcell,1:SIZE(thisOctal%tempStorage,2)) = &
+                  tempStorage(1:SIZE(thisOctal%tempStorage,2))
           endif
        endif
     enddo
   end subroutine recursivePeriodSend
 
-  subroutine periodBoundaryReceiveRequests(grid, receiveThread)
+  recursive subroutine recursivePeriodSendLevel(thisOctal, nDepth, doJustGrav)
+
+    include 'mpif.h'
+    type(octal), pointer   :: thisOctal, tOctal, child
+    integer :: tSubcell
+    integer :: nDepth
+    real(double) :: loc(3), tempStorage(8)
+    logical :: doJustGrav
+    integer :: subcell, i
+    integer :: tag1 = 78, tag2 = 79
+    integer :: ierr
+    integer :: status(MPI_STATUS_SIZE)
+
+
+    if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call recursivePeriodSendLevel(child, nDepth, doJustGrav)
+       end do
+    else
+
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if ( (thisOctal%ghostCell(subcell).and.thisOctal%boundaryCondition(subcell)==2) .or. &
+               (thisOctal%ghostCell(subcell).and.doJustGrav) ) then
+             if (.not.doJustGrav) then
+                loc(1) = thisOctal%boundaryPartner(subcell)%x
+                loc(2) = thisOctal%boundaryPartner(subcell)%y
+                loc(3) = thisOctal%boundaryPartner(subcell)%z
+             else
+                loc(1) = thisOctal%gravboundaryPartner(subcell)%x
+                loc(2) = thisOctal%gravboundaryPartner(subcell)%y
+                loc(3) = thisOctal%gravboundaryPartner(subcell)%z
+             endif
+
+
+
+             tOctal => thisOctal
+             tSubcell = 1
+             if (.not.dojustGrav) then
+                call findSubcellLocalLevel(thisOctal%boundaryPartner(subcell), tOctal,tsubcell, nDepth)
+             else
+                call findSubcellLocalLevel(thisOctal%gravboundaryPartner(subcell), tOctal,tsubcell, nDepth)
+             endif
+             if (tOctal%mpiThread(tSubcell) == myRankGLobal) then
+                write(*,*) "bug in recursiveperiodsendlevel ",thisOctal%gravBoundaryPartner(subcell)
+             endif
+!             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
+!             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
+             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
+!             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
+             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+!             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
+             if (.not.associated(thisOctal%tempStorage)) then
+                if (.not.doJustGrav) then
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                   thisOctal%tempStorage = 0.d0
+                else
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
+                   thisOctal%tempStorage = 0.d0
+                endif
+             endif
+             thisOctal%tempStorage(subcell,1:SIZE(thisOctal%tempStorage,2)) = &
+                  tempStorage(1:SIZE(thisOctal%tempStorage,2))
+          endif
+       enddo
+    endif
+  end subroutine recursivePeriodSendLevel
+
+  subroutine periodBoundaryReceiveRequests(grid, receiveThread, doJustGrav)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -1581,6 +1707,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     integer :: subcell
     integer :: tag1 = 78, tag2 = 79
+    logical :: doJustGrav
     type(VECTOR) :: octVec
     sendLoop = .true.
 !    write(*,*) myrankGlobal, " waiting for a locator"
@@ -1600,20 +1727,76 @@ contains
           call findSubcellLocal(octVec, thisOctal, subcell)
 !          write(*,*) myrankglobal," subscell local done succesfully"
           
-          tempstorage(1) = thisOctal%rho(Subcell)
-          tempStorage(2) = thisOctal%rhoE(Subcell)
-          tempStorage(3) = thisOctal%rhou(Subcell)
-          tempStorage(4) = thisOctal%rhov(Subcell)
-          tempStorage(5) = thisOctal%rhow(Subcell)
-          tempStorage(6) = thisOctal%energy(Subcell)
-          tempStorage(7) = thisOctal%pressure_i(Subcell)
-          tempStorage(8) = thisOctal%phi_i(Subcell)
-!          write(*,*) myRankGlobal, " sending tempstorage to ", receiveThread
-          call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          if (.not.doJustGrav) then
+             tempstorage(1) = thisOctal%rho(Subcell)
+             tempStorage(2) = thisOctal%rhoE(Subcell)
+             tempStorage(3) = thisOctal%rhou(Subcell)
+             tempStorage(4) = thisOctal%rhov(Subcell)
+             tempStorage(5) = thisOctal%rhow(Subcell)
+             tempStorage(6) = thisOctal%energy(Subcell)
+             tempStorage(7) = thisOctal%pressure_i(Subcell)
+             tempStorage(8) = thisOctal%phi_i(Subcell)
+             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          else
+             tempStorage(1) = thisOctal%phi_i(Subcell)
+             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          endif
        endif
     enddo
 !    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
   end subroutine periodBoundaryReceiveRequests
+
+
+  subroutine periodBoundaryReceiveRequestsLevel(grid, receiveThread, nDepth, doJustGrav)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    logical :: sendLoop
+    integer :: nDepth
+    real(double) :: loc(3), tempStorage(8)
+    integer :: ierr, receiveThread
+    integer :: status(MPI_STATUS_SIZE)
+    integer :: subcell
+    integer :: tag1 = 78, tag2 = 79
+    logical :: doJustGrav
+    type(VECTOR) :: octVec
+    sendLoop = .true.
+!    write(*,*) myrankGlobal, " waiting for a locator"
+    do while (sendLoop)
+       ! receive a locator
+       
+       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, MPI_COMM_WORLD, status, ierr)
+!       write(*,*) myrankglobal, " received a locator from ", receiveThread 
+       if (loc(1) > 1.d20) then
+          sendLoop = .false.
+!          write(*,*) myRankGlobal, " found the signal to end the send loop from ", receivethread
+       else
+          octVec = VECTOR(loc(1), loc(2), loc(3))
+          thisOctal => grid%octreeRoot
+          subcell = 1
+!          write(*,*) myrankglobal," calling subscell local"
+          call findSubcellLocalLevel(octVec, thisOctal, subcell, nDepth)
+!          write(*,*) myrankglobal," subscell local done succesfully"
+          
+          if (.not.doJustGrav) then
+             tempstorage(1) = thisOctal%rho(Subcell)
+             tempStorage(2) = thisOctal%rhoE(Subcell)
+             tempStorage(3) = thisOctal%rhou(Subcell)
+             tempStorage(4) = thisOctal%rhov(Subcell)
+             tempStorage(5) = thisOctal%rhow(Subcell)
+             tempStorage(6) = thisOctal%energy(Subcell)
+             tempStorage(7) = thisOctal%pressure_i(Subcell)
+             tempStorage(8) = thisOctal%phi_i(Subcell)
+             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          else
+             tempStorage(1) = thisOctal%phi_i(Subcell)
+             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          endif
+       endif
+    enddo
+!    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
+  end subroutine periodBoundaryReceiveRequestsLevel
+
 
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
@@ -1659,7 +1842,7 @@ contains
           rhou = tempStorage(6)
           rhoe = tempStorage(7)
           p = tempStorage(8)
-          write(20,'(5e14.5)') cen%x, rho, rhou/rho, rhoe,p
+          write(20,'(5e14.5)') modulus(cen-startPoint), rho, rhou/rho, rhoe,p
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
        enddo
@@ -1796,7 +1979,7 @@ contains
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z
     real(double) :: oldMass, newMass, factor
-!    real(double) :: oldEnergy, newEnergy, oldMom, newMom
+    real(double) :: oldEnergy, newEnergy!, oldMom, newMom
     logical, save :: firstTime = .true.
     logical :: debug
 
@@ -1941,6 +2124,13 @@ contains
     thisOctal%boundaryCondition = parent%boundaryCondition(parentSubcell)
     thisOctal%gamma = parent%gamma(parentSubcell)
     thisOctal%iEquationOfState = parent%iEquationofState(parentSubcell)
+
+    if (associated(parent%ionFrac)) then
+       do iSubcell = 1, thisOctal%maxChildren
+          thisOctal%ionFrac(isubcell,:) = parent%ionFrac(parentSubcell,:)
+       enddo
+    endif
+
 
 
     if (thisOctal%threed) then
@@ -2209,13 +2399,18 @@ contains
     enddo
     factor = oldMass / newMass
     thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
+    thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
 
-!    ! energy
-!
-!    oldEnergy = parent%rhoe(parentSubcell)
-!    newEnergy = SUM(thisOctal%rhoe(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-!    factor = oldEnergy/newEnergy
-!    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
+
+    ! energy
+
+    oldEnergy = parent%rhoe(parentSubcell) * cellVolume(parent, parentSubcell)
+    newEnergy = 0.d0
+    do iSubcell = 1, thisOctal%maxChildren
+       newEnergy = newEnergy + thisOctal%rhoe(isubcell) * cellVolume(thisOctal, iSubcell)
+    enddo
+    factor = oldEnergy/newEnergy
+    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
 !
 !    ! momentum (u)
 !

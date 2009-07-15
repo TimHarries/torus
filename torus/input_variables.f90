@@ -28,6 +28,8 @@ module input_variables
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
   logical :: photoionization
+  logical :: quickThermal
+  logical :: dustOnly
   logical :: molecular
   logical :: h21cm 
   real :: beamSize

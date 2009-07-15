@@ -18,20 +18,18 @@ contains
 
   end subroutine unixGetenv
 
-  subroutine unixGetLogin(login, n)
+  subroutine unixGetLogin(login)
     
     character(len=*) :: login
-    integer :: n
 !    call getLogin(login, n)
 
     login = " "
 
   end subroutine unixGetLogin
 
-  subroutine unixGetHostname(name, n)
+  subroutine unixGetHostname(name)
 
     character(len=*), intent(out) :: name
-    integer, intent(inout) :: n
     
     name = "XXX"
 !    call getHostname(name, n)

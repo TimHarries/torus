@@ -80,12 +80,11 @@ contains
   ! CONSTRUCTOR
   !
   ! -- 1. initializes the romanova's data, 2. assign parameters
-  subroutine init_romanova(this, Rs, Rmax, Mass, isothermal, T_flow, &
+  subroutine init_romanova(this, Rs, Rmax, isothermal, T_flow, &
        r_ref, rho_ref, T_ref, v_ref, tilt, period, filename)
     type(romanova), intent(inout) :: this
     real(double), intent(in) :: Rs          ! radius of central star  [10^10cm
     real(double), intent(in) :: Rmax        ! max radius of geometry  [10^10cm]
-    real(double), intent(in) :: Mass        ! [g]  Mass of the star
     logical,      intent(in) :: isothermal  ! If T, uses T_flow; oterwise uses data
     real(double), intent(in) :: T_flow      ! [K]  Isothermal temperature of flow
     !

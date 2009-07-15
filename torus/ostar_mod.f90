@@ -19,18 +19,17 @@ contains
        rhoOut = 1.e-30
     else
        v = v0 + (vTerm - v0) * (1. - grid%rCore/r)**beta
-       rhoOut = mdot / (fourPi * (r*1.e10)**2 * v) * returnSpiralFactor(rVec, 10.*grid%rCore/real(twoPi), grid)
+       rhoOut = mdot / (fourPi * (r*1.e10)**2 * v) * returnSpiralFactor(rVec, 10.*grid%rCore/real(twoPi))
     endif
 
   end function spiralWindDensity
 
 
-  function returnSpiralFactor(rVec, alpha, grid) result (fac)
+  function returnSpiralFactor(rVec, alpha) result (fac)
     real :: alpha, fac, r, rSpiral1, rSpiral2, theta
     real ::  mu, x
     integer :: n
     type(VECTOR) :: rVec
-    type(GRIDTYPE) :: grid
     fac  = 1.
 
     r = modulus(rVec)

@@ -87,8 +87,9 @@ contains
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
     logical :: dumpThisTime
-    real(double) :: deltaTforDump, timeOfNextDump
-    integer :: iRefine
+    real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
+    integer :: iRefine, nUnrefine
+    logical :: startFromNeutral
 
     nHydroThreads = nThreadsGlobal-1
 
@@ -109,7 +110,11 @@ contains
     nextDumpTime = 0.d0
     tDump = 0.005d0
     deltaTforDump = 2.d11
+    if (grid%geometry == "hii_test") deltaTforDump = 100.d0/secstoyears
     iunrefine = 0
+    startFromNeutral = .false.
+    if (grid%geometry == "bonnor") startFromNeutral = .true.
+
 
     if (readlucy) then
        write(mpiFilename,'(a, i4.4, a)') "dump_", iDump, ".grid"
@@ -160,18 +165,11 @@ contains
 
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call writeInfo("Refining grid part 2", TRIVIAL)    
-       do
-          globalConverged(myRank) = .true.
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), 1.d-2, inheritval=.false.)
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:nHydroThreads))) exit
-       end do
 
+       call evenUpGridMPI(grid,.false.,.true.)      
+       call refineGridGeneric(grid, 1.d-2)
        call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid, .false., .true.)
+       call evenUpGridMPI(grid, .false.,.true.)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
@@ -180,19 +178,25 @@ contains
     call ionizeGrid(grid%octreeRoot)
 
 
+    call writeVtkFile(grid, "start.vtk", &
+         valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+
+    loopLimitTime = 1.e30
+    if (startFromNeutral) loopLimitTime = grid%currentTime
+
     do irefine = 1, 1
 
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-               lucyfileout, lucyfilein, 5)
+               lucyfileout, lucyfilein, 5, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-               lucyfileout, lucyfilein, 5)
+               lucyfileout, lucyfilein, 5, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        endif
 
@@ -221,27 +225,15 @@ contains
           endif
 
 
-          !          call writeVtkFile(grid, "beforegeneric.vtk", &
-          !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+
+       call evenUpGridMPI(grid,.false.,.true.)      
+       call refineGridGeneric(grid, 1.d-2)
+       call writeInfo("Evening up grid", TRIVIAL)    
+       call evenUpGridMPI(grid, .false.,.true.)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call writeInfo("Refining grid part 2", TRIVIAL)    
-          do
-             globalConverged(myRank) = .true.
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), 1.d-2, inheritval=.true.)
-             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-             if (ALL(tConverged(1:nHydroThreads))) exit
-          end do
-
-          call writeInfo("Evening up grid", TRIVIAL)    
-          call evenUpGridMPI(grid, .true., .true.)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-       endif
+    endif
     enddo
 
 
@@ -297,13 +289,13 @@ contains
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 5) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCellsPhotoion(grid%octreeRoot, grid)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine,1.d-3)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
-
           call evenUpGridMPI(grid, .true., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
        endif
 
 
@@ -313,9 +305,13 @@ contains
        !       call ionizeGrid(grid%octreeRoot)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
+
+       loopLimitTime = 1.e30
+       if (startFromNeutral) loopLimitTime = grid%currentTime
+
        call setupNeighbourPointers(grid, grid%octreeRoot)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-            lucyfileout, lucyfilein, 1)
+            lucyfileout, lucyfilein, 1, loopLimitTime)
        call writeInfo("Done",TRIVIAL)
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot, mu)
@@ -325,26 +321,21 @@ contains
 
 
 
+
        if (myRank /= 0) then
 
-          call writeInfo("Refining grid part 2", TRIVIAL)    
-          do
-             globalConverged(myRank) = .true.
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRank), 1.d-2, inheritval=.true.)
-             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-             if (ALL(tConverged(1:nHydroThreads))) exit
-          end do
+          call evenUpGridMPI(grid,.false.,.true.)
+       
+          call refineGridGeneric(grid, 1.d-2)
 
-          call evenUpGridMPI(grid, .true., .true.)
+          call writeInfo("Evening up grid", TRIVIAL)    
+          call evenUpGridMPI(grid, .false.,.true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
 
        endif
 
-       !          call writeVtkFile(grid, "current.vtk", &
-       !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+!       call writeVtkFile(grid, "current.vtk", &
+!            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
        grid%currentTime = grid%currentTime + dt
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
@@ -370,11 +361,13 @@ contains
 
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein, maxIter)
+       lucyfileout, lucyfilein, maxIter, tLimit)
+    use input_variables, only : quickThermal
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
     integer :: nMonte
+    real(double) :: tLimit
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
     logical :: readlucy, writelucy
@@ -408,6 +401,7 @@ contains
     real(double) :: luminosity1, luminosity2, luminosity3
     real(double) :: photonPacketWeight
     real(double) :: fac
+    real(double) :: tPhoton
     real(double) :: albedo
     integer :: maxIter
     logical, save :: firstCall = .true.
@@ -418,6 +412,8 @@ contains
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
     integer, parameter :: nTemp = 7
     real(double) :: tempstorage(nTemp)
+    real(double) :: v, dustHeating
+    real :: kappaP
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
@@ -429,13 +425,11 @@ contains
     integer :: tag = 41
     integer :: nTotScat, nPhot
     integer :: newThread
-    logical :: quickThermal
     logical, save :: firstTimeTables = .true.
     integer :: nEscaped, iSignal
     logical :: photonsStillProcessing
     integer, allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
-    quickThermal = .false.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
@@ -530,6 +524,7 @@ contains
                 call randomSource(source, nSource, iSource)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+                tPhoton = 0.d0
 !                write(*,*) inOctal(grid%octreeRoot, rVec), "rvec ",rVec," dir ",uhat
  !               call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
  !                    foundSubcell=tempsubcell)
@@ -547,7 +542,7 @@ contains
 
                 iThread = thisOctal%mpiThread(subcell)
 
-                call sendMPIPhoton(rVec, uHat, thisFreq, iThread)
+                call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, iThread)
 !                write(*,*) "Rank 0 sending photon with rvec%x ",rvec%x, " to ", iThread
                 nInf = nInf + 1
 
@@ -563,7 +558,6 @@ contains
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
                 enddo
                 nEscaped = SUM(nEscapedArray(1:nThreads-1))
-                write(*,*) myrankGlobal, " thinks ",nEscaped, " photons have escaped "
                 if (nEscaped == nMonte) photonsStillProcessing = .false.
              end do
 
@@ -578,7 +572,7 @@ contains
              endLoop = .false.
              nEscaped = 0
              do while(.not.endLoop)
-                call getNewMPIPhoton(rVec, uHat, thisFreq, iSignal)
+                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, iSignal)
 
                 if (iSignal == 0) then
                    endLoop = .true.
@@ -596,9 +590,9 @@ contains
                    do while(.not.escaped)
                       currentSubcell = 1
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
-                           photonPacketWeight, nfreq, freq, crossedMPIboundary, currentOctal, currentSubcell, newThread)
+                           photonPacketWeight, nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, newThread)
                       if (crossedMPIBoundary) then
-                         call sendMPIPhoton(rVec, uHat, thisFreq, newThread)
+                         call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, newThread)
                          goto 777
                       endif
 
@@ -739,6 +733,18 @@ contains
           
           thisOctal => octalArray(iOctal)%content
           
+          if (dustOnly) then
+             do subcell = 1, thisOctal%maxChildren
+                if (.not.thisOctal%hasChild(subcell)) then
+                   v = cellVolume(thisOctal, subcell)
+                   call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+                   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
+                   thisOctal%temperature(subcell) = ((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25d0
+                endif
+             enddo
+
+          else
+
              do i = 1 , 3
                 call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
                 if (quickThermal) then
@@ -749,8 +755,9 @@ contains
                    endif
                 endif
              enddo
-          enddo
-       endif
+          endif
+       enddo
+    endif
 
     deallocate(octalArray)
 
@@ -867,21 +874,22 @@ if (.false.) then
  call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
- if (writelucy) then
-    call writeAmrGrid(lucyfileout,.false.,grid)
- endif
+! if (writelucy) then
+!    call writeAmrGrid(lucyfileout,.false.,grid)
+! endif
 end subroutine photoIonizationloopAMR
 
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, &
-     nfreq, freq, crossedMPIboundary, currentOctal, currentSubcell, newThread)
+     nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, newThread)
   include 'mpif.h'
   integer :: myRank, ierr
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec
    type(OCTAL), pointer :: thisOctal, tempOctal, currentOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
+   real(double) :: tPhoton, tLimit
    integer, intent(out) :: newThread
    integer :: endSubcell
    integer :: currentSubcell
@@ -906,14 +914,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical, intent(out) :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
-   logical :: ok
+   logical :: ok, outofTime
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     stillinGrid = .true.
     escaped = .false.
     crossedMPIboundary = .false.
-       
+    outOfTime = .false.
 
 
     thisLam = (cSpeed / thisFreq) * 1.e8
@@ -959,9 +967,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! add on the distance to the next cell
 
+       oldrVec = rVec
        rVec = rVec + (tVal+1.d-3*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
-
-
+       tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
+       if (tPhoton > tLimit) then
+          escaped = .true.
+          outOfTime = .true.
+       endif
 
 ! check whether the photon has escaped from the grid
 
@@ -970,8 +982,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
        else
-          stillingrid = .false.
-          escaped = .true.
+          call checkReflectPhoton(grid, rVec, uhat, oldrVec, thisOctal, subcell, nextOctal, nextSubcell, stillinGrid, escaped)
        endif
           
        octVec = rVec
@@ -994,7 +1005,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! update the distance grid
 
-       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq)
+       if (.not.outOfTime) then
+          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq)
+       endif
           
 
 
@@ -1068,7 +1081,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! the photon may have escaped the grid...
 
-    if (.not.inOctal(grid%octreeRoot, octVec))  escaped = .true.
+       if (inOctal(grid%octreeRoot,rVec)) then
+          nextOctal => thisOctal
+          nextSubcell = subcell
+          call findSubcellLocal(rVec, nextOctal, nextSubcell)
+       else
+          call checkReflectPhoton(grid, rVec, uhat, oldrVec, thisOctal, subcell, nextOctal, nextSubcell, stillinGrid, escaped)
+       endif
 
  ! if not the photon must interact in this cell
        
@@ -1108,7 +1127,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
-          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
+          if (.not.outOfTime) then
+             call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
+          endif
 
           oldOctal => thisOctal
           
@@ -1123,6 +1144,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        tVec = rVec
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
+       tPhoton = tPhoton +  (dble(tVal*1.d10)*dble(tau)/thisTau) / cSpeed
+       if (tPhoton > tLimit) then
+          escaped = .true.
+          outOfTime = .true.
+       endif
 
        if (.not.inOctal(grid%octreeRoot, rVec)) then  ! this is only needed due to floating point boundary issues
           escaped = .true.
@@ -1603,6 +1629,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
              else
+                thisOctal%ionFrac(subcell, 1) = 1.d0
+                thisOctal%ionFrac(subcell, 2) = 1.d-30
 !                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
@@ -1745,6 +1773,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
   
   function HHeCooling(grid, thisOctal, subcell, epsOverDeltaT, temperature, debug) result (coolingRate)
+    use input_variables, only : quickThermal, dustOnly
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
     real(double) :: epsOverDeltaT
@@ -1773,13 +1802,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     real :: kappap
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
-    logical :: dustOnlyModel
 
 
-    dustOnlyModel = .true.
     coolingRate = 0.d0
 
-    if (.not.dustOnlyModel) then
+    if (.not.dustOnly) then
                 
        nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
        nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
@@ -3904,12 +3931,12 @@ end subroutine readHeIIrecombination
   end subroutine refineLambdaArray
 
 
-  subroutine getNewMPIPhoton(position, direction, frequency, iSignal)
+  subroutine getNewMPIPhoton(position, direction, frequency, tPhoton, iSignal)
     include 'mpif.h'
     integer :: ierr
     type(VECTOR) :: position, direction
-    real(double) :: frequency
-    integer, parameter :: nTemp = 7
+    real(double) :: frequency, tPhoton
+    integer, parameter :: nTemp = 8
     real(double) :: tempstorage(nTemp)
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 41
@@ -3933,16 +3960,17 @@ end subroutine readHeIIrecombination
        direction%y = tempStorage(5)
        direction%z = tempStorage(6)
        frequency = tempStorage(7)
+       tPhoton = tempStorage(8)
     endif
 666 continue
   end subroutine getNewMPIPhoton
 
-  subroutine sendMPIPhoton(position, direction, frequency, iThread)
+  subroutine sendMPIPhoton(position, direction, frequency, tPhoton, iThread)
     include 'mpif.h'
     integer :: ierr
     type(VECTOR) :: position, direction
-    real(double) :: frequency
-    integer, parameter :: nTemp = 7
+    real(double) :: frequency, tPhoton
+    integer, parameter :: nTemp = 8
     real(double) :: tempstorage(nTemp)
     integer :: iThread
     integer :: tag = 41
@@ -3954,6 +3982,7 @@ end subroutine readHeIIrecombination
     tempStorage(5) =        direction%y  
     tempStorage(6) =        direction%z  
     tempStorage(7) =        frequency    
+    tempStorage(8) =        tPhoton
 
     if (iThread == myRankGlobal) then
        write(*,*) "sending to self bug ", ithread
@@ -4051,8 +4080,6 @@ end subroutine readHeIIrecombination
 
     if (writeLucy) then
        if (iLambdaPhoton == 1) then
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, grid%lamArray, .false. , .false., &
-               "X", "Y", 5)
           call writeAMRgrid("lucy.dat", .false., grid)
           call writeVtkFile(grid, "current.vtk", &
                valueTypeString=(/"rho        ","HI         " ,"temperature" /))
@@ -4708,8 +4735,30 @@ end subroutine readHeIIrecombination
     end do 
   end subroutine computeProbDist3AMRMpi
 
+  subroutine checkReflectPhoton(grid, rVec, uhat, oldrVec, oldOctal, oldSubcell, nextOctal, nextSubcell, stillinGrid, escaped)
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, uHat, oldRVec
+    type(OCTAL), pointer :: nextOctal, oldOctal
+    integer :: nextSubcell, oldSubcell
+    logical :: stillInGrid, escaped
+    
+    stillInGrid = .false.
+    escaped = .true.
 
-
+!    if (grid%geometry == "bonnor") then
+!       rVec = oldRvec
+!       nextSubcell = oldSubcell
+!       nextOctal => oldOctal
+!       if ((rVec%x < grid%octreeRoot%xMin).or.(rVec%x > grid%octreeRoot%xMax)) then
+!          stillInGrid = .false.
+!          escaped = .true.
+!       else
+!          uHat%z = -uHat%z
+!          stillInGrid = .true.
+!          escaped = .false.
+!       endif
+!    endif
+  end subroutine checkReflectPhoton
 #endif    
 end module photoionAMR_mod
 

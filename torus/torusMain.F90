@@ -195,7 +195,6 @@ program torus
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
-  integer ::   tempInt        !
   type(VECTOR) :: viewVec, outVec
 #endif
   
@@ -218,7 +217,7 @@ program torus
   ! Set up amrCOMMUNICATOR and global mpi groups
   call setupAMRCOMMUNICATOR
 
-  call unixGetHostname(tempChar, tempInt) 
+  call unixGetHostname(tempChar) 
   print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
 
   !===============================================================================
@@ -604,9 +603,13 @@ program torus
        viewVec = rotateZ(viewVec, 30.d0*degtorad)
        outVec = (-1.d0)*viewVec
 
-       call createImageSplitGrid(grid, nSource, source, outVec, i, fac)
-       call torus_mpi_barrier
-       stop
+!       call createImageSplitGrid(grid, nSource, source, outVec, i, fac)
+!       call torus_mpi_barrier
+!       stop
+
+
+    call writeVtkFile(grid, "first.vtk", &
+         valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
@@ -875,7 +878,7 @@ CONTAINS
      ! create the romanova data object and readin the data at the same time.
      ! After this call, the obejct will be ready to use. 
      call new(romData, ROM_Rs*DBLE(Rsol)*1.0d-10, 70.0d0, &
-          ROM_Mass*DBLE(Msol), ROM_isoT, ROM_T_flow, ROM_r_ref, &
+           ROM_isoT, ROM_T_flow, ROM_r_ref, &
           ROM_rho_ref, ROM_T_ref, ROM_v_ref, ROM_tilt, ROM_period, ROM_datafile)
 
      ! this is a temporary solution... It should be called something 
@@ -1692,9 +1695,9 @@ end subroutine pre_initAMRGrid
                  call writeInfo(message, TRIVIAL)
                  do
                     gridConverged = .true.
-!                    call putTau(grid, grid%lamArray(j))
+                    call putTau(grid, grid%lamArray(j))
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                         inheritProps = .false., interpProps = .false.)!, photosphereSplit = .not.variableDustSublimation)
+                         inheritProps = .false., interpProps = .false., photosphereSplit = .not.variableDustSublimation)
                     if (gridConverged) exit
                  end do
               enddo
@@ -1779,9 +1782,9 @@ end subroutine pre_initAMRGrid
            elseif (geometry == "magstream") then
               
            elseif (geometry == "romanova") then
-              call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
+              call createTTauriSurface2(starSurface,  romData, nu, coreContinuumFlux,fAccretion) 
            else
-              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+              call createSurface(starSurface,  nu, coreContinuumFlux,fAccretion) 
            end if
         endif
 
@@ -2009,9 +2012,9 @@ subroutine set_up_sources
            elseif (geometry == "magstream") then
               
            elseif (geometry == "romanova") then
-              call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
+              call createTTauriSurface2(starSurface,  romData, nu, coreContinuumFlux,fAccretion) 
            else
-              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+              call createSurface(starSurface,  nu, coreContinuumFlux,fAccretion) 
            end if
         else
            nu = cSpeed / (lamLine * angstromtocm)
@@ -2064,6 +2067,20 @@ subroutine set_up_sources
        call testSurface(source(1)%surface)
 
     case("melvin")
+       nSource = 1
+       teff = 30000.
+       allocate(source(1:1))
+       source(:)%outsideGrid = .false.
+       source(1)%luminosity = fourPi * (10.*rsol)*(10.*rsol) * stefanBoltz * teff**4
+       source(1)%radius = 10.*rSol / 1.e10
+       source(1)%teff = teff
+       source(1)%position = VECTOR(0.,0.,0.)
+       fac = 1.e8*cspeed/5.d16
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
+       call normalizedSpectrum(source(1)%spectrum)
+       rstar = source(1)%radius
+
+    case("hii_test")
        nSource = 1
        teff = 30000.
        allocate(source(1:1))
@@ -2514,12 +2531,12 @@ subroutine do_lucyRadiativeEq
         else
 
            if (solveVerticalHydro) then
-              call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope, .false., mDisc)
+              call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                   source, nSource, nLucy, massEnvelope)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
                    nLambda, xArray, source, nSource, nLucy, massEnvelope, &
-                   lucy_undersampled )
+                   lucy_undersampled)
            endif
 
         endif

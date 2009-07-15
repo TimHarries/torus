@@ -1164,6 +1164,12 @@ contains
     call getLogical("photoionization", photoionization, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("quickthermal", quickThermal, cLine, nLines, &
+         "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("dustonly", dustonly, cLine, nLines, &
+         "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
     call getLogical("molecular", molecular, cLine, nLines, &
          "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
@@ -3135,8 +3141,10 @@ end subroutine getBigInteger
   character(len=*) :: message, cformat
   character(len=10) :: default
   logical :: rdef
-  character(len=6) :: trueOrFalse
+  character(len=6) :: trueOrFalse, cf
   logical :: ok, thisIsDefault
+
+  cf = cformat
   ok = .true.
   default = " "
   thisIsDefault = .false.

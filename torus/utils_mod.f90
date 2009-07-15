@@ -1253,8 +1253,8 @@ contains
       i = 0; time = " " 
 
       call unixTimes(cpuTime, endTime)
-      call unixGethostname(hostname,i)
-      call unixGetlogin(login,i)
+      call unixGethostname(hostname)
+      call unixGetlogin(login)
 
       write(message,'(a)') " "
       call writeInfo(message,TRIVIAL)
@@ -4318,10 +4318,10 @@ END SUBROUTINE GAUSSJ
   END SUBROUTINE init_random_seed
 
 
-  subroutine bonnorEbertRun(t, mu, rho0, rCut,  nr, r, rho)
+  subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
     use constants_mod
     implicit none
-    real(double) :: t, rho0, rCut
+    real(double) :: t, rho0
     integer :: nr
     real(double) :: r(:), rho(:)
     real(double), allocatable :: zeta(:), phi(:)

@@ -358,12 +358,11 @@ contains
     
   end subroutine createTTauriSurface
   
-  subroutine createHotRing(surface, phiStart1, phiEnd1, phiStart2, phiEnd2, theta1, theta2, fluxRing, fluxPhoto)
+  subroutine createHotRing(surface, phiStart1, phiEnd1, phiStart2, phiEnd2, theta1, theta2)
     type(SURFACETYPE),intent(inout) :: surface
     real,intent(in) :: phiStart1, phiStart2, phiEnd1, phiEnd2
     real,intent(in) :: theta1, theta2
     real :: cosTheta1, cosTheta2
-    real,intent(in) :: fluxRing, fluxPhoto
     logical :: inRing
     integer :: i
     real :: cosTheta, phi
@@ -401,10 +400,9 @@ contains
   !
   ! For a uniform suraface (for a general use)
   !
-  subroutine createSurface(surface, grid, lineFreq, coreContFlux, fAccretion)
+  subroutine createSurface(surface,  lineFreq, coreContFlux, fAccretion)
 
     type(SURFACETYPE),intent(inout) :: surface
-    type(gridType), intent(in) :: grid
     real(double), intent(in) :: coreContFlux
     real, intent(in) :: lineFreq
     real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
@@ -441,11 +439,10 @@ contains
   ! 
   !
   !
-  subroutine createTTauriSurface2(surface, grid, romData, lineFreq, &
+  subroutine createTTauriSurface2(surface, romData, lineFreq, &
        coreContFlux, fAccretion)
    
     type(SURFACETYPE),intent(inout) :: surface
-    type(gridType), intent(in) :: grid
     type(romanova), intent(in) :: romData
     real(double), intent(in) :: coreContFlux
     real, intent(in) :: lineFreq
@@ -774,13 +771,12 @@ contains
     
 
 
-  SUBROUTINE createMagStreamSurface(surface, grid, lineFreq, &
+  SUBROUTINE createMagStreamSurface(surface, lineFreq, &
                                  coreContFlux,fAccretion)
 
     USE magField                             
    
     TYPE(surfacetype),INTENT(INOUT) :: surface
-    TYPE(gridType), INTENT(IN) :: grid
     REAL(double), INTENT(IN) :: coreContFlux
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1

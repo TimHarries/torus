@@ -24,7 +24,7 @@ module disc_hydro_mod
 contains
   
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
-       radius, mStar, sigma0, rDisk, converged, drho)
+       radius, mStar, sigma0,  converged, drho)
 
     use density_mod, only: fractgap, fractgap2 
     use input_variables, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap
@@ -33,7 +33,7 @@ contains
     real(single),intent(in) :: temperature(1:nz)  ! temperature
     real(double),intent(inout) :: rho(1:nz)         ! density
     real(double),intent(in) :: zAxis(1:nz)       ! z grid
-    real :: mStar, rDisk                      ! stellar mass, disk mass and radius
+    real :: mStar                     ! stellar mass, disk mass and radius
     real :: radius, radiusAU ! radius at disc midplane
     real :: sigma0                                   ! surface density at rinner
     integer :: i
@@ -257,17 +257,16 @@ contains
 
   end subroutine realPutDensity
 
-  subroutine throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
+  subroutine throughoutMidpane(grid, mStar, sigma0,  drho)
     use amr_mod, only: getxValues
     use utils_mod, only: stripSimilarValues
-
     type(GRIDTYPE) :: grid
     integer, parameter :: maxvals = 100000
     real(double) :: zAxis(maxVals)
     real(double) :: rho(maxVals)
     real :: temperature(maxVals)
     real(double) :: subcellsize(maxvals)
-    real :: mStar, sigma0, rDisk
+    real :: mStar, sigma0
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: converged 
@@ -301,7 +300,7 @@ contains
 
           if (nz > 1) then
              call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, &
-                  sigma0, rDisk, converged, drho)                
+                  sigma0, converged, drho)                
 
              call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, +1.)
           endif
@@ -309,7 +308,7 @@ contains
           call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, -1.)
 
           if (nz > 1) then
-             call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, sigma0, rDisk, converged, drho)
+             call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, sigma0,  converged, drho)
              
              call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, -1.)
           endif
@@ -327,7 +326,7 @@ contains
 
              if (nz > 1) then
                 call solveHydro(temperature, zAxis, subcellsize, rho, &
-                     nz, radius, mStar, sigma0, rDisk, converged, drho)                
+                     nz, radius, mStar, sigma0, converged, drho)                
 
                 call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, +1.)
              endif
@@ -336,7 +335,7 @@ contains
 
              if (nz > 1) then
                 call solveHydro(temperature, zAxis, subcellsize, rho, &
-                     nz, radius, mStar, sigma0, rDisk, converged, drho)
+                     nz, radius, mStar, sigma0, converged, drho)
              
                 call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, -1.)
              endif
@@ -348,9 +347,8 @@ contains
    end if
   end subroutine throughoutMidpane
 
-  subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, twoD, expectedMass)
-
+  subroutine verticalHydrostatic(grid, mStar, sigma0,  miePhase, nDustType, nMuMie, nLambda, lamArray, &
+       source, nSource, nLucy, massEnvelope)
     use input_variables, only : variableDustsublimation, rGap
     use messages_mod, only: myRankIsZero
     use parallel_mod, only: torus_mpi_barrier
@@ -362,7 +360,7 @@ contains
     use utils_mod, only: locate
 
     type(GRIDTYPE) :: grid
-    real :: mStar, sigma0, rDisk, expectedMass
+    real :: mStar, sigma0
     integer :: nDustType
     integer :: iSmoothLam
     logical :: gridConverged
@@ -378,12 +376,11 @@ contains
     integer :: nIter, j
     real(double) totalMass
     real(double) :: rSub, betaEstimate, heightEstimate
-    logical :: twoD
     real :: temp
     real :: rGapCM
     integer :: nUnrefine
     real :: lamSmoothArray(5)
-    character(len=80) :: message
+    character(len=80) :: message, plotfile
     
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
@@ -412,10 +409,8 @@ contains
 
        call torus_mpi_barrier()
 
-
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled )
-
+            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled)
 
 
        if(myRankIsZero) &
@@ -430,7 +425,7 @@ contains
        if(myRankIsZero) &
             write(*,*) "Solving the vertical hydrostatic equilibrium..."
        drho = 0.
-       call throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
+       call throughoutMidpane(grid, mStar, sigma0,  drho)
 
        if(myRankIsZero) then
           if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) close(137)
@@ -468,6 +463,7 @@ contains
           write(*,*) "done."
        endif
 
+
        
 
        if (writeoutput) write(*,*) "Unrefining back to current gridding..."
@@ -481,6 +477,25 @@ contains
        if (writeoutput) then
           write(*,*) "done."
        endif
+
+       if ((.not.variableDustSublimation).and.grid%octreeRoot%twoD) then
+          call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+          
+          call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+          do j = iSmoothLam, nLambda, 2
+             write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+             call writeInfo(message, TRIVIAL)
+             do
+                gridConverged = .true.
+                call putTau(grid, grid%lamArray(j))
+                call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                     inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                
+                if (gridConverged) exit
+             end do
+          enddo
+       endif
+
        call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
        do
           gridConverged = .true.
@@ -544,6 +559,11 @@ contains
                write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
        end if
+       
+       write(plotfile,'(a,i3.3,a)') "hydrostep_",nIter,".vtk"
+       call writeVtkFile(grid, plotfile, &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust1      ", "deltaT     ", "etaline    "/))
 
 
     nIter = nIter + 1
@@ -565,7 +585,7 @@ contains
  temp = 20.
  call setTemperature(grid%octreeRoot, temp)
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, finalpass = .true.)
+      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled,  finalpass = .true.)
 
 
 

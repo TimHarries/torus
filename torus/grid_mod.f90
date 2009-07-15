@@ -600,6 +600,10 @@ contains
        grid%rOuter = rOuter
        grid%rCore = rSol/1.e10
 
+
+    case("hii_test")
+       grid%geometry = "hii_test"
+
     case("shakara")
        grid%geometry = "shakara"
        grid%rCore = rCore

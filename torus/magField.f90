@@ -418,17 +418,16 @@ CONTAINS
     !   for the nearest sample to a point in the simulation
     ALLOCATE( sampleResults(SIZE(magFieldGrid)) )
 
-    CALL sortInnerDiskData(innerDiskData_Phi,innerDiskData_Radii,Rstar)
+    CALL sortInnerDiskData(innerDiskData_Phi,innerDiskData_Radii)
   
   END SUBROUTINE loadMagField
 
-  SUBROUTINE sortInnerDiskData(innerDiskData_Phi,innerDiskData_Radii,Rstar)
+  SUBROUTINE sortInnerDiskData(innerDiskData_Phi,innerDiskData_Radii)
     ! this moves the data in the innerDiskData arrays so that
     !   the smallest phi angle is at index 1
     USE utils_mod
     REAL(oct), DIMENSION(:), INTENT(INOUT) :: innerDiskData_Phi
     REAL(oct), DIMENSION(:), INTENT(INOUT) :: innerDiskData_Radii
-    REAL, INTENT(IN) :: Rstar ! (1.e10 cm)
       ! radius of star, used for debugging
       
     REAL(oct), DIMENSION(SIZE(innerDiskData_Phi)) :: Phi_temp

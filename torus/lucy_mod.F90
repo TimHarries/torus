@@ -24,7 +24,7 @@ contains
 
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, percent_undersampled_min, finalPass)
+       source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth
@@ -285,11 +285,11 @@ contains
 
           thisSmooth = .false.
 
-          if (iIter_grand <= 3) thisSmooth = .true.
+!          if (iIter_grand <= 3) thisSmooth = .true.
 
-          if (variableDustSublimation) thisSmooth = .false.
+!          if (variableDustSublimation) thisSmooth = .false.
 
-          if ( suppressLucySmooth ) thisSmooth = .false.
+!          if ( suppressLucySmooth ) thisSmooth = .false.
 
           if (thisSmooth) then
                  call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
@@ -479,9 +479,9 @@ contains
                       ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
                       ilam = max(ilam, 1)
 
-                      call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, imonte, &
-                           photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, &
-                           directPhoton, scatteredPhoton, thermalPhoton, &
+                      call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray,  &
+                           photonInDiffusionZone, diffusionZoneTemp,  &
+                           directPhoton, scatteredPhoton,  &
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
                       If (escaped) nInf_sub = nInf_sub + 1
@@ -1998,9 +1998,9 @@ contains
 
 
 
- subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  imonte, &
-      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton, &
-      thermalPhoton, startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
+ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  &
+      photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
+       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    use input_variables, only : storeScattered
    type(GRIDTYPE) :: grid
@@ -2008,7 +2008,7 @@ contains
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
-   logical :: scatteredPhoton, thermalPhoton
+   logical :: scatteredPhoton
    integer :: foundSubcell
    integer :: endSubcell
    integer :: subcell, tempSubcell!, sourceSubcell
@@ -2024,10 +2024,8 @@ contains
    real(oct) :: thisLam
    integer :: iLam
    logical ::inFlow
-   integer :: imonte
    real :: diffusionZoneTemp
    logical :: photonInDiffusionZone
-   logical :: leftHandBoundary
 !   real(double) :: prob
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2

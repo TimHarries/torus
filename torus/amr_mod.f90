@@ -279,6 +279,9 @@ CONTAINS
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
 
+    CASE("hii_test")
+       CALL assign_hii_test(thisOctal,subcell,grid)
+
     CASE("whitney")
        CALL assign_whitney(thisOctal,subcell,grid)
 
@@ -4324,6 +4327,17 @@ IF ( .NOT. gridConverged ) RETURN
       if (thisOctal%nDepth < 4) split = .true.
       if ((cellCentre%x  < 2.e6).and.(cellSize > 1.e5)) split = .true.
 
+    case("hii_test")
+      rInner = 0.2d0*pctocm/1.d10
+      rVec = subcellCentre(thisOctal, subcell)
+      if (modulus(rVec) < rInner) then
+         split = .true.
+      endif
+      if ((modulus(rVec)-thisOctal%subcellSize/2.d0*sqrt(3.d0)) < rInner) then
+         split = .true.
+      endif
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+
     case("whitney")
 
        cellSize = thisOctal%subcellSize * 1.d10
@@ -7862,6 +7876,7 @@ IF ( .NOT. gridConverged ) RETURN
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
 
     use input_variables, only : photoionization
+    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use utils_mod, only: bonnorebertrun
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7874,10 +7889,10 @@ IF ( .NOT. gridConverged ) RETURN
     real(double), save :: r(nr), rho(nr)
     integer :: i
 
-    r = 0.d0; rho = 0.d0
     if (firstTime) then
        firstTime = .false.
-       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen, 6.d0,  nr, r, rho)
+       r = 0.d0; rho = 0.d0
+       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
        r = r / 1.d10
        if (myrankGlobal==1) then
           do i =1 , nr
@@ -7897,7 +7912,6 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = rho(nr)
        thisOctal%temperature(subcell) = 10.d0
     endif
-
 !    thisOctal%rho(subcell) = rho(nr)
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
@@ -7905,9 +7919,8 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-    thisOctal%boundaryCondition(subcell) = 4 ! outflow no inflow
     thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
-    thisOctal%gamma(subcell) = 1.d0
+    thisOctal%gamma(subcell) = 1.d01
     thisOctal%iEquationOfState(subcell) = 1
       
     if (photoionization) then
@@ -7924,10 +7937,20 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
     endif
+
+    zplusbound = 4
+    zminusbound = 4
+    xplusbound = 4
+    xminusbound = 4
+    yplusbound = 4
+    yminusbound = 4
+
+
   end subroutine calcBonnorEbertDensity
 
   subroutine calcUniformSphere(thisOctal,subcell,grid)
 
+    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -7940,7 +7963,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = 1000.d0*2.d0*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 1.d-24
+       thisOctal%rho(subcell) = 100.d0*2.d0*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
     endif
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
@@ -7951,9 +7974,17 @@ IF ( .NOT. gridConverged ) RETURN
 
     thisOctal%boundaryCondition(subcell) = 2
 
-    thisOctal%phi_i(subcell) = -bigG * 100.d0 * mSol / (modulus(rVec)*1.d10)
+    thisOctal%phi_i(subcell) = -bigG * 200.d0 * mSol / (modulus(rVec)*1.d10)
     thisOctal%gamma(subcell) = 2.d0
     thisOctal%iEquationOfState(subcell) = 3
+
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 1
+    xminusbound = 1
+    yplusbound = 1
+    yminusbound = 1
+
   end subroutine calcUniformSphere
 
 
@@ -7983,7 +8014,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%rho(subcell) = 1.d0
 
     if (blast) then
-       ethermal = 4.d0
+       ethermal = 1.d0
        thisOctal%energy(subcell) = eThermal/(pi*rInner**2)
     else
        eThermal = 1.d-5
@@ -8927,6 +8958,51 @@ end function readparameterfrom2dmap
 
   end subroutine assign_melvin
 
+  subroutine assign_hii_test(thisOctal,subcell,grid)
+
+    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(vector) :: rVec
+    real(double) :: eThermal
+
+    rVec = subcellCentre(thisOctal,subcell)
+    thisOctal%rho(subcell) = 6000.d0*mHydrogen
+    thisOctal%temperature(subcell) = 300.d0
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+
+    thisOctal%ionFrac(subcell,1) = 1.e-10
+    thisOctal%ionFrac(subcell,2) = 1.
+    thisOctal%ionFrac(subcell,3) = 1.e-10
+    thisOctal%ionFrac(subcell,4) = 1.       
+    thisOctal%etaCont(subcell) = 0.
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = 0.d0
+    thisOctal%gamma(subcell) = 1.01d0
+    thisOctal%iEquationOfState(subcell) = 1
+
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 1
+    xminusbound = 1
+    yplusbound = 1
+    yminusbound = 1
+
+  end subroutine assign_hii_test
+
   subroutine assign_whitney(thisOctal,subcell,grid)
 
     use density_mod, only: whitneyDensity
@@ -9082,6 +9158,12 @@ end function readparameterfrom2dmap
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell)
        thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
        thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+       zplusbound = 2
+       zminusbound = 2
+       xplusbound = 2
+       xminusbound = 2
+       yplusbound = 2
+       yminusbound = 2
     endif
 
 
@@ -9484,7 +9566,7 @@ end function readparameterfrom2dmap
        rhoOut = mdot / (fourPi * (r*1.e10)**2 * v)
        rHat = rVec / r
        octVec = rVec
-       thisOctal%rho(subcell) = rhoOut* returnSpiralFactor(octVec, 10.*grid%rCore/real(twoPi), grid)
+       thisOctal%rho(subcell) = rhoOut* returnSpiralFactor(octVec, 10.*grid%rCore/real(twoPi))
        thisOctal%temperature(subcell) = Teff
        thisOctal%velocity(subcell)  = (v/cSpeed) * rHat
        thisOctal%inFlow(subcell) = .true.
@@ -9873,6 +9955,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%NHI,  source%NHI)
     call copyAttribute(dest%boundaryCondition,  source%boundaryCondition)
     call copyAttribute(dest%boundaryPartner,  source%boundaryPartner)
+    call copyAttribute(dest%GravboundaryPartner,  source%GravboundaryPartner)
     call copyAttribute(dest%NHII,  source%NHII)
     call copyAttribute(dest%NHeI,  source%NHeI)
     call copyAttribute(dest%NHeII,  source%NHeII)
@@ -16359,6 +16442,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gravboundaryPartner,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%rLimit,thisOctal%maxChildren)
 
@@ -16463,6 +16547,7 @@ end function readparameterfrom2dmap
 
        call deAllocateAttribute(thisOctal%boundaryCondition)
        call deAllocateAttribute(thisOctal%boundaryPartner)
+       call deAllocateAttribute(thisOctal%gravboundaryPartner)
        call deAllocateAttribute(thisOctal%changed)
        call deAllocateAttribute(thisOctal%rLimit)
 
