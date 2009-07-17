@@ -58,6 +58,7 @@ program torus
   use timing, only: tune
   use ion_mod, only: addions
   use angularImage, only: make_angular_image, map_dI_to_particles
+  use timedep_mod, only : timeDependentRT
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -588,6 +589,11 @@ program torus
                 VECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo
+        stop
+     endif
+
+     if (timeDep) then
+        call timeDependentRT()
         stop
      endif
 
