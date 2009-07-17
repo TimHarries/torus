@@ -84,7 +84,6 @@ contains
     logical :: gridConverged
     integer :: thread1(200), thread2(200), nBound(1000), nPairs
     integer :: group(1000), nGroup
-    logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
@@ -590,7 +589,8 @@ contains
                    do while(.not.escaped)
                       currentSubcell = 1
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
-                           photonPacketWeight, nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, newThread)
+                           photonPacketWeight, nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, &
+                           newThread)
                       if (crossedMPIBoundary) then
                          call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, newThread)
                          goto 777
@@ -1128,7 +1128,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then
-             call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
+             call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, &
+                  freq)
           endif
 
           oldOctal => thisOctal
@@ -1773,7 +1774,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
   
   function HHeCooling(grid, thisOctal, subcell, epsOverDeltaT, temperature, debug) result (coolingRate)
-    use input_variables, only : quickThermal, dustOnly
+    use input_variables, only : dustOnly
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
     real(double) :: epsOverDeltaT

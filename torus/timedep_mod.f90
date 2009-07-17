@@ -54,7 +54,7 @@ contains
     real(double) :: oldepsStack(maxStack)
 
     real(double) :: epsOverDeltaT
-    logical :: outOFtime, readFromStack
+    logical :: outOFtime
     type(VECTOR) :: rVec, uHat
     integer :: i, iMonte, nMonte, iPos,iter
     character(len=30) :: outfile
@@ -261,8 +261,8 @@ contains
 
 
   subroutine calculateADot(distanceGrid, aDot, xCen, dx, nx)
-    real(double) :: distanceGrid(:), aDot(:), deltaT, luminosity, xCen(:), epsOverDeltaT, dx
-    integer :: nx, nMonte, i
+    real(double) :: distanceGrid(:), aDot(:), xCen(:), dx
+    integer :: nx, i
 
 
     do i = 1, nx
