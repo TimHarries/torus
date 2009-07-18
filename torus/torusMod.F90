@@ -149,18 +149,16 @@ contains
   character(len=4) :: char_num_calls
   character(len=100) :: filename
 
-#ifdef MPI
-  ! For MPI implementations =====================================================
-  integer ::   tempInt        !
-  
 ! Begin executable statements --------------------------------------------------
+
+#ifdef MPI
 
   ! FOR MPI IMPLEMENTATION=======================================================
 
   ! Set up amrCOMMUNICATOR and global mpi groups
   call setupAMRCOMMUNICATOR
 
-  call unixGetHostname(tempChar, tempInt) 
+  call unixGetHostname(tempChar) 
   print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
   print *, 'Process ', myRankGlobal, 'b_npart=', b_npart,  &
            'b_nptmass=', b_nptmass, 'b_num_gas=', b_num_gas
@@ -398,7 +396,7 @@ contains
   call init_random_seed()
 
   filename = trim ( "torus_in_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
-  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho","temperature"/) )
+  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho        ","temperature"/) )
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
@@ -411,7 +409,7 @@ contains
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
   filename = trim ( "torus_out_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
-  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho","temperature"/))
+  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho        ","temperature"/))
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
 

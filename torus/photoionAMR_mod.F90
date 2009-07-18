@@ -178,7 +178,7 @@ contains
 
 
     call writeVtkFile(grid, "start.vtk", &
-         valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
     loopLimitTime = 1.e30
     if (startFromNeutral) loopLimitTime = grid%currentTime
