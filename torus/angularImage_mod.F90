@@ -28,13 +28,15 @@ module angularImage
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, writeDataCube, freeDataCube
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
-      use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz
+      use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
+           galaxyPositionAngle, galaxyInclination
 
       implicit none
 
       TYPE(gridtype), intent(in) :: grid
       type(DATACUBE) ::  cube
       type(MOLECULETYPE) :: thisMolecule
+      TYPE(VECTOR) :: intVelMod  ! modify observer's velocity by this vector
 
 ! molecular weight is used for column density calculation
       thisMolecule%molecularWeight = mHydrogen / amu
@@ -43,22 +45,29 @@ module angularImage
       allocate( thisMolecule%transfreq(1) )
       thisMolecule%transfreq(1) = cSpeed / (h21cm_lambda)
 
-! Set up the observer's position 
+! Set up the observer's position. Transform to rotated and tilted grid as required. 
       rayposition = VECTOR(intPosX, intPosY, intPosZ)
       write(message,'(a,3(ES12.3,2x),a)') "Observer's position is ", rayposition, "(x10^10cm)" 
       call writeinfo(message, TRIVIAL)
+      rayposition  = rotateZ( rayposition, galaxyPositionAngle*degToRad )
+      rayposition  = rotateY( rayposition, galaxyInclination*degToRad   )
+      write(message,'(a,3(ES12.3,2x),a)') "Observer's position rotated to ", rayposition, "(x10^10cm)" 
+      call writeinfo(message, TRIVIAL)
 
-! Get the observer's velocity from the grid
+! Get the observer's velocity from the grid. This is already rotated and tilted.
       observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
       write(message,*) "Observer's velocity from grid: ", observerVelocity * (cspeed / 1.0e5), "km/s"
       call writeinfo(message, TRIVIAL)
 
-! Add velocity offset 
-      observerVelocity%x = observerVelocity%x + ( intDeltaVx * (1.0e5 / cspeed) )
-      observerVelocity%y = observerVelocity%y + ( intDeltaVy * (1.0e5 / cspeed) )
-      observerVelocity%z = observerVelocity%z + ( intDeltaVz * (1.0e5 / cspeed) )
+! Add velocity offset, transformed to rotated and tilted grid 
+      intVelMod = VECTOR(intDeltaVx, intDeltaVy, intDeltaVz)
+      intVelMod = intVelMod * (1.0e5 / cspeed)
+      intVelMod = rotateZ( intVelMod, galaxyPositionAngle*degToRad )
+      intVelMod = rotateY( intVelMod, galaxyInclination*degToRad   )
+      observerVelocity = observerVelocity + intVelMod
       write(message,*) "Modified observer velocity: ", observerVelocity * (cspeed / 1.0e5), "km/s"
       call writeinfo(message, TRIVIAL)
+
 
       call writeinfo("Initialising datacube",TRIVIAL)
       call initCube(cube, npixels, npixels, nv)
@@ -221,7 +230,7 @@ module angularImage
       integer, intent(IN) :: itrans
       real(double), intent(IN) :: deltaV
       integer, intent(IN) :: nsubpixels
-      type(VECTOR) :: viewvec !, ObserverVec
+      type(VECTOR) :: viewvec
       real(double) :: viewvec_x, viewvec_y, viewvec_z
       real, intent(OUT) :: imagegrid(:,:,:)
       integer, intent(in) :: ix1, ix2
@@ -692,30 +701,38 @@ module angularImage
 
    subroutine map_dI_to_particles(grid)
 
-    use input_variables, only: sphdatafilename
+    use input_variables, only: sphdatafilename, galaxyPositionAngle, galaxyInclination
     use sph_data_class, only: sphdata, read_galaxy_sph_data
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD
+#ifdef MPI
+    use mpi_global_mod, only: myRankGlobal
+#endif
 
     TYPE(gridtype), intent(in) :: grid
     integer :: ipart
-    TYPE(vector) :: position, positionTorus
+    TYPE(vector) :: position, positionTorus, old_position
     type(OCTAL), pointer :: thisOctal
     integer :: subcell 
 
     real(double) :: dI, n_sample
     real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
 
-    character(len=*), parameter :: outfilename="particle_dI.dat"
+    character(len=3)    :: char_my_rank
+    character(len=30)   :: outfilename
     integer, parameter  :: LUIN = 10 ! unit number of output file
-
-! All processes have all particles so only do this on one thread
-    if ( .not. myRankIsZero ) return
 
 ! Re-read particle data which has been deleted to save memory
      call read_galaxy_sph_data(sphdatafilename)
 
-     open (unit=LUIN, status="replace", form="formatted", file=outfilename)
+#ifdef MPI
+     write(char_my_rank, '(i3)') myRankGlobal
+     outfilename="particle_dI_"//TRIM(ADJUSTL(char_my_rank))//".dat"
+#else
+     outfilename="particle_dI.dat"
+#endif
+
+     open (unit=LUIN, status="replace", form="formatted", file=trim(outfilename))
 
      distTotorus = sphdata%udist / 1.0e10_db
 
@@ -724,6 +741,10 @@ module angularImage
         position = VECTOR(sphData%xn(ipart), sphData%yn(ipart), sphData%zn(ipart) )
         positionTorus = distTotorus * position
 
+! Undo effect of rotated and tilted grid. Use this position for output
+        old_position  = rotateY( position,     -1.0*galaxyInclination*degToRad   )
+        old_position  = rotateZ( old_position, -1.0*galaxyPositionAngle*degToRad )
+
         if(inOctal(grid%octreeRoot, positionTorus)) then
            
            call findSubcellTD(positionTorus,grid%octreeRoot,thisOctal,subcell)
@@ -731,12 +752,8 @@ module angularImage
            dI       =  thisOctal%newmolecularlevel(1,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
 
-           write(LUIN,'(8(e15.8,2x))') position, sphdata%gasmass(ipart), sphdata%hn(ipart), sphdata%rhon(ipart), dI, n_sample
-
-        else
-
-! Flag particles outside the grid with -1.0 in the sample column. 
-           write(LUIN,'(8(e15.8,2x))') position, sphdata%gasmass(ipart), sphdata%hn(ipart), sphdata%rhon(ipart), 0.0, -1.0 
+           if ( n_sample > 0.0 ) write(LUIN,'(8(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
+                sphdata%rhon(ipart), dI, n_sample, ipart
 
         end if
 
@@ -746,14 +763,15 @@ module angularImage
 
 ! Write splash columns file
      open(unit=LUIN, status="replace", form="formatted", file="columns")
-     write(LUIN,*) "x"
-     write(LUIN,*) "y"
-     write(LUIN,*) "z"
-     write(LUIN,*) "pmass"
-     write(LUIN,*) "h"
-     write(LUIN,*) "rho"
-     write(LUIN,*) "dI"
-     write(LUIN,*) "nsample"
+     write(LUIN,'(a)') "x"
+     write(LUIN,'(a)') "y"
+     write(LUIN,'(a)') "z"
+     write(LUIN,'(a)') "pmass"
+     write(LUIN,'(a)') "h"
+     write(LUIN,'(a)') "rho"
+     write(LUIN,'(a)') "dI"
+     write(LUIN,'(a)') "nsample"
+     write(LUIN,'(a)') "index"
      close (LUIN)
 
    end subroutine map_dI_to_particles

@@ -2751,6 +2751,9 @@ contains
 
       subroutine read_inputs_theGalaxy
 
+        TYPE(vector) :: gridCentre
+        character(len=100) :: message
+
        itrans = 1
        lineImage        = .true.
        maxRhoCalc       = .false. 
@@ -2779,9 +2782,9 @@ contains
           call getReal("imageside", imageside, cLine, nLines, &
                "Image size (degrees):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
           call getDouble("centrevecx", centrevecx, cLine, nLines, &
-               "Image Centre longitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre longitude (degrees): ","(a,f6.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecy", centrevecy, cLine, nLines, &
-               "Image Centre latitude (degrees): ","(a,f4.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre latitude (degrees): ","(a,f6.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("minVel", minVel, cLine, nLines, &
                "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)
 
@@ -2806,6 +2809,18 @@ contains
 ! Rotation about z-axis
           call getDouble("galaxyPositionAngle", galaxyPositionAngle, cLine, nLines, &
                "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+
+! Rotate the centre of the grid so it covers the required domain
+          gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+          write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
+          call writeInfo(message)
+          gridCentre     = rotateZ( gridCentre, galaxyPositionAngle*degToRad )
+          gridCentre     = rotateY( gridCentre, galaxyInclination*degToRad   )
+          write(message,'(a,3(ES12.3,2x),a)') "Modified grid centre is ", gridCentre
+          call writeInfo(message)
+          amrGridCentreX = gridCentre%x
+          amrGridCentreY = gridCentre%y
+          amrGridCentreZ = gridCentre%z
 
        else
 
