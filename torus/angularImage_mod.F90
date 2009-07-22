@@ -658,7 +658,7 @@ module angularImage
                     
         thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0)
 
-        ! average change in brightness temperaure over this cell
+        ! average change in brightness temperature over this cell
         thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0) 
 
         ! Image co-ordinates        
@@ -752,7 +752,8 @@ module angularImage
            dI       =  thisOctal%newmolecularlevel(1,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
 
-           if ( n_sample > 0.0 ) write(LUIN,'(8(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
+! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
+           if ( n_sample > 0.99 ) write(LUIN,'(8(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
                 sphdata%rhon(ipart), dI, n_sample, ipart
 
         end if

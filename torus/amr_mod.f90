@@ -4263,8 +4263,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
-    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
-    use input_variables, only: galaxyInclination, galaxyPositionAngle, centrevecx, imageside, intPosX, intPosY
+    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4934,18 +4933,6 @@ IF ( .NOT. gridConverged ) RETURN
          end if
 
       end if
-
-    if ( grid%geometry == "theGalaxy" .and. internalView ) then 
-
-! Find this point on the unmodified grid
-       cellCentre  = subcellCentre(thisOctal,subCell)
-       cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
-       cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
-
-       if ( ( (cellCentre%x - intPosX)**2 + (cellCentre%y - intPosY)**2 ) &
-            > (1.5e12)**2 ) split = .false.
-
-    end if
 
 ! The stellar disc code is retained in case this functionality needs to be used in future 
 !!$
