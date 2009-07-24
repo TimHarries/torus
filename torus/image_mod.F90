@@ -1,12 +1,12 @@
 module image_mod
 
-
-  use phasematrix_mod
-  use vector_mod
   use constants_mod
-  use photon_mod
-  use filter_set_class
+  use vector_mod
+  use messages_mod
+  use phasematrix_mod, only: STOKESVECTOR
+  use photon_mod, only: PHOTON
   use source_mod, only: SOURCETYPE, I_nu, getElement
+  use utils_mod, only: sort, locate
 
   implicit none
 
@@ -165,7 +165,9 @@ module image_mod
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, center, lambda0_cont)
-     
+     use filter_set_class
+     use phasematrix_mod
+
      integer, intent(in) :: nImage  ! number of images in a set
      type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
      type(PHOTON) :: thisPhoton
@@ -395,6 +397,7 @@ module image_mod
      end subroutine writePVimage
 
     subroutine smoothPVimage(thisImage, vSigma, pSigma)
+      use utils_mod, only: gauss
       type(PVIMAGETYPE) :: thisImage
       real :: vSigma, pSigma
       integer :: i, j, k, ip1, ip2, ip
@@ -829,6 +832,9 @@ module image_mod
          returnScatteredIntensity
     use atom_mod, only: bnu
     use source_mod, only: distanceToSource
+    use utils_mod, only: findILambda
+    use gridtype_mod, only: GRIDTYPE
+    use octal_mod, only: OCTAL
     type(OCTAL), pointer :: thisOctal
     type(SOURCETYPE) :: source(:)
     integer :: nSource

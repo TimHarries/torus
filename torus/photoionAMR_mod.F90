@@ -20,6 +20,7 @@ use mpi_global_mod
 use unix_mod, only: unixGetenv
 use photon_mod
 use image_mod
+use phasematrix_mod
 
 implicit none
 
@@ -3183,6 +3184,7 @@ subroutine createGammaTable(table, thisfilename)
 end subroutine createGammaTable
 
 real(double) function returnGamma(table, temp, freq) result(out)
+  use utils_mod, only: hunt
   type(GAMMATABLE) :: table
   real(double) :: temp , freq
   integer,save :: i, j
@@ -3563,6 +3565,7 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
 end subroutine addHeRecombinationLines
 
 subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+  use utils_mod, only: hunt
 
   integer :: nFreq
   real(double) :: spectrum(:), freq(:), dfreq(:)

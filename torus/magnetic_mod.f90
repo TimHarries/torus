@@ -4,12 +4,6 @@
 
 module magnetic_mod
 
-
-  use kind_mod
-  use constants_mod
-  use vector_mod
-  use gridtype_mod
-  use octal_mod
   implicit none
 
   public
@@ -18,6 +12,9 @@ contains
 
   recursive subroutine addDipoleField(thisOctal, theta, rStar, bStrength, dipoleAxis)
     
+  use vector_mod
+  use octal_mod, only: OCTAL
+
 ! this subroutine adds a dipole field to all the grid points
 
     real, intent=in :: bStrength, rStar

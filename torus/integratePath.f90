@@ -127,6 +127,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
      lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, redRegion, rStar, &
      coolStarPosition, usePops, mLevel, nLevel, fStrength, gM, gN, localTau, interp)
 
+  use utils_mod, only: hunt
 
   type(GRIDTYPE) :: grid                            ! the opacity grid
 
@@ -1811,6 +1812,8 @@ end subroutine integratePathAMR
        redRegion, usePops, mLevel, nLevel, &
        fStrength, gM, gN, sampleFreq,error)
     
+    use utils_mod, only: bigGamma, voigtn, resampleray_tau, linearresample, linearresample_dble
+
     ! should we add the 'interp' argument and implement it?
     
     ! error codes are:  -10: too few samples made (the code should be fixed to 

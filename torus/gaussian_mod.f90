@@ -10,7 +10,6 @@ module gaussian_mod
   use kind_mod
   use constants_mod
   use vector_mod
-  use utils_mod
 
   implicit none
 
@@ -61,6 +60,7 @@ contains
 
   subroutine createDiscGaussians(ng, gArray)
     use input_variables
+    use utils_mod, only: locate, gasdev
     integer :: ng, n
     real :: z, ang
     type(VECTOR) :: position

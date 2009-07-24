@@ -8,10 +8,8 @@ module lucy_mod
   use utils_mod, only: hunt, locate, solvequaddble
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, octalWrapper, subcellCentre, cellVolume
-  use grid_mod, only: getindices
   use spectrum_mod, only: bnu, blambda, getwavelength
   use timing, only: tune
-  use diffusion_mod, only: randomwalk
   use vtk_mod, only: writeVtkFile
   use mpi_global_mod, only: myRankGlobal
   implicit none
@@ -30,7 +28,7 @@ contains
     use input_variables, only : suppressLucySmooth
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
-    use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled
+    use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104
 #ifdef MPI
@@ -1013,6 +1011,7 @@ contains
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
     use source_mod, only: random_direction_from_sphere
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
+    use grid_mod, only: getindices
 
     type(GRIDTYPE) :: grid
     type(VECTOR) :: uHat, uNew
@@ -1297,7 +1296,7 @@ contains
 
 
  subroutine toNextEvent(grid, rVec, uHat,  escaped, distanceGrid, thisFreq, nLambda, lamArray)
-
+   use grid_mod, only: getindices
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec, uHat
@@ -2003,6 +2002,8 @@ contains
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    use input_variables, only : storeScattered
+   use diffusion_mod, only: randomwalk
+
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal

@@ -1,10 +1,10 @@
 module jet_class
   
   use kind_mod
-  use octal_mod
-  use gridtype_mod
-  use grid_mod
+  use constants_mod
   use vector_mod
+  use octal_mod, only: OCTAL, subcellCentre 
+  use gridtype_mod, only: GRIDTYPE
 
   implicit none
 
@@ -515,7 +515,7 @@ contains
   end function need_to_split
 
   logical function need_to_split2(thisOctal,subcell, this)
-
+    use utils_mod, only: locate
     IMPLICIT NONE
 
     TYPE(octal), POINTER       :: thisOctal

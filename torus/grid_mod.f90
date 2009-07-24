@@ -17,13 +17,13 @@
 
 module grid_mod
 
-  use gridtype_mod, only: GRIDTYPE    ! type definition for the 3-d grid
   use kind_mod
   use constants_mod                   ! physical constants
+  use messages_mod
   use vector_mod                      ! vector math
   use amr_mod, only: deleteOctreeBranch, deleteOctal
-  use octal_mod
-  use messages_mod
+  use octal_mod, only: OCTAL
+  use gridtype_mod, only: GRIDTYPE    ! type definition for the 3-d grid
   use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
   use mpi_amr_mod, only: octalOnThread
   use utils_mod, only: locate
@@ -2845,6 +2845,7 @@ contains
   contains
   
     recursive subroutine writeOctreePrivate(thisOctal,fileFormatted, grid)
+      use octal_mod, only: writeattributepointer, writeattributestatic
        ! writes out an octal from the grid octree
 
        type(octal), intent(in), target :: thisOctal
@@ -3401,6 +3402,7 @@ contains
    
     recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted, noctal, grid)
        ! read in an octal to the grid octree
+      use octal_mod, only: readattributepointer, readattributestatic
 
        implicit none
        type(octal), pointer :: thisOctal
@@ -6363,6 +6365,7 @@ contains
   !  value stored in a octal to a file specified by the logical unit number. 
   !  
   recursive subroutine radial_profile(thisOctal, name, plane, val_3rd_dim, luout, center, grid)
+    use octal_mod, only: subcellCentre
     implicit none
     !
     type(octal), pointer   :: thisOctal

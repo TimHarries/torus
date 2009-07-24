@@ -13,22 +13,37 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      miePhase, nsource, source, blobs, nmumie, dTime)
 
   use kind_mod
-  use gridtype_mod           
-  use gridio_mod           
-  use phasematrix_mod 
-  use image_mod   
   use input_variables 
-  use romanova_class
-  use surface_mod
+  use phasematrix_mod
   use disc_class
-  use filter_set_class
-  use photon_mod
-  use stateq_mod
-  use TTauri_mod
-  use blob_mod
-  use lucy_mod
-  use formal_solutions
-  use distortion_mod
+  use image_mod, only: IMAGETYPE, PVIMAGETYPE, initImage, initPVImage, addPhotonToImage, addphotontopvimage, &
+       createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm, writefitsimage, writeimage, writepvimage
+  use source_mod, only: SOURCETYPE
+  use photon_mod, only: PHOTON, initPhoton, scatterPhoton, initplanetphoton
+  use math_mod, only: thermalElectronVelocity, interpGridScalar2
+  use romanova_class, only: romanova
+  use surface_mod, only: SURFACETYPE, buildSphere, createsurface, createttaurisurface2, createttaurisurface, &
+       emptysurface, testsurface
+  use filter_set_class, only: filter_set, get_nfilter, get_filter_name, get_filter_set_name, FWHM_filters, &
+       lambda_eff_filters, info_filter_set, make_filter_set
+  use grid_mod, only: fillgridbipolar, fillgridcollide, fillgriddustblob, fillgridellipse, fillgridraman, &
+       fillgridshell,fillgridspheriod, fillgridspiral, fillgridstar, fillgridstateq, fillgridwr137, getIndices 
+  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues
+  use path_integral, only: integratePath, test_optical_depth
+  use stateq_mod, only: amrStateq
+  use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
+  use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+  use TTauri_mod, only: fillGridMagneticAccretion, infallenhancment
+  use blob_mod, only: blobtype, distortgridwithblobs, readblobs
+  use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau
+  use timing, only: tune
+  use formal_solutions, only: compute_obs_line_flux
+  use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
+  use gridtype_mod, only: GRIDTYPE       
+  use gridio_mod, only: readamrgrid, writeamrgrid
+  use parallel_mod, only: torus_mpi_barrier
+  use utils_mod, only: locate, hunt, findIlambda, blackBody, init_random_seed, spline, splint, systemInfo
+  use grid_mod, only: freeGrid
   use unix_mod, only: unixTimes
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource

@@ -11,13 +11,13 @@ module formal_solutions
 
 
   use constants_mod
+  use messages_mod
   use vector_mod             ! vector maths 
   use gridtype_mod, only: GRIDTYPE ! opacity grid
-  use path_integral          ! 
-  use octal_mod
-  use surface_mod
-  use image_mod, only: IMAGETYPE, initImage
-  use timing, only: tune
+  use path_integral, only: intersectCubeAMR
+  use disc_class, only: alpha_disc, in_alpha_disc
+  use utils_mod, only: locate, linearresample, linearresample_dble
+
   
   implicit none
 
@@ -67,6 +67,8 @@ contains
   !
   function formal_sol_dust_AMR(I0, tau0, wavelength, aVec, uHat, Grid, &
        contPhoton, offset, tau_inf)  RESULT (I1)
+    use amr_mod, only: inOctal, amrGridValues
+    use octal_mod, only: OCTAL 
 
     implicit none
 
@@ -238,7 +240,10 @@ contains
        flux, lambda, nlam, filename, thin_disc_on, ttau_disc_on, ttau_jet_on, ttau_discwind_on, npix, &
        do_alphadisc_check, alphadisc_par, thinLine, emissOff, pos_disp) 
 
+    use surface_mod, only: SURFACETYPE, whichElement, isHot
+    use utils_mod, only: blackBody
     use messages_mod, only : myRankIsZero
+    use timing, only: tune
     use parallel_mod
 
     implicit none
@@ -991,7 +996,10 @@ contains
   !
   subroutine integrate_formal(I0, I1,  tau0,  wavelength,  lambda0, mass_ion, aVec, uHat,  &
         continuum, grid, hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
-        do_alphadisc_check, alphadisc_par, thinLine, emissOff)        
+        do_alphadisc_check, alphadisc_par, thinLine, emissOff)      
+    use amr_mod, only: amr_values_along_ray
+    use utils_mod, only: bigGamma, voigtn, linearresample, linearresample_dble
+
     implicit none   
     real(double), intent(in)  :: I0                     ! Initial intensity
     real(double), intent(out) :: I1                     ! Final intensity
@@ -1473,7 +1481,7 @@ contains
   ! Creates NDF image of flux map
   subroutine create_obs_flux_map(flux_ray, ray, dA, dr, dphi, &
        nlam, nray, nphi, R_star, R_max, dir_obs, filename, npix)
-    use image_mod, only: simply_writeimage, freeImage
+    use image_mod, only: IMAGETYPE, simply_writeimage, freeImage, initImage
     implicit none
     integer, intent(in) :: nlam  ! number of wavelength points
     integer, intent(in) :: nray  ! total number of rays

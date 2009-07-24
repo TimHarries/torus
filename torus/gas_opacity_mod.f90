@@ -1,7 +1,7 @@
 module gas_opacity_mod
 
 use constants_mod
-use utils_mod
+use utils_mod, only: locate
 use unix_mod, only: unixGetenv
 
 implicit none
@@ -577,6 +577,7 @@ real function fracMolecule(temperature, pressure, nMol)
  end function fracMolecule
 
 subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
+  use utils_mod, only: wavenumbertoEv
 
   implicit none
   character(len=*) :: filename
@@ -714,7 +715,7 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
 end subroutine createAllMolecularTables
 
 subroutine readH2O(nLines,lambda,kappa,excitation,g)
-
+  use utils_mod, only: wavenumbertoEv, locate, convertbyte2, convertbyte4
 
 
   implicit none

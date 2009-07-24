@@ -9,14 +9,14 @@
 
 module math_mod
 
-
-  use gridtype_mod        ! opacity grid
-  use grid_mod            ! opacity grid routines
   use vector_mod          ! vector maths
   use constants_mod       ! physical constants
-  use utils_mod
   use kind_mod
   use messages_mod
+  use utils_mod, only: locate
+  use gridtype_mod, only: GRIDTYPE            ! opacity grid
+  use grid_mod, only: outsideGrid, getIndices ! opacity grid routines
+  use octal_mod, only: OCTAL
 
   implicit none
 
@@ -1183,6 +1183,7 @@ stop
   recursive subroutine computeProbDist2AMR(thisOctal,totalLineEmission,&
                           totalContEmission,totalLineProb,totalContProb)
 
+    use octal_mod, only: cellVolume
     implicit none
 
     type(octal), pointer                 :: thisOctal
@@ -1301,6 +1302,7 @@ stop
 
 
   type(VECTOR) function thermalElectronVelocity(temperature)
+    use utils_mod, only: maxwellianVelocity
     real :: temperature
     !type(VECTOR) :: rHat
     !real :: vel
@@ -1317,6 +1319,7 @@ stop
   end function thermalElectronVelocity
 
   type(VECTOR) function thermalHydrogenVelocity(temperature)
+    use utils_mod, only: maxwellianVelocity
     real :: temperature
     !real :: vel
     !real :: sigmaVel

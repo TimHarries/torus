@@ -14,7 +14,7 @@ module stateq_mod
   use opacity_lte_mod
   use hyd_col_coeff
   use cmfgen_class
-  use utils_mod
+  use utils_mod, only: locate, hunt
 				   
   implicit none
 !  public

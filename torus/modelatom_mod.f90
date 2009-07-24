@@ -4,12 +4,12 @@ module modelatom_mod
 
   use kind_mod
   use constants_mod
-  use unix_mod, only: unixGetenv
   use messages_mod
-  use hyd_col_coeff
-  use utils_mod
-  use stateq_mod
-  use utils_mod
+  use unix_mod, only: unixGetenv
+  use hyd_col_coeff, only: tempTable, omegaij, omegaik
+  use stateq_mod, only: gii, expint
+  use utils_mod, only: locate, sort
+  use source_mod, only: SOURCETYPE
 
   implicit none
 

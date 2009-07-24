@@ -9,15 +9,16 @@ module molecular_mod
    use constants_mod
    use utils_mod
    use messages_mod
-   use timing
-   use gridio_mod
+   use timing, only: tune
+   use amr_mod
+   use octal_mod
    use math_mod
    use datacube_mod
    use nrutil
    use nrtype
-   use parallel_mod
-   use vtk_mod
-   use image_mod
+   use gridio_mod, only: readamrgrid, writeamrgrid
+   use atom_mod, only: bnu
+   use vtk_mod, only: writeVtkFile
 
 #ifdef USEMKL
    use mkl95_lapack
@@ -308,6 +309,7 @@ module molecular_mod
  ! stores the non-zero local emission coefficient   
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
+     use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : vturb, restart, isinLTE, addnewmoldata, plotlevels, setmaxlevel
 
@@ -597,10 +599,12 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
+     use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
           usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep
      use messages_mod, only : myRankIsZero
+     use parallel_mod
 #ifdef MPI
      include 'mpif.h'
 #endif
@@ -1686,6 +1690,7 @@ end subroutine molecularLoop
 
  subroutine calculateMoleculeSpectrum(grid, thisMolecule)
    use input_variables, only : itrans, nSubpixels
+   use image_mod, only: deleteFitsFile
 
 #ifdef MPI
        include 'mpif.h'
@@ -1953,6 +1958,7 @@ end subroutine molecularLoop
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel, usedust, lineimage, lamline, plotlevels
+     use mpi_global_mod, only: nThreadsGlobal
 #ifdef MPI
      include 'mpif.h'
 #endif
@@ -2803,6 +2809,7 @@ endif
    recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule, deltaV)
 
      use input_variables, only : iTrans, h21cm
+     use amr_mod, only: readparameterfrom2dmap
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2903,6 +2910,7 @@ end subroutine calculateOctalParams
 
      use input_variables, only : iTrans, lineimage, lamline, nlambda, lamstart, lamend
      use dust_mod, only: createDustCrossSectionPhaseMatrix
+     use phasematrix_mod, only: PHASEMATRIX
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3855,6 +3863,8 @@ end subroutine calculateConvergenceData
 !-----------------------------------------------------------------------------------------------------------
  recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
    use input_variables, only : rinner, router
+   use amr_mod, only: readparameterfrom2dmap
+
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    type(octal), pointer   :: thisOctal
