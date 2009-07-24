@@ -4263,7 +4263,8 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
-    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit
+    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
+    use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4933,6 +4934,18 @@ IF ( .NOT. gridConverged ) RETURN
          end if
 
       end if
+
+    if ( grid%geometry == "theGalaxy" .and. internalView ) then 
+
+! Find this point on the unmodified grid
+       cellCentre  = subcellCentre(thisOctal,subCell)
+       cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
+       cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
+
+       if ( cellCentre%x < (intPosX - 0.2e12) ) split = .false.
+       if ( cellCentre%y < (intPosY - 0.2e12) ) split = .false.
+
+    end if
 
 ! The stellar disc code is retained in case this functionality needs to be used in future 
 !!$
@@ -16257,9 +16270,14 @@ end function readparameterfrom2dmap
     type(GRIDTYPE) :: grid
     integer, parameter :: nTheta = 10 , nphi = 10
 
+    thisOctal%rho = amr_min_rho
+    thisOctal%gasOpacity = .false.
+    thisOctal%temperature = TMinGlobal
+
     if ( h21cm ) then 
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+       return
     end if
 
     if (mie) then
@@ -16336,10 +16354,6 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%molmicroturb, thisOctal%maxChildren)
     endif
-
-    thisOctal%rho = amr_min_rho
-    thisOctal%gasOpacity = .false.
-    thisOctal%temperature = TMinGlobal
 
 
     if (photoionization) then
