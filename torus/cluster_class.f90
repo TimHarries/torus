@@ -361,7 +361,7 @@ contains
     clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 2)
     
     if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
-    if( associated(thisOctal%etaline)) thisOctal%etaCont(subcell) = 1.e-30
+    if( associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = 1.e-30
 
     thisOctal%rho(subcell) = clusterparam%x
     if ( sphData%useSphTem ) then 
