@@ -87,16 +87,12 @@ module sph_data_class
   end type sph_data
 
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
-                               RhoArray(:), TemArray(:), VelocityArray(:,:), MassArray(:), Harray(:)
+                               RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:)
   type(sph_data), save :: sphdata
   integer, save :: npart
-  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:), xarray(:)
+  real(double), allocatable :: partArray(:), q2array(:), xarray(:)
   Integer, allocatable :: indexArray(:)
   integer,save :: nparticles
-  integer,save :: reusecounter = 0
-  integer,save :: usecounter = 0
-  integer,save :: count1 = 0
-  integer,save :: count2 = 0
   real(double), save :: rcrit, rmax
   type(VECTOR), save :: prevpos
   
@@ -111,7 +107,6 @@ module sph_data_class
      module procedure kill_sph_data
   end interface
   
-  type(OCTAL),pointer,save :: presentoctal
   
 contains  
 
@@ -851,16 +846,6 @@ contains
     
   end function get_rhon
 
-  function get_mass(i) RESULT(out)
-    implicit none
-    real(double) :: out 
-!    type(sph_data), intent(in) :: this
-    integer, intent(in) :: i
-
-    out  = sphdata%gasmass(i)
-    
-  end function get_mass
-
   ! Returns the temperature of gas particle at the postion of
   ! i-th particle.
   
@@ -1354,13 +1339,11 @@ contains
        allocate(q2Array(npart))
        allocate(RhoArray(npart))
        allocate(TemArray(npart))
-       allocate(MassArray(npart))
        allocate(Harray(npart))
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
-       allocate(tempPosArray(npart,3))
 
-       PositionArray = 0.d0; MassArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0
+       PositionArray = 0.d0; ; hArray = 0.d0; ind = 0; q2array = 0.d0
 
        Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
        xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
@@ -1415,7 +1398,6 @@ contains
        write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))
        call writeinfo(message, TRIVIAL)
 
-       MassArray(:) = sphdata%gasmass(ind(:)) * umass! in case of unequal mass
        Harray(:) = sphdata%hn(ind(:)) ! fill h array
 
        call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .true.) ! find hcrit as percentile of total h
@@ -1451,7 +1433,7 @@ contains
 
     if(done) then
        if (allocated(PositionArray)) then
-          deallocate(xArray, PositionArray, MassArray, harray, RhoArray, Temarray, ind, tempPosArray, q2Array)
+          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, q2Array)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
@@ -1469,17 +1451,14 @@ contains
     if(associated(previousoctal)) then
        if(thisoctal%centre .eq. previousoctal%centre .and. nparticles .ne. 0 .and. subcell .eq. prevsubcell) then 
           reuse = .true.
-          reusecounter = reusecounter + 1
        else
           reuse = .false.
-          usecounter = usecounter + 1
        endif
     else
        reuse = .false.
     endif
 
     previousoctal => thisoctal
-    presentoctal => thisoctal
     prevsubcell = subcell
 
     if(thisoctal%rho(subcell) .gt. 1.d0) then
@@ -1723,7 +1702,6 @@ contains
              if(q2test .lt. fac2) then
                 partcount = partcount + 1
                 indexArray(partcount) = testIndex
-                tempPosArray(partcount,1:3) = PositionArray(1:3,testindex)
                 q2array(partcount) = q2test
              endif
           endif
