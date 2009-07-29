@@ -2399,7 +2399,7 @@ contains
     enddo
     factor = oldMass / newMass
     thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
-    thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
+    if ( associated (thisOctal%nh) ) thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
 
 
     ! energy
