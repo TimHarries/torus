@@ -39,29 +39,49 @@ contains
     integer :: nLambda
     real :: xArray(:)
     integer :: iter
-    real(double) :: deltaT
+    real(double) :: deltaT, currentTime, deltaTmax
     integer :: nMonte
     type(PHOTONSTACK) :: stack
     character(len=80) :: vtkFilename
+    integer :: iDump
+    real(double) :: tDump, nextDumpTime
+    logical :: dumpNow
 
+    tDump = 1.d4
     nMonte = 1000
     iter = 0
     deltaT = 1.d-25
+    deltaTmax = 200.d0
+    currentTime = 0.d0
+    iDump = 0
+    nextDumpTime = currentTime + tDump
     do while (.true.)
        iter = iter + 1
-       call  timeDependentRTStep(grid, nsource, source, stack, deltaT, nMonte, xArray, nLambda)
-       write(vtkFilename, '(a,i4.4,a)') "output",iter,".vtk"
-       call writeVTKFile(grid, vtkfilename)
+       dumpNow = .false.
+       if ((currentTime+deltaT) >= nextDumpTime) then
+          deltaT = nextDumpTime - currentTime
+          dumpNow = .true.
+       endif
+       currentTime = currentTime + deltaT
+       write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime
+       call  timeDependentRTStep(grid, nsource, source, stack, deltaT, deltaTmax, nMonte, xArray, nLambda)
+       if (dumpNow) then
+          nextDumpTime = nextDumpTime + tDump
+          iDump = idump + 1
+          write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
+          call writeVtkFile(grid, vtkfilename, &
+               valueTypeString=(/"rho        ", "temperature", "edens      "/))
+       endif
     enddo
   end subroutine runTimeDependentRT
 
-  subroutine timeDependentRTStep(grid, nsource, source, oldstack, deltaT, nMonte, lamArray, nLambda)
+  subroutine timeDependentRTStep(grid, nsource, source, oldstack, deltaT, deltaTmax, nMonte, lamArray, nLambda)
     type(GRIDTYPE) :: grid
     integer :: nSource
     integer :: nLambda
     integer :: nFreq
     real :: lamArray(:)
-    real(double) :: deltaT
+    real(double) :: deltaT, deltaTmax
     type(SOURCETYPE) :: source(:)
     type(PHOTONSTACK), intent(inout) :: oldStack
     type(PHOTONSTACK) :: currentStack
@@ -86,7 +106,7 @@ contains
     logical :: absorbed, scattered, outOfTime, finished, ok
     real(double) :: kappaAbs, kappaSca, albedo
     real(double) :: newDeltaT, fac
-    real(double) :: totalLineEmission, totalContEmission
+    real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4
     real :: lambda0
     lambda0 = 0.
 
@@ -107,14 +127,11 @@ contains
 
     call zeroDistanceGrids(grid%octreeRoot)
     kabsArray = 0.d0
-    call calculateEtaCont(grid, grid%octreeRoot, nFreq, freqArray, dnu, lamarray, nLambda, kabsArray)
+    call calculateEtaContLocal(grid, grid%octreeRoot)
 
     call computeProbDist(grid, totalLineEmission, totalContEmission, lambda0, .false.)
     luminosity = 0.d0
     call calculateGasEmissivity(Grid%octreeRoot, luminosity)
-    write(*,*) "emissivity ",luminosity
-    write(*,*) "time step ",deltaT
-
     currentStack%nStack = 0
 
 
@@ -122,17 +139,24 @@ contains
 
     nFromMatter = nMonte
     nPhotons = oldStack%nStack + nFromMatter
-    fracSource = 0.8d0
 
-    chanceSource = sourceLuminosity / (sourceLuminosity + luminosity)
+    fracSource = 0.5d0
+
+    Chancesource = sourceLuminosity / (sourceLuminosity + luminosity)
     chanceGas = 1.d0-chanceSource
     weightSource = chanceSource / fracSource
     weightGas = (1.d0-chanceSource) / (1.d0-fracSource)
+    write(*,*) "doing loop with ",nphotons, " photons"
+    write(*,*) "source lum ",sourceLuminosity
+    write(*,*) "matter lum ",luminosity
+
     do iMonte = 1, nPhotons
-       write(*,*) "imonte ", imonte, nPhotons 
+!       write(*,*) "imonte ", imonte, nPhotons 
        if (oldStack%nStack > 0)  then
           call getPhotonFromStack(oldStack, rVec, uHat, eps, freq, &
                photonFromSource, photonFromGas)
+             wavelength = (cSpeed/freq)*1.d8
+          photonTime = 0.d0
        else
           call random_number(r)
 
@@ -151,6 +175,7 @@ contains
           else
 
              call random_number(r)
+             thisOctal => grid%octreeRoot
              call locateContProbAMR(r,thisOctal,subcell)
              rVec = randomPositionInCell(thisOctal, subcell)
              call amrGridValues(grid%octreeRoot, rVec, startOctal=thisOctal, &
@@ -179,9 +204,9 @@ contains
        endif
        
        ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
+       call random_number(r)
 
-       photonTime = 0.d0
-
+       photonTime = (2.d0*r-1.d0)*deltaT
        absorbed = .false.
        scattered = .false.
        finished = .false.
@@ -194,7 +219,7 @@ contains
           call distanceToCellBoundary(grid, rVec, uHat, distToBoundary, sOctal=thisOctal)
           call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
 
-          timeToBoundary = distToBoundary / photonSpeed
+          timeToBoundary = (distToBoundary*1.d10) / photonSpeed
 
           tauToBoundary = distToBoundary * (kappaAbs + kappaSca)
 
@@ -220,31 +245,32 @@ contains
           endif
 
           if (absorbed.or.scattered) then
-             if ((photonTime + distanceToEvent/photonSpeed) > deltaT) then
+             if ((photonTime + (distanceToEvent*1.d10)/photonSpeed) > deltaT) then
                 absorbed = .false.
                 scattered = .false.
-                distanceToEvent = (deltaT - photonTime) * photonSpeed
+                distanceToEvent = ((deltaT - photonTime) * photonSpeed)/1.d10
                 outOfTime = .true.
                 finished = .true.
              endif
           else
-             if ((photonTime + distanceToEvent/photonSpeed) > deltaT) then
-                distanceToEvent = (deltaT - photonTime) * photonSpeed
+             if ((photonTime + (distanceToEvent*1.d10)/photonSpeed) > deltaT) then
+                distanceToEvent = ((deltaT - photonTime) * photonSpeed)/1.d10
                 outOfTime = .true.
                 finished = .true.
              endif
           endif
 
-          photonTime = photonTime + distanceToEvent / photonSpeed
-
+          photonTime = photonTime + (distanceToEvent*1.d10) / photonSpeed
 
           call updateDistanceGrids(thisOctal, subcell, kappaAbs, eps, distanceToEvent, photonFromGas, &
                photonFromSource)
 
           rVec = rVec + (distanceToEvent + 1.d-3*grid%halfSmallestSubcell) * uHat
+          
 
           if (.not.inOctal(grid%octreeRoot, rVec)) then
              finished = .true.
+             outOfTime = .false.
           endif
           if (scattered) then
              uhat = randomUnitVector()  ! ISOTROPIC SCATTERING ONLY SO FAR
@@ -253,8 +279,8 @@ contains
           endif
        end do
        if (outOfTime) then
-          call addPhotonToStack(currentStack, rVec, uHat, photonTime, &
-               eps, photonFromSource, photonFromGas)
+          call addPhotonToStack(currentStack, rVec, uHat, &
+               eps, freq, photonFromSource, photonFromGas)
        endif
     end do
 
@@ -263,10 +289,15 @@ contains
 
 
     newDeltaT = 1.d30
-    call calculateNewDeltaT(grid%octreeRoot, newDeltaT)
-    fac = 1.d-3
+    call calculateNewDeltaT(grid%octreeRoot, newDeltaT, t1, t2, t3, t4)
+    write(*,*) "Temperature for time controlling cell is ",t1
+    write(*,*) "Udens for time controlling cell is ",t2
+    write(*,*) "adot for time controlling cell is ",t3
+    write(*,*) "eta for time controlling cell is ",t4
+    fac = 1.d-1
     newDeltaT = newDeltaT  * fac
 
+    deltaT = min(newDeltaT, deltaTMax)
 
     call updateUDens(grid%octreeRoot, deltaT)
     call calculateTemperatureFromUdens(grid%octreeRoot)
@@ -322,6 +353,32 @@ contains
     enddo
   end subroutine updateUdens
 
+  recursive subroutine calculateEtaContLocal(grid, thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real :: kappap
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateEtaContLocal(grid, child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%adot(subcell) > 1.d-29) then
+             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+             thisOctal%etaCont(subcell) = fourPi * (stefanBoltz/pi) * kappaP * thisOctal%temperature(subcell)**4
+          endif
+       endif
+    enddo
+  end subroutine calculateEtaContLocal
+
   recursive subroutine calculateGasEmissivity(thisOctal, ems)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -362,15 +419,15 @@ contains
           end do
        else
           thisOctal%temperature(subcell) = &
-               temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 5.d0/3.d0)
+               max(3.d0,temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 5.d0/3.d0))
        endif
     enddo
   end subroutine calculateTemperatureFromUdens
 
-  recursive subroutine calculateNewDeltaT(thisOctal, deltaT)
+  recursive subroutine calculateNewDeltaT(thisOctal, deltaT, temp, udens, adot, eta)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    real(double) :: deltaT
+    real(double) :: deltaT, t, temp, udens, adot, eta
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -379,12 +436,21 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateNewDeltaT(child, deltaT)
+                call calculateNewDeltaT(child, deltaT, temp, udens, adot, eta)
                 exit
              end if
           end do
        else
-          deltaT = min(deltaT, thisOctal%uDens(subcell)/thisOctal%etaCont(subcell))
+          if (thisOctal%etaCont(subcell) > thisOctal%aDot(subcell)) then ! cooling
+             t = thisOctal%uDens(subcell)/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
+             if ((t < deltaT).and.(thisOctal%temperature(subcell) > 10.d0)) then
+                deltaT = t 
+                temp = thisOctal%temperature(subcell)
+                udens = thisOctal%udens(subcell)
+                adot = thisOctal%adot(subcell)
+                eta = thisOctal%etaCont(subcell)
+             endif
+          endif
        endif
     enddo
   end subroutine calculateNewDeltaT
@@ -407,7 +473,7 @@ contains
           end do
        else
           v = cellVolume(thisOctal, subcell) * 1.d30
-          thisOctal%aDot(subcell) = (1.d0 / v) * thisOctal%distancegridAdot(subcell) / deltaT
+          thisOctal%aDot(subcell) = max(1.d-30,(1.d0 / v) * thisOctal%distancegridAdot(subcell) / deltaT)
        endif
     enddo
   end subroutine calculateAdot
@@ -524,7 +590,7 @@ contains
     real(double) :: fac, meanFreePath, probNewPhoton
     integer :: nFromMatter
 
-    fracSource = 0.0d0
+    fracSource = 0.8d0
     udensAnalytical  = 0.d0
     udens = 1.d-30
     photonSpeed = cSpeed

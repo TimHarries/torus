@@ -539,6 +539,9 @@ contains
                case("rhoe")
                   write(lunit, *) real(thisOctal%rhoe(subcell))
 
+               case("edens")
+                  write(lunit, *) real(thisOctal%photonEnergyDensityFromSource(subcell))
+
                case("rhou")
                   write(lunit, *) real(thisOctal%rhou(subcell))
 

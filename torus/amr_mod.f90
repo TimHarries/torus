@@ -4037,6 +4037,7 @@ IF ( .NOT. gridConverged ) RETURN
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
           fac = -2.d0
           fac = sqrt(fac)
+          do;enddo
        endif
           if(.not. suppresswarnings) then
                 STOP
@@ -16422,6 +16423,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%distanceGridPhotonFromSource, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%photonEnergyDensityFromGas, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%photonEnergyDensityFromSource, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
     endif
     if (hydrodynamics) then
 
