@@ -1958,8 +1958,8 @@ end subroutine molecularLoop
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, maxVel, usedust, lineimage, lamline, plotlevels
-     use mpi_global_mod, only: nThreadsGlobal
 #ifdef MPI
+     use mpi_global_mod, only: nThreadsGlobal
      include 'mpif.h'
 #endif
      type(TELESCOPE) :: mytelescope

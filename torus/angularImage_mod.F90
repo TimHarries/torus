@@ -718,7 +718,9 @@ module angularImage
     real(double) :: dI, n_sample
     real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
 
+#ifdef MPI
     character(len=3)    :: char_my_rank
+#endif
     character(len=30)   :: outfilename
     integer, parameter  :: LUIN = 10 ! unit number of output file
 

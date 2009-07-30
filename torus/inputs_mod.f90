@@ -78,7 +78,7 @@ contains
        stop
     endif
 
-    call getLogical("timedep", timeDep, cLine, nLines, &
+    call getLogical("timedep", timeDependentRT, cLine, nLines, &
          "Time dependent radiative transfer ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("verbosity", verbosityLevel, cLine, nLines, &

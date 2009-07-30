@@ -85,6 +85,10 @@ contains
     logical :: gridConverged
     integer :: thread1(200), thread2(200), nBound(1000), nPairs
     integer :: group(1000), nGroup
+<<<<<<< photoionAMR_mod.F90
+!    logical :: globalConverged(64), tConverged(64)
+=======
+>>>>>>> 1.46
     integer :: nHydroThreads
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
@@ -590,8 +594,13 @@ contains
                    do while(.not.escaped)
                       currentSubcell = 1
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
+<<<<<<< photoionAMR_mod.F90
+                           photonPacketWeight, nfreq, freq, tPhoton, tLimit, &
+                           crossedMPIboundary, currentOctal, currentSubcell, newThread)
+=======
                            photonPacketWeight, nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, &
                            newThread)
+>>>>>>> 1.46
                       if (crossedMPIBoundary) then
                          call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, newThread)
                          goto 777
@@ -1129,8 +1138,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then
+<<<<<<< photoionAMR_mod.F90
+             call updateGrid(grid, thisOctal, subcell, thisFreq, &
+	     dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
+=======
              call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, &
                   freq)
+>>>>>>> 1.46
           endif
 
           oldOctal => thisOctal

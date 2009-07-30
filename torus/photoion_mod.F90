@@ -4102,7 +4102,7 @@ end subroutine readHeIIrecombination
 #endif
 
     call init_random_seed()
-
+    totalFlux = 0.d0
 
     thisImage = initImage(npix, npix, setimagesize/1.e10, &
          setimagesize/1.e10, 0., 0.)

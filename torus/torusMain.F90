@@ -58,7 +58,7 @@ program torus
   use timing, only: tune
   use ion_mod, only: addions
   use angularImage, only: make_angular_image, map_dI_to_particles
-  use timedep_mod, only : timeDependentRT
+  use timedep_mod, only : runTimeDependentRT
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -592,10 +592,6 @@ program torus
         stop
      endif
 
-     if (timeDep) then
-        call timeDependentRT()
-        stop
-     endif
 
 #ifdef MPI
      if (photoIonization.and.hydrodynamics) then
@@ -615,7 +611,7 @@ program torus
 
 
     call writeVtkFile(grid, "first.vtk", &
-         valueTypeString=(/"rho        ","HI        " ,"temperature" /))
+         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
@@ -646,6 +642,11 @@ program torus
 
      endif
 #endif
+
+  if (timeDependentRT) then
+     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
+     goto 666
+  endif
 
   if (photoionization) then 
         call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &

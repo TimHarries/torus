@@ -25,7 +25,6 @@ module input_variables
   integer :: minDepthAMR, maxDepthAMR
   character(len=10) :: geometry
   character(len=80) :: absolutePath
-  logical :: timeDep
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
   logical :: photoionization
@@ -633,6 +632,8 @@ module input_variables
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
   real :: x1, x2
+
+  logical :: timeDependentRT
   
 end module input_variables
 

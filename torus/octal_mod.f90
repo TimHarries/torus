@@ -221,6 +221,16 @@ MODULE octal_mod
     real(double), pointer :: oldmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: oldestmolecularLevel(:,:) => null() ! molecular level populations
 
+! time dependent RT stuff
+
+    real(double), pointer :: Adot(:) => null()
+    real(double), pointer :: uDens(:) => null()
+    real(double), pointer :: distanceGridAdot(:) => null()
+    real(double), pointer :: distanceGridPhotonFromSource(:) => null()
+    real(double), pointer :: distanceGridPhotonFromGas(:) => null()
+    real(double), pointer :: photonEnergyDensityFromSource(:) => null()
+    real(double), pointer :: photonEnergyDensityFromGas(:) => null()
+
     REAL, DIMENSION(:), pointer                 :: temperaturedust=> null() ! grid subcell dust temperatures
     REAL, DIMENSION(:), pointer                 :: temperaturegas => null() ! grid subcell gas temperatures
     real(double), DIMENSION(:), pointer :: NH2 => null()           ! total H2 no density

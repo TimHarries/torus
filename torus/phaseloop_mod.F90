@@ -32,7 +32,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use path_integral, only: integratePath, test_optical_depth
   use stateq_mod, only: amrStateq
   use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
-  use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+  use mpi_global_mod, only: myRankGlobal
+#ifdef MPI
+  use mpi_global_mod, only: nThreadsGlobal
+#endif
   use TTauri_mod, only: fillGridMagneticAccretion, infallenhancment
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
   use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau

@@ -10053,6 +10053,14 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
 
+    call copyAttribute(dest%uDens, source%udens)
+    call copyAttribute(dest%aDot, source%aDot)
+    call copyAttribute(dest%distancegridaDot, source%distancegridaDot)
+    call copyAttribute(dest%distanceGridPhotonFromGas, source%distanceGridPhotonFromGas)
+    call copyAttribute(dest%distanceGridPhotonFromSource, source%distanceGridPhotonFromSource)
+    call copyAttribute(dest%photonEnergyDensityFromGas, source%photonEnergyDensityFromGas)
+    call copyAttribute(dest%photonEnergyDensityFromSource, source%photonEnergyDensityFromSource)
+
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
       ALLOCATE(dest%mpiboundaryStorage( SIZE(source%mpiboundaryStorage,1),       &
@@ -16264,7 +16272,7 @@ end function readparameterfrom2dmap
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, sobolev, storeScattered, h21cm
+         photoionization, hydrodynamics, sobolev, storeScattered, h21cm, timeDependentRT
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -16405,7 +16413,16 @@ end function readparameterfrom2dmap
     if (associated(thisOctal%photoIonCoeff)) then
        thisOctal%photoIonCoeff = 0.d0
     endif
-       
+
+    if (timeDependentRT) then
+       call allocateAttribute(thisOctal%uDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%aDot, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distancegridaDot, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGridPhotonFromGas, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGridPhotonFromSource, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%photonEnergyDensityFromGas, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%photonEnergyDensityFromSource, thisOctal%maxChildren)
+    endif
     if (hydrodynamics) then
 
 
