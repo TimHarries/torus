@@ -609,6 +609,8 @@ $4\times10^{12}~\rm{cm}$.  A real circumstellar disc will be truncated
 by the stellar magnetosphere so there is a physical justification for
 enforcing a low density region around the star.
 
+\subsection{Results}
+
 Plots of the disc internal energy are shown in Fig.~\ref{fig:log_u} at siz
 different times during the simulation. Figure~\ref{fig:frame1} shows
 the initial state before the radiative transfer is switched on. The
@@ -638,41 +640,35 @@ reached a steady state in hydrostatic and radiative equilibrium.
   \label{fig:log_u}
 \end{figure*}
 
-
-%%% Up to here so far ... %%%
-
-The surface density of the disc, after 4986~years of simulated time
-(the latest simulated time), is shown in Fig.~\ref{fig:sigma_final}.
-Away from the inner and outer edges of the disc the surface density is
-well represented by a power law profile as a function of radius.
+The surface density of the disc is shown in Fig.~\ref{fig:sigma} where
+the solid line is the isothermal disc and the dotted line is the disc
+at the final time step.  Away from the inner and outer edges of the
+disc the surface density is well represented by a power law profile as
+a function of radius.
 \begin{figure}
-  \includegraphics[scale=0.3]{figures/sigma_final}
-  \caption{Surface density as a function of radius after 4986~years of simulated time.}
-  \label{fig:sigma_final}
+  \includegraphics[scale=0.3]{figures/sigma}
+  \caption{Surface density as a function of radius.}
+  \label{fig:sigma}
 \end{figure}
-
 The scale height of the disc was determined by fitting Gaussians to
 the vertical density profile in 100 radial bins. The fitted scale
 height, as a function of radius, is plotted in
 Fig.~\ref{fig:scale_height}.  Within the central 10~AU the density
 profile appears flat so it was not possible to fit a meaningful scale
-height.
+height. The solid line is the isothermal disc and the dotted line is
+the disc at the final time step.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/scale_height}
-  \caption{Disc scale height as a function of radius  after 4986~years of simulated time.}
+  \caption{Disc scale height as a function of radius.}
   \label{fig:scale_height}
 \end{figure}
-
 The average temperature within one scale height of the disc mid plane
-is plotted as a solid line in Fig.~\ref{fig:mid_tem}. The dashed line
-is a power law variation of temperature with radius with an index of
-$-0.35$. Although this line is not a formal best fit it has been
-plotted to indicate that this temperature profile is well represented
-by a power law outside 15AU.
+is plotted in Fig.~\ref{fig:mid_tem}. The solid line is the isothermal
+disc and the dotted line is the disc at the final time step.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/mid_tem}
-  \caption{Average temperature within one scale height of the mid plane, as a function of
-    radius, after 4986~years of simulated time.}
+  \caption{Average temperature within one scale height of the mid plane as a function of
+    radius.}
   \label{fig:mid_tem}
 \end{figure}      
 
