@@ -174,19 +174,11 @@ scp zen:/scratch/acreman/SPH-Torus_runs/run0001/run2/dumps/u_run2_DSC1024.ps .
 ps2pdf u_run2_DSC1024.ps
 rm u_run2_DSC1024.ps
 
-cp ~/sph_disc_pp/profiles/sigma.ps .
-ps2pdf sigma.ps
-
-cp ~/sph_disc_pp/profiles/sigma_final.ps .
-ps2pdf sigma_final.ps
-
-cp ~/sph_disc_pp/scale_height/mid_tem.ps .
-ps2pdf mid_tem.ps
-
-cp ~/sph_disc_pp/scale_height/scale_height.ps .
-ps2pdf scale_height.ps
-
-rm *.ps
+for fig in sigma.ps mid_tem.ps scale_height.ps; do 
+    scp zen:/scratch/acreman/SPH-Torus_runs/run0001/post_processing/disc_props/${fig} . 
+    ps2pdf ${fig} 
+    rm ${fig}
+done
 
 exit
 
