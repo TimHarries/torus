@@ -15,15 +15,24 @@ School of Physics, University of Exeter, Stocker Road, Exeter EX4
 
 \begin{abstract}
 
-We present results from combining a grid-based radiative transfer code
-with a Smoothed Particle Hydrodynamics code to produce a flexible
-system for modelling radiation hydrodynamics. The system is tested
-using a benchmark model of a circumstellar disc. We find that the SED
-and temperature distribution within the disc are highly sensitive to
-the representation of the disc inner edge, which depends critically on
-both the grid and SPH resolution. The system is then used to model a
-circumstellar disc around a T-Tauri star and is found to produce a
-steady state disc in both hydrostatic and radiative equilibrium. 
+  We present results from combining a grid-based radiative transfer
+  code with a Smoothed Particle Hydrodynamics code to produce a
+  flexible system for modelling radiation hydrodynamics. We use a
+  benchmark model of a circumstellar disc to determine a robust method
+  for constructing a gridded density density distribution from SPH
+  particles. The benchmark disc is then used to determine the accuracy
+  of the radiative transfer results. We find that the SED and 
+  the temperature distribution within the disc are sensitive
+  to the representation of the disc inner edge, which depends
+  critically on both the grid and SPH resolution. The code is then
+  used to model a circumstellar disc around a T-Tauri star. As the
+  disc adjusts towards equilibrium vertical motions in the disc are
+  induced resulting in scale height enhancements which intecept
+  radiation from the central star. Vertical transport of radiation
+  enables these perturbations to influence the mid-plane temperature
+  of the disc. The vertical motions decay over time and the disc
+  ultimately reaches a state of simulatanous hydrostatic and radiative
+  equilibrium.
 
 \end{abstract}
 
@@ -45,19 +54,18 @@ depth, however this method is not suited to modelling regions of low
 optical depth where an alternative method, such as a Monte-Carlo
 method, must be used.
 
-This paper presents a results from coupling the {\small{TORUS}} radiative
-transfer code \citep{harries_2000} with the SPH (Smoothed Particle
-Hydrodynamics) code of \cite{bate_2009}.  {\small{TORUS}} performs radiative
-transfer calculations using the Monte-Carlo method of \cite{lucy_1999}
-with a flux limited diffusion approximation in regions of high optical
-depth. The radiative transfer calculations are performed on a grid
-which uses adaptive mesh refinement (AMR) to allow variable
+This paper presents a results from coupling the {\small{TORUS}}
+radiative transfer code \citep{harries_2000} with the SPH (Smoothed
+Particle Hydrodynamics) code of \cite{bate_2009}.  {\small{TORUS}}
+performs radiative transfer calculations using the Monte-Carlo method
+of \cite{lucy_1999} with a diffusion approximation in regions of high
+optical depth. The radiative transfer calculations are performed on a
+grid which uses adaptive mesh refinement (AMR) to allow variable
 resolution.  The SPH method is well suited to dealing with the large
-range in size scales encountered during star formation processes, hence
-an SPH code coupled to a combined Monte-Carlo and flux limited
-diffusion radiative transfer code is a very flexible method for
-performing star formation calculations incorporating radiative
-feedback.
+range in size scales encountered during star formation processes,
+hence an SPH code coupled to a Monte-Carlo radiative transfer code is
+a very flexible method for performing star formation calculations
+incorporating radiative feedback.
 
 There is not a unique approach to coupling an SPH code to a radiative
 transfer code and a number of different approaches have been developed
@@ -70,16 +78,15 @@ Accurately coupling the SPH component to the radiative transfer
 component requires an effective transformation from the Lagrangian
 particle description of SPH to the Eulerian grid description of an AMR
 grid. The procedure used for this transformation is tested using a
-benchmark case (see Sections~\ref{section:description_of_benchmark}
+cicumstellar disc benchmark (see
+Sections~\ref{section:description_of_benchmark}
 and~\ref{section:grid_generation}). The spectral energy distribution
 and temperature distribution of the benchmark disc are examined in
 Section~\ref{section:seds} in order to understand how well the
 radiative transfer calculation works with the gridded density field
 and to understand the effects of grid and SPH spatial resolution. A
 simulation of a circumstellar disc around a T Tauri star is presented
-in Section~\ref{section:sph_disc} with the aim of calculating an
-equilibrium state in three dimensional hydrostatic and radiative
-balance.
+in Section~\ref{section:sph_disc}.
 
 \section{Circumstellar disc benchmark}
 \label{section:description_of_benchmark}
@@ -153,7 +160,7 @@ regions to a hydrodynamics calculation (e.g. to resolve opacity
 gradients). This section determines a grid construction method which
 allows a good degree of control over the number of cells in the grid,
 and the location of the highest resolution regions, while maintaining
-an accurate representation of the disc mass.
+an accurate representation of the total disc mass.
 
 \subsection{Grid generation method}
 
@@ -295,7 +302,7 @@ dl_{\rm{cart}} = \left( \frac{dM_{\rm{cart}}}{\rho_{\rm{cell}}} \right)
 ^{1/3}
 \label{eqn:cart_cell}
 \end{equation}
-where $dM_{\rm{cart}}$ is the mass of a cell in a cartesian grid and
+where $dM_{\rm{cart}}$ is the mass of a cell in the cartesian grid and
 $\rho_{\rm{cell}}$ is the density of the cell. 
 %
 In a cylindrical polar grid the mass of a cell is given by
@@ -488,15 +495,15 @@ indicate that the SPH disc is hotter than the expected value.
 \end{figure*}
 When using $10^5$ particles to represent the disc there is a too much
 heating in the disc mid plane and insufficient heating further out of
-the mid plane. The effect is reduced when $10^6$ particles are used
-but is only reduced to a low level with $10^8$ particles. 
+the mid plane. The effect is reduced as the number of particles is
+increased and reaches a very low level with $10^8$ particles. 
 
 To allow a more quantitative comparison the mid-plane temperature and
 the benchmark mid-plane temperature are plotted in
 Fig.~\ref{fig:n_part_tem_diff_midpane} for all particles within 0.01
 scale heights of the mid-plane. The fractional temperature error for
 each particle is also plotted where a positive error indicates a
-temperature hotter than the benchmark value.
+temperature hotter than the benchmark value. 
 \begin{figure*}
   \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/mp_temp_1}}
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/mp_temp_2}}
@@ -511,15 +518,16 @@ SEDs are plotted in Fig.~\ref{fig:n_part_sed_013} for a viewing angle
 of 12.5 degrees and Fig.~\ref{fig:n_part_sed_077} for a viewing angle
 of 77.5 degrees. At the shortest wavelengths the 12.5 degrees
 inclination angle SED is dominated by emission from the central
-star. This region is well represented with $10^5$ and $10^8$ particles
-but is less well represented with $10^6$ or $10^7$ particles where the
-central star is obscured. At the longest wavelengths the disc is optically
-thin and the SEDs will be well modelled provided the total disc mass
-is accurately represented. In all four cases the total disc mass is
-well represented at the long wavelength SED matches the benchmark
-results. At intermediate wavelengths the SED is sensitive to the
-details of the disc representation. Accurately modelling the SED from
-this disc is challenging even with $10^8$ particles. 
+star. This region of the SED is well represented with $10^5$ and
+$10^8$ particles but is less well represented with $10^6$ or $10^7$
+particles where the central star is obscured. At the longest
+wavelengths the disc is optically thin and the SEDs will be well
+modelled provided the total disc mass is accurately represented. In
+all four cases the total disc mass is well represented and the long
+wavelength SED matches the benchmark results. At intermediate
+wavelengths the SED is sensitive to the details of the disc
+representation and it is clear that accurately modelling the SED from
+this disc is challenging, even with $10^8$ particles. 
 \begin{figure*}
   \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e5}}
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e6}}
@@ -611,23 +619,24 @@ enforcing a low density region around the star.
 
 \subsection{Results}
 
-Plots of the disc internal energy are shown in Fig.~\ref{fig:log_u} at siz
-different times during the simulation. Figure~\ref{fig:frame1} shows
-the initial state before the radiative transfer is switched on. The
-disc is vertically isothermal. The second frame (Fig.~\ref{fig:frame2}
-is shortly after the raditive transfer has been swithced on. The inner
-disc has collapsed and there is heating seen in parts of the disc
-exposed to radiation from the central star. In Fig.~\ref{fig:frame3} a
-scale height enhancement is present in the disc at a radius of
-approximately $3\times10^{15}~\rm{cm}$ which shadows the region
-immediately behind causing it to cool. Figure~\ref{fig:frame4} shows
-several such scale height enhancements an in each case there is
-cooling behind the enhancement. The scale height fluctations are able
-to affect the mid-plane temperature due to vertical transport of
-radiation. In Fig.~\ref{fig:frame5} the inner region of the disc has
-settled and the scale height enhancements are seen only in the outer
-disc and by the last frame (Fig.~\ref{fig:frame6}) the disc has
-reached a steady state in hydrostatic and radiative equilibrium. 
+Plots of the disc internal energy are shown in Fig.~\ref{fig:log_u} at
+siz different times during the simulation. Figure~\ref{fig:frame1}
+shows the initial state before the radiative transfer is switched on
+when there is a vertically isothermal equation of state. The second
+frame (Fig.~\ref{fig:frame2} is shortly after the raditive transfer
+has been switched on. The inner disc has collapsed and there is
+heating seen in parts of the disc exposed to radiation from the
+central star. In Fig.~\ref{fig:frame3} a scale height enhancement is
+present in the disc at a radius of approximately
+$3\times10^{15}~\rm{cm}$ which shadows the region immediately behind
+causing it to cool. Figure~\ref{fig:frame4} shows several such scale
+height enhancements an in each case there is cooling behind the
+enhancement. The scale height fluctations are able to affect the
+mid-plane temperature due to vertical transport of radiation. In
+Fig.~\ref{fig:frame5} the inner region of the disc has settled and the
+scale height enhancements are seen only in the outer disc and by the
+last frame (Fig.~\ref{fig:frame6}) the disc has reached a steady state
+in hydrostatic and radiative equilibrium.
 \begin{figure*}
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_DSC6675}\label{fig:frame1}}
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_DSC6691}\label{fig:frame2}}
@@ -641,10 +650,11 @@ reached a steady state in hydrostatic and radiative equilibrium.
 \end{figure*}
 
 The surface density of the disc is shown in Fig.~\ref{fig:sigma} where
-the solid line is the isothermal disc and the dotted line is the disc
-at the final time step.  Away from the inner and outer edges of the
-disc the surface density is well represented by a power law profile as
-a function of radius.
+the solid line is the vertically isothermal disc shown in
+Fig.~\ref{fig:frame1} and the dotted line is the disc at the final
+time step (Fig.~\ref{fig:frame6}).  Away from the inner and outer
+edges of the disc the surface density is well represented by a power
+law profile as a function of radius.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/sigma}
   \caption{Surface density as a function of radius.}
@@ -686,7 +696,7 @@ Although we have found a method for constructing an AMR grid from SPH
 particles which is robust, in terms of the total mass on the grid, we
 found that it was necessary to add additional grid refinement in the
 central region of the disc to allow the inner edge to be well
-represented. The inner edge of the disc has a disproportionately large
+represented. The inner edge of the disc has a large
 effect on the temperature distribution in the disc and on the emergent
 SED. Consequently the accuracy of the solution is dependent upon the
 accurate representation of a region which constitutes a small fraction
@@ -694,23 +704,23 @@ of the disc by volume. As the method combines both SPH and grid
 elements it is important that both these components have sufficient
 resolution to represent the disc inner edge. This presents a
 particular challenge for a SPH code which uses equal mass particles
-but is achievable with a large number of particles. 
+but is achievable with a large number of particles. Accurately
+modelling the SED using this method seems to be considerably more
+demanding than accurately representing the temperature structure
+within the disc and temperature errors can be reduced to a managable
+level with a realistic number of SPH particles in the disc. 
 
 The combined SPH-radiative transfer code was able to evolve a
 circumstellar disc to a state of radiative and hydrostatic
-equilibrium. Fluctuations in scale height were seen, which have also
-been observed in codes which combine radiative transfer and vertical
-hydrostatic equilibrium calculations. However there were also
-transient effects seen in the surface density distribution which would
-not be present if the hydrostatic equilibrium was calculated in the
-vertical direction only. 
-
-By adding self-gravity to the SPH model this method could be used to
-explore the effects of radiative transfer on disc
-fragmentation. However the model would need to be constructed
-carefully to ensure sufficient resolution at the disc inner edge so
-that the temperature distribution in the disc is accurate. Such a
-model is expected to be feasible although computationally demanding. 
+equilibrium. As the disc settles towards an equilibrium state, vertical
+motions are seen which give the appearance of an outward propagating
+scale height fluctuation. This is a vertical motion which decays more
+rapidly at smaller radii and is seen whether radiative transfer is
+included or not. One consequence of these fluctuations is that they
+can intecept radiation from the central star which can then be
+vertically transported into the mid-plane of the disc. Even thought
+the fluctuations are of a small amplitude they exert an influence on
+the mid-plane temperature. 
 
 \section*{Acknowledgments}
 Calculations presented here were performed using the University of
