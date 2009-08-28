@@ -69,12 +69,11 @@ incorporating radiative feedback.
 
 There is not a unique approach to coupling an SPH code to a radiative
 transfer code and a number of different approaches have been developed
-(\cite{nayakshin_2009}, \cite{pawlik_2008} and references
-therein). This paper focuses on radiative transfer calculations using
-an adaptive grid in the context of modelling processes in star
-formation.
+(\cite{pawlik_2008} and references therein). This paper focuses on
+radiative transfer calculations using an adaptive grid in the context
+of modelling a circumstellar disc.
 
-Accurately coupling the SPH component to the radiative transfer
+Accurately coupling the radiative transfer component to the SPH
 component requires an effective transformation from the Lagrangian
 particle description of SPH to the Eulerian grid description of an AMR
 grid. The procedure used for this transformation is tested using a
@@ -200,9 +199,9 @@ is calculated, where $\rho_{\rm{max}}$ is the highest SPH particle
 density and $\rho_{\rm{min}}$ is the lowest SPH particle density, and
 the cell is split if a specified value of $f_{\rm{split}}$ is
 exceeded. The first condition gives a resolution like that of the
-original SPH representation whereas the second condition should be
-better at representing gradients in density which are likely to be
-important for radiative transfer calculations. 
+original SPH representation whereas the second condition should better
+represent gradients in density which are important for radiative
+transfer calculations.
 
 To illustrate the effects of the different splitting methods two
 example grids are shown in Fig.~\ref{fig:example_meshes}. A grid
@@ -591,13 +590,14 @@ temperatures and they retain the temperature assigned by the radiative
 transfer code until the next radiation time step. The temperatures
 calculated by the radiative transfer code are equilibrium
 temperatures, as it is assumed that the time scale for radiative
-equilibrium is short compared to the dynamical time scale of the disc.
+equilibrium is short compared to the dynamical time scale of the disc
+(i.e. the ``prompt escape'' regime decribed by \cite{nayakshin_2009}).
 A radiative transfer calculation is performed after every four
 hydrodynamics time steps (equivalent to every 2.4 years). The freqency
 with which the radiative transfer is calculated is determined by the
 sound crossing time in the inner regions of the disc as this is the
 time scale over which the scale height in this region will vary and
-effect the transfer of radiation into the outer parts of the disc. 
+effect the transfer of radiation into the outer parts of the disc.
 
 A cylindrical polar grid, with adaptive $r$ and $z$ cells and 16
 azimuthal cells, was used for the raditive transfer step. The AMR grid
@@ -649,48 +649,54 @@ in hydrostatic and radiative equilibrium.
   \label{fig:log_u}
 \end{figure*}
 
-The surface density of the disc is shown in Fig.~\ref{fig:sigma} where
-the solid line is the vertically isothermal disc shown in
-Fig.~\ref{fig:frame1} and the dotted line is the disc at the final
-time step (Fig.~\ref{fig:frame6}).  Away from the inner and outer
-edges of the disc the surface density is well represented by a power
-law profile as a function of radius.
+The surface density of the disc is shown in Fig.~\ref{fig:sigma}, the
+scale height is shown in Fig.~\ref{fig:scale_height} and the radial
+temperature profile is shown in Fig.~\ref{fig:mid_tem}.  The solid
+lines are from the vertically isothermal disc shown in
+Fig.~\ref{fig:frame1} and the dotted lines are the disc at the final
+time step shown in Fig.~\ref{fig:frame6}. The scale height of the disc
+was determined by allocating particles to 100 radial bins and fitting
+a Gaussian to the vertical density profile. The radial temperature
+profile is the average temperature within one scale height of the
+mid-plane for each radial bin.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/sigma}
   \caption{Surface density as a function of radius.}
   \label{fig:sigma}
 \end{figure}
-The scale height of the disc was determined by fitting Gaussians to
-the vertical density profile in 100 radial bins. The fitted scale
-height, as a function of radius, is plotted in
-Fig.~\ref{fig:scale_height}.  Within the central 10~AU the density
-profile appears flat so it was not possible to fit a meaningful scale
-height. The solid line is the isothermal disc and the dotted line is
-the disc at the final time step.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/scale_height}
   \caption{Disc scale height as a function of radius.}
   \label{fig:scale_height}
 \end{figure}
-The average temperature within one scale height of the disc mid plane
-is plotted in Fig.~\ref{fig:mid_tem}. The solid line is the isothermal
-disc and the dotted line is the disc at the final time step.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/mid_tem}
   \caption{Average temperature within one scale height of the mid plane as a function of
     radius.}
   \label{fig:mid_tem}
-\end{figure}      
+\end{figure}     
+The majority of the surface density profile is well represented by a
+power law and does not change significantly as a result of including
+radiative transfer, except within the central
+region. Figures~\ref{fig:scale_height} and \ref{fig:mid_tem} show that
+the disc is hotter close to the mid-plane, except within a region
+between 10--20 AU of the centre, but has a smaller scale
+height. Figure~\ref{fig:log_u} shows that the vertical temperature
+gradient in the disc is such that temperature increases with height
+out of the mid-plane. Although the disc is hotter when radiative
+transfer is included the vertical temperature gradient tends to reduce
+the pressure gradient which is required for hydrostatic support
+resulting in a smaller scale height. 
 
 \section{Conclusions}
 
 \label{section:conclusions}
 
-We have presented results from a combined SPH and grid-based radiative
-transfer code, which has been used to model a non-self gravitating
-circumstellar disc. Validation tests of the method have revealed a
-number of factors which must be taken into consideration when setting
-up a model of this type. 
+We have presented results from a combined SPH and AMR grid-based
+radiative transfer code, which has been used to model a non-self
+gravitating circumstellar disc. Validation tests of the method have
+revealed a number of factors which must be taken into consideration
+when setting up a model of this type.
 
 Although we have found a method for constructing an AMR grid from SPH
 particles which is robust, in terms of the total mass on the grid, we
@@ -698,7 +704,7 @@ found that it was necessary to add additional grid refinement in the
 central region of the disc to allow the inner edge to be well
 represented. The inner edge of the disc has a large
 effect on the temperature distribution in the disc and on the emergent
-SED. Consequently the accuracy of the solution is dependent upon the
+SEDs. Consequently the accuracy of the solution is dependent upon the
 accurate representation of a region which constitutes a small fraction
 of the disc by volume. As the method combines both SPH and grid
 elements it is important that both these components have sufficient
@@ -712,15 +718,17 @@ level with a realistic number of SPH particles in the disc.
 
 The combined SPH-radiative transfer code was able to evolve a
 circumstellar disc to a state of radiative and hydrostatic
-equilibrium. As the disc settles towards an equilibrium state, vertical
-motions are seen which give the appearance of an outward propagating
-scale height fluctuation. This is a vertical motion which decays more
-rapidly at smaller radii and is seen whether radiative transfer is
-included or not. One consequence of these fluctuations is that they
+equilibrium. As the disc settles towards an equilibrium state,
+vertical motions are seen which give the appearance of an outward
+propagating scale height fluctuation. This is a vertical motion which
+decays more rapidly at smaller radii and is seen whether radiative
+transfer is included or not. These are not the same as the
+instabilities seen in other radiation hydrodynamics disc models
+\citep{min_2009}. One consequence of these fluctuations is that they
 can intecept radiation from the central star which can then be
-vertically transported into the mid-plane of the disc. Even thought
-the fluctuations are of a small amplitude they exert an influence on
-the mid-plane temperature. 
+vertically transported into the mid-plane of the disc hence even
+thought the fluctuations are of a small amplitude they exert an
+influence on the mid-plane temperature.
 
 \section*{Acknowledgments}
 Calculations presented here were performed using the University of
