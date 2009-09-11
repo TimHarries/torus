@@ -58,7 +58,7 @@ program torus
   use timing, only: tune
   use ion_mod, only: addions
   use angularImage, only: make_angular_image, map_dI_to_particles
-  use timedep_mod, only : runTimeDependentRT
+  use timedep_mod, only : runTimeDependentRT, timeDependentRTtest
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -182,6 +182,7 @@ program torus
   ! Name of the file to output various message from torus
   character(len=80) :: message
   real :: h 
+!  integer :: iTime
 
 ! molecular line stuff
   type(MOLECULETYPE) :: co
@@ -645,6 +646,30 @@ program torus
 
   if (timeDependentRT) then
      call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
+!     call timeDependentRTtest()
+
+
+!     do itime = 1, 20
+!        write(lucyfilenamein,"(a,i4.4,a)") "output",itime,".grid"
+!        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+!        call readAMRgrid(lucyfilenamein, .false., grid)
+!
+!        lucyRadiativeEq = .false.
+!        nlambdaInput = 20
+!        nlambda = 20
+!        lamStart= 4000.
+!        lamEnd = 5.e4
+!        call set_up_lambda_array
+!
+!        write(lucyfilenamein,"(a,i4.4)") "sed",itime
+!        call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
+!             theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
+!             starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
+!             infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
+!             miePhase, nsource, source, blobs, nmumie, dTime, overrideFilename=lucyfilenamein)
+!     enddo
+  
+
      goto 666
   endif
 

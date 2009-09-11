@@ -481,8 +481,17 @@ contains
           call writeAttributePointerFlexi(20, "rLimit", thisOctal%rLimit, fileFormatted)
           
           call writeAttributePointerFlexi(20, "iEquationOfState", thisOctal%iEquationOfState, fileFormatted)
+
           call writeAttributePointerFlexi(20, "gamma", thisOctal%gamma, fileFormatted)
 
+
+          call writeAttributePointerFlexi(20, "udens", thisOctal%udens, fileFormatted)
+          call writeAttributePointerFlexi(20, "adot", thisOctal%adot, fileFormatted)
+          call writeAttributePointerFlexi(20, "adotdist", thisOctal%distanceGridAdot, fileFormatted)
+          call writeAttributePointerFlexi(20, "dfromgas", thisOctal%distanceGridPhotonFromGas, fileFormatted)
+          call writeAttributePointerFlexi(20, "dfromsource", thisOctal%distanceGridPhotonFromSource, fileFormatted)
+          call writeAttributePointerFlexi(20, "ufromgas", thisOctal%photonEnergyDensityFromGas, fileFormatted)
+          call writeAttributePointerFlexi(20, "ufromsource", thisOctal%photonEnergyDensityFromSource, fileFormatted)
 
           call writeAttributeStaticFlexi(20, "mpiThread", thisOctal%mpiThread, fileFormatted)
           call writeFileTag(20, "OCTALENDS", fileFormatted)
@@ -833,7 +842,7 @@ contains
             call readPointerFlexi(20, thisOctal%dustType, fileFormatted)
          case("dustTypeFraction")
             call readPointerFlexi(20, thisOctal%dustTypeFraction, fileFormatted)
-         case("oldfrac")
+         case("oldFrac")
             call readPointerFlexi(20, thisOctal%oldFrac, fileFormatted)
          case("scatteredIntensity")
             call readPointerFlexi(20, thisOctal%scatteredIntensity, fileFormatted)
@@ -981,7 +990,20 @@ contains
          case("gamma")
             call readPointerFlexi(20, thisOctal%gamma, fileFormatted)
 
-
+         case("udens")
+            call readPointerFlexi(20, thisOctal%udens, fileFormatted)
+         case("adot")
+            call readPointerFlexi(20, thisOctal%aDot, fileFormatted)
+         case("adotdist")
+            call readPointerFlexi(20, thisOctal%distanceGridaDot, fileFormatted)
+         case("dfromgas")
+            call readPointerFlexi(20, thisOctal%distanceGridPhotonFromGas, fileFormatted)
+         case("dfromsource")
+            call readPointerFlexi(20, thisOctal%distanceGridPhotonFromSource, fileFormatted)
+         case("ufromgas")
+            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromGas, fileFormatted)
+         case("ufromsource")
+            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
 
 
          case DEFAULT

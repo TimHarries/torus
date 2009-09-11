@@ -10,7 +10,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
-     miePhase, nsource, source, blobs, nmumie, dTime)
+     miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename)
 
   use kind_mod
   use input_variables 
@@ -60,6 +60,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 ! Arguments
   type(GRIDTYPE) :: grid
+  character(len=*), optional :: overrideFilename
   logical :: alreadyDoneInfall
   real :: meanDustParticleMass
   real :: rstar
@@ -2765,6 +2766,7 @@ endif ! (doPvimage)
 
  
  if (myRankIsZero) then 
+    if (PRESENT(overrideFilename)) outfile = overrideFilename
     if (nPhase == 1) then
 
        call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, &

@@ -8142,7 +8142,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r, hr, rd
-    real(double), parameter :: min_rho = 1.0d-33 ! minimum density
+    real(double), parameter :: min_rho = 1.0d-35 ! minimum density
     TYPE(vector) :: rVec
 
     real :: rInnerGap, rOuterGap
@@ -12084,6 +12084,15 @@ end function readparameterfrom2dmap
 
     frac = 1.
 
+    if (allocated(oneKappaAbsT)) then
+       if ((SIZE(oneKappaAbsT,1) /= SIZE(grid%oneKappaAbs,2)).or. &
+            (SIZE(oneKappaAbsT,2) /= SIZE(grid%oneKappaAbs,1))) then
+          deallocate(oneKappaAbsT)
+          deallocate(oneKappaScaT)
+          firstTime = .true.
+       endif
+    endif
+
     if(firsttime) then
 
        allocate(oneKappaAbsT(grid%nlambda, ndusttype))
@@ -12153,7 +12162,7 @@ end function readparameterfrom2dmap
              kappaSca = 0.
              
              if(ndusttype .eq. 1) then
-                kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell) 
+                kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell)  * thisOctal%dustTypeFraction(subcell, 1)
              else
                 do i = 1, nDustType
                    kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell)
@@ -12185,7 +12194,7 @@ end function readparameterfrom2dmap
           if (grid%oneKappa) then
              kappaAbs = 0.
              if(ndustType .eq. 1) then
-                kappaAbs = oneKappaAbsT(iLambda,1)*thisOctal%rho(subcell)
+                kappaAbs = oneKappaAbsT(iLambda,1)*thisOctal%rho(subcell) * thisOctal%dustTypeFraction(subcell, 1)
              else
                 do i = 1, nDustType
                    kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
@@ -15813,7 +15822,8 @@ end function readparameterfrom2dmap
   end function dist_from_closestEdge
 
 
-  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, xArray, tauArray)
+  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
+       xArray, tauArray, distanceToEdge)
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
@@ -15821,6 +15831,7 @@ end function readparameterfrom2dmap
     integer, optional, intent(out) :: nTau
     integer :: iLambda
     real(double), intent(out) :: tau
+    real(double), optional :: distanceToEdge
     real(double) :: distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
@@ -15853,6 +15864,7 @@ end function readparameterfrom2dmap
        CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
     endif
 
+    if (PRESENT(distanceToEdge)) distanceToEdge = 0.d0
     do while (inOctal(grid%octreeRoot, currentPosition))
 
        call findSubcellLocal(currentPosition, thisOctal,subcell)
@@ -15889,6 +15901,7 @@ end function readparameterfrom2dmap
           xArray(nTau) = xArray(nTau-1) + distToNextCell
           tauArray(nTau) = tau
        endif
+       if (PRESENT(distanceToEdge)) distanceToEdge = distanceToEdge + distToNextCell
        if (PRESENT(tauMax)) then
           if (tau > tauMax) exit
        endif
