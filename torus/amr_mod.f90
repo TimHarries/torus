@@ -15831,7 +15831,7 @@ end function readparameterfrom2dmap
     integer, optional, intent(out) :: nTau
     integer :: iLambda
     real(double), intent(out) :: tau
-    real(double), optional :: distanceToEdge
+    real(double), optional, intent(out) :: distanceToEdge
     real(double) :: distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal

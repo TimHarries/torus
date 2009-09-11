@@ -257,7 +257,8 @@ contains
     integer :: currentStacknStack
     character(len=*) :: oldStackFilename, currentStackFilename
     character(len=80) :: tempFilename
-    type(STACKTYPE) :: oldStack, currentStack
+    type(STACKTYPE), intent(inout) :: oldStack
+    type(STACKTYPE) :: currentStack
     real :: lamArray(:)
     real(double) :: deltaT, deltaTmax, deltaTmin
     type(SOURCETYPE) :: source(:)
@@ -283,7 +284,8 @@ contains
     integer :: oldStackUnit, currentStackUnit
     logical :: absorbed, scattered, outOfTime, finished, ok
     real(double) :: kappaAbs, kappaSca, albedo
-    real(double) :: newDeltaT, fac
+    real(double), intent(out) :: newDeltaT
+    real(double) :: fac
     real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4, t5, checkLum
     real(double) :: distanceToEdge, photonTagTime
     real(double) :: firstObserverTime, timeToObserver
@@ -778,9 +780,9 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(VECTOR) :: rVec
-    real(double) :: deltaT, t, temp, udens, adot, eta, rho
+    real(double),intent(inout) :: deltaT, temp, udens, adot, eta, rho
     integer :: subcell, i
-    real(double) :: currentTemp, newTemp, newUdens, deltaUdens
+    real(double) :: currentTemp, newTemp, newUdens, deltaUdens, t
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1436,7 +1438,7 @@ contains
 
   subroutine addPhotonToStack(useFileForStack, stack,stackUnit, nStack, rVec, uVec, &
        eps, freq, photonFromSource, photonFromGas, beenScattered, radiativeEquPhoton)
-    type(STACKTYPE) :: stack
+    type(STACKTYPE), intent(inout) :: stack
     logical :: useFileForStack
     integer :: nStack, stackUnit
     real(double) :: eps, freq
