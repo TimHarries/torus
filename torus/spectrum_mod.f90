@@ -154,6 +154,12 @@ module spectrum_mod
       real(double) :: logLamStart, logLamEnd
       integer :: i
 
+
+      if (associated(spectrum%flux)) deallocate(spectrum%flux)
+      if (associated(spectrum%lambda)) deallocate(spectrum%lambda)
+      if (associated(spectrum%dlambda)) deallocate(spectrum%dlambda)
+      if (associated(spectrum%prob)) deallocate(spectrum%prob)
+
       allocate(spectrum%flux(1:nLambda))
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%dlambda(1:nLambda))
@@ -184,6 +190,20 @@ module spectrum_mod
 
       call probSpectrum(spectrum, biasToLyman)
     end subroutine fillSpectrumBB
+
+    subroutine addToSpectrumBB(spectrum, tBB, frac)
+
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: tBB, frac
+      integer :: i
+
+      do i = 1, spectrum%nLambda
+         spectrum%flux(i) = spectrum%flux(i) + frac * pi*bLambda(spectrum%lambda(i), dble(tBB)) * 1.d-8 ! (per cm to per angstrom)
+      enddo
+      where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
+
+      call probSpectrum(spectrum)
+    end subroutine addToSpectrumBB
 
     subroutine readSpectrum(spectrum, filename, ok)
       type(SPECTRUMTYPE) :: spectrum

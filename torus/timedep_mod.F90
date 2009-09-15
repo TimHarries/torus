@@ -66,8 +66,15 @@ contains
     real(double) :: sedFluxScat(nSedWavelength, nTime)
     real(double) :: w1, w2
     real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
+
+
     oldStackFilename = "stack1.dat"
     currentStackFilename  = "stack2.dat"
+#ifdef MPI
+    write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankGlobal,".dat"
+    write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankGlobal,".dat"
+#endif
+
 
     dumpFromNow = 0.d0
     sedFlux = 0.d0
@@ -134,6 +141,7 @@ contains
 
     do while (.true.)
        iter = iter + 1
+       if (myrankGlobal == 0) then
           write(vtkFilename, '(a,i4.4,a)') "iter",iter,".vtk"
           call writeVtkFile(grid, vtkfilename, &
                valueTypeString=(/"rho        ", "temperature", "edens_g    ","edens_s    "/))
@@ -156,6 +164,7 @@ contains
                   outputFlux(i, 1:19)/(sedTime(2:20)-sedTime(1:19))
           enddo
           close(32)
+       endif
 
 
 
@@ -198,7 +207,7 @@ contains
 
        nMonte = photonsPerStep ! min(1000000,photonsPerSecond * deltaT)
 
-       write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime
+       if (myrankGlobal == 0) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
@@ -207,7 +216,7 @@ contains
        currentTime = currentTime + deltaT
        deltaT = newDeltaT
 
-
+       if (myrankGlobal == 0) then
           write(vtkFilename, '(a,i4.4,a)') "sed",iter,".dat"
           open(32, file=vtkFilename, status="unknown", form="formatted")
           do i = 1, nSedWavelength-1
@@ -233,18 +242,19 @@ contains
                   outputFlux(i, iter)/(sedTime(iter+1)-sedTime(iter))
           enddo
           close(32)
-
+       endif
 
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
           iDump = idump + 1
-          write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
-          call writeVtkFile(grid, vtkfilename, &
-               valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
-
-          write(vtkFilename, '(a,i4.4,a)') "output",idump,".grid"
-          call writeAMRgrid(vtkFilename, .false., grid)
-
+          if (myrankGlobal == 0) then
+             write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
+             call writeVtkFile(grid, vtkfilename, &
+                  valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
+             
+             write(vtkFilename, '(a,i4.4,a)') "output",idump,".grid"
+             call writeAMRgrid(vtkFilename, .false., grid)
+          endif
 
 
        endif
@@ -301,12 +311,16 @@ contains
     real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4, t5, checkLum
     real(double) :: distanceToEdge, photonTagTime
     real(double) :: firstObserverTime, timeToObserver
+    real(double) :: tempDouble
     real :: lambda0
     logical :: useFileForStack
     logical :: beenScattered
     logical :: radiativeEquPhoton
     integer :: nEscaped
-
+#ifdef MPI
+    include 'mpif.h'
+    integer :: ierr
+#endif
     firstObserverTime = sedTime(1)
 
     observerDirection = VECTOR(0.d0, 0.d0, 1.d0)
@@ -350,6 +364,11 @@ contains
     sourceLuminosity = SUM(source(1:nSource)%luminosity)
 
     nFromMatter = nMonte
+#ifdef MPI
+    nFromMatter = dble(nFromMatter) / dble(nThreadsGlobal)
+#endif
+
+
     nPhotons = oldStacknStack + nFromMatter
 
     fracSource = 0.5d0
@@ -367,9 +386,11 @@ contains
     nFromSource = fracSource * nFromMatter
     nFromGas = nFromMatter - nFromSource
 
-    write(*,*) "doing loop with ",nphotons, " photons"
-    write(*,*) "source lum ",sourceLuminosity
-    write(*,*) "matter lum ",luminosity
+    if (myrankGlobal == 0) then
+       write(*,*) "doing loop with ",nphotons, " photons"
+       write(*,*) "source lum ",sourceLuminosity
+       write(*,*) "matter lum ",luminosity
+    endif
 
     checkLum = 0.d0
     nEscaped = 0
@@ -547,8 +568,21 @@ contains
        endif
     end do
 
-    write(*,*) "Sanity check for luminosity ", checkLum/deltaT, luminosity+sourceLuminosity
-    write(*,*) nEscaped, " photons escaped."
+
+#ifdef MPI
+    write(*,*) myrankGlobal, " updating grid"
+  call updateGridMPI(grid)
+
+     call MPI_REDUCE(checkLum,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     checkLum = tempDouble
+
+#endif
+
+
+
+     if (myrankGlobal == 0) then
+        write(*,*) "Sanity check for luminosity ", checkLum/deltaT, luminosity+sourceLuminosity
+     endif
 
     if (varyingSource) then
        call calculateADot(grid%octreeRoot, deltaT, currentTime)
@@ -562,18 +596,20 @@ contains
 
     call updateUDens(grid%octreeRoot, deltaT, grid)
 
+    fac = 0.3d0
 
 
     newDeltaT = 1.d30
     call calculateNewDeltaT(grid, grid%octreeRoot, newDeltaT, t1, t2, t3, t4, t5)
-    write(*,*) "Temperature for time controlling cell is ",t1
-    write(*,*) "Udens for time controlling cell is ",t2
-    write(*,*) "adot for time controlling cell is ",t3
-    write(*,*) "eta for time controlling cell is ",t4
-    write(*,*) "rho for time controlling cell is ",t5
-    fac = 0.3d0
-    write(*,*) "cooling time for controlling cell is ",fac*t2/abs(t4-t3)
-    write(*,*) "new delta T ",newDeltaT*fac
+    if (myrankGlobal == 0) then
+       write(*,*) "Temperature for time controlling cell is ",t1
+       write(*,*) "Udens for time controlling cell is ",t2
+       write(*,*) "adot for time controlling cell is ",t3
+       write(*,*) "eta for time controlling cell is ",t4
+       write(*,*) "rho for time controlling cell is ",t5
+       write(*,*) "cooling time for controlling cell is ",fac*t2/abs(t4-t3)
+       write(*,*) "new delta T ",newDeltaT*fac
+    endif
     newDeltaT = newDeltaT  * fac
 
     newdeltaT = min(newDeltaT, deltaTMax)
@@ -1701,7 +1737,7 @@ contains
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
   integer :: nIndex
-  integer :: subcell, i, j , k
+  integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1732,7 +1768,7 @@ contains
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
   integer :: nIndex
-  integer :: subcell, i, j, k
+  integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1749,7 +1785,7 @@ contains
           nIndex = nIndex + 1
           thisOctal%distanceGridAdot(subcell) = distanceGridAdot(nIndex) 
           thisOctal%distanceGridPhotonFromSource(subcell) = distanceGridPhotonFromSource(nIndex)
-          thisOctal%distanceGridPhotonFromGas(subcell) = distanceGridPhotonFromSource(nIndex) 
+          thisOctal%distanceGridPhotonFromGas(subcell) = distanceGridPhotonFromGas(nIndex) 
        endif
     enddo
   end subroutine unpackvalues
@@ -1778,7 +1814,7 @@ contains
 
     nIndex = 0
     call packValues(grid%octreeRoot,nIndex, &
-         distanceGrid, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
 
     allocate(tempDoubleArray(nVoxels))
 
@@ -1787,6 +1823,16 @@ contains
     call MPI_ALLREDUCE(distanceGridAdot,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
     distanceGridAdot = tempDoubleArray 
+
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(distanceGridPhotonFromSource,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    distanceGridPhotonFromSource = tempDoubleArray 
+
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(distanceGridPhotonFromGas,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    distanceGridPhotonFromGas = tempDoubleArray 
 
     deallocate(tempDoubleArray)
      
