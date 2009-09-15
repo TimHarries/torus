@@ -10,7 +10,7 @@ module timedep_mod
   use amr_mod
   use source_mod
   use vtk_mod
-  use lucy_mod
+!  use lucy_mod
   use math_mod
   use gridio_mod
 
@@ -35,6 +35,7 @@ module timedep_mod
 contains
 
   subroutine runTimeDependentRT(grid, source, nSource, nLambda, xArray)
+    use input_variables, only : teff
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -64,6 +65,7 @@ contains
     real(double) :: outputFlux(nSedWavelength, nTime)
     real(double) :: sedFluxScat(nSedWavelength, nTime)
     real(double) :: w1, w2
+    real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
     oldStackFilename = "stack1.dat"
     currentStackFilename  = "stack2.dat"
 
@@ -89,14 +91,14 @@ contains
 
     photonsPerSecond = photonsPerStep / deltaTmin
 
-    deltaTmin = 1.d3
+    deltaTmin = 1.d2
 
     iter = 0
     deltaT = DeltaTmin
 
     call zeroTemperature(grid%octreeRoot)
 
-    varyingSource = .true.
+    varyingSource = .false.
     varyUntilTime = 1.d30
     startVaryTime = 0.d0
 !    call clearDust(grid%octreeRoot)
@@ -160,19 +162,29 @@ contains
        if (varyingSource.and.(currentTime  < varyUntilTime)) then
 
           if (currentTime >= startVaryTime) then
-             source(1)%luminosity = lSol * (1.d0+0.8d0*sin(twoPi*currentTime / luminosityPeriod))
+             
+             sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * teff**4
+             accretionLuminosity = sin(twoPi*currentTime / luminosityPeriod) * sourceLuminosity
+             accretionArea = 1.d-2 * fourPi * (source(1)%radius * 1.d10)**2
+             tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
+             frac = 1.d-2
+             write(*,*) "accretion temp ", tacc
+             call fillSpectrumBB(source(1)%spectrum, dble(teff), 1200.d0, 2.d7, 200)
+             call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
+             call normalizedSpectrum(source(1)%spectrum)
+             source(1)%luminosity = sourceLuminosity + accretionLuminosity
+
+
              photonsPerStep = 100000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
 !             photonsPerSecond = photonsPerStep / deltaT
           else
-             source(1)%luminosity = lSol
-             photonsPerStep = 100000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+             photonsPerStep = 1000000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
 !             photonsPerSecond = photonsPerStep / deltaT
 
           endif
        else
-          source(1)%luminosity = lSol
-          photonsPerStep = max(100000,1000000 * min(1.d0, deltaT/gridCrossingTime))
-          Deltatmax = 1.d10
+          photonsPerStep = max(1000000,5000000 * min(1.d0, deltaT/gridCrossingTime))
+          Deltatmax = 1.d12
           deltaTmin = 1.d3
        endif
 
@@ -561,6 +573,7 @@ contains
     write(*,*) "rho for time controlling cell is ",t5
     fac = 0.3d0
     write(*,*) "cooling time for controlling cell is ",fac*t2/abs(t4-t3)
+    write(*,*) "new delta T ",newDeltaT*fac
     newDeltaT = newDeltaT  * fac
 
     newdeltaT = min(newDeltaT, deltaTMax)
@@ -812,7 +825,7 @@ contains
           if (thisOctal%etaCont(subcell) < thisOctal%aDot(subcell)) then ! heating
 !             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
              currentTemp = temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 7.d0/5.d0)
-             newTemp = currentTemp + 200.d0
+            newTemp = currentTemp + 500.d0
              newUdens =  uDensFunc(newTemp, thisOctal%rho(subcell),  7.d0/5.d0)
              deltaUdens = newUdens - thisOctal%uDens(subcell)
              t = deltaUdens/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
@@ -1679,5 +1692,115 @@ contains
        endif
     endif
   end subroutine timeBinPhoton
+
+  recursive subroutine packvalues(thisOctal,nIndex,&
+       distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: distanceGridAdot(:)
+  real(double) :: distanceGridPhotonFromSource(:)
+  real(double) :: distanceGridPhotonFromGas(:)
+  integer :: nIndex
+  integer :: subcell, i, j , k
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call packvalues(child,nIndex, distanceGridAdot, distanceGridPhotonFromSource, &
+                     distanceGridPhotonFromGas)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          distanceGridAdot(nIndex) = thisOctal%distanceGridAdot(subcell)
+          distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromSource(subcell)
+          distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromGas(subcell)
+
+       endif
+    enddo
+  end subroutine packvalues
+
+  recursive subroutine unpackvalues(thisOctal,nIndex,distanceGridAdot, distanceGridPhotonFromSource, &
+       distanceGridPhotonFromGas)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: distanceGridAdot(:)
+  real(double) :: distanceGridPhotonFromSource(:)
+  real(double) :: distanceGridPhotonFromGas(:)
+  integer :: nIndex
+  integer :: subcell, i, j, k
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unpackvalues(child,nIndex,distanceGridAdot, &
+                     distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          thisOctal%distanceGridAdot(subcell) = distanceGridAdot(nIndex) 
+          thisOctal%distanceGridPhotonFromSource(subcell) = distanceGridPhotonFromSource(nIndex)
+          thisOctal%distanceGridPhotonFromGas(subcell) = distanceGridPhotonFromSource(nIndex) 
+       endif
+    enddo
+  end subroutine unpackvalues
+
+#ifdef MPI
+
+  subroutine updateGridMPI(grid)
+    implicit none
+    include 'mpif.h'
+    type(gridtype) :: grid
+    integer :: nOctals, nVoxels
+    real(double), allocatable :: distanceGridAdot(:)
+    real(double), allocatable :: distanceGridPhotonFromSource(:)
+    real(double), allocatable :: distanceGridPhotonFromGas(:)
+    real(double), allocatable :: tempDoubleArray(:)
+    integer :: ierr, nIndex
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    nOctals = 0
+    nVoxels = 0
+    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+    allocate(distanceGridAdot(1:nVoxels))
+    allocate(distanceGridPhotonFromSource(1:nVoxels))
+    allocate(distanceGridPhotonFromGas(1:nVoxels))
+
+
+    nIndex = 0
+    call packValues(grid%octreeRoot,nIndex, &
+         distanceGrid, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+
+    allocate(tempDoubleArray(nVoxels))
+
+
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(distanceGridAdot,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    distanceGridAdot = tempDoubleArray 
+
+    deallocate(tempDoubleArray)
+     
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    
+    nIndex = 0
+    call unpackValues(grid%octreeRoot,nIndex, &
+         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+
+    deallocate(distanceGridAdot, distanceGridPhotonFromSource,DistanceGridPhotonFromGas)
+
+  end subroutine updateGridMPI
+#endif
+
+
 
 end module timeDep_mod
