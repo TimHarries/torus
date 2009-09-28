@@ -90,6 +90,19 @@ in Section~\ref{section:sph_disc}.
 \section{Circumstellar disc benchmark}
 \label{section:description_of_benchmark}
 
+The accuracy of the SPH method has previously been examined in detail
+(e.g. \cite{price_2008b} and references therein) so we do not attempt
+to benchmark the SPH component of the code here. Radiative transfer in
+a circumstellar disc has been studied in detail by
+\cite{pascucci_2004} and this benchmark is regularly used to test the
+accuracy of the {\small{TORUS}} code. Consequently we can be confident
+in the accuracy of the SPH and raditive transfer codes individually so
+we focus here on the accuracy of the mechansim by which they are
+coupled. Hence the benchmark case presented here is a ``static''
+benchmark in which we represent an analytical density distribution
+with SPH particles and test whether the radiative transfer code can
+calculate accurate results using this SPH density representation.
+
 When constructing validation tests of a numerical method it is often
 valuable to use a simplified test case with well known results. We
 base our SPH disc benchmark on the axisymmetric circumstellar disc of
@@ -306,16 +319,16 @@ $\rho_{\rm{cell}}$ is the density of the cell.
 %
 In a cylindrical polar grid the mass of a cell is given by
 \begin{equation}
-dM_{\rm{cyl}} = \rho_{\rm{cell}} \frac{2 \pi r dr dz}{n_{\rm{azi}}}
+dM_{\rm{cyl}} = \rho_{\rm{cell}} \frac{2 \pi r dr dz}{n_{\rm{az}}}
 \end{equation}
-if there are $n_{\rm{azi}}$ uniform azimuthal cells. If the 
+if there are $n_{\rm{az}}$ uniform azimuthal cells. If the 
 resolution in $r$ and $z$ is the same then we can define 
 \begin{equation}
 dl_{\rm{cyl}} = dr = dz 
 \end{equation}
 which is related to the cell mass and density by
 \begin{equation}
-dl_{\rm{cyl}} = \left( \frac{n_{\rm{azi}} dM_{\rm{cyl}}}{2 \pi r
+dl_{\rm{cyl}} = \left( \frac{n_{\rm{az}} dM_{\rm{cyl}}}{2 \pi r
   \rho_{\rm{cell}}} \right)  ^{1/2}
 \label{eqn:cyl_cell}
 \end{equation}
@@ -323,7 +336,7 @@ If we require the resolution in cylindrical polar $r$ and $z$
 to match the resolution in cartesian $x$, $y$ and $z$ then $dl_{\rm{cyl}} =
 dl_{\rm{cart}}$. From eqn~\ref{eqn:cart_cell} and \ref{eqn:cyl_cell} 
 \begin{equation}
-dM_{\rm{cyl}} = \frac{2 \pi r}{n_{\rm{azi}}} \rho^{1/3} dM_{\rm{cart}}^{2/3}
+dM_{\rm{cyl}} = \frac{2 \pi r}{n_{\rm{az}}} \rho^{1/3} dM_{\rm{cart}}^{2/3}
 \end{equation}
 which describes the required conversion from a mass per cell limit
 suitable for a cartesian grid ($dM_{\rm{cart}}$) to an equivalent mass
@@ -352,8 +365,8 @@ mass is well represented with significantly fewer cells than in a
 cartesian grid. The density contrast condition alone does not
 represent the total mass to within 3\% accuracy even with
 $f_{\rm{split}}=0.1$. Although this condition successfully adds
-enhanced resolution in regions of density contrast needs to be
-combined with a mass per cell limit to ensure a robust total mass
+enhanced resolution in regions of higher density contrast it needs to
+be combined with a mass per cell limit to ensure a robust total mass
 representation.
 
 \section{Comparison of temperature distribution and SEDs with
@@ -605,22 +618,22 @@ was constructed using a maximum mass per cell of
 $3.0\times10^{25}~\rm{g}$ and a density splitting condition of
 $f_{\rm{split}}=0.1$. The density in a cylindrical region around the
 source was reduced to a very low value to ensure that the disc did not
-completely obscure the source. The radius of this region is
-$R_{\rm{gap}}=1.0~\rm{AU}$ which corresponds to the accretion radius
-of the SPH sink particle. Two extra levels of grid refinement were
-added in a box around the central source to ensure that the grid had
-enough resolution to allow the gap around the source to be
-resolved. The first box of extra refinement has size $10^{14}~\rm{cm}$
-with cells no larger than $10^{13}~\rm{cm}$ and the second box has
-size $4\times10^{13}~\rm{cm}$ with cells no larger than
-$4\times10^{12}~\rm{cm}$.  A real circumstellar disc will be truncated
-by the stellar magnetosphere so there is a physical justification for
-enforcing a low density region around the star.
+completely obscure the source. A real circumstellar disc will be
+truncated by the stellar magnetosphere so there is a physical
+justification for enforcing a low density region around the star. The
+radius of this region is $R_{\rm{gap}}=1.0~\rm{AU}$ which corresponds
+to the accretion radius of the SPH sink particle. Two extra levels of
+grid refinement were added in a box around the central source to
+ensure that the grid had enough resolution to allow the gap around the
+source to be resolved. The first box of extra refinement has size
+$10^{14}~\rm{cm}$ with cells no larger than $10^{13}~\rm{cm}$ and the
+second box has size $4\times10^{13}~\rm{cm}$ with cells no larger than
+$4\times10^{12}~\rm{cm}$.
 
 \subsection{Results}
 
 Plots of the disc internal energy are shown in Fig.~\ref{fig:log_u} at
-siz different times during the simulation. Figure~\ref{fig:frame1}
+six different times during the simulation. Figure~\ref{fig:frame1}
 shows the initial state before the radiative transfer is switched on
 when there is a vertically isothermal equation of state. The second
 frame (Fig.~\ref{fig:frame2} is shortly after the raditive transfer
@@ -630,8 +643,8 @@ central star. In Fig.~\ref{fig:frame3} a scale height enhancement is
 present in the disc at a radius of approximately
 $3\times10^{15}~\rm{cm}$ which shadows the region immediately behind
 causing it to cool. Figure~\ref{fig:frame4} shows several such scale
-height enhancements an in each case there is cooling behind the
-enhancement. The scale height fluctations are able to affect the
+height enhancements and in each case there is cooling behind the
+enhancement as the scale height fluctations are able to affect the
 mid-plane temperature due to vertical transport of radiation. In
 Fig.~\ref{fig:frame5} the inner region of the disc has settled and the
 scale height enhancements are seen only in the outer disc and by the
@@ -677,16 +690,15 @@ mid-plane for each radial bin.
 \end{figure}     
 The majority of the surface density profile is well represented by a
 power law and does not change significantly as a result of including
-radiative transfer, except within the central
-region. Figures~\ref{fig:scale_height} and \ref{fig:mid_tem} show that
-the disc is hotter close to the mid-plane, except within a region
-between 10--20 AU of the centre, but has a smaller scale
-height. Figure~\ref{fig:log_u} shows that the vertical temperature
-gradient in the disc is such that temperature increases with height
-out of the mid-plane. Although the disc is hotter when radiative
-transfer is included the vertical temperature gradient tends to reduce
-the pressure gradient which is required for hydrostatic support
-resulting in a smaller scale height. 
+radiative transfer. Figures~\ref{fig:scale_height} and
+\ref{fig:mid_tem} show that the disc is hotter close to the mid-plane,
+except within a region between 10--20 AU of the centre, but has a
+smaller scale height. Figure~\ref{fig:log_u} shows that the vertical
+temperature gradient in the disc is such that temperature increases
+with height out of the mid-plane. Although the disc is hotter when
+radiative transfer is included the vertical temperature gradient tends
+to reduce the pressure gradient which is required for hydrostatic
+support resulting in a smaller scale height.
 
 \section{Conclusions}
 
