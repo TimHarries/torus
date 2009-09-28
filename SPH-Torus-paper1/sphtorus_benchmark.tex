@@ -630,6 +630,21 @@ $10^{14}~\rm{cm}$ with cells no larger than $10^{13}~\rm{cm}$ and the
 second box has size $4\times10^{13}~\rm{cm}$ with cells no larger than
 $4\times10^{12}~\rm{cm}$.
 
+Monte-Carlo radiative transfer calculations can be computationally
+demanding so the calculation was parallelised using MPI (Message
+Passing Interface) libraries. Parallelising code in this way allows
+for parallel computation in both the radiation and hydrodynamics steps
+and can be applied to a shared memory or a distributed memory computer
+architecture. Evolving the disc using both the radiation and
+hydrodynamics codes took a total wall time of 560 hours using 128 MPI
+processes, of which 440 hours was spent in radiation calculations. The
+radiation calculations take approximately 4~times as long as the
+hydrodynamics calculations so the combined code is significantly
+slower than the SPH code alone. However the calculation is still
+feasible and we expect the combined code to be used in applications
+where the increased accuracy of the Monte-Carlo radiation calculation,
+over faster alternatives, is of importance. 
+
 \subsection{Results}
 
 Plots of the disc internal energy are shown in Fig.~\ref{fig:log_u} at
