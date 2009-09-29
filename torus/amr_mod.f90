@@ -15910,9 +15910,8 @@ end function readparameterfrom2dmap
 
   subroutine tauAlongPathFast(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
        xArray, tauArray, distanceToEdge)
-    use input_variables, only : rGap
     type(GRIDTYPE) :: grid
-    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    type(VECTOR) :: rVec, direction, currentPosition
     real, optional,intent(out) :: xArray(:), tauArray(:)
     integer, optional, intent(out) :: nTau
     integer :: iLambda
@@ -15927,7 +15926,6 @@ end function readparameterfrom2dmap
     real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
     logical, optional :: ross
-    logical :: planetGap
     kappaAbs = 0.d0; kappaSca = 0.d0
     tau = 0.d0
     currentPosition = rVec
