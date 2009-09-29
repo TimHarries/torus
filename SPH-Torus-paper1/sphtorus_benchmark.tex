@@ -3,6 +3,29 @@
 \usepackage{graphicx}
 \usepackage{subfigure}
 
+\def\aap{{ A\&A}}
+\def\AaA{{ A\&A}}
+\def\aaps{{ A\&AS}}
+\def\AJ{{AJ}}
+\def\aj{{AJ}}
+\def\ApJ{{ApJ}}
+\def\apj{{ApJ}}
+\def\apjl{{ApJL}}
+\def\ApJL{{ApJL}}
+\def\ApJSupp{{ApJS}}
+\def\MN{{MNRAS}}
+\def\mnras{{MNRAS}}
+\def\pasj{{PASJ}}
+\def\nat{Nature}
+\def\ARAA{{ARA\&A}}
+\def\Obs{{ Observatory}}
+\def\PTRS{{Phil. Trans. Roy. Soc.}}
+\def\azh{{Astronomicheskii Zhurnal}}
+\def\apjs{{ApJS}}
+\def\araa{{ARA\&A}}
+\def\apss{{Ap\&SS}}
+
+
 \begin{document}
 
 \title{Modelling circumstellar discs with 3D radiation hydrodynamics}
@@ -27,11 +50,11 @@ School of Physics, University of Exeter, Stocker Road, Exeter EX4
   critically on both the grid and SPH resolution. The code is then
   used to model a circumstellar disc around a T-Tauri star. As the
   disc adjusts towards equilibrium vertical motions in the disc are
-  induced resulting in scale height enhancements which intecept
+  induced resulting in scale height enhancements which intercept
   radiation from the central star. Vertical transport of radiation
   enables these perturbations to influence the mid-plane temperature
   of the disc. The vertical motions decay over time and the disc
-  ultimately reaches a state of simulatanous hydrostatic and radiative
+  ultimately reaches a state of simultaneous hydrostatic and radiative
   equilibrium.
 
 \end{abstract}
@@ -77,7 +100,7 @@ Accurately coupling the radiative transfer component to the SPH
 component requires an effective transformation from the Lagrangian
 particle description of SPH to the Eulerian grid description of an AMR
 grid. The procedure used for this transformation is tested using a
-cicumstellar disc benchmark (see
+circumstellar disc benchmark (see
 Sections~\ref{section:description_of_benchmark}
 and~\ref{section:grid_generation}). The spectral energy distribution
 and temperature distribution of the benchmark disc are examined in
@@ -92,12 +115,11 @@ in Section~\ref{section:sph_disc}.
 
 The accuracy of the SPH method has previously been examined in detail
 (e.g. \cite{price_2008b} and references therein) so we do not attempt
-to benchmark the SPH component of the code here. Radiative transfer in
-a circumstellar disc has been studied in detail by
-\cite{pascucci_2004} and this benchmark is regularly used to test the
-accuracy of the {\small{TORUS}} code. Consequently we can be confident
-in the accuracy of the SPH and raditive transfer codes individually so
-we focus here on the accuracy of the mechansim by which they are
+to benchmark the SPH component of the code here. Likewise the  {\small{TORUS}}
+radiative transfer code has also been benchmarked elsewhere
+\citep{pinte_2009}. Consequently we can be confident
+in the accuracy of the SPH and radiative transfer codes individually so
+we focus here on the accuracy of the mechanism by which they are
 coupled. Hence the benchmark case presented here is a ``static''
 benchmark in which we represent an analytical density distribution
 with SPH particles and test whether the radiative transfer code can
@@ -164,7 +186,7 @@ Section~\ref{section:grid_generation}).
 An important step in setting up grid-based radiative transfer using a
 density distribution derived from SPH particles is determining an
 effective transformation from the Lagrangian particle description to
-the Eulerian grid desciption.  The representation on grid should
+the Eulerian grid description.  The representation on grid should
 preserve important properties of the SPH model (e.g. total mass) but
 also needs to take account of the possibility that a radiative
 transfer calculation requires the highest resolution in different
@@ -190,11 +212,9 @@ the density is normalised by the sum of the kernel weights, to ensure a
 smooth density distribution within the interior of the disc. If the
 sum of the weights is less than 0.3 then the density is not normalised
 by the sum of the weights, in order to avoid numerical effects at the
-free surface, as described by \cite{price_2007}. 
-
-%The method used to
-%construct an AMR grid from SPH particles is described in more detail
-%in \cite{rundle_2009}.
+free surface, as described by \cite{price_2007}. For more details of
+the algorithm used to generate the AMR grid from SPH particles see
+\cite{rundle_2009}. 
 
 \subsection{Cartesian grid generation tests}
 
@@ -261,7 +281,7 @@ too large.
   \subfigure[Density contrast condition and $10^6$ particles]{\includegraphics[scale=0.3]{figures/1e6_set2}}
   \subfigure[Density contrast condition and $10^7$ particles]{\includegraphics[scale=0.3]{figures/1e7_set2}}
   \caption{Number of octals (solid line) and percentage mass error
-    (dashed line) for cartesian AMR grids generated using different grid
+    (dashed line) for Cartesian AMR grids generated using different grid
     splitting methods and different numbers of particles. }
   \label{fig:grid_tests}
 \end{figure*}
@@ -304,7 +324,7 @@ used but it needs to be modified to take into account the increase in
 cell volume as cylindrical polar radius increases, for fixed values of
 $dr$ and $dz$.  
 %
-Consider a cartesian grid with cubic volume elements and let
+Consider a Cartesian grid with cubic volume elements and let
 \begin{equation}
 dl_{\rm{cart}} = dx = dy = dz 
 \end{equation}
@@ -314,7 +334,7 @@ dl_{\rm{cart}} = \left( \frac{dM_{\rm{cart}}}{\rho_{\rm{cell}}} \right)
 ^{1/3}
 \label{eqn:cart_cell}
 \end{equation}
-where $dM_{\rm{cart}}$ is the mass of a cell in the cartesian grid and
+where $dM_{\rm{cart}}$ is the mass of a cell in the Cartesian grid and
 $\rho_{\rm{cell}}$ is the density of the cell. 
 %
 In a cylindrical polar grid the mass of a cell is given by
@@ -333,13 +353,13 @@ dl_{\rm{cyl}} = \left( \frac{n_{\rm{az}} dM_{\rm{cyl}}}{2 \pi r
 \label{eqn:cyl_cell}
 \end{equation}
 If we require the resolution in cylindrical polar $r$ and $z$
-to match the resolution in cartesian $x$, $y$ and $z$ then $dl_{\rm{cyl}} =
+to match the resolution in Cartesian $x$, $y$ and $z$ then $dl_{\rm{cyl}} =
 dl_{\rm{cart}}$. From eqn~\ref{eqn:cart_cell} and \ref{eqn:cyl_cell} 
 \begin{equation}
 dM_{\rm{cyl}} = \frac{2 \pi r}{n_{\rm{az}}} \rho^{1/3} dM_{\rm{cart}}^{2/3}
 \end{equation}
 which describes the required conversion from a mass per cell limit
-suitable for a cartesian grid ($dM_{\rm{cart}}$) to an equivalent mass
+suitable for a Cartesian grid ($dM_{\rm{cart}}$) to an equivalent mass
 per cell limit suitable for a cylindrical polar grid ($dM_{\rm{cyl}}$). 
 
 The grid generation tests were run using a cylindrical polar geometry
@@ -362,7 +382,7 @@ Using a cylindrical polar geometry results in a significantly reduced
 number of octals in the AMR grid but with larger mass errors. Provided
 the mass per cell limit is no more than $10^{27}\rm{g}$ then the total
 mass is well represented with significantly fewer cells than in a
-cartesian grid. The density contrast condition alone does not
+Cartesian grid. The density contrast condition alone does not
 represent the total mass to within 3\% accuracy even with
 $f_{\rm{split}}=0.1$. Although this condition successfully adds
 enhanced resolution in regions of higher density contrast it needs to
@@ -374,7 +394,7 @@ representation.
 
 \label{section:seds}
 
-Having investigated the procdure for setting up the radiative transfer
+Having investigated the procedure for setting up the radiative transfer
 grid we now proceed to studying the accuracy of the results from the
 radiative transfer calculation. This was carried out by comparing
 temperature distributions and spectral energy distributions (SEDs)
@@ -385,7 +405,7 @@ quantity and are a stringent test of the accuracy of the radiative
 transfer calculation. 
 
 The disc was initially modelled using $10^5$ SPH particles with an AMR
-grid contructed from a mass per cell limit of $5\times10^{26}$g.  The
+grid constructed from a mass per cell limit of $5\times10^{26}$g.  The
 mass per cell limit was chosen in preference to the density contrast
 limit to give the highest resolution near the central region of the
 disc, which we expect to be most important for determining the
@@ -604,16 +624,16 @@ transfer code until the next radiation time step. The temperatures
 calculated by the radiative transfer code are equilibrium
 temperatures, as it is assumed that the time scale for radiative
 equilibrium is short compared to the dynamical time scale of the disc
-(i.e. the ``prompt escape'' regime decribed by \cite{nayakshin_2009}).
+(i.e. the ``prompt escape'' regime described by \cite{nayakshin_2009}).
 A radiative transfer calculation is performed after every four
-hydrodynamics time steps (equivalent to every 2.4 years). The freqency
+hydrodynamics time steps (equivalent to every 2.4 years). The frequency
 with which the radiative transfer is calculated is determined by the
 sound crossing time in the inner regions of the disc as this is the
 time scale over which the scale height in this region will vary and
 effect the transfer of radiation into the outer parts of the disc.
 
 A cylindrical polar grid, with adaptive $r$ and $z$ cells and 16
-azimuthal cells, was used for the raditive transfer step. The AMR grid
+azimuthal cells, was used for the radiative transfer step. The AMR grid
 was constructed using a maximum mass per cell of
 $3.0\times10^{25}~\rm{g}$ and a density splitting condition of
 $f_{\rm{split}}=0.1$. The density in a cylindrical region around the
@@ -651,7 +671,7 @@ Plots of the disc internal energy are shown in Fig.~\ref{fig:log_u} at
 six different times during the simulation. Figure~\ref{fig:frame1}
 shows the initial state before the radiative transfer is switched on
 when there is a vertically isothermal equation of state. The second
-frame (Fig.~\ref{fig:frame2} is shortly after the raditive transfer
+frame (Fig.~\ref{fig:frame2} is shortly after the radiative transfer
 has been switched on. The inner disc has collapsed and there is
 heating seen in parts of the disc exposed to radiation from the
 central star. In Fig.~\ref{fig:frame3} a scale height enhancement is
@@ -659,7 +679,7 @@ present in the disc at a radius of approximately
 $3\times10^{15}~\rm{cm}$ which shadows the region immediately behind
 causing it to cool. Figure~\ref{fig:frame4} shows several such scale
 height enhancements and in each case there is cooling behind the
-enhancement as the scale height fluctations are able to affect the
+enhancement as the scale height fluctuations are able to affect the
 mid-plane temperature due to vertical transport of radiation. In
 Fig.~\ref{fig:frame5} the inner region of the disc has settled and the
 scale height enhancements are seen only in the outer disc and by the
@@ -672,10 +692,23 @@ in hydrostatic and radiative equilibrium.
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_DSC7363}\label{fig:frame4}}
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_DSC9363}\label{fig:frame5}}
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_run2_DSC1024}\label{fig:frame6}}
-  \caption{Particle plots showing internal energy in cyclindrical
+  \caption{Particle plots showing internal energy in cylindrical
     polar co-ordinates. Axis units are cm.}
   \label{fig:log_u}
 \end{figure*}
+
+Transient oscillations, as the disc adjusts towards equilibrium, are
+observed whether radiative transfer is included or not. They are
+vertical motions which decay more rapidly at smaller radii and hence
+give the appearance of propagating outwards, even though the motion is
+vertical. Other disc models using radiation hydrodynamics have found
+oscillatory solutions with inwards propagating waves
+(e.g. \cite{min_2009}) which are fundamentally different to the
+transient effects seen in this case. However it should be noted that
+\cite{min_2009} only found an oscillatory solution in their most
+optically thick disc, which is significantly more massive than our
+model disc, and may represent a different regime to that considered
+here. 
 
 The surface density of the disc is shown in Fig.~\ref{fig:sigma}, the
 scale height is shown in Fig.~\ref{fig:scale_height} and the radial
@@ -740,7 +773,7 @@ particular challenge for a SPH code which uses equal mass particles
 but is achievable with a large number of particles. Accurately
 modelling the SED using this method seems to be considerably more
 demanding than accurately representing the temperature structure
-within the disc and temperature errors can be reduced to a managable
+within the disc and temperature errors can be reduced to a manageable
 level with a realistic number of SPH particles in the disc. 
 
 The combined SPH-radiative transfer code was able to evolve a
@@ -752,7 +785,7 @@ decays more rapidly at smaller radii and is seen whether radiative
 transfer is included or not. These are not the same as the
 instabilities seen in other radiation hydrodynamics disc models
 \citep{min_2009}. One consequence of these fluctuations is that they
-can intecept radiation from the central star which can then be
+can intercept radiation from the central star which can then be
 vertically transported into the mid-plane of the disc hence even
 thought the fluctuations are of a small amplitude they exert an
 influence on the mid-plane temperature.
