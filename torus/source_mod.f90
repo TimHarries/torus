@@ -155,7 +155,7 @@ module source_mod
       real(double) :: lam, flux
       integer :: i !, j
 
-      tot = 0
+      tot = 0.d0
       do i = 1, nSource
          if (lam > source(i)%spectrum%lambda(source(i)%spectrum%nLambda)) then
            tot = tot + 1.d-200

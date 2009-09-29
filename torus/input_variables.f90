@@ -61,6 +61,7 @@ module input_variables
   ! If T, the first scattering is forced in torusMain. (Useful for optically thin case.)
   logical :: forceFirstScat  
   logical :: doIntensivePeelOff
+  logical :: fastIntegrate
   real(double) :: etaViscosity
   logical :: opticallyThickContinuum
   logical :: sed, jansky, SIsed, inArcsec, dustySED

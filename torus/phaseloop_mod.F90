@@ -28,7 +28,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
        lambda_eff_filters, info_filter_set, make_filter_set
   use grid_mod, only: fillgridbipolar, fillgridcollide, fillgriddustblob, fillgridellipse, fillgridraman, &
        fillgridshell,fillgridspheriod, fillgridspiral, fillgridstar, fillgridstateq, fillgridwr137, getIndices 
-  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues
+  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues, tauAlongPathFast
   use path_integral, only: integratePath, test_optical_depth
   use stateq_mod, only: amrStateq
   use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
@@ -233,7 +233,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(len=80) :: originalOutFile, filename
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   character(len=80) :: specfile, obsfluxfile
-
+  real(double) :: finalTau
   logical :: ok
   type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
   integer :: sourceSubcell, currentSubcell, tempSubcell
@@ -1310,6 +1310,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      endif
 
 
+     call locate(grid%lamArray, nLambda, 1.e5, iLambdaPhoton)
+     if (doTuning) call tune(6,"Calculate bias on tau")
+     call setBiasOnTau(grid, iLambdaPhoton)
+     if (doTuning) call tune(6,"Calculate bias on tau")
+
+
+     if (doTuning) call tune(6, "Photon Loop") ! Start a stop watch
+
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
         if (mie) then
@@ -1318,9 +1326,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, grid%lamArray, iLambdaPhoton)
            
-           if (doTuning) call tune(6,"Calculate bias on tau")
-           call setBiasOnTau(grid, iLambdaPhoton)
-           if (doTuning) call tune(6,"Calculate bias on tau")
+!           if (doTuning) call tune(6,"Calculate bias on tau")
+!           call setBiasOnTau(grid, iLambdaPhoton)
+!           if (doTuning) call tune(6,"Calculate bias on tau")
 
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
@@ -1350,13 +1358,15 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            weightDust = 1.
            weightPhoto = 1.
 
-           if (chanceDust > 0.99) then
-              probDust = 0.9
+           if (chanceDust > 0.8) then
+              probDust = 0.8
               weightDust = chanceDust / probDust
               weightPhoto = (1. - chanceDust) / (1. - probDust)
            endif
-
-
+!           if (myrankglobal == 0) write(*,*) "wave ", grid%lamArray(iLambdaPhoton)
+!           if (myrankglobal == 0) write(*,*) "chance dust ",chanceDust
+!           if (myrankglobal == 0) write(*,*) "prob dust ",probDust
+!           if (myrankglobal == 0) write(88,*) grid%lamArray(iLambdaPhoton),lcore
            energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
 !           if (writeoutput) write(*,*) "WeightDust",weightDust
 !           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
@@ -1365,7 +1375,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         endif
 
-        if (doTuning) call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
         ! default inner loop indices
         iInner_beg = 1
@@ -1593,18 +1602,23 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
               ! find optical depths to observer
-              call integratePath(gridUsesAMR, VoigtProf, &
-                         thisPhoton%lambda, lamLine, &
-                         thisPhoton%velocity, &
-                         thisPhoton%position, outVec, grid, &
-                         lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
-                         escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
-                         .false., nUpper, nLower, 0., 0., 0., junk,&
-                         sampleFreq,intPathError, &
-                         useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
-                         startOctal=sourceOctal, startSubcell=sourceSubcell)
-
+              if (.not.fastIntegrate) then
+                 call integratePath(gridUsesAMR, VoigtProf, &
+                      thisPhoton%lambda, lamLine, &
+                      thisPhoton%velocity, &
+                      thisPhoton%position, outVec, grid, &
+                      lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
+                      escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+                      nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
+                      .false., nUpper, nLower, 0., 0., 0., junk,&
+                      sampleFreq,intPathError, &
+                      useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
+                      startOctal=sourceOctal, startSubcell=sourceSubcell)
+              else
+                 
+                 call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, taumax = 20.d0, &
+                      startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
+              endif
 !              octVec = thisPhoton%position
 !              CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
 !              write(*,*) "Optical depth to observer: ",tauExt(ntau),thisOctal%biascont3d(subcell)
@@ -1852,20 +1866,22 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
 
-
-           call integratePath(gridUsesAMR, VoigtProf, &
-              thisPhoton%lambda, lamLine, &
-              thisPhoton%velocity, &
-              thisPhoton%position, &
-              thisPhoton%direction, grid, &
-              lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
-              escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-              nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
-              .false., nUpper, nLower, 0., 0., 0., &
-              junk,sampleFreq,intPathError, &
-              useInterp, grid%Rstar1, coolStarPosition, nSource, source, startOctal=sourceOctal, startSubcell=sourceSubcell)
-
-
+           if (.not.fastIntegrate) then
+              call integratePath(gridUsesAMR, VoigtProf, &
+                   thisPhoton%lambda, lamLine, &
+                   thisPhoton%velocity, &
+                   thisPhoton%position, &
+                   thisPhoton%direction, grid, &
+                   lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
+                   escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+                   nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
+                   .false., nUpper, nLower, 0., 0., 0., &
+                   junk,sampleFreq,intPathError, &
+                   useInterp, grid%Rstar1, coolStarPosition, nSource, source, startOctal=sourceOctal, startSubcell=sourceSubcell)
+           else
+              call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, thisPhoton%direction, finaltau,&
+                   startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
+           endif
               if (intPathError == -10) then 
                  tooFewSamples = tooFewSamples + 1  
                  goto 999 
@@ -2163,17 +2179,22 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                  if (doRaman) redRegion = .true.
 
-                 call integratePath(gridUsesAMR, VoigtProf, &
-                      obsPhoton%lambda, lamLine, &
-                      obsPhoton%velocity, &
-                      obsPhoton%position, obsPhoton%direction, grid, &
-                      lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
-                      escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
-                      nLambda, contTau, hitCore, &
-                      thinLine, lineResAbs, redRegion, &
-                      .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
-                      useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
-                      startOctal=currentOctal, startSubcell=currentSubcell)                 
+                 if (.not.fastIntegrate) then
+                    call integratePath(gridUsesAMR, VoigtProf, &
+                         obsPhoton%lambda, lamLine, &
+                         obsPhoton%velocity, &
+                         obsPhoton%position, obsPhoton%direction, grid, &
+                         lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
+                         escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
+                         nLambda, contTau, hitCore, &
+                         thinLine, lineResAbs, redRegion, &
+                         .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
+                         useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
+                         startOctal=currentOctal, startSubcell=currentSubcell)                 
+                 else
+                    call tauAlongPathFast(ilambdaPhoton, grid,obsPhoton%position, obsPhoton%direction, finalTau,&
+                         startOctal = currentOctal, startSubcell=currentSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
+                 endif
 
                  if (intPathError == -10) then 
                     tooFewSamples = tooFewSamples + 1  
@@ -2412,6 +2433,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        currentOctal, currentSubcell)
                  thisPhoton = outPhoton
 
+                 if (.not.fastIntegrate) then
                  call integratePath(gridUsesAMR, VoigtProf, &
                             thisPhoton%lambda, lamLine, &
                             thisPhoton%velocity, thisPhoton%position, &
@@ -2423,6 +2445,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                             0., 0., junk,sampleFreq,intPathError, &
                             useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
                             startOctal=currentOctal, startSubcell=currentSubcell)
+                 else
+                    call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, thisPhoton%direction, finalTau,&
+                         startOctal = currentOctal, startSubcell=currentSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
+                 endif
 
 
                  if (intPathError == -10) then 
@@ -2618,13 +2644,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         call torus_mpi_barrier
 
-        if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
 !        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
 
 
 
      end do outerPhotonLoop ! outer photon loop
+
+     if (doTuning) call tune(6, "Photon Loop") ! Start a stop watch
 
      if (doTuning) call tune(6, "All Photon Loops")  ! Stop a stopwatch
 

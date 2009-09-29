@@ -15908,6 +15908,72 @@ end function readparameterfrom2dmap
     end do
   end subroutine tauAlongPath
 
+  subroutine tauAlongPathFast(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
+       xArray, tauArray, distanceToEdge)
+    use input_variables, only : rGap
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    real, optional,intent(out) :: xArray(:), tauArray(:)
+    integer, optional, intent(out) :: nTau
+    integer :: iLambda
+    real(double), intent(out) :: tau
+    real(double), optional, intent(out) :: distanceToEdge
+    real(double) :: distToNextCell
+    real(double), optional :: tauMax
+    type(OCTAL), pointer :: thisOctal, sOctal
+    type(OCTAL), pointer, optional :: startOctal
+    integer, optional :: startSubcell
+    real(double) :: fudgeFac = 1.d-1
+    real(double) :: kappaSca, kappaAbs, kappaExt
+    integer :: subcell
+    logical, optional :: ross
+    logical :: planetGap
+    kappaAbs = 0.d0; kappaSca = 0.d0
+    tau = 0.d0
+    currentPosition = rVec
+    if (PRESENT(nTau)) then
+       xArray = 0.d0
+       tauArray = 0.d0
+       ntau = 1
+    endif
+
+    if (PRESENT(startOctal)) then
+       thisOctal => startOctal
+       subcell = startSubcell
+    else
+       CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    endif
+
+    if (PRESENT(distanceToEdge)) distanceToEdge = 0.d0
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+       if (.not.PRESENT(ross)) then
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          kappaExt = kappaAbs + kappaSca
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt)
+          kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
+       endif
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+       
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       
+
+       tau = tau + distToNextCell*kappaExt
+       if (PRESENT(nTau)) then
+          nTau = nTau + 1
+          xArray(nTau) = xArray(nTau-1) + distToNextCell
+          tauArray(nTau) = tau
+       endif
+       if (PRESENT(distanceToEdge)) distanceToEdge = distanceToEdge + distToNextCell
+       if (PRESENT(tauMax)) then
+          if (tau > tauMax) exit
+       endif
+    end do
+  end subroutine tauAlongPathFast
+
   subroutine tauAlongPath2(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec

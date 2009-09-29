@@ -277,6 +277,7 @@ program torus
 
   hydrodynamics = .false.
   storeScattered = .false.
+  fastIntegrate = .false.
 
   ! get the model parameters
 

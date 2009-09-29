@@ -12,6 +12,7 @@ module lucy_mod
   use timing, only: tune
   use vtk_mod, only: writeVtkFile
   use mpi_global_mod, only: myRankGlobal
+  use gridio_mod
   implicit none
 
 #ifdef USEMKL
@@ -967,7 +968,7 @@ contains
        !    !
 
 
-       !    if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+       if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 
 
 

@@ -10,7 +10,7 @@ module timedep_mod
   use amr_mod
   use source_mod
   use vtk_mod
-!  use lucy_mod
+  use lucy_mod, only : setbiasontau
   use math_mod
   use gridio_mod
 
@@ -42,7 +42,7 @@ contains
     integer :: nLambda
     integer :: nStack
     real :: xArray(:)
-    integer :: iter
+    integer :: iter, itime
     type(STACKTYPE) :: oldStack
     real(double) :: deltaT, currentTime, deltaTmax, deltaTmin, varyUntilTime, startVaryTime
     real(double) :: newDeltaT
@@ -51,21 +51,35 @@ contains
     integer :: iDump
     real(double) :: tDump, nextDumpTime, dumpFromNow
     real(double) :: photonsPerSecond
+    real(double) :: observerDistance 
     logical :: dumpNow
     character(len=80) :: oldStackFilename, currentStackFilename
     real(double) :: luminosityPeriod
     logical :: varyingSource
     real(double) :: photonsPerStep
     real(double) :: gridCrossingTime
-    integer, parameter :: nSedWavelength = 100, nTime = 600
+    integer, parameter :: nSedWavelength = 100, nTime = 1000
     real(double) :: sedTime(nTime)
     integer :: i
     real(double) :: sedWavelength(nSedWavelength)
-    real(double) :: sedFlux(nSedWavelength, nTime)
     real(double) :: outputFlux(nSedWavelength, nTime)
+    real(double) :: outputFluxScat(nSedWavelength, nTime)
+    real(double) :: sedFlux(nSedWavelength, nTime)
     real(double) :: sedFluxScat(nSedWavelength, nTime)
+    real(double) :: sedFluxStep(nSedWavelength, nTime)
+    real(double) :: sedFluxScatStep(nSedWavelength, nTime)
     real(double) :: w1, w2
     real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
+    real(double) :: inc, endTime
+    type(VECTOR) :: observerDirection, observerposition
+    logical :: lastTime, ok
+    logical :: seedRun
+
+    seedRun = .false.
+    inc = 60.d0 * degToRad
+    observerDistance = 140.d0 * pcToCm
+    observerDirection = VECTOR(sin(inc), 0.d0, cos(inc))
+    observerPosition = observerDistance * observerDirection
 
 
     oldStackFilename = "stack1.dat"
@@ -73,6 +87,7 @@ contains
 #ifdef MPI
     write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankGlobal,".dat"
     write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankGlobal,".dat"
+    call init_random_seed()
 #endif
 
 
@@ -88,9 +103,9 @@ contains
 
 
     nStack = 0
-    tDump = 1.d8
-    deltaTmin = 1.d3
-    Deltatmax = 1.d8
+    tDump = 1.d9
+    deltaTmin = 1.d9
+    Deltatmax = 1.d9
     gridCrossingTime = grid%octreeRoot%subcellSize*1.d10/cSpeed
     nMonte = 1000000
 
@@ -98,15 +113,16 @@ contains
 
     photonsPerSecond = photonsPerStep / deltaTmin
 
-    deltaTmin = 1.d2
+    deltaTmin = 1.d9
 
     iter = 0
     deltaT = DeltaTmin
 
     call zeroTemperature(grid%octreeRoot)
 
-    varyingSource = .false.
+    varyingSource = .true.
     varyUntilTime = 1.d30
+    endTime = 1.d30
     startVaryTime = 0.d0
 !    call clearDust(grid%octreeRoot)
 
@@ -115,18 +131,26 @@ contains
     iDump = 0
     nextDumpTime = currentTime + tDump
 
-
+!    call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+!    call readAMRgrid("output.safe", .false., grid)
+!    call allocateMemoryForTimeDep(grid%octreeRoot)
     if (varyingSource) then
        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
        call readAMRgrid("output.safe", .false., grid)
-
+       call allocateMemoryForTimeDep(grid%octreeRoot)
+       call calculateUdensFromTemperature(grid%octreeRoot)
+       i = findIlambda(1.e5, xArray, nLambda, ok)
+       call setBiasOnTau(grid, i)
        luminosityPeriod = 3600.d0
-       varyUntilTime = 30.d0 * luminosityPeriod
-       startVaryTime = 0.d0 !2.d0 * luminosityPeriod
-       deltaTMax = luminosityPeriod /20.d0
-       deltaTMin = luminosityPeriod /20.d0
+       varyUntilTime = 10.d0 * luminosityPeriod
+       startVaryTime = 0.d0
+       seedRun = .true.
+      
+       deltaTMax = (varyUntilTime-startVaryTime)/dble(nTime)
+       deltaTMin = deltaTmax
        tDump = deltaTmax
-       dumpFromNow =  grid%octreeRoot%subcellSize*1.d10/cSpeed 
+       dumpFromNow =  observerDistance/cSpeed
+       endTime  = varyUntilTime
        nextDumpTime = dumpFromNow
        deltaT = deltaTmax
        do i = 1, nTime
@@ -137,33 +161,20 @@ contains
 
 
 
+    lastTime = .false.
 
-
-    do while (.true.)
+    do while (currentTime < varyUntilTime)
        iter = iter + 1
        if (myrankGlobal == 0) then
-          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".vtk"
-          call writeVtkFile(grid, vtkfilename, &
-               valueTypeString=(/"rho        ", "temperature", "edens_g    ","edens_s    "/))
-          write(vtkFilename, '(a,i4.4,a)') "temperature",iter,".dat"
-          call writeValues(vtkFilename, grid, currentTime)
+!          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".vtk"
+!          call writeVtkFile(grid, vtkfilename, &
+!               valueTypeString=(/"rho        ", "temperature", "edens_g    ","edens_s    ", "bias     "/))
+!          write(vtkFilename, '(a,i4.4,a)') "temperature",iter,".dat"
+!          call writeValues(vtkFilename, grid, currentTime)
+!
+!          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".grid"
+!          call writeAMRgrid(vtkFilename, .false., grid)
 
-          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".grid"
-          call writeAMRgrid(vtkFilename, .false., grid)
-
-
-          write(vtkFilename, '(a)') "sed.dat"
-          open(32, file=vtkFilename, status="unknown", form="formatted")
-          do i = 1, nSedWavelength-1
-             outputFlux(i,1:nTime) = 0.5d0*(sedWavelength(i)+sedWavelength(i+1))*sedFlux(i,1:nTime) / &
-                  (sedWavelength(i+1)-sedWavelength(i))
-          enddo
-
-          do i = 1, nSedWavelength-1
-             write(32,'(1p20e12.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1))/1.d4, &
-                  outputFlux(i, 1:19)/(sedTime(2:20)-sedTime(1:19))
-          enddo
-          close(32)
        endif
 
 
@@ -173,10 +184,14 @@ contains
           if (currentTime >= startVaryTime) then
              
              sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * teff**4
-             accretionLuminosity = sin(twoPi*currentTime / luminosityPeriod) * sourceLuminosity
-             accretionArea = 1.d-2 * fourPi * (source(1)%radius * 1.d10)**2
+             if (.not.seedRun) then
+                accretionLuminosity = sourceLuminosity * (1.d0+cos(pi+twoPi*currentTime/luminosityPeriod))/2.d0
+             else
+                accretionLuminosity = 0.d0
+             endif
+             accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
              tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
-             frac = 1.d-2
+             frac = 5.d-2
              write(*,*) "accretion temp ", tacc
              call fillSpectrumBB(source(1)%spectrum, dble(teff), 1200.d0, 2.d7, 200)
              call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
@@ -184,7 +199,7 @@ contains
              source(1)%luminosity = sourceLuminosity + accretionLuminosity
 
 
-             photonsPerStep = 100000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+             photonsPerStep = 1000000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
 !             photonsPerSecond = photonsPerStep / deltaT
           else
              photonsPerStep = 1000000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
@@ -192,9 +207,9 @@ contains
 
           endif
        else
-          photonsPerStep = max(1000000,5000000 * min(1.d0, deltaT/gridCrossingTime))
+          photonsPerStep = max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
           Deltatmax = 1.d12
-          deltaTmin = 1.d3
+          deltaTmin = 1.d9
        endif
 
        dumpNow = .false.
@@ -205,56 +220,90 @@ contains
        endif
 
 
+       if (varyingSource.and.seedRun) then
+          photonsPerStep = 10000000
+          deltaT = 1.e10
+       endif
+
+
        nMonte = photonsPerStep ! min(1000000,photonsPerSecond * deltaT)
 
-       if (myrankGlobal == 0) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime
+       sedFluxStep  = 0.d0
+       sedFluxScatStep = 0.d0
+       if (myrankGlobal == 0) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime,nMonte
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
-            nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow)
+            nSedWavelength, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
+            observerPosition, observerDirection, lastTime, seedRun)
+
+       sedFlux  = sedFlux + sedFluxStep
+       sedFluxScat = sedFluxScat + sedFluxScatStep
 
        currentTime = currentTime + deltaT
+
+       if (seedRun) then
+          seedRun = .false.
+          currentTime = 0.d0
+
+
+          do iTime = 1, nTime-1
+             sedFlux(1:nSedWavelength, itime) = (sedFlux(1:nSedWavelength, itime) / deltaT) &
+                  * (sedTime(itime+1)-sedTime(itime))
+             sedFluxScat(1:nSedWavelength, itime) = (sedFluxScat(1:nSedWavelength, itime) / deltaT) &
+                  * (sedTime(itime+1)-sedTime(itime))
+          enddo
+
+
+       endif
+
        deltaT = newDeltaT
 
+
        if (myrankGlobal == 0) then
-          write(vtkFilename, '(a,i4.4,a)') "sed",iter,".dat"
-          open(32, file=vtkFilename, status="unknown", form="formatted")
-          do i = 1, nSedWavelength-1
-             outputFlux(i,1:nTime) = 0.5d0*(sedWavelength(i)+sedWavelength(i+1))*sedFlux(i,1:nTime) / &
-                  (sedWavelength(i+1)-sedWavelength(i))
-          enddo
+             do i = 1, nSedWavelength-1
+                outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
+                     (sedWavelength(i+1)-sedWavelength(i))
+             enddo
 
-          do i = 1, nSedWavelength-1
-             write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1))/1.d4, &
-                  outputFlux(i, iter)/(sedTime(iter+1)-sedTime(iter))
-          enddo
-          close(32)
+             do i = 1, nSedWavelength-1
+                outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
+                     (sedWavelength(i+1)-sedWavelength(i))
+             enddo
 
-          write(vtkFilename, '(a,i4.4,a)') "scat",iter,".dat"
-          open(32, file=vtkFilename, status="unknown", form="formatted")
-          do i = 1, nSedWavelength-1
-             outputFlux(i,1:nTime) = 0.5d0*(sedWavelength(i)+sedWavelength(i+1))*sedFluxScat(i,1:nTime) / &
-                  (sedWavelength(i+1)-sedWavelength(i))
+          do itime = 1, nTime-1
+             write(vtkFilename, '(a,i4.4,a)') "sed",itime,".dat"
+             open(32, file=vtkFilename, status="unknown", form="formatted")
+             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+             do i = 1, nSedWavelength-1
+                write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                     outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+             enddo
+             close(32)
+             
+             write(vtkFilename, '(a,i4.4,a)') "scat",itime,".dat"
+             open(32, file=vtkFilename, status="unknown", form="formatted")
+             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+             
+             do i = 1, nSedWavelength-1
+                write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                     outputFluxScat(i, iter)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+             enddo
+             close(32)
           enddo
-
-          do i = 1, nSedWavelength-1
-             write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1))/1.d4, &
-                  outputFlux(i, iter)/(sedTime(iter+1)-sedTime(iter))
-          enddo
-          close(32)
        endif
 
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
           iDump = idump + 1
-          if (myrankGlobal == 0) then
-             write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
-             call writeVtkFile(grid, vtkfilename, &
-                  valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
-             
-             write(vtkFilename, '(a,i4.4,a)') "output",idump,".grid"
-             call writeAMRgrid(vtkFilename, .false., grid)
-          endif
+!          if (myrankGlobal == 0) then
+!             write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
+!             call writeVtkFile(grid, vtkfilename, &
+!                  valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
+!             
+!             write(vtkFilename, '(a,i4.4,a)') "output",idump,".grid"
+!             call writeAMRgrid(vtkFilename, .false., grid)
+!          endif
 
 
        endif
@@ -263,12 +312,14 @@ contains
 
   subroutine timeDependentRTStep(grid, oldStack, oldStacknStack, oldStackFilename, currentStackFilename, &
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
-       nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow)
+       nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow, observerPosition, observerDirection, lastTime, &
+       seedRun)
     type(GRIDTYPE) :: grid
     integer :: nSource
     logical :: varyingSource
     integer :: nLambda
     integer :: nFreq
+    logical :: lastTime
     integer :: nSedWavelength, nTime
     real(double) :: sedWavelength(:)
     real(double) :: sedTime(:)
@@ -292,7 +343,7 @@ contains
     integer :: nFromMatter, nPhotons
     real(double) :: fracSource, chanceSource, chanceGas, weightSource, weightGas
     type(VECTOR) :: rVec, uHat, rHat
-    type(VECTOR) :: observerDirection
+    type(VECTOR) :: observerDirection, observerPosition
     real(double) :: eps, r, freq,  photonTime, tDble
     real(double) :: wavelength
     real(double) :: distToBoundary, tauToBoundary, distanceToEvent, timeToBoundary
@@ -308,22 +359,26 @@ contains
     real(double) :: kappaAbs, kappaSca, albedo
     real(double), intent(out) :: newDeltaT
     real(double) :: fac
-    real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4, t5, checkLum
+    real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4, t5, t6, checkLum, t7
+    real(double) :: checkLumSource
     real(double) :: distanceToEdge, photonTagTime
-    real(double) :: firstObserverTime, timeToObserver
+    real(double) :: firstObserverTime, timeToObserver, lastObserverTime
     real(double) :: tempDouble
+    real(double), allocatable :: tempDoubleArray(:)
     real :: lambda0
     logical :: useFileForStack
     logical :: beenScattered
-    logical :: radiativeEquPhoton
+    logical :: radiativeEquPhoton, seedRun
     integer :: nEscaped
+    integer :: nFromMatterThisThread
+    real(double) :: inc
 #ifdef MPI
     include 'mpif.h'
     integer :: ierr
 #endif
     firstObserverTime = sedTime(1)
+    lastObserverTime = sedTime(nTime)
 
-    observerDirection = VECTOR(0.d0, 0.d0, 1.d0)
     useFileForStack = .true.
 
     lambda0 = 0.
@@ -354,7 +409,7 @@ contains
     call zeroDistanceGrids(grid%octreeRoot)
     kabsArray = 0.d0
     call calculateEtaContLocal(grid, grid%octreeRoot)
-    call calculateEtaContBias(grid, grid%octreeRoot)
+!    call calculateEtaContBias(grid, grid%octreeRoot)
     call computeProbDist(grid, totalLineEmission, totalContEmission, lambda0, .false.)
     luminosity = 0.d0
     call calculateGasEmissivity(Grid%octreeRoot, luminosity)
@@ -364,12 +419,13 @@ contains
     sourceLuminosity = SUM(source(1:nSource)%luminosity)
 
     nFromMatter = nMonte
+    nFromMatterThisThread = nFromMatter
 #ifdef MPI
-    nFromMatter = dble(nFromMatter) / dble(nThreadsGlobal)
+    nFromMatterThisThread = dble(nFromMatter) / dble(nThreadsGlobal)
 #endif
 
 
-    nPhotons = oldStacknStack + nFromMatter
+    nPhotons = oldStacknStack + nFromMatterThisThread
 
     fracSource = 0.5d0
 
@@ -390,9 +446,11 @@ contains
        write(*,*) "doing loop with ",nphotons, " photons"
        write(*,*) "source lum ",sourceLuminosity
        write(*,*) "matter lum ",luminosity
+       write(*,*) "frac source ",fracSource
     endif
 
     checkLum = 0.d0
+    checkLumSource = 0.d0
     nEscaped = 0
 
     do iMonte = 1, nPhotons
@@ -420,6 +478,24 @@ contains
 !             write(*,*) "star eps " , eps
              photonFromSource = .true.
              photonFromGas = .false.
+             checkLumSource = checkLumSource + eps
+
+             if (.not.seedRun) then
+                call random_number(r)
+                photonTime = r*deltaT
+             endif
+
+             ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
+             if (varyingSource.and.(.not.seedRun)) then
+                call tauAlongPath(ilambda, grid, rVec, observerDirection, tau)
+                timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
+                photonTagTime = currentTime + photonTime + timeToObserver
+                call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                  sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+             endif
+
+
+
           else
 
              call random_number(r)
@@ -453,26 +529,43 @@ contains
              photonFromSource = .false.
              photonTime = 0.d0
              uHat = randomUnitVector()
+
+             if (.not.seedRun) then
+                call random_number(r)
+                photonTime = r*deltaT
+             endif
+
+             ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
+             if (varyingSource) then
+                call tauAlongPath(ilambda, grid, rVec, observerDirection, tau)
+                timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
+                
+                photonTagTime = currentTime + photonTime + timeToObserver
+
+                if (seedRun) then
+                   if (photonTagTime > lastObserverTime) then
+                      do i = 1, nTime
+                         call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                      enddo
+                   endif
+                   if (photonTagTime < firstObserverTime) then
+                      do i = 1, nTime
+                         call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                      enddo
+                   endif
+                endif
+                if (.not.seedRun) then
+                   call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                        sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                endif
+             endif
+                
           endif
           checkLum = checkLum + eps
           beenScattered = .false.
-          call random_number(r)
-          photonTime = r*deltaT
-
-          ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
-          if (varyingSource) then
-             call tauAlongPath(ilambda, grid, rVec, observerDirection, tau,  distanceToEdge=distanceToEdge)
-             timeToObserver = distanceToEdge * 1.d10/cSpeed
-             photonTagTime = currentTime + photonTime + timeToObserver
-             if ((timeToObserver < firstObserverTime).or.(timeToObserver > (currentTime + deltaT))) then ! force photon to have creation time so it arrives at observer at current step
-                photonTagTime = currentTime + photonTime + firstObserverTime
-             endif
-             call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                  sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
-          endif
-
        endif
-       
        ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
        call random_number(r)
 
@@ -512,14 +605,28 @@ contains
                 scattered = .true.
                 beenScattered = .true.
                 if (varyingSource) then
-                   call tauAlongPath(ilambda, grid, rVec, observerDirection, tau,  distanceToEdge=distanceToEdge)
-                   timeToObserver = distanceToEdge * 1.d10/cSpeed
+                   call tauAlongPath(ilambda, grid, rVec, observerDirection, tau)
+                   timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
                    photonTagTime = currentTime + photonTime + timeToObserver
-                   if ((timeToObserver < firstObserverTime).or.(timeToObserver > (currentTime + deltaT))) then ! force photon to have creation time so it arrives at observer at current step
-                      photonTagTime = currentTime + photonTime + firstObserverTime
+                   if (seedRun) then
+                      if (photonTagTime < firstObserverTime) then
+                         do i = 1, nTime
+                            call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                         enddo
+                      endif
+                      if (photonTagTime > lastObserverTime) then
+                         do i = 1, nTime
+                            call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                         enddo
+                      endif
                    endif
-                   call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                        sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                   if (.not.seedRun) then
+                      call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                           sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                   endif
+
                 endif
 
              endif
@@ -568,13 +675,37 @@ contains
        endif
     end do
 
-
 #ifdef MPI
     write(*,*) myrankGlobal, " updating grid"
-  call updateGridMPI(grid)
+    call updateGridMPI(grid)
 
-     call MPI_REDUCE(checkLum,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+    tempdouble = 0.d0
+     call MPI_ALLREDUCE(checkLum,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
      checkLum = tempDouble
+
+    tempdouble = 0.d0
+     call MPI_ALLREDUCE(checkLumSource,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+     checkLumSource = tempDouble
+
+     allocate(tempDoubleArray(1:nSedWavelength))
+
+     do i = 1, nTime
+        tempDoubleArray = 0.d0
+        call MPI_ALLREDUCE(sedFlux(1:nSedWavelength, i),tempDoubleArray,&
+             nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+        sedFlux(1:nSedWavelength,i) = tempDoubleArray
+     enddo
+
+     do i = 1, nTime
+        tempDoubleArray = 0.d0
+        call MPI_ALLREDUCE(sedFluxScat(1:nSedWavelength, i),tempDoubleArray,&
+             nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+        sedFluxScat(1:nSedWavelength,i) = tempDoubleArray
+     enddo
+
+     deallocate(tempDoubleArray)
+
+
 
 #endif
 
@@ -582,6 +713,7 @@ contains
 
      if (myrankGlobal == 0) then
         write(*,*) "Sanity check for luminosity ", checkLum/deltaT, luminosity+sourceLuminosity
+        write(*,*) "Sanity check for source luminosity ", checkLumSource/deltaT, sourceLuminosity
      endif
 
     if (varyingSource) then
@@ -594,13 +726,18 @@ contains
 
     call calculateEnergyDensity(grid%octreeRoot, deltaT, photonSpeed)
 
-    call updateUDens(grid%octreeRoot, deltaT, grid)
+    if (.not.seedRun) then
+       call updateUDens(grid%octreeRoot, deltaT, grid)
+    endif
+
+    call calculateTemperatureFromUdens(grid%octreeRoot)
+    call calculateEtaContLocal(grid, grid%octreeRoot)
 
     fac = 0.3d0
 
 
     newDeltaT = 1.d30
-    call calculateNewDeltaT(grid, grid%octreeRoot, newDeltaT, t1, t2, t3, t4, t5)
+    call calculateNewDeltaT(grid, grid%octreeRoot, newDeltaT, t1, t2, t3, t4, t5, t6, t7)
     if (myrankGlobal == 0) then
        write(*,*) "Temperature for time controlling cell is ",t1
        write(*,*) "Udens for time controlling cell is ",t2
@@ -608,14 +745,15 @@ contains
        write(*,*) "eta for time controlling cell is ",t4
        write(*,*) "rho for time controlling cell is ",t5
        write(*,*) "cooling time for controlling cell is ",fac*t2/abs(t4-t3)
+       write(*,*) "equilibrium time for controlling cell is ",t6
        write(*,*) "new delta T ",newDeltaT*fac
+       write(*,*) "chiline ",t7
     endif
     newDeltaT = newDeltaT  * fac
 
     newdeltaT = min(newDeltaT, deltaTMax)
     newdeltaT = max(newdeltaT, deltaTmin)
 
-    call calculateTemperatureFromUdens(grid%octreeRoot)
 
 
     oldStack  = currentStack
@@ -686,6 +824,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     real(double) :: deltaT, equilibriumTime, Teq, deltaUdens, newUDens
+    real(double) :: fac, oldUdens, t
     real :: kappaP
     integer :: subcell, i
 
@@ -700,20 +839,46 @@ contains
              end if
           end do
        else
-          call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+          thisOctal%chiLine(subcell) = 0.d0
           rVec = subcellCentre(thisOctal, subcell)
           equilibriumTime = 1.d30
-!          if (thisOctal%aDot(subcell) > thisOctal%etaCont(subcell)) then ! cell is heating
-             Teq = max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-             newUdens =  uDensFunc(Teq, thisOctal%rho(subcell),  7.d0/5.d0)
+          if (thisOctal%aDot(subcell) > 0.d0) then
+             newudens = 1.d30
+             oldUdens = thisOctal%udens(subcell)
+             t = thisOctal%temperature(subcell)
+             fac = 1.d30
+             thisOctal%temperature(subcell) = 100.
+             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+             do while (fac > 1.d-5)
+                thisOctal%temperature(subcell) = &
+                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
+                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+                fac = abs(newUdens - oldUdens)/newUdens
+                oldUdens = newUdens
+             enddo
+             thisOctal%temperature(subcell) = t
              deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
-             equilibriumTime = deltaUdens/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
-!          endif
-         if ((equilibriumTime < deltaT).and.(thisOctal%adot(subcell) > 0.d0)) then
+             if (thisOctal%adot(subcell) > thisOctal%etaCont(subcell)) then
+                equilibriumTime = deltaUdens/thisOctal%aDot(subcell)
+             else
+                equilibriumTime = deltaUdens/thisOctal%etaCont(subcell)
+             endif
+          endif
+          if ((equilibriumTime < deltaT).and.(thisOctal%adot(subcell) > 0.d0)) then
 !            write(*,*) "cell in eq ", equilibriumTime, thisOctal%adot(subcell), teq
-             thisOctal%temperature(subcell) = max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-             thisOctal%uDens(subcell) = uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+!            oldUdens = thisOctal%uDens(subcell)
+!            fac = 1.d30
+!            do while (fac > 1.d-5)
+!               thisOctal%temperature(subcell) = max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
+!               thisOctal%uDens(subcell) = uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+!               call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+!               fac = abs(oldUdens - thisOctal%udens(subcell))/thisOctal%udens(subcell)
+!               oldUdens = thisOctal%uDens(subcell)
+!            enddo
+             thisOctal%uDens(subcell) = newUdens
              thisOctal%etaCont(subcell) = thisOctal%aDot(subcell)
+             thisOctal%chiLine(subcell) = 1.d10
           else
              thisOctal%udens(subcell) = thisOctal%udens(subcell) + deltaT * & ! otherwise update udens
                   (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
@@ -824,14 +989,10 @@ contains
     enddo
   end subroutine calculateTemperatureFromUdens
 
-  recursive subroutine calculateNewDeltaT(grid, thisOctal, deltaT, temp, udens, adot, eta, rho)
-    type(GRIDTYPE) :: grid
+  recursive subroutine calculateUdensFromTemperature(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: rVec
-    real(double),intent(inout) :: deltaT, temp, udens, adot, eta, rho
     integer :: subcell, i
-    real(double) :: currentTemp, newTemp, newUdens, deltaUdens, t
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -839,14 +1000,42 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateNewDeltaT(grid, child, deltaT, temp, udens, adot, eta, rho)
+                call calculateUdensFromTemperature(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%udens(subcell) = &
+               uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell), 7.d0/5.d0)
+       endif
+    enddo
+  end subroutine calculateUdensFromTemperature
+
+  recursive subroutine calculateNewDeltaT(grid, thisOctal, deltaT, temp, udens, adot, eta, rho, equilibriumTime, chiline)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: rVec
+    real(double),intent(inout) :: deltaT, temp, udens, adot, eta, rho, equilibriumTime, chiline
+    integer :: subcell, i
+    real :: kappap
+    real(double) :: currentTemp, newTemp, newUdens, deltaUdens, t, fac, oldUdens
+    real(double) ::  teq
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateNewDeltaT(grid, child, deltaT, temp, udens, adot, eta, rho, equilibriumtime, chiline)
                 exit
              end if
           end do
        else
           rVec = subcellCentre(thisOctal, subcell)
 
-          if (thisOctal%etaCont(subcell) > thisOctal%aDot(subcell)) then ! cooling
+          if (thisOctal%etaCont(subcell) >= thisOctal%aDot(subcell)) then ! cooling
              t = thisOctal%uDens(subcell)/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
              if ((t < deltaT).and.(thisOctal%temperature(subcell) > 0.d0)) then
                 deltaT = t 
@@ -855,26 +1044,40 @@ contains
                 adot = thisOctal%adot(subcell)
                 eta = thisOctal%etaCont(subcell)
                 rho = thisOctal%rho(subcell)
+                chiline = 0.d0
              endif
           endif
 
-          if (thisOctal%etaCont(subcell) < thisOctal%aDot(subcell)) then ! heating
+!          if ((thisOctal%etaCont(subcell) < thisOctal%aDot(subcell)).and.(thisOctal%chiLine(subcell)==0.d0)) then ! heating
+!             newudens = 1.d30
+!             oldUdens = thisOctal%udens(subcell)
+!             t = thisOctal%temperature(subcell)
+!             fac = 1.d30
+!             thisOctal%temperature(subcell) = 100.
 !             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-             currentTemp = temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 7.d0/5.d0)
-            newTemp = currentTemp + 500.d0
-             newUdens =  uDensFunc(newTemp, thisOctal%rho(subcell),  7.d0/5.d0)
-             deltaUdens = newUdens - thisOctal%uDens(subcell)
-             t = deltaUdens/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
-             if (t < deltaT) then
-!             write(*,*) "time ",t,currentTemp, newTemp, newUdens, thisOctal%udens(subcell), thisOctal%adot(subcell)
-                deltaT = t 
-                temp = thisOctal%temperature(subcell)
-                udens = thisOctal%udens(subcell)
-                adot = thisOctal%adot(subcell)
-                eta = thisOctal%etaCont(subcell)
-                rho = thisOctal%rho(subcell)
-             endif
-          endif
+!             do while (fac > 1.d-5)
+!                thisOctal%temperature(subcell) = &
+!                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
+!                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+!                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+!                fac = abs(newUdens - oldUdens)/newUdens
+!                oldUdens = newUdens
+!             enddo
+!             thisOctal%temperature(subcell) = t
+!             deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
+!             t = deltaUdens/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
+!             if (t < deltaT) then
+!!             write(*,*) "time ",t,currentTemp, newTemp, newUdens, thisOctal%udens(subcell), thisOctal%adot(subcell)
+!                deltaT = t 
+!                temp = thisOctal%temperature(subcell)
+!                udens = thisOctal%udens(subcell)
+!                adot = thisOctal%adot(subcell)
+!                eta = thisOctal%etaCont(subcell)
+!                rho = thisOctal%rho(subcell)
+!                equilibriumTime = t
+!                chiline = thisOctal%chiLine(subcell)
+!             endif
+!          endif
        endif
     enddo
   end subroutine calculateNewDeltaT
@@ -1678,8 +1881,8 @@ contains
 
   real(double) function temperatureFunc(u, rho,  gamma) result (t)
     real(double) :: u, gamma, rho
-!    real(double), parameter :: mu = 2.33d0
-    real(double), parameter :: mu = 0.6d0
+    real(double), parameter :: mu = 2.33d0
+!    real(double), parameter :: mu = 0.6d0
 
     t = (gamma-1.d0)*mu*u / (rGas * rho)
 
@@ -1687,8 +1890,8 @@ contains
 
   real(double) function uDensFunc(t, rho,  gamma) result (u)
     real(double) :: t, gamma, rho
-!    real(double), parameter :: mu = 2.33d0
-    real(double), parameter :: mu = 0.6d0
+    real(double), parameter :: mu = 2.33d0
+!    real(double), parameter :: mu = 0.6d0
 
     u = t * rgas * rho / ((gamma-1.d0)*mu)
 
@@ -1754,7 +1957,7 @@ contains
           nIndex = nIndex + 1
           distanceGridAdot(nIndex) = thisOctal%distanceGridAdot(subcell)
           distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromSource(subcell)
-          distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromGas(subcell)
+          distanceGridPhotonFromGas(nIndex) = thisOctal%distanceGridPhotonFromGas(subcell)
 
        endif
     enddo
@@ -1847,6 +2050,42 @@ contains
   end subroutine updateGridMPI
 #endif
 
+  recursive subroutine allocateMemoryForTimeDep(thisOctal)
+    use octal_mod, only: allocateattribute
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call allocateMemoryForTimeDep(child)
+                exit
+             end if
+          end do
+       else
+          call allocateAttribute(thisOctal%uDens, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%aDot, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%distancegridaDot, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%distanceGridPhotonFromGas, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%distanceGridPhotonFromSource, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%photonEnergyDensityFromGas, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%photonEnergyDensityFromSource, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
+       endif
+    enddo
+  end subroutine allocateMemoryForTimeDep
+
+
+  function distanceToObserver(point, observerPosition, observerDirection) result (distance)
+    real(double) :: distance
+    type(VECTOR), intent(in) :: point, observerPosition, observerDirection
+
+    distance = (observerDirection .dot. (observerPosition - (1.d10*point)))
+  end function distanceToObserver
 
 
 end module timeDep_mod

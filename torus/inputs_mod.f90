@@ -2168,7 +2168,7 @@ contains
     if (geometry .eq. "shakara") then
 
        oneKappa = .true.
-
+       fastIntegrate = .true.
        call getLogical("noscat", noScattering, cLine, nLines, &
             "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
