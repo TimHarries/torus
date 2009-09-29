@@ -698,41 +698,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         weightDust = chanceDust / probDust
         weightPhoto = (1. - chanceDust) / (1. - probDust)
 
-!        if (writeoutput) write(*,*) "WeightDust",weightDust
-!        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
-!        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
-        energyPerPhoton =  ((lCore + totEnvelopeEmission*1.d30) / dble(nPhotons))/1.d20
-!        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
-
-     endif
-
-     
-
-
-
-     if (geometry == "hourglass") then
-        call computeProbDist(grid, totLineEmission, &
-             totWindContinuumEmission,lamline, .false.)
-        weightLinePhoton = 1.
-        weightContPhoton = 0.
-        probLinePhoton = 1.
-        probContPhoton = 0.
-     endif
-
-     if (doRaman) then
-        call computeProbDist(grid, totLineEmission, &
-             totWindContinuumEmission,lamline, .false.)
-        if (writeoutput) write(*,*) "Total Raman Line Emission: ",totLineEmission
-        weightLinePhoton = 1.
-        weightContPhoton = 0.
-        probLinePhoton = 1.
-        probContPhoton = 0.
-     endif
-
-
-
-     if (grid%lineEmission) then
-
         ! integrate the line and continuum emission and read the 
         ! intrinsic profile
 
@@ -769,71 +734,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         if (grid%resonanceLine) totWindContinuumEmission = 0.
 
-              if (j < nTau) then
-                 t = 0.
-                 if ((tauExt(j+1) - tauExt(j)) /= 0.) then
-                    t = (thisTau - tauExt(j)) / (tauExt(j+1) - tauExt(j))
-                 endif
-                 dlambda = lambda(j) + (lambda(j+1)-lambda(j))*t
-              else
-                 dlambda = lambda(nTau)
-              endif
 
-
-
-                    
-              ! New photon position 
-              thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
-              ! adjusting the photon weights 
-              if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
-                 if (j < nTau) then
-                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
-                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
-                 else
-                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
-                 end if
-              end if
-
-
-              if (flatspec) then
-                 iLambda = 1
-              else
-                 iLambda = findIlambda(thisPhoton%lambda, grid%lamArray, nLambda, ok)
-              endif
-
-              if (grid%adaptive) then
-                 positionOc = thisPhoton%position
-                 call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
-                      kappaAbs = thisChi, kappaSca = thisSca)
-              else
-                 call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
-                 if (.not.grid%oneKappa) then
-                    if (.not.flatspec) then
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, t1, t2, t3)
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, t1, t2, t3)
-                    else
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1, t1, t2, t3)
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1, t1, t2, t3)
-                    endif
-                 else
-                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2, t3)
-                    thisChi = grid%oneKappaAbs(1,iLambda) * r
-                    thisSca = grid%oneKappaSca(1,iLambda) * r
-                 endif
-              end if
-              
-              if (contPhoton) then
-                 if ((thisChi+thisSca) >= 0.) then
-                    albedo = thisSca / (thisChi + thisSca)
-                 else
-                    albedo = 0.
-                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
-                    !                 stop
-                 endif
-              else
-                 albedo = linePhotonAlbedo(j)
-              endif
-        !if (geometry == "ttauri" .or. geometry == "windtest") then
         if (geometry == "windtest") then
            totWindContinuumEmission = 0.
            if (writeoutput) write(*,'(a)') "! Wind continuum emission switched off."
@@ -852,8 +753,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            case("puls")
               totCoreContinuumEmission = pi * blackBody(0.77 * tEff, lamLine)
            case DEFAULT
-              call contread(contFluxFile, nu, coreContinuumFlux)
-              totCoreContinuumEmission = coreContinuumFlux
+!              call contread(contFluxFile, nu, coreContinuumFlux)
+!              totCoreContinuumEmission = coreContinuumFlux
         end select
 
 

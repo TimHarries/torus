@@ -15932,8 +15932,8 @@ end function readparameterfrom2dmap
     tau = 0.d0
     currentPosition = rVec
     if (PRESENT(nTau)) then
-       xArray = 0.d0
-       tauArray = 0.d0
+       xArray(1) = 0.d0
+       tauArray(1) = 0.d0
        ntau = 1
     endif
 
