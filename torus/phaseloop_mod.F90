@@ -67,7 +67,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: vel
   real :: theta1, theta2
   type(VECTOR) :: coolStarPosition
-  real(double) :: Laccretion
+  real(double) :: Laccretion, finalTau
   real :: Taccretion, fAccretion, sAccretion
   real(double) :: corecontinuumflux
   type(SURFACETYPE) :: starSurface
@@ -233,7 +233,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(len=80) :: originalOutFile, filename
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   character(len=80) :: specfile, obsfluxfile
-  real(double) :: finalTau
+
   logical :: ok
   type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
   integer :: sourceSubcell, currentSubcell, tempSubcell
@@ -281,6 +281,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR) :: ramanSourceVelocity
 
 
+  intPathError = 0
+  hitCore = .false.
   chanceHotRing = 0.
   cpuTime = 0; dopshift = 0.
   outPhoton%lambda = 0.; obsPhoton%lambda = 0.
@@ -698,6 +700,41 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         weightDust = chanceDust / probDust
         weightPhoto = (1. - chanceDust) / (1. - probDust)
 
+!        if (writeoutput) write(*,*) "WeightDust",weightDust
+!        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+!        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+        energyPerPhoton =  ((lCore + totEnvelopeEmission*1.d30) / dble(nPhotons))/1.d20
+!        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+
+     endif
+
+     
+
+
+
+     if (geometry == "hourglass") then
+        call computeProbDist(grid, totLineEmission, &
+             totWindContinuumEmission,lamline, .false.)
+        weightLinePhoton = 1.
+        weightContPhoton = 0.
+        probLinePhoton = 1.
+        probContPhoton = 0.
+     endif
+
+     if (doRaman) then
+        call computeProbDist(grid, totLineEmission, &
+             totWindContinuumEmission,lamline, .false.)
+        if (writeoutput) write(*,*) "Total Raman Line Emission: ",totLineEmission
+        weightLinePhoton = 1.
+        weightContPhoton = 0.
+        probLinePhoton = 1.
+        probContPhoton = 0.
+     endif
+
+
+
+     if (grid%lineEmission) then
+
         ! integrate the line and continuum emission and read the 
         ! intrinsic profile
 
@@ -734,7 +771,71 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         if (grid%resonanceLine) totWindContinuumEmission = 0.
 
+              if (j < nTau) then
+                 t = 0.
+                 if ((tauExt(j+1) - tauExt(j)) /= 0.) then
+                    t = (thisTau - tauExt(j)) / (tauExt(j+1) - tauExt(j))
+                 endif
+                 dlambda = lambda(j) + (lambda(j+1)-lambda(j))*t
+              else
+                 dlambda = lambda(nTau)
+              endif
 
+
+
+                    
+              ! New photon position 
+              thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
+              ! adjusting the photon weights 
+              if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
+                 if (j < nTau) then
+                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
+                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
+                 else
+                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
+                 end if
+              end if
+
+
+              if (flatspec) then
+                 iLambda = 1
+              else
+                 iLambda = findIlambda(thisPhoton%lambda, grid%lamArray, nLambda, ok)
+              endif
+
+              if (grid%adaptive) then
+                 positionOc = thisPhoton%position
+                 call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
+                      kappaAbs = thisChi, kappaSca = thisSca)
+              else
+                 call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
+                 if (.not.grid%oneKappa) then
+                    if (.not.flatspec) then
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, t1, t2, t3)
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, t1, t2, t3)
+                    else
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1, t1, t2, t3)
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1, t1, t2, t3)
+                    endif
+                 else
+                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2, t3)
+                    thisChi = grid%oneKappaAbs(1,iLambda) * r
+                    thisSca = grid%oneKappaSca(1,iLambda) * r
+                 endif
+              end if
+              
+              if (contPhoton) then
+                 if ((thisChi+thisSca) >= 0.) then
+                    albedo = thisSca / (thisChi + thisSca)
+                 else
+                    albedo = 0.
+                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
+                    !                 stop
+                 endif
+              else
+                 albedo = linePhotonAlbedo(j)
+              endif
+        !if (geometry == "ttauri" .or. geometry == "windtest") then
         if (geometry == "windtest") then
            totWindContinuumEmission = 0.
            if (writeoutput) write(*,'(a)') "! Wind continuum emission switched off."
@@ -753,8 +854,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            case("puls")
               totCoreContinuumEmission = pi * blackBody(0.77 * tEff, lamLine)
            case DEFAULT
-!              call contread(contFluxFile, nu, coreContinuumFlux)
-!              totCoreContinuumEmission = coreContinuumFlux
+              call contread(contFluxFile, nu, coreContinuumFlux)
+              totCoreContinuumEmission = coreContinuumFlux
         end select
 
 
@@ -1192,6 +1293,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         goto 777  
      end if
 
+     iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
+     if (doTuning) call tune(6,"Calculate bias on tau")
+     call setBiasOnTau(grid, iLambda)
+     if (doTuning) call tune(6,"Calculate bias on tau")
 
 
      !  These should be zero-ed for each viewing angle!
@@ -1211,13 +1316,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      endif
 
 
-     call locate(grid%lamArray, nLambda, 1.e5, iLambdaPhoton)
-     if (doTuning) call tune(6,"Calculate bias on tau")
-     call setBiasOnTau(grid, iLambdaPhoton)
-     if (doTuning) call tune(6,"Calculate bias on tau")
-
-
-     if (doTuning) call tune(6, "Photon Loop") ! Start a stop watch
 
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
@@ -1259,15 +1357,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            weightDust = 1.
            weightPhoto = 1.
 
-           if (chanceDust > 0.8) then
-              probDust = 0.8
+           if (chanceDust > 0.99) then
+              probDust = 0.9
               weightDust = chanceDust / probDust
               weightPhoto = (1. - chanceDust) / (1. - probDust)
            endif
-!           if (myrankglobal == 0) write(*,*) "wave ", grid%lamArray(iLambdaPhoton)
-!           if (myrankglobal == 0) write(*,*) "chance dust ",chanceDust
-!           if (myrankglobal == 0) write(*,*) "prob dust ",probDust
-!           if (myrankglobal == 0) write(88,*) grid%lamArray(iLambdaPhoton),lcore
+
+
            energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
 !           if (writeoutput) write(*,*) "WeightDust",weightDust
 !           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
@@ -1276,6 +1372,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         endif
 
+        if (doTuning) call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
         ! default inner loop indices
         iInner_beg = 1
@@ -1520,6 +1617,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, taumax = 20.d0, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
+
 !              octVec = thisPhoton%position
 !              CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
 !              write(*,*) "Optical depth to observer: ",tauExt(ntau),thisOctal%biascont3d(subcell)
@@ -1766,7 +1864,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
 
-
            if (.not.fastIntegrate) then
               call integratePath(gridUsesAMR, VoigtProf, &
                    thisPhoton%lambda, lamLine, &
@@ -1783,6 +1880,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, thisPhoton%direction, finaltau,&
                    startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
            endif
+
+
               if (intPathError == -10) then 
                  tooFewSamples = tooFewSamples + 1  
                  goto 999 
@@ -2545,14 +2644,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         call torus_mpi_barrier
 
+        if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
 !        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
 
 
 
      end do outerPhotonLoop ! outer photon loop
-
-     if (doTuning) call tune(6, "Photon Loop") ! Start a stop watch
 
      if (doTuning) call tune(6, "All Photon Loops")  ! Stop a stopwatch
 
