@@ -361,20 +361,19 @@ contains
     real(double) :: fac
     real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4, t5, t6, checkLum, t7
     real(double) :: checkLumSource
-    real(double) :: distanceToEdge, photonTagTime
+    real(double) :: photonTagTime
     real(double) :: firstObserverTime, timeToObserver, lastObserverTime
-    real(double) :: tempDouble
-    real(double), allocatable :: tempDoubleArray(:)
     real :: lambda0
     logical :: useFileForStack
     logical :: beenScattered
     logical :: radiativeEquPhoton, seedRun
     integer :: nEscaped
     integer :: nFromMatterThisThread
-    real(double) :: inc
 #ifdef MPI
     include 'mpif.h'
     integer :: ierr
+    real(double) :: tempDouble
+    real(double), allocatable :: tempDoubleArray(:)
 #endif
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
@@ -823,7 +822,7 @@ contains
     type(VECTOR) :: rVec
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    real(double) :: deltaT, equilibriumTime, Teq, deltaUdens, newUDens
+    real(double) :: deltaT, equilibriumTime,deltaUdens, newUDens
     real(double) :: fac, oldUdens, t
     real :: kappaP
     integer :: subcell, i
@@ -1018,9 +1017,7 @@ contains
     type(VECTOR) :: rVec
     real(double),intent(inout) :: deltaT, temp, udens, adot, eta, rho, equilibriumTime, chiline
     integer :: subcell, i
-    real :: kappap
-    real(double) :: currentTemp, newTemp, newUdens, deltaUdens, t, fac, oldUdens
-    real(double) ::  teq
+    real(double) :: t
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
