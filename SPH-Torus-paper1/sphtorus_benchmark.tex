@@ -65,21 +65,18 @@ hydrodynamics -- radiative transfer -- methods: numerical
 
 \section{Introduction}
 
-The interaction between matter and radiation is of great importance in
-a range of astrophysical processes. A major challenge in star
-formation simulations is to incorporate self-consistent radiative
-feedback from protostars. Once this is achieved it is possible to
-relax the simplifying assumptions relating to the equation of state
-and to study the effects of radiative feedback, for example the impact
-on disc fragmentation. A flux limited diffusion approximation can be
-used to represent radiative transport in regions of high optical
-depth, however this method is not suited to modelling regions of low
-optical depth where an alternative method, such as a Monte-Carlo
-method, must be used.
+Hydrodynamics calculations are used to investigate a variety of problems associated with star formation, such as the collapse of protostellar cores (e.g. \citealt{goodwin_2004}), the fragmentation of protostellar discs (e.g. \citealt{boss_1997}), and on the largest scale the gravo-turbulent collapse of a molecular cloud to form stars (e.g. \citealt{bate_2003, bate_2005}). 
 
-This paper presents a results from coupling the {\small{TORUS}}
-radiative transfer code \citep{harries_2000} with the SPH (Smoothed
-Particle Hydrodynamics) code of \cite{bate_2009}.  {\small{TORUS}}
+Sophisticated as such calculations appear, the underlying physics regarding the thermal properties of the gas is much simplified. One of the usual approximations is the use of an equation of state (eos) in determining the pressure of the gas. An isothermal eos is often a good approximation in the most rarified regions, where the material is able to radiate, and thus cool, freely. The gas may be compressed adiabatically in the highest density regions, and a barytropic eos is sometimes adopted, with the polytropic exponent switching at a critical density in an attempt to reproduce the results of one-dimensional collapse calculations that incorporate radiative-transfer \citep{masunaga_1998}. The crucial point here is that the energy dumped into the cluster from accretion onto, and gravitation contraction of, the newly formed stars is neglected, and the radiation emitted by compressed gas (the `$P\,dV$' terms) is assumed to  escape without further interaction.
+
+The solution is to include radiation-transfer self-consistently  and perform a radiation-hydrodynamics (RHD) calculation. The simplest way to do this is to assume that the energy is transported by radiative diffusion of photons. The diffusion approximation is a good one at high optical depth, but breaks down in optically thin regions since the diffusion speed may exceed the speed of light as the mean-free-path tends to infinity; an essentially arbitrary flux limiter is adopted in this regime. Furthermore the approximation is often implemented as a grey method, typically using Rosseland mean  opacities tabulated as a function of temperature. Finally the diffusion approximation cannot treat the effects of shadowing, as radiation field may diffuse around optically thick obstacles. The crucial advantage of the diffusion approximation though is of course speed: the radiation transport step is straightforward to implement and is not hugely dominant in the RHD calculation. The first cluster collapse and disc fragmentation calculations using flux-limited diffusion have just started appearing in the literature \citep{boss_2008, bate_2009b, offner_2009, stamatellos_2009}. The fundamental result of including a more complete thermal treatment is broadly in line with prior expectations i.e.  the heating of the gas inhibits the fragmentation process.
+
+Meanwhile dedicated radiation transfer (RT) codes  have progressed far beyond the diffusion approximation and now take into account a wide array of microphysical processes such as polychromatic radiation transfer incorporating polarization state, multiple scattering, Mie phase matrices etc. These sophisticated RT codes have been employed to model cores (e.g. \citealt{stamatellos_2005}), discs (reviewed by \citealt{dullemond_2007}) and even entire clusters \citep{kurosawa_2004}. The principle barrier to using these codes in RHD is that of  of computation time, but the increase in CPU power and the  adoption of parallelization mean that it is now feasible to conduct a full treatment of RT along with the hydrodynamics, thereby dropping the diffusion approximation.
+
+ 
+This paper presents a method of coupling the {\sc torus}
+radiative transfer code \citep{harries_2000} with the smoothed
+particle hydrodynamics (SPH) code of \cite{bate_2009}.  {\sc torus}
 performs radiative transfer calculations using the Monte-Carlo method
 of \cite{lucy_1999} with a diffusion approximation in regions of high
 optical depth. The radiative transfer calculations are performed on a
@@ -90,21 +87,15 @@ hence an SPH code coupled to a Monte-Carlo radiative transfer code is
 a very flexible method for performing star formation calculations
 incorporating radiative feedback.
 
-There is not a unique approach to coupling an SPH code to a radiative
-transfer code and a number of different approaches have been developed
-(\cite{pawlik_2008} and references therein). This paper focuses on
-radiative transfer calculations using an adaptive grid in the context
-of modelling a circumstellar disc.
-
 Accurately coupling the radiative transfer component to the SPH
 component requires an effective transformation from the Lagrangian
 particle description of SPH to the Eulerian grid description of an AMR
 grid. The procedure used for this transformation is tested using a
 circumstellar disc benchmark (see
 Sections~\ref{section:description_of_benchmark}
-and~\ref{section:grid_generation}). The spectral energy distribution
-and temperature distribution of the benchmark disc are examined in
-Section~\ref{section:seds} in order to understand how well the
+and~\ref{section:grid_generation}). The temperature distribution and spectral energy distribution
+ of the benchmark disc are examined in
+Section~\ref{section:seds} in order to investigate how well the
 radiative transfer calculation works with the gridded density field
 and to understand the effects of grid and SPH spatial resolution. A
 simulation of a circumstellar disc around a T Tauri star is presented
@@ -115,19 +106,17 @@ in Section~\ref{section:sph_disc}.
 
 The accuracy of the SPH method has previously been examined in detail
 (e.g. \cite{price_2008b} and references therein) so we do not attempt
-to benchmark the SPH component of the code here. Likewise the  {\small{TORUS}}
+to benchmark the SPH component of the code here. Likewise the  {\sc torus}
 radiative transfer code has also been benchmarked elsewhere
 \citep{pinte_2009}. Consequently we can be confident
 in the accuracy of the SPH and radiative transfer codes individually so
 we focus here on the accuracy of the mechanism by which they are
-coupled. Hence the benchmark case presented here is a ``static''
+coupled. Hence the benchmark case presented here is a `static'
 benchmark in which we represent an analytical density distribution
 with SPH particles and test whether the radiative transfer code can
 calculate accurate results using this SPH density representation.
 
-When constructing validation tests of a numerical method it is often
-valuable to use a simplified test case with well known results. We
-base our SPH disc benchmark on the axisymmetric circumstellar disc of
+We base our SPH disc benchmark on the axisymmetric circumstellar disc of
 \cite{pascucci_2004}.  Representing a structure with rotational
 symmetry using a 3D geometry allows us to validate the operation of
 our method against well tested results from other codes while fully
@@ -198,7 +187,7 @@ an accurate representation of the total disc mass.
 
 \subsection{Grid generation method}
 
-{\small{TORUS}} uses an adaptive grid based on the octree method. In a 3D
+{\sc torus} uses an adaptive grid based on the octree method. In a 3D
 geometry the initial grid comprises 8 cells (one octal) with 2 cells
 in each dimension. An algorithm is applied to determine whether to
 split each cell into a further 8 cells, similar to the method of
@@ -291,10 +280,10 @@ octals while maintaining a total mass which is correct to within a few
 percent. The number of octals as a function of mass per cell limit is
 consistent between runs with different numbers of SPH particles, apart
 from the case with $10^5$ particles and a mass limit of
-$10^{26}$~g. In this case the mass per cell limit is smaller than the
+$10^{26}$\,g. In this case the mass per cell limit is smaller than the
 SPH particle mass and the grid is over sampling the SPH resolution. In
 the other cases the mass per cell limit is greater than the SPH
-particle mass. For mass per cell limits of $10^{28}$g and less the
+particle mass. For mass per cell limits of $10^{28}$\,g and less the
 total mass error varies only slowly as a function of mass per cell and
 is accurate to within a few percent. There is a positive bias in the
 total mass but using more SPH particles results in a more accurate
@@ -409,7 +398,7 @@ grid constructed from a mass per cell limit of $5\times10^{26}$g.  The
 mass per cell limit was chosen in preference to the density contrast
 limit to give the highest resolution near the central region of the
 disc, which we expect to be most important for determining the
-SED. SEDs were calculated using the {\small{TORUS}} code for viewing
+SED. SEDs were calculated using the {\sc torus} code for viewing
 angles of 12.5 and 77.5 degrees (where an inclination angle of zero
 degrees indicates that the disc is viewed face-on) and the results are
 plotted in Fig.~\ref{fig:seds} (dashed line). Also plotted in
@@ -421,7 +410,7 @@ Fig.~\ref{fig:seds} are the benchmark results of \cite{pascucci_2004}
   \caption{SEDs from the benchmark disc with $10^5 $ particles. SEDs
     are shown for inclination angles of 12.5 degrees (left) and 77.5
     degrees (right). The benchmark SED is plotted as a solid line and
-    the {\small{TORUS}} SED is plotted as a dashed line.}
+    the {\sc torus} SED is plotted as a dashed line.}
   \label{fig:seds}
 \end{figure*}
 Both SEDs show significant departures from the benchmark results;
@@ -468,7 +457,7 @@ dashed line) and $2.5\times10^{14}$~cm (dotted line).
   \includegraphics[scale=0.3]{figures/seds_forced_77.pdf}
   \caption{SEDs from SPH benchmark disc for inclination angles of 12.5
     degrees and 77.5 degrees. The benchmark SED is plotted as a solid
-    line. The {\small{TORUS}} density distribution is forced to the correct
+    line. The {\sc torus} density distribution is forced to the correct
     value with a radius of $1.0\times10^{15}$~cm (long dashed line), $5.0\times10^{14}$~cm
 (short dashed line) and $2.5\times10^{14}$~cm (dotted line).} 
   \label{fig:sed_forced}
@@ -510,7 +499,7 @@ accurate density distribution in this spatially small region.
 
 Figure~\ref{fig:n_part_tem_diff} shows fractional errors in the
 temperature distribution for different numbers of
-particles. {\small{TORUS}} calculates the temperature distribution
+particles. {\sc torus} calculates the temperature distribution
 using a high resolution 2D geometry, in order to determine the correct
 temperature as a function of cylindrical polar $r$ and $z$
 co-ordinates. This is then compared to the temperature from the SPH
