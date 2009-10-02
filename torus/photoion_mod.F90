@@ -4462,12 +4462,12 @@ end subroutine readHeIIrecombination
    end subroutine addToEmission
 
   subroutine identifyTransition(grid, lambda, iIon, iTransition, ok)
-    type(GRIDTYPE) :: grid
-    real(double) :: lambda
+    type(GRIDTYPE),intent(in) :: grid
+    real(double),intent(in) :: lambda
     integer, intent(out) :: iIon, iTransition
+    logical, intent(out) :: ok
     integer :: i, j
     character(len=80) :: message
-    logical, intent(out) :: ok
 
     ok = .false.
 

@@ -16141,8 +16141,8 @@ end function readparameterfrom2dmap
   end subroutine getMagStreamValues3
 
   type(VECTOR)  function magStreamVelocity(point, grid) result(vel)
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: point
+    type(GRIDTYPE), intent(in) :: grid
+    type(VECTOR),intent(in) :: point
     real(double) :: minDist, dist, dist1, dist2, t
     integer :: i, j, isample, istream
     minDist = 1.d30
@@ -17706,7 +17706,7 @@ end function readparameterfrom2dmap
            
   real(double) function molebenchDensity(position,grid) result(rho)
 
-    type(VECTOR) :: position
+    type(VECTOR),intent(in) :: position
     TYPE(gridtype), INTENT(IN) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
