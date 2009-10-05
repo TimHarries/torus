@@ -646,8 +646,8 @@ program torus
 #endif
 
   if (timeDependentRT) then
-     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
-!     call timeDependentRTtest()
+!     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
+     call timeDependentRTtest()
 
 
 !     do itime = 1, 20

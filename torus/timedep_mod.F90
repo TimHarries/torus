@@ -851,7 +851,7 @@ contains
              do while (fac > 1.d-5)
                 thisOctal%temperature(subcell) = &
                      max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
                 call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                 fac = abs(newUdens - oldUdens)/newUdens
                 oldUdens = newUdens
@@ -870,7 +870,7 @@ contains
 !            fac = 1.d30
 !            do while (fac > 1.d-5)
 !               thisOctal%temperature(subcell) = max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-!               thisOctal%uDens(subcell) = uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+!               thisOctal%uDens(subcell) = uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
 !               call returnKappa(grid, thisOctal, subcell, kappap=kappap)
 !               fac = abs(oldUdens - thisOctal%udens(subcell))/thisOctal%udens(subcell)
 !               oldUdens = thisOctal%uDens(subcell)
@@ -983,7 +983,7 @@ contains
           end do
        else
           thisOctal%temperature(subcell) = &
-               max(0.d0,temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 7.d0/5.d0))
+               max(0.d0,temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 7.d0/5.d0, 2.33d0))
        endif
     enddo
   end subroutine calculateTemperatureFromUdens
@@ -1005,7 +1005,7 @@ contains
           end do
        else
           thisOctal%udens(subcell) = &
-               uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell), 7.d0/5.d0)
+               uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell), 7.d0/5.d0, 2.33d0)
        endif
     enddo
   end subroutine calculateUdensFromTemperature
@@ -1055,7 +1055,7 @@ contains
 !             do while (fac > 1.d-5)
 !                thisOctal%temperature(subcell) = &
 !                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-!                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0)
+!                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
 !                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
 !                fac = abs(newUdens - oldUdens)/newUdens
 !                oldUdens = newUdens
@@ -1270,8 +1270,8 @@ contains
     udensAnalytical  = 0.d0
     udens = 1.d-30
     photonSpeed = cSpeed
-    nMonte = 100000000
-    tauBox = 1.d3
+    nMonte = 10000000
+    tauBox = 1.d2
     deltaT = 1.d0
     call random_seed
 
@@ -1309,10 +1309,10 @@ contains
 !       else
 !          uDens(i) = 1.d-10
 !       endif
-!       temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0)
+!       temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0, 0.6d0)
 !    enddo
 !    do i = 1, nx
-!       t = temperatureFunc(uDens(i), rho(i), 5.d0/3.d0)
+!       t = temperatureFunc(uDens(i), rho(i), 5.d0/3.d0, 0.6d0)
 !       write(*,*) "temperature ",t
 !!       photonEnergyDensity(i) = max(1.d1,cos(2.d0*xCen(i))*1.d7)!(fourPi * (stefanBoltz/pi) * t**4 / cSpeed) 
 !       photonEnergyDensity(i) = (fourPi * (stefanBoltz/pi) * t**4 / photonSpeed) 
@@ -1343,11 +1343,10 @@ contains
     photonEnergyDensity = 1.d-10
     rho = 1.d-10
     kappa = 1.d13
-!    udens = uDensFunc(Teq, rho(1),  5.d0/3.d0)
-!    photonEnergyDensity = (fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
-    where (xcen < 0.5d0) photonEnergyDensity = 1.d10 !(fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
+
+    where (xcen < 0.5d0) photonEnergyDensity = 1.d16 !(fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
     Teq = ((photonEnergyDensity(1)*cSpeed/fourPi)*(pi/stefanBoltz))**0.25d0
-    where (xcen < 0.5d0) udens = uDensFunc(Teq, rho(1),  5.d0/3.d0)
+    where (xcen < 0.5d0) udens = uDensFunc(Teq, rho(1),  5.d0/3.d0, 0.6d0)
     where (xcen < 0.5d0) photonEnergyDensityFromGas = (fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
     oldnStack = 0
 
@@ -1405,7 +1404,7 @@ contains
        distanceGridPhotonFromSource = 0.d0
        distanceGridPhotonFromGas = 0.d0
        do i = 1, nx
-          temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0)
+          temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0, 0.6d0)
 !          write(*,*) temperature(i)
        enddo
        etaCont = fourPi * (stefanBoltz/pi) * temperature**4 * kappa * rho 
@@ -1583,7 +1582,7 @@ contains
           do i = 1, nx
 
              Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
-             newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0)
+             newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
              deltaUdens = abs(newUdens - uDens(i))
              equilibriumTime =   deltaUDens / abs(adot(i) - etaCont(i))
              if (equilibriumTime < deltaT) then
@@ -1593,13 +1592,13 @@ contains
                 if (i == 1) write(*,*) "udens ",udens(i), " adot ",adot(1), " eta ",etacont(i), " dt ",deltaT
                 uDens(i) = max (0.d0, uDens(i))
              endif
-             temperature(i) = temperatureFunc(uDens(i), rho(i),  5.d0/3.d0)
+             temperature(i) = temperatureFunc(uDens(i), rho(i),  5.d0/3.d0, 0.6d0)
              
           enddo
 
 
           !       do i = 1 , 1
-          !          t = temperatureFunc(uDensAnalytical(i), rho(i), 5.d0/3.d0)
+          !          t = temperatureFunc(uDensAnalytical(i), rho(i), 5.d0/3.d0, 0.6d0)
           !          udensAnalytical(i) = udensAnalytical(i) + &
           !               deltaT * (photonSpeed*kappa(i)*rho(i)*photonDensAnalytical(i) &
           !               - fourPi*kappa(i)*rho(i)*(stefanBoltz/pi)*t**4)
@@ -1615,7 +1614,7 @@ contains
           do i = 1, nx
              newDeltaT = min(newDeltaT, fac*uDens(i)/abs(adot(i)-etacont(i)))
              Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
-             newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0)
+             newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
              deltaUdens = abs(newUdens - uDens(i))
              newDeltaT = min(newDeltaT, fac * deltaUDens / abs(adot(i) - etaCont(i)))
           enddo
@@ -1853,7 +1852,8 @@ contains
        goto 666
     endif
     
-     call locate(xCen, nx, x, iPos)
+!     call locate(xCen, nx, x, iPos)
+     iPos = nint( (x - xCen(1)) / dx) + 1
      if (x > xCen(iPos)+dx/2.d0) then
         iPos = iPos + 1
      endif
@@ -1861,33 +1861,51 @@ contains
   end subroutine findArrayIndex
 
   subroutine solveNewUdens(xArray, u, nx, k, deltaT)
+    real(double) :: alpha
     real(double) :: xArray(:), u(:), k, deltaT,dx
-    real(double) :: uxx, uPrime(1000)
+    real(double) :: uxx, uPrime(1000), a(1000), b(1000),c(1000)
     integer :: nx, i
     dx = xArray(2)-xArray(1)
     
-    do i = 2, nx-1
-       uxx = (u(i+1) - 2.d0* u(i) + u(i-1)) / dx**2
-       uprime(i) = u(i) + k * uxx * deltaT
-    enddo
-    uprime(1) = uprime(2)
-    uprime(nx) = uprime(nx-1)
 
+    alpha = (k * deltaT)/(dx**2)
+
+!    do i = 2, nx-1
+!       uxx = (u(i+1) - 2.d0* u(i) + u(i-1)) / dx**2
+!       uprime(i) = u(i) + k * uxx * deltaT
+!    enddo
+!    uprime(1) = uprime(2)
+!    uprime(nx) = uprime(nx-1)
+!    u = uprime
+
+    do i = 2, nx - 1
+       a(i) = -alpha
+       b(i) = 1.d0 + 2.d0 * alpha
+       c(i) = -alpha
+    enddo
+    a(1) = 0.d0
+    b(1) = 1.d0
+    c(1) = 0.d0
+    a(nx) = 0.d0
+    b(nx) = 1.d0
+    c(nx) = 0.0d0
+
+    call tridiag(a, b, c, u, uprime, nx)
     u = uprime
+
+
   end subroutine solveNewUdens
 
-  real(double) function temperatureFunc(u, rho,  gamma) result (t)
-    real(double) :: u, gamma, rho
-    real(double), parameter :: mu = 2.33d0
-!    real(double), parameter :: mu = 0.6d0
+  real(double) function temperatureFunc(u, rho,  gamma, mu) result (t)
+    real(double) :: u, gamma, rho,mu
 
     t = (gamma-1.d0)*mu*u / (rGas * rho)
 
   end function temperatureFunc
 
-  real(double) function uDensFunc(t, rho,  gamma) result (u)
-    real(double) :: t, gamma, rho
-    real(double), parameter :: mu = 2.33d0
+  real(double) function uDensFunc(t, rho,  gamma, mu) result (u)
+    real(double) :: t, gamma, rho, mu
+!    real(double), parameter :: mu = 2.33d0
 !    real(double), parameter :: mu = 0.6d0
 
     u = t * rgas * rho / ((gamma-1.d0)*mu)
@@ -2083,6 +2101,26 @@ contains
 
     distance = (observerDirection .dot. (observerPosition - (1.d10*point)))
   end function distanceToObserver
+
+  subroutine TRIDIAG(A,B,C,R,U,N)
+      integer, parameter ::  NMAX=100
+      integer :: n, j
+      real(double) ::  GAM(NMAX),A(N),B(N),C(N),R(N),U(N)
+      real(double) :: bet
+      IF(B(1).EQ.0.)PAUSE
+      BET=B(1)
+      U(1)=R(1)/BET
+      DO J=2,N
+        GAM(J)=C(J-1)/BET
+        BET=B(J)-A(J)*GAM(J)
+        IF(BET.EQ.0.)PAUSE
+        U(J)=(R(J)-A(J)*U(J-1))/BET
+     enddo
+      DO  J=N-1,1,-1
+         U(J)=U(J)-GAM(J+1)*U(J+1)
+      enddo
+    end subroutine TRIDIAG
+
 
 
 end module timeDep_mod

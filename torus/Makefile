@@ -78,7 +78,7 @@ ifeq ($(SYSTEM), g95)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    STARLIBS = -L/star/lib `ndf_link`
+#    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
     KNOWN_SYSTEM = yes
