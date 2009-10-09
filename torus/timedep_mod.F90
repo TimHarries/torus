@@ -1863,7 +1863,7 @@ contains
   subroutine solveNewUdens(xArray, u, nx, k, deltaT)
     real(double) :: alpha
     real(double) :: xArray(:), u(:), k, deltaT,dx
-    real(double) :: uxx, uPrime(1000), a(1000), b(1000),c(1000)
+    real(double) :: uPrime(1000), a(1000), b(1000),c(1000) !, uxx
     integer :: nx, i
     dx = xArray(2)-xArray(1)
     
