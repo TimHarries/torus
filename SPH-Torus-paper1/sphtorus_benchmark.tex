@@ -396,20 +396,44 @@ describing the fluid flow is not necessarily the same as required for accurately
 modelling the radiation field.
 
 The disc was initially modelled using $10^5$ SPH particles with an AMR
-grid constructed from a mass per cell limit of $5\times10^{26}$g.  
-This number of SPH particles would normally be considered as sufficient to adequately represent a disc of this mass in a purely hydrodynamical calculation. The mass per cell limit was chosen in preference to the density contrast
-limit to give the highest resolution near the central region of the
-disc, which we expect to be most important for determining the
-temperature of the disc at the inner edge and the SED.
+grid constructed from a mass per cell limit of $5\times10^{26}$g.
+This number of SPH particles would normally be considered as
+sufficient to adequately represent a disc of this mass in a purely
+hydrodynamical calculation. The mass per cell limit was chosen in
+preference to the density contrast limit to give the highest
+resolution near the central region of the disc, which we expect to be
+most important for determining the temperature of the disc at the
+inner edge and the SED.
 
-In figure xxx we plot the temperature distribution at radiative equilibrium for the benchmark disc. 
-{\sc torus} calculates the temperature distribution
-using a high resolution 2D geometry, in order to determine the correct
+In Fig.~\ref{fig:nomod_tem_diff} we plot the fractional error in the
+temperature distribution at radiative equilibrium for the benchmark
+disc.  {\sc torus} calculates the temperature distribution using a
+high resolution 2D geometry, in order to determine the correct
 temperature as a function of cylindrical polar $r$ and $z$
 co-ordinates. This is then compared to the temperature from the SPH
 disc for each SPH particle. Positive values of the fractional error
-indicate that the SPH disc is hotter than the expected value. The temperatures show deviations of $\pm$ 50\% (XXXX CHECK) from the benchmark values, a deviation that is purely driven by the resolution of the density field derived from the SPH particles, since a `{\sc torus} only' calculation, where the AMR grid is refined on optical depth criteria and the cell densities are found from the analytical description of the density structure (equation xxxx), matches the benchmark temperatures to within 2\%. The systematic differences in the temperature distribution are due to an increased vertical transport of radiation from the surface layers of the disc to the mid-plane due to a lack of spatial resolution, leading to errors in the calculation of the specific intensities (particularly in the inner disc region).  These systematic differences are more readily apparent in the emergent SEDs, which are a more sensitive probe of the accuracy of the RT calculation than  the temperature distribution.
+indicate that the SPH disc is hotter than the expected value. The
+temperatures show deviations of $-30$\% to $+50$\%  from the
+benchmark values, a deviation that is purely driven by the resolution
+of the density field derived from the SPH particles, since a `{\sc
+  torus} only' calculation, where the AMR grid is refined on optical
+depth criteria and the cell densities are found from the analytical
+description of the density structure (Eqn.~\ref{eqn:pascucci_density}), matches the
+benchmark temperatures to within 2\%. The systematic differences in
+the temperature distribution are due to an increased vertical
+transport of radiation from the surface layers of the disc to the
+mid-plane due to a lack of spatial resolution, leading to errors in
+the calculation of the specific intensities (particularly in the inner
+disc region).  These systematic differences are more readily apparent
+in the emergent SEDs, which are a more sensitive probe of the accuracy
+of the RT calculation than the temperature distribution.
 
+\begin{figure}
+  \includegraphics[scale=0.3]{figures/nomod_tem_diff}
+  \caption{Temperature difference between SPH benchmark disc and high
+    accuracy 2D result.}
+  \label{fig:nomod_tem_diff}
+\end{figure}
 
 SEDs were calculated using the {\sc torus} code for viewing
 angles of 12.5 and 77.5 degrees (where an inclination angle of zero
@@ -554,11 +578,11 @@ $10^8$ particles but is of course less well represented with $10^6$ or $10^7$
 particles where the central star is obscured. At the longest
 wavelengths the disc is optically thin and the SEDs will be well
 modelled provided the total disc mass is accurately represented. In
-all four cases the total disc mass is well represented (XXX cite section) and the long
+all four cases the total disc mass is well represented (see Section~\ref{section:grid_generation}) and the long
 wavelength SED matches the benchmark results. At intermediate
 wavelengths the SED is sensitive to the details of the disc
 representation and it is clear that accurately modelling the SED from
-this disc is challenging, even with $10^8$ particles. (XXXX need to discuss this in the conclusion).
+this disc is challenging, even with $10^8$ particles.
 \begin{figure*}
   \subfigure[$10^5$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e5}}
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e6}}
@@ -627,12 +651,14 @@ temperatures, as it is assumed that the time scale for radiative
 equilibrium is short compared to the dynamical time scale of the disc
 (i.e. the ``prompt escape'' regime described by \cite{nayakshin_2009}).
 
-The frequency with which the radiative transfer is calculated is determined by the
-sound crossing time in the inner regions of the disc as this is the
-time scale over which the scale height in this region will vary and
-effect the transfer of radiation into the outer parts of the disc. (XXX put numbers
-here to justify the 1 every 4). A radiative transfer calculation is performed after every four
-hydrodynamics time steps (equivalent to every 2.4 years). 
+The frequency with which the radiative transfer is calculated is
+determined by the sound crossing time in the inner regions of the disc
+as this is the time scale over which the scale height in this region
+will vary and effect the transfer of radiation into the outer parts of
+the disc.  The vertical sound crossing time at a radius of
+10~au is typically 2 years, so a radiative transfer calculation is
+performed after every four hydrodynamics time steps (equivalent to
+every 2.4 years).
 
 A cylindrical polar grid, with adaptive $r$ and $z$ cells was used for the radiative transfer step. 
 The cells were split in the azimuthal direction to give a cell spacing of 22.5 degrees. This azimuthal splitting allows for the existence of non-axisymmetric instabilities (such as radiatively driven warps) which may occur due to either physical or numerical effects, while ensuring the calculation remains tractable.  The AMR grid
@@ -711,7 +737,7 @@ transient effects seen in this case. However it should be noted that
 optically thick disc, which is significantly more massive than our
 model disc, and may represent a different regime to that considered
 here. We note that the disc retains its azimuthal symmetry throughout 
-(XXXX Check!) the simulation and we find no evidence for warping instabilities.
+the simulation and we find no evidence for warping instabilities.
 
 The surface density of the disc is shown in Fig.~\ref{fig:sigma}, the
 scale height is shown in Fig.~\ref{fig:scale_height} and the radial
@@ -776,10 +802,13 @@ elements it is important that both these components have sufficient
 resolution to represent the disc inner edge. This presents a
 particular challenge for a SPH code which uses equal mass particles
 but is achievable with a large number of particles. Accurately
-modelling the SED using this method seems to be considerably more
+modelling the SED using this method is considerably more
 demanding than accurately representing the temperature structure
-within the disc and temperature errors can be reduced to a manageable
-level with a realistic number of SPH particles in the disc. 
+within the disc. Temperature errors can be reduced to a manageable
+level using a realistic number of SPH particles, yielding a 
+temperature distribution suitable for use in a hydrodynamics
+calculation, however even with a disc composed of $10^8$ SPH particles
+the modelled SEDs show significant deviations from the benchmark results. 
 
 The combined SPH-radiative transfer code was able to evolve a
 circumstellar disc to a state of radiative and hydrostatic
