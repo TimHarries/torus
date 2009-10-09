@@ -29,7 +29,7 @@
 \begin{document}
 
 \title{Modelling circumstellar discs with 3D radiation hydrodynamics}
-\author[David M. Acreman et al]{David M. Acreman et al\\
+\author[David M. Acreman, Tim J. Harries and David A. Rundle]{David M. Acreman, Tim J. Harries and David A. Rundle\\
 School of Physics, University of Exeter, Stocker Road, Exeter EX4
 4QL. E-mail acreman@astro.ex.ac.uk
 }
@@ -138,10 +138,10 @@ h\left( r \right) = z_d \left( \frac{r}{r_d}\right)^{1.125}
 and $\rho_0$, $z_d$ and $r_d$ are constant parameters.  We base our
 benchmark model on the most optically thick case presented by
 \cite{pascucci_2004} which has a mid-plane optical depth of $\tau=100$
-at $\lambda=550~\rm{nm}$ and a mass of 0.011~$\rm{M}_{\sun}$. This
-requires $r_d=500~\rm{AU}$, $z_d=0.25 r_d$ and
-$\rho_{0}=8.1614\times10^{-18}~\rm{g~cm^{-3}}$, with the disc truncated at
-an outer radius of 1000~AU and an inner radius of 1~AU.
+at $\lambda=550\,\rm{nm}$ and a mass of 0.011\,$\rm{M}_{\sun}$. This
+requires $r_d=500\,\rm{au}$, $z_d=0.25 r_d$ and
+$\rho_{0}=8.1614\times10^{-18}\,\rm{g\,cm^{-3}}$, with the disc truncated at
+an outer radius of 1000\,au and an inner radius of 1\,au.
 
 The benchmark disc is implemented using an ensemble of equal mass SPH
 particles. If all the particles have the same mass then the number
@@ -228,7 +228,7 @@ transfer calculations.
 To illustrate the effects of the different splitting methods two
 example grids are shown in Fig.~\ref{fig:example_meshes}. A grid
 constructed from $10^7$ particles, using a mass per cell limit of
-$5\times10^{26}~\rm{g}$, is plotted in
+$5\times10^{26}\,\rm{g}$, is plotted in
 Fig.~\ref{fig:mass_condition_mesh}. This plot is a slice perpendicular
 to the disc mid-plane and shows increased resolution towards the disc
 centre and mid-plane where the density is higher.  A grid with
@@ -238,16 +238,19 @@ towards the edge of the disc, where there are large density gradients,
 and also increases towards the centre of the disc. 
 \begin{figure*}
   \subfigure[AMR grid with a mass per cell condition of
-    $5\times10^{26}~\rm{g}$.]
+    $5\times10^{26}\,\rm{g}$.]
     {\includegraphics[scale=0.22]{figures/set1_mesh}
   \label{fig:mass_condition_mesh}}
   \subfigure[Grid with a density condition of
     $f_{\rm{split}}=0.1$.]
     {\includegraphics[scale=0.22]{figures/set2_mesh}
       \label{fig:density_condition_mesh}}
-  \caption{Example AMR grids for a mass per cell splitting condition (left)
-    and a density contrast splitting condition (right). In both cases
-    $10^7$ particles were used. The axis units are $10^{16}$~cm.}
+  \caption{Example AMR grids for a mass per cell splitting condition
+    of  $5\times10^{26}\,\rm{g}$ (left)
+    and a density contrast splitting condition of $f_{\rm{split}}=0.1$
+    (right) contructed
+    from $10^7$ SPH particles. The grids are
+    slices perpendicular to the disc mid-plane and the axis units are $10^{16}$\,cm.}
   \label{fig:example_meshes}
 \end{figure*}
 
@@ -259,7 +262,7 @@ number of octals generated as a function of mass per cell or
 $f_{\rm{split}}$ (solid line), and the percentage error in the disc
 mass (dashed line). The percentage error in disc mass is calculated by
 comparing the total mass on the AMR grid with the known mass of
-$0.011~\rm{M}_{\sun}$ based on the analytical form of the density
+$0.011\,\rm{M}_{\sun}$ based on the analytical form of the density
 distribution, and a positive value indicates that mass on the grid is
 too large.
 \begin{figure*}
@@ -269,9 +272,11 @@ too large.
   \subfigure[Density contrast condition and $10^5$ particles]{\includegraphics[scale=0.3]{figures/1e5_set2}}
   \subfigure[Density contrast condition and $10^6$ particles]{\includegraphics[scale=0.3]{figures/1e6_set2}}
   \subfigure[Density contrast condition and $10^7$ particles]{\includegraphics[scale=0.3]{figures/1e7_set2}}
-  \caption{Number of octals (solid line) and percentage mass error
-    (dashed line) for Cartesian AMR grids generated using different grid
-    splitting methods and different numbers of particles. }
+  \caption{Number of octals (solid line) and percentage error in total
+    disc mass (dashed line) for the benchmark disc represented on
+    Cartesian AMR grids generated using different grid splitting
+    methods (mass per cell limit or density contrast limit) and
+    different numbers of particles ($10^5$, $10^6$ or $10^7$). }
   \label{fig:grid_tests}
 \end{figure*}
 
@@ -299,19 +304,19 @@ particles and a density contrast threshold of no more than 0.3.
 
 The density contrast condition is effective in adding extra resolution
 in regions of high density contrast which are likely to be important
-in radiative transfer calculations. However the density split
-condition has a less robust total mass representation than the mass
-per cell limit. By using a combination of these two conditions it is
-possible to add extra resolution in high contrast regions and still
-maintain an accurate total mass.
+in radiative transfer calculations. However this condition has a less
+robust total mass representation than the mass per cell limit. By
+using a combination of these two conditions it is possible to add
+extra resolution in high contrast regions and still maintain an
+accurate total mass.
  
 \subsection{Cylindrical polar grid generation}
 
 For some geometries it may be appropriate to use a cylindrical polar
 co-ordinate system. A mass per cell splitting condition can still be
-used but it needs to be modified to take into account the increase in 
-cell volume as cylindrical polar radius increases, for fixed values of
-$dr$ and $dz$.  
+used but needs to be modified to take into account that for fixed
+values of $dr$ and $dz$ the cell volume increases as cylindrical polar
+radius increases.
 %
 Consider a Cartesian grid with cubic volume elements and let
 \begin{equation}
@@ -362,9 +367,11 @@ Fig.~\ref{fig:cp_grid_tests}.
   \subfigure[Density contrast condition and $10^5$ particles]{\includegraphics[scale=0.3]{figures/1e5_cyl_set2}}
   \subfigure[Density contrast condition and $10^6$ particles]{\includegraphics[scale=0.3]{figures/1e6_cyl_set2}}
   \subfigure[Density contrast condition and $10^7$ particles]{\includegraphics[scale=0.3]{figures/1e7_cyl_set2}}
-  \caption{Number of octals (solid line) and percentage mass error
-    (dashed line) for cylindrical polar AMR grids generated using different grid
-    splitting methods and different numbers of particles. }
+  \caption{Number of octals (solid line) and percentage error in total
+    disc mass (dashed line) for the benchmark disc represented on
+    cylindrical polar AMR grids generated using different grid splitting
+    methods (mass per cell limit or density contrast limit) and
+    different numbers of particles ($10^5$, $10^6$ or $10^7$).}
   \label{fig:cp_grid_tests}
 \end{figure*}
 Using a cylindrical polar geometry results in a significantly reduced
@@ -396,7 +403,7 @@ describing the fluid flow is not necessarily the same as required for accurately
 modelling the radiation field.
 
 The disc was initially modelled using $10^5$ SPH particles with an AMR
-grid constructed from a mass per cell limit of $5\times10^{26}$g.
+grid constructed from a mass per cell limit of $5\times10^{26}$\,g.
 This number of SPH particles would normally be considered as
 sufficient to adequately represent a disc of this mass in a purely
 hydrodynamical calculation. The mass per cell limit was chosen in
@@ -430,8 +437,10 @@ of the RT calculation than the temperature distribution.
 
 \begin{figure}
   \includegraphics[scale=0.3]{figures/nomod_tem_diff}
-  \caption{Temperature difference between SPH benchmark disc and high
-    accuracy 2D result.}
+  \caption{Fractional errors in the temperature distribution of a
+    $10^5$ particle disc. The radiative transfer grid is a Cartesian
+    grid generated using a mass per cell limit of
+    $5\times10^{26}$\,g. Axis units are au.}
   \label{fig:nomod_tem_diff}
 \end{figure}
 
@@ -444,16 +453,19 @@ Fig.~\ref{fig:seds} are the benchmark results of \cite{pascucci_2004}
 \begin{figure*}
   \includegraphics[scale=0.3]{figures/sed_013}
   \includegraphics[scale=0.3]{figures/sed_077}
-  \caption{SEDs from the benchmark disc with $10^5 $ particles. SEDs
-    are shown for inclination angles of 12.5 degrees (left) and 77.5
-    degrees (right). The benchmark SED is plotted as a solid line and
-    the {\sc torus} SED is plotted as a dashed line.}
+  \caption{SEDs from the benchmark disc represented by $10^5 $ particles and a
+    Cartesian radiative transfer grid generated using a mass per cell
+    limit of $5\times10^{26}$\,g. SEDs are shown for inclination
+    angles of 12.5 degrees (left) and 77.5 degrees (right). The
+    benchmark SED is plotted as a solid line and the {\sc torus} SED
+    is plotted as a dashed line. The corresponding fractional
+    temperature errors are plotted in Fig.\ref{fig:nomod_tem_diff}.}
   \label{fig:seds}
 \end{figure*}
 Both SEDs show significant departures from the benchmark results;
 there is excess emission between 10-100 $\mu\rm{m}$ and at a viewing
 angle of 77.5 degrees there is also a significant reduction in flux
-below 1~$\mu\rm{m}$. Both these discrepancies are attributable to a lack of resolution within a few au of the central object. The density distribution in the central region of
+below 1\,$\mu\rm{m}$. Both these discrepancies are attributable to a lack of resolution within a few au of the central object. The density distribution in the central region of
 this disc is plotted in Fig.~\ref{fig:basic_dens} which shows that the
 central 1\,au gap is not represented. There are two effects in
 operation; firstly the grid resolution in this region is larger than
@@ -463,50 +475,63 @@ to be higher grid resolution around the central source and more SPH
 particles are required so that the smoothing lengths are smaller.
 \begin{figure}
 \includegraphics[scale=0.2]{figures/basic_dens}
-\caption{Density in central region of disc with $10^5$ particles. Axis
-units are $10^{13}$cm.}
+\caption{Density in the central region of the benchmark disc
+  represented by $10^5$ particles and a Cartesian radiative transfer
+  grid generated using a mass per cell limit of
+  $5\times10^{26}$\,g. Axis units are $10^{13}$cm. The central gap of
+  1\,au ($1.5\time10^{13}$\,cm) is not represented and the effects on
+  the temperature distribution and emergent SEDs are shown in
+  Fig.~\ref{fig:nomod_tem_diff} and Fig.~\ref{fig:seds}
+  respectively.}
 \label{fig:basic_dens}
 \end{figure}
 
 \subsection{Grid resolution}
+\label{subsec:grid_res}
+
 Decreasing the mass per cell limit to achieve the required resolution
 around the central source would result in too many cells being
 generated in other regions of the disc. In order to achieve a grid
 resolution of less than 1\,au around the source it was necessary to
 specify additional criteria for refining the grid. Three cubes of
 increased resolution were added to the AMR grid with sizes
-$1.5\times10^{15}$~cm, $3\times10^{14}$~cm and
-$6\times10^{13}$~cm. Within each cube it was required that the cell
+$1.5\times10^{15}$\,cm, $3\times10^{14}$\,cm and
+$6\times10^{13}$\,cm. Within each cube it was required that the cell
 size be no larger than 0.1 of the cube dimension. In order to confirm
 that the grid modifications provide sufficient resolution to generate
 an accurate SED three calculations were performed with the central
 part of the disc forced to the correct density values from the
 analytical density description.  A spherical region with radius
-$1.0\times10^{15}$~cm, $5.0\times10^{14}$~cm or $2.5\times10^{14}$~cm
+$1.0\times10^{15}$\,cm, $5.0\times10^{14}$\,cm or $2.5\times10^{14}$\,cm
 was over written with the benchmark disc density after the initial
 grid generation was performed. The resulting SEDs are plotted in
 Fig.~\ref{fig:sed_forced}. The solid line shows the benchmark result
 and the other lines show SEDs for forcing regions of radius
-$1.0\times10^{15}$~cm (long dashed line), $5.0\times10^{14}$~cm (short
-dashed line) and $2.5\times10^{14}$~cm (dotted line).
+$1.0\times10^{15}$\,cm (long dashed line), $5.0\times10^{14}$\,cm (short
+dashed line) and $2.5\times10^{14}$\,cm (dotted line).
 \begin{figure*}
   \includegraphics[scale=0.3]{figures/seds_forced_13.pdf}
   \includegraphics[scale=0.3]{figures/seds_forced_77.pdf}
-  \caption{SEDs from SPH benchmark disc for inclination angles of 12.5
-    degrees and 77.5 degrees. The benchmark SED is plotted as a solid
-    line. The {\sc torus} density distribution is forced to the correct
-    value with a radius of $1.0\times10^{15}$~cm (long dashed line), $5.0\times10^{14}$~cm
-(short dashed line) and $2.5\times10^{14}$~cm (dotted line).} 
+  \caption{ SEDs from the benchmark disc represented by $10^5 $ particles and
+    a Cartesian radiative transfer grid generated using a mass per
+    cell limit of $5\times10^{26}$\,g. Extra resolution has been added
+    around the central source and the {\sc torus} density distribution
+    is forced to the correct value within a radius of
+    $1.0\times10^{15}$\,cm (long dashed line), $5.0\times10^{14}$\,cm
+    (short dashed line) and $2.5\times10^{14}$\,cm (dotted line). SEDs
+    are shown for inclination angles of 12.5 degrees (left) and 77.5
+    degrees (right) with the benchmark result plotted as a solid
+    line.}
   \label{fig:sed_forced}
 \end{figure*}
 With the correct density forced out to a radius of
-$1.0\times10^{15}$~cm the SED is close to the benchmark result for
+$1.0\times10^{15}$\,cm the SED is close to the benchmark result for
 both viewing angles, however if the forced region is reduced in size
 there is a significant discrepancy relative to the benchmark SED. This
 confirms that the grid now has enough resolution to generate an
 accurate SED but also indicates that using $10^5$ particles does not
 give a sufficiently accurate density distribution within the central
-$1.0\times10^{15}$~cm of the disc. 
+$1.0\times10^{15}$\,cm of the disc. 
 
 \subsection{Number of particles}
 Further calculations were performed using different numbers of SPH
@@ -521,8 +546,10 @@ representation improves as the number of particles is increased.
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.22]{figures/dens_1e6}}
   \subfigure[$10^7$ particles]{\includegraphics[scale=0.22]{figures/dens_1e7}}
   \subfigure[$10^8$ particles]{\includegraphics[scale=0.22]{figures/dens_1e8}}
-  \caption{Central density on AMR grid derived from different numbers
-    of SPH particles. The axis units are $10^{13}$~cm.} 
+  \caption{Density in the central region of the disc as represented on AMR grids derived from different numbers
+    of SPH particles. The AMR grid is generated using a mass per cell
+    limit of $5\times10^{26}$\,g with extra resolution at the origin
+    as described in Section~\ref{subsec:grid_res}. The axis units are $10^{13}$\,cm.}
   \label{fig:n_part_central_dens}
 \end{figure*}
 The effective resolution of the AMR mesh is dependent on two factors; the probability of having sufficient particles to adequately sample the small volume of the disc inner-edge, and the particle smoothing length (which determines the effective spatial resolution of the SPH density representation).
@@ -543,8 +570,14 @@ particles.
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/tdiff_1e6}}
   \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/tdiff_1e7}}
   \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/tdiff_1e8}}
-  \caption{Fractional temperature error for discs represented by
-    different numbers of SPH particles. Axis units are au.} 
+  \caption{Fractional errors in the temperature distribution of discs
+    represented by $10^5$, $10^6$, $10^7$ and $10^8$ particles. The
+    AMR grid is generated using a mass per cell limit of
+    $5\times10^{26}$\,g with extra resolution at the origin as
+    described in Section~\ref{subsec:grid_res}. The axis units are
+    $10^{13}$\,cm. The corresponding density distributions in the
+    central part of the disc are plotted in
+    Fig.~\ref{fig:n_part_central_dens}.}
   \label{fig:n_part_tem_diff}
 \end{figure*}
 When using $10^5$ particles to represent the disc there is a too much
@@ -564,8 +597,9 @@ temperature hotter than the benchmark value.
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/mp_temp_2}}
   \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/mp_temp_3}}
   \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/mp_temp_4}}
-  \caption{Fractional temperature error in the mid-plane for discs represented by
-    different numbers of SPH particles.} 
+  \caption{Fractional temperature error, as a function of radius, for particles within 0.01
+    scale heights of the mid-plane for discs represented by $10^5$,
+    $10^6$, $10^7$ and $10^8$ particles. }
   \label{fig:n_part_tem_diff_midpane}
 \end{figure*}
 
@@ -588,9 +622,13 @@ this disc is challenging, even with $10^8$ particles.
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e6}}
   \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e7}}
   \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/sed_013_1e8}}
-  \caption{SEDs at a 12.5 degree inclination angle for discs represented by different numbers of SPH
-    particles. The benchmark result is plotted as a solid line and the
-  modelled SED is plotted as a dashed line. } 
+  \caption{SEDs at a 12.5 degree inclination angle for discs
+    represented by $10^5$, $10^6$, $10^7$ and $10^8$ particles. The
+    benchmark result is plotted as a solid line and the {\sc torus}
+    SEDs are plotted as dashed lines. The corresponding density
+    distributions in the central part of the disc are plotted in
+    Fig.~\ref{fig:n_part_central_dens} and fractional temperature
+    errors are plotted in Fig.~\ref{fig:n_part_tem_diff}.}
   \label{fig:n_part_sed_013}
 \end{figure*}
 \begin{figure*}
@@ -598,9 +636,13 @@ this disc is challenging, even with $10^8$ particles.
   \subfigure[$10^6$ particles]{\includegraphics[scale=0.3]{figures/sed_077_1e6}}
   \subfigure[$10^7$ particles]{\includegraphics[scale=0.3]{figures/sed_077_1e7}}
   \subfigure[$10^8$ particles]{\includegraphics[scale=0.3]{figures/sed_077_1e8}}
-  \caption{SEDs at a 77.5 degree inclination angle for discs represented by different numbers of SPH
-    particles. The benchmark result is plotted as a solid line and the
-  modelled SED is plotted as a dashed line. } 
+  \caption{SEDs at a 77.5 degree inclination angle for discs
+    represented by $10^5$, $10^6$, $10^7$ and $10^8$ particles. The
+    benchmark result is plotted as a solid line and the {\sc torus}
+    SEDs are plotted as dashed lines. The corresponding density
+    distributions in the central part of the disc are plotted in
+    Fig.~\ref{fig:n_part_central_dens} and fractional temperature
+    errors are plotted in Fig.~\ref{fig:n_part_tem_diff}.}
   \label{fig:n_part_sed_077}
 \end{figure*}
 
@@ -610,7 +652,18 @@ this disc is challenging, even with $10^8$ particles.
 
 \label{section:sph_disc}
 
-The above analysis indicates that the hybrid code is capable of successfully passing the density distribution from the hydrodynamics step to the radiative-transfer code, and that accurate temperatures assuming radiative equilibrium can be passed back to the SPH code in order to update the gas pressure and perform the next hydrodynamical step. In order to test the feasibility of performing a radiation-hydrodynamics calculation using the hybrid code we adopt a `realistic' test problem, that of a circumstellar disc around a classical T Tauri star. The mid-plane optical depths here are higher than that of the Pascucci benchmark, providing a more demanding challenge both in terms of computation time and required numerical accuracy. 
+The above analysis indicates that the hybrid code is capable of
+successfully passing the density distribution from the hydrodynamics
+step to the radiative-transfer code, and that accurate temperatures
+assuming radiative equilibrium can be passed back to the SPH code in
+order to update the gas pressure and perform the next hydrodynamical
+step. In order to test the feasibility of performing a
+radiation-hydrodynamics calculation using the hybrid code we adopt a
+`realistic' test problem, that of a circumstellar disc around a
+classical T Tauri star. The mid-plane optical depths here are higher
+than that of the Pascucci benchmark, providing a more demanding
+challenge both in terms of computation time and required numerical
+accuracy.
 
 \subsection{Description of model}
 
@@ -618,15 +671,15 @@ A model system was constructed similar to the classical T Tauri star
 AA Tau. \cite{o'sullivan_2005} determine the properties of AA Tau
 using Monte-Carlo modelling of the observed SED, and we use these
 derived properties as a basis for constructing our model system. The
-disc of $0.02~{M}_{\odot}$ is initialised with an outer radius of
-150~AU, and an inner radius of 1.0~AU, surrounding a central star of
-mass $1~M_{\odot}$. The central star is represented by a sink particle
-which accretes gas particles within an accretion radius of 1.0~AU. The
+disc of $0.02\,{M}_{\odot}$ is initialised with an outer radius of
+150\,au, and an inner radius of 1.0\,au, surrounding a central star of
+mass $1\,M_{\odot}$. The central star is represented by a sink particle
+which accretes gas particles within an accretion radius of 1.0\,au. The
 disc itself is initially represented using $10^6$ particles of
 equal mass, although some of these particles are accreted by the
 central sink particle as the simulation progresses. The central star
-has a radius of $2~\rm{R}_{\odot}$, a temperature of 4000~K and a
-luminosity of $0.9~\rm{L}_{\odot}$.
+has a radius of $2\,\rm{R}_{\odot}$, a temperature of 4000\,K and a
+luminosity of $0.9\,\rm{L}_{\odot}$.
 
 The disc is initially evolved using only the SPH part of the code in
 order to bring the disc into dynamical equilibrium. During this
@@ -656,27 +709,27 @@ determined by the sound crossing time in the inner regions of the disc
 as this is the time scale over which the scale height in this region
 will vary and effect the transfer of radiation into the outer parts of
 the disc.  The vertical sound crossing time at a radius of
-10~au is typically 2 years, so a radiative transfer calculation is
+10\,au is typically 2 years, so a radiative transfer calculation is
 performed after every four hydrodynamics time steps (equivalent to
 every 2.4 years).
 
 A cylindrical polar grid, with adaptive $r$ and $z$ cells was used for the radiative transfer step. 
 The cells were split in the azimuthal direction to give a cell spacing of 22.5 degrees. This azimuthal splitting allows for the existence of non-axisymmetric instabilities (such as radiatively driven warps) which may occur due to either physical or numerical effects, while ensuring the calculation remains tractable.  The AMR grid
 was constructed using a maximum mass per cell of
-$3.0\times10^{25}~\rm{g}$ and a density splitting condition of
+$3.0\times10^{25}\,\rm{g}$ and a density splitting condition of
 $f_{\rm{split}}=0.1$. The density in a cylindrical region around the
 source was reduced to a very low value to ensure that the disc did not
 completely obscure the source. A real circumstellar disc will be
 truncated by the stellar magnetosphere so there is a physical
 justification for enforcing a low density region around the star. The
-radius of this region is $R_{\rm{gap}}=1.0~\rm{AU}$ which corresponds
+radius of this region is $R_{\rm{gap}}=1.0\,\rm{au}$ which corresponds
 to the accretion radius of the SPH sink particle. Two extra levels of
 grid refinement were added in a box around the central source to
 ensure that the grid had enough resolution to allow the gap around the
 source to be resolved. The first box of extra refinement has size
-$10^{14}~\rm{cm}$ with cells no larger than $10^{13}~\rm{cm}$ and the
-second box has size $4\times10^{13}~\rm{cm}$ with cells no larger than
-$4\times10^{12}~\rm{cm}$.
+$1\times10^{14}\,\rm{cm}$ with cells no larger than $1\times10^{13}\,\rm{cm}$ and the
+second box has size $4\times10^{13}\,\rm{cm}$ with cells no larger than
+$4\times10^{12}\,\rm{cm}$.
 
 Monte-Carlo radiative transfer calculations can be computationally
 demanding so the calculation was parallelised using MPI (Message
@@ -686,7 +739,7 @@ and can be applied to a shared memory or a distributed memory computer
 architecture. Evolving the disc using both the radiation and
 hydrodynamics codes took a total wall time of 560 hours using 128 MPI
 processes, of which 440 hours was spent in radiation calculations. The
-radiation calculations take approximately 4~times as long as the
+radiation calculations take approximately four times as long as the
 hydrodynamics calculations so the combined code is significantly
 slower than the SPH code alone. However the calculation is still
 feasible and we expect the combined code only to be used in applications
@@ -704,7 +757,7 @@ has been switched on. The inner disc has collapsed and there is
 heating seen in parts of the disc exposed to radiation from the
 central star. In Fig.~\ref{fig:frame3} a scale height enhancement is
 present in the disc at a radius of approximately
-$3\times10^{15}~\rm{cm}$ which shadows the region immediately behind
+$3\times10^{15}\,\rm{cm}$ which shadows the region immediately behind
 causing it to cool. Figure~\ref{fig:frame4} shows several such scale
 height enhancements and in each case there is cooling behind the
 enhancement as the scale height fluctuations are able to affect the
@@ -720,8 +773,14 @@ in hydrostatic and radiative equilibrium.
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_DSC7363}\label{fig:frame4}}
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_DSC9363}\label{fig:frame5}}
   \subfigure[]{\includegraphics[scale=0.3]{figures/u_run2_DSC1024}\label{fig:frame6}}
-  \caption{Particle plots showing internal energy in cylindrical
-    polar co-ordinates. Axis units are cm.}
+  \caption{Internal energy distribution in the model disc at six
+    different times as the disc adjusts towards
+    equilibrium. Figure~\ref{fig:frame1} shows the initial vertically
+    isothermal state and Fig.~\ref{fig:frame6} shows the steady state in
+    hydrostatic and radiative equilibrium. Intermediate frames show
+    the effect of scale height fluctuations on the internal energy
+    within the disc. Internal energy is plotted for each particle in a
+    cylindrical polar co-ordinate system and the axis units are cm.}
   \label{fig:log_u}
 \end{figure*}
 
@@ -751,25 +810,36 @@ profile is the average temperature within one scale height of the
 mid-plane for each radial bin.
 \begin{figure}
   \includegraphics[scale=0.3]{figures/sigma}
-  \caption{Surface density as a function of radius.}
+  \caption{Surface density as a function of radius for the model
+    disc. The solid line is the vertically isothermal disc prior to
+    the radiative transfer code being switched on. The dotted line in
+    shows the disc once is has reached a state of hydrostatic and
+    radiative equilibrium.}
   \label{fig:sigma}
 \end{figure}
 \begin{figure}
   \includegraphics[scale=0.3]{figures/scale_height}
-  \caption{Disc scale height as a function of radius.}
+  \caption{Scale height of the model disc as a function of radius. The
+    solid line is the vertically isothermal disc prior to the
+    radiative transfer code being switched on. The dotted line in
+    shows the disc once is has reached a state of hydrostatic and
+    radiative equilibrium.}
   \label{fig:scale_height}
 \end{figure}
 \begin{figure}
   \includegraphics[scale=0.3]{figures/mid_tem}
-  \caption{Average temperature within one scale height of the mid plane as a function of
-    radius.}
+  \caption{Average temperature within one scale height of the mid
+    plane as a function of radius for the model disc. The solid line
+    is the vertically isothermal disc prior to the radiative transfer
+    code being switched on. The dotted line in shows the disc once is
+    has reached a state of hydrostatic and radiative equilibrium.}
   \label{fig:mid_tem}
 \end{figure}     
 The majority of the surface density profile is well represented by a
 power law and does not change significantly as a result of including
 radiative transfer. Figures~\ref{fig:scale_height} and
 \ref{fig:mid_tem} show that the disc is hotter close to the mid-plane,
-except within a region between 10--20 au of the centre, but has a
+except within a region between 10--20\,au of the centre, but has a
 smaller scale height. Figure~\ref{fig:log_u} shows that the vertical
 temperature gradient in the disc is such that temperature increases
 with height out of the mid-plane. Although the disc is hotter when
