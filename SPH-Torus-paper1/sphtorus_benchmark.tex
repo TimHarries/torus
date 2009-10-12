@@ -69,7 +69,17 @@ Hydrodynamics calculations are used in investigations of  a variety of problems 
 
 Sophisticated as such calculations appear, the underlying physics regarding the thermal properties of the gas is much simplified. One of the usual approximations is the use of an equation of state (eos) in determining the pressure of the gas. An isothermal eos is often a good approximation in the most rarified regions, where the material is able to radiate, and thus cool, freely. The gas may be compressed adiabatically in the highest density regions, and a barytropic eos is sometimes adopted, with the polytropic exponent switching at a critical density in an attempt to reproduce the results of one-dimensional collapse calculations that incorporate radiative-transfer \citep{masunaga_1998}. The crucial point here is that the energy dumped into the cluster from accretion onto, and gravitation contraction of, the newly formed stars is neglected, and the radiation emitted by compressed gas (the `$P\,dV$' term) is assumed to  escape without further interaction.
 
-The solution is to include radiation-transfer self-consistently  and perform a radiation-hydrodynamics (RHD) calculation. The simplest way to do this is to assume that the energy is transported by radiative diffusion of photons. The diffusion approximation is a good one at high optical depth, but breaks down in optically thin regions since the diffusion speed may exceed the speed of light as the mean-free-path tends to infinity; an essentially arbitrary flux limiter is adopted in this regime. Furthermore the approximation is often implemented as a grey method, typically using Rosseland mean  opacities tabulated as a function of temperature. Finally the diffusion approximation cannot treat the effects of shadowing, as radiation field may diffuse around optically thick obstacles. The crucial advantage of the diffusion approximation though is of course speed: the radiation transport step is straightforward to implement and is not hugely dominant in the RHD calculation. The first cluster collapse and disc fragmentation calculations using flux-limited diffusion have just started appearing in the literature \citep{boss_2008, bate_2009b, offner_2009, stamatellos_2009}. The fundamental result of including a more complete thermal treatment is broadly in line with prior expectations i.e.  the heating of the gas inhibits the fragmentation process.
+The solution is to include radiation-transfer self-consistently  and
+perform a radiation-hydrodynamics (RHD) calculation. The simplest way
+to do this is to assume that the energy is transported by radiative
+diffusion of photons. The diffusion approximation is a good one at
+high optical depth, but breaks down in optically thin regions since
+the diffusion speed may exceed the speed of light as the
+mean-free-path tends to infinity; an essentially arbitrary flux
+limiter is adopted in this regime. Furthermore the approximation is
+often implemented as a grey method, typically using Rosseland mean
+opacities tabulated as a function of temperature. Finally the
+diffusion approximation cannot treat the effects of shadowing, as the radiation field may diffuse around optically thick obstacles. The crucial advantage of the diffusion approximation though is of course speed: the radiation transport step is straightforward to implement and is not hugely dominant in the RHD calculation. The first cluster collapse and disc fragmentation calculations using flux-limited diffusion have just started appearing in the literature \citep{boss_2008, bate_2009b, offner_2009, stamatellos_2009}. The fundamental result of including a more complete thermal treatment is broadly in line with prior expectations i.e.  the heating of the gas inhibits the fragmentation process.
 
 Meanwhile dedicated radiation transfer (RT) codes  have progressed far beyond the diffusion approximation and now take into account a wide array of processes such as polychromatic radiation transfer incorporating the radiation's polarization state, multiple scattering, Mie phase matrices etc. These sophisticated RT codes have been employed to model cores (e.g. \citealt{stamatellos_2005}), discs (reviewed by \citealt{dullemond_2007}) and even entire clusters \citep{kurosawa_2004}. The principle barrier to using these codes in RHD is that of  of computation time, but the increase in CPU power and the  adoption of parallelization mean that it is now feasible to conduct a full treatment of RT along with the hydrodynamics, thereby dropping the diffusion approximation.
 
@@ -241,7 +251,7 @@ and also increases towards the centre of the disc.
     $5\times10^{26}\,\rm{g}$.]
     {\includegraphics[scale=0.22]{figures/set1_mesh}
   \label{fig:mass_condition_mesh}}
-  \subfigure[Grid with a density condition of
+  \subfigure[AMR grid with a density condition of
     $f_{\rm{split}}=0.1$.]
     {\includegraphics[scale=0.22]{figures/set2_mesh}
       \label{fig:density_condition_mesh}}
@@ -478,8 +488,8 @@ particles are required so that the smoothing lengths are smaller.
 \caption{Density in the central region of the benchmark disc
   represented by $10^5$ particles and a Cartesian radiative transfer
   grid generated using a mass per cell limit of
-  $5\times10^{26}$\,g. Axis units are $10^{13}$cm. The central gap of
-  1\,au ($1.5\time10^{13}$\,cm) is not represented and the effects on
+  $5\times10^{26}$\,g. Axis units are $10^{13}$cm. The central 1\,au gap 
+   is not represented and the effects on
   the temperature distribution and emergent SEDs are shown in
   Fig.~\ref{fig:nomod_tem_diff} and Fig.~\ref{fig:seds}
   respectively.}
