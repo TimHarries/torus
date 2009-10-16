@@ -280,7 +280,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
-
   intPathError = 0
   hitCore = .false.
   chanceHotRing = 0.
@@ -482,7 +481,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
      if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. &
-          geometry =="cmfgen" .or. geometry == "romanova") then      
+         geometry == "romanova") then      
         ! Nu must be set again here since it is not assigned when the population/grid 
         ! file is read from a file!  (RK changed here.)
         nu = cSpeed / (lamLine * angstromtocm)
@@ -771,70 +770,61 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         if (grid%resonanceLine) totWindContinuumEmission = 0.
 
-              if (j < nTau) then
-                 t = 0.
-                 if ((tauExt(j+1) - tauExt(j)) /= 0.) then
-                    t = (thisTau - tauExt(j)) / (tauExt(j+1) - tauExt(j))
-                 endif
-                 dlambda = lambda(j) + (lambda(j+1)-lambda(j))*t
-              else
-                 dlambda = lambda(nTau)
-              endif
-
 
 
                     
-              ! New photon position 
-              thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
-              ! adjusting the photon weights 
-              if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
-                 if (j < nTau) then
-                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
-                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
-                 else
-                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
-                 end if
-              end if
+!              ! New photon position 
+!              thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
+!              ! adjusting the photon weights 
+!              if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
+!                 if (j < nTau) then
+!                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
+!                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
+!                 else
+!                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
+!                 end if
+!              end if
+!
+!
+!              if (flatspec) then
+!                 iLambda = 1
+!              else
+!                 iLambda = findIlambda(thisPhoton%lambda, grid%lamArray, nLambda, ok)
+!              endif
+!
+!              if (grid%adaptive) then
+!                 positionOc = thisPhoton%position
+!                 call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
+!                      kappaAbs = thisChi, kappaSca = thisSca)
+!              else
+!                 call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
+!                 if (.not.grid%oneKappa) then
+!                    if (.not.flatspec) then
+!                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, t1, t2, t3)
+!                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, t1, t2, t3)
+!                    else
+!                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1, t1, t2, t3)
+!                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1, t1, t2, t3)
+!                    endif
+!                 else
+!                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2, t3)
+!                    thisChi = grid%oneKappaAbs(1,iLambda) * r
+!                    thisSca = grid%oneKappaSca(1,iLambda) * r
+!                 endif
+!              end if
+!              
+!              if (contPhoton) then
+!                 if ((thisChi+thisSca) >= 0.) then
+!                    albedo = thisSca / (thisChi + thisSca)
+!                 else
+!                    albedo = 0.
+!                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
+!                    !                 stop
+!                 endif
+!              else
+!                 albedo = linePhotonAlbedo(j)
+!              endif
 
-
-              if (flatspec) then
-                 iLambda = 1
-              else
-                 iLambda = findIlambda(thisPhoton%lambda, grid%lamArray, nLambda, ok)
-              endif
-
-              if (grid%adaptive) then
-                 positionOc = thisPhoton%position
-                 call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
-                      kappaAbs = thisChi, kappaSca = thisSca)
-              else
-                 call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
-                 if (.not.grid%oneKappa) then
-                    if (.not.flatspec) then
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, t1, t2, t3)
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, t1, t2, t3)
-                    else
-                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1, t1, t2, t3)
-                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1, t1, t2, t3)
-                    endif
-                 else
-                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2, t3)
-                    thisChi = grid%oneKappaAbs(1,iLambda) * r
-                    thisSca = grid%oneKappaSca(1,iLambda) * r
-                 endif
-              end if
-              
-              if (contPhoton) then
-                 if ((thisChi+thisSca) >= 0.) then
-                    albedo = thisSca / (thisChi + thisSca)
-                 else
-                    albedo = 0.
-                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
-                    !                 stop
-                 endif
-              else
-                 albedo = linePhotonAlbedo(j)
-              endif
         !if (geometry == "ttauri" .or. geometry == "windtest") then
         if (geometry == "windtest") then
            totWindContinuumEmission = 0.
@@ -938,8 +928,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
            fAccretion = fAccretion * (nuStart-nuEnd)
            write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
-           write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
-           totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
+           if (fAccretion /= 0.d0) then
+              write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
+              totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
+           endif
         endif
 
 
@@ -1295,7 +1287,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
      if (doTuning) call tune(6,"Calculate bias on tau")
-     call setBiasOnTau(grid, iLambda)
+     if (mie)     call setBiasOnTau(grid, iLambda)
      if (doTuning) call tune(6,"Calculate bias on tau")
 
 
@@ -1308,17 +1300,16 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      
      call init_random_seed()
 
-
+     if (nSource > 0) &
      call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
 
-     if (mie.or.photoionization) then
+     if (mie.or.photoionization.or.lineEmission) then
         nInnerLoop = nPhotons / nOuterLoop
      endif
 
 
 
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
-
         if (mie) then
 
            iLambdaPhoton = iOuterLoop
@@ -1369,6 +1360,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
 !           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
 !           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+            if (writeoutput) write(*,*) "nInnerloop ",nInnerloop
 
         endif
 
@@ -1525,7 +1517,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = grid%lamArray(1) + r1*(grid%lamArray(nLambda)-grid%lamArray(1))
                  endif
-
            end select
            if (photonFromEnvelope) then
               nFromEnv = nFromEnv + 1
@@ -1618,9 +1609,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
 
-!              octVec = thisPhoton%position
-!              CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
-!              write(*,*) "Optical depth to observer: ",tauExt(ntau),thisOctal%biascont3d(subcell)
+!              if (thisPhoton%contPhoton)then
+!                 octVec = thisPhoton%position
+!                 CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
+!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),1.d0/thisOctal%biascont3d(subcell), &
+!                      thisPhoton%stokes%i
+!              endif
 
                if (intPathError == -10) then
                     tooFewSamples = tooFewSamples + 1  
@@ -1663,7 +1657,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !                    endif
 !                 endif
 !                 if (tauExt(nTau) < 1.) escProb = 0.
-                 
                  vray = -(thisPhoton%velocity .dot. outVec)
                  vovercsqr = modulus(thisPhoton%velocity)**2
                  fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)

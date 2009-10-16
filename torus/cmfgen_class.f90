@@ -1,3 +1,4 @@
+
 module cmfgen_class
   ! --------------------------------------------------------------------------------
   !  This module uses the OPACITY_DATA output file from CMFGEN of J. Hillier to
@@ -10,6 +11,7 @@ module cmfgen_class
 
   use kind_mod
   use vector_mod
+  use gridtype_mod
   use constants_mod, only: pi, cspeed_dbl
   use octal_mod, only: OCTAL, subcellCentre
   use utils_mod, only: loginterp_dble
@@ -29,7 +31,8 @@ module cmfgen_class
        put_cmfgen_Rmin, &
        get_cmfgen_Rmin, &
        put_cmfgen_Rmax, &
-       get_cmfgen_Rmax
+       get_cmfgen_Rmax, &
+       distort_cmfgen
        
 
 
@@ -297,17 +300,34 @@ contains
   !====================================================================
   FUNCTION cmfgen_velocity(point) RESULT(out)
     
+    use input_variables, only : bigOmega, eddingtonGamma, uniformStar
     IMPLICIT NONE
-
     type(vector)                  :: out   ! [c]
     TYPE(Vector), INTENT(IN) :: point
     type(vector) :: v
-
     ! Point in spherical coordinates
-    real(double) :: r, Vr
+    real(double) :: r, Vr, mu, vfac, sintheta
 
     r = modulus(point)
     !
+    mu = point%z/r
+    sinTheta = sqrt(1.d0-mu**2)
+
+
+
+! Dwarkadas and Owocki, 2002, ApJ 581, 1337
+
+    if ( uniformStar ) then
+! uniform star
+
+       vFac = (1.d0 - (bigOmega**2 * sinTheta**2)/(1.d0-eddingtonGamma))**0.5d0 ! eq 7 
+
+    else
+! grav darkened star
+
+       vFac = (1.d0 - (bigOmega**2 * sinTheta**2))**0.5d0 ! eq 7 
+    endif
+
     if (r<cmfgen_opacity%Rmin) then ! inside of the star
        v = VECTOR(1.0e-10, 1.0e-10, 1.0e-10)  ! [c]
     else
@@ -316,7 +336,7 @@ contains
        !     \hat(r) x  Vr/c
     end if
 
-    out = v
+    out = vFac * v 
     
   END FUNCTION cmfgen_velocity
 
@@ -397,6 +417,8 @@ contains
   IF ((thisoctal%threed).and.(subcell == 8)) &
        CALL VelocityCorners(thisOctal)
   IF ((thisoctal%twod).and.(subcell == 4)) &
+       CALL VelocityCorners(thisOctal)
+  IF ((thisoctal%oned).and.(subcell == 2)) &
        CALL VelocityCorners(thisOctal)
     
 
@@ -492,7 +514,7 @@ contains
        thisOctal%cornerVelocity(26) = cmfgen_velocity(vector(x2,y3,z3))
        thisOctal%cornerVelocity(27) = cmfgen_velocity(vector(x3,y3,z3))
     
-    else  ! 2D case
+    else if (thisOctal%twoD) then! 2D case
        
        ! we first store the values we use to assemble the position vectors
        
@@ -515,6 +537,19 @@ contains
        thisOctal%cornerVelocity(7) = cmfgen_velocity(vector(x1,0.d0,z3))
        thisOctal%cornerVelocity(8) = cmfgen_velocity(vector(x2,0.d0,z3))
        thisOctal%cornerVelocity(9) = cmfgen_velocity(vector(x3,0.d0,z3))
+
+    else ! one-d case
+       ! we first store the values we use to assemble the position vectors
+       
+       x1 = thisOctal%centre%x - thisOctal%subcellSize
+       x2 = thisOctal%centre%x
+       x3 = thisOctal%centre%x + thisOctal%subcellSize
+       
+       ! now store the 'base level' values
+       
+       thisOctal%cornerVelocity(1) = cmfgen_velocity(vector(x1,0.d0,0.d0))
+       thisOctal%cornerVelocity(2) = cmfgen_velocity(vector(x2,0.d0,0.d0))
+       thisOctal%cornerVelocity(3) = cmfgen_velocity(vector(x3,0.d0,0.d0))
     endif
 
   END SUBROUTINE VelocityCorners
@@ -553,6 +588,78 @@ contains
     real(double) :: Rmax
     Rmax = cmfgen_opacity%Rmax
   end function get_cmfgen_Rmax
+
+
+
+  recursive subroutine distort_cmfgen(thisOctal, grid)
+    use input_variables, only : bigOmega, eddingtonGamma, alphaCAK, uniformStar
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(vector)  :: rvec
+    real(double)::  mu, sintheta
+    real(double) :: mDotFac, rhoFac, vFac
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call distort_cmfgen(child, grid)
+                exit
+             end if
+          end do
+          
+       else
+          
+          rVec = subcellCentre(thisOctal, subcell)
+          mu = rVec%z/modulus(rVec)
+          sinTheta = sqrt(1.d0-mu**2)
+          
+! Dwarkadas and Owocki, 2002, ApJ 581, 1337
+
+
+
+          if (uniformStar) then
+! uniform star
+
+             mdotFac = (1.d0 - (bigOmega**2*sinTheta**2)/(1.d0-eddingtonGamma))**(1.d0-1.d0/alphaCAK) !eq 4
+             vFac = (1.d0 - (bigOmega**2 * sinTheta**2)/(1.d0-eddingtonGamma))**0.5d0 ! eq 7 
+
+          else
+
+! grav darkened star
+
+             mdotFac = (1.d0 - (bigOmega**2*sinTheta**2))
+             vFac = (1.d0 - (bigOmega**2 * sinTheta**2))**0.5d0 ! eq 7 
+
+          endif
+
+          rhoFac = mDotFac / vFac
+          
+          thisOctal%rho(subcell) = thisOctal%rho(subcell) * rhoFac
+          thisOctal%chiLine(subcell) = thisOctal%chiLine(subcell) * rhoFac**2
+          thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) * rhoFac**2
+          thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) * rhoFac**2
+          thisOctal%ne(subcell) = thisOctal%ne(subcell) * rhoFac
+          thisOctal%kappaAbs(subcell,1) = thisOctal%kappaAbs(subcell,1) * rhoFac**2
+          thisOctal%kappaSca(subcell,1) = thisOctal%kappaSca(subcell,1) * rhoFac
+
+          ! assigining corner velocities using a function in this module
+          IF ((thisoctal%threed).and.(subcell == 8)) &
+               CALL VelocityCorners(thisOctal)
+          IF ((thisoctal%twod).and.(subcell == 4)) &
+               CALL VelocityCorners(thisOctal)
+          IF ((thisoctal%oned).and.(subcell == 2)) &
+               CALL VelocityCorners(thisOctal)
+          
+       endif ! if (thisOctal%hasChild(subcell)) then
+    enddo
+    
+  end subroutine distort_cmfgen
+
 
 
 end module cmfgen_class

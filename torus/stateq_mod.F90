@@ -3738,8 +3738,15 @@ contains
 
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
+          thisOctal => octalArray(iOctal)%content        
+
+          thisOctal%etaCont(iSubcell) = 1.d-30
+          thisOctal%kappaAbs(iSubcell,1) = 1.d-30
+          thisOctal%kappaSca(iSubcell,1) = 1.d-30
+          thisOctal%etaLine(iSubcell) = 1.d-30 
+          thisOctal%chiLine(iSubcell) = 1.d-30
+
           if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
-             thisOctal => octalArray(iOctal)%content        
              point = subcellCentre(thisOctal,isubcell)
              ri = modulus( point )   ! [10^10cm]             
              thisOctal%etaCont(iSubcell) = loginterp_dble(eta, nd, R, ri)    
@@ -3747,6 +3754,7 @@ contains
              thisOctal%kappaSca(iSubcell,1) =  loginterp_dble(chi_es, nd, R, ri)    
              thisOctal%etaLine(iSubcell) = loginterp_dble(eta_line, nd, R, ri)    
              thisOctal%chiLine(iSubcell) = loginterp_dble(chi_line, nd, R, ri)              
+             thisOctal%ne(iSubcell) = 1.d-10*thisOctal%kappaSca(iSubcell,1)/sigmaE
           endif
        enddo
     enddo

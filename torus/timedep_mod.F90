@@ -1240,7 +1240,7 @@ contains
     real(double) :: tau, dx, k
     real(double) :: xSize
     real(double) :: xPhoton
-    integer, parameter :: maxStack = 10000000
+    integer, parameter :: maxStack = 1000000
 
     integer :: currentNStack, oldnStack
     real(double) :: currenttimeStack(maxStack)
@@ -1347,8 +1347,8 @@ contains
     teq = 1000.d0
     udens = 1.d-10
     photonEnergyDensity = 1.d-10
-    rho = 1.d-10
-    kappa = 1.d13
+    rho = 1.d-1
+    kappa = 1.d4
     nmonte = 10000000
     oldnStack =  0 * nMonte
     
@@ -1416,7 +1416,7 @@ contains
     tdump = 10.d0*deltaT
     timeofnextdump = tDump
 
-!    deltaT = 1.d-15
+    deltaT = 1.d-15
 !    deltaT = 1.d-25!diffusionTime
     currentTime = 0.d0
     endTime = 1.d0
@@ -1617,20 +1617,20 @@ contains
                photonEnergyDensityFromSource, xCen, dx, nx, deltaT, photonSpeed)
           call solveNewUdens(xCen, uDensAnalytical, nx, k, deltaT)
 
+          write(*,*) "Doing step with deltat= ",deltaT
           do i = 1, nx
 
              Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
              newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
              deltaUdens = abs(newUdens - uDens(i))
              equilibriumTime =   deltaUDens / adot(i)
-             if (equilibriumTime < deltaT) then
-                udens(i) = newUdens
-             else
-                thisAdot = 0.5d0*(adot(i) + oldAdot(i))
-                uDens(i) = uDens(i) + (thisAdot - etaCont(i)) * deltaT
+ !            if (equilibriumTime < deltaT) then
+ !               udens(i) = newUdens
+ !            else
+                uDens(i) = uDens(i) + (adot(i) - etaCont(i)) * deltaT
                 if (i == 1) write(*,*) "udens ",udens(i), " adot ",adot(1), " eta ",etacont(i), " dt ",deltaT
                 uDens(i) = max (0.d0, uDens(i))
-             endif
+ !            endif
              temperature(i) = temperatureFunc(uDens(i), rho(i),  5.d0/3.d0, 0.6d0)
              write(*,*) i, adot(i), udens(i)
           enddo
@@ -1654,19 +1654,19 @@ contains
           newDeltaT = 1.d30
           fac = 0.1d0
           do i = 1, nx
-             if (abs(adot(i) - etaCont(i)) /= 0.d0) then
-                newDeltaT = min(newDeltaT, fac*uDens(i)/abs(adot(i)-etacont(i)))
-                Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
-                newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
-                deltaUdens = abs(newUdens - uDens(i))
-                newDeltaT = min(newDeltaT, fac * deltaUDens / abs(adot(i) - etaCont(i)))
+             if ((uDens(i) > 0.d0).and.(abs(adot(i) - etaCont(i)) /= 0.d0)) then
+                if (adot(i) > 0.d0) then
+                   newDeltaT = min(newDeltaT, fac*uDens(i)/abs(adot(i)-etacont(i)))
+                   Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
+                   newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
+                   deltaUdens = abs(newUdens - uDens(i))
+                   newDeltaT = min(newDeltaT, fac * deltaUDens / abs(adot(i) - etaCont(i)))
+                endif
              endif
           enddo
           write(*,*) "thermo time ", newDeltaT
           deltaT = min(newDeltaT,diffusionTime)
 
-
-          deltaT = diffusionTime
 
 
 

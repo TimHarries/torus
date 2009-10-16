@@ -466,8 +466,8 @@ contains
     stokes_i = ytmpArray%i
     stokes_q = ytmpArray%q
     stokes_u = ytmpArray%u
-    stokes_qv = (ytmpArray%i)**2
-    stokes_uv = (ytmpArray%i)**2
+    stokes_qv = (ytmpArray%i)
+    stokes_uv = (ytmpArray%i)
 
     dlam(1) = (xArray(2)-xArray(1))
     dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
@@ -480,8 +480,8 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
        stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
        stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)
 
        ! convert to erg/s/A to erg/s/cm^2/A
 
@@ -490,23 +490,23 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) / area
        stokes_q(1:nLambda) = stokes_q(1:nLambda) / area
        stokes_u(1:nLambda) = stokes_u(1:nLambda) / area
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area**2
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area**2
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area
 
 
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * 1.d20
        stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
        stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d20
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d20
 
        if (jansky) then
           do i = 1, nLambda
              stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
              stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
              stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
-             stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))**2
-             stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))**2
+             stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))
+             stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))
           enddo
        endif
     endif
@@ -530,8 +530,8 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
        stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
        stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)
     endif
 
     if (SI) then
@@ -543,8 +543,8 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_u(1:nLambda) = stokes_u(1:nLambda) * tmpxArray(1:nLambda) * 10.
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda)**2  * 100.
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda)**2 * 100.
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda) * 10.
     else 
        tmpXarray = xArray
     endif

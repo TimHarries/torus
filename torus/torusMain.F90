@@ -811,7 +811,7 @@ CONTAINS
     use romanova_class, only: get_dble_parameter, new
     use sph_data_class, only: find_inclinations, new_read_sph_data, read_stellar_disc_data, info, read_galaxy_sph_data
     use wr104_mod, only: readwr104particles
-    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax
+    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
     use luc_cir3d_class, only: new
 
     type(isochrone) :: isochrone_data
@@ -1379,6 +1379,7 @@ end subroutine pre_initAMRGrid
     use surface_mod, only: createTTauriSurface, createTTauriSurface2, createSurface
     use luc_cir3d_class, only: deallocate_zeus_data
     use lucy_mod, only: allocateMemoryForLucy, putTau
+    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -1806,7 +1807,7 @@ end subroutine pre_initAMRGrid
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif
 
-	if (lineEmission) then
+	if (lineEmission.and.(geometry /= "cmfgen")) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
@@ -1916,7 +1917,9 @@ end subroutine pre_initAMRGrid
            elseif (geometry == "cmfgen") then
               ! simply map CMFGEN opacity data to the AMR grid
               call map_cmfgen_opacities(grid)
-
+              call distort_cmfgen(grid%octreeRoot, grid)
+              call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ","chiline ","ne      ", &
+                   "velocity"/))
            else
 
               call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
@@ -2034,7 +2037,7 @@ subroutine set_up_sources
 
   select case(geometry)
 
-     case("ttauri", "luc_cir3d", "cmfgen", "romanova")
+     case("ttauri", "luc_cir3d", "romanova")
 
         if (.not.cmf) then
            nu = cSpeed / (lamLine * angstromtocm)

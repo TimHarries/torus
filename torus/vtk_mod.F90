@@ -469,6 +469,11 @@ contains
 !                     write(lunit, *) thisOctal%linearvelocity(subcell)%x*cspeed/1.e5, &
 !                          thisOctal%linearvelocity(subcell)%y*cspeed/1.e5, thisOctal%linearvelocity(subcell)%z*cspeed/1.e5
 
+
+               case("ne")
+                  write(lunit, *) real(thisOctal%ne(subcell))
+
+
                case("HI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
 

@@ -321,7 +321,6 @@ contains
              outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec, &
                          foundOctal=octalLocation,foundSubcell=subcellLocation) 
 
-
              if (.not.mie_scattering) then
                 outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &
                      amrGridTemperature(grid%octreeRoot,pointOctalVec,&
@@ -427,7 +426,6 @@ contains
     real(double) :: energyPerPhoton
     real :: vo6
     real :: x,y,z
-    real(oct) :: xOctal, yOctal, zOctal
     type(VECTOR) :: octalCentre, octVec
     type(OCTAL), pointer :: thisOctal, sourceOctal
     integer :: sourceSubcell, subcell
@@ -436,7 +434,6 @@ contains
     real :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
     real :: dlam(1000)
     real :: r1,r2,r3                              ! radii
-    real(oct)  :: r1_oct,r2_oct,r3_oct ! radii
     real(double) :: randomDouble         ! a real(double) random number
     real :: u, v, w, t                            ! direction components
     real :: r, mu, phi                         ! spherical polar coords
@@ -523,6 +520,7 @@ contains
     real :: temperature,  N_HI
     real(double) :: rho
     real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
+    real(double) :: r3_oct
     type(Vector) ::  velocity
 !    type(octal), pointer :: thisOctal
 
@@ -601,6 +599,7 @@ contains
        call random_number(r)
        if (r < grid%chanceWindOverTotalContinuum) then
           contWindPhoton = .true.
+          photonFromEnvelope = .true.
        endif
     endif
 
@@ -617,11 +616,9 @@ contains
     endif
 
 
-
     ! if it is a continuum photon initialize its position
 
     if (thisPhoton%contPhoton) then
-
 
        if ((grid%cartesian.or.grid%adaptive) .and.     &
                          (.not.grid%lineEmission)) then
@@ -658,34 +655,6 @@ contains
 
                   thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
 
-!                  octalCentre = subcellCentre(sourceOctal,subcell)
-!
-!                  !!! we will just choose a random point within the subcell.
-!                  !!! this *should* be done in a better way.
-!
-!                  call random_number(r1)
-!                  r1 = r1 - 0.5  ! shift value mean value to zero
-!                  r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
-!                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
-!
-!                  call random_number(r2)
-!                  r2 = r2 - 0.5                                  
-!                  r2 = r2 * 0.9999                                          
-!                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
-!
-!                
-!                call random_number(r3)
-!                r3 = r3 - 0.5                                  
-!                r3 = r3 * 0.9999                                          
-!                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-!                
-!                thisPhoton%position = vector(xOctal,yOctal,zOctal)
-!
-!                if (sourceOctal%twod) then
-!                   call random_number(ang)
-!                   ang = ang * twoPi
-!                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
-!                endif
 
                 if (grid%geometry(1:7) == "ttauri"    .or.  &
                     grid%geometry(1:9) == "luc_cir3d" .or.  &
@@ -701,8 +670,8 @@ contains
                    exit
                 end if
 
-                end do 
-
+             end do
+             
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
                 if (useBias) then
@@ -824,6 +793,7 @@ contains
              elseif (grid%adaptive) then
                    
                 do ! dummy loop, in case we pick a position inside a star
+                   thisPhoton%direction = randomUnitVector()
                   call random_number(randomDouble)
 
                   ! we search through the tree to find the subcell that contains the
@@ -832,57 +802,6 @@ contains
                   call locateContProbAMR(randomDouble,sourceOctal,sourcesubcell)
 
 
-!                  octalCentre = subcellCentre(sourceOctal,subcell)
-!
-!                  !!! we will just choose a random point within the subcell.
-!                  !!! this *should* be done in a better way.
-!
-!                  call random_number(r1)
-!                  r1 = r1 - 0.5  ! shift value mean value to zero
-!                  r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
-!                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
-!
-!                  call random_number(r2)
-!                  r2 = r2 - 0.5                                  
-!                  r2 = r2 * 0.995                                           
-!                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
-!
-!                  call random_number(r3)
-!                  r3 = r3 - 0.5                                  
-!                  r3 = r3 * 0.995                                           
-!                  zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-!
-!                octalCentre = subcellCentre(sourceOctal,subcell)
-!                
-!                !!! we will just choose a random point within the subcell.
-!                !!! this *should* be done in a better way.
-!                
-!                call random_number(r1)
-!                r1 = r1 - 0.5  ! shift value mean value to zero
-!                r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
-!                xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
-!                
-!                if (sourceOctal%threed) then
-!                   call random_number(r2)
-!                   r2 = r2 - 0.5                                  
-!                   r2 = r2 * 0.995                                           
-!                   yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
-!                else
-!                   yOctal = 0.
-!                endif
-!                
-!                call random_number(r3)
-!                r3 = r3 - 0.5                                  
-!                r3 = r3 * 0.995                                           
-!                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-!                
-!                thisPhoton%position = vector(xOctal,yOctal,zOctal)
-!                                
-!                if (sourceOctal%twod) then
-!                   call random_number(ang)
-!                   ang = ang * twoPi
-!                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
-!                endif
 
 
                 thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
@@ -1441,30 +1360,9 @@ contains
              end if
              !!! we will just choose a random point within the subcell.
              !!! this *should* be done in a better way.
-             call random_number(r1_oct)
-             r1_oct = r1_oct - 0.5d0  ! shift value mean value to zero
-             r1_oct = r1_oct * 0.995d0 ! to avoid any numerical accuracy problems
-             xOctal = r1_oct * sourceOctal%subcellSize + octalCentre%x
-               
-             if (sourceOctal%threed) then
-                call random_number(r2_oct)
-                r2_oct = r2_oct - 0.5d0                                  
-                r2_oct = r2_oct * 0.995d0                                           
-                yOctal = r2_oct * sourceOctal%subcellSize + octalCentre%y
-             else
-                yOctal = 0.0d0
-             endif
 
-                
-             call random_number(r3_oct)
-             r3_oct = r3_oct - 0.5d0                                  
-             r3_oct = r3_oct * 0.995d0                                           
-             zOctal = r3_oct * sourceOctal%subcellSize + octalCentre%z
-             
+             thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
 
-!!just for testing ... 
-!             thisPhoton%position = octalCentre
-             thisPhoton%position = vector(xOctal,yOctal,zOctal)
 
              if (grid%geometry(1:7) == "ttauri"      .or.  &
                   grid%geometry(1:9) == "luc_cir3d"  .or.  &

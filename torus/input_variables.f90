@@ -24,6 +24,8 @@ module input_variables
   real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
   character(len=10) :: geometry
+  real :: bigomega, eddingtonGamma, alphaCAK
+  logical :: uniformStar
   character(len=80) :: absolutePath
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi

@@ -1697,22 +1697,23 @@ contains
        call getDouble("CMFGEN_Rmin", CMFGEN_Rmin, cLine, nLines, &
             "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
        rcore = CMFGEN_Rmin      ! [10^10cm]
-       call getLogical("lycontthick", LyContThick, cLine, nLines, &
-            "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
-       call getString("contflux", contFluxFile, cLine, nLines, &
-            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-       call getString("popfile", popFilename, cLine, nLines, &
-            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
-       call getLogical("writepops", writePops, cLine, nLines, &
-            "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-       call getLogical("readpops", readPops, cLine, nLines, &
-            "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-       call getLogical("writephasepops", writePhasePops, cLine, nLines, &
-            "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("readphasepops", readPhasePops, cLine, nLines, &
-            "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("enhance", enhance, cLine, nLines, &
-            "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getReal("omega", bigOmega, cLine, nLines, &
+            "Ratio of w/w_c: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+
+       call getLogical("uniformstar", uniformStar, cLine, nLines, &
+            "Assume a uniform star ","(a,1l,1x,a)", .false., ok, .true.)
+       if (uniformStar) then
+          call getReal("gamma", eddingtonGamma, cLine, nLines, &
+               "Eddington parameter: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+
+          call getReal("alpha", alphaCAK, cLine, nLines, &
+               "CAK power-law index alpha: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+          if (bigOmega > sqrt(1.d0-eddingtonGamma)) then
+             call writeFatal("Omega limit exceeded")
+             stop
+          endif
+       endif
     end if
 
 

@@ -1305,6 +1305,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
               write(*,*) "negative opacity"
+              write(*,*) "sca ",ksca(1:ntau)
+              write(*,*) "abs ",kabs(1:ntau)
               error = -70
               return
            endif
@@ -1422,6 +1424,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 !        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
               write(*,*) "negative opacity"
+              write(*,*) "sca ",ksca(1:ntau)
+              write(*,*) "abs ",kabs(1:ntau)
               error = -70
               return
            endif
