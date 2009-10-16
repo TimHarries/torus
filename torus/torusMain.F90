@@ -1918,6 +1918,7 @@ end subroutine pre_initAMRGrid
               ! simply map CMFGEN opacity data to the AMR grid
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)
+!	      call checkMassLossRate(grid)
               call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ","chiline ","ne      ", &
                    "velocity"/))
            else

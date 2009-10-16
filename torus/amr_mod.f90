@@ -7363,6 +7363,34 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end subroutine calcStarburst
 
+  subroutine checkMassLossRate(grid)
+    use input_variables, only : CMFGEN_Rmin
+    type(GRIDTYPE) :: grid
+    real(double) :: mu, dmu, r, sintheta, tot
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: i, j
+    type(VECTOR) :: rVec
+
+    do j = 1, 100
+       r = 1.01d0 * CMFGEN_Rmin * dble(j)
+       tot = 0.d0
+       do i = 1, 1000
+          mu = -1.d0 + 2.d0*dble(i-1)/999.d0
+          dmu = 2.d0/999.d0
+          sinTheta = sqrt(1.d0-mu**2)
+          rVec = VECTOR(r*sinTheta, 0.d0, r*mu)
+          CALL findSubcellTD(rVec, grid%octreeRoot, thisOctal, subcell)
+          tot = tot + thisOctal%rho(subcell)*modulus(thisOctal%velocity(subcell))*cSpeed * r**2 * dmu
+       enddo
+       tot = tot * 1.d20
+       tot = tot * twoPi
+       tot = (tot / mSol) / secstoyears
+       write(*,*) j
+       write(*,'(a,1pe12.3,a)') "Mass-loss rate (assuming fully ionized pure helium): ", tot, " solar masses/year"
+    enddo
+  end subroutine checkMassLossRate
+
   subroutine calcSymbiotic(thisOctal,subcell,grid)
 
     TYPE(octal), INTENT(INOUT) :: thisOctal

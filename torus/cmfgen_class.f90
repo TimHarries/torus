@@ -10,6 +10,7 @@ module cmfgen_class
   !---------------------------------------------------------------------------------
 
   use kind_mod
+  use constants_mod
   use vector_mod
   use gridtype_mod
   use constants_mod, only: pi, cspeed_dbl
@@ -328,6 +329,7 @@ contains
        vFac = (1.d0 - (bigOmega**2 * sinTheta**2))**0.5d0 ! eq 7 
     endif
 
+
     if (r<cmfgen_opacity%Rmin) then ! inside of the star
        v = VECTOR(1.0e-10, 1.0e-10, 1.0e-10)  ! [c]
     else
@@ -335,6 +337,7 @@ contains
        v = (point/r) * (Vr*1.0e5/cspeed_dbl)   ! [c]
        !     \hat(r) x  Vr/c
     end if
+
 
     out = vFac * v 
     
@@ -600,6 +603,24 @@ contains
     type(vector)  :: rvec
     real(double)::  mu, sintheta
     real(double) :: mDotFac, rhoFac, vFac
+    real(double) :: tot, dmu, scaleFactor
+
+
+    tot = 0.d0
+    do i = 1, 1000
+       mu = -1.d0 + 2.d0*dble(i-1)/999.d0
+       dmu = 2.d0/999.d0
+       sinTheta = sqrt(1.d0-mu**2)
+       if (uniformStar) then
+          mdotFac = (1.d0 - (bigOmega**2*sinTheta**2)/(1.d0-eddingtonGamma))**(1.d0-1.d0/alphaCAK) !eq 4
+       else
+          mdotFac = (1.d0 - (bigOmega**2*sinTheta**2))
+       endif
+       tot = tot + mDotFac * dmu
+    enddo
+    tot = tot * twoPi
+    scaleFactor = fourPi / tot
+
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -637,7 +658,8 @@ contains
 
           endif
 
-          rhoFac = mDotFac / vFac
+          rhoFac = scaleFactor * mDotFac / vFac
+
           
           thisOctal%rho(subcell) = thisOctal%rho(subcell) * rhoFac
           thisOctal%chiLine(subcell) = thisOctal%chiLine(subcell) * rhoFac**2
@@ -659,8 +681,6 @@ contains
     enddo
     
   end subroutine distort_cmfgen
-
-
 
 end module cmfgen_class
 

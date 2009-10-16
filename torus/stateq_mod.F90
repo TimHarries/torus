@@ -3755,6 +3755,7 @@ contains
              thisOctal%etaLine(iSubcell) = loginterp_dble(eta_line, nd, R, ri)    
              thisOctal%chiLine(iSubcell) = loginterp_dble(chi_line, nd, R, ri)              
              thisOctal%ne(iSubcell) = 1.d-10*thisOctal%kappaSca(iSubcell,1)/sigmaE
+             thisOctal%rho(isubcell) = thisOctal%ne(isubcell) *  mHydrogen * 2.6d0/ 1.8d0
           endif
        enddo
     enddo

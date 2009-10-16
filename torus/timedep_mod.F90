@@ -1266,7 +1266,7 @@ contains
     real(double) :: sourcePeriod, sourceLuminosity
     real(double) :: fracSource, weightSource, chanceSource, weightGas, chanceGas
     real(double) :: fac, meanFreePath, probNewPhoton, teq, deltaudens, newudens
-    real(double) :: equilibriumTime, thisAdot, tdump, timeofnextdump, photonBias
+    real(double) :: equilibriumTime, tdump, timeofnextdump, photonBias
     integer :: nFromMatter
 
     fracSource = 0.d0
