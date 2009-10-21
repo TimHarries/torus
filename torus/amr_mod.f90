@@ -15931,12 +15931,17 @@ end function readparameterfrom2dmap
           nTau = nTau + 1
           xArray(nTau) = xArray(nTau-1) + distToNextCell
           tauArray(nTau) = tau
+          if (nTau == SIZE(xArray)) then
+             call writeWarning("tau array size reached. aborting tau run")
+             goto 666
+          endif
        endif
        if (PRESENT(distanceToEdge)) distanceToEdge = distanceToEdge + distToNextCell
        if (PRESENT(tauMax)) then
           if (tau > tauMax) exit
        endif
     end do
+666 continue
   end subroutine tauAlongPathFast
 
   subroutine tauAlongPath2(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)

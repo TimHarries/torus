@@ -1205,7 +1205,8 @@ contains
 
   subroutine timeDependentRTtest()
     real(double) :: currentTime, endTime
-    integer, parameter :: nx = 20
+    integer, parameter :: nx = 51
+
     integer, parameter :: nProb = nx + 1
     real(double) :: etaCont(nx)
     real(double) :: aDot(nx)
@@ -1229,6 +1230,7 @@ contains
     real(double) :: photonEnergyDensityFromSource(nx)
     real(double) :: photonEnergyDensityFromGas(nx)
     real(double) :: photonEnergyDensity(nx)
+    real(double) :: oldphotonEnergyDensity(nx)
     real(double) :: uDensAnalytical(nx)
     real(double) :: photonDensAnalytical(nx)
     real(double) :: tauBox
@@ -1259,6 +1261,7 @@ contains
     real(double) :: epsOverDeltaT, newDeltaT, tot, albedo, diffusionTime
 !    real(double) ::t
     logical :: outOFtime, scattered, dumpnow
+    logical :: timeBoundary, spaceBoundary
     type(VECTOR) :: rVec, uHat
     integer :: i, iMonte, nMonte, iPos,iter, nPhotons
     character(len=30) :: outfile
@@ -1266,7 +1269,8 @@ contains
     real(double) :: sourcePeriod, sourceLuminosity
     real(double) :: fracSource, weightSource, chanceSource, weightGas, chanceGas
     real(double) :: fac, meanFreePath, probNewPhoton, teq, deltaudens, newudens
-    real(double) :: equilibriumTime, tdump, timeofnextdump, photonBias
+    real(double) :: tdump, timeofnextdump, photonBias, Be
+    real(double) :: udens_n_plus_1
     integer :: nFromMatter
 
     fracSource = 0.d0
@@ -1278,8 +1282,6 @@ contains
     deltaT = 1.d0
     call random_seed
 
-    tdump = 5.e-11
-    timeofNextDump = tdump
 
     albedo = 0.d0
     rho = 1.d-10
@@ -1336,43 +1338,79 @@ contains
 
 ! test2
 
-    photonEnergyDensity = 0.d0
-    udens = 1.d8
-    rho = 1.d-7
-    kappa = 4.d6
-    oldnStack = 0
+!    photonEnergyDensity = 0.d0
+!    udens = 1.d8
+!    rho = 1.d100
+!    kappa = 4.d6
+!    oldnStack = 0
 
 ! test3
 
-    teq = 1000.d0
-    udens = 1.d-10
-    photonEnergyDensity = 1.d-10
-    rho = 1.d-1
-    kappa = 1.d4
-    nmonte = 10000000
-    oldnStack =  0 * nMonte
+!    teq = 1000.d0
+!    udens = 1.d-20
+!    photonEnergyDensity = 1.d-20
+!    rho = 1.d-10
+!    kappa = 1.d13
+!    nmonte = 1000000
+!    oldnStack =  0.4* nMonte
+!    do i = 1, nx
+!       fac = exp(-(0.5-xArray(i))**2 / 0.1d0**2)
+!       photonEnergyDensity(i) = 1.d10 * fac
+!       Teq = ((photonEnergyDensity(i)*cSpeed/fourPi)*(pi/stefanBoltz))**0.25d0
+!       udens(i) = uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
+!       photonEnergyDensityFromGas(i) = (fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
+!    enddo
+!    udensAnalytical = udens
+!    photonDensAnalytical = photonEnergyDensity
     
+
+! test4 deltaT function (heat kernel)
+
 ! for pure scattering -works fine
-!    albedo = 1.d0
-!    oldnStack = 1000000
-!    nMonte = 0
+    udens = 1.d-20
+    rho = 1.d-10
+    albedo = 0.d0
+    nMonte = 1000000
+    oldnStack =   0 *  nMonte
+    kappa = 1.e13
 
-!    where (xcen < 0.5d0) photonEnergyDensity = 1.d16 !(fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
-
-    do i = 1, nx
-       fac = exp(-(0.5-xArray(i))**2 / 0.1d0**2)
-       photonEnergyDensity(i) = 1.d10 * fac
+    photonEnergyDensity = 1.d-100
+    photonEnergyDensity(nx/2+1) = 1d10/(xArray(2)-xArray(1))
+    photonEnergyDensityFromGas = photonEnergyDensity
+    photonDensAnalytical = photonEnergyDensity
+    do i = 1 , nx
        Teq = ((photonEnergyDensity(i)*cSpeed/fourPi)*(pi/stefanBoltz))**0.25d0
        udens(i) = uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
-       photonEnergyDensityFromGas(i) = (fourPi/cSpeed) * (stefanBoltz/pi) * teq**4
     enddo
-    
-
+    udensAnalytical = uDens
     
 
     call calculateProb(photonProb, bias, xArray, xCen, nProb, photonEnergyDensity)
 
-    photonEnergy = SUM(photonEnergyDensity*dx)/dble(nMonte)
+    write(*,*) "SUM oldepsStack ",SUM(oldEpsStack(1:oldNStack))
+!    do i = 1 ,nx
+!       write(*,*) "udens " , udens(i), "rad ",photonEnergyDensity(i), &
+!            " photon ",Photonarray(i)/dx
+!    enddo
+!
+!    kappa = tauBox / (rho*xSize)
+!    write(*,*) "total tau ",SUM(rho*kappa*dx)
+!
+
+!    photonSpeed = kappa(1)*rho(1)
+    k =  photonspeed/(kappa(1)*rho(1)) 
+
+    write(*,*) "Diffusion coefficent ",k
+    diffusionTime=  0.3d0* (dx**2/(2.d0*k))
+
+
+    deltaT = diffusionTime
+    
+
+    tdump = 0.16555 * diffusionTime
+    timeofnextdump = tDump
+
+    photonEnergy =  SUM(photonEnergyDensity*dx)/dble(nMonte)
     photonArray = 0.d0
     do i = 1,oldnStack
        call getX(xArray, photonprob, bias, nProb, xPhoton, photonBias)
@@ -1388,52 +1426,28 @@ contains
        call findArrayIndex(xCen, nx, xPhoton, iPos)
        photonArray(iPos) = photonArray(iPos) + oldEpsStack(i)
     enddo
-    write(*,*) "SUM oldepsStack ",SUM(oldEpsStack(1:oldNStack))
-!    do i = 1 ,nx
-!       write(*,*) "udens " , udens(i), "rad ",photonEnergyDensity(i), &
-!            " photon ",Photonarray(i)/dx
-!    enddo
-!
-!    kappa = tauBox / (rho*xSize)
-!    write(*,*) "total tau ",SUM(rho*kappa*dx)
-!
-    uDensAnalytical = uDens
-
-    photonDensAnalytical = tiny(photonDensAnalytical)
-!    udensAnalytical = photonEnergyDensity 
-!    kappa = 4.d-1
-
-!    photonSpeed = kappa(1)*rho(1)
-    k = photonSpeed/(kappa(1)*rho(1)) 
-
-    write(*,*) "Diffusion coefficent ",k
-    diffusionTime=  0.3d0* (dx**2/(2.d0*k))
 
 
-    deltaT = diffusionTime
-    
 
-    tdump = 10.d0*deltaT
-    timeofnextdump = tDump
-
-    deltaT = 1.d-15
-!    deltaT = 1.d-25!diffusionTime
     currentTime = 0.d0
     endTime = 1.d0
     iter = 0
     currentnStack = 0
-!    oldNStack = 0
+
+
+
+
     open(69,file="time.dat", status="unknown",form="formatted")
 
     do while (currentTime < 1.e30)
        meanFreePath = 1.d0/(kappa(1)*rho(1))
 
 
-!       if ((currentTime  + deltaT) > timeofNextDump) then
-!          deltaT = timeofNExtDump - currentTime
-!          timeofnextDump = timeofNextDump + tDump
-!          dumpnow = .true.
-!       endif
+       if ((currentTime  + deltaT) > timeofNextDump) then
+          deltaT = timeofNExtDump - currentTime
+          timeofnextDump = timeofNextDump + tDump
+          dumpnow = .true.
+       endif
 
        distanceGridAdot = 0.d0
        distanceGridPhotonFromSource = 0.d0
@@ -1447,11 +1461,11 @@ contains
        luminosity = SUM(etaCont*dx)
        write(*,*) "emissivity ",luminosity
        write(*,*) "time step ",deltaT
-       write(*,*) "diffusion timestep ", 0.1d0*(dx**2/(2.d0*k))
-
+       write(*,*) "diffusion timestep ", 0.3d0*(dx**2/(2.d0*k))
+       write(*,*) "c chi deltat ", cSpeed * kappa(1) * rho(1) * deltaT
        write(*,*) "current Time", currentTime
        if (oldNStack == 0) then
-          write(*,*) "energy monte ",SUM(udens*dx)
+          write(*,*) "energy monte ",SUM(udens*dx)+SUM(photonEnergyDensityFromGas*dx)
        else
           write(*,*) "energy monte ",SUM(udens*dx)+SUM(oldepsStack(1:oldnStack))
           write(*,*) "number of photons ", oldNStack
@@ -1460,7 +1474,7 @@ contains
           write(*,*) "sum oldepsStack ",SUM(oldEpsStack(1:oldnStack))
           write(*,*) "sum udens ", SUM(udens*dx)
        endif
-       write(*,*) "energy analy ",SUM(udensanalytical*dx)
+       write(*,*) "energy analy ",SUM(udensanalytical*dx)+SUM(photonDensAnalytical*dx)
        write(*,*) "light distance ", deltaT*photonSpeed
        write(*,*) "mean free path ", 1.d0/(kappa(1)*rho(1))
        write(*,*) "diffusion speed (speed of light units)", ((1.d0/(kappa(1)*rho(1)))/deltaT)/photonSpeed
@@ -1478,6 +1492,7 @@ contains
        weightSource = chanceSource / fracSource
        weightGas = (1.d0-chanceSource) / (1.d0-fracSource)
        adot = 0.d0
+       photonArray = 0.d0
        do iMonte = 1, nPhotons
 !          write(*,*) "imonte ", imonte, nPhotons 
           if (oldnStack > 0)  then
@@ -1518,6 +1533,8 @@ contains
           outOfTime = .false.
           do while (.not.finished)
 
+             timeBoundary = .false.
+             spaceBoundary = .false.
 
              call findArrayIndex(xCen, nx, rVec%x, iPos)
              if (uHat%x > 0.d0) then
@@ -1527,6 +1544,12 @@ contains
              endif
 
              timeToBoundary = distToBoundary / photonSpeed
+             if ((timeToBoundary+photonTime) > deltaT) then
+                timeToBoundary = deltaT - photonTime
+                distToBoundary = timeToBoundary * photonSpeed
+                timeBoundary = .true.
+             endif
+
 
              tauToBoundary = distToBoundary * kappa(iPos) * rho(iPos)
 
@@ -1538,8 +1561,11 @@ contains
              if (tau > tauToBoundary) then
                 distanceToEvent = distToBoundary
                 absorbed = .false.
+                if (.not.timeBoundary) spaceBoundary = .true.
              else
                 distanceToEvent = distToBoundary * tau/tauToBoundary
+                timeBoundary = .false.
+                spaceBoundary = .true.
                 call random_number(r)
                 if (r > albedo) then
                    absorbed = .true.
@@ -1551,20 +1577,9 @@ contains
                 endif
              endif
 
-             if (absorbed.or.scattered) then
-                if ((photonTime + distanceToEvent/photonSpeed) > deltaT) then
-                   absorbed = .false.
-                   scattered = .false.
-                   distanceToEvent = (deltaT - photonTime) * photonSpeed
-                   outOfTime = .true.
-                   finished = .true.
-                endif
-             else
-                if ((photonTime + distanceToEvent/photonSpeed) > deltaT) then
-                   distanceToEvent = (deltaT - photonTime) * photonSpeed
-                   outOfTime = .true.
-                   finished = .true.
-                endif
+             if (timeBoundary) then
+                outOfTime = .true.
+                finished = .true.
              endif
 
              photonTime = photonTime + distanceToEvent / photonSpeed
@@ -1610,42 +1625,49 @@ contains
           write(*,*) "Sum of energy in photon array ",SUM(photonArray(1:nx))
           oldaDot = adot
           oldetaCont = etaCont
+          oldPhotonEnergyDensity = photonEnergyDensity
           call calculateADottest(distanceGridAdot, aDot, xCen, dx, nx, deltaT)
           call calculatePhotonEnergyDensity(distanceGridPhotonFromGas, &
                photonEnergyDensityFromGas, xCen, dx, nx, deltaT, photonSpeed)
           call calculatePhotonEnergyDensity(distanceGridPhotonFromSource, &
                photonEnergyDensityFromSource, xCen, dx, nx, deltaT, photonSpeed)
-          call solveNewUdens(xCen, uDensAnalytical, nx, k, deltaT)
+          photonEnergyDensity = photonEnergyDensityFromSource + photonEnergyDensityFromGas
+          call solveNewUdens(xCen, kappa, rho, photonDensAnalytical, uDensAnalytical, nx, k, deltaT, currentTime)
 
           write(*,*) "Doing step with deltat= ",deltaT
           do i = 1, nx
 
-             Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
+             call quarticSub(udens_n_plus_1, photonEnergyDensity(i), udens(i), oldphotonEnergyDensity(i), &
+                  kappa(i), rho(i), 0.6d0, 5.d0/3.d0, deltaT)
+             udens(i) = udens_n_plus_1
+!             photonEnergyDensity(i) = E_n_plus_1
+
+             Be = cSpeed*photonEnergyDensity(i) / fourPi
+             Teq = ((Be * pi)/stefanBoltz)**0.25d0
              newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
-             deltaUdens = abs(newUdens - uDens(i))
-             equilibriumTime =   deltaUDens / adot(i)
- !            if (equilibriumTime < deltaT) then
- !               udens(i) = newUdens
- !            else
-                uDens(i) = uDens(i) + (adot(i) - etaCont(i)) * deltaT
-                if (i == 1) write(*,*) "udens ",udens(i), " adot ",adot(1), " eta ",etacont(i), " dt ",deltaT
-                uDens(i) = max (0.d0, uDens(i))
- !            endif
+
+!             if (udens(i) > 0.d0) write(*,*) "percent from eq " , 100.d0*(newuDens-udens(i))/udens(i)
+!             newUdens = udensFunc(Teq,rho(i), 5.d0/3.d0, 0.6d0)
+!!             Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
+!             newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
+!             deltaUdens = abs(newUdens - uDens(i))
+!             equilibriumTime =   deltaUDens / abs(adot(i)-etacont(i))
+!             if (equilibriumTime < deltaT) then
+!                udens(i) = newUdens
+!             Be = cSpeed*photonEnergyDensity(i) / fourPi
+!                Teq = ((Be * pi)/stefanBoltz)**0.25d0
+!                write(*,*) "eq ",equilibriumTime, adot(i),etacont(i), udens(i)
+!                udens(i) = udensFunc(Teq,rho(i), 5.d0/3.d0, 0.6d0)
+!             else
+!                write(*,*) "adding ",oldAdot(i),adot(i)
+!                uDens(i) = uDens(i) + (adot(i) - etaCont(i)) * deltaT
+!                photonEnergyDensityFromGas(i) = photonEnergyDensityFromGas(i) + (etaCont(i) - adot(i)) * deltaT
+!                if (i == 1) write(*,*) "udens ",udens(i), " adot ",adot(1), " eta ",etacont(i), " dt ",deltaT
+!                uDens(i) = max (0.d0, uDens(i))
+!             endif
              temperature(i) = temperatureFunc(uDens(i), rho(i),  5.d0/3.d0, 0.6d0)
-             write(*,*) i, adot(i), udens(i)
           enddo
 
-
-          !       do i = 1 , 1
-          !          t = temperatureFunc(uDensAnalytical(i), rho(i), 5.d0/3.d0, 0.6d0)
-          !          udensAnalytical(i) = udensAnalytical(i) + &
-          !               deltaT * (photonSpeed*kappa(i)*rho(i)*photonDensAnalytical(i) &
-          !               - fourPi*kappa(i)*rho(i)*(stefanBoltz/pi)*t**4)
-          !          photondensAnalytical(i) = photondensAnalytical(i) - &
-          !               deltaT * (photonSpeed*kappa(i)*rho(i)*photonDensAnalytical(i) &
-          !               - fourPi*kappa(i)*rho(i)*(stefanBoltz/pi)*t**4)
-          !          write(*,*) "after anal ",photonDensAnalytical(i), udensAnalytical(i)
-          !       enddo
 
 
 
@@ -1665,14 +1687,15 @@ contains
              endif
           enddo
           write(*,*) "thermo time ", newDeltaT
+          if (deltaT > 1.d29) deltaT = diffusionTime
           deltaT = min(newDeltaT,diffusionTime)
 
-
+	  deltaT = diffusionTime 
 
 
        probNewPhoton = 0.d0!
 
-!       if (dumpNow) then
+       if (dumpNow) then
           iter = iter + 1
           write(*,*) "dumping at ", currentTime, iter
           write(outfile,'(a,i6.6,a)') "udens",iter,".dat"
@@ -1681,7 +1704,7 @@ contains
           write(21, '(a,1pe12.5)') "# current time ",currentTime
           do i = 1, nx
              write(21, *) xCen(i), uDens(i),  photonEnergyDensityFromSource(i), &
-                  photonEnergyDensityFromGas(i), udensAnalytical(i)
+                  photonEnergyDensityFromGas(i), photondensAnalytical(i), udensAnalytical(i)
           enddo
           close(21)
           write(69,*) currentTime, SUM(udens*dx),SUM(photonEnergyDensityFromGas*dx), &
@@ -1691,7 +1714,7 @@ contains
           write(*,*) "TOTAL ENERGY: ",SUM(udens*dx)+SUM(photonEnergyDensityFromGas*dx)
           write(*,*) "STACK ",SUM( currentEpsStack(1:currentnStack))
           dumpnow = .false.
-!       endif
+       endif
           
 
        oldnStack = currentnStack
@@ -1922,23 +1945,18 @@ contains
 666 continue
   end subroutine findArrayIndex
 
-  subroutine solveNewUdens(xArray, u, nx, k, deltaT)
-    real(double) :: alpha
-    real(double) :: xArray(:), u(:), k, deltaT,dx
-    real(double) :: uPrime(1000), a(1000), b(1000),c(1000)
+  subroutine solveNewUdens(xArray, kappa, rho, photonDensAnalytical, udensAnalytical, nx, k, deltaT, currentTime)
+    real(double) :: alpha, kappa(:), rho(:)
+    real(double) :: xArray(:), photonDensAnalytical(:), udensAnalytical(:), diffusionTime
+    real(double) :: k, deltaT,dx, currentTime
+    real(double) :: uPrime(10000), a(10000), b(10000),c(10000)
     integer :: nx, i
     dx = xArray(2)-xArray(1)
-    
+    diffusionTime=  0.3d0* (dx**2/(2.d0*k))
+
 
     alpha = (k * deltaT)/(dx**2)
 
-!    do i = 2, nx-1
-!       uxx = (u(i+1) - 2.d0* u(i) + u(i-1)) / dx**2
-!       uprime(i) = u(i) + k * uxx * deltaT
-!    enddo
-!    uprime(1) = uprime(2)
-!    uprime(nx) = uprime(nx-1)
-!    u = uprime
 
     do i = 2, nx - 1
        a(i) = -alpha
@@ -1952,11 +1970,28 @@ contains
     b(nx) = 1.d0
     c(nx) = 0.0d0
 
-    call tridiag(a, b, c, u, uprime, nx)
+    call tridiag(a, b, c, photonDensAnalytical, uprime, nx)
     uprime(1) = uprime(2)
     uprime(nx) = uprime(nx-1)
 
-    u = uprime
+    photonDensAnalytical = uprime ! diffusion terms
+
+
+    do i = 1,nx
+       photonDensAnalytical(i) = &
+            1.d10/(sqrt(fourPi*k*currentTime)) * exp(-(xArray(i)-0.5)**2/(4.d0*k*currentTime))
+    enddo
+
+!       do i = 1 , nx ! matter interaction terms
+!          t = temperatureFunc(uDensAnalytical(i), rho(i), 5.d0/3.d0, 0.6d0)
+!          udensAnalytical(i) = udensAnalytical(i) + &
+!               deltaT * (cSpeed*kappa(i)*rho(i)*photonDensAnalytical(i) &
+!               - fourPi*kappa(i)*rho(i)*(stefanBoltz/pi)*t**4)
+!          photondensAnalytical(i) = photondensAnalytical(i) - &
+!               deltaT * (cSpeed*kappa(i)*rho(i)*photonDensAnalytical(i) &
+!               - fourPi*kappa(i)*rho(i)*(stefanBoltz/pi)*t**4)
+!       enddo
+
 
 
   end subroutine solveNewUdens
@@ -2168,7 +2203,7 @@ contains
   end function distanceToObserver
 
   subroutine TRIDIAG(A,B,C,R,U,N)
-      integer, parameter ::  NMAX=1000
+      integer, parameter ::  NMAX=10000
       integer :: n, j
       real(double) ::  GAM(NMAX),A(N),B(N),C(N),R(N),U(N)
       real(double) :: bet
@@ -2185,7 +2220,61 @@ contains
          U(J)=U(J)-GAM(J+1)*U(J+1)
       enddo
     end subroutine TRIDIAG
+    
+    subroutine quarticSub(udens_n_plus_1, E_n_plus_1, udens_n, E_n, kappa, rho, mu, gamma, deltaT)
+      real(double) :: udens_n_plus_1, E_n_plus_1, udens_n, E_n, kappa, rho, mu, gamma, DeltaT
+      real(double) :: a1, a2
+      integer :: nIter
+      logical :: converged
+      real(double) :: x1, x2, xm, y1, y2, ym
+!      a1 = 4.d0 * kappa * rho * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+!      a2 = cSpeed * kappa * rho * deltaT
 
+      a1 = 4.d0 * kappa * rho * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+      a2 = -cSpeed * kappa * rho * deltaT * E_n_plus_1
+
+      nIter = 0
+      converged = .false.
+      
+      x1 = 0.d0
+      x2 = 1.d15
+      
+      do while(.not.converged)
+         xm = 0.5d0*(x1+x2)
+         y1 = quarticFunc(x1, a1, a2, udens_n, E_n)
+         y2 = quarticFunc(x2, a1, a2, udens_n, E_n)
+         ym = quarticFunc(xm, a1, a2, udens_n, E_n)
+                         
+         if (y1*ym < 0.d0) then
+            x1 = x1
+            x2 = xm
+         else if (y2*ym < 0.d0) then
+            x1 = xm
+            x2 = x2
+         else
+            converged = .true.
+            xm = 0.d0
+            x1 = 0.d0
+            x2 = 0.d0
+         endif
+                         
+         if (abs((x1-x2)/x1) .le. 1.e-3) then
+            converged = .true.
+         endif
+         niter = niter + 1
+      enddo
+      udens_n_plus_1 = 0.5*(x1+x2)
+
+
+
+    end subroutine quarticSub
+
+    function quarticFunc(x, a1, a2, udens_n, E_n) result (y)
+      real(double) :: x, a1, a2, E_n, y, udens_n
+!      y = x**4 + (1.d0+a2)/a1 * x - ((1.d0+a2)*udens_n + a2 * E_n) / a1
+
+      y = x - udens_n + a1 * x**4 + a2
+    end function quarticFunc
 
 
 end module timeDep_mod
