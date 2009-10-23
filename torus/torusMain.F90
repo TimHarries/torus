@@ -1731,7 +1731,8 @@ end subroutine pre_initAMRGrid
                     gridConverged = .true.
                     call putTau(grid, grid%lamArray(j))
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                         inheritProps = .false., interpProps = .false., photosphereSplit = .not.variableDustSublimation)
+                         inheritProps = .false., interpProps = .false., &
+                         photosphereSplit = ((.not.variableDustSublimation).and.(.not.photoionization)))
                     if (gridConverged) exit
                  end do
               enddo

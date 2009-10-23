@@ -376,7 +376,7 @@ contains
                 call locate(lamArray, nLambda, real(thisLam), iLam)
 
                 call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, debug=.true.)
                 write(*,*) "thislam",thislam,ilam, lamArray(ilam)
                 write(*,*) lamArray(1:nLambda)
                 write(*,*) "kappaAbsDust",kappaAbsDust
@@ -2298,11 +2298,27 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   integer :: iTransition, i
   real :: temperature
   real :: thisGamma
-  real :: t , fac
+  real :: t , fac, maxTemp
   real :: boltzFac
+  logical, save :: firstTime = .true.
+ ! - thap -check to see if the temperature is too hot for the gamma table                                                
 
-  t = max(min(real(thisIon%transition(iTransition)%t(thisIon%transition(iTransition)%ngamma)),temperature), &
-       real(thisIon%transition(iTransition)%t(1)))
+  maxTemp = maxval(thisIon%transition(iTransition)%t)
+
+  if(temperature > maxTemp) then
+    if(firstTime) then
+        firstTime = .false.
+        write(*,*) "Warning: Temperature Exceeds Scope Of Atomic Data"
+        write(*,*) "         Proceeding With The Maximum Known Value..."
+     end if
+
+     t = maxTemp
+
+  else
+     t = max(min(real(thisIon%transition(iTransition)%t(thisIon%transition(iTransition)%ngamma)),temperature), &
+          real(thisIon%transition(iTransition)%t(1)))
+  endif
+
   call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
   fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
   thisGamma = thisIon%transition(iTransition)%gamma(i) + &
@@ -4047,17 +4063,19 @@ end subroutine readHeIIrecombination
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: observerDirection
-    real(double) :: lambdaLine(6)
+    real(double) :: lambdaLine(7)
     integer :: nLine , i
     real(double) :: totalFlux
 
-    nLine = 6
+    nLine = 7
     lambdaLine(1) = 6300.d0
     lambdaLine(2) = 6363.d0
     lambdaLine(3) = 3726.d0
     lambdaLine(4) = 3729.d0
     lambdaLine(5) = 4959.d0
     lambdaLine(6) = 5007.d0
+    lambdaLine(7) = 1.55d5 ! Ne III line
+
     do i = 1, nLine
        call createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine(i))
     enddo

@@ -9004,20 +9004,28 @@ end function readparameterfrom2dmap
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
 
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = thisOctal%nh(subcell)
 
     thisOctal%ionFrac(subcell,1) = 1.e-10
     thisOctal%ionFrac(subcell,2) = 1.
     thisOctal%ionFrac(subcell,3) = 1.e-10
     thisOctal%ionFrac(subcell,4) = 1.       
     thisOctal%etaCont(subcell) = 0.
+
+!thap this if statement is to try and empty the core                                                                      
+    If (thisOctal%rho(subcell) > 3.00d30) then !In cavity and in bad range                                                
+       thisOctal%rho(subcell) = 1.d-10 * mhydrogen
+       thisOctal%dustTypeFraction(subcell, :) = 1.d-20
+       thisOctal%temperature(subcell) = 1.d4
+    endif
+
     if (thisOctal%rho(subcell) > 1.e29)  then ! in cavity
        thisOctal%rho(subcell) = 100.d0 * mHydrogen
        thisOctal%dustTypeFraction(subcell, :) = 1.d-20 ! no dust in cavity
        thisOctal%temperature(subcell) = 1.d4 ! 10,000K in cavity
     endif
 
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
 
   end subroutine assign_melvin
 
@@ -12002,7 +12010,7 @@ end function readparameterfrom2dmap
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
-       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas)
+       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug)
     use input_variables, only: nDustType, photoionization, mie!, includeGasOpacity
     use atom_mod, only: bnu
     implicit none
@@ -12015,6 +12023,7 @@ end function readparameterfrom2dmap
     real(double), optional, intent(out) :: kappaAbsArray(grid%nLambda), kappaScaArray(grid%nLambda)
     real(double), optional, intent(out) :: rosselandKappa
     real(double), optional, intent(out) :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
+    logical, optional :: debug
     real, optional, intent(out) :: kappap
     real, optional :: atthistemperature
     real :: temperature
@@ -12130,9 +12139,14 @@ end function readparameterfrom2dmap
              
              if(ndusttype .eq. 1) then
                 kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell)  * thisOctal%dustTypeFraction(subcell, 1)
+                if (present(debug)) write(*,*) "kappasca1 ",kappaSca, oneKappaScaT(ilambda,1), & 
+                     thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,1)
              else
                 do i = 1, nDustType
                    kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell)
+                   if (present(debug)) write(*,*) "kappasca2 ",kappaSca, grid%oneKappaSca(i,ilambda), &
+                        thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,i)
+
                 enddo
              endif
           else 
@@ -12151,6 +12165,7 @@ end function readparameterfrom2dmap
           enddo
        endif
        kappaSca = kappaSca * frac
+       if (present(debug)) write(*,*) "kappasca xxx ", kappasca
     endif
     if (PRESENT(kappaScaDust)) kappaScaDust = kappaSca
 
@@ -12293,6 +12308,8 @@ end function readparameterfrom2dmap
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
       if (PRESENT(kappaSca)) then
          kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
+         if (present(debug)) write(*,*) "kappasca3 ",kappasca, thisOctal%ne(subcell) * sigmaE * 1.e10, thisOctal%ne(subcell),&
+              thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
       endif
       if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10 
    endif
@@ -12601,7 +12618,7 @@ end function readparameterfrom2dmap
     logical, optional :: inheritProps, interpProps, photoSphereSplit
     integer :: subcell, i, ilambda
     logical :: converged
-    real(double) :: kabs, ksca, r, fac, tauRoss
+    real(double) :: kabs, ksca, r, fac, tauRoss, kabsDust, kScaDust
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
@@ -12626,9 +12643,9 @@ end function readparameterfrom2dmap
           split = .true.
 
           call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
-               kappaSca=ksca, kappaAbs=kabs)
+               kappaSca=ksca, kappaAbs=kabs, kappaScaDust=kscaDust, kappaAbsDust=kabsDust)
 
-          thisTau  = thisOctal%subcellSize * (ksca + kabs)
+          thisTau  = thisOctal%subcellSize * (kscaDust + kabsDust)
 
           r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.001d0
           centre = subcellCentre(thisOctal, subcell)

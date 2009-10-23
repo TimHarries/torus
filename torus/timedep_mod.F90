@@ -1267,7 +1267,7 @@ contains
     character(len=30) :: outfile
     real(double) :: photonSpeed
     real(double) :: sourcePeriod, sourceLuminosity
-    real(double) :: fracSource, weightSource, chanceSource, weightGas, chanceGas
+    real(double) :: fracSource
     real(double) :: fac, meanFreePath, probNewPhoton, teq, deltaudens, newudens
     real(double) :: tdump, timeofnextdump, photonBias, Be
     real(double) :: udens_n_plus_1

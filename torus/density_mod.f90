@@ -1011,7 +1011,7 @@ contains
     TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real :: r,  mStar, rCav, r_c, r_d
-    real :: openingAngle, mu, mu_0, bigR
+    real :: openingAngle, mu, mu_0, bigR, zMaxxed
     real :: z, H_R, H_0, alpha
     real :: rhoEnv, rhoDisc
     real :: cavZ
@@ -1038,6 +1038,7 @@ contains
     r = modulus(point) * 1.e10
     mu = point%z * 1.e10 / r
     z = point%z * 1.e10
+    zMaxxed = 6.d16 !thap  
 
     bigR = sqrt(point%x**2 + point%y**2)*1.e10
     H_R = H_0 * (bigR / (100.*auToCm))**beta
@@ -1057,18 +1058,22 @@ contains
 
     melvinDensity = max(rhoDisc, rhoEnv)
 
-    ! cavity density flagged at very high value, and correct cavity density
-    ! is set in assign_melvin in amr_mod.f90
-
-    if (bigR < Rcav) melvinDensity = 1.d30
-
-    if (bigR > Rcav) then
-       cavZ = tan(pi/2.-0.5*openingAngle)*(bigR - Rcav) ! Eq 4
-       if (abs(z) > cavZ) then
-          melvinDensity = 1.d30
-       endif
+    if (bigR < Rcav) then
+       melvinDensity = 1.d30
+       if(abs(z) < zMaxxed) then !thap                                                                                    
+          melvinDensity = 3.25d30 !                                                                                       
+       endif   !                                                                                                          
     endif
 
+    if (bigR > Rcav) then
+       cavZ = tan(pi/2.-0.5*openingAngle)*(bigR - Rcav) ! Eq 4                                                            
+       if (abs(z) > cavZ) then   !In cavity     ?                                                                         
+          melvinDensity = 1.d30
+          if(abs(z) < zMaxxed) then !thap                                                                                 
+             melvinDensity = 3.25d30!                                                                                     
+          endif !                                                                                                         
+       endif
+    endif
 
   end function melvinDensity
 
