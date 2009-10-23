@@ -22,14 +22,14 @@ module timedep_mod
   public :: runtimeDependentRT, timeDependentRTtest
 
   type STACKTYPE
-     real(double) :: freq(10000000)
-     real(double) :: eps(1000000)
-     type(VECTOR) :: direction(10000000)
-     type(VECTOR) :: position(10000000)
-     logical :: photonFromSource(1000000)
-     logical :: photonFromGas(10000000)
-     logical :: beenScattered(10000000)
-     logical :: radiativeEquPhoton(10000000)
+     real(double) :: freq(1000)
+     real(double) :: eps(1000)
+     type(VECTOR) :: direction(1000)
+     type(VECTOR) :: position(1000)
+     logical :: photonFromSource(1000)
+     logical :: photonFromGas(1000)
+     logical :: beenScattered(1000)
+     logical :: radiativeEquPhoton(1000)
   end type STACKTYPE
 
 contains
@@ -104,23 +104,22 @@ contains
 
     nStack = 0
     tDump = 1.d9
-    deltaTmin = 1.d9
+    deltaTmin = 1.d3
     Deltatmax = 1.d9
     gridCrossingTime = grid%octreeRoot%subcellSize*1.d10/cSpeed
-    nMonte = 1000000
+    nMonte = 10000
 
-    photonsPerStep = 1000000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+    photonsPerStep = 100000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
 
     photonsPerSecond = photonsPerStep / deltaTmin
 
-    deltaTmin = 1.d9
 
     iter = 0
     deltaT = DeltaTmin
 
     call zeroTemperature(grid%octreeRoot)
 
-    varyingSource = .true.
+    varyingSource = .false.
     varyUntilTime = 1.d30
     endTime = 1.d30
     startVaryTime = 0.d0
@@ -207,17 +206,17 @@ contains
 
           endif
        else
-          photonsPerStep = max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
+          photonsPerStep = 1000000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
           Deltatmax = 1.d12
-          deltaTmin = 1.d9
+          deltaTmin = 1.d3
        endif
 
-       dumpNow = .false.
-       if ((currentTime+deltaT) >= nextDumpTime) then
-          write(*,*) "deltaT trimmed ",deltaT, currentTime, nextDumpTime
-          deltaT = nextDumpTime - currentTime
-          dumpNow = .true.
-       endif
+       dumpNow = .true.
+!       if ((currentTime+deltaT) >= nextDumpTime) then
+!          write(*,*) "deltaT trimmed ",deltaT, currentTime, nextDumpTime
+!          deltaT = nextDumpTime - currentTime
+!          dumpNow = .true.
+!       endif
 
 
        if (varyingSource.and.seedRun) then
@@ -259,53 +258,54 @@ contains
 
        deltaT = newDeltaT
 
+       if (varyingSource) then
 
-       if (myrankGlobal == 0) then
+          if (myrankGlobal == 0) then
              do i = 1, nSedWavelength-1
                 outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
-
+             
              do i = 1, nSedWavelength-1
                 outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
-
-          do itime = 1, nTime-1
-             write(vtkFilename, '(a,i4.4,a)') "sed",itime,".dat"
-             open(32, file=vtkFilename, status="unknown", form="formatted")
-             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-             do i = 1, nSedWavelength-1
-                write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                     outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
-             enddo
-             close(32)
              
-             write(vtkFilename, '(a,i4.4,a)') "scat",itime,".dat"
-             open(32, file=vtkFilename, status="unknown", form="formatted")
-             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-             
-             do i = 1, nSedWavelength-1
-                write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                     outputFluxScat(i, iter)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+             do itime = 1, nTime-1
+                write(vtkFilename, '(a,i4.4,a)') "sed",itime,".dat"
+                open(32, file=vtkFilename, status="unknown", form="formatted")
+                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+                do i = 1, nSedWavelength-1
+                   write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                        outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+                enddo
+                close(32)
+                
+                write(vtkFilename, '(a,i4.4,a)') "scat",itime,".dat"
+                open(32, file=vtkFilename, status="unknown", form="formatted")
+                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+                
+                do i = 1, nSedWavelength-1
+                   write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                        outputFluxScat(i, iter)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+                enddo
+                close(32)
              enddo
-             close(32)
-          enddo
+          endif
        endif
 
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
           iDump = idump + 1
-!          if (myrankGlobal == 0) then
-!             write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
-!             call writeVtkFile(grid, vtkfilename, &
-!                  valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
-!             
+          if (myrankGlobal == 0) then
+             write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
+             call writeVtkFile(grid, vtkfilename, &
+                  valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
+             
 !             write(vtkFilename, '(a,i4.4,a)') "output",idump,".grid"
 !             call writeAMRgrid(vtkFilename, .false., grid)
-!          endif
 
-
+          endif
        endif
     enddo
   end subroutine runTimeDependentRT
@@ -749,10 +749,11 @@ contains
        write(*,*) "chiline ",t7
     endif
     newDeltaT = newDeltaT  * fac
+    if (newDeltaT > 1.d29) newDeltaT = deltaTmin
 
+    newDeltaT = deltaT * 2.d0
     newdeltaT = min(newDeltaT, deltaTMax)
     newdeltaT = max(newdeltaT, deltaTmin)
-
 
 
     oldStack  = currentStack
@@ -1242,7 +1243,7 @@ contains
     real(double) :: tau, dx, k
     real(double) :: xSize
     real(double) :: xPhoton
-    integer, parameter :: maxStack = 10000000
+    integer, parameter :: maxStack = 10000
 
     integer :: currentNStack, oldnStack
     real(double) :: currenttimeStack(maxStack)
