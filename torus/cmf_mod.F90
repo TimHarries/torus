@@ -928,7 +928,7 @@ contains
 
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
-    use input_variables, only : debug, rcore
+    use input_variables, only : debug, rcore, lte
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
     use mpi_global_mod, only: myRankGlobal
@@ -1021,7 +1021,6 @@ contains
     indexRBBTrans = 0
     ilev = 0; ilab = 0; indexAtom = 0; lev1 = 0; lev2 = 0
     nfreq = 0; nRBBTrans = 0; tauAv = 0.d0
-    call writeVTKfile(grid, "grid.vtk", "vtk.txt")
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
      call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
@@ -1045,6 +1044,7 @@ contains
     if (myRankIsZero) &
          call writeAmrGrid("atom_tmp.grid",.false.,grid)
 
+    if (LTE) goto 666
 
     nHAtom = 0
     nHeIAtom = 0
@@ -1107,7 +1107,7 @@ contains
      call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 #endif
      if (myRankisZero) then
-        open(69, file="cmf_convergence.dat", status="old", form="formatted")
+        open(69, file="cmf_convergence.dat", status="unknown", form="formatted")
         write(69,'(a)') &
 !             012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
              "      Iter Max Frac      Tol      Subcell    Level  New pop   Old pop      nRays   Fix ray"
@@ -1508,6 +1508,7 @@ contains
        enddo
 
     enddo
+666 continue
     call writeInfo( "ATOM loop done.")
   end subroutine atomLoop
 
@@ -1827,7 +1828,7 @@ contains
     endLoopAtPhotosphere = .false.
     lineOff = .false.
 
-    if (hitSource) endLoopAtphotosphere = .true.
+!    if (hitSource) endLoopAtphotosphere = .true.
 
 !    write(*,*) lineoff,hitsource,endloopatphotosphere
    if (.not.lineOff) then
@@ -1918,6 +1919,8 @@ contains
           distArray(2) = tVal
           nTau = 2
        endif
+       bfOpac = 0.d0
+       bfEmiss = 0.d0
 
        do i = 2, nTau
 
@@ -1968,15 +1971,24 @@ contains
           endif
 
 
-          alphanu = alphanu + bfOpac
-
-          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
           etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
           jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
-! add continuous bf and ff emissivity of hydrogen
+
+          if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
+             bfOpac = 1.d30
+             bfEmiss = 0.d0
+             alphanu = 1.d30
+             etaLine = 0.d0
+             jnu = 0.d0
+             snu = 0.d0
+          endif
+             
+          alphanu = alphanu + bfOpac
+
+          ! add continuous bf and ff emissivity of hydrogen
        
           jnu = jnu + bfEmiss
 
@@ -1986,7 +1998,7 @@ contains
              snu = tiny(snu)
           endif
 
-
+          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
 !          write(*,*) iCount,ntau,totdist, &
 !               modulus(currentPosition)/(grid%rCore),tau,modulus(thisOctal%velocity(subcell))*cspeed/1.d5,i0,&
@@ -1998,8 +2010,6 @@ contains
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
-
-
        enddo
        rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
@@ -2230,6 +2240,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
+    use input_variables, only : cylindrical, ttauriRouter
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2270,16 +2281,25 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 200, 200, 100)
+    call initCube(cube, 200, 200, 2)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
 !         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
 
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
-         -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
-
+    if (grid%octreeRoot%threed) then
+       if (.not.cylindrical) then
+          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
+               -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
+       else
+!          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
+!               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
+          call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
+               -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+!          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
+       endif
+    endif
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
 !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
 !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
@@ -2304,7 +2324,7 @@ contains
 !    iv1 = 25
 
     do iv = iv1, iv2
-!       write(*,*) iv,iv1,iv2
+       write(*,*) iv,iv1,iv2
        do ix = 1, cube%nx
           do iy = 1, cube%ny
              do iMonte = 1, nMonte

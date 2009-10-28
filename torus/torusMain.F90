@@ -164,7 +164,7 @@ program torus
   integer :: nVec
   type(VECTOR), allocatable :: distortionVec(:)
 
-  real :: ang
+  real(double) :: ang
   integer :: nt
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   real :: infallParticleMass         ! for T Tauri infall models
@@ -192,12 +192,12 @@ program torus
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
   real(double) :: totalmass, totalmasstrap, maxRho, minRho
+  type(VECTOR) :: viewVec
 
 
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
-  type(VECTOR) :: viewVec, outVec
 #endif
   
 ! Begin executable statements --------------------------------------------------
@@ -583,12 +583,15 @@ program torus
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
-        do i = 1, 1
-           ang = twoPi * real(i-1)/51. 
-!           ang = 45.*degtorad
-           t = 120.d0*degtorad
+        do i = 1, 20
+           ang = twoPi * real(i-1)/20. 
+           t = 75.d0*degtorad
+	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
+	   viewVec = rotateY(viewVec,t)
+	   viewVec = rotateZ(viewVec, ang)
+	   write(*,*) "View vector: ",viewVec, " modulus ",modulus(viewVec)
            call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                VECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
+                viewVec, 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo
         stop
@@ -802,7 +805,6 @@ call MPI_FINALIZE(ierr)
 
 CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------
-
   subroutine pre_initAMRGrid
 
     use input_variables, only: sphdatafilename
@@ -1635,6 +1637,7 @@ end subroutine pre_initAMRGrid
            ! This section is getting rather long. Maybe this should be done in 
            ! wrapper subroutine in amr_mod.f90.
           if (geometry=="ttauri") then 
+             call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0
              call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
@@ -1853,6 +1856,7 @@ end subroutine pre_initAMRGrid
            !  and the opacities) for all of the subcells in an
            !  adaptive octal grid.
            !  Using a routine in stateq_mod module.
+            call writeVtkFile(grid, "beforestateq.vtk")
            if (writeoutput) write(*,*) "Calling statistical equilibrium routines..."
            if (doTuning) call tune(6, "amrStateq") ! start a stopwatch  
            if (grid%geometry=="ttauri" .or. grid%geometry(1:8)=="windtest" .or. &

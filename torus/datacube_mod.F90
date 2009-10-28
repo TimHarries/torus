@@ -637,7 +637,7 @@ contains
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
     use input_variables , only : gridDistance
-    use constants_mod, only: auTocm, pi
+    use constants_mod, only: auTocm, pi, rSol
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin, dx, dy
     integer :: i
@@ -646,9 +646,11 @@ contains
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
 
-    write(message,'(a,f7.2,a)') "Linear pixel resolution  : ", dx*1e10/autocm, " AU"
+    write(message,'(a,f7.3,a)') "Linear pixel resolution  : ", dx*1e10/autocm, " AU"
     call writeinfo(message,TRIVIAL)
-    write(message,'(a,f7.4,a)') "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
+    write(message,'(a,f7.3,a)') "Linear pixel resolution  : ", dx*1e10/rSol, " Rsol"
+    call writeinfo(message,TRIVIAL)
+    write(message,'(a,f10.4,a)') "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
     call writeinfo(message,TRIVIAL)
 
     do i = 1, cube%nx

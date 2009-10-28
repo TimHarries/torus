@@ -304,7 +304,7 @@ contains
                                  coreContFlux,fAccretion)
 
     use input_variables, only: TTauriRinner, TTauriRouter,&
-                               TTauriRstar, TTauriMstar
+                               TTauriRstar, TTauriMstar, dipoleOffset
    
     type(SURFACETYPE),intent(inout) :: surface
     type(gridType), intent(in) :: grid
@@ -321,7 +321,9 @@ contains
     
     do iElement = 1, SIZE(surface%element)
       aboveSurface = surface%element(iElement)%position - surface%centre
-      aboveSurface = aboveSurface * 1.001_oc 
+      aboveSurface = aboveSurface * 1.01_oc 
+
+      aboveSurface = rotateY(aboveSurface, dble(dipoleOffset))
 
       TTauriMdotLocal = TTauriVariableMdot(aboveSurface,grid) ! g s^-1
       if (TTauriMdotLocal > 1.e15) then

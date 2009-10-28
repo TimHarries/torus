@@ -1365,6 +1365,9 @@ contains
          "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
     if (cmf) then
+       call getLogical("lte", lte, cLine, nLines, &
+            "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
             "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
        call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &

@@ -4280,7 +4280,7 @@ IF ( .NOT. gridConverged ) RETURN
     !   derived from information in the current cell  
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
-    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
+    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, ttauriRouter, dipoleOffset
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
@@ -4428,6 +4428,10 @@ IF ( .NOT. gridConverged ) RETURN
            rho = romanova_density(romData, searchPoint)
         else
            ! using a generic density function in density_mod.f90
+           if (grid%geometry == "ttauri") then
+              searchPoint = rotateY(searchPoint,  dble(dipoleOffset))
+           endif
+
            rho = density(searchPoint,grid)
         end if
         ave_density  =  rho + ave_density
@@ -4488,12 +4492,31 @@ IF ( .NOT. gridConverged ) RETURN
             end if
 !         end if
 
-      end if
+            
+
+         end if
+
 
       if (grid%geometry == "romanova") then         
          if (cellSize > 100.d0) split=.true.
       end if
 
+      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 20.)) then
+            splitInAzimuth = .true.
+      endif
+
+      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
+      phi = atan2(cellCentre%y,cellCentre%x)
+      height = discHeightFunc(r/(ttauriROuter/1.d10), phi, sin(dble(dipoleOffset))) * r
+      if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
+         if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
+            if (abs(cellCentre%z-height) < 2.d0*cellSize) then
+               split = .true.
+               splitInAzimuth = .true.
+            endif
+         endif
+      endif
 
    case("lexington")
       if (thisOctal%nDepth < mindepthamr) then
@@ -5807,7 +5830,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar, TTauriDiskHeight
+                               TTauriMstar, TTauriDiskHeight, dipoleoffset
                                
     IMPLICIT NONE
 
@@ -5858,7 +5881,7 @@ IF ( .NOT. gridConverged ) RETURN
     ELSE
       TTauriVelocity = vector(1.e-12,1.e-12,1.e-12)
     END IF
-
+    TTauriVelocity = rotateY(TTauriVelocity,-dble(dipoleOffset))
   END FUNCTION TTauriVelocity
 
   SUBROUTINE calcTTauriMassVelocity(thisOctal,subcell,grid) 
@@ -5867,7 +5890,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
     USE input_variables, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
-                                TTauriRinner, TTauriRouter, ttau_acc_on
+                                TTauriRinner, TTauriRouter, ttau_acc_on, dipoleOffset
 
     IMPLICIT NONE
 
@@ -5889,6 +5912,10 @@ IF ( .NOT. gridConverged ) RETURN
     point = subcellCentre(thisOctal,subcell)
     pointVec = (point - starPosn) * 1.e10_oc
 
+! rotation for warp dipole offset!!!!!!! TJH
+    point = rotateY(point, dble(dipoleOffset))
+    pointvec = rotateY(pointvec, dble(dipoleOffset))
+
     if (.not. ttau_acc_on) then
        ! we don't include the magnetopsherical accretion
        thisOctal%inFlow(subcell) = .FALSE.
@@ -5897,7 +5924,6 @@ IF ( .NOT. gridConverged ) RETURN
     else
     
        IF (TTauriInFlow(point,grid)) THEN
-!      thisOctal%rho(subcell) = TTauriDensity(point,grid)
           thisOctal%rho(subcell) = Density(point,grid)
           thisOctal%inFlow(subcell) = .TRUE.
           IF (useHartmannTemp) THEN
@@ -6145,7 +6171,11 @@ IF ( .NOT. gridConverged ) RETURN
     !
     
     if (thisOctal%threeD) then
-       n = 8
+       if (thisOctal%splitAzimuthally) then
+          n = 8
+       else
+          n  = 4
+       endif
     else
        n = 4
     endif
@@ -6446,12 +6476,12 @@ IF ( .NOT. gridConverged ) RETURN
       thisOctal%temperature(subcell) = MAX(5000.0, &
         7000.0 - ((2500.0 * rho/real(mHydrogen) - TTauriMinRho) / (TTauriMaxRho-TTauriMinRho)))
       ! we will initialise the bias distribution
-      thisOctal%biasLine3D(subcell) = 1.0d0
-      thisOctal%biasCont3D(subcell) = 1.0d0
+!      thisOctal%biasLine3D(subcell) = 1.0d0
+!      thisOctal%biasCont3D(subcell) = 1.0d0
     ELSE
       thisOctal%temperature(subcell) = 6500.0
-      thisOctal%biasLine3D(subcell) = 1.0d-150
-      thisOctal%biasCont3D(subcell) = 1.0d-150
+!      thisOctal%biasLine3D(subcell) = 1.0d-150
+!      thisOctal%biasCont3D(subcell) = 1.0d-150
     END IF
 
 
@@ -14708,7 +14738,7 @@ end function readparameterfrom2dmap
             r1 = r + thisOctal%subcellSize
             gridRadius = r1
          else
-            gridRadius = thisOctal%subcellSize
+            gridRadius = 2.d0*thisOctal%subcellSize
             r1 = gridRadius
          endif
 
@@ -14775,15 +14805,15 @@ end function readparameterfrom2dmap
          tVal = min(distToZboundary, distToRboundary)
          if(.not. suppressWarnings) then
 
-            if (tVal > 1.e29) then
-               write(*,*) "Cylindrical"
-               write(*,*) "posVec",posvec
-               write(*,*) "direction",direction
-               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
-               write(*,*) "subcen",subcen
-               write(*,*) "z",currentZ
-               write(*,*) "x1,x2",x1,x2
-            endif
+!            if (tVal > 1.e29) then
+!               write(*,*) "Cylindrical"
+!               write(*,*) "posVec",posvec
+!               write(*,*) "direction",direction
+!               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
+!               write(*,*) "subcen",subcen
+!               write(*,*) "z",currentZ
+!               write(*,*) "x1,x2",x1,x2
+!            endif
 
             if (tval < 0.) then
                write(*,*) "Cylindrical"
@@ -18264,6 +18294,50 @@ end function readparameterfrom2dmap
        endif
     end do
   end subroutine tauAlongPathCMF
+
+
+  recursive subroutine addWarpedDisc(thisOctal)
+    use input_variables, only : ttauriROuter, dipoleOffset
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: r, phi, height, cellsize
+    type(VECTOR) :: rVec
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call addWarpedDisc(child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal, subcell)
+          r = sqrt(rVec%x**2 + rVec%y**2)
+          phi = atan2(rVec%y, rVec%x)
+          cellsize = thisOctal%subcellSize
+          height = discHeightFunc(r/(ttauriROuter/1.d10), phi, sin(dble(dipoleOffset))) * r
+          if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
+             if (rVec%z < height) then
+                thisOctal%rho(subcell) = 1.d0
+             endif
+          endif
+       endif
+    enddo
+  end subroutine addWarpedDisc
+  
+          
+  function discHeightFunc(r, phi, hOverR) result (height)
+
+    real(double) :: r, phi, hOverR, height
+    
+    height = hOverR * cos(phi)
+  end function discHeightFunc
+    
+
 
 END MODULE amr_mod
 

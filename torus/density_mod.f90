@@ -213,7 +213,11 @@ contains
     real :: TTauriMdotLocal
 
     starPosn = grid%starPos1
+
     pointVec = (point - starPosn) * 1.e10_oc
+
+
+
     r = modulus( pointVec ) 
     theta = acos( pointVec%z  / r )
     y = SIN(theta)**2 
@@ -346,7 +350,7 @@ contains
                                MdotParameter5,                 &
                                MdotType, curtainsPhi1s, curtainsPhi1e, &
                                curtainsPhi2s, curtainsPhi2e,   &
-                               phaseTime, nStartPhase, nPhase !, &
+                               phaseTime, nStartPhase, nPhase
                                !TTauriRinner, TTauriRouter
 
     type(GRIDTYPE), intent(in)    :: grid
@@ -370,6 +374,7 @@ contains
     
     starPosn = grid%starPos1
     pointVec = (point - starPosn) * 1.e10_oc
+
     r_oct = modulus( pointVec ) 
     r = r_oct
     
