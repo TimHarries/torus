@@ -192,7 +192,7 @@ program torus
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
   real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, bMag, vMag
-  type(VECTOR) :: viewVec
+  type(VECTOR) :: viewVec, outVec
 
 
 #ifdef MPI
