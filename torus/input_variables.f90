@@ -363,6 +363,7 @@ module input_variables
   real :: TTauriMstar ! stellar mass   (in M_sol units)
   real :: TTauriDiskHeight ! (in R_star units)
   real :: TTauriDiskRin    ! (in R_star units)
+  real(double) :: hOverR
   real :: ThinDiskRin      ! (in R_star units)
   real :: curtainsPhi1s ! accretion curtains from (s)tart... 
   real :: curtainsPhi1e ! ... to (e)nd angle

@@ -4281,7 +4281,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, ttauriRouter, dipoleOffset
-    use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
+    use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
@@ -4508,7 +4508,7 @@ IF ( .NOT. gridConverged ) RETURN
 
       r = sqrt(cellcentre%x**2 + cellCentre%y**2)
       phi = atan2(cellCentre%y,cellCentre%x)
-      height = discHeightFunc(r/(ttauriROuter/1.d10), phi, sin(dble(dipoleOffset))) * r
+      height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
       if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
          if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
             if (abs(cellCentre%z-height) < 2.d0*cellSize) then
@@ -18297,7 +18297,7 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine addWarpedDisc(thisOctal)
-    use input_variables, only : ttauriROuter, dipoleOffset
+    use input_variables, only : ttauriROuter, hOverR
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -18319,10 +18319,11 @@ end function readparameterfrom2dmap
           r = sqrt(rVec%x**2 + rVec%y**2)
           phi = atan2(rVec%y, rVec%x)
           cellsize = thisOctal%subcellSize
-          height = discHeightFunc(r/(ttauriROuter/1.d10), phi, sin(dble(dipoleOffset))) * r
+          height = discHeightFunc(r/(ttauriROuter/1.d10), phi, hOverR) * r
           if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
              if (rVec%z < height) then
                 thisOctal%rho(subcell) = 1.d0
+                thisOctal%inflow(subcell) = .false.
              endif
           endif
        endif
@@ -18334,7 +18335,7 @@ end function readparameterfrom2dmap
 
     real(double) :: r, phi, hOverR, height
     
-    height = hOverR * cos(phi)
+    height = hOverR * abs(cos(phi/2.d0))
   end function discHeightFunc
     
 

@@ -179,6 +179,30 @@ contains
 
   ! return a blackbody function [B_nu]
 
+  function toPerAngstrom(flux, freq) result(out)
+    real(double) :: flux, freq, out, lambda
+    lambda = cSpeed / freq
+    out = flux * cSpeed / lambda**2 ! cm-1
+    out = out * angstromToCm ! per A
+  end function toPerAngstrom
+
+  function returnMagnitude(flux, band) result(out)
+    real(double) :: flux, out, offset
+    character(len=*) :: band
+    select case (band)
+       case("B")
+          offset = 6.7d-9
+       case("V") 
+          offset = 3.75d-9
+       case("R")
+          offset = 1.8e-9
+       case DEFAULT
+          call writeWarning("Band "//trim(band)//" not recognised in returnMagntiude")
+          offset = 0.d0
+    end select
+    out = -2.5d0 * log10(flux) + 2.5d0*log10(offset)
+  end function returnMagnitude
+
   real elemental function blackBody(temperature, wavelength)
 
     real,intent(in) :: temperature

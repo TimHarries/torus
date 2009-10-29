@@ -191,7 +191,7 @@ program torus
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
-  real(double) :: totalmass, totalmasstrap, maxRho, minRho
+  real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, bMag, vMag
   type(VECTOR) :: viewVec
 
 
@@ -304,7 +304,7 @@ program torus
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 5)
+!        call stripAtomLevels(thisAtom(i), 5)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif
@@ -583,17 +583,25 @@ program torus
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
+	open(33, file="phase.dat", status="unknown", form="formatted")
         do i = 1, 20
-           ang = twoPi * real(i-1)/20. 
+           ang = twoPi * real(i-1)/20.+pi
            t = 75.d0*degtorad
 	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 	   viewVec = rotateY(viewVec,t)
 	   viewVec = rotateZ(viewVec, ang)
-	   write(*,*) "View vector: ",viewVec, " modulus ",modulus(viewVec)
            call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                viewVec, 100.d0*pctocm/1.d10, &
-                source, nsource,i)
+                viewVec, 140.d0*pctocm/1.d10, &
+                source, nsource,i, totalFlux, forceLambda = 5500.d0)
+           vMag = returnMagnitude(totalFlux, "V")
+           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+                viewVec, 140.d0*pctocm/1.d10, &
+                source, nsource,i,totalFlux,forceLambda=4400.d0)
+           bMag = returnMagnitude(totalFlux, "B")
+           write(33,*) real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
+           write(*,*)  real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
         enddo
+        close(33)
         stop
      endif
 

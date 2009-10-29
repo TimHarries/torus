@@ -10,7 +10,7 @@ module cmf_mod
   use octal_mod, only: octal, octalWrapper, subcellCentre
   use amr_mod, only: inOctal, distanceToCellBoundary, findsubcellLocal, amrGridVelocity
   use gridtype_mod, only: GRIDTYPE
-  use utils_mod, only: myexp, init_random_seed, gaussj, locate
+  use utils_mod, only: myexp, init_random_seed, gaussj, locate, toPerAngstrom
   use modelatom_mod, only: MODELATOM, BoltzSahaGeneral, bfOpacity, bfEmissivity, photoCrossSection, collisionRate, &
         addcrosssectionstoatom, createcontfreqarray, createrbbarrays, returneinsteincoeffs
   use source_mod, only: SOURCETYPE, I_nu, insideSource, distanceToSource
@@ -950,7 +950,7 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 10000, maxRay = 100000
+    integer, parameter :: maxIter = 100, maxRay = 100000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
@@ -1182,8 +1182,7 @@ contains
 #endif
 
           do iOctal = ioctal_beg, ioctal_end
-!          do iOctal =  ioctal_end, ioctal_beg, -1
-
+             write(*,*) "Doing octal ",iOctal, " of ",ioctal_end
 
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
@@ -1246,22 +1245,23 @@ contains
 
                                if (firstCheckonTau) then
                                   thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+                                  firstCheckonTau = .false.
                                endif
 
 
                                if (iTrans == 4) tauHalpha = tauAv
 
-                               if (iter < 10) then
-                                 if (tauAv > 1.d2) then
-                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
-                                 else
-                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
-                                 endif
-                                 firstCheckonTau = .false.
-                              endif
+!                               if (iter < 10) then
+!                                 if (tauAv > 1.d2) then
+!                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
+!                                 else
+!                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+!                                 endif
+!                                 firstCheckonTau = .false.
+!                              endif
 
-                              if (debug) write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ", &
-                                    tauAv,thisAtom(iAtom)%indetailedbalance(itrans)
+!                              if (debug) write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ", &
+!                                    tauAv,thisAtom(iAtom)%indetailedbalance(itrans)
 
                             enddo
                          endif
@@ -1722,15 +1722,17 @@ contains
 
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
-       nFreq, freqArray) result (i0)
+       nFreq, freqArray, forceFreq) result (i0)
     use amr_mod, only: distanceToGridFromOutside
 
     type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
     integer :: nSource
     real(double) :: freqArray(:)
+    real(double), optional :: forceFreq
     integer :: nFreq
     type(SOURCETYPE) :: source(:)
+    real(double) :: transitionFreq
     integer :: iAtom, nAtom
     type(MODELATOM) :: thisAtom(:)
     real(double) :: disttoGrid
@@ -1739,7 +1741,7 @@ contains
     logical :: hitSource
     real(double) :: i0
     type(OCTAL), pointer :: thisOctal, startOctal !, endOctal
-!    integer :: endSubcell
+    !    integer :: endSubcell
     integer :: subcell
     real(double) :: costheta
     type(VECTOR) :: currentPosition, thisPosition, thisVel
@@ -1778,13 +1780,18 @@ contains
        if (thisAtom(i)%name == "HeII") nHeIIatom = i
     enddo
 
+    transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
 
-    call locate(freqArray, nFreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
+    if (PRESENT(forceFreq)) then
+       transitionFreq = forceFreq
+    endif
+
+    call locate(freqArray, nFreq, transitionFreq, iFreq)
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
     if (distToGrid > 1.e29) then
-!       write(*,*) "ray does not intersect grid",position,direction
+       !       write(*,*) "ray does not intersect grid",position,direction
        i0 = tiny(i0)
        goto 666
     endif
@@ -1806,17 +1813,17 @@ contains
     totDist = 0.d0
     call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
 
-   if (hitSource) then
-      pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
-      call normalize(pVec)
-      cosTheta = -1.d0*(pVec.dot.direction)
-      photoDirection = pVec
-      call normalize(photoDirection)
-   endif
+    if (hitSource) then
+       pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
+       call normalize(pVec)
+       cosTheta = -1.d0*(pVec.dot.direction)
+       photoDirection = pVec
+       call normalize(photoDirection)
+    endif
 
 
-!    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
-!         inOctal(grid%octreeRoot, currentPosition),distTogrid
+    !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
+    !         inOctal(grid%octreeRoot, currentPosition),distTogrid
     i0 = tiny(i0)!0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -1826,222 +1833,210 @@ contains
     icount = 0
     rhoCol = 0.d0
     endLoopAtPhotosphere = .false.
-    lineOff = .false.
+    lineOff = .true.
 
-!    if (hitSource) endLoopAtphotosphere = .true.
+    !    if (hitSource) endLoopAtphotosphere = .true.
 
-!    write(*,*) lineoff,hitsource,endloopatphotosphere
-   if (.not.lineOff) then
-
-
-
-    do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
-       icount = icount + 1 
-
-       call findSubcellLocal(currentPosition, thisOctal, subcell)
-
-!       rVec = subcellCentre(thisOctal,subcell)
-
-       call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-
-       if ((totDist + tval) > distTosource) then
-          tVal = distToSource - totDist
-          endLoopAtPhotosphere = .true.
-       endif
+    !    write(*,*) lineoff,hitsource,endloopatphotosphere
 
 
 
-       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
-!       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
+       do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
+          icount = icount + 1 
 
-       endPosition = currentPosition + tval * direction
-       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
-!       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
+          call findSubcellLocal(currentPosition, thisOctal, subcell)
 
-!       endOctal => grid%octreeRoot
-!       call findSubcellLocal(endPosition, endOctal, endSubcell)
+          !       rVec = subcellCentre(thisOctal,subcell)
 
-       dv1 = deltaV + (startVel .dot. direction)
-       dv2 = deltaV + (endVel .dot. direction)
+          call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
-       dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
 
-       distArray(1) = 0.d0
-       distArray(2) = tVal
-       nTau = 2
-
-       passThroughResonance =.false.
-       
-       
-       if (dv1*dv2 < 0.d0) passThroughResonance = .true.
-       
-       if (modulus(endVel)==0.d0) passThroughResonance = .false.
-       
-       if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
-
-          if (dv1 <= dv2) then
-             velocityIncreasing = .true.
-          else
-             velocityIncreasing = .false.
+          if ((totDist + tval) > distTosource) then
+             tVal = distToSource - totDist
+             endLoopAtPhotosphere = .true.
           endif
 
-          if ( (dv2 - dv1) /= 0.d0) then
-             if (velocityIncreasing) then
-                x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-             else
-                x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+
+          if (.not.lineOff) then
+             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+
+             endPosition = currentPosition + tval * direction
+             endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+
+             dv1 = deltaV + (startVel .dot. direction)
+             dv2 = deltaV + (endVel .dot. direction)
+
+             dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
+
+             distArray(1) = 0.d0
+             distArray(2) = tVal
+             nTau = 2
+
+             passThroughResonance =.false.
+
+
+             if (dv1*dv2 < 0.d0) passThroughResonance = .true.
+
+             if (modulus(endVel)==0.d0) passThroughResonance = .false.
+
+             if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
+
+                if (dv1 <= dv2) then
+                   velocityIncreasing = .true.
+                else
+                   velocityIncreasing = .false.
+                endif
+
+                if ( (dv2 - dv1) /= 0.d0) then
+                   if (velocityIncreasing) then
+                      x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                      x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                   else
+                      x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                      x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                   endif
+                else
+                   x1 = 0.d0
+                   x2 = tVal
+                endif
+
+                if (x1 > x2) then
+                   fac = x1
+                   x1 = x2
+                   x2 = fac
+                endif
+                x1 = max(0.d0, x1)
+                x2 = min(x2, tVal)
+                nTau = 80
+                distArray(1) = 0.d0
+                do i = 1, nTau-1
+                   distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
+                enddo
+                distArray(nTau) = tVal
+             endif
+
+             if (.not.thisOctal%inflow(subcell)) then
+                distArray(1) = 0.d0
+                distArray(2) = tVal
+                nTau = 2
              endif
           else
-             x1 = 0.d0
-             x2 = tVal
+             distArray(1) = 0.d0
+             distArray(2) = tVal
+             nTau = 2
           endif
 
-          if (x1 > x2) then
-             fac = x1
-             x1 = x2
-             x2 = fac
-          endif
-          x1 = max(0.d0, x1)
-          x2 = min(x2, tVal)
-          nTau = 80
-          distArray(1) = 0.d0
-          do i = 1, nTau-1
-             distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
+
+          bfOpac = 0.d0
+          bfEmiss = 0.d0
+
+          do i = 2, nTau
+
+             startOctal => thisOctal
+             thisPosition = currentPosition + distArray(i)*direction
+
+
+
+
+             if (.not.lineoff) then
+                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+                thisVel= thisVel - rayVel
+                dv = (thisVel .dot. direction) + deltaV
+                call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
+                alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
+                     phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)          
+                iUpper = thisAtom(iAtom)%iUpper(iTrans)
+                iLower = thisAtom(iAtom)%iLower(iTrans)
+                nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+                nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+                alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+             else
+                alphanu = 0.d0
+             endif
+
+
+             if (i == 2) then
+                if (.not.lineOff) then
+                   do k = 1, nAtom
+                      do j = 1, thisAtom(k)%nLevels - 1
+                         nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
+                              dble(thisOctal%temperature(subcell))) * &
+                              Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
+                      enddo
+                   enddo
+                endif
+                bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                     thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
+                bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom, nstar, &
+                     dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
+             endif
+
+
+
+             if (.not.lineoff) then
+                etaLine = hCgs * a * transitionFreq
+                etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
+                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/transitionFreq
+             else
+                jnu = 0.d0
+                etaline = 0.d0
+             endif
+
+
+             if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
+                bfOpac = 1.d30
+                bfEmiss = 0.d0
+                alphanu = 1.d30
+                etaLine = 0.d0
+                jnu = 0.d0
+                snu = 0.d0
+             endif
+
+             alphanu = alphanu + bfOpac
+
+             ! add continuous bf and ff emissivity of hydrogen
+
+             jnu = jnu + bfEmiss
+
+             if (alphanu /= 0.d0) then
+                snu = jnu/alphanu
+             else
+                snu = tiny(snu)
+             endif
+
+             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+
+             !          write(*,*) iCount,ntau,totdist, &
+             !               modulus(currentPosition)/(grid%rCore),tau,modulus(thisOctal%velocity(subcell))*cspeed/1.d5,i0,&
+             !               passthroughresonance, dv*cspeed/1.e5, phiProf(dv, thisOctal%microturb(subcell)), &
+             !               snu,dtau,tau
+
+             !          write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
+             !             i0,tau, jnu,alphanu,snu, nlower,nupper
+
+             i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+             tau = tau + dtau
           enddo
-          distArray(nTau) = tVal
-       endif
-
-       if (.not.thisOctal%inflow(subcell)) then
-          distArray(1) = 0.d0
-          distArray(2) = tVal
-          nTau = 2
-       endif
-       bfOpac = 0.d0
-       bfEmiss = 0.d0
-
-       do i = 2, nTau
-
-          startOctal => thisOctal
-          thisPosition = currentPosition + distArray(i)*direction
-
-          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-!          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
-
-          thisVel= thisVel - rayVel
-
-
-          dv = (thisVel .dot. direction) + deltaV
-
-!          if (abs(dv)*cspeed/1.d5 < 100.d0) then
-!             write(*,*) i,distArray(i), dv1*cspeed/1.e5,dv2*cspeed/1.e5,x1,x2,tval,dv*cspeed/1.e5
-!          endif
-  
-          call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
-
-
-          alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
-               phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
-
-          
-
-          iUpper = thisAtom(iAtom)%iUpper(iTrans)
-          iLower = thisAtom(iAtom)%iLower(iTrans)
-
-
-          nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
-          nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-          alphanu = alphanu * (nLower * Blu - nUpper * Bul)
-
-
-          if (i == 2) then
-             do k = 1, nAtom
-                do j = 1, thisAtom(k)%nLevels - 1
-                   nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
-                        dble(thisOctal%temperature(subcell))) * &
-                        Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
-                enddo
-             enddo
-             bfOpac = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
-             bfEmiss = bfEmissivity(thisAtom(iatom)%transFreq(iTrans), nAtom, thisAtom, nstar, &
-               dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
-          endif
-
-
-
-          etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
-          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-          jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
-
-
-          if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
-             bfOpac = 1.d30
-             bfEmiss = 0.d0
-             alphanu = 1.d30
-             etaLine = 0.d0
-             jnu = 0.d0
-             snu = 0.d0
-          endif
-             
-          alphanu = alphanu + bfOpac
-
-          ! add continuous bf and ff emissivity of hydrogen
-       
-          jnu = jnu + bfEmiss
-
-          if (alphanu /= 0.d0) then
-             snu = jnu/alphanu
-          else
-             snu = tiny(snu)
-          endif
-
-          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-
-!          write(*,*) iCount,ntau,totdist, &
-!               modulus(currentPosition)/(grid%rCore),tau,modulus(thisOctal%velocity(subcell))*cspeed/1.d5,i0,&
-!               passthroughresonance, dv*cspeed/1.e5, phiProf(dv, thisOctal%microturb(subcell)), &
-!               snu,dtau,tau
-
-!          write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
-!             i0,tau, jnu,alphanu,snu, nlower,nupper
-
-          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-          tau = tau + dtau
+          rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
+          currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
+          totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
        enddo
-       rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
-       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
-       totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
-    enddo
- endif
 
 
     if (endLoopAtPhotosphere) then
 
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
-!       if (source(sourcenumber)%surface%element(iElement)%hot) then
-!          write(*,*) i0,i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement), &
-!               i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), 1)
-!       endif
-!       write(*,*) i0, i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement),tau
-!       i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau)
-       i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*exp(-tau)
 
+       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement)*exp(-tau)
 
-!       write(*,*) "i0",i0,i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau),tau
-!       write(*,*) "pos",modulus(currentPosition)/source(1)%radius
     endif
-
-!    write(*,*) "tau",tau,"deltav",deltaV*cspeed/1.d5
-
 666 continue 
 
   end function intensityAlongRay
 
   
-  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile)
+  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
+       totalFlux, forceLambda)
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube
 #ifdef MPI
@@ -2051,14 +2046,15 @@ contains
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     integer :: nSource
+    real(double), optional :: forceLambda
     integer :: nFile
     type(SOURCETYPE) :: source(:)
     integer :: nAtom, iAtom
-    real(double) :: distance
+    real(double) :: distance, totalFlux
     integer :: itrans
     integer :: nRay
-    type(VECTOR) :: rayPosition(5000)
-    real(double) :: da(5000), dOmega(5000)
+    type(VECTOR) :: rayPosition(50000)
+    real(double) :: da(50000), dOmega(50000)
     type(VECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
@@ -2070,7 +2066,7 @@ contains
     type(DATACUBE) :: cube
     integer :: nFreqArray
     integer, parameter :: maxFreq = 2000
-    real(double) :: freqArray(maxFreq)
+    real(double) :: freqArray(maxFreq), broadBandFreq
 
 #ifdef MPI
     ! For MPI implementations
@@ -2089,6 +2085,8 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+    broadBandFreq = cSpeed/(forceLambda * angstromToCm)
+
     da = 0.d0; dOmega = 0.d0
     cube%label = " "
     freqArray = 0.d0; nFreqArray = 0
@@ -2099,6 +2097,7 @@ contains
     if (myRankIsZero) &
          write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
+    if (.false.) then
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
 
 #ifdef MPI
@@ -2110,14 +2109,11 @@ contains
     endif
     call torus_mpi_barrier
     call freeDataCube(cube)
-    return
-
-!    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-    
+    endif
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
-    nLambda = 100
+    nLambda = 1
 
     iv1 = 1
     iv2 = nlambda
@@ -2138,7 +2134,7 @@ contains
        deltaV  = vArray(iv)
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-               nFreqArray, freqArray) !minus v 
+               nFreqArray, freqArray, forceFreq=broadBandFreq) !minus v 
           spec(iv) = spec(iv) + i0 * domega(iRay) 
        enddo
     enddo
@@ -2152,12 +2148,14 @@ contains
 #endif
 
     if (myRankIsZero) then
-       open(42, file="spectrum.dat",status="unknown",form="formatted")
+       write(plotfile,'(a,i3.3,a)') "spec",nfile,".dat"
+       open(42, file=plotfile,status="unknown",form="formatted")
        do i = 1, nLambda
           write(42, *) vArray(i)*cspeed/1.d5, spec(i)
        enddo
        close(42)
     endif
+    totalFlux = toPerAngstrom(spec(1), broadBandFreq)
     deallocate(vArray, spec)
   end subroutine calculateAtomSpectrum
 
@@ -2174,17 +2172,19 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 5
+    nr1 = 200
     nr2 = 20
     nr = nr1 + nr2
-    nphi = 20
+    nphi = 200
     nray = 0
     i = 0
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = grid%rCore
-    rMax = grid%rOuter
+    rMax = 2.d0*grid%octreeRoot%subcellSize
 
+    write(*,*) "rcore ",grid%rCore*1.d10/rsol
+    write(*,*) "router ",grid%rOuter*1.d10/rsol
     do ir = 1, nr1
        r1 = rMin * dble(ir-1)/dble(nr1)
        r2 = rMin * dble(ir)/dble(nr1)
@@ -2232,7 +2232,7 @@ contains
          rayposition(nray) = rayPosition(nRay) + ((-1.d0*grid%octreeRoot%subcellSize*10.d0) * viewVec)
 
           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
-          dOmega(nRay) = da(nRay) / (fourPi * distance**2)
+          dOmega(nRay) = da(nRay) / distance**2
        enddo
     enddo
   end subroutine createRayGrid
@@ -2240,7 +2240,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
-    use input_variables, only : cylindrical, ttauriRouter
+    use input_variables, only : cylindrical
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2295,9 +2295,9 @@ contains
        else
 !          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
 !               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-          call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
-               -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
-!          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
+!          call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
+!               -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
        endif
     endif
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &

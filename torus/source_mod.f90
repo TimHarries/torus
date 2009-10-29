@@ -349,13 +349,13 @@ module source_mod
     else
        call locate(source%surface%nuArray, source%surface%nNuHotFlux, real(nu), i)
        fnu = source%surface%hnuArray(i) 
-       i_nu = 1.5d0 * fnu / pi
+       i_nu = fnu / pi
     endif
 
     if (isHot(source%surface,ielement)) then
        tAccretion = source%surface%element(ielement)%temperature
        !================CHECK UNITS HERE!! ===========================
-       IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/nu)) ! [B_nu]
+       IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/nu))! [B_nu]
 !       write(*,*) "hit hotspot",ic_hot,i_nu
        i_nu  = I_nu + ic_hot
     endif

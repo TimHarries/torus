@@ -1494,6 +1494,7 @@ contains
             "Curtains 2: Phi start: (degrees): ","(a,f7.1,1x,a)", 210.0, ok, .false.)
        call getReal("curtainsphi2e", curtainsPhi2e, cLine, nLines, &
             "Curtains 2: Phi end: (degrees): ","(a,f7.1,1x,a)", 330.0, ok, .false.)
+
        !  converting the angles in radians  (RK) 
        curtainsPhi1s =    curtainsPhi1s * (pi/180.0) 
        curtainsPhi1e =    curtainsPhi1e * (pi/180.0) 
@@ -1523,6 +1524,10 @@ contains
             "5th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
        call getReal("mdotpar6", MdotParameter6, cLine, nLines, &
             "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+
+       call getDouble("hoverr", hoverr, cLine, nLines, &
+            "Warped disc H/R: ","(a,f7.4,1x,a)", 0.3d0, ok, .false.)
+
 
        call getLogical("lte", lte, cLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
