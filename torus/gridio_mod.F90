@@ -527,7 +527,16 @@ contains
     endif
 
     if (.not.grid%splitOverMPI) then
-       call readAMRgridSingle(filename, fileFormatted, grid)
+#ifdef MPI
+       do iThread = 0, nThreadsGlobal-1
+          if (iThread == myRankGlobal) then
+#endif
+             call readAmrGridSingle(filename, fileFormatted, grid)
+#ifdef MPI
+          endif
+          call torus_mpi_barrier
+       enddo
+#endif
     endif
     
 #ifdef MPI

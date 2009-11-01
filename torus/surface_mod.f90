@@ -565,7 +565,6 @@ contains
 
 
   subroutine sumSurface(surface, luminosity)
-    use input_variables, only : teff, ttauriRstar
 
     type(SURFACETYPE),intent(inout) :: surface
     real(double), optional :: luminosity
@@ -585,8 +584,7 @@ contains
     surface%totalPhotosphere(SIZE(surface%hnuArray)) = 0.0
 
     ! just checking ..
-    if (writeoutput) write(*,*) "SUM(surface%totalPhotosphere(:))", SUM(surface%totalPhotosphere(:)), &
-         SUM(surface%totalPhotosphere(:))/(fourPi*ttauriRstar**2*stefanBoltz*teff**4)
+    if (writeoutput) write(*,*) "SUM(surface%totalPhotosphere(:))", SUM(surface%totalPhotosphere(:))
     if (PRESENT(luminosity)) luminosity =  SUM(surface%totalPhotosphere(:))
     surface%totalAccretion = 0.0
     do iElement = 1, SIZE(surface%element), 1

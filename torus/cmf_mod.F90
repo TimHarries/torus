@@ -931,7 +931,6 @@ contains
     use input_variables, only : debug, rcore, lte
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
-    use mpi_global_mod, only: myRankGlobal
     use amr_mod, only: countVoxels, getOctalArray
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -1211,8 +1210,6 @@ contains
                               nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom, &
                               nfreq, freq, iCont(iray,1:nFreq))
-                         if ((iray == 50).and.(iOctal==iOctal_beg).and.(myrankglobal==2)) &
-                              write(*,*) myrankglobal, subcell, " direction ",direction
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       iter = 0
@@ -1489,7 +1486,7 @@ contains
        deallocate(octalsBelongRank)
 #endif
 
-          deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
+         deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
                weight, hcol, heicol, heiicol, iCont)
 
           if (.not.gridConverged) then

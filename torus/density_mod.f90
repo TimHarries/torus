@@ -162,7 +162,7 @@ contains
     pointVec = (point - starPosn) * 1.e10_oc
     r = modulus( pointVec ) 
     
-    theta = ACOS(MIN(ABS(pointVec%z/r),0.998_oc))
+    theta = ACOS(MIN(ABS(pointVec%z/r),1.d0))
     rM  = r / SIN(theta)**2
     y = SIN(theta)**2 
 
@@ -375,11 +375,15 @@ contains
     starPosn = grid%starPos1
     pointVec = (point - starPosn) * 1.e10_oc
 
+
     r_oct = modulus( pointVec ) 
     r = r_oct
     
     if (TTauriInFlow(point,grid,ignoreDisk)) then
       
+
+
+
       theta = acos( pointVec%z  / r )
       if (abs(modulo(theta,real(pi))) > 1.e-10 ) then 
         rM  = r / sin(theta)**2
@@ -431,7 +435,7 @@ contains
           ! a steady stream with some some patches of increased accretion
           
           ! mdotparameter1 = steady 'background' level (Msol/year)
-          ! mdotparameter2 = effective accretion level of each clump
+          ! mdotparameter2 = effectuive accretion level of each clump
           !   this is quantified as the total accretion rate *if* the 
           !   accretion stream was entirely at the 'clumpy' rate
           !   (Msol/year)
@@ -523,7 +527,10 @@ contains
           ! one curtain is only above the disc, and one is only below.
           
           if (azimuth < 0.) azimuth = azimuth + twoPi
-          if (((azimuth > curtainsPhi1s).and.(azimuth < curtainsPhi1e)) .and.  &
+          if ((curtainsPhi1e < curtainsPhi1s).and.((azimuth > curtainsPhi1s).or. &
+               (azimuth < curtainsPhi1e)).and.(pointVec%z > 0.d0)) then
+            TTauriVariableMdot = mdotparameter1
+          else if (((azimuth > curtainsPhi1s).and.(azimuth < curtainsPhi1e)) .and.  &
               pointVec%z > 0.0) then 
             TTauriVariableMdot = mdotparameter1
           else if (((azimuth > curtainsPhi2s).and.(azimuth < curtainsPhi2e)) .and. &
@@ -532,6 +539,7 @@ contains
           else 
             TTauriVariableMdot = mDotParameter2 
           end if
+
           
         case ('test')
           if (azimuth < 0.) azimuth = azimuth + twoPi

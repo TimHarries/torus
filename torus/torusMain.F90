@@ -250,7 +250,7 @@ program torus
   indexRBBTrans = 0; nRBBTrans = 0
   laccretion = 0.; meanDustParticlemass = 0.
   taccretion = 0.; saccretion  = 0.; vel = 0.
-  
+  outVec = VECTOR(1.d0, 0.d0, 0.d0)
 
   allocate(distortionVec(1:1))
 

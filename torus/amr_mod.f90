@@ -4502,8 +4502,9 @@ IF ( .NOT. gridConverged ) RETURN
       end if
 
       r = sqrt(cellcentre%x**2 + cellCentre%y**2)
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 20.)) then
-            splitInAzimuth = .true.
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+         split = .true.
+         splitInAzimuth = .true.
       endif
 
       r = sqrt(cellcentre%x**2 + cellCentre%y**2)
