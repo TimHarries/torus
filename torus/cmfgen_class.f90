@@ -13,7 +13,6 @@ module cmfgen_class
   use constants_mod
   use vector_mod
   use gridtype_mod
-  use constants_mod, only: pi, cspeed_dbl
   use octal_mod, only: OCTAL, subcellCentre
   use utils_mod, only: loginterp_dble
 
