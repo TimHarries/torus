@@ -18280,7 +18280,9 @@ end function readparameterfrom2dmap
     do while (inOctal(grid%octreeRoot, currentPosition))
 
        call findSubcellLocal(currentPosition, thisOctal,subcell)
-       kappaExt = thisOctal%kappaSca(subcell,1) + thisOctal%kappaAbs(subcell,1)
+!       kappaExt = thisOctal%kappaSca(subcell,1) + thisOctal%kappaAbs(subcell,1)
+!       kappaExt = thisOctal%kappaAbs(subcell,1)
+        kappaExt = sqrt(thisOctal%kappaSca(subcell,1) * thisOctal%kappaAbs(subcell,1))
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
        

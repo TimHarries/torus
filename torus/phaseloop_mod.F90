@@ -174,11 +174,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double), allocatable        :: flux(:)
 
   type(STOKESVECTOR) :: yArray(nLambda)
+  type(STOKESVECTOR) :: oldyArray(nLambda)
   type(STOKESVECTOR) :: yArrayStellarDirect(nLambda)
   type(STOKESVECTOR) :: yArrayStellarScattered(nLambda)
   type(STOKESVECTOR) :: yArrayThermalDirect(nLambda)
   type(STOKESVECTOR) :: yArrayThermalScattered(nLambda)
-
+  type(STOKESVECTOR), allocatable :: varianceArray(:), errorArray(:,:)
   logical :: rotateView
   logical :: tiltView
   real :: rotateDirection
@@ -321,6 +322,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   if (mie) nOuterLoop = nLambda
 
+  allocate(errorArray(nOuterLoop,1:nLambda))
+  allocate(varianceArray(nOuterLoop))
   allocate(statArray(1:nLambda))
   allocate(sourceSpectrum(1:nLambda))
   allocate(sourceSpectrum2(1:nLambda))
@@ -1115,6 +1118,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         yArray(i)%u = 0.
         yArray(i)%v = 0.
      enddo
+     oldyArray = STOKESVECTOR(0., 0., 0., 0.)
 
      yArrayStellarDirect(:) = STOKESVECTOR(0., 0., 0., 0.)
      yArrayThermalDirect(:) = STOKESVECTOR(0., 0., 0., 0.)
@@ -1608,6 +1612,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, taumax = 20.d0, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
+!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau)
 
 !              if (thisPhoton%contPhoton)then
 !                 octVec = thisPhoton%position
@@ -2640,7 +2645,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
 !        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
-
+        do i = 1, nLambda
+	 errorArray(iOuterLoop,1:nLambda) = yArray(i) - oldyArray(i)
+enddo
+         oldyArray = yArray  
+  
 
 
      end do outerPhotonLoop ! outer photon loop
@@ -2783,34 +2792,46 @@ endif ! (doPvimage)
 !        if (wtot0_cont /=0.) write(*,*) "Mean radius of cont zero",meanr0_cont/wtot0_cont/grid%rCore
 !     endif
 
- 
+ do i = 1, nLambda
+    write(*,*) i, real(errorArray(1:nOuterLoop,i)%q), real(yarray(i)%q/dble(nouterloop))
+ enddo
+ varianceArray = STOKESVECTOR(0.d0, 0.d0, 0.d0, 0.d0)
+ do i = 1, nLambda
+    do j = 1, nOuterLoop
+    varianceArray(i)%i = varianceArray(i)%i + (errorArray(j,i)%i - yArray(i)%i/dble(nOuterLoop))**2
+    varianceArray(i)%q = varianceArray(i)%q + (errorArray(j,i)%q - yArray(i)%q/dble(nOuterLoop))**2
+    varianceArray(i)%u = varianceArray(i)%u + (errorArray(j,i)%u - yArray(i)%u/dble(nOuterLoop))**2
+    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
+         
+ enddo
+enddo
  if (myRankIsZero) then 
     if (PRESENT(overrideFilename)) outfile = overrideFilename
     if (nPhase == 1) then
 
-       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, &
+       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_stellar_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
        specFile = trim(outfile)//"_thermal_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, &
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
           
        
        if (velocitySpace) then
           specFile = trim(outfile)//"_v"
-          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, &
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, varianceArray,&
                .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
        endif
        
@@ -2818,12 +2839,12 @@ endif ! (doPvimage)
        write(tempChar,'(i3.3)') iPhase
        specFile = trim(outfile)//trim(tempChar)
        
-        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, &
+        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, varianceArray, &
              .false., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         
         if (velocitySpace) then
            tempChar = trim(specFile)//"_v"
-           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, &
+           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, varianceArray,&
                 .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         endif
         
@@ -2851,6 +2872,10 @@ endif ! (doPvimage)
            call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
            call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
+           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"
+           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
+           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_u",iPhase,".fits"
+           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase

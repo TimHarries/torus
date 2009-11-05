@@ -404,7 +404,7 @@ contains
     enddo
   end subroutine fixMiePhase
 
-  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, &
+  subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, varianceArray,&
        normalizeSpectrum, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
     use input_variables, only: useNdf
     use utils_mod, only: convertToJanskies
@@ -419,7 +419,7 @@ contains
     real(double), intent(in) :: objectDistance
     real(double) :: area
     real, intent(in) :: lamLine
-    type(STOKESVECTOR), intent(in) :: yArray(nLambda)
+    type(STOKESVECTOR), intent(in) :: yArray(nLambda), varianceArray(nLambda)
     type(STOKESVECTOR), allocatable :: ytmpArray(:),  ymedian(:)
     real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
     real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
@@ -466,8 +466,8 @@ contains
     stokes_i = ytmpArray%i
     stokes_q = ytmpArray%q
     stokes_u = ytmpArray%u
-    stokes_qv = (ytmpArray%i)
-    stokes_uv = (ytmpArray%i)
+    stokes_qv = varianceArray%q
+    stokes_uv = varianceArray%u
 
     dlam(1) = (xArray(2)-xArray(1))
     dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
@@ -480,8 +480,8 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
        stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
        stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
 
        ! convert to erg/s/A to erg/s/cm^2/A
 
@@ -490,15 +490,15 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) / area
        stokes_q(1:nLambda) = stokes_q(1:nLambda) / area
        stokes_u(1:nLambda) = stokes_u(1:nLambda) / area
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area**2
 
 
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * 1.d20
        stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
        stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d20
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d20
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
 
        if (jansky) then
           do i = 1, nLambda
@@ -530,8 +530,8 @@ contains
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
        stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
        stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
-       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)
-       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
     endif
 
     if (SI) then

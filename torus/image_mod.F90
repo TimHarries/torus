@@ -672,14 +672,18 @@ module image_mod
        scale = scale / dlam * lamCen
 
        
-
+       array = 1.d-30
        select case(type)
           case("intensity")
              array = image%pixel%i * scale
           case("stokesq")
-             array = image%pixel%q * scale
+             where (image%pixel%i /= 0.d0) 
+                array = image%pixel%q /image%pixel%i * scale
+             end where
           case("stokesu")
-             array = image%pixel%u * scale
+             where (image%pixel%i /= 0.d0) 
+                array = image%pixel%u /image%pixel%i * scale
+             end where
           case("pol")
              array = 1.d-30
              where (image%pixel%i /= 0.) 
