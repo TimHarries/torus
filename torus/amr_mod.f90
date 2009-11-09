@@ -10150,6 +10150,9 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%photonEnergyDensityFromGas, source%photonEnergyDensityFromGas)
     call copyAttribute(dest%photonEnergyDensityFromSource, source%photonEnergyDensityFromSource)
 
+    call copyAttribute(dest%photonEnergyDensity, source%photonEnergyDensity)
+    call copyAttribute(dest%oldphotonEnergyDensity, source%oldphotonEnergyDensity)
+
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
       ALLOCATE(dest%mpiboundaryStorage( SIZE(source%mpiboundaryStorage,1),       &
@@ -12316,7 +12319,7 @@ end function readparameterfrom2dmap
       if (norm /= 0.d0) then
          kappaP = (kappaP / norm) /1.d10
       else
-         kappaP = 1.d-30
+         kappaP = tiny(kappap)
       endif
    endif
    
@@ -16525,6 +16528,8 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%distanceGridPhotonFromSource, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%photonEnergyDensityFromGas, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%photonEnergyDensityFromSource, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%photonEnergyDensity, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldphotonEnergyDensity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
     endif
     if (hydrodynamics) then

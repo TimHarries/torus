@@ -492,6 +492,8 @@ contains
           call writeAttributePointerFlexi(20, "dfromsource", thisOctal%distanceGridPhotonFromSource, fileFormatted)
           call writeAttributePointerFlexi(20, "ufromgas", thisOctal%photonEnergyDensityFromGas, fileFormatted)
           call writeAttributePointerFlexi(20, "ufromsource", thisOctal%photonEnergyDensityFromSource, fileFormatted)
+          call writeAttributePointerFlexi(20, "utotal", thisOctal%photonEnergyDensity, fileFormatted)
+          call writeAttributePointerFlexi(20, "oldutotal", thisOctal%oldphotonEnergyDensity, fileFormatted)
 
           call writeAttributeStaticFlexi(20, "mpiThread", thisOctal%mpiThread, fileFormatted)
           call writeFileTag(20, "OCTALENDS", fileFormatted)
@@ -1013,6 +1015,10 @@ contains
             call readPointerFlexi(20, thisOctal%photonEnergyDensityFromGas, fileFormatted)
          case("ufromsource")
             call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
+         case("utotal")
+            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
+         case("oldutotal")
+            call readPointerFlexi(20, thisOctal%oldphotonEnergyDensity, fileFormatted)
 
 
          case DEFAULT

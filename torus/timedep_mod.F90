@@ -206,7 +206,7 @@ contains
 
           endif
        else
-          photonsPerStep = 1000000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
+          photonsPerStep = 100000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
           Deltatmax = 1.d12
           deltaTmin = 1.d3
        endif
@@ -302,6 +302,9 @@ contains
              call writeVtkFile(grid, vtkfilename, &
                   valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
              
+             write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
+             call writeValues(vtkFilename, grid, currentTime)
+
 !             write(vtkFilename, '(a,i4.4,a)') "output",idump,".grid"
 !             call writeAMRgrid(vtkFilename, .false., grid)
 
@@ -363,6 +366,7 @@ contains
     real(double) :: checkLumSource
     real(double) :: photonTagTime
     real(double) :: firstObserverTime, timeToObserver, lastObserverTime
+    real(double) :: diffusionTime
     real :: lambda0
     logical :: useFileForStack
     logical :: beenScattered
@@ -737,6 +741,9 @@ contains
 
     newDeltaT = 1.d30
     call calculateNewDeltaT(grid, grid%octreeRoot, newDeltaT, t1, t2, t3, t4, t5, t6, t7)
+    diffusionTime = 1.d30
+    call calculateDiffusionTime(grid, grid%octreeRoot, diffusionTime)
+    write(*,*) "Diffusion Time ", diffusionTime
     if (myrankGlobal == 0) then
        write(*,*) "Temperature for time controlling cell is ",t1
        write(*,*) "Udens for time controlling cell is ",t2
@@ -786,7 +793,7 @@ contains
     do while(inOctal(grid%octreeRoot, rVec))
        call findSubcellLocal(rVec, thisOctal, subcell)
        cVec = subcellCentre(thisOctal, subcell)
-       write(21, *) modulus(cVec), thisOctal%temperature(subcell)
+       write(21, *) modulus(cVec)*1.d10/autocm, thisOctal%temperature(subcell)
        call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal=thisOctal)
        rVec = rVec + (tVal + 1.d-3*grid%halfSmallestSubcell) * uHat
     enddo
@@ -820,11 +827,10 @@ contains
 
   recursive subroutine updateUdens(thisOctal, deltaT, grid)
     type(GRIDTYPE) :: grid
-    type(VECTOR) :: rVec
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    real(double) :: deltaT, equilibriumTime,deltaUdens, newUDens
-    real(double) :: fac, oldUdens, t
+    real(double) :: deltaT
+    real(double) :: udens_n_plus_1
     real :: kappaP
     integer :: subcell, i
 
@@ -839,54 +845,57 @@ contains
              end if
           end do
        else
-          thisOctal%chiLine(subcell) = 0.d0
-          rVec = subcellCentre(thisOctal, subcell)
-          equilibriumTime = 1.d30
-          if (thisOctal%aDot(subcell) > 0.d0) then
-             newudens = 1.d30
-             oldUdens = thisOctal%udens(subcell)
-             t = thisOctal%temperature(subcell)
-             fac = 1.d30
-             thisOctal%temperature(subcell) = 100.
+!          thisOctal%chiLine(subcell) = 0.d0
+!          rVec = subcellCentre(thisOctal, subcell)
+!          equilibriumTime = 1.d30
+!          if (thisOctal%aDot(subcell) > 0.d0) then
+!             newudens = 1.d30
+!             oldUdens = thisOctal%udens(subcell)
+!             t = thisOctal%temperature(subcell)
+!             fac = 1.d30
+!             thisOctal%temperature(subcell) = 100.
+!             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+!             do while (fac > 1.d-5)
+!                thisOctal%temperature(subcell) = &
+!                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
+!                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
+!                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+!                fac = abs(newUdens - oldUdens)/newUdens
+!                oldUdens = newUdens
+!             enddo
+!             thisOctal%temperature(subcell) = t
+!             deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
+!             if (thisOctal%adot(subcell) > thisOctal%etaCont(subcell)) then
+!                equilibriumTime = deltaUdens/thisOctal%aDot(subcell)
+!             else
+!                equilibriumTime = deltaUdens/thisOctal%etaCont(subcell)
+!             endif
+!          endif
+          if (thisOctal%photonEnergyDensity(subcell) > 0.d0) then
              call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-             do while (fac > 1.d-5)
-                thisOctal%temperature(subcell) = &
-                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
-                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-                fac = abs(newUdens - oldUdens)/newUdens
-                oldUdens = newUdens
-             enddo
-             thisOctal%temperature(subcell) = t
-             deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
-             if (thisOctal%adot(subcell) > thisOctal%etaCont(subcell)) then
-                equilibriumTime = deltaUdens/thisOctal%aDot(subcell)
-             else
-                equilibriumTime = deltaUdens/thisOctal%etaCont(subcell)
-             endif
+             call quarticSub(udens_n_plus_1,  &
+                  thisOctal%udens(subcell), &
+                  thisOctal%photonEnergyDensity(subcell), &
+                  dble(kappap), thisOctal%rho(subcell), thisOctal%Adot(subcell), 2.33d0, 7.d0/5.d0, deltaT)
+             thisOctal%udens(subcell) = udens_n_plus_1 
+
+             
+
+!             write(*,*) thisOctal%udens(subcell), &
+!                  temperatureFunc(thisOctal%udens(subcell), thisOCtal%rho(subcell),7.d0/5.d0, 2.33d0)
           endif
-          if ((equilibriumTime < deltaT).and.(thisOctal%adot(subcell) > 0.d0)) then
-!            write(*,*) "cell in eq ", equilibriumTime, thisOctal%adot(subcell), teq
-!            oldUdens = thisOctal%uDens(subcell)
-!            fac = 1.d30
-!            do while (fac > 1.d-5)
-!               thisOctal%temperature(subcell) = max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-!               thisOctal%uDens(subcell) = uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
-!               call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-!               fac = abs(oldUdens - thisOctal%udens(subcell))/thisOctal%udens(subcell)
-!               oldUdens = thisOctal%uDens(subcell)
-!            enddo
-             thisOctal%uDens(subcell) = newUdens
-             thisOctal%etaCont(subcell) = thisOctal%aDot(subcell)
-             thisOctal%chiLine(subcell) = 1.d10
-          else
-             thisOctal%udens(subcell) = thisOctal%udens(subcell) + deltaT * & ! otherwise update udens
-                  (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
-             if (thisOctal%udens(subcell) < 0.d0) then
-                write(*,*) "neg udens ",thisOctal%adot(subcell), thisOctal%etaCont(subcell), deltaT, thisOctal%temperature(subcell)
-                thisOctal%udens(subcell) = 0.d0
-             endif
-          endif
+!          if ((equilibriumTime < deltaT).and.(thisOctal%adot(subcell) > 0.d0)) then
+!             thisOctal%uDens(subcell) = newUdens
+!             thisOctal%etaCont(subcell) = thisOctal%aDot(subcell)
+!             thisOctal%chiLine(subcell) = 1.d10
+!          else
+!             thisOctal%udens(subcell) = thisOctal%udens(subcell) + deltaT * & ! otherwise update udens
+!                  (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
+!             if (thisOctal%udens(subcell) < 0.d0) then
+!                write(*,*) "neg udens ",thisOctal%adot(subcell), thisOctal%etaCont(subcell), deltaT, thisOctal%temperature(subcell)
+!                thisOctal%udens(subcell) = 0.d0
+!             endif
+!          endif
        endif
     Enddo
   end subroutine updateUdens
@@ -1080,6 +1089,38 @@ contains
     enddo
   end subroutine calculateNewDeltaT
 
+  recursive subroutine calculateDiffusionTime(grid, thisOctal, diffusionTime)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double),intent(inout) :: diffusionTime
+    integer :: subcell, i
+    real(double) :: k, kros
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateDiffusionTime(grid, child, diffusionTime)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%temperature(subcell) > 3.d0) then
+             call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
+             if (kRos*thisOctal%rho(subcell)*thisOctal%subcellSize*1.d10 > 10.d0) then
+                k =  cSpeed/(kros*thisOctal%rho(subcell)) 
+                diffusionTime=  min(diffusionTime,0.3d0* ((thisOctal%subcellSize*1.d10)**2/(2.d0*k)))
+             endif
+          endif
+
+       endif
+    enddo
+  end subroutine calculateDiffusionTime
+
   recursive subroutine calculateAdot(thisOctal, deltaT, currentTime)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -1131,6 +1172,9 @@ contains
                thisOctal%distancegridphotonFromGas(subcell) / deltaT
           thisOctal%photonenergyDensityFromSource(subcell) =  (1.d0/photonSpeed) * (1.d0 / v) * &
                thisOctal%distancegridphotonFromSource(subcell) / deltaT
+          thisOctal%OldphotonEnergyDensity(subcell) = thisOctal%photonEnergyDensity(subcell)
+          thisOctal%photonEnergyDensity(subcell) = thisOctal%photonenergyDensityFromGas(subcell) + &
+               thisOctal%photonenergyDensityFromSource(subcell)
        endif
     enddo
   end subroutine calculateEnergyDensity
@@ -1652,7 +1696,7 @@ contains
           write(*,*) "Doing step with deltat= ",deltaT
           do i = 1, nx
 
-             call quarticSub(udens_n_plus_1, photonEnergyDensity(i), udens(i), oldphotonEnergyDensity(i), &
+             call quarticSubtest(udens_n_plus_1, photonEnergyDensity(i), udens(i), oldphotonEnergyDensity(i), &
                   kappa(i), rho(i), albedo, 0.6d0, 5.d0/3.d0, deltaT)
              udens(i) = udens_n_plus_1
 !             photonEnergyDensity(i) = E_n_plus_1
@@ -2205,6 +2249,8 @@ contains
           call allocateAttribute(thisOctal%distanceGridPhotonFromSource, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%photonEnergyDensityFromGas, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%photonEnergyDensityFromSource, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%photonEnergyDensity, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%oldphotonEnergyDensity, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
        endif
     enddo
@@ -2237,18 +2283,18 @@ contains
       enddo
     end subroutine TRIDIAG
     
-    subroutine quarticSub(udens_n_plus_1, E_n_plus_1, udens_n, E_n, kappa, rho, albedo, &
+    subroutine quarticSubTest(udens_n_plus_1, E_n_plus_1, udens_n, E_n, kappa, rho, albedo, &
          mu, gamma, deltaT)
       real(double) :: udens_n_plus_1, E_n_plus_1, udens_n, E_n, kappa, rho, mu, gamma, DeltaT
       real(double) :: a1, a2, albedo
       integer :: nIter
       logical :: converged
       real(double) :: x1, x2, xm, y1, y2, ym
-!      a1 = 4.d0 * kappa * rho * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
-!      a2 = cSpeed * kappa * rho * deltaT
+      a1 = 4.d0 * kappa * rho * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+      a2 = cSpeed * kappa * rho * deltaT
 
-      a1 = 4.d0 * (1.d0-albedo) * kappa * rho * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
-      a2 = -cSpeed * (1.d0-albedo) * kappa * rho * deltaT * E_n_plus_1
+!      a1 = 4.d0 * (1.d0-albedo) * kappa * rho * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+!      a2 = -cSpeed * (1.d0-albedo) * kappa * rho * deltaT * E_n_plus_1
 
       nIter = 0
       converged = .false.
@@ -2258,9 +2304,9 @@ contains
       
       do while(.not.converged)
          xm = 0.5d0*(x1+x2)
-         y1 = quarticFunc(x1, a1, a2, udens_n, E_n)
-         y2 = quarticFunc(x2, a1, a2, udens_n, E_n)
-         ym = quarticFunc(xm, a1, a2, udens_n, E_n)
+         y1 = quarticFuncTest(x1, a1, a2, udens_n, E_n)
+         y2 = quarticFuncTest(x2, a1, a2, udens_n, E_n)
+         ym = quarticFuncTest(xm, a1, a2, udens_n, E_n)
                          
          if (y1*ym < 0.d0) then
             x1 = x1
@@ -2284,13 +2330,67 @@ contains
 
 
 
+    end subroutine quarticSubtest
+
+    subroutine quarticSub(udens_n_plus_1,  udens_n, E_n, kappa, rho,  adot, &
+         mu, gamma, deltaT)
+      real(double) :: udens_n_plus_1,  udens_n, E_n, kappa, rho, mu, gamma, DeltaT
+      real(double) :: a1, a2
+      real(double) :: adot
+      integer :: nIter
+      logical :: converged
+      real(double) :: x1, x2, xm, y1, y2, ym
+      a1 = 4.d0 * kappa  * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+
+!      a2 = cSpeed * kappa * deltaT
+!      a2  = (aDot/E_n) * deltaT
+      a2 = -deltaT * aDot + udens_n
+      nIter = 0
+      converged = .false.
+      
+      x1 = 0.d0
+      x2 = 1.d-3
+      
+      do while(.not.converged)
+         xm = 0.5d0*(x1+x2)
+         y1 = quarticFunc(x1, a1, a2, udens_n, E_n)
+         y2 = quarticFunc(x2, a1, a2, udens_n, E_n)
+         ym = quarticFunc(xm, a1, a2, udens_n, E_n)
+         if (y1*ym < 0.d0) then
+            x1 = x1
+            x2 = xm
+         else if (y2*ym < 0.d0) then
+            x1 = xm
+            x2 = x2
+         else
+            converged = .true.
+            xm = 0.d0
+            x1 = 0.d0
+            x2 = 0.d0
+            write(*,*) "bisection failed!"
+         endif
+                         
+         if (abs((x1-x2)/x1) .le. 1.d-5) then
+            converged = .true.
+         endif
+         niter = niter + 1
+      enddo
+      udens_n_plus_1 = 0.5d0*(x1+x2)
+
+
+
     end subroutine quarticSub
+
+    function quarticFuncTest(x, a1, a2, udens_n, E_n) result (y)
+      real(double) :: x, a1, a2, E_n, y, udens_n
+      y = x**4 + (1.d0+a2)/a1 * x - ((1.d0+a2)*udens_n + a2 * E_n) / a1
+
+    end function quarticFuncTest
 
     function quarticFunc(x, a1, a2, udens_n, E_n) result (y)
       real(double) :: x, a1, a2, E_n, y, udens_n
-!      y = x**4 + (1.d0+a2)/a1 * x - ((1.d0+a2)*udens_n + a2 * E_n) / a1
+      y = a1 * x**4 + x + a2
 
-      y = x - udens_n + a1 * x**4 + a2
     end function quarticFunc
 
 

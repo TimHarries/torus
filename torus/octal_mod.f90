@@ -230,6 +230,8 @@ MODULE octal_mod
     real(double), pointer :: distanceGridPhotonFromGas(:) => null()
     real(double), pointer :: photonEnergyDensityFromSource(:) => null()
     real(double), pointer :: photonEnergyDensityFromGas(:) => null()
+    real(double), pointer :: photonEnergyDensity(:) => null()
+    real(double), pointer :: oldphotonEnergyDensity(:) => null()
 
     REAL, DIMENSION(:), pointer                 :: temperaturedust=> null() ! grid subcell dust temperatures
     REAL, DIMENSION(:), pointer                 :: temperaturegas => null() ! grid subcell gas temperatures
