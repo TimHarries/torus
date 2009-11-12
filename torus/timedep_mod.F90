@@ -119,7 +119,7 @@ contains
 
     call zeroTemperature(grid%octreeRoot)
 
-    varyingSource = .false.
+    varyingSource = .true.
     varyUntilTime = 1.d30
     endTime = 1.d30
     startVaryTime = 0.d0
@@ -140,8 +140,8 @@ contains
        call calculateUdensFromTemperature(grid%octreeRoot)
        i = findIlambda(1.e5, xArray, nLambda, ok)
        call setBiasOnTau(grid, i)
-       luminosityPeriod = 3600.d0
-       varyUntilTime = 10.d0 * luminosityPeriod
+       luminosityPeriod =  24.d0*3600.d0
+       varyUntilTime = 2.d0 * luminosityPeriod
        startVaryTime = 0.d0
        seedRun = .true.
       
@@ -191,7 +191,7 @@ contains
              accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
              tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
              frac = 5.d-2
-             write(*,*) "accretion temp ", tacc
+             if (writeoutput) write(*,*) "accretion temp ", tacc
              call fillSpectrumBB(source(1)%spectrum, dble(teff), 1200.d0, 2.d7, 200)
              call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
              call normalizedSpectrum(source(1)%spectrum)
@@ -206,7 +206,7 @@ contains
 
           endif
        else
-          photonsPerStep = 100000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
+          photonsPerStep = 10000000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
           Deltatmax = 1.d12
           deltaTmin = 1.d3
        endif
@@ -287,7 +287,7 @@ contains
                 
                 do i = 1, nSedWavelength-1
                    write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                        outputFluxScat(i, iter)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+                        outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
                 enddo
                 close(32)
              enddo
@@ -300,7 +300,7 @@ contains
           if (myrankGlobal == 0) then
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
              call writeVtkFile(grid, vtkfilename, &
-                  valueTypeString=(/"rho        ", "temperature", "edens_g    "/))
+                  valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    "/))
              
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
@@ -361,7 +361,7 @@ contains
     logical :: absorbed, scattered, outOfTime, finished, ok
     real(double) :: kappaAbs, kappaSca, albedo
     real(double), intent(out) :: newDeltaT
-    real(double) :: fac
+    real(double) :: fac, totalLuminosity
     real(double) :: totalLineEmission, totalContEmission, t1, t2, t3, t4, t5, t6, checkLum, t7
     real(double) :: checkLumSource
     real(double) :: photonTagTime
@@ -430,17 +430,18 @@ contains
 
     nPhotons = oldStacknStack + nFromMatterThisThread
 
-    fracSource = 0.1d0
+    fracSource = 0.5d0
+    totalLuminosity = sourceLuminosity + luminosity
 
-    Chancesource = sourceLuminosity / (sourceLuminosity + luminosity)
+    Chancesource = sourceLuminosity / totalLuminosity
     chanceGas = 1.d0-chanceSource
     weightSource = chanceSource / fracSource
     weightGas = (1.d0-chanceSource) / (1.d0-fracSource)
 
 
-    weightGas = 1.d0
-    weightSource = 1.d0
-    fracSource =  sourceLuminosity / (sourceLuminosity + luminosity)
+!    weightGas = 1.d0
+!    weightSource = 1.d0
+!    fracSource =  sourceLuminosity / (sourceLuminosity + luminosity)
 
     nFromSource = fracSource * nFromMatter
     nFromGas = nFromMatter - nFromSource
@@ -457,7 +458,6 @@ contains
     nEscaped = 0
 
     do iMonte = 1, nPhotons
-!       write(*,*) "imonte ", imonte, nPhotons 
        if (oldStacknStack > 0)  then
           call getPhotonFromStack(useFileForStack, oldStack, oldStackUnit, &
                oldStacknStack, rVec, uHat, eps, freq, &
@@ -473,11 +473,11 @@ contains
              call randomSource(source, nSource, iSource)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
-
              call getWavelength(thisSource%spectrum, wavelength)
+             beenScattered = .false.
              freq = cSpeed/(wavelength / 1.e8)
              photonTime = 0.d0
-             eps = weightSource * sourceluminosity * deltaT / dble(nFromSource)
+             eps = weightSource * totalluminosity * deltaT / dble(nFromMatter)
 !             write(*,*) "star eps " , eps
              photonFromSource = .true.
              photonFromGas = .false.
@@ -525,19 +525,19 @@ contains
              call locate(prob, nFreq, r, i)
              freq = freqArray(i)
              wavelength = (cSpeed/freq)*1.d8
-             eps = (1.d0/thisOctal%biasCont3D(subcell)) * weightGas * luminosity * deltaT / dble(nFromGas)
+             eps = (1.d0/thisOctal%biasCont3D(subcell)) * weightGas * totalluminosity * deltaT / dble(nFromMatter)
 !             write(*,*) "gas eps ",eps, luminosity, weightgas, thisOctal%biasCont3d(subcell)
 !             write(*,*) "Wavelength ", wavelength/1.e4
              photonFromGas = .true.
              photonFromSource = .false.
              photonTime = 0.d0
              uHat = randomUnitVector()
-
              if (.not.seedRun) then
                 call random_number(r)
                 photonTime = r*deltaT
              endif
 
+             beenScattered = .false.
              ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
              if (varyingSource) then
                 call tauAlongPath(ilambda, grid, rVec, observerDirection, tau)
@@ -719,18 +719,20 @@ contains
         write(*,*) "Sanity check for source luminosity ", checkLumSource/deltaT, sourceLuminosity
      endif
 
-    if (varyingSource) then
-       call calculateADot(grid%octreeRoot, deltaT, currentTime)
-    else
-       call calculateADot(grid%octreeRoot, deltaT, 1.d30)
-    endif
+     
+     call calculateADot(grid%octreeRoot, deltaT)
        
+     call calculateEnergyDensity(grid%octreeRoot, deltaT, photonSpeed)
 
 
-    call calculateEnergyDensity(grid%octreeRoot, deltaT, photonSpeed)
 
     if (.not.seedRun) then
-       call updateUDens(grid%octreeRoot, deltaT, grid)
+
+       if (varyingSource) then
+          call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
+       else
+          call updateUDens(grid%octreeRoot, deltaT, grid, 1.d30)
+       endif
     endif
 
     call calculateTemperatureFromUdens(grid%octreeRoot)
@@ -743,7 +745,7 @@ contains
     call calculateNewDeltaT(grid, grid%octreeRoot, newDeltaT, t1, t2, t3, t4, t5, t6, t7)
     diffusionTime = 1.d30
     call calculateDiffusionTime(grid, grid%octreeRoot, diffusionTime)
-    write(*,*) "Diffusion Time ", diffusionTime
+    if (Writeoutput) write(*,*) "Diffusion Time ", diffusionTime
     if (myrankGlobal == 0) then
        write(*,*) "Temperature for time controlling cell is ",t1
        write(*,*) "Udens for time controlling cell is ",t2
@@ -825,14 +827,17 @@ contains
 
   end subroutine updateDistanceGrids
 
-  recursive subroutine updateUdens(thisOctal, deltaT, grid)
+  recursive subroutine updateUdens(thisOctal, deltaT, grid, currentTime)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    real(double) :: deltaT
+    real(double) :: deltaT, currentTime
     real(double) :: udens_n_plus_1
     real :: kappaP
     integer :: subcell, i
+    logical :: ok
+
+    type(VECTOR) :: rVec
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -840,64 +845,27 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call updateUdens(child, deltaT, grid)
+                call updateUdens(child, deltaT, grid, currentTime)
                 exit
              end if
           end do
        else
-!          thisOctal%chiLine(subcell) = 0.d0
-!          rVec = subcellCentre(thisOctal, subcell)
-!          equilibriumTime = 1.d30
-!          if (thisOctal%aDot(subcell) > 0.d0) then
-!             newudens = 1.d30
-!             oldUdens = thisOctal%udens(subcell)
-!             t = thisOctal%temperature(subcell)
-!             fac = 1.d30
-!             thisOctal%temperature(subcell) = 100.
-!             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-!             do while (fac > 1.d-5)
-!                thisOctal%temperature(subcell) = &
-!                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
-!                newUdens =  uDensFunc(dble(thisOctal%temperature(subcell)), thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
-!                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-!                fac = abs(newUdens - oldUdens)/newUdens
-!                oldUdens = newUdens
-!             enddo
-!             thisOctal%temperature(subcell) = t
-!             deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
-!             if (thisOctal%adot(subcell) > thisOctal%etaCont(subcell)) then
-!                equilibriumTime = deltaUdens/thisOctal%aDot(subcell)
-!             else
-!                equilibriumTime = deltaUdens/thisOctal%etaCont(subcell)
-!             endif
-!          endif
-          if (thisOctal%photonEnergyDensity(subcell) > 0.d0) then
-             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-             call quarticSub(udens_n_plus_1,  &
-                  thisOctal%udens(subcell), &
-                  thisOctal%photonEnergyDensity(subcell), &
-                  dble(kappap), thisOctal%rho(subcell), thisOctal%Adot(subcell), 2.33d0, 7.d0/5.d0, deltaT)
-             thisOctal%udens(subcell) = udens_n_plus_1 
 
-             
 
-!             write(*,*) thisOctal%udens(subcell), &
-!                  temperatureFunc(thisOctal%udens(subcell), thisOCtal%rho(subcell),7.d0/5.d0, 2.33d0)
+          rVec = subcellCentre(thisOctal, subcell)
+          if (modulus(rVec) < cSpeed * (currentTime+deltaT) /1.d10) then ! can source photons have reached this cell?
+             if ((thisOctal%photonEnergyDensity(subcell) > 0.d0).and.(thisOctal%adot(subcell) > 0.d0)) then
+                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+                call quarticSub(udens_n_plus_1,  &
+                     thisOctal%udens(subcell), &
+                     thisOctal%photonEnergyDensity(subcell), &
+                     dble(kappap), thisOctal%rho(subcell), thisOctal%Adot(subcell), 2.33d0, 7.d0/5.d0, deltaT,ok)
+                if (ok) thisOctal%udens(subcell) = udens_n_plus_1 
+             endif
           endif
-!          if ((equilibriumTime < deltaT).and.(thisOctal%adot(subcell) > 0.d0)) then
-!             thisOctal%uDens(subcell) = newUdens
-!             thisOctal%etaCont(subcell) = thisOctal%aDot(subcell)
-!             thisOctal%chiLine(subcell) = 1.d10
-!          else
-!             thisOctal%udens(subcell) = thisOctal%udens(subcell) + deltaT * & ! otherwise update udens
-!                  (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
-!             if (thisOctal%udens(subcell) < 0.d0) then
-!                write(*,*) "neg udens ",thisOctal%adot(subcell), thisOctal%etaCont(subcell), deltaT, thisOctal%temperature(subcell)
-!                thisOctal%udens(subcell) = 0.d0
-!             endif
-!          endif
+             
        endif
-    Enddo
+    enddo
   end subroutine updateUdens
 
   recursive subroutine calculateEtaContLocal(grid, thisOctal)
@@ -1121,10 +1089,10 @@ contains
     enddo
   end subroutine calculateDiffusionTime
 
-  recursive subroutine calculateAdot(thisOctal, deltaT, currentTime)
+  recursive subroutine calculateAdot(thisOctal, deltaT)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    real(double) :: deltaT, v, currentTime
+    real(double) :: deltaT, v
     integer :: subcell, i
     type(VECTOR) :: rVec
 
@@ -1134,18 +1102,13 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateAdot(child, deltaT, currentTime)
+                call calculateAdot(child, deltaT)
                 exit
              end if
           end do
        else
-          rVec = subcellCentre(thisOctal, subcell)
-          if (modulus(rVec) < cSpeed * (currentTime + deltaT) /1.d10) then ! can source photons have reached this cell?
-             v = cellVolume(thisOctal, subcell) * 1.d30
-             thisOctal%aDot(subcell) = max(0.d0,(1.d0 / v) * thisOctal%distancegridAdot(subcell) / deltaT)
-          else
-             thisOctal%adot(subcell) = thisOctal%etaCont(subcell) ! cell is radiative equilibrium
-          endif
+          v = cellVolume(thisOctal, subcell) * 1.d30
+          thisOctal%aDot(subcell) = max(0.d0,(1.d0 / v) * thisOctal%distancegridAdot(subcell) / deltaT)
        endif
     enddo
   end subroutine calculateAdot
@@ -2098,11 +2061,14 @@ contains
     integer :: iwavelength, iTime
 
     if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= sedTime(nTime))) then
-       call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
-       call locate(sedTime, nTime, photonTagTime, iTime)
-       sedFlux(iWavelength, iTime) = sedFlux(iWavelength, iTime) + eps * exp(-tau)/fourPi
-       if (beenScattered) then
-          sedFluxScat(iWavelength, iTime) = sedFluxScat(iWavelength, iTime) + eps * exp(-tau)/fourPi
+       if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
+          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
+          call locate(sedTime, nTime, photonTagTime, iTime)
+          sedFlux(iWavelength, iTime) = sedFlux(iWavelength, iTime) + eps * exp(-tau)/fourPi
+          if (beenScattered) then
+             sedFluxScat(iWavelength, iTime) = sedFluxScat(iWavelength, iTime) + eps * exp(-tau)/fourPi
+             if (tau < 0.d0) write(*,*) "tau warning ",tau
+          endif
        endif
     endif
   end subroutine timeBinPhoton
@@ -2333,23 +2299,25 @@ contains
     end subroutine quarticSubtest
 
     subroutine quarticSub(udens_n_plus_1,  udens_n, E_n, kappa, rho,  adot, &
-         mu, gamma, deltaT)
+         mu, gamma, deltaT, ok)
       real(double) :: udens_n_plus_1,  udens_n, E_n, kappa, rho, mu, gamma, DeltaT
       real(double) :: a1, a2
       real(double) :: adot
       integer :: nIter
-      logical :: converged
+      logical :: converged, ok
       real(double) :: x1, x2, xm, y1, y2, ym
+
+      ok = .true.
       a1 = 4.d0 * kappa  * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
 
 !      a2 = cSpeed * kappa * deltaT
 !      a2  = (aDot/E_n) * deltaT
-      a2 = -deltaT * aDot + udens_n
+      a2 = -deltaT * aDot - udens_n
       nIter = 0
       converged = .false.
       
       x1 = 0.d0
-      x2 = 1.d-3
+      x2 = uDensFunc(4000.d0, rho,  7.d0/5.d0, 2.33d0) 
       
       do while(.not.converged)
          xm = 0.5d0*(x1+x2)
@@ -2367,7 +2335,14 @@ contains
             xm = 0.d0
             x1 = 0.d0
             x2 = 0.d0
-            write(*,*) "bisection failed!"
+            if (myrankGlobal==0) then
+               write(*,*) "bisection failed!", y1,y2,ym
+               write(*,*) "rho ",rho
+               write(*,*) "adot ",adot
+               write(*,*) "udens_n ",udens_n
+               write(*,*) "temp ", temperatureFunc(udens_n, rho, 7.d0/5.d0, 2.33d0)
+            endif
+            ok = .false.
          endif
                          
          if (abs((x1-x2)/x1) .le. 1.d-5) then
@@ -2376,7 +2351,14 @@ contains
          niter = niter + 1
       enddo
       udens_n_plus_1 = 0.5d0*(x1+x2)
-
+      if (temperatureFunc(udens_n_plus_1, rho, 7.d0/5.d0, 2.33d0) > 4000.d0) then
+         write(*,*) "bisection failed 2 !", y1,y2,ym
+         write(*,*) "rho ",rho
+         write(*,*) "adot ",adot
+         write(*,*) "udens_n ",udens_n
+         write(*,*) "temp ", temperatureFunc(udens_n, rho, 7.d0/5.d0, 2.33d0)
+         ok = .false.
+      endif
 
 
     end subroutine quarticSub

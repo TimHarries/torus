@@ -2792,9 +2792,6 @@ endif ! (doPvimage)
 !        if (wtot0_cont /=0.) write(*,*) "Mean radius of cont zero",meanr0_cont/wtot0_cont/grid%rCore
 !     endif
 
- do i = 1, nLambda
-    write(*,*) i, real(errorArray(1:nOuterLoop,i)%q), real(yarray(i)%q/dble(nouterloop))
- enddo
  varianceArray = STOKESVECTOR(0.d0, 0.d0, 0.d0, 0.d0)
  do i = 1, nLambda
     do j = 1, nOuterLoop

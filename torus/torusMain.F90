@@ -1731,6 +1731,8 @@ end subroutine pre_initAMRGrid
               call writeInfo("...grid smoothing complete", TRIVIAL)
            endif
 
+           call writeVtkFile(grid, "beforesmooth.vtk")
+
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau.and.mie) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -2118,7 +2120,7 @@ subroutine set_up_sources
 
     case("melvin")
        nSource = 1
-       teff = 30000.
+       teff = 40000.
        allocate(source(1:1))
        source(:)%outsideGrid = .false.
        source(1)%luminosity = fourPi * (10.*rsol)*(10.*rsol) * stefanBoltz * teff**4

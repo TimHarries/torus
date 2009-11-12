@@ -649,17 +649,16 @@ end if ! (my_rank /= 0)
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
-!      if (niter < 6) nMonte = nMonte * 2
+      if (niter < 6) nMonte = nMonte * 2
 
 
-    if (writeoutput) call writeAmrGrid("photo_tmp.grid",.false.,grid)
+    call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
-    if (writeoutput) &
-       call writeVtkFile(grid, "temp.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
-            "OII        ", "OIII       "/))
+    call writeVtkFile(grid, "temp.vtk", &
+         valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
+         "OII        ", "OIII       "/))
 
-    if (niter == 10) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 15) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
@@ -4231,7 +4230,7 @@ end subroutine readHeIIrecombination
 #endif
 
     if (writeoutput) then
-       write(imageFilename, '(a,i4.4,a)') "test_",nint(lambdaLine),".fits"
+       write(imageFilename, '(a,i6.6,a)') "test_",nint(lambdaLine),".fits"
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
     call freeImage(thisImage)

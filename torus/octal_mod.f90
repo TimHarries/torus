@@ -384,7 +384,7 @@ CONTAINS
                 subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE DEFAULT
-                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 1"
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre cylindical 3D case 1"
                 PRINT *, "        nChild = ", nChild 
                 do
                 enddo
@@ -404,7 +404,7 @@ CONTAINS
                 subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
              CASE DEFAULT
-                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 2"
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre cylindical 3D case 2"
                 PRINT *, "        nChild = ", nChild 
                 do
                 enddo

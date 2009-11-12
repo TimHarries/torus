@@ -175,7 +175,7 @@ contains
     !         "Scale (rsolar): ","(a,f6.1,1x,a)", 1000., ok, .false.) 
 
     call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
-         "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("cylindrical", cylindrical, cLine, nLines, &
          "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
