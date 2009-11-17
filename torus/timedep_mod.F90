@@ -1094,7 +1094,6 @@ contains
     type(octal), pointer  :: child 
     real(double) :: deltaT, v
     integer :: subcell, i
-    type(VECTOR) :: rVec
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
