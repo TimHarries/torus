@@ -567,7 +567,7 @@ module angularImage
 ! Calculate column density
 ! Factor of 1.d10 is to convert ds to cm 
         if (present(nCol)) then 
-           nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * ds * 1.d10
+           nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * tval * 1.d10
         end if
 
         dsvector = ds * otherDirection
