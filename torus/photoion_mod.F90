@@ -649,7 +649,9 @@ end if ! (my_rank /= 0)
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
+    if (grid%geometry == "melvin") then
       if (niter < 6) nMonte = nMonte * 2
+   endif
 
 
     call writeAmrGrid("photo_tmp.grid",.false.,grid)

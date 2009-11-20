@@ -2178,6 +2178,11 @@ contains
 
        oneKappa = .true.
        fastIntegrate = .true.
+
+       call getReal("mdot", mdot, cLine, nLines, &
+            "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)
+       mdot = mdot * msol * secstoyears
+
        call getLogical("noscat", noScattering, cLine, nLines, &
             "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 

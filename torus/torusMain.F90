@@ -2021,7 +2021,7 @@ end subroutine amr_grid_setup
 subroutine set_up_sources
 
   use amr_mod, only: genericAccretionSurface
-  use spectrum_mod, only: fillSpectrumBB, readSpectrum, normalizedSpectrum
+  use spectrum_mod, only: fillSpectrumBB, readSpectrum, normalizedSpectrum, addtoSpectrumBB
   use starburst_mod, only: createsources
   use source_mod, only: source_within_octal, randomSource
   use cluster_class, only: get_nstar, n_stars_in_octal, get_a_star
@@ -2034,6 +2034,7 @@ subroutine set_up_sources
   integer      :: nstar
   real(double) :: d1, d2, massRatio
   real         :: tmp
+  real(double) :: accretionLuminosity, accretionArea, tAcc, frac
 !  real :: sTot
 
   ! The source spectrum is normally a black body
@@ -2287,9 +2288,17 @@ subroutine set_up_sources
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
-          call normalizedSpectrum(source(1)%spectrum)
           tmp = source(1)%radius * 1.e10  ! [cm]
           source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+
+          accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+          accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
+          tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
+          frac = 5.d-2
+          call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
+          source(1)%luminosity = source(1)%luminosity + accretionLuminosity
+
+          call normalizedSpectrum(source(1)%spectrum)
        else
           call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, contFluxFile)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
@@ -2297,8 +2306,8 @@ subroutine set_up_sources
           call sumSurface(source(1)%surface, source(1)%luminosity)
        endif
 
-       tmp = source(1)%radius * 1.e10  ! [cm]
-       fac = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+       tmp = 1.d0/(1.d0/(source(1)%radius * 1.e10) - 1.d0/(rInner*1.d10)) ! [cm]
+       fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
        if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
           if (writeoutput) then
              write(*,*) "WARNING: luminosity from effective temperature and that from the SED differ by >1%"
