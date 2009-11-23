@@ -1269,7 +1269,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone, RhoMin, RhoMax)
-    USE input_variables, only: hcritPercentile, hmaxPercentile
+    USE input_variables, only: hcritPercentile, hmaxPercentile, sph_norm_limit
     USE constants_mod, only: tcbr
 
     type(vector), intent(in) :: point
@@ -1519,7 +1519,7 @@ contains
           
        elseif(param .eq. 2) then
           
-          if(sumweight .gt. 0.3d0) then
+          if(sumweight .gt. sph_norm_limit) then
              fac = 1.d0 / sumWeight
           else
              fac = 1.d0

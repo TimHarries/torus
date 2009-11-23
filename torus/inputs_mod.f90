@@ -1183,11 +1183,7 @@ contains
 
     if( geometry == "theGalaxy" ) call read_inputs_theGalaxy
 
-
-    call getReal("hcritPercentile", hcritPercentile, cLine, nLines, &
-         "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
-    call getReal("hmaxPercentile", hmaxPercentile, cLine, nLines, &
-         "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+    call read_inputs_sph_from_grid
 
     call getLogical("refineCentre", refineCentre, cline, nLines, &
          "Refine centre of grid: ", "(a,l,1x,a)", .false., ok, .false.)
@@ -1251,9 +1247,6 @@ contains
        if(geometry .eq. 'molcluster') then
           call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
-          call getInteger("kerneltype", kerneltype, cLine, nLines, &
-               "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
-
        endif
 
        ! Image parameters
@@ -2869,6 +2862,27 @@ contains
        end if
 
      end subroutine read_inputs_theGalaxy
+
+!-----------------------------------------------------------------------------------------
+
+! Read input parameters for generating Torus grid from SPH particles. 
+! These values are used by sph_data_class
+
+     subroutine read_inputs_sph_from_grid
+
+       call getReal("hcritPercentile", hcritPercentile, cLine, nLines, &
+            "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
+
+       call getReal("hmaxPercentile", hmaxPercentile, cLine, nLines, &
+            "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+
+       call getReal("sphNormLimit", sph_norm_limit, cLine, nLines, &
+            "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.3, ok, .false.)
+
+       call getInteger("kerneltype", kerneltype, cLine, nLines, &
+            "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+
+     end subroutine read_inputs_sph_from_grid
 
 !-----------------------------------------------------------------------------------------
 

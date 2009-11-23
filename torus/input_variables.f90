@@ -17,7 +17,6 @@ module input_variables
 
   logical :: debug
   logical :: suppressWarnings
-  integer :: kerneltype
   integer :: idump ! hydrodynamics time step dump number
   logical :: doSelfGrav
   real(double) :: gridDistanceScale
@@ -321,6 +320,8 @@ module input_variables
   character(len=80) :: sphdataFilename
   real :: hcritPercentile
   real :: hmaxPercentile
+  real :: sph_norm_limit
+  integer :: kerneltype
 
   logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
 
