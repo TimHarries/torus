@@ -302,6 +302,42 @@ contains
 
   end function rotateY
 
+!thap
+  subroutine melvinUnitVector(rVec, photonPacketWeight)
+    use constants_mod, only: pi, degToRad
+    real(double) :: r, u, v, w, t, ang, openingAngle = 20.*degToRad, percentPhoCav
+    real(double), intent(out) :: photonPacketWeight
+    type(VECTOR), intent(out) :: rVec
+
+    percentPhoCav = 0.90
+
+    call random_number(r)
+    if (r < percentPhoCav) then   !% of photons in cavities 
+       call random_number(r)
+       if(r < 0.5) then
+          call random_number(r)
+          w = cos(openingAngle) + (r * (1- cos(openingAngle)))
+       else
+          call random_number(r)
+          w = -cos(openingAngle) + (r*(-1 + cos(openingAngle)))
+       end if
+       photonPacketWeight = (1 - cos(openingAngle)) / percentPhoCav          
+    else  !rest towards disc
+       call random_number(r)
+       w = -cos(openingAngle) + (r * 2 * cos(openingAngle))
+       photonPacketWeight = cos(openingAngle) / (1 - percentPhoCav)
+   end if
+
+    t = sqrt(1.0-w*w)
+    call random_number(r)
+    ang = pi*(2.d0*r-1.d0)
+    u = t*cos(ang)
+    v = t*sin(ang)
+
+    rVec = VECTOR(u,v,w)
+  end subroutine melvinUnitVector
+
+
   type(VECTOR) function randomUnitVector()
     use constants_mod, only: pi
     real(double) :: r1, r2, u, v, w, t, ang

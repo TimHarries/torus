@@ -69,7 +69,7 @@ contains
     use gridio_mod, only: readAmrGrid, writeAmrGrid
     use ion_mod, only: addXsectionArray
     use amr_mod, only: countVoxels, getOctalArray
-    use source_mod, only: randomSource, getphotonpositiondirection
+    use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection
     use spectrum_mod, only: getwavelength
 #ifdef MPI
     use input_variables, only : blockHandout
@@ -287,7 +287,15 @@ contains
        mainloop: do iMonte = iMonte_beg, iMonte_end
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
-          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+
+          !thap variance reduction for melvin geometry
+          if (grid%geometry == "melvin") then
+             call getMelvinPositionDirection(thisSource, rVec, uHat, grid, photonPacketWeight)
+          else
+             call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+             photonPacketWeight = 1.d0             
+          end if
+
           escaped = .false.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -303,7 +311,7 @@ contains
 
           call getWavelength(thisSource%spectrum, wavelength)
 
-          photonPacketWeight = 1.d0
+
           thisFreq = cSpeed/(wavelength / 1.e8)
 
 
@@ -650,7 +658,7 @@ end if ! (my_rank /= 0)
 !       endif
 
     if (grid%geometry == "melvin") then
-      if (niter < 6) nMonte = nMonte * 2
+      if (niter < 8) nMonte = nMonte * 2
    endif
 
 
@@ -660,7 +668,7 @@ end if ! (my_rank /= 0)
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
          "OII        ", "OIII       "/))
 
-    if (niter == 15) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 12) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 

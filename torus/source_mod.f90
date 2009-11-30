@@ -199,6 +199,30 @@ module source_mod
       enddo mainloop
     end subroutine distanceToSource
 
+    !thap
+    subroutine getMelvinPositionDirection(source, position, direction, grid, photonPacketWeight)
+      use input_variables, only : pointSource
+      type(GRIDTYPE) :: grid
+      real(double) :: r, photonPacketWeight
+      type(SOURCETYPE) :: source
+      type(VECTOR),intent(out) :: position, direction
+
+      if (.not.source%outsideGrid) then
+            position = source%position
+            call melvinUnitVector(direction, photonPacketWeight)  
+      else
+         position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
+         call random_number(r)
+         r = 2.d0 * r - 1.d0
+         position%y = r * grid%octreeRoot%subcellSize
+         call random_number(r)
+         r = 2.d0 * r - 1.d0
+         position%z = r * grid%octreeRoot%subcellSize
+         direction = VECTOR(1.d0, 0.d0, 0.d0)
+      endif
+    end subroutine getMelvinPositionDirection
+
+
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid)
       use input_variables, only : pointSource
       type(GRIDTYPE) :: grid
