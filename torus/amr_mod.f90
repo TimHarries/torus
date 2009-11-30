@@ -5992,7 +5992,7 @@ IF ( .NOT. gridConverged ) RETURN
   thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
      
-  if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
+  if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 20.d5/cspeed!!!!!!!!!!!!!!!!!!!!
   IF ((thisoctal%threed).and.(subcell == 8)) &
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
   
@@ -18332,7 +18332,11 @@ end function readparameterfrom2dmap
           r = sqrt(rVec%x**2 + rVec%y**2)
           phi = atan2(rVec%y, rVec%x)
           cellsize = thisOctal%subcellSize
-          height = discHeightFunc(r/(ttauriROuter/1.d10), phi, hOverR) * r
+          if (thisOctal%cylindrical) then
+             height = discHeightFunc(r/(ttauriROuter/1.d10), phi, hOverR) * r
+          else
+             height = 0.d0
+          endif
           if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
              if (rVec%z < height) then
                 thisOctal%rho(subcell) = 1.d0

@@ -60,7 +60,7 @@ contains
     real(double) :: mdot
     real(double) :: photonsPerStep
     real(double) :: gridCrossingTime
-    integer, parameter :: nSedWavelength = 100, nTime = 1001
+    integer, parameter :: nSedWavelength = 100, nTime = 2001
     real(double) :: sedTime(nTime),fac
     integer :: i
     real(double) :: sedWavelength(nSedWavelength)
@@ -143,7 +143,7 @@ contains
        i = findIlambda(1.e5, xArray, nLambda, ok)
        call setBiasOnTau(grid, i)
        luminosityPeriod =  24.d0 * 3600.d0
-       varyUntilTime = 1.d0 * luminosityPeriod
+       varyUntilTime = 2.d0 * luminosityPeriod
        startVaryTime = 0.d0 * luminosityPeriod
        seedRun = .true.
 
@@ -188,10 +188,8 @@ contains
 
           sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * teff**4
           if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
-             t0 = (varyUntilTime - startVaryTime)/2.d0
-             tscale = 2.4d0*3600.d0
-             fac = 1.d0/(1.d0+exp(-(currentTime - t0)/tScale))
-             mdot = 5.d-8 + 5.d-8 *  fac
+             fac = sin(twoPi*currentTime/luminosityPeriod)
+             mdot = 5.d-8 + 2.5d-8 *  fac
              mdot = mdot * msol * secstoyears
              accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
           else

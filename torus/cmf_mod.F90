@@ -949,7 +949,7 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100, maxRay = 100000
+    integer, parameter :: maxIter = 100, maxRay = 200000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
@@ -981,7 +981,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, tauAv, tauHalpha, ratio
-    real(double), parameter :: convergeTol = 1.d-4, neTolerance = 1.d-5
+    real(double), parameter :: convergeTol = 1.d-3, neTolerance = 1.d-4
     integer :: neIter
     logical :: recalcJbar, neConverged, firstCheckonTau
     character(len=80) :: message
@@ -1097,6 +1097,10 @@ contains
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
     call init_random_seed()
+    if (myrankiszero) then
+       call testRays(grid, nSource, source)
+    endif
+    call torus_mpi_barrier
 
     call random_seed(size=iSize)
     allocate(iSeed(1:iSize))
@@ -1114,7 +1118,7 @@ contains
      endif
 
 
-    nRay = 100
+    nRay = 1000
     do iStage = 1, 2
 
 
@@ -1583,6 +1587,45 @@ contains
     enddo
   end subroutine calcEtaLine
 
+  recursive  subroutine  calcChiLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nAtom
+    integer :: iTrans
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iUpper, iAtom
+    real(double) :: a, bul, blu
+    real(double) :: chiLine, alphaNu
+    integer :: ilower
+    real(double) :: nlower, nupper
+    a = 0.d0; blu = 0.d0; bul = 0.d0
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcChiLine(child, thisAtom, nAtom, iAtom, iTrans)
+                exit
+             end if
+          end do
+       else
+
+       iUpper = thisAtom(iatom)%iUpper(iTrans)
+       iLower = thisAtom(iatom)%iLower(iTrans)
+          nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+          nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+          alphanu = (hCgs*thisAtom(iatom)%transFreq(iTrans)/fourPi)
+
+          call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
+
+          alphanu = alphanu * (nLower * Blu - nUpper * Bul) /thisAtom(iatom)%transFreq(iTrans)
+          thisOctal%chiLine(subcell) = alphanu
+          
+       endif
+    enddo
+  end subroutine calcChiLine
+
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
@@ -1830,7 +1873,7 @@ contains
     icount = 0
     rhoCol = 0.d0
     endLoopAtPhotosphere = .false.
-    lineOff = .true.
+    lineOff = .false.
 
     !    if (hitSource) endLoopAtphotosphere = .true.
 
@@ -2035,7 +2078,8 @@ contains
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda)
     use messages_mod, only : myRankIsZero
-    use datacube_mod, only: DATACUBE, writeDataCube, freedatacube
+    use datacube_mod, only: DATACUBE, writeDataCube, freedatacube, writeCollapseddatacube
+    use parallel_mod, only : sync_random_seed
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -2050,8 +2094,9 @@ contains
     real(double) :: distance, totalFlux
     integer :: itrans
     integer :: nRay
-    type(VECTOR) :: rayPosition(50000)
-    real(double) :: da(50000), dOmega(50000)
+    integer, parameter :: maxRay  = 1000000
+    type(VECTOR),allocatable :: rayPosition(:)
+    real(double),allocatable :: da(:), dOmega(:)
     type(VECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
@@ -2063,7 +2108,7 @@ contains
     type(DATACUBE) :: cube
     integer :: nFreqArray
     integer, parameter :: maxFreq = 2000
-    real(double) :: freqArray(maxFreq), broadBandFreq
+    real(double) :: freqArray(maxFreq), broadBandFreq, transitionFreq
 
 #ifdef MPI
     ! For MPI implementations
@@ -2082,19 +2127,25 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
-    broadBandFreq = cSpeed/(forceLambda * angstromToCm)
+    call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+    call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline","chiline"/))
 
-    da = 0.d0; dOmega = 0.d0
+
+    broadBandFreq = 1.d15
+    if (PRESENT(forceLambda)) then
+       broadBandFreq = cSpeed/(forceLambda * angstromToCm)
+    endif
+
     cube%label = " "
     freqArray = 0.d0; nFreqArray = 0
-    nray = 0; rayPosition = VECTOR(0.d0, 0.d0, 0.d0)
     call createContFreqArray(nFreqArray, freqArray, nAtom, thisAtom, nsource, source, maxFreq)
 
 
     if (myRankIsZero) &
          write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
-    if (.false.) then
+    if (.true.) then
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
 
 #ifdef MPI
@@ -2103,15 +2154,25 @@ contains
     if (Writeoutput) then
        write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
        call writeDataCube(cube,plotfile)
+       write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
+       call writeCollapsedDataCube(cube,plotfile)
     endif
     call torus_mpi_barrier
     call freeDataCube(cube)
     endif
 
+#ifdef MPI
+  call sync_random_seed()
+#endif
+
+  allocate(da(1:maxray), domega(1:maxRay),  rayPosition(1:maxray))
+    da = 0.d0; dOmega = 0.d0
+    nray = 0; rayPosition = VECTOR(0.d0, 0.d0, 0.d0)
+
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
-    nLambda = 1
-
+!    nLambda = 1
+    nlambda = 100
     iv1 = 1
     iv2 = nlambda
  
@@ -2124,14 +2185,14 @@ contains
     allocate(spec(1:nLambda), vArray(1:nLambda))
     spec = 0.d0
     do iv = 1, nLambda
-       vArray(iv) = 2200.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+       vArray(iv) = 500.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
     enddo
     do iv = iv1, iv2
        write(*,*) iv
        deltaV  = vArray(iv)
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-               nFreqArray, freqArray, forceFreq=broadBandFreq) !minus v 
+               nFreqArray, freqArray)!, forceFreq=broadBandFreq) !minus v 
           spec(iv) = spec(iv) + i0 * domega(iRay) 
        enddo
     enddo
@@ -2148,12 +2209,16 @@ contains
        write(plotfile,'(a,i3.3,a)') "spec",nfile,".dat"
        open(42, file=plotfile,status="unknown",form="formatted")
        do i = 1, nLambda
-          write(42, *) vArray(i)*cspeed/1.d5, spec(i)
+          transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
+          write(42, *) vArray(i)*cspeed/1.d5, toPerAngstrom(spec(i), transitionFreq)
        enddo
        close(42)
     endif
     totalFlux = toPerAngstrom(spec(1), broadBandFreq)
     deallocate(vArray, spec)
+666 continue
+    deallocate(da, domega, rayPosition)
+    call init_random_seed()
   end subroutine calculateAtomSpectrum
 
 
@@ -2169,8 +2234,8 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 200
-    nr2 = 20
+    nr1 = 100
+    nr2 = 100
     nr = nr1 + nr2
     nphi = 200
     nray = 0
@@ -2237,7 +2302,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
-    use input_variables, only : cylindrical
+    use input_variables, only : cylindrical, ttauriRouter
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2292,10 +2357,14 @@ contains
        else
 !          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
 !               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-!          call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
-!               -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
-          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
+          call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
+               -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+!          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
        endif
+    endif
+    if (grid%octreeRoot%twod) then
+       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
+            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
     endif
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
 !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
@@ -2490,4 +2559,65 @@ contains
      end subroutine unpackJnu
 #endif
 
+  recursive  subroutine  setMicroturb(thisOctal, microTurb)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: microTurb
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setMicroturb(child, microTurb)
+                exit
+             end if
+          end do
+       else
+          thisOctal%microTurb(subcell) = microturb
+       endif
+    enddo
+  end subroutine setMicroturb
+
+
+  subroutine testRays(grid, nSource, source)
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: weight
+    type(VECTOR) :: position, direction, pvec, photoDirection
+    integer :: sourceNumber, i, j, nray, iElement, k
+    real(double) :: i0, distTosource, cosTheta, freq
+    logical :: hitSource
+    
+    freq  = cSpeed / (6562.8d0 * 1.d-8)
+    position = VECTOR(1.d-3, 1.d-4, source(1)%radius*5.d0)
+
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(position, thisOctal, subcell)
+
+    do i = 1, 10
+       nray = 100 * 2**(i-1)
+       i0 = 0.d0
+       do j = 1, nray
+          call randomRayDirection(0.9d0, position, source, nSource, direction, weight)
+          
+          call distanceToSource(source, nSource, position, direction, hitSource, disttoSource, sourcenumber)
+          if (hitSource) then
+             pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
+             call normalize(pVec)
+             cosTheta = -1.d0*(pVec.dot.direction)
+             photoDirection = pVec
+             call normalize(photoDirection)
+             iElement = getElement(source(sourcenumber)%surface, photoDirection)
+             i0 = i0 + i_nu(source(sourceNumber), freq, iElement)*weight
+          endif
+       enddo
+       write(*,*) "nray ",nray, "j_nu ",i0/dble(nray)
+    enddo
+  end subroutine testRays
 end module cmf_mod

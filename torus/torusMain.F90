@@ -584,25 +584,25 @@ program torus
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
 	open(33, file="phase.dat", status="unknown", form="formatted")
-        do i = 1, 20
-           ang = twoPi * real(i-1)/20.+pi
+        do i = 1, 1
+           ang = pi+twoPi * real(i-1)/50.
            t = 75.d0*degtorad
 	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 	   viewVec = rotateY(viewVec,t)
 	   viewVec = rotateZ(viewVec, ang)
            call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                 viewVec, 140.d0*pctocm/1.d10, &
-                source, nsource,i, totalFlux, forceLambda = 5500.d0)
+                source, nsource,i, totalFlux)!, forceLambda = 5500.d0)
            vMag = returnMagnitude(totalFlux, "V")
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                viewVec, 140.d0*pctocm/1.d10, &
-                source, nsource,i,totalFlux,forceLambda=4400.d0)
-           bMag = returnMagnitude(totalFlux, "B")
+!           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+!                viewVec, 140.d0*pctocm/1.d10, &
+!                source, nsource,i,totalFlux,forceLambda=4400.d0)
+!           bMag = returnMagnitude(totalFlux, "B")
            write(33,*) real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
            write(*,*)  real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
         enddo
         close(33)
-        stop
+        goto 666
      endif
 
 
@@ -2079,11 +2079,10 @@ subroutine set_up_sources
            source(1)%radius = ttaurirStar/1.d10
            source(1)%teff = 4000.
            source(1)%position = VECTOR(0.,0.,0.)
-           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+           call fillSpectrumBB(source(1)%spectrum, source(1)%teff,  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
            call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile)
            call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
-
 
         endif
 

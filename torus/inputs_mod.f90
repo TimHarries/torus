@@ -1554,7 +1554,7 @@ contains
        call getReal("isothermtemp", isoThermTemp, cLine, nLines, &
             "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
        if (useHartmannTemp .and. isoTherm) then 
-          if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm6500 both specified!"
+          if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
           stop
        end if
        if (useHartmannTemp) &

@@ -2481,7 +2481,7 @@ contains
     real(double)          :: alpha(n,n),beta(n)
     type(octal), pointer, optional :: thisOctal 
     integer, intent(in),optional   :: thisSubcell 
-    logical, parameter             :: debug = .true.
+    logical, parameter             :: debug = .false.
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
@@ -3248,7 +3248,7 @@ contains
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
 
-          if (debugInfo) print *, 'Octal #',iOctal
+          print *, 'Octal #',iOctal
           thisOctal => octalArray(iOctal)%content
           if (setupCoeffs) allocate (thisOctal%departCoeff(8,maxLevels+1))
             ! departCoeff(maxLevels+1) is the LTE/nonLTE Ne ratio

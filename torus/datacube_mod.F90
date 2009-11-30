@@ -50,6 +50,7 @@ contains
 
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
+    use image_mod, only : deleteFitsFile, printfitsError
     implicit none
     
     type(DATACUBE), intent(in) :: thisCube
@@ -148,6 +149,10 @@ contains
     end if
 
     status=0
+    !
+    !  Delete the file if it already exists, so we can then recreate it.
+    !
+    call deleteFitsFile ( trim(filename), status )
     
     !  Get an unused Logical Unit Number to use to open the FITS file.
     call ftgiou ( unit, status )
@@ -883,6 +888,90 @@ subroutine freeDataCube(thiscube)
     end if
 
   end subroutine freeDataCube
+  
+  subroutine writeCollapsedDataCube(thisCube, filename)
+    use image_mod, only : deleteFitsFile, printfitsError
+    type(DATACUBE) :: thisCube
+    character(len=*) :: filename
+
+    integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
+    integer :: group,fpixel,nelements
+    real, allocatable :: array(:,:)
+    logical :: simple,extend
+    integer :: i, j
+
+    allocate(array(1:thisCube%nx, 1:thisCube%ny))
+    call writeInfo("Writing fits image",TRIVIAL)
+    status=0
+
+    do i = 1, thisCube%nx
+       do j = 1, thisCube%ny
+          array(i,j) = SUM(thisCube%intensity(i,j,:))
+       enddo
+    enddo
+
+    !
+    !  Delete the file if it already exists, so we can then recreate it.
+    !
+    call deleteFitsFile ( filename, status )
+    !
+    !  Get an unused Logical Unit Number to use to open the FITS file.
+    !
+    call ftgiou ( unit, status )
+    !
+    !  Create the new empty FITS file.
+    !
+    blocksize=1
+    call ftinit(unit,filename,blocksize,status)
+    !
+    !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
+    !
+    simple=.true.
+    bitpix=-32
+    naxis=2
+    naxes(1)=thisCube%nx
+    naxes(2)=thisCube%ny
+    extend=.true.
+    !
+    !  Write the required header keywords.
+    !
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+    !
+    !  Write the array to the FITS file.
+    !
+    group=1
+    fpixel=1
+    nelements=naxes(1)*naxes(2)
+
+    call ftppre(unit,group,fpixel,nelements,array,status)
+    ! Write WCS keywords to the header
+    call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+    call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
+    call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
+    call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
+    call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
+    
+    call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
+    call ftpkyd(unit,'CDELT2',thisCube%yAxis(2)-thisCube%yAxis(1),-3,'coordinate increment at reference point',status)
+    call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
+    call ftpkyd(unit,'CRVAL2',thisCube%yAxis(1),-3,'coordinate value at reference point',status)
+    call ftpkys(unit,'CUNIT2', thisCube%xUnit, "y axis unit", status)
+
+    !
+    !  Close the file and free the unit number.
+    !
+    call ftclos(unit, status)
+    call ftfiou(unit, status)
+    !
+    !  Check for any error, and if so print out error messages
+    !
+    if (status > 0) then
+       call printFitserror(status)
+    end if
+    deallocate(array)
+
+  end subroutine writeCollapsedDataCube
+
 
 end module datacube_mod
 
