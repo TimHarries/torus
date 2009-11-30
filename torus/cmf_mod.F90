@@ -431,10 +431,23 @@ contains
     integer :: iElement
     integer :: j
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
-    logical, save :: first = .true.
+    logical, save :: firstWarning = .true.
+    logical, save :: firstTime = .true.
     real(double) :: nStar(5,40)
     logical :: passThroughResonance, velocityIncreasing
     real(double) :: x1, x2, fac, deltaDist
+    integer, allocatable,save :: iFreqRBB(:)
+
+    if (firstTime) then
+       allocate(iFreqRBB(1:nRBBTrans))
+       do iRBB = 1, nRBBTRans
+          iAtom = indexAtom(iRBB)
+          iTrans = indexRBBTrans(iRBB)
+          call locate(freq, nfreq, thisAtom(iAtom)%transFreq(iTrans), iFreqRBB(iRBB))
+       enddo
+       firstTime = .false.
+    endif
+
 
     distToSource = 0.d0; hitSource = .false.
     a = 0.d0; blu = 0.d0; bul =0.d0
@@ -578,7 +591,7 @@ contains
           endif
           x1 = max(0.d0, x1)
           x2 = min(x2, tVal)
-          nTau = 80
+          nTau = 8
           distArray(1) = 0.d0
           do i = 1, nTau-1
              distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
@@ -654,7 +667,7 @@ contains
              iTrans = indexRBBTrans(iRBB)
 
 
-             call locate(freq, nfreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
+!             call locate(freq, nfreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
 
              call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
@@ -682,14 +695,14 @@ contains
              !                   stop
              !                endif
 
-             if (opticallyThickContinuum) alphanu = alphanu + alphaNuCont(iFreq)
+             if (opticallyThickContinuum) alphanu = alphanu + alphaNuCont(iFreqRBB(iRBB))
 
 
              if (alphanu < 0.d0) then
                 alphanu = 0.d0
-                if (first) then
+                if (firstWarning) then
                    write(*,*) "negative opacity warning in getray",iUpper,iLower,nLower,nUpper,thisAtom%name
-                   first = .false.
+                   firstWarning = .false.
                 endif
              endif
 
@@ -702,7 +715,7 @@ contains
              etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
              jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
-             if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreq) 
+             if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreqRBB(iRBB)) 
 
 
              if (alphanu > 1.d-30) then
@@ -1595,7 +1608,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, iUpper, iAtom
     real(double) :: a, bul, blu
-    real(double) :: chiLine, alphaNu
+    real(double) :: alphaNu
     integer :: ilower
     real(double) :: nlower, nupper
     a = 0.d0; blu = 0.d0; bul = 0.d0
@@ -2079,8 +2092,8 @@ contains
        totalFlux, forceLambda)
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube, writeCollapseddatacube
-    use parallel_mod, only : sync_random_seed
 #ifdef MPI
+    use parallel_mod, only : sync_random_seed
     include 'mpif.h'
 #endif
 
@@ -2216,7 +2229,6 @@ contains
     endif
     totalFlux = toPerAngstrom(spec(1), broadBandFreq)
     deallocate(vArray, spec)
-666 continue
     deallocate(da, domega, rayPosition)
     call init_random_seed()
   end subroutine calculateAtomSpectrum
@@ -2590,7 +2602,7 @@ contains
     integer :: subcell
     real(double) :: weight
     type(VECTOR) :: position, direction, pvec, photoDirection
-    integer :: sourceNumber, i, j, nray, iElement, k
+    integer :: sourceNumber, i, j, nray, iElement
     real(double) :: i0, distTosource, cosTheta, freq
     logical :: hitSource
     

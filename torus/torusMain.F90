@@ -304,7 +304,7 @@ program torus
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-!        call stripAtomLevels(thisAtom(i), 5)
+        call stripAtomLevels(thisAtom(i), 6)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif

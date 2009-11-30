@@ -215,7 +215,8 @@ contains
     integer :: iTrans
     real(double) :: aEinstein, BulEinstein, BluEinstein, f
     integer :: iUpper, iLower
-
+    real(double), parameter :: fac = (8.d0 * pi**2 * eCharge**2)/(mElectron*cSpeed**3)
+    real(double), parameter :: fac2 = (fourPi * pi * eCharge**2)/(mElectron * hCgs *  cspeed)
     if (iTrans > thisAtom%nTrans) then
        call writeFatal("returnEinsteinCoeffs: iTrans greater than number of transitions")
        stop
@@ -229,9 +230,12 @@ contains
        f = thisAtom%params(iTrans,1)
        iUpper = thisAtom%iUpper(iTrans)
        iLower = thisAtom%iLower(iTrans)
-       aEinstein = (8.d0*thisAtom%transFreq(iTrans)**2 * pi**2 * eCharge**2) / &
-            (mElectron*cSpeed**3) * f * thisAtom%g(iLower) / thisAtom%g(iUpper)
-       BluEinstein = (fourPi * pi * eCharge**2)/(mElectron * hCgs * thisAtom%transFreq(iTrans) * cspeed) * f
+!       aEinstein = (8.d0*thisAtom%transFreq(iTrans)**2 * pi**2 * eCharge**2) / &
+!            (mElectron*cSpeed**3) * f * thisAtom%g(iLower) / thisAtom%g(iUpper)
+!       BluEinstein = (fourPi * pi * eCharge**2)/(mElectron * hCgs * thisAtom%transFreq(iTrans) * cspeed) * f
+
+       aEinstein = fac * thisAtom%transFreq(iTrans)**2 * f * thisAtom%g(iLower) / thisAtom%g(iUpper)
+       BluEinstein = fac2 /  thisAtom%transFreq(iTrans) * f
        BulEinstein = BluEinstein * thisAtom%g(iLower) / thisAtom%g(iUpper)
     case DEFAULT
        call writeFatal("returnEinsteinCoeffs: unrecognised equation for RBB transition")
