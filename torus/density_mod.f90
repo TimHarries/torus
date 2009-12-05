@@ -198,8 +198,7 @@ contains
     ! from the disc surface, and then use the mass accretion rate at the time
     ! when the material left the disc. 
 
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar
+    
     use flowSpeedVariables
     
     type(GRIDTYPE), intent(in)    :: grid
@@ -211,7 +210,6 @@ contains
     TYPE(VECTOR) :: pointVec
 
     real(oct) :: r, theta
-    real :: TTauriMdotLocal
 
     starPosn = grid%starPos1
 

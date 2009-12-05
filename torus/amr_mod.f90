@@ -4280,10 +4280,12 @@ IF ( .NOT. gridConverged ) RETURN
     !   derived from information in the current cell  
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
-    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, ttauriRouter, dipoleOffset
+    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
+         ttauriRouter
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr, vturbmultiplier
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
+         maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY
     use luc_cir3d_class, only: get_dble_param, cir3d_data
@@ -5896,7 +5898,8 @@ IF ( .NOT. gridConverged ) RETURN
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
     USE input_variables, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
-                                TTauriRinner, TTauriRouter, ttau_acc_on, dipoleOffset, vturb
+                                TTauriRinner, TTauriRouter, ttau_acc_on, &
+                                 vturb
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
 
     IMPLICIT NONE
@@ -12885,7 +12888,6 @@ end function readparameterfrom2dmap
     integer :: subcell, i
     real(double) :: cellMass, dv
     logical :: converged
-    real :: thisTau
     logical :: split
     logical, save :: firsttime = .true.
     character(len=30) :: message
@@ -12918,7 +12920,7 @@ end function readparameterfrom2dmap
 
           if (cellMass > limitScalar) split = .true.
           if (split) then
-             write(*,*) "splitting cell with mass ",cellmass
+!             write(*,*) "splitting cell with mass ",cellmass
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=inheritProps, interp=interpProps)
              converged = .false.
@@ -12974,6 +12976,53 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine zeroChiLineLocal
+
+  recursive subroutine zeroDensity(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call zeroDensity(child)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%rho(subcell) = 1.e-25
+
+       endif
+    enddo
+  end subroutine zeroDensity
+
+  recursive subroutine convertToDensity(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call convertToDensity(child)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%rho(subcell) = thisOctal%rho(subcell) &
+               / (1.d30*cellVolume(thisOctal,subcell))
+
+       endif
+    enddo
+  end subroutine convertToDensity
 
   recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps, stellar_cluster, romData)
     type(GRIDTYPE) :: grid
@@ -16376,7 +16425,7 @@ end function readparameterfrom2dmap
   subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-
+    use input_variables, only : ttauriRstar
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -16394,10 +16443,8 @@ end function readparameterfrom2dmap
     totalmdot = 0.d0
 
     do i = 1, surface%nElements
-       rVec = surface%element(i)%position + grid%halfSmallestSubcell * surface%element(i)%norm
+       rVec = surface%element(i)%position + 0.01d0*grid%halfSmallestSubcell * surface%element(i)%norm
        CALL findSubcellTD(rVec,grid%octreeRoot,thisOctal,subcell)
-
-
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)
        mdot = thisOctal%rho(subcell) * v * area
@@ -16408,7 +16455,6 @@ end function readparameterfrom2dmap
        else
           flux = 0.d0
        endif
-
 
        T = (flux/stefanBoltz)**0.25d0
 
@@ -16432,7 +16478,9 @@ end function readparameterfrom2dmap
 
 
     write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
-    write(*,*) "Mass accretion rate is: ",(totalMdot/mSol)*(365.25d0*24.d0*3600.d0), "solar masses/year"
+    write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
+         (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
+    write(*,*) "sanity check on area: ",totalArea/(fourPi*ttauriRstar**2)
     CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
     CALL sumSurface(surface)
 
@@ -18426,6 +18474,116 @@ end function readparameterfrom2dmap
     height = hOverR * abs(cos(phiShift/2.d0))
   end function discHeightFunc
     
+  subroutine assignDensitiesMahdavi(grid, mdot)
+    use input_variables, only : ttauriRstar, dipoleOffset
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    type(GRIDTYPE) :: grid
+    integer :: i, j
+    type(VECTOR) :: rVec, rVecDash, thisRvec, rVec1
+    real(double) :: mdot
+    integer :: nLines, iline
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell, nr
+    real(double) :: accretingArea, vstar, astar, beta
+    real(double) :: thetaDash, phiDash, rDash, cosThetaDash, mDotFraction
+    real(double) :: thisrMax, sin2theta0dash, thisr,thisrho, thisPhi, thisTheta,ds
+    beta = dipoleOffset
+    nLines = 1000000
+    j = 0
+    do i = 1, nLines
+       rVec = ttauriRstar * (1.001d0)*randomUnitVector() 
+       if (inFlowMahdavi(rVec)) j = j + 1
+    enddo
+    accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
+    write(*,*) "Fractional area of accretion (%): ",100.d0 *  dble(j)/dble(nLines)
+    nLines = 10000
+    aStar = accretingArea / dble(nLines)
+    mDotFraction = mDot / dble(nLines)
+    do iLine = 1, nLines
+       rVec = ttauriRstar * (1.001d0)*randomUnitVector() 
+       do while(.not.inFlowMahdavi(rVec))
+          rVec = ttauriRstar * (1.001d0)*randomUnitVector() 
+       enddo
+       call findSubcellTD(rVec/1.d10, grid%octreeRoot, thisOctal, subcell)
+       thisOctal%velocity(subcell) = velocityMahdavi(rVec/1.d10, grid)
+       vStar = modulus(thisOctal%velocity(subcell)*cspeed)
+       rVecDash = rotateY(rVec, -beta)
+       rDash = modulus(rVecDash)
+       cosThetaDash = rVecDash%z / rDash
+       thetaDash = acos(rVecDash%z/rDash)
+       phiDash = atan2(rVecDash%y, rVecDash%x)
+       sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
+       thisrMax = rDash / sin(thetaDash)**2
+
+       nr = 10000
+       thisOctal => grid%octreeRoot
+       rVec1 = rVecDash
+       do i = 1, nr
+          thisr = rDash + (thisRmax-rDash) * dble(i-1)/dble(nr-1)
+          thisRho = (ttauriRstar/thisR)**3 * mdotFraction /(aStar * vStar)
+          thisphi = phiDash
+          thisTheta = asin(sqrt(thisr/thisRmax))
+          if (cosThetaDash  < 0.d0) thisTheta = pi - thisTheta
+          thisRVec = VECTOR(thisR*cos(thisPhi)*sin(thisTheta),thisR*sin(thisPhi)*sin(thisTheta), &
+               thisR * cos(thisTheta))
+          thisRvec = rotateY(thisRvec, beta)
+          if (inflowMahdavi(thisRVec)) then
+             if (inOctal(grid%octreeRoot, thisRvec/1.d10)) then
+                ds = modulus(thisRvec - rVec1)
+                call findSubcellLocal(thisRvec/1.d10, thisOctal, subcell)
+                thisOctal%rho(Subcell) = thisOctal%rho(subcell) + thisRho*(ds*aStar)
+                rVec1 = thisRvec
+             endif
+          endif
+       enddo
+    end do
+    call convertToDensity(grid%octreeRoot)
+  end subroutine assignDensitiesMahdavi
+
+  subroutine createTTauriSurfaceMahdavi(surface, grid, lineFreq, &
+                                 coreContFlux,fAccretion)
+    use magnetic_mod, only : inflowMahdavi
+    use surface_mod, only : surfaceType, createProbs, sumSurface
+    type(SURFACETYPE),intent(inout) :: surface
+    type(gridType), intent(in) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: v, rho,mdot,power
+    real(double), intent(in) :: coreContFlux
+    real, intent(in) :: lineFreq
+    real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
+    integer :: iElement
+    type(VECTOR) :: aboveSurface
+    real(double) :: Taccretion
+    
+    call writeInfo("Creating T Tauri stellar surface",TRIVIAL)
+    
+    do iElement = 1, SIZE(surface%element)
+      aboveSurface = surface%element(iElement)%position - surface%centre
+      aboveSurface = aboveSurface * 1.01_oc 
+
+
+      surface%element(iElement)%hot = .false.
+
+      if (inFlowMahdavi(aboveSurface*1.d10)) then
+         call findSubcellTD(aboveSurface, grid%octreeRoot, thisOctal, subcell)
+         v = modulus(thisOctal%velocity(subcell))*cspeed
+         rho = thisOctal%rho(subcell)
+         mdot = v * rho * surface%element(iElement)%area*1.d20
+         power = 0.5d0*v*mdot**2
+         taccretion = (power/(stefanBoltz*surface%element(iElement)%area*1.d20))**0.25d0
+
+        surface%element(iElement)%hot = .true.
+        allocate(surface%element(iElement)%hotFlux(surface%nNuHotFlux))
+        surface%element(iElement)%hotFlux(:) = &
+           pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed)/surface%nuArray(:)) 
+        surface%element(iElement)%temperature = Taccretion
+     endif
+    end do
+    call createProbs(surface,lineFreq,coreContFlux,fAccretion)
+    call sumSurface(surface)
+    
+  end subroutine createTTauriSurfaceMahdavi
 
 
 END MODULE amr_mod

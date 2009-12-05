@@ -360,54 +360,6 @@ contains
     
   end subroutine createTTauriSurface
 
-  subroutine createTTauriSurfaceMahdavi(surface, grid, lineFreq, &
-                                 coreContFlux,fAccretion)
-
-    use input_variables, only: TTauriRinner, TTauriRouter,&
-                               TTauriRstar, TTauriMstar, dipoleOffset
-    use amr_mod, only : findsubcelltd
-    type(SURFACETYPE),intent(inout) :: surface
-    type(gridType), intent(in) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    real(double) :: v, rho,mdot,power
-    real(double), intent(in) :: coreContFlux
-    real, intent(in) :: lineFreq
-    real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
-    integer :: iElement
-    type(VECTOR) :: aboveSurface
-    real(double) :: Laccretion, Taccretion
-    real :: ttauriMdotLocal
-    real :: theta1, theta2
-    
-    call writeInfo("Creating T Tauri stellar surface",TRIVIAL)
-    
-    do iElement = 1, SIZE(surface%element)
-      aboveSurface = surface%element(iElement)%position - surface%centre
-      aboveSurface = aboveSurface * 1.01_oc 
-
-
-      surface%element(iElement)%hot = .false.
-
-      if (inFlowMahdavi(aboveSurface*1.d10)) then
-         call findSubcellTD(aboveSurface, grid%octreeRoot, thisOctal, subcell)
-         v = modulus(thisOctal%velocity(subcell))*cspeed
-         rho = thisOctal%rho(subcell)
-         mdot = v * rho * surface%element(iElement)%area*1.d20
-         power = 0.5d0*v*mdot**2
-         taccretion = (power/(stefanBoltz*surface%element(iElement)%area*1.d20))**0.25d0
-
-        surface%element(iElement)%hot = .true.
-        allocate(surface%element(iElement)%hotFlux(surface%nNuHotFlux))
-        surface%element(iElement)%hotFlux(:) = &
-           pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed)/surface%nuArray(:)) 
-        surface%element(iElement)%temperature = Taccretion
-     endif
-    end do
-    call createProbs(surface,lineFreq,coreContFlux,fAccretion)
-    call sumSurface(surface)
-    
-  end subroutine createTTauriSurfaceMahdavi
   
   subroutine createHotRing(surface, phiStart1, phiEnd1, phiStart2, phiEnd2, theta1, theta2)
     type(SURFACETYPE),intent(inout) :: surface

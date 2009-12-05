@@ -191,7 +191,7 @@ program torus
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
-  real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, bMag, vMag
+  real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, vMag
   type(VECTOR) :: viewVec, outVec
 
 
@@ -598,8 +598,8 @@ program torus
 !                viewVec, 140.d0*pctocm/1.d10, &
 !                source, nsource,i,totalFlux,forceLambda=4400.d0)
 !           bMag = returnMagnitude(totalFlux, "B")
-           write(33,*) real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
-           write(*,*)  real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
+!           write(33,*) real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
+!           write(*,*)  real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
         enddo
         close(33)
         goto 666
@@ -657,8 +657,8 @@ program torus
 #endif
 
   if (timeDependentRT) then
-     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
-!     call timeDependentRTtest()
+!     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
+     call timeDependentRTtest()
 
 
 !     do itime = 1, 20
@@ -1390,7 +1390,6 @@ end subroutine pre_initAMRGrid
     use luc_cir3d_class, only: deallocate_zeus_data
     use lucy_mod, only: allocateMemoryForLucy, putTau
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
-    use magnetic_mod, only : assignDensitiesMahdavi
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -1647,7 +1646,8 @@ end subroutine pre_initAMRGrid
            ! wrapper subroutine in amr_mod.f90.
           if (geometry=="ttauri") then 
              mdot = 2.d-8 * msol * secstoyears
-             do i = 1, 3
+             do i = 1, 1
+                call zeroDensity(grid%octreeRoot)
                 call assignDensitiesMahdavi(grid, dble(mdot))
                 gridconverged = .false.
                 do while (.not.gridconverged)
@@ -1655,8 +1655,9 @@ end subroutine pre_initAMRGrid
                    call massSplit(grid%octreeRoot, grid, gridconverged, inheritProps=.true., interpProps=.false.)
                    if (gridConverged) exit
                 enddo
-                call assignDensitiesMahdavi(grid, dble(mdot))
              enddo
+             call zeroDensity(grid%octreeRoot)
+             call assignDensitiesMahdavi(grid, dble(mdot))
              call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0
@@ -1838,7 +1839,8 @@ end subroutine pre_initAMRGrid
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
            if (geometry == "ttauri") then
-              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+!              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+              call genericAccretionSurface(starsurface, grid, nu,coreContinuumFlux,fAccretion)
            elseif (geometry == "magstream") then
               
            elseif (geometry == "romanova") then
@@ -2073,7 +2075,8 @@ subroutine set_up_sources
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
            if (geometry == "ttauri") then
-              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+!              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+              call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
            elseif (geometry == "magstream") then
               
            elseif (geometry == "romanova") then

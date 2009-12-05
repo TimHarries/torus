@@ -72,7 +72,7 @@ contains
     real(double) :: sedFluxScatStep(nSedWavelength, nTime)
     real(double) :: w1, w2
     real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
-    real(double) :: inc, endTime, t0, tscale
+    real(double) :: inc, endTime
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
     logical :: seedRun
@@ -1344,12 +1344,13 @@ contains
     real(double) :: photonSpeed
     real(double) :: sourcePeriod, sourceLuminosity
     real(double) :: fracSource
-    real(double) :: fac, meanFreePath, probNewPhoton, teq, deltaudens, newudens
+    real(double) :: fac, meanFreePath, probNewPhoton, teq, newudens
     real(double) :: tdump, timeofnextdump, photonBias, Be
-    real(double) :: udens_n_plus_1, totalLuminosity
+    real(double) :: totalLuminosity
     real(double) :: chanceSource, chanceGas, weightSource, weightGas, etest, deltaTmin
+    real(double) :: deltaTmax
     integer :: nFromMatter, nFromGas, nFromStar
-    logical :: ok, diffusion
+    logical :: diffusion
 
     reflecting = .true.
     diffusion = .false.
@@ -1419,16 +1420,17 @@ contains
 
 ! test2
 
-    nMonte = 1
+    nMonte = 100
     photonEnergyDensity = 0.d0
     udens = 1.d8
     rho = 1.d-7
     kappa = 4.d-1
     oldnStack = 0
-    deltaT = 1.d-12
+    deltaT = 1.d-11
     udensAnalytical = udens
     photonDensAnalytical = photonEnergyDensity
     deltaTmin = 1.d-12
+    deltaTmax = 1.e-5
     do i = 1, nx
        temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0, 0.6d0)
     enddo
@@ -1755,11 +1757,12 @@ contains
           oldudens = udens
           do i = 1, nx
 
-             call quarticSubTest(udens_n_plus_1,  &
-                     udens(i), &
-                     photonEnergyDensity(i), &
-                     kappa(i), rho(i), adot(i), 0.6d0, 5.d0/3.d0, deltaT,ok)
-             udens(i) = udens_n_plus_1 
+!             call quarticSubTest(udens_n_plus_1,  &
+!                     udens(i), &
+!                     photonEnergyDensity(i), &
+!                     kappa(i), rho(i), adot(i), 0.6d0, 5.d0/3.d0, deltaT,ok)
+!             udens(i) = udens_n_plus_1 
+             udens(i) = udens(i) + deltaT*(adot(i) - etaCont(i))
 
              Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
              newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
@@ -1797,7 +1800,7 @@ contains
           currentTime = currentTime + deltaT
 
           newDeltaT = 1.d30
-          fac = 0.001d0
+          fac = 0.1d0
           do i = 1, nx
              if ((uDens(i) > 0.d0).and.(abs(adot(i) - etaCont(i)) /= 0.d0)) then
                 if (adot(i) > 0.d0) then
@@ -1807,15 +1810,16 @@ contains
 !                   newDeltaT = min(newDeltaT, fac*photonEnergyDensity(i)/etacont(i))
 !                   newDeltaT = min(newDeltaT, fac*uDens(i)/etacont(i))
 !                   newDeltaT = min(newDeltaT, fac*photonEnergyDensity(i)/adot(i))
-                   Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
-                   newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
-                   deltaUdens = abs(newUdens - uDens(i))
-                   newDeltaT = min(newDeltaT, fac * deltaUDens / abs(adot(i) - etaCont(i)))
+!                   Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
+!                   newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
+!                   deltaUdens = abs(newUdens - uDens(i))
+!                   newDeltaT = min(newDeltaT, fac * deltaUDens / abs(adot(i) - etaCont(i)))
                 endif
              endif
           enddo
 !          newDeltaT = min(newDeltaT, fac*xsize/photonSpeed)
           newDeltaT = max(newDeltaT , deltaTmin)
+          newDeltaT = min(newDeltaT , deltaTmax)
 
           write(*,*) "thermo time ", newDeltaT
 
