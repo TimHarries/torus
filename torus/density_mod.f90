@@ -9,6 +9,7 @@ module density_mod
   !
   
   use constants_mod
+  use magnetic_mod
   use vector_mod
   use gridtype_mod, only: GRIDTYPE
 
@@ -222,21 +223,24 @@ contains
     theta = acos( pointVec%z  / r )
     y = SIN(theta)**2 
 
-    IF (TTauriInFlow(point,grid,ignoreDisk)) then 
-    
-      ! we call the accretion rate function to determine the appropriate value.
-      TTauriMdotLocal = TTauriVariableMdot(point,grid,ignoreDisk)
+!    IF (TTauriInFlow(point,grid,ignoreDisk)) then 
+!    
+!      ! we call the accretion rate function to determine the appropriate value.
+!      TTauriMdotLocal = TTauriVariableMdot(point,grid,ignoreDisk)
+!
+!      rho = (TTauriMdotLocal * TTauriRstar) / (4.0 * pi * &
+!            (TTauriRStar/TTauriRinner - TTauriRstar/TTauriRouter)) &
+!            * (r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar )) &
+!            * (SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y)) 
+! 
+!      rho = max(rho,1.e-25)
+!    ELSE
+!      rho = 1.e-25
+!      RETURN
+!    END IF
 
-      rho = (TTauriMdotLocal * TTauriRstar) / (4.0 * pi * &
-            (TTauriRStar/TTauriRinner - TTauriRstar/TTauriRouter)) &
-            * (r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar )) &
-            * (SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y)) 
- 
-      rho = max(rho,1.e-25)
-    ELSE
-      rho = 1.e-25
-      RETURN
-    END IF
+    rho = 1.d-25
+    if (inFlowMahdavi(pointVec)) rho = 1.d-14
     
   end function TTauriDensity
 

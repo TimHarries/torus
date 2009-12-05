@@ -4433,9 +4433,9 @@ IF ( .NOT. gridConverged ) RETURN
            rho = romanova_density(romData, searchPoint)
         else
            ! using a generic density function in density_mod.f90
-           if (grid%geometry == "ttauri") then
-              searchPoint = rotateY(searchPoint,  dble(dipoleOffset))
-           endif
+!           if (grid%geometry == "ttauri") then
+!              searchPoint = rotateY(searchPoint,  dble(dipoleOffset))
+!           endif
 
            rho = density(searchPoint,grid)
         end if
@@ -5896,7 +5896,8 @@ IF ( .NOT. gridConverged ) RETURN
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
     USE input_variables, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
-                                TTauriRinner, TTauriRouter, ttau_acc_on, dipoleOffset
+                                TTauriRinner, TTauriRouter, ttau_acc_on, dipoleOffset, vturb
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
 
     IMPLICIT NONE
 
@@ -5919,8 +5920,8 @@ IF ( .NOT. gridConverged ) RETURN
     pointVec = (point - starPosn) * 1.e10_oc
 
 ! rotation for warp dipole offset!!!!!!! TJH
-    point = rotateY(point, dble(dipoleOffset))
-    pointvec = rotateY(pointvec, dble(dipoleOffset))
+!    point = rotateY(point, dble(dipoleOffset))
+!    pointvec = rotateY(pointvec, dble(dipoleOffset))
 
     if (.not. ttau_acc_on) then
        ! we don't include the magnetopsherical accretion
@@ -5929,6 +5930,15 @@ IF ( .NOT. gridConverged ) RETURN
        IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
     else
     
+       if (inflowMahdavi(pointvec)) then
+          thisOctal%rho(subcell) = 1.d-14
+          thisOctal%velocity(subcell) = velocityMahdavi(pointVec/1.d10, grid)
+       else
+          thisOctal%rho(subcell) = 1.d-25
+          thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+       endif
+       goto 666
+
        IF (TTauriInFlow(point,grid)) THEN
           thisOctal%rho(subcell) = Density(point,grid)
           thisOctal%inFlow(subcell) = .TRUE.
@@ -5992,7 +6002,7 @@ IF ( .NOT. gridConverged ) RETURN
   thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
      
-  if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 20.d5/cspeed!!!!!!!!!!!!!!!!!!!!
+  if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
   IF ((thisoctal%threed).and.(subcell == 8)) &
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
   
@@ -6000,7 +6010,7 @@ IF ( .NOT. gridConverged ) RETURN
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .false.)
 
   
-
+666 continue
   END SUBROUTINE calcTTauriMassVelocity
 
 
@@ -12866,6 +12876,59 @@ end function readparameterfrom2dmap
 
   end subroutine myTauSplit
 
+  recursive subroutine massSplit(thisOctal, grid, converged, inheritProps, interpProps)
+    use input_variables, only : maxDepthAMR, limitScalar
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    logical, optional :: inheritProps, interpProps
+    integer :: subcell, i
+    real(double) :: cellMass, dv
+    logical :: converged
+    real :: thisTau
+    logical :: split
+    logical, save :: firsttime = .true.
+    character(len=30) :: message
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call massSplit(child, grid, converged, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+
+          split = .false.
+
+          dv = cellVolume(thisOctal, subcell)*1.d30
+          cellMass = dv * thisOctal%rho(subcell) 
+
+          if (thisOctal%nDepth == maxDepthamr) then
+             split = .false.
+             if (firstTime) then
+                write(message,'(a,i3)') "massSplit: AMR cell depth capped at: ",maxDepthamr
+                call writeWarning(message)
+                firstTime = .false.
+             endif
+          endif
+
+          if (cellMass > limitScalar) split = .true.
+          if (split) then
+             write(*,*) "splitting cell with mass ",cellmass
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=inheritProps, interp=interpProps)
+             converged = .false.
+             return
+          endif
+       endif
+    enddo
+
+  end subroutine massSplit
+
 
 
   recursive subroutine myScaleSmooth(factor, grid, converged, &
@@ -18310,7 +18373,7 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine addWarpedDisc(thisOctal)
-    use input_variables, only : ttauriROuter, hOverR
+    use input_variables, only : ttauriROuter, hOverR, ttauriRinner
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -18337,6 +18400,12 @@ end function readparameterfrom2dmap
           else
              height = 0.d0
           endif
+          if ((rvec%z < 0.d0).and.((rvec%z+1.0001d0*cellSize/2.d0)>0.d0)) then
+             if (r > ttaurirInner/1.d10) then
+                thisOctal%rho(subcell) = 1.d0
+                thisOctal%inflow(subcell) = .false.
+             endif
+          endif
           if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
              if (rVec%z < height) then
                 thisOctal%rho(subcell) = 1.d0
@@ -18350,9 +18419,11 @@ end function readparameterfrom2dmap
           
   function discHeightFunc(r, phi, hOverR) result (height)
 
-    real(double) :: r, phi, hOverR, height
+    real(double) :: r, phi, hOverR, height, phiShift
     
-    height = hOverR * abs(cos(phi/2.d0))
+    phiShift = phi 
+    if (phiShift > twoPi) phiShift = phiShift - twoPi
+    height = hOverR * abs(cos(phiShift/2.d0))
   end function discHeightFunc
     
 

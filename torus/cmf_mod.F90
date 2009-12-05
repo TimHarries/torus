@@ -2090,6 +2090,7 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda)
+    use input_variables, only : vturb
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube, writeCollapseddatacube
 #ifdef MPI
@@ -2142,7 +2143,9 @@ contains
 
     call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
     call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-    call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline","chiline"/))
+
+    call setMicroturb(grid%octreeRoot, dble(vTurb))
+    call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline"/))
 
 
     broadBandFreq = 1.d15
@@ -2159,19 +2162,19 @@ contains
          write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
     if (.true.) then
-    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
-
+       call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
+       
 #ifdef MPI
-     write(*,*) "Process ",my_rank, " create data cube done"
+       write(*,*) "Process ",my_rank, " create data cube done"
 #endif
-    if (Writeoutput) then
-       write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
-       call writeDataCube(cube,plotfile)
-       write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
-       call writeCollapsedDataCube(cube,plotfile)
-    endif
-    call torus_mpi_barrier
-    call freeDataCube(cube)
+       if (Writeoutput) then
+          write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
+          call writeDataCube(cube,plotfile)
+          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
+          call writeCollapsedDataCube(cube,plotfile)
+       endif
+       call torus_mpi_barrier
+       call freeDataCube(cube)
     endif
 
 #ifdef MPI
@@ -2249,13 +2252,14 @@ contains
     nr1 = 100
     nr2 = 100
     nr = nr1 + nr2
-    nphi = 200
+    nphi = 100
     nray = 0
     i = 0
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = grid%rCore
-    rMax = 2.d0*grid%octreeRoot%subcellSize
+!    rMax = 2.d0*grid%octreeRoot%subcellSize
+    rMax = 5.d0*grid%rCore
 
     write(*,*) "rcore ",grid%rCore*1.d10/rsol
     write(*,*) "router ",grid%rOuter*1.d10/rsol
@@ -2314,7 +2318,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
-    use input_variables, only : cylindrical, ttauriRouter
+    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2355,7 +2359,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 200, 200, 2)
+    call initCube(cube, 500, 500, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
@@ -2369,21 +2373,27 @@ contains
        else
 !          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
 !               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-          call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
-               -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+          call addSpatialAxes(cube, -ttauriRouter*1.1d0/1.d10, ttauriRouter*1.1d0/1.d10, &
+               -ttauriRouter*1.1d0/1.d10, ttauriRouter*1.1d0/1.d10)
 !          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
+!       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
+!            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
+
        endif
     endif
     if (grid%octreeRoot%twod) then
-       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
-            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+!       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
+!            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+
+       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
+            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
     endif
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
 !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
 !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
 !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
-    call addvelocityAxis(cube, -200.d0, 200.d0)
+    call addvelocityAxis(cube, -500.d0, 500.d0)
 
     xProj =   viewVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
     call normalize(xProj)

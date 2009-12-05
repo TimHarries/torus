@@ -201,7 +201,6 @@ module source_mod
 
     !thap
     subroutine getMelvinPositionDirection(source, position, direction, grid, photonPacketWeight)
-      use input_variables, only : pointSource
       type(GRIDTYPE) :: grid
       real(double) :: r, photonPacketWeight
       type(SOURCETYPE) :: source

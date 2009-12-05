@@ -648,7 +648,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90
+            mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90 magnetic_mod.f90
 
 F77SOURCE = phfit2.f
 

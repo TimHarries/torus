@@ -1521,6 +1521,9 @@ contains
        call getDouble("hoverr", hoverr, cLine, nLines, &
             "Warped disc H/R: ","(a,f7.4,1x,a)", 0.3d0, ok, .false.)
 
+       call getReal("vturb", vturb, cLine, nLines, &
+            "Turbulent velocity (km/s):","(a,f4.1,1x,a)", 50., ok, .true.)
+       vturb = vturb * 1.e5/cSpeed
 
        call getLogical("lte", lte, cLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)

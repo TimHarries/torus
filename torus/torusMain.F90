@@ -584,8 +584,8 @@ program torus
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
 	open(33, file="phase.dat", status="unknown", form="formatted")
-        do i = 1, 1
-           ang = pi+twoPi * real(i-1)/50.
+        do i = 1, 2
+           ang = twoPi * real(i-1)/2.
            t = 75.d0*degtorad
 	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 	   viewVec = rotateY(viewVec,t)
@@ -1390,6 +1390,7 @@ end subroutine pre_initAMRGrid
     use luc_cir3d_class, only: deallocate_zeus_data
     use lucy_mod, only: allocateMemoryForLucy, putTau
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
+    use magnetic_mod, only : assignDensitiesMahdavi
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
@@ -1645,6 +1646,17 @@ end subroutine pre_initAMRGrid
            ! This section is getting rather long. Maybe this should be done in 
            ! wrapper subroutine in amr_mod.f90.
           if (geometry=="ttauri") then 
+             mdot = 2.d-8 * msol * secstoyears
+             do i = 1, 3
+                call assignDensitiesMahdavi(grid, dble(mdot))
+                gridconverged = .false.
+                do while (.not.gridconverged)
+                   gridConverged = .true.
+                   call massSplit(grid%octreeRoot, grid, gridconverged, inheritProps=.true., interpProps=.false.)
+                   if (gridConverged) exit
+                enddo
+                call assignDensitiesMahdavi(grid, dble(mdot))
+             enddo
              call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0
@@ -2449,11 +2461,13 @@ end subroutine set_up_sources
 subroutine post_initAMRgrid 
 
   use amr_mod, only: find_average_temperature, findTotalMass, scaleDensityAMR
-
   real         :: scaleFac
   real(double) :: totalMass, totalmasstrap, maxrho, minrho
   real(double) :: T_ave   ! average temperature of cluster
   real(double) :: T_mass  ! mass weighted temperature
+
+
+
 
   if (geometry == "wr104") then
 

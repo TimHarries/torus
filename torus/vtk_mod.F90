@@ -502,6 +502,10 @@ contains
                case("etaline")
                   write(lunit, *) max ( real(thisOctal%etaline(subcell)), min_single_prec )
 
+               case("sourceline")
+                  write(lunit, *) max ( real(thisOctal%etaline(subcell)), min_single_prec )/ &
+                       max( real(thisOctal%chiline(subcell)), min_single_prec )
+
                case("tau")
                   if (firstTime) then
                      call locate(grid%lamArray, grid%nLambda, lambdaSmooth, ilambda)

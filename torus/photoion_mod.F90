@@ -658,7 +658,7 @@ end if ! (my_rank /= 0)
 !       endif
 
     if (grid%geometry == "melvin") then
-      if (niter < 8) nMonte = nMonte * 2
+      if (niter < 10) nMonte = nMonte * 2
    endif
 
 
