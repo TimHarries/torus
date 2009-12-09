@@ -1646,18 +1646,20 @@ end subroutine pre_initAMRGrid
            ! wrapper subroutine in amr_mod.f90.
           if (geometry=="ttauri") then 
              mdot = 2.d-8 * msol * secstoyears
-             do i = 1, 1
-                call zeroDensity(grid%octreeRoot)
-                call assignDensitiesMahdavi(grid, dble(mdot))
-                gridconverged = .false.
-                do while (.not.gridconverged)
-                   gridConverged = .true.
-                   call massSplit(grid%octreeRoot, grid, gridconverged, inheritProps=.true., interpProps=.false.)
-                   if (gridConverged) exit
-                enddo
-             enddo
+!             do i = 1, 2
+!                call zeroDensity(grid%octreeRoot)
+!                call assignDensitiesMahdavi(grid, dble(mdot))
+!                gridconverged = .false.
+!                do while (.not.gridconverged)
+!                   gridConverged = .true.
+!                   call massSplit(grid%octreeRoot, grid, gridconverged, inheritProps=.true., interpProps=.false.)
+!                   if (gridConverged) exit
+!                enddo
+!             enddo
              call zeroDensity(grid%octreeRoot)
              call assignDensitiesMahdavi(grid, dble(mdot))
+             call fillVelocityCornersMahdavi(grid%octreeRoot,grid)
+             call stripMahdavi(grid%octreeRoot)
              call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0
@@ -1837,7 +1839,7 @@ end subroutine pre_initAMRGrid
 	if (lineEmission.and.(geometry /= "cmfgen")) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
+           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
               call genericAccretionSurface(starsurface, grid, nu,coreContinuumFlux,fAccretion)
@@ -2073,7 +2075,7 @@ subroutine set_up_sources
         if (.not.cmf) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile)
+           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
               call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
@@ -2096,8 +2098,9 @@ subroutine set_up_sources
            source(1)%position = VECTOR(0.,0.,0.)
            call fillSpectrumBB(source(1)%spectrum, source(1)%teff,  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
-           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile)
-           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
+           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile)
+!           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
+           call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
 
         endif
 
@@ -2127,7 +2130,7 @@ subroutine set_up_sources
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile)
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile)
        endif
        nu =1.d15
        call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
@@ -2497,13 +2500,13 @@ subroutine post_initAMRgrid
 !        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
 !        if (writeoutput) write(*,*) " "
 
-  else if (geometry == "ttauri") then
-     call find_average_temperature(grid, T_ave, T_mass, totalMass)
-     if (writeoutput) write(*,*) " "
-     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total mass in computational domain : ", TotalMass, " [g]"
-     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature in computational domain : ", T_ave,    " [K]"
-     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature in computational domain : ",T_mass,  " [K]"
-     if (writeoutput) write(*,*) " "
+!  else if (geometry == "ttauri") then
+!     call find_average_temperature(grid, T_ave, T_mass, totalMass)
+!     if (writeoutput) write(*,*) " "
+!     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total mass in computational domain : ", TotalMass, " [g]"
+!     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature in computational domain : ", T_ave,    " [K]"
+!     if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature in computational domain : ",T_mass,  " [K]"
+!     if (writeoutput) write(*,*) " "
   end if
 
 

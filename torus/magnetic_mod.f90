@@ -21,19 +21,26 @@ contains
     real(double) :: rDash, thetaDash, phiDash, beta
     real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax
     beta = dipoleOffset
-    r = modulus(rVec)
-
-    
+    r = modulus(rVec)    
     theta = acos(rVec%z/r)
+
     phi = atan2(rVec%y, rVec%x)
     if (phi < 0.d0) phi = phi + twoPi
 
     rDash = r
     phiDash = atan((sin(phi)*sin(theta))/(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
-    thetaDash = asin(max(-1.d0,min(1.d0,sin(phi)*sin(theta)/sin(phiDash))))
+    if (phiDash /= 0.d0) then
+       thetaDash = asin(max(-1.d0,min(1.d0,sin(phi)*sin(theta)/sin(phiDash))))
+    else
+       thetaDash = theta
+    endif
 
     sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
-    
+
+    if (sin(thetaDash) == 0.d0) then
+       inFlowMahdavi = .false.
+       goto 666
+    endif
     thisrMax = rDash / sin(thetaDash)**2
 
     rMaxMin = ttauriRinner / sin2theta0dash
@@ -44,10 +51,12 @@ contains
     if ((rVec%z < 0.d0).and.(rVec%x > 0.d0)) inflowMahdavi = .false.
     if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdavi = .false.
     if (r < ttauriRstar) inflowMahdavi = .false.
+666 continue
   end function inFlowMahdavi
 
   type (VECTOR) function velocityMahdavi(point, grid)
-    use input_variables, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar
+    use input_variables, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
+         ttaurirstar
     type(GRIDTYPE) :: grid
     type(VECTOR) :: point, rvec, vp, magneticAxis, rVecDash
     real(double) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
@@ -56,6 +65,7 @@ contains
     rVec = point*1.d10
 
     velocityMahdavi = VECTOR(0.d0, 0.d0, 0.d0)
+    if (modulus(rVec) < ttaurirstar) goto 666
     if (.not.inFlowMahdavi(rVec)) goto 666
 
     beta = dipoleOffset
