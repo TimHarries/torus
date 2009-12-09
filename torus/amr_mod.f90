@@ -4534,7 +4534,7 @@ IF ( .NOT. gridConverged ) RETURN
      cellSize = thisOctal%subcellSize
      r0 = modulus(cellCentre)
      inflow=.false.
-     do i = 1, 100
+     do i = 1, 1000
         rVec = randomPositionInCell(thisOctal,subcell)
         if (inFLowMahdavi(1.d10*rVec)) then
            inFlow = .true.
@@ -4544,16 +4544,16 @@ IF ( .NOT. gridConverged ) RETURN
      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
 
      if (inFlow) then
-        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**3) split = .true.
+        if (cellSize/(ttauriRstar/1.d10) > 0.01d0*(r0/(TTaurirStar/1.d10))**3) split = .true.
 !        write(*,*) "split ",cellSize, r, cellSize/(ttauriRstar/1.d10),  0.1d0*(r/(TTaurirStar/1.d10)), thisOctal%ndepth, &
 !             ttaurirstar
-        if ((split).and.(r0 < (1.1d0*ttauriRstar/1.d10)).and.(thisOctal%dPhi*radtoDeg > 5.d0)) then
+        if ((split).and.((r0-cellsize/2.d0) < (1.05d0*ttauriRstar/1.d10)).and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
            splitinazimuth = .true.
         endif
      endif
 
      if (inflow) then
-     if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 10.)) then
+     if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
         split = .true.
         splitInAzimuth = .true.
      endif
@@ -16565,12 +16565,13 @@ end function readparameterfrom2dmap
 
        totalArea = totalArea + area
 
-       if (mDot < 1.d0) then
+       if (thisOctal%rho(subcell) < 1.d-20) then
           surface%element(i)%hot = .false.
        else
+!       write(*,*) i , (mdot/msol)*365.25d0*24.d0*3600.d0
           
           T = (flux/stefanBoltz)**0.25d0
-          
+!          write(*,*) "recovered mass flux ", thisOctal%rho(subcell) * v
           
           surface%element(i)%hot = .true.
           allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
@@ -18603,7 +18604,7 @@ end function readparameterfrom2dmap
     accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
     write(*,*) "Fractional area of accretion (%): ",100.d0 *  dble(j)/dble(nLines)
     write(*,*) "Using mdot of ",(mdot/msol)*(365.25d0*24d0*3600d0)
-    nLines = 10000
+    nLines = 100000
     aStar = accretingArea / dble(nLines)
     mDotFraction = mDot / dble(nLines)
     do iLine = 1, nLines
@@ -18644,6 +18645,7 @@ end function readparameterfrom2dmap
                    thisOctal%velocity(subcell) = velocityMahdavi(thisrVec/1.d10, grid)
                    thisV = modulus(thisOctal%velocity(subcell))*cSpeed
                    thisRho =  mdotFraction /(aStar * thisV)  * (ttauriRstar/thisR)**3 
+!                   if (i == 1) write(*,*) "mass flux is ",thisRho*thisv
                    thisOctal%rho(Subcell) = thisRho
                    thisOctal%temperature(subcell) = isothermTemp
                    if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
