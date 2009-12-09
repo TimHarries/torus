@@ -2100,7 +2100,7 @@ subroutine set_up_sources
            call normalizedSpectrum(source(1)%spectrum)
            call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile)
 !           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
-           call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
 
         endif
 

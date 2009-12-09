@@ -16544,7 +16544,7 @@ end function readparameterfrom2dmap
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
 
-    write(*,*) "calculating generic accretion surface"
+    write(*,*) "calculating generic accretion surface ",surface%nElements
     accretingArea = 0.d0
     totalArea = 0.d0
     totalmdot = 0.d0
