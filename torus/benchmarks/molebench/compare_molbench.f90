@@ -44,7 +44,6 @@ program compare_molbench
      if (status /= 0 ) then
         write(*,*) "Reached end of ", model_file, "before end of ", bench_file
         write(*,*) "TORUS: Test failed"
-        status = -1
         exit
      end if
 
@@ -60,7 +59,6 @@ program compare_molbench
   write(*,*) "Radius = ", model_Rarray(diffmaxloc(2))
   write(*,*) "Level ", diffmaxloc(1) - 1
 
-  if(status .ne. -1) then
      if ( any(diff(1:ncheck,:) > max_diff) .and. model_R .lt. 4e17) then 
        write(*,*) "Difference of more than ", max_diff, "found."
        write(*,*) "TORUS: Test failed"
@@ -70,7 +68,6 @@ program compare_molbench
        write(*,*) "TORUS: Test successful"
         status = 1
      endif
-  endif
   
   write(*,*) "Read ", nlines-1, "lines"
 
