@@ -37,8 +37,8 @@ module molecular_mod
    integer, parameter :: maxray = 409600
    integer, allocatable :: iseedpublic(:)
    real(double) :: r1(5) !! quasi random number generators
-   integer :: accstep = 4
-   integer :: accstepgrand = 4
+   integer :: accstep = 5
+   integer :: accstepgrand = 6
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
 
@@ -657,6 +657,7 @@ module molecular_mod
       logical :: juststarted = .true.
 
       logical :: ng
+      integer :: status
 
       position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
  ! blockhandout must be off for fixed ray case, otherwise setting the
@@ -698,6 +699,8 @@ module molecular_mod
         open(140,file="avgRMSChange.dat",status="replace",form="formatted")
         open(141,file="tau.dat",status="replace",form="formatted")
         open(142,file="criticaldensities.dat",status="replace",form="formatted")
+        open(999,file="tempcheck.dat",status="replace",form="formatted")
+        close(999)
         close(139)
         close(140)
         close(141)
@@ -1086,8 +1089,22 @@ module molecular_mod
            call tune(6, message)  ! stop a stopwatch
 
         endif
+
         call writeinfo("",FORINFO)  
         call writeinfo("",FORINFO)  
+
+        if(molebench) then
+           call compare_molbench
+           open(96, file="status.dat")
+           read(96,*) status
+           close(96)
+           
+           if(status .eq. 1) then 
+              call writeinfo("Convergence triggered early!",TRIVIAL)
+              gridConverged = .true.
+              gridConvergedTest = .true.
+           endif
+        endif
 
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
@@ -1479,7 +1496,7 @@ end subroutine molecularLoop
      real(double) :: jnu(:)
      real(double) :: nh2
      type(MOLECULETYPE) :: thisMolecule
-     real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1,1), collMatrix(maxlevel+1,maxlevel+1), cTot(maxlevel)
+     real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1,1), collMatrix(50,50), cTot(maxlevel) ! collmatrix fixed at 50 must be changed
      real(double) :: boltzFac
      integer :: i, j
      integer :: itrans, l, k, iPart
@@ -1510,10 +1527,12 @@ end subroutine molecularLoop
  ! Calculate contribution from collisions - loop over all collision partners and all molecular levels
 
      do iPart = 1, thisMolecule%nCollPart
-        do iTrans = 1, maxtrans !thisMolecule%nCollTrans(iPart)
+        do iTrans = 1, thisMolecule%nCollTrans(iPart) ! never maxtrans
 
            k = thisMolecule%iCollUpper(iPart, iTrans)
            l = thisMolecule%iCollLower(iPart, iTrans)
+
+           if(l .gt. maxlevel) cycle
 
            boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
            colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
@@ -3086,6 +3105,7 @@ end subroutine calculateOctalParams
      close(310)
      close(32)
      close(34)
+
    end subroutine dumpResults
 
    recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel, lte)
@@ -3640,14 +3660,14 @@ end subroutine plotdiscValues
 
     do i=3,1,-1
        if(i .lt. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * i," | ",&
-            real(convergenceCounter(i,1:min(14,minlevel)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+            real(convergenceCounter(i,1:min(14,minlevel-1)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
        if(i .eq. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * (i+2)," | ", &
-            real(convergenceCounter(i,1:min(14,minlevel)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+            real(convergenceCounter(i,1:min(14,minlevel-1)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
        call writeInfo(message,FORINFO)         
     enddo
   
     write(message,'(a,f6.4,a,14(f6.4,2x))') "Individual levels converged @ ",tolerance * 0.5," | ", &
-         real(convergenceCounter(4,1:min(14,minlevel)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+         real(convergenceCounter(4,1:min(14,minlevel-1)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
     call writeInfo(message,FORINFO)
     call writeinfo("",FORINFO)  
 
@@ -3859,6 +3879,106 @@ end subroutine calculateConvergenceData
    end subroutine process_for_kvis_external
 
  end subroutine make_h21cm_image
+
+subroutine compare_molbench
+
+  implicit none 
+
+  character(len=*), parameter :: model_file="results.dat"
+  character(len=*), parameter :: bench_file="moltest.dat"
+  character(len=*), parameter :: test_file="check.dat"
+  character(len=*), parameter :: test2_file="tempcheck.dat"
+  character(len=*), parameter :: status_file="status.dat"
+  character(len=*), parameter :: diff_file="diff.dat"
+
+! Maximum allowable fractional difference 
+  real :: max_diff,diffmax
+
+! Total number of J columns
+  integer, parameter :: ncols=8
+
+! No. of columns to check
+  integer, parameter :: ncheck=6
+
+  real :: model_R, model_J(ncols), model_Rarray(100)
+  real :: bench_R, bench_J(ncols)
+  real :: diff(ncols,200)
+
+  integer :: diffmaxloc(2)!, diffmaxr(1)
+  integer :: nlines, status
+
+  max_diff = 0.01 * sqrt(75.) ! sqrt(Nvoxels)
+  diff = -999.
+  diffmax = -1.
+
+  open (unit=60, file=bench_file, status='old')
+  open (unit=61, file=model_file, status='old')
+  open (unit=62, file=test2_file, position = "append")
+  open (unit=63, file=test_file, position = "append")
+  open (unit=64, file=status_file)
+  open (unit=65, file=diff_file)
+  nlines=0
+
+  do
+     nlines = nlines + 1
+
+     read(60, *, iostat=status) bench_R, bench_J(:)
+     if (status /= 0 ) then
+!        write(*,*) "Reached end of ", bench_file
+        exit
+     end if
+
+     read(61, *, iostat=status) model_R, model_J(:)
+     model_Rarray(nlines) = model_R
+     if (status /= 0 ) then
+!        write(*,*) "Reached end of ", model_file, "before end of ", bench_file
+!        write(*,*) "TORUS: Test failed"
+        status = -1
+        exit
+     end if
+
+     diff(:,nlines) = abs(model_J(:) - bench_J(:)) / bench_J(:) 
+     diffmax = maxval(diff(:,:))
+     diffmaxloc = maxloc(diff(:,:))
+
+     write(65,'(6(tr2,es12.5))') diff(1:ncheck,nlines)
+
+  end do
+
+!  write(*,*) "Maximum difference = ",diffmax
+!  write(*,*) "Radius = ", model_Rarray(diffmaxloc(2))
+!  write(*,*) "Level ", diffmaxloc(1) - 1
+
+  if(status .ne. -1) then
+     if ( any(diff(1:ncheck,:) > max_diff) .and. model_R .lt. 4e17) then 
+!       write(*,*) "Difference of more than ", max_diff, "found."
+!       write(*,*) "TORUS: Test failed"
+        status = 0
+     else
+!       write(*,*) "Difference of more than ", max_diff, "not found."
+!       write(*,*) "TORUS: Test successful"
+        status = 1
+     endif
+  endif
+  
+!  write(*,*) "Read ", nlines-1, "lines"
+
+  if(status .ne. 1) then
+     write(62,*) diffmax, model_Rarray(diffmaxloc(2)), diffmaxloc(1) - 1
+     write(64,'(i2)') status
+  else
+     write(63,*) diffmax, model_Rarray(diffmaxloc(2)), diffmaxloc(1) - 1
+     write(64,'(i2)') status
+  endif
+
+  close(60)
+  close(61)
+  close(62)
+  close(63)
+  close(64)
+  close(65)
+
+end subroutine compare_molbench
 
 !-----------------------------------------------------------------------------------------------------------
  recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
