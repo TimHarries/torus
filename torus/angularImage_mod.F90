@@ -343,7 +343,7 @@ module angularImage
       thisViewVec = viewVec
 
      call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
-          tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity, nobg=.true. )
+          tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
 
      if (isnan(i0)) then
         write(*,*) "Got nan", opticaldepth, rayposition
@@ -386,7 +386,7 @@ module angularImage
  end function AngPixelIntensity
 
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
-        rhomax, i0max, nCol, observerVelocity, nobg)
+        rhomax, i0max, nCol, observerVelocity)
 
      use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize
      use octal_mod, only: OCTAL
@@ -421,7 +421,6 @@ module angularImage
      real(double) :: dTau, etaline, dustjnu
      real(double), intent(out), optional :: tau
      real(double),save :: BnuBckGrnd
-     logical, optional, intent(in) :: nobg ! switch off background 
 
      real(double) :: phiProfVal
      real         :: sigma_thermal
@@ -436,9 +435,6 @@ module angularImage
      real(double) :: distToObs
 
      BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
-     if ( present(nobg) ) then
-        if (nobg) BnuBckGrnd = 0.0_db
-     end if
 
      if(inOctal(grid%octreeRoot, Position)) then
         disttogrid = 0.
