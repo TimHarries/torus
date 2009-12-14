@@ -2469,11 +2469,6 @@ subroutine post_initAMRgrid
   use amr_mod, only: find_average_temperature, findTotalMass, scaleDensityAMR
   real         :: scaleFac
   real(double) :: totalMass, totalmasstrap, maxrho, minrho
-  real(double) :: T_ave   ! average temperature of cluster
-  real(double) :: T_mass  ! mass weighted temperature
-
-
-
 
   if (geometry == "wr104") then
 
