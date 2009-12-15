@@ -2249,10 +2249,10 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 100
-    nr2 = 100
+    nr1 = 50
+    nr2 = 50
     nr = nr1 + nr2
-    nphi = 100
+    nphi = 50
     nray = 0
     i = 0
 
@@ -2318,7 +2318,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
-    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar
+    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar, dw_rmax
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2373,8 +2373,8 @@ contains
        else
 !          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
 !               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-          call addSpatialAxes(cube, -ttauriRouter*1.1d0/1.d10, ttauriRouter*1.1d0/1.d10, &
-               -ttauriRouter*1.1d0/1.d10, ttauriRouter*1.1d0/1.d10)
+          call addSpatialAxes(cube, -DW_Rmax*1.1d0, DW_Rmax*1.1d0, &
+               -DW_Rmax*1.1d0, DW_Rmax*1.1d0)
 !          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
 !       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
 !            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)

@@ -4288,13 +4288,14 @@ IF ( .NOT. gridConverged ) RETURN
          maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
+    use input_variables, only: DW_rMin
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
     USE cluster_class, only:   find_n_particle_in_subcell
     use sph_data_class, only:  sphVelocityPresent
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
-    use magnetic_mod, only : inflowMahdavi
+    use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
 
     IMPLICIT NONE
 
@@ -4552,12 +4553,29 @@ IF ( .NOT. gridConverged ) RETURN
         endif
      endif
 
+     
+
      if (inflow) then
-     if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
-        split = .true.
-        splitInAzimuth = .true.
+        if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+           split = .true.
+           splitInAzimuth = .true.
+        endif
      endif
+
+     inflow = .false.
+     do i = 1, 100
+        rVec = randomPositionInCell(thisOctal,subcell)
+        if (inFLowBlandfordPayne(rVec)) then
+           inFlow = .true.
+           exit
+        endif
+     enddo
+
+     if (inflow) then
+        if ((cellSize/DW_rMin) > 0.01) split = .true.
      endif
+
+
       phi = atan2(cellCentre%y,cellCentre%x)
       height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
       if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
@@ -13074,6 +13092,47 @@ end function readparameterfrom2dmap
     enddo
   end subroutine stripMahdavi
 
+  recursive subroutine assignDensitiesBlandfordPayne(grid, thisOctal)
+    use input_variables, only :  vturb
+    use magnetic_mod, only : inflowBlandfordPayne, velocityBlandfordPayne, rhoBlandfordPayne
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: cellCentre
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignDensitiesBlandfordPayne(grid, child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%inflow(subcell) = .false.
+          cellCentre = subcellCentre(thisOctal, subcell)
+          if (inflowBlandfordPayne(cellCentre)) then
+             thisOctal%inflow(subcell) = .true.
+             thisOctal%rho(subcell) = rhoBlandfordPayne(grid, cellCentre)
+             thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre, grid)
+          endif
+
+          if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+
+          IF ((thisoctal%threed).and.(subcell == 8)) &
+               CALL fillVelocityCorners(thisOctal,grid,velocityBlandfordPayne, .true.)
+          
+          IF ((thisoctal%twod).and.(subcell == 4)) &
+               CALL fillVelocityCorners(thisOctal,grid,VelocityBlandfordPayne, .false.)
+
+
+       endif
+    enddo
+  end subroutine assignDensitiesBlandfordPayne
+  
 
   recursive subroutine fillVelocityCornersMahdavi(thisOctal,grid)
     use magnetic_mod, only : velocityMahdavi
@@ -13097,7 +13156,6 @@ end function readparameterfrom2dmap
           thisOctal%temperature(subcell) = isothermTemp
           if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
 
-          if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
           IF ((thisoctal%threed).and.(subcell == 8)) &
                CALL fillVelocityCorners(thisOctal,grid,velocityMahdavi, .true.)
           
@@ -18581,8 +18639,8 @@ end function readparameterfrom2dmap
     height = hOverR * abs(cos(phiShift/2.d0))
   end function discHeightFunc
     
-  subroutine assignDensitiesMahdavi(grid, mdot)
-    use input_variables, only : ttauriRstar, dipoleOffset, isothermTemp, vturb
+  subroutine assignDensitiesMahdavi(grid)
+    use input_variables, only : ttauriRstar, dipoleOffset, isothermTemp, vturb, mdotParameter1
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
     type(GRIDTYPE) :: grid
     integer :: i, j
@@ -18594,6 +18652,9 @@ end function readparameterfrom2dmap
     real(double) :: accretingArea, vstar, astar, beta
     real(double) :: thetaDash, phiDash, rDash, cosThetaDash, mDotFraction
     real(double) :: thisrMax, sin2theta0dash, thisr,thisrho, thisPhi, thisTheta,ds, thisv
+
+
+    mdot = mDotparameter1*mSol/(365.25d0*24.d0*3600.d0)
     beta = dipoleOffset
     nLines = 1000000
     j = 0
@@ -18644,11 +18705,12 @@ end function readparameterfrom2dmap
 !                if (inflowMahdavi(1.d10*cellCentre)) then
                    thisOctal%velocity(subcell) = velocityMahdavi(thisrVec/1.d10, grid)
                    thisV = modulus(thisOctal%velocity(subcell))*cSpeed
-                   thisRho =  mdotFraction /(aStar * thisV)  * (ttauriRstar/thisR)**3 
-!                   if (i == 1) write(*,*) "mass flux is ",thisRho*thisv
-                   thisOctal%rho(Subcell) = thisRho
-                   thisOctal%temperature(subcell) = isothermTemp
-                   if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+                   if (thisV /= 0.d0) then
+                      thisRho =  mdotFraction /(aStar * thisV)  * (ttauriRstar/thisR)**3 
+                      thisOctal%rho(Subcell) = thisRho
+                      thisOctal%temperature(subcell) = isothermTemp
+                      if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+                   endif
 
                 endif
 !             endif

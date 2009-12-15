@@ -1433,7 +1433,6 @@ contains
 
 
     if (geometry == "ttauri" .or. geometry == "magstream") then
-
        if (geometry == "magstream") then
 
           call getString("magstreamfile", MagStreamFile, cLine, nLines, &
@@ -1493,6 +1492,7 @@ contains
        curtainsPhi1e =    curtainsPhi1e * (pi/180.0) 
        curtainsPhi2s =    curtainsPhi2s * (pi/180.0) 
        curtainsPhi2e =    curtainsPhi2e * (pi/180.0) 
+
 
        ! The following two are used for "constantcurtans" geometry  (RK)
        call getInteger("curtain_number", curtain_number, cLine, nLines, &
@@ -1556,6 +1556,12 @@ contains
             "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
        call getReal("isothermtemp", isoThermTemp, cLine, nLines, &
             "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
+
+             DW_rMin = ttauriRouter/1.d10
+             DW_rMax = 10.d0 * DW_rMin
+             DW_theta = 60.d0 * degtoRad
+             DW_mdot = 0.1d0 * mDotparameter1
+             
        if (useHartmannTemp .and. isoTherm) then 
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
           stop

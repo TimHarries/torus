@@ -401,6 +401,7 @@ module input_variables
   real(double) :: DW_d           ![10^10cm] displacement of souce point from the center of star
   real(double) :: DW_Rmin        ! the inner most radius of the disc [10^10cm]
   real(double) :: DW_Rmax        ! outer limit of the disc [10^10cm]
+  real(double) :: DW_theta
   !
   ! Temperature : T(R)= Tmax*(R/Rmin)^gamma where R is the distance from the center
   !               along the disc along the disc

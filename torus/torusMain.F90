@@ -585,7 +585,7 @@ program torus
 
 	open(33, file="phase.dat", status="unknown", form="formatted")
         do i = 1, 2
-           ang = twoPi * real(i-1)/2.
+           ang = pi + twoPi * real(i-1)/2.
            t = 75.d0*degtorad
 	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 	   viewVec = rotateY(viewVec,t)
@@ -1657,9 +1657,10 @@ end subroutine pre_initAMRGrid
 !                enddo
 !             enddo
              call zeroDensity(grid%octreeRoot)
-             call assignDensitiesMahdavi(grid, dble(mdot))
+             call assignDensitiesMahdavi(grid)
              call fillVelocityCornersMahdavi(grid%octreeRoot,grid)
              call stripMahdavi(grid%octreeRoot)
+             call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0

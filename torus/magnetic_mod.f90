@@ -110,8 +110,67 @@ contains
   end function velocityMahdavi
 
 
-          
+  logical function inflowBlandfordPayne(rVec)
+    use input_variables, only : DW_Rmin, DW_Rmax, DW_theta
+    type(VECTOR) :: rVec
+    real(double) :: r0, r, z, zMax, zMin
        
+    inFlowBlandfordPayne = .false.
+    r0 = sqrt(rVec%x**2 + rVec%y**2)
+    if (r0 < DW_Rmin) goto 666
+    r = modulus(rVec)
+    z = abs(rvec%z)
+    zMax = (r0-DW_Rmin) * tan(DW_theta)
+    Zmin = 0.d0
+    if (r0 > DW_Rmax) zMin = (r0-DW_Rmax)*tan(DW_theta)
+    if ((z >= zMin).and.(z <= zMax)) then
+       inFlowBlandfordPayne = .true.
+    endif
+666 continue
+  end function inFlowBlandfordPayne
     
+
+  type (VECTOR) function velocityBlandfordPayne(point, grid)
+    use input_variables, only : DW_theta, DW_rMin, ttauriMstar, ttauriRstar
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: point, rvec
+    real(double) :: phi, r0, r, Vesc, vel, x
+    velocityBlandfordPayne = VECTOR(0.d0, 0.d0, 0.d0)
+    if (.not.inflowBlandfordPayne(point)) goto 666
+
+    phi = atan2(point%y, point%x)
+    rVec = VECTOR(cos(DW_theta), 0.d0, sin(DW_theta))
+    rVec = rotateZ(rVec, phi)
+    r0 = sqrt(point%x**2 + point%y**2)
+    r = modulus(point)
+    if (point%z < 0.d0) rVec%z = -rVec%z
+
+    Vesc = sqrt(2.d0*bigG * ttauriMstar/ttauriRstar)
+
+    x = r0/DW_rMin
+    vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - x/r) ! Kwan Edwards & Fischer
+
+    velocityBlandfordPayne = (vel/cSpeed) * rVec 
+
+666 continue
+  end function velocityBlandfordPayne
+
+   function rhoBlandfordPayne(grid, rVec) result(rho)
+     use input_variables, only : DW_rmax, DW_rmin, DW_mdot
+     type(GRIDTYPE) :: grid
+     type(VECTOR) :: rVec
+     real(double) :: rho, kconst,vel,mdot
+
+     mdot = DW_mdot*mSol/(365.25d0*24.d0*3600.d0)
+     kconst = (mdot/pi)/((DW_rMax**2-DW_rmin**2)*1.d20)
+     rho = 1.d-25
+     if (inflowBlandFordPayne(rVec)) then
+        vel = modulus(velocityBlandfordPayne(rVec,grid))*cSpeed
+        rho = kconst / vel
+     endif
+
+
+666  continue
+   end function rhoBlandfordPayne
 
 end module magnetic_mod
