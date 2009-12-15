@@ -1092,6 +1092,7 @@ module molecular_mod
         call writeinfo("",FORINFO)  
 
         if(molebench) then
+           call torus_mpi_barrier
            call compare_molbench
            open(96, file="status.dat")
            read(96,*) status
@@ -1495,13 +1496,12 @@ end subroutine molecularLoop
      real(double) :: nh2
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1,1), collMatrix(50,50), cTot(maxlevel) ! collmatrix fixed at 50 must be changed
-     real(double) :: boltzFac
      integer :: i, j
      integer :: itrans, l, k, iPart
-     real(double) :: collEx, colldeEx
+     real(double) :: collEx, colldeEx,boltzFac
 
      character(len=80) :: message
-
+     
      matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero ! used to be 1d-10
      matrixB = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
 
@@ -1531,11 +1531,10 @@ end subroutine molecularLoop
            l = thisMolecule%iCollLower(iPart, iTrans)
 
            if(l .gt. maxlevel) cycle
-
+           
            boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
            colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
            collEx = colldeEx * boltzFac * thisMolecule%g(k) / thisMolecule%g(l)
-
            collMatrix(l, k) = collMatrix(l, k) + collEx
            collMatrix(k, l) = collMatrix(k, l) + colldeEx
 
@@ -3878,6 +3877,8 @@ subroutine compare_molbench
 
   implicit none 
 
+  use input_variables, only : tolerance
+
   character(len=*), parameter :: model_file="results.dat"
   character(len=*), parameter :: bench_file="moltest.dat"
   character(len=*), parameter :: test_file="check.dat"
@@ -3901,11 +3902,11 @@ subroutine compare_molbench
   integer :: diffmaxloc(2)!, diffmaxr(1)
   integer :: nlines, status
 
-  max_diff = 0.01 * sqrt(75.) ! sqrt(Nvoxels)
+  max_diff = tolerance * sqrt(275) ! sqrt(Nvoxels)
   diff = -999.
   diffmax = -1.
 
-  open (unit=60, file=bench_file, status='old')
+  open (unit=60, file=bench_file, status='unknown')
   open (unit=61, file=model_file, status='old')
   open (unit=62, file=test2_file, position = "append")
   open (unit=63, file=test_file, position = "append")
