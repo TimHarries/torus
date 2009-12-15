@@ -59,15 +59,15 @@ program compare_molbench
   write(*,*) "Radius = ", model_Rarray(diffmaxloc(2))
   write(*,*) "Level ", diffmaxloc(1) - 1
 
-     if ( any(diff(1:ncheck,:) > max_diff) .and. model_R .lt. 4e17) then 
-       write(*,*) "Difference of more than ", max_diff, "found."
-       write(*,*) "TORUS: Test failed"
-        status = 0
-     else
-       write(*,*) "Difference of more than ", max_diff, "not found."
-       write(*,*) "TORUS: Test successful"
-        status = 1
-     endif
+  if ( any(diff(1:ncheck,:) > max_diff)) then
+     write(*,*) "Difference of more than ", max_diff, "found."
+     write(*,*) "TORUS: Test failed"
+     status = 0
+  else
+     write(*,*) "Difference of more than ", max_diff, "not found."
+     write(*,*) "TORUS: Test successful"
+     status = 1
+  endif
   
   write(*,*) "Read ", nlines-1, "lines"
 
