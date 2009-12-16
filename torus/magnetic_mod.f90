@@ -148,7 +148,8 @@ contains
     Vesc = sqrt(2.d0*bigG * ttauriMstar/ttauriRstar)
 
     x = r0/DW_rMin
-    vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - x/r) ! Kwan Edwards & Fischer
+    
+    vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - r0/r) ! Kwan Edwards & Fischer
 
     velocityBlandfordPayne = (vel/cSpeed) * rVec 
 
@@ -162,7 +163,7 @@ contains
      real(double) :: rho, kconst,vel,mdot
 
      mdot = DW_mdot*mSol/(365.25d0*24.d0*3600.d0)
-     kconst = (mdot/pi)/((DW_rMax**2-DW_rmin**2)*1.d20)
+     kconst = 0.5d0*(mdot/pi)/((DW_rMax**2-DW_rmin**2)*1.d20)
      rho = 1.d-25
      if (inflowBlandFordPayne(rVec)) then
         vel = modulus(velocityBlandfordPayne(rVec,grid))*cSpeed

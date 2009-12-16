@@ -16598,6 +16598,7 @@ end function readparameterfrom2dmap
     integer :: subcell
     real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
     integer :: i
+    real(double) :: totalLum
     REAL(double), INTENT(IN) :: coreContFlux
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
@@ -16605,7 +16606,7 @@ end function readparameterfrom2dmap
     write(*,*) "calculating generic accretion surface ",surface%nElements
     accretingArea = 0.d0
     totalArea = 0.d0
-    totalmdot = 0.d0
+    totallum = 0.d0
 
     do i = 1, surface%nElements
        rVec = surface%element(i)%position + grid%halfSmallestSubcell * surface%element(i)%norm
@@ -16620,7 +16621,7 @@ end function readparameterfrom2dmap
        else
           flux = 0.d0
        endif
-
+       totalLum = totalLum + power
        totalArea = totalArea + area
 
        if (thisOctal%rho(subcell) < 1.d-20) then
@@ -16630,7 +16631,8 @@ end function readparameterfrom2dmap
           
           T = (flux/stefanBoltz)**0.25d0
 !          write(*,*) "recovered mass flux ", thisOctal%rho(subcell) * v
-          
+
+
           surface%element(i)%hot = .true.
           allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
           
@@ -16646,6 +16648,10 @@ end function readparameterfrom2dmap
     write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
          (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
     write(*,*) "sanity check on area: ",totalArea/(fourPi*ttauriRstar**2)
+
+    t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
+    write(*,*) "Approx accretion temperature is ",t, " kelvin"
+
     CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
     CALL sumSurface(surface)
 
