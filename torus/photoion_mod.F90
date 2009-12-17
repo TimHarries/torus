@@ -1596,7 +1596,7 @@ end subroutine photoIonizationloop
     call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
 
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
-         + dble(distance) * dble(kappaabsdust)
+         + dble(distance) * dble(kappaabsdust) * photonPacketWeight
 
 
   end subroutine updategrid

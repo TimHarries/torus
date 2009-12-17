@@ -2067,7 +2067,9 @@ contains
              !          write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
              !             i0,tau, jnu,alphanu,snu, nlower,nupper
 
-             i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+             if (thisOctal%inflow(subcell)) then
+                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+             endif
              tau = tau + dtau
           enddo
           rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10

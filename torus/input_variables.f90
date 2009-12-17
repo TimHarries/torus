@@ -406,6 +406,7 @@ module input_variables
   ! Temperature : T(R)= Tmax*(R/Rmin)^gamma where R is the distance from the center
   !               along the disc along the disc
   real(double) :: DW_Tmax        ! [K] Temperature at the inner edge of the disc
+  real(double) :: DW_Temperature
   real(double) :: DW_gamma       ! exponet in the temperature power low: 
   !
   ! mass loss rate per unit area (from the disc)

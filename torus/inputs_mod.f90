@@ -1561,6 +1561,7 @@ contains
              DW_rMax = 10.d0 * DW_rMin
              DW_theta = 60.d0 * degtoRad
              DW_mdot = 0.1d0 * mDotparameter1
+             DW_temperature = 2000.d0
              
        if (useHartmannTemp .and. isoTherm) then 
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"

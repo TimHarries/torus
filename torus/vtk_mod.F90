@@ -474,6 +474,15 @@ contains
                   write(lunit, *) real(thisOctal%ne(subcell))
 
 
+
+               case("inflow")
+                  if (thisOctal%inflow(subcell)) then
+                     write(lunit, *) 1.
+                  else
+                     write(lunit, *) 0.
+                  endif
+
+
                case("HI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
 
@@ -638,10 +647,11 @@ contains
        close(29)
     else
        if (.not.grid%splitOverMpi) then
-          nValueType = 3
+          nValueType = 4
           valueType(1) = "rho"
           valueType(2) = "velocity"
           valueType(3) = "temperature"
+          valueType(4) = "inflow"
        else
           nValueType = 4
           valueType(1) = "rho"

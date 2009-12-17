@@ -13093,7 +13093,7 @@ end function readparameterfrom2dmap
   end subroutine stripMahdavi
 
   recursive subroutine assignDensitiesBlandfordPayne(grid, thisOctal)
-    use input_variables, only :  vturb
+    use input_variables, only :  vturb, dw_temperature
     use magnetic_mod, only : inflowBlandfordPayne, velocityBlandfordPayne, rhoBlandfordPayne
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -13112,12 +13112,13 @@ end function readparameterfrom2dmap
              end if
           end do
        else
-          thisOctal%inflow(subcell) = .false.
+!          thisOctal%inflow(subcell) = .false.
           cellCentre = subcellCentre(thisOctal, subcell)
           if (inflowBlandfordPayne(cellCentre)) then
              thisOctal%inflow(subcell) = .true.
              thisOctal%rho(subcell) = rhoBlandfordPayne(grid, cellCentre)
              thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre, grid)
+             thisOctal%temperature(subcell) = DW_temperature
           endif
 
           if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
@@ -18690,7 +18691,7 @@ end function readparameterfrom2dmap
        sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
        thisrMax = rDash / sin(thetaDash)**2
 
-       nr = 1000
+       nr = 10000
        thisOctal => grid%octreeRoot
        rVec1 = rVec
        do i = 1, nr
@@ -18714,6 +18715,7 @@ end function readparameterfrom2dmap
                    if (thisV /= 0.d0) then
                       thisRho =  mdotFraction /(aStar * thisV)  * (ttauriRstar/thisR)**3 
                       thisOctal%rho(Subcell) = thisRho
+                      thisOctal%inflow(subcell) = .true.
                       thisOctal%temperature(subcell) = isothermTemp
                       if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
                    endif

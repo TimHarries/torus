@@ -153,6 +153,9 @@ contains
 
     velocityBlandfordPayne = (vel/cSpeed) * rVec 
 
+    velocityBlandfordPayne = rotateZ(velocityBlandfordPayne, -phi)
+
+
 666 continue
   end function velocityBlandfordPayne
 

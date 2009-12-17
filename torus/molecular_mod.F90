@@ -3875,9 +3875,10 @@ end subroutine calculateConvergenceData
 
 subroutine compare_molbench
 
+  use input_variables, only : tolerance
+
   implicit none 
 
-  use input_variables, only : tolerance
 
   character(len=*), parameter :: model_file="results.dat"
   character(len=*), parameter :: bench_file="moltest.dat"
@@ -3902,7 +3903,7 @@ subroutine compare_molbench
   integer :: diffmaxloc(2)!, diffmaxr(1)
   integer :: nlines, status
 
-  max_diff = tolerance * sqrt(275) ! sqrt(Nvoxels)
+  max_diff = tolerance * sqrt(275.d0) ! sqrt(Nvoxels)
   diff = -999.
   diffmax = -1.
 
