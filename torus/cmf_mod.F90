@@ -2320,7 +2320,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
-    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar, dw_rmax
+    use input_variables, only : cylindrical, ttauriRstar, dw_rmax !, ttauriRouter
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
