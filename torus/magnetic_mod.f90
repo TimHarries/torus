@@ -173,8 +173,6 @@ contains
         rho = kconst / vel
      endif
 
-
-666  continue
    end function rhoBlandfordPayne
 
 end module magnetic_mod
