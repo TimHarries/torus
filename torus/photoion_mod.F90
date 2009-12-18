@@ -295,6 +295,8 @@ contains
              call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
              photonPacketWeight = 1.d0             
           end if
+          
+                    
 
           escaped = .false.
 

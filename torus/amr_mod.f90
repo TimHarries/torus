@@ -4355,7 +4355,7 @@ IF ( .NOT. gridConverged ) RETURN
       if ((abs(cellCentre%z) < 2.e6) .and. &
            (cellCentre%x  < 1.e6).and.(cellSize > 1.e4)) split = .true.
       if ((density(cellCentre, grid) > 1.d29).and.(thisOctal%nDepth < 9)) split = .true.
-      if ((cellCentre%x < 2.e7).and.(thisOctal%nDepth < 7)) split = .true.
+      if ((cellCentre%x < 7.e6).and.(thisOctal%nDepth < 7)) split = .true.
          
 
 

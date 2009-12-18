@@ -309,23 +309,23 @@ contains
     real(double), intent(out) :: photonPacketWeight
     type(VECTOR), intent(out) :: rVec
 
-    percentPhoCav = 0.90
+    percentPhoCav = 0.9d0
 
     call random_number(r)
     if (r < percentPhoCav) then   !% of photons in cavities 
        call random_number(r)
        if(r < 0.5) then
           call random_number(r)
-          w = cos(openingAngle) + (r * (1- cos(openingAngle)))
+          w = cos(openingAngle) + (r * (1.0- cos(openingAngle)))
        else
           call random_number(r)
-          w = -cos(openingAngle) + (r*(-1 + cos(openingAngle)))
+          w = -cos(openingAngle) + (r*(-1.0 + cos(openingAngle)))
        end if
-       photonPacketWeight = (1 - cos(openingAngle)) / percentPhoCav          
+       photonPacketWeight = (1.0 - cos(openingAngle)) / percentPhoCav          
     else  !rest towards disc
        call random_number(r)
-       w = -cos(openingAngle) + (r * 2 * cos(openingAngle))
-       photonPacketWeight = cos(openingAngle) / (1 - percentPhoCav)
+       w = -cos(openingAngle) + (r * 2.0 * cos(openingAngle))
+       photonPacketWeight = cos(openingAngle) / (1.0 - percentPhoCav)
    end if
 
     t = sqrt(1.0-w*w)
