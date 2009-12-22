@@ -7,6 +7,7 @@ module dust_mod
   use utils_mod, only: locate
   use octal_mod, only: OCTAL, subcellCentre
   use amr_mod, only: amrGridValues, returnKappa
+  use mieDistCrossSection_mod, only: mieDistCrossSection
 
   implicit none
   public
@@ -450,7 +451,7 @@ contains
     if ( total_abundance <= 0.0 ) then
        if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
        if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-       if (writeoutput) write(*,*) "  ==> Exiting the prograim ... "
+       if (writeoutput) write(*,*) "  ==> Exiting the program ... "
        stop 
     end if
 

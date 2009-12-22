@@ -55,6 +55,7 @@
 real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)  
 
   use constants_mod
+  use mieDistCrossSection_mod, only: PowerInt
 
   implicit none
   real, intent(in) :: aMin, aMax, a0, qDist, pDist
@@ -125,8 +126,6 @@ end function getMeanMass2
 
 real function getMeanRadius(aMin, aMax, a0, qDist, pDist)
 
-  use constants_mod
-
   implicit none
   real :: aMin, aMax, a0, qDist, pDist
   real :: tot, a1, a2, a, fac
@@ -158,7 +157,7 @@ end function getMeanRadius
 ! This is similar to getMeanRaius, but it uses more accurate integration method.
 real function getMeanRadius2(aMin, aMax, a0, qDist, pDist)  
 
-  use constants_mod
+  use mieDistCrossSection_mod, only: PowerInt
 
   implicit none
   real, intent(in) :: aMin, aMax, a0, qDist, pDist

@@ -1,3 +1,12 @@
+MODULE  mieDistCrossSection_mod
+
+  IMPLICIT NONE
+
+  PUBLIC :: mieDistCrossSection, PowerInt
+  PRIVATE
+
+  CONTAINS
+
       subroutine mieDistCrossSection(aMin, aMax, a0, &
        qDist, pDist, lambda, cmr, cmi,               &
        kappaExt, kappaSca, kappaAbs, gscadist)
@@ -13,9 +22,7 @@
       real qsca(100), qext(100), qback(100), gsca(100)
       integer ic, ip, i
       real micronsToCm
-      complex cm,ci,f(1000),g(1000)
-      common /cfcom2/ f,g,cnrm
-      real cnrm(1000)
+      complex cm,ci
       real normFac, a
       real gscadist
       real nsd(100), aDist(100)
@@ -137,6 +144,8 @@
       integral = real(sum)
 
       RETURN                                
-      END                           
+    END SUBROUTINE PowerInt
 ! ***********************************************************************       
-        
+
+  END MODULE mieDistCrossSection_mod
+
