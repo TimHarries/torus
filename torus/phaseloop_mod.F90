@@ -1449,8 +1449,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
-!$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat) &
-!$OMP PRIVATE(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect )
+!$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
+!$OMP PRIVATE(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect, finaltau )
 
 
         nFromEnv = 0
