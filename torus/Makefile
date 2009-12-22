@@ -242,7 +242,7 @@ ifeq ($(SYSTEM), ompi)
     F95COMP  = mpif90
     F95FLAG  = -Wno=155
     F77FLAG  = -Wno=151
-    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wno=140,141,112 -Werror
+    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
