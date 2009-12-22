@@ -65,7 +65,7 @@ contains
     real(oct) :: totalMass
     integer :: nFreq
     integer :: i, j
-    real(oct) :: freq(2000), dnu(2000), probDistJnu(2001)
+    real(oct) :: freq(nLambda), dnu(nLambda), probDistJnu(nLambda+1)
     !    real(oct) :: probDistPlanck(nFreq)
     real(double) :: kappaScadb, kappaAbsdb
     integer(double) :: nDiffusion
