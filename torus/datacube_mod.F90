@@ -894,6 +894,7 @@ subroutine freeDataCube(thiscube)
     type(DATACUBE) :: thisCube
     character(len=*) :: filename
 
+#ifdef USECFITSIO
     integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
     integer :: group,fpixel,nelements
     real, allocatable :: array(:,:)
@@ -969,6 +970,7 @@ subroutine freeDataCube(thiscube)
        call printFitserror(status)
     end if
     deallocate(array)
+#endif
 
   end subroutine writeCollapsedDataCube
 
