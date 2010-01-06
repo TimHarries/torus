@@ -1776,7 +1776,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : ttauriRouter, ttauriRinner
+    use input_variables, only : ttauriRinner
     use amr_mod, only: distanceToGridFromOutside
 
     type(VECTOR) :: position, direction, pvec, photoDirection
@@ -2143,7 +2143,7 @@ contains
     integer, parameter :: maxRay  = 1000000
     type(VECTOR),allocatable :: rayPosition(:)
     real(double),allocatable :: da(:), dOmega(:)
-    type(VECTOR) :: viewVec, oldPosition
+    type(VECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
     integer :: nLambda
@@ -2357,7 +2357,7 @@ contains
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
-    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar, dw_rmax
+    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar !, dw_rmax
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2391,7 +2391,7 @@ contains
     integer       ::   tag, tag2, tag3
     integer       :: iThread, status(MPI_STATUS_SIZE)
 
-    real(double), allocatable :: tempArray(:), tempArray2(:)
+    real(double), allocatable :: tempArray(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
