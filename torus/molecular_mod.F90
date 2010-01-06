@@ -1263,8 +1263,8 @@ end subroutine molecularLoop
      i0 = 0.d0
      tau = 0.d0
 
-     iUpper(:) = thisMolecule%iTransUpper(:)
-     iLower(:) = thisMolecule%iTransLower(:)
+     iUpper(:) = thisMolecule%iTransUpper(1:maxtrans)
+     iLower(:) = thisMolecule%iTransLower(1:maxtrans)
 
      do while(inOctal(grid%octreeRoot, currentPosition))
 
@@ -1295,10 +1295,10 @@ end subroutine molecularLoop
         endif
 
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-        balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(:) - &
-                     thisOctal%molecularLevel(iupper(:),subcell) * thisMolecule%einsteinBul(:))
+        balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(1:maxtrans) &
+                     - thisOctal%molecularLevel(iupper(:),subcell) * thisMolecule%einsteinBul(1:maxtrans))
 
-        spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(:) * thisOctal%molecularLevel(iupper(:),subcell)
+        spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
 
         snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
 
@@ -1377,7 +1377,7 @@ end subroutine molecularLoop
      
 118  continue
      
-     i0(:) = i0(:) + BnuBckGrnd(:) * attenuation(:)
+     i0(:) = i0(:) + BnuBckGrnd(1:maxtrans) * attenuation(:)
 
    end subroutine getRay
 
@@ -2378,8 +2378,8 @@ endif
      tau = 0.d0
      thisOctal => grid%octreeRoot
 
-     iUpper(:)  = thisMolecule%iTransUpper(:)
-     iLower(:)  = thisMolecule%iTransLower(:)
+     iUpper(:)  = thisMolecule%iTransUpper(1:maxtrans)
+     iLower(:)  = thisMolecule%iTransLower(1:maxtrans)
      
      do while(inOctal(grid%octreeRoot, currentPosition))
         
@@ -2389,8 +2389,8 @@ endif
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
         nLower(:)  = thisOctal%molecularLevel(iLower(:),subcell) * nMol
         nUpper(:)  = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
-        balance(:) = (nLower(:) * thisMolecule%einsteinBlu(:) - &
-                     nUpper(:) * thisMolecule%einsteinBul(:))
+        balance(:) = (nLower(:) * thisMolecule%einsteinBlu(1:maxtrans) - &
+                     nUpper(:) * thisMolecule%einsteinBul(1:maxtrans))
         alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
 
         thisPosition = currentPosition
