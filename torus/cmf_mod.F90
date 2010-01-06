@@ -2382,9 +2382,9 @@ contains
     integer :: nMonte, imonte
     integer :: iv1, iv2, nx, ny
 
-#ifdef MPI
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
+#ifdef MPI
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     integer       ::   n
@@ -2403,7 +2403,9 @@ contains
     tag = 77
     tag2 = 88
     tag3 = 99
-
+#else
+! Set rank to zero for non-MPI cases
+    my_rank = 0
 #endif
 
     nMonte = 1
