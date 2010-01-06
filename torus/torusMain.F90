@@ -59,6 +59,7 @@ program torus
   use ion_mod, only: addions
   use angularImage, only: make_angular_image, map_dI_to_particles
   use timedep_mod, only : runTimeDependentRT, timeDependentRTtest
+  use magnetic_mod, only : accretingAreaMahdavi
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -592,7 +593,7 @@ program torus
 	   viewVec = rotateZ(viewVec, ang)
            call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                 viewVec, 140.d0*pctocm/1.d10, &
-                source, nsource,i, totalFlux)!, forceLambda = 5500.d0)
+                source, nsource,i, totalFlux, occultingDisc=.true.)!, forceLambda = 5500.d0)
            vMag = returnMagnitude(totalFlux, "V")
 !           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
 !                viewVec, 140.d0*pctocm/1.d10, &
@@ -1390,9 +1391,10 @@ end subroutine pre_initAMRGrid
     use luc_cir3d_class, only: deallocate_zeus_data
     use lucy_mod, only: allocateMemoryForLucy, putTau
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
+    use magnetic_mod, only : accretingAreaMahdavi
 
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
-    real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
+    real(double) :: mass_scale, mass_accretion_old, mass_accretion_new, astar
     real         :: sigmaExt0
     logical      :: gridConverged  ! true when adaptive grid structure has 
                                    !   been finalised
@@ -1657,9 +1659,9 @@ end subroutine pre_initAMRGrid
 !                enddo
 !             enddo
              call zeroDensity(grid%octreeRoot)
-             call assignDensitiesMahdavi(grid)
-             call fillVelocityCornersMahdavi(grid%octreeRoot,grid)
-             call stripMahdavi(grid%octreeRoot)
+             astar = accretingAreaMahdavi(grid)
+             if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
+             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
              call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow

@@ -1775,11 +1775,13 @@ contains
 
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
-       nFreq, freqArray, forceFreq) result (i0)
+       nFreq, freqArray, forceFreq, occultingDisc) result (i0)
+    use input_variables, only : ttauriRouter, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside
 
     type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
+    logical, optional :: occultingDisc
     integer :: nSource
     real(double) :: freqArray(:)
     real(double), optional :: forceFreq
@@ -1797,7 +1799,7 @@ contains
     !    integer :: endSubcell
     integer :: subcell
     real(double) :: costheta
-    type(VECTOR) :: currentPosition, thisPosition, thisVel
+    type(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
     type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
     real(double) :: alphanu, snu, jnu
     integer :: iLower , iUpper
@@ -1812,7 +1814,7 @@ contains
     real(double) :: dv1, dv2
     real(double) :: a, bul, blu
     integer :: nHatom,nHeIAtom, nHeIIAtom
-    real(double) :: distToSource
+    real(double) :: distToSource,disttoDisc
     integer :: sourcenumber
     integer :: iElement
     logical :: endLoopAtPhotosphere
@@ -1843,6 +1845,22 @@ contains
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
+    currentposition = position
+    distToDisc = 1.d30
+    if ((currentposition.dot.direction) < 0.d0) then
+       distToDisc = abs(currentPosition%z/direction%z)
+       oldPosition = currentPosition + distToDisc * direction
+       if (sqrt(oldPosition%x**2 + oldPosition%y**2)*1.d10 < ttauriRinner) then
+          distToDisc = 1.d30
+       endif
+    endif
+    if (occultingDisc) then
+       if (distToDisc < distToGrid) then
+          i0 = tiny(i0)
+          goto 666
+       endif
+    endif
+
     if (distToGrid > 1.e29) then
        !       write(*,*) "ray does not intersect grid",position,direction
        i0 = tiny(i0)
@@ -1853,6 +1871,8 @@ contains
     iLower = thisAtom(iAtom)%iLower(iTrans)
 
     currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
+ 
+ 
 
     if (.not.inOctal(grid%octreeRoot, currentPosition)) then
        write(*,*) "initial position not in grid"
@@ -1896,7 +1916,6 @@ contains
 
        do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
           icount = icount + 1 
-
           call findSubcellLocal(currentPosition, thisOctal, subcell)
 
           !       rVec = subcellCentre(thisOctal,subcell)
@@ -2073,8 +2092,19 @@ contains
              tau = tau + dtau
           enddo
           rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
+          oldPosition = currentPosition
           currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
           totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+
+          if (PRESENT(occultingDisc)) then
+             if (occultingDisc) then
+                if ((oldPosition%z >= 0.d0).and.(currentPosition%z < 0.d0)) then
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2)*1.d10 > ttauriRinner) then
+                      goto 666
+                   endif
+                endif
+             endif
+          endif
        enddo
 
 
@@ -2091,7 +2121,7 @@ contains
 
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
-       totalFlux, forceLambda)
+       totalFlux, forceLambda, occultingDisc)
     use input_variables, only : vturb
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube, writeCollapseddatacube
@@ -2099,7 +2129,7 @@ contains
     use parallel_mod, only : sync_random_seed
     include 'mpif.h'
 #endif
-
+    logical, optional :: occultingDisc
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     integer :: nSource
@@ -2113,7 +2143,7 @@ contains
     integer, parameter :: maxRay  = 1000000
     type(VECTOR),allocatable :: rayPosition(:)
     real(double),allocatable :: da(:), dOmega(:)
-    type(VECTOR) :: viewVec
+    type(VECTOR) :: viewVec, oldPosition
     real(double) :: deltaV
     integer :: iv, iray
     integer :: nLambda
@@ -2164,12 +2194,13 @@ contains
          write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
     if (.true.) then
-       call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
+       call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray, &
+            occultingDisc)
        
 #ifdef MPI
        write(*,*) "Process ",my_rank, " create data cube done"
 #endif
-       if (Writeoutput) then
+       if (myrankiszero) then
           write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
           call writeDataCube(cube,plotfile)
           write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
@@ -2209,8 +2240,13 @@ contains
        write(*,*) iv
        deltaV  = vArray(iv)
        do iRay = 1, nRay
-          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-               nFreqArray, freqArray)!, forceFreq=broadBandFreq) !minus v 
+          if (PRESENT(occultingDisc)) then
+             i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+                  nFreqArray, freqArray, occultingDisc=.true.)
+          else
+             i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+                  nFreqArray, freqArray)
+          endif
           spec(iv) = spec(iv) + i0 * domega(iRay) 
        enddo
     enddo
@@ -2319,13 +2355,14 @@ contains
 
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
-       nFreqArray, freqArray)
-    use input_variables, only : cylindrical, ttauriRstar, dw_rmax !, ttauriRouter
+       nFreqArray, freqArray, occultingDisc)
+    use mpi_global_mod
+    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar, dw_rmax
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
 #endif
-
+    logical, optional :: occultingDisc
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     type(MODELATOM) :: thisAtom(:)
@@ -2339,9 +2376,11 @@ contains
     real(double) :: deltaV
     integer :: iTrans
     integer :: ix, iy, iv
-    real(double) :: r, xval, yval
+    real(double) :: r, xval, yval, vstart,vend
+    real(double), allocatable :: vArray(:)
+    integer :: nv, i, j
     integer :: nMonte, imonte
-    integer :: iv1, iv2
+    integer :: iv1, iv2, nx, ny
 
 #ifdef MPI
     ! For MPI implementations
@@ -2349,69 +2388,104 @@ contains
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     integer       ::   n
+    integer       ::   tag, tag2, tag3
+    integer       :: iThread, status(MPI_STATUS_SIZE)
+
     real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
+    status = 0
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
+
     ! Find the total # of precessor being used in this run
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    tag = 77
+    tag2 = 88
+    tag3 = 99
+
 #endif
 
     nMonte = 1
 
-    call initCube(cube, 500, 500, 100)
-!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
-!         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
+    vStart = -500.d0
+    vEnd = 500.d0
+    nv = 100
+    nx = 1000
+    ny = 1000
 
-!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
-!         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
+
+    iv1 = 1
+    iv2 = nv
+
+
+#ifdef MPI
+    iv1 = int(real(my_rank) * (real(nv) / real(np))) + 1
+    iv2 = int(real(my_rank+1) * (real(nv) / real(np)))
+    if (my_rank == (np-1)) iv2 = nv
+#endif
+
+    if (my_rank == 0) then
+       call initCube(cube, nx, ny, nv)
+    else
+       call initCube(cube, nx, ny, iv2-iv1+1)
+    endif
+    allocate(vArray(1:nv))
+    do i = 1, nv
+       vArray(i) = vStart + (vEnd-vStart)*dble(i-1)/dble(nv-1)
+    enddo
+
+
+    !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
+    !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
+
+    !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
+    !         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
 
     if (grid%octreeRoot%threed) then
        if (.not.cylindrical) then
           call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
                -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
        else
-!          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
-!               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-          call addSpatialAxes(cube, -DW_Rmax*1.1d0, DW_Rmax*1.1d0, &
-               -DW_Rmax*1.1d0, DW_Rmax*1.1d0)
-!          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
-!       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
-!            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
+          !          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
+          !               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
+!          call addSpatialAxes(cube, -DW_Rmax*1.1d0, DW_Rmax*1.1d0, &
+!               -DW_Rmax*1.1d0, DW_Rmax*1.1d0)
+
+
+          call addSpatialAxes(cube, -(ttauriRouter/1.d10)*1.1d0, (ttauriRouter/1.d10)*1.1d0, &
+               -(ttauriRouter/1.d10)*1.1d0, (ttauriRouter/1.d10)*1.1d0)
+
+          !          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
+          !       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
+          !            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
 
        endif
     endif
     if (grid%octreeRoot%twod) then
-!       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
-!            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
+       !       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
+       !            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
 
        call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
             -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
     endif
-!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
-!         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
-!    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
-!    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
+    !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
+    !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
+    !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
+    !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
-    call addvelocityAxis(cube, -500.d0, 500.d0)
+    if (my_rank == 0) then
+       call addVelocityAxis(cube, vStart, vEnd)
+    else
+       call addvelocityAxis(cube, vArray(iv1), vArray(iv2))
+    endif
 
     xProj =   viewVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
     call normalize(xProj)
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
-    iv1 = 1
-    iv2 = cube%nv
- 
 
-#ifdef MPI
-    iv1 = int(real(my_rank) * (real(cube%nv) / real(np))) + 1
-    iv2 = int(real(my_rank+1) * (real(cube%nv) / real(np)))
-    if (my_rank == (np-1)) iv2 = cube%nv
-#endif
-
-!    iv1 = 25
+    !    iv1 = 25
 
     do iv = iv1, iv2
        write(*,*) iv,iv1,iv2
@@ -2426,38 +2500,64 @@ contains
                 else
                    xVal = cube%xAxis(ix)
                    yVal = cube%yAxis(iy)
-             endif
-             rayPos =  (xval * xProj) + (yval * yProj)
-             raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*3.d0) * Viewvec)
-             deltaV = cube%vAxis(iv)*1.d5/cSpeed
+                endif
+                rayPos =  (xval * xProj) + (yval * yProj)
+                raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
+                deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
 
 
-                cube%intensity(ix,iy,iv) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
-                     iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
-!                write(*,*) ix,iy,iv,cube%intensity(ix,iy,iv)
+                if (PRESENT(occultingDisc)) then
+                   cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
+                        iTrans, -deltaV, source, nSource, nFreqArray, freqArray, occultingDisc=.true.)
+                else
+                   cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
+                        iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
+                endif
              enddo
           enddo
        enddo
-       cube%intensity(:,:,iv) = cube%intensity(:,:,iv) / dble(nMonte)
+       cube%intensity(:,:,iv-iv1+1) = cube%intensity(:,:,iv-iv1+1) / dble(nMonte)
     enddo
 #ifdef MPI
-     write(*,*) "Process ",my_rank, " done. awaiting reduce"
+    write(*,*) "Process ",my_rank, " done. awaiting reduce"
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-    do iv = 1, cube%nv
-      do ix = 1, cube%nx
-        n = (cube%ny)
-        allocate(tempArray(1:n), tempArray2(1:n))
-        tempArray = reshape(cube%intensity(ix,:,iv), (/  n /))
-         call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
-             MPI_SUM,MPI_COMM_WORLD,ierr)
-         cube%intensity(ix,:,iv) = reshape(tempArray2, (/ cube%ny/))
-         deallocate(tempArray, tempArray2)
-       enddo
+
+
+    n = (cube%nx * cube%ny)
+
+    do iThread = 1, nThreadsGlobal-1
+       if (my_rank == iThread) then
+          call MPI_SEND(iv2-iv1+1, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+          do iv = 1, nv                
+             if ((iv >= iv1).and.(iv <= iv2)) then
+                allocate(tempArray(1:n))
+                tempArray = reshape(cube%intensity(:,:,iv-iv1+1), (/  n /))
+                call MPI_SEND(iv, 1, MPI_INTEGER, 0, tag2, MPI_COMM_WORLD,  ierr)
+                call MPI_SEND(tempArray, n, MPI_DOUBLE_PRECISION, 0, tag3, MPI_COMM_WORLD,  ierr)
+                deallocate(tempArray)
+             endif
+          enddo
+       endif
+       if (my_rank == 0) then
+          call MPI_RECV(j, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          do i = 1, j
+             call MPI_RECV(iv, 1, MPI_INTEGER, iThread, tag2, MPI_COMM_WORLD, status, ierr)
+             allocate(tempArray(1:n))
+             tempArray = reshape(cube%intensity(:,:,iv-iv1+1), (/  n /))
+             call MPI_RECV(tempArray, n, MPI_DOUBLE_PRECISION, iThread, tag3, MPI_COMM_WORLD, status, ierr)
+             cube%intensity(:, :, iv) = reshape(tempArray, (/ cube%nx, cube%ny /))
+             deallocate(tempArray)
+          enddo
+       endif
+       call torus_mpi_barrier
     enddo
+
+
+
     write(*,*) "Process ",my_rank, " reduce done."
 #endif
 
- cube%flux = cube%intensity
+    cube%flux = cube%intensity
 
   end subroutine createDataCube
 

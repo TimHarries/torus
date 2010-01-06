@@ -17,6 +17,7 @@ module constants_mod
   real(double), parameter :: twoPi = 2.d0*pi
   real(double), parameter :: fourPi = 4.d0*pi
   real(double), parameter :: piBy4 = pi/4.d0
+  real(double), parameter :: piBy2 = pi/2.d0
   real(double), parameter :: oneOnFourPi = 1.d0/(4.d0*pi)
   real(double), parameter :: oneOnTwoPi = 1.d0/(2.d0*pi)
   real(double), parameter :: degToRad = pi/180.d0

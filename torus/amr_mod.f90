@@ -2719,7 +2719,7 @@ CONTAINS
     type(vector) :: newvec
     TYPE(vector) :: point_local, vvec, rHat
 
-    real(double) :: weights(27)
+    real(double) :: weights(27), vr, vz
     logical, optional :: linearinterp
     logical :: linear
 
@@ -3078,6 +3078,20 @@ CONTAINS
                PRINT *, 'Invalid subcell in amrGridVelocity'
                end select
 
+            endif
+            if (resultOctal%dphi > piby2) then
+               amrGridVelocity = resultOctal%velocity(subcell)
+               vr = sqrt(amrGridVelocity%x**2 + amrGridVelocity%y**2)
+               if ((point%x*amrgridvelocity%x + point%y*amrgridvelocity%y) > 0.d0) then
+                  vr = vr
+               else
+                  vr = -vr
+               endif
+               vz = amrGridvelocity%z
+               amrGridVelocity = VECTOR(vr, 0.d0, vz)
+               phi = atan2(point%y, point%x)
+               newVec = rotateZ(amrGridVelocity, -phi)
+               amrGridVelocity = newVec
             endif
 
          endif
@@ -13133,6 +13147,54 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesBlandfordPayne
+
+  recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot)
+    use input_variables, only :  vturb, isothermTemp, ttauriRstar
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    real(double) :: astar, mdot, thisR, thisRho, thisV
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: cellCentre
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignDensitiesMahdavi(grid, child, astar, mdot)
+                exit
+             end if
+          end do
+       else
+          cellCentre = subcellCentre(thisOctal, subcell)
+          thisR = modulus(cellCentre)*1.d10
+          if (inflowMahdavi(1.d10*cellCentre)) then
+             
+             thisOctal%velocity(subcell) = velocityMahdavi(cellCentre, grid)
+             thisV = modulus(thisOctal%velocity(subcell))*cSpeed
+             if (thisV /= 0.d0) then
+                thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3 
+                thisOctal%inflow(subcell) = .true.
+                thisOctal%rho(Subcell) = thisRho
+                thisOctal%temperature(subcell) = isothermTemp
+
+                if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+             
+                IF ((thisoctal%threed).and.(subcell == 8)) &
+                     CALL fillVelocityCorners(thisOctal,grid,velocityMahdavi, .true.)
+          
+                IF ((thisoctal%twod).and.(subcell == 4)) &
+                     CALL fillVelocityCorners(thisOctal,grid,VelocityMahdavi, .false.)
+
+             endif
+
+          endif
+       endif
+    enddo
+  end subroutine assignDensitiesMahdavi
   
 
   recursive subroutine fillVelocityCornersMahdavi(thisOctal,grid)
@@ -16608,6 +16670,7 @@ end function readparameterfrom2dmap
     accretingArea = 0.d0
     totalArea = 0.d0
     totallum = 0.d0
+    totalmdot = 0.d0
 
     do i = 1, surface%nElements
        rVec = surface%element(i)%position + grid%halfSmallestSubcell * surface%element(i)%norm
@@ -18646,87 +18709,89 @@ end function readparameterfrom2dmap
     height = hOverR * abs(cos(phiShift/2.d0))
   end function discHeightFunc
     
-  subroutine assignDensitiesMahdavi(grid)
-    use input_variables, only : ttauriRstar, dipoleOffset, isothermTemp, vturb, mdotParameter1
-    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
-    type(GRIDTYPE) :: grid
-    integer :: i, j
-    type(VECTOR) :: rVec, rVecDash, thisRvec, rVec1, cellcentre
-    real(double) :: mdot
-    integer :: nLines, iline
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell, nr
-    real(double) :: accretingArea, vstar, astar, beta
-    real(double) :: thetaDash, phiDash, rDash, cosThetaDash, mDotFraction
-    real(double) :: thisrMax, sin2theta0dash, thisr,thisrho, thisPhi, thisTheta,ds, thisv
-
-
-    mdot = mDotparameter1*mSol/(365.25d0*24.d0*3600.d0)
-    beta = dipoleOffset
-    nLines = 1000000
-    j = 0
-    do i = 1, nLines
-       rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
-       if (inFlowMahdavi(rVec)) j = j + 1
-    enddo
-    accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
-    write(*,*) "Fractional area of accretion (%): ",100.d0 *  dble(j)/dble(nLines)
-    write(*,*) "Using mdot of ",(mdot/msol)*(365.25d0*24d0*3600d0)
-    nLines = 100000
-    aStar = accretingArea / dble(nLines)
-    mDotFraction = mDot / dble(nLines)
-    do iLine = 1, nLines
-       rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
-       do while(.not.inFlowMahdavi(rVec))
-          rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
-       enddo
-       call findSubcellTD(rVec/1.d10, grid%octreeRoot, thisOctal, subcell)
-       thisOctal%velocity(subcell) = velocityMahdavi(rVec/1.d10, grid)
-       vStar = modulus(thisOctal%velocity(subcell)*cspeed)
-       rVecDash = rotateY(rVec, -beta)
-       rDash = modulus(rVecDash)
-       cosThetaDash = rVecDash%z / rDash
-       thetaDash = acos(rVecDash%z/rDash)
-       phiDash = atan2(rVecDash%y, rVecDash%x)
-       sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
-       thisrMax = rDash / sin(thetaDash)**2
-
-       nr = 10000
-       thisOctal => grid%octreeRoot
-       rVec1 = rVec
-       do i = 1, nr
-          thisr = rDash + (thisRmax-rDash) * dble(i-1)/dble(nr-1)
-          thisphi = phiDash
-          thisTheta = asin(sqrt(thisr/thisRmax))
-          if (cosThetaDash  < 0.d0) thisTheta = pi - thisTheta
-          thisRVec = VECTOR(thisR*cos(thisPhi)*sin(thisTheta),thisR*sin(thisPhi)*sin(thisTheta), &
-               thisR * cos(thisTheta))
-          thisRvec = rotateY(thisRvec, beta)
-          if (inflowMahdavi(thisRVec)) then
-             if (inOctal(grid%octreeRoot, thisRvec/1.d10)) then
-                
-                ds = modulus(thisRvec - rVec1)
-                rVec1 = thisRvec
-                call findSubcellLocal(thisRvec/1.d10, thisOctal, subcell)
-                cellCentre = subcellCentre(thisOctal, subcell)
-!                if (inflowMahdavi(1.d10*cellCentre)) then
-                   thisOctal%velocity(subcell) = velocityMahdavi(thisrVec/1.d10, grid)
-                   thisV = modulus(thisOctal%velocity(subcell))*cSpeed
-                   if (thisV /= 0.d0) then
-                      thisRho =  mdotFraction /(aStar * thisV)  * (ttauriRstar/thisR)**3 
-                      thisOctal%rho(Subcell) = thisRho
-                      thisOctal%inflow(subcell) = .true.
-                      thisOctal%temperature(subcell) = isothermTemp
-                      if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
-                   endif
-
-                endif
-!             endif
-          endif
-       enddo
-    end do
-!    call convertToDensity(grid%octreeRoot)
-  end subroutine assignDensitiesMahdavi
+!  subroutine assignDensitiesMahdavi(grid)
+!    use input_variables, only : ttauriRstar, dipoleOffset, isothermTemp, vturb, mdotParameter1
+!    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+!    type(GRIDTYPE) :: grid
+!    integer :: i, j
+!    type(VECTOR) :: rVec, rVecDash, thisRvec, rVec1, cellcentre
+!    real(double) :: mdot
+!    integer :: nLines, iline
+!    type(OCTAL), pointer :: thisOctal
+!    integer :: subcell, nr
+!    real(double) :: accretingArea, vstar, astar, beta
+!    real(double) :: thetaDash, phiDash, rDash, cosThetaDash, mDotFraction
+!    real(double) :: thisrMax, sin2theta0dash, thisr,thisrho, thisPhi, thisTheta,ds, thisv
+!
+!
+!    mdot = mDotparameter1*mSol/(365.25d0*24.d0*3600.d0)
+!    beta = dipoleOffset
+!    nLines = 1000000
+!    j = 0
+!    do i = 1, nLines
+!       rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
+!       if (inFlowMahdavi(rVec)) j = j + 1
+!    enddo
+!    accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
+!    if (Writeoutput) then
+!       write(*,*) "Fractional area of accretion (%): ",100.d0 *  dble(j)/dble(nLines)
+!       write(*,*) "Using mdot of ",(mdot/msol)*(365.25d0*24d0*3600d0)
+!    endif
+!    nLines = 100000
+!    aStar = accretingArea / dble(nLines)
+!    mDotFraction = mDot / dble(nLines)
+!    do iLine = 1, nLines
+!       rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
+!       do while(.not.inFlowMahdavi(rVec))
+!          rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
+!       enddo
+!       call findSubcellTD(rVec/1.d10, grid%octreeRoot, thisOctal, subcell)
+!       thisOctal%velocity(subcell) = velocityMahdavi(rVec/1.d10, grid)
+!       vStar = modulus(thisOctal%velocity(subcell)*cspeed)
+!       rVecDash = rotateY(rVec, -beta)
+!       rDash = modulus(rVecDash)
+!       cosThetaDash = rVecDash%z / rDash
+!       thetaDash = acos(rVecDash%z/rDash)
+!       phiDash = atan2(rVecDash%y, rVecDash%x)
+!       sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
+!       thisrMax = rDash / sin(thetaDash)**2
+!
+!       nr = 10000
+!       thisOctal => grid%octreeRoot
+!       rVec1 = rVec
+!       do i = 1, nr
+!          thisr = rDash + (thisRmax-rDash) * dble(i-1)/dble(nr-1)
+!          thisphi = phiDash
+!          thisTheta = asin(sqrt(thisr/thisRmax))
+!          if (cosThetaDash  < 0.d0) thisTheta = pi - thisTheta
+!          thisRVec = VECTOR(thisR*cos(thisPhi)*sin(thisTheta),thisR*sin(thisPhi)*sin(thisTheta), &
+!               thisR * cos(thisTheta))
+!          thisRvec = rotateY(thisRvec, beta)
+!          if (inflowMahdavi(thisRVec)) then
+!             if (inOctal(grid%octreeRoot, thisRvec/1.d10)) then
+!                
+!                ds = modulus(thisRvec - rVec1)
+!                rVec1 = thisRvec
+!                call findSubcellLocal(thisRvec/1.d10, thisOctal, subcell)
+!                cellCentre = subcellCentre(thisOctal, subcell)
+!!                if (inflowMahdavi(1.d10*cellCentre)) then
+!                   thisOctal%velocity(subcell) = velocityMahdavi(thisrVec/1.d10, grid)
+!                   thisV = modulus(thisOctal%velocity(subcell))*cSpeed
+!                   if (thisV /= 0.d0) then
+!                      thisRho =  mdotFraction /(aStar * thisV)  * (ttauriRstar/thisR)**3 
+!                      thisOctal%rho(Subcell) = thisRho
+!                      thisOctal%inflow(subcell) = .true.
+!                      thisOctal%temperature(subcell) = isothermTemp
+!                      if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+!                   endif
+!
+!                endif
+!!             endif
+!          endif
+!       enddo
+!    end do
+!!    call convertToDensity(grid%octreeRoot)
+!  end subroutine assignDensitiesMahdavi
 
   subroutine createTTauriSurfaceMahdavi(surface, grid, lineFreq, &
                                  coreContFlux,fAccretion)

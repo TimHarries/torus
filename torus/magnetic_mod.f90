@@ -159,6 +159,22 @@ contains
 666 continue
   end function velocityBlandfordPayne
 
+  function accretingAreaMahdavi(grid) result (accretingarea)
+    use input_variables, only : ttauriRstar
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec
+    real(double) :: accretingArea
+    integer :: i ,j
+    integer :: nLines
+    nLines = 100000
+    j = 0
+    do i = 1, nLines
+       rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
+       if (inFlowMahdavi(rVec)) j = j + 1
+    enddo
+    accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
+  end function accretingAreaMahdavi
+
    function rhoBlandfordPayne(grid, rVec) result(rho)
      use input_variables, only : DW_rmax, DW_rmin, DW_mdot
      type(GRIDTYPE) :: grid

@@ -401,6 +401,7 @@ contains
 
   subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
        ngrain, abundance, grainname, thisDust)
+    use mieDistCrossSection_mod, only: mieDistCrossSection
 
     implicit none
     type(GRIDTYPE) :: grid

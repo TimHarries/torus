@@ -655,7 +655,7 @@ contains
     call writeinfo(message,TRIVIAL)
     write(message,'(a,f7.3,a)') "Linear pixel resolution  : ", dx*1e10/rSol, " Rsol"
     call writeinfo(message,TRIVIAL)
-    write(message,'(a,f10.4,a)') "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
+    write(message,*) "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
     call writeinfo(message,TRIVIAL)
 
     do i = 1, cube%nx
