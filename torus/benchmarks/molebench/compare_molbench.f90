@@ -21,7 +21,7 @@ program compare_molbench
   integer :: diffmaxloc(2)
   integer :: nlines, status
 
-  max_diff = 0.01 * sqrt(89.) ! sqrt(Nvoxels)
+  max_diff = 0.01 * sqrt(246.) ! sqrt(Nvoxels)
   diff = -999.
   diffmax = -1.
 
