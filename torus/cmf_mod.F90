@@ -1776,9 +1776,9 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : ttauriRinner
+    use input_variables, only : ttauriRinner, lineOff
     use amr_mod, only: distanceToGridFromOutside
-
+    logical ::     justPhotosphere
     type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
     logical, optional :: occultingDisc
@@ -1821,8 +1821,10 @@ contains
     real(double) :: nstar(10,50), rhoCol
     real(double) :: bfOpac, bfEmiss, x1, x2, fac
     integer :: j, k
-    logical :: lineoff, passThroughResonance, velocityIncreasing
+    logical :: passThroughResonance, velocityIncreasing
 
+    i0 = tiny(i0)
+    justPhotosphere = .true.
 
     hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
     a = 0.d0; blu = 0.d0; bul = 0.d0
@@ -1886,6 +1888,7 @@ contains
     totDist = 0.d0
     call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
 
+    if ((.not.hitsource).and.justPhotosphere) goto 666
     if (hitSource) then
        pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
        call normalize(pVec)
@@ -1906,7 +1909,6 @@ contains
     icount = 0
     rhoCol = 0.d0
     endLoopAtPhotosphere = .false.
-    lineOff = .false.
 
     !    if (hitSource) endLoopAtphotosphere = .true.
 
@@ -2107,7 +2109,6 @@ contains
           endif
        enddo
 
-
     if (endLoopAtPhotosphere) then
 
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
@@ -2122,7 +2123,7 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda, occultingDisc)
-    use input_variables, only : vturb
+    use input_variables, only : vturb, lineoff
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube, writeCollapseddatacube
 #ifdef MPI
@@ -2150,11 +2151,12 @@ contains
     real(double) :: i0
     real(double), allocatable :: vArray(:), spec(:)
     integer :: iv1, iv2, i
-    character(len=30) :: plotfile
+    character(len=30) :: plotfile,message
     type(DATACUBE) :: cube
     integer :: nFreqArray
     integer, parameter :: maxFreq = 2000
     real(double) :: freqArray(maxFreq), broadBandFreq, transitionFreq
+    logical :: doCube, doSpec
 
 #ifdef MPI
     ! For MPI implementations
@@ -2179,21 +2181,32 @@ contains
     call setMicroturb(grid%octreeRoot, dble(vTurb))
     call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline"/))
 
+    nlambda = 100
+
+    doCube = .false.
+    doSpec = .true.
 
     broadBandFreq = 1.d15
     if (PRESENT(forceLambda)) then
        broadBandFreq = cSpeed/(forceLambda * angstromToCm)
+       write(message,'(a,f7.1)') "Calculating flux at ",forceLambda
+       call writeInfo(message)
+       lineoff = .true.
+       nLambda = 1
+       doCube = .false.
     endif
+
+    if (lineoff) call writeWarning("Line transfer switched off")
 
     cube%label = " "
     freqArray = 0.d0; nFreqArray = 0
     call createContFreqArray(nFreqArray, freqArray, nAtom, thisAtom, nsource, source, maxFreq)
 
 
-    if (myRankIsZero) &
+    if (myRankIsZero.and.(.not.PRESENT(forcelambda))) &
          write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
-    if (.true.) then
+    if (doCube) then
        call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray, &
             occultingDisc)
        
@@ -2209,19 +2222,16 @@ contains
        call torus_mpi_barrier
        call freeDataCube(cube)
     endif
-
+    if (.not.doSpec) goto 666
 #ifdef MPI
   call sync_random_seed()
 #endif
-
   allocate(da(1:maxray), domega(1:maxRay),  rayPosition(1:maxray))
     da = 0.d0; dOmega = 0.d0
     nray = 0; rayPosition = VECTOR(0.d0, 0.d0, 0.d0)
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
-!    nLambda = 1
-    nlambda = 100
     iv1 = 1
     iv2 = nlambda
  
@@ -2233,16 +2243,21 @@ contains
 
     allocate(spec(1:nLambda), vArray(1:nLambda))
     spec = 0.d0
-    do iv = 1, nLambda
-       vArray(iv) = 500.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
-    enddo
+    if (PRESENT(forceLambda)) then
+       varray(1) = 0.d0
+    else
+       do iv = 1, nLambda
+          vArray(iv) = 500.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+       enddo
+    endif
+    
     do iv = iv1, iv2
        write(*,*) iv
        deltaV  = vArray(iv)
        do iRay = 1, nRay
           if (PRESENT(occultingDisc)) then
              i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-                  nFreqArray, freqArray, occultingDisc=.true.)
+                  nFreqArray, freqArray, occultingDisc=.true., forceFreq=broadBandFreq)
           else
              i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
                   nFreqArray, freqArray)
@@ -2271,6 +2286,7 @@ contains
     totalFlux = toPerAngstrom(spec(1), broadBandFreq)
     deallocate(vArray, spec)
     deallocate(da, domega, rayPosition)
+666 continue
     call init_random_seed()
   end subroutine calculateAtomSpectrum
 
@@ -2287,10 +2303,10 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 50
+    nr1 = 200
     nr2 = 50
     nr = nr1 + nr2
-    nphi = 50
+    nphi = 400
     nray = 0
     i = 0
 
@@ -2357,7 +2373,7 @@ contains
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
-    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar !, dw_rmax
+    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2378,7 +2394,7 @@ contains
     integer :: ix, iy, iv
     real(double) :: r, xval, yval, vstart,vend
     real(double), allocatable :: vArray(:)
-    integer :: nv, i, j
+    integer :: nv, i
     integer :: nMonte, imonte
     integer :: iv1, iv2, nx, ny
 
@@ -2412,9 +2428,10 @@ contains
 
     vStart = -500.d0
     vEnd = 500.d0
-    nv = 100
+    nv = 1
     nx = 1000
     ny = 1000
+
 
 
     iv1 = 1
@@ -2427,7 +2444,7 @@ contains
     if (my_rank == (np-1)) iv2 = nv
 #endif
 
-    if (my_rank == 0) then
+    if (myRankGlobal == 0) then
        call initCube(cube, nx, ny, nv)
     else
        call initCube(cube, nx, ny, iv2-iv1+1)
@@ -2476,7 +2493,7 @@ contains
     !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
     !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
-    if (my_rank == 0) then
+    if (myRankGlobal == 0) then
        call addVelocityAxis(cube, vStart, vEnd)
     else
        call addvelocityAxis(cube, vArray(iv1), vArray(iv2))
@@ -2487,11 +2504,11 @@ contains
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
 
-    !    iv1 = 25
 
     do iv = iv1, iv2
        write(*,*) iv,iv1,iv2
        do ix = 1, cube%nx
+          write(*,*) "ix ",ix
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
                 if (nMonte > 1) then
@@ -2506,7 +2523,6 @@ contains
                 rayPos =  (xval * xProj) + (yval * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
                 deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
-
 
                 if (PRESENT(occultingDisc)) then
                    cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &

@@ -16673,7 +16673,7 @@ end function readparameterfrom2dmap
     totalmdot = 0.d0
 
     do i = 1, surface%nElements
-       rVec = surface%element(i)%position + grid%halfSmallestSubcell * surface%element(i)%norm
+       rVec = surface%element(i)%position + 2.d0*grid%halfSmallestSubcell * surface%element(i)%norm
        CALL findSubcellTD(rVec,grid%octreeRoot,thisOctal,subcell)
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)

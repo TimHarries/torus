@@ -1931,8 +1931,8 @@ contains
     call getLogical("thinline", thinLine, cLine, nLines, &
          "Optically thin line: ","(a,1l,a)",.false., ok, .false.)
 
-    call getLogical("emissoff", lineOff, cLine, nLines, &
-         "Line emission switched off: ","(a,1l,a)",.false., ok, .false.)
+    call getLogical("lineoff", lineOff, cLine, nLines, &
+         "Line switched off: ","(a,1l,a)",.false., ok, .false.)
 
     call getLogical("staroff", starOff, cLine, nLines, &
          "Star emission switched off: ","(a,1l,a)",.false., ok, .false.)

@@ -192,7 +192,7 @@ program torus
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
-  real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, vMag
+  real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, vMag, bMag
   type(VECTOR) :: viewVec, outVec
 
 
@@ -585,22 +585,23 @@ program torus
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
 	open(33, file="phase.dat", status="unknown", form="formatted")
-        do i = 1, 2
-           ang = pi + twoPi * real(i-1)/2.
+	nphi = 20
+        do i = 1, nphi
+           ang = pi + twoPi * real(i-1)/real(nphi)
            t = 75.d0*degtorad
 	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 	   viewVec = rotateY(viewVec,t)
 	   viewVec = rotateZ(viewVec, ang)
            call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                 viewVec, 140.d0*pctocm/1.d10, &
-                source, nsource,i, totalFlux, occultingDisc=.true.)!, forceLambda = 5500.d0)
+                source, nsource,i, totalFlux, occultingDisc=.true., forceLambda = 5500.d0)
            vMag = returnMagnitude(totalFlux, "V")
-!           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-!                viewVec, 140.d0*pctocm/1.d10, &
-!                source, nsource,i,totalFlux,forceLambda=4400.d0)
-!           bMag = returnMagnitude(totalFlux, "B")
-!           write(33,*) real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
-!           write(*,*)  real(i-1)/20., totalFlux, bMag, vMag, bMag-vMag
+           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+                viewVec, 140.d0*pctocm/1.d10, &
+                source, nsource,i,totalFlux,occultingDisc=.true.,forceLambda=4400.d0)
+           bMag = returnMagnitude(totalFlux, "B")
+           write(33,*) real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
+           write(*,*)  real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
         enddo
         close(33)
         goto 666
@@ -2460,8 +2461,8 @@ subroutine set_up_sources
   if (nSource > 0) then
      call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
      call writeInfo("Sources set up.",TRIVIAL)
+     call writeVtkFile(nSource, source, "sources.vtk")
   endif
-
 
 end subroutine set_up_sources
 

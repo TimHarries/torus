@@ -382,7 +382,9 @@ contains
         call ftpkys(unit,'CUNIT2', thisCube%xUnit, "y axis unit", status)
 
         call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
-        call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
+        if (SIZE(thisCube%vAxis)  > 1) then
+           call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
+        endif
         call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
         call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
 

@@ -35,6 +35,8 @@ module surface_mod
      type(VECTOR) :: position
      real, dimension(:), pointer :: hotFlux => null()
      real :: temperature
+     real :: dTheta
+     real :: dphi
      real :: prob
      logical :: hot = .false. 
   end type ELEMENTTYPE
@@ -159,7 +161,7 @@ contains
           dTheta = pi / real(nTheta)
           dPhi = twoPi / real(nPhi)
           area = radius * dTheta * radius * sin(theta) * dPhi
-          call addElement(surface, radius, rVec, area)
+          call addElement(surface, radius, rVec, dtheta, dphi, area, teff)
           surface%angleArray(i,j) = n
        enddo
     enddo
@@ -217,15 +219,20 @@ contains
     
   end subroutine emptySurface
     
-  subroutine addElement(surface, radius, rVec, area)
+  subroutine addElement(surface, radius, rVec, dtheta, dphi, area, teff)
     real(double),intent(in) :: radius, area
     type(SURFACETYPE),intent(inout) :: surface
     type(VECTOR),intent(in) :: rVec
+    real :: teff
+    real(double) :: dTheta, dPhi
 
     surface%nElements = surface%nElements + 1
     surface%element(surface%nElements)%norm = rVec
     surface%element(surface%nElements)%position = radius * rVec
     surface%element(surface%nElements)%area = area
+    surface%element(surface%nElements)%dTheta = dTheta
+    surface%element(surface%nElements)%dPhi = dphi
+    surface%element(surface%nElements)%temperature = teff
   end subroutine addElement
 
   subroutine testSurface(surface)

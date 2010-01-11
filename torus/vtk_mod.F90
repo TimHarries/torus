@@ -16,6 +16,11 @@ module vtk_mod
 
   implicit none
 
+  interface writeVtkFile
+     module procedure writeVtkFileAMR
+     module procedure writeVtkFileSource
+  end interface
+
   public :: writeVtkfile
 
   private :: writePoints, writeIndices, writeValue
@@ -601,7 +606,103 @@ contains
     end subroutine recursiveWriteValue
   end subroutine writeValue
 
-  subroutine writeVtkFile(grid, vtkFilename, valueTypeFilename, valueTypeString)
+  subroutine writeVTKfileSource(nSource, source, vtkFilename)
+    use source_mod
+    use mpi_global_mod
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    character(len=*) :: vtkFilename
+    integer, parameter :: lunit = 37
+    integer :: nPoints, nElements, iSource
+    integer :: i, iElement
+    type(VECTOR) :: cVec, aVec, v1, v2, v3, v4, zAxis
+    real(double) :: dphi, dtheta
+    integer :: nCount
+
+    if (myrankGlobal /=0 ) goto 666
+    zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+
+    open(lunit,file=vtkFilename, form="formatted", status="unknown")
+    write(lunit,'(a)') "# vtk DataFile Version 2.0"
+    write(lunit,'(a,a)') "TORUS AMR data"
+    write(lunit,'(a)') "ASCII"
+    write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
+
+    nPoints = 0 
+    do iSource = 1 , nSource
+       nPoints = source(iSource)%surface%nElements
+    enddo
+    nElements = nPoints
+    nPoints = nPoints * 4
+    write(lunit,'(a,i10,a)') "POINTS ",nPoints, " float"
+
+    do iSource = 1, nSource
+       do i = 1, source(iSource)%surface%nElements
+          cVec = source(iSource)%surface%element(i)%position
+          dphi = source(iSource)%surface%element(i)%dphi
+          dtheta = source(iSource)%surface%element(i)%dtheta
+          aVec = cVec.cross.zAxis
+          call normalize(aVec)
+
+          v1 = arbitraryRotate(cVec, -dtheta/2.d0, aVec)
+          v1 = rotateZ(v1, dphi/2.d0)
+
+          v2 = arbitraryRotate(cVec, -dtheta/2.d0, aVec)
+          v2 = rotateZ(v2, -dphi/2.d0)
+
+          v3 = arbitraryRotate(cVec, dtheta/2.d0, aVec)
+          v3 = rotateZ(v3, dphi/2.d0)
+
+          v4 = arbitraryRotate(cVec, dtheta/2.d0, aVec)
+          v4 = rotateZ(v4, -dphi/2.d0)
+
+
+          write(lunit,*) v1%x, v1%y, v1%z
+          write(lunit,*) v2%x, v2%y, v2%z
+          write(lunit,*) v3%x, v3%y, v3%z
+          write(lunit,*) v4%x, v4%y, v4%z
+       enddo
+    enddo
+
+    write(lunit, '(a, i10, i10)') "CELLS ",nElements, nPoints+nElements
+    ncount = 0
+    do iSource = 1, nSource
+       do i = 1, source(iSource)%surface%nElements
+          write(lunit, '(5i10)') 4, nCount,&
+                    nCount + 1, &
+                    nCount + 2, &
+                    nCount + 3
+               nCount = nCount + 4
+       enddo
+    enddo
+    write(lunit, '(a, i10)') "CELL_TYPES ",nElements
+    do i = 1, nElements
+       write(lunit, '(a)') "8"
+    enddo
+    write(lunit, '(a,  i10)') "CELL_DATA ",nElements
+
+    write(lunit,'(a,a,a)') "SCALARS ","temperature"," float"
+    write(lunit, '(a)') "LOOKUP_TABLE default"
+
+    do iSource = 1, nSource
+       do i = 1, source(iSource)%surface%nElements
+          write(lunit,*) source(isource)%surface%element(i)%temperature
+       enddo
+    enddo
+
+    write(lunit,'(a,a,a)') "SCALARS ","rho"," float"
+    write(lunit, '(a)') "LOOKUP_TABLE default"
+
+    do iSource = 1, nSource
+       do i = 1, source(iSource)%surface%nElements
+          write(lunit,*) 1.
+       enddo
+    enddo
+    close(lunit)
+666 continue
+  end subroutine writeVTKfileSource
+
+  subroutine writeVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString)
     use input_variables, only : cylindrical
 #ifdef MPI
     include 'mpif.h'
@@ -695,8 +796,10 @@ contains
 #endif
 
 
+
     nCells = nVoxels
     nPoints = nCells * nPointOffset
+
     writeHeader = .true.
 #ifdef MPI
     if (myRankGlobal /= 1 .and. grid%splitOverMpi) then
@@ -774,7 +877,7 @@ contains
 666 continue
 #endif
 
-  end subroutine writeVtkFile
+  end subroutine writeVtkFileAMR
 
 
 
