@@ -57,8 +57,9 @@ contains
   type (VECTOR) function velocityMahdavi(point, grid)
     use input_variables, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: point, rvec, vp, magneticAxis, rVecDash
+    type(GRIDTYPE), intent(in) :: grid
+    type(VECTOR), intent(in) :: point
+    type(VECTOR) :: rvec, vp, magneticAxis, rVecDash
     real(double) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
     real(double) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
 
@@ -132,8 +133,9 @@ contains
 
   type (VECTOR) function velocityBlandfordPayne(point, grid)
     use input_variables, only : DW_theta, DW_rMin, ttauriMstar, ttauriRstar
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: point, rvec
+    type(GRIDTYPE), intent(in) :: grid
+    type(VECTOR), intent(in) :: point
+    type(VECTOR) :: rvec
     real(double) :: phi, r0, r, Vesc, vel, x
     velocityBlandfordPayne = VECTOR(0.d0, 0.d0, 0.d0)
     if (.not.inflowBlandfordPayne(point)) goto 666
