@@ -323,7 +323,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   if (mie) nOuterLoop = nLambda
 
   allocate(errorArray(nOuterLoop,1:nLambda))
-  allocate(varianceArray(nOuterLoop))
+  allocate(varianceArray(1:nLambda))
   allocate(statArray(1:nLambda))
   allocate(sourceSpectrum(1:nLambda))
   allocate(sourceSpectrum2(1:nLambda))
@@ -927,7 +927,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            ! chanceHotRing = fAccretion/totCoreContinuumEmission ! no longer used
         endif
 
-        if (geometry == "luc_cir3d" .or. geometry == "cmfgen" .or. geometry == "romanova") then
+        if (geometry == "luc_cir3d".or. geometry == "romanova") then
            write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
            fAccretion = fAccretion * (nuStart-nuEnd)
            write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
@@ -990,21 +990,21 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            endif
         endif
 
+        if (writeoutput) then
+           write(*,*) "Line photon weight: ", weightLinePhoton
+           write(*,*) "Continuum photon weight: ", weightContPhoton
+           
+           write(*,*) " "
+           write(*,*) "Line photon prob: ", probLinePhoton
+           write(*,*) "Continuum photon prob: ", probContPhoton
+        endif
 
-        write(*,*) "Line photon weight: ", weightLinePhoton
-        write(*,*) "Continuum photon weight: ", weightContPhoton
+           energyPerPhoton =  (totLineEmission + totContinuumEmission) / dble(nPhotons)
 
-        write(*,*) " "
-        write(*,*) "Line photon prob: ", probLinePhoton
-        write(*,*) "Continuum photon prob: ", probContPhoton
-
-
-        energyPerPhoton =  (totLineEmission + totContinuumEmission) / dble(nPhotons)
-
-        write(*,*) "Energy per photon: ", energyPerPhoton
-
-
-        write(*,*) "chance line",chanceline
+        if (writeoutput) then
+           write(*,*) "Energy per photon: ", energyPerPhoton
+           write(*,*) "chance line",chanceline
+        endif
 
 
         ! compute the probability distributions
@@ -1514,6 +1514,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       outVec, photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
+!                 write(*,*) "r, weight ", modulus(thisPhoton%position)/rcore,thisPhoton%weight, weightContPhoton
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
 !                 endif

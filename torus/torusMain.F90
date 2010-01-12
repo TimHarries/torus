@@ -584,24 +584,27 @@ program torus
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
-	open(33, file="phase.dat", status="unknown", form="formatted")
-	nphi = 20
-        do i = 1, nphi
-           ang = pi + twoPi * real(i-1)/real(nphi)
-           t = 75.d0*degtorad
-	   viewVec = VECTOR(0.d0, 0.d0, -1.d0)
-	   viewVec = rotateY(viewVec,t)
-	   viewVec = rotateZ(viewVec, ang)
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                viewVec, 140.d0*pctocm/1.d10, &
-                source, nsource,i, totalFlux, occultingDisc=.true., forceLambda = 5500.d0)
-           vMag = returnMagnitude(totalFlux, "V")
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                viewVec, 140.d0*pctocm/1.d10, &
-                source, nsource,i,totalFlux,occultingDisc=.true.,forceLambda=4400.d0)
-           bMag = returnMagnitude(totalFlux, "B")
-           write(33,*) real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
-           write(*,*)  real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
+        if (writeoutput) &
+           open(33, file="phase.dat", status="unknown", form="formatted")
+           nphi = 20
+           do i = 1, nphi
+              ang = pi + twoPi * real(i-1)/real(nphi)
+              t = 75.d0*degtorad
+              viewVec = VECTOR(0.d0, 0.d0, -1.d0)
+              viewVec = rotateY(viewVec,t)
+              viewVec = rotateZ(viewVec, ang)
+              call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+                   viewVec, 140.d0*pctocm/1.d10, &
+                   source, nsource,i, totalFlux, occultingDisc=.true., forceLambda = 5500.d0)
+              vMag = returnMagnitude(totalFlux, "V")
+              call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+                   viewVec, 140.d0*pctocm/1.d10, &
+                   source, nsource,i,totalFlux,occultingDisc=.true.,forceLambda=4400.d0)
+              bMag = returnMagnitude(totalFlux, "B")
+              if (Writeoutput) then
+                 write(33,'(5e12.5)') real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
+                 write(*,*)  real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
+              endif
         enddo
         close(33)
         goto 666
@@ -2687,6 +2690,7 @@ subroutine set_emission_bias
         case("ttauri")
            call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
         case("cmfgen")
+           if(writeoutput) write(*,*) "Setting bias for cmfgen model..."
            call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
         case("shakara","ppdisk","planetgap")
            if (forcedWavelength) then

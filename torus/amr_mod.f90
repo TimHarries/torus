@@ -16666,7 +16666,7 @@ end function readparameterfrom2dmap
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
 
-    write(*,*) "calculating generic accretion surface ",surface%nElements
+    if (Writeoutput) write(*,*) "calculating generic accretion surface ",surface%nElements
     accretingArea = 0.d0
     totalArea = 0.d0
     totallum = 0.d0
@@ -16708,13 +16708,15 @@ end function readparameterfrom2dmap
     enddo
 
 
-    write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
-    write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
-         (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
-    write(*,*) "sanity check on area: ",totalArea/(fourPi*ttauriRstar**2)
-
-    t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
-    write(*,*) "Approx accretion temperature is ",t, " kelvin"
+    if (writeoutput) then
+       write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
+       write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
+            (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
+       write(*,*) "sanity check on area: ",totalArea/(fourPi*ttauriRstar**2)
+       
+       t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
+       write(*,*) "Approx accretion temperature is ",t, " kelvin"
+    endif
 
     CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
     CALL sumSurface(surface)
@@ -18586,14 +18588,14 @@ end function readparameterfrom2dmap
              else
                 escProb = 1.d0/tauSob
              end if
-             escProb = max(escProb, 1.d-7)
+             escProb = max(escProb, 1.d-4)
 
              rVec = subcellCentre(thisoctal, subcell)
              direction = rVec
              call normalize(direction)
              call tauAlongPathCMF(grid, rVec, direction, tau, tauMax=1.d3, &
                   startOctal=thisOctal, startSubcell=subcell)
-             thisOctal%biasCont3d(subcell) = max(exp(-tau), 1.d-7)
+             thisOctal%biasCont3d(subcell) = max(exp(-tau), 1.d-4)
              thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
 
 

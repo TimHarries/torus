@@ -310,9 +310,12 @@ contains
 
     r = modulus(point)
     !
-    mu = point%z/r
+    if (r /= 0.d0) then
+       mu = point%z/r
+    else
+       mu = 1.d0
+    endif
     sinTheta = sqrt(1.d0-mu**2)
-
 
 
 ! Dwarkadas and Owocki, 2002, ApJ 581, 1337

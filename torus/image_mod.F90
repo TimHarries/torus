@@ -678,11 +678,11 @@ module image_mod
              array = image%pixel%i * scale
           case("stokesq")
              where (image%pixel%i /= 0.d0) 
-                array = image%pixel%q /image%pixel%i * scale
+                array = 100.*image%pixel%q /image%pixel%i 
              end where
           case("stokesu")
              where (image%pixel%i /= 0.d0) 
-                array = image%pixel%u /image%pixel%i * scale
+                array = 100.*image%pixel%u /image%pixel%i 
              end where
           case("pol")
              array = 1.d-30

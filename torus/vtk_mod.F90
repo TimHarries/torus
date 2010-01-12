@@ -614,7 +614,7 @@ contains
     character(len=*) :: vtkFilename
     integer, parameter :: lunit = 37
     integer :: nPoints, nElements, iSource
-    integer :: i, iElement
+    integer :: i
     type(VECTOR) :: cVec, aVec, v1, v2, v3, v4, zAxis
     real(double) :: dphi, dtheta
     integer :: nCount

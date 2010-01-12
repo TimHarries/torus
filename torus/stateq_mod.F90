@@ -3732,10 +3732,11 @@ contains
     call get_cmfgen_data_array("esec", chi_es)  ! electron scattering opacity
 
 
-    write(*,'(a) ')  " "
-    write(*,'(a) ')  " Mapping CMFGEN opacity to AMR grid ... "
-    write(*,'(a) ')  "  "
-
+    if (Writeoutput) then
+       write(*,'(a) ')  " "
+       write(*,'(a) ')  " Mapping CMFGEN opacity to AMR grid ... "
+       write(*,'(a) ')  "  "
+    endif
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
           thisOctal => octalArray(iOctal)%content        
@@ -3763,9 +3764,11 @@ contains
     deallocate(octalArray)
     DEALLOCATE(R, eta, chi_th, chi_line, eta_line, chi_es)
 
-    write(*,'(a) ')  " "
-    write(*,'(a) ')  " ...............done."
-    write(*,'(a) ')  "  "
+    if (writeoutput) then
+       write(*,'(a) ')  " "
+       write(*,'(a) ')  " ...............done."
+       write(*,'(a) ')  "  "
+    endif
 
 
   end subroutine map_cmfgen_opacities

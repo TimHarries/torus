@@ -2140,7 +2140,7 @@ contains
     integer :: nAtom, iAtom
     real(double) :: distance, totalFlux
     integer :: itrans
-    integer :: nRay
+    integer :: nRay,iray1,iray2
     integer, parameter :: maxRay  = 1000000
     type(VECTOR),allocatable :: rayPosition(:)
     real(double),allocatable :: da(:), dOmega(:)
@@ -2183,7 +2183,7 @@ contains
 
     nlambda = 100
 
-    doCube = .false.
+    doCube = .true.
     doSpec = .true.
 
     broadBandFreq = 1.d15
@@ -2193,7 +2193,6 @@ contains
        call writeInfo(message)
        lineoff = .true.
        nLambda = 1
-       doCube = .false.
     endif
 
     if (lineoff) call writeWarning("Line transfer switched off")
@@ -2235,11 +2234,6 @@ contains
     iv1 = 1
     iv2 = nlambda
  
-#ifdef MPI
-    iv1 = (my_rank) * (nLambda / (np)) + 1
-    iv2 = (my_rank+1) * (nLambda / (np))
-    if (my_rank == (np-1)) iv2 = nLambda
-#endif
 
     allocate(spec(1:nLambda), vArray(1:nLambda))
     spec = 0.d0
@@ -2252,9 +2246,19 @@ contains
     endif
     
     do iv = iv1, iv2
-       write(*,*) iv
        deltaV  = vArray(iv)
-       do iRay = 1, nRay
+
+
+       iray1 = 1
+       iray2 = nray
+#ifdef MPI
+    iray1 = (my_rank) * (nray / (np)) + 1
+    iray2 = (my_rank+1) * (nray / (np))
+    if (my_rank == (np-1)) iv2 = nray
+#endif
+
+
+       do iRay = iray1, iray2
           if (PRESENT(occultingDisc)) then
              i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
                   nFreqArray, freqArray, occultingDisc=.true., forceFreq=broadBandFreq)
@@ -2287,7 +2291,6 @@ contains
     deallocate(vArray, spec)
     deallocate(da, domega, rayPosition)
 666 continue
-    call init_random_seed()
   end subroutine calculateAtomSpectrum
 
 
@@ -2400,6 +2403,7 @@ contains
 
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
+    integer :: j
 #ifdef MPI
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
