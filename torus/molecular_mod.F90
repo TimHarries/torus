@@ -1179,6 +1179,26 @@ end subroutine molecularLoop
      real(double) :: nMol
      logical :: done(maxtrans)
 
+     type(VECTOR),save :: possave, dirsave
+     real(double),save :: rsave,s
+
+     logical, save :: conj = .false.
+     logical :: antithetic = .true.
+!     logical :: antithetic = .false.
+
+     if(antithetic) then
+
+        if(conj) then
+           position = possave
+        else
+           position = randomPositionInCell(fromOctal, fromsubcell)
+           possave = position
+        endif
+     else
+        position = randomPositionInCell(fromOctal, fromsubcell)
+     endif
+
+
      if(present(fixedrays)) then
         stage1 = fixedrays
      else
@@ -1217,21 +1237,34 @@ end subroutine molecularLoop
         call normalize(direction)
         deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line centre
      else
-        call random_number(r)
+        if(antithetic) then
 
-        direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
+           if(conj) then
+              r = 1. - rsave
+              direction = (-1.d0) * dirsave
+              
+              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.
+              
+              if(s > 0.5) deltaV = deltaV * (-1.d0)
+           else
+              call random_number(r)
+              rsave = r
+              direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
+              dirsave = direction
+              
+              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.
+              
+              call random_number(s)
+              if(s > 0.5) deltaV = deltaV * (-1.d0)
+           endif
+        else
+           call random_number(r)
+           direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
+           deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+           
+        endif
 
-!       randompointingrid = randompointinRegion(amrgridsize * 0.5)
-!       randompointingrid = 1d7 * randomUnitVECTOR()
-!       call normalize(randompointingrid)
-!       unitposition = position
-!       call normalize(unitposition)
-!       write(*,*) "unitposition",unitposition
-!       write(*,*) "randompointingrid",randompointingrid
-!       direction = UnitVECTORBetweenTwoPoints(randompointingrid,position)
-!       write(*,*) "direction", direction
-
-        deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+        conj = .not. conj
      endif
 
 !!! SCIENCE LINES
@@ -2532,6 +2565,15 @@ endif
    
      do while(inOctal(grid%octreeRoot, currentPosition))
 
+        ! thisOctal%molcellparam(1,subcell) = nmol
+        ! thisOctal%molcellparam(2,subcell) = nLower
+        ! thisOctal%molcellparam(3,subcell) = nUpper
+        ! thisOctal%molcellparam(4,subcell) = (nLower * Blu - Nupper * Bul)
+        ! thisOctal%molcellparam(5,subcell) = hcgs/4pi * Aul *nUpper
+        ! thisOctal%molcellparam(6,subcell) = hcgs/4pi * (nLower * Blu - Nupper * Bul)
+        ! thisOctal%molcellparam(7,subcell) = kappaAbs / 1d10
+        ! thisOctal%molcellparam(8,subcell) = (kappaAbs / 1d10) * Bnu
+
         icount = icount + 1
            
         call findSubcelllocal(currentPosition, thisOctal, subcell)
@@ -2544,6 +2586,8 @@ endif
         dtauovercell = 0.d0
         dIovercell = 0.d0
         attenuateddIovercell = 0.d0
+
+!Get nmol from somewhere
 
         if(densitysubsample) then
            if ( h21cm) then
@@ -2562,6 +2606,8 @@ endif
 
         etaline = nmol * thisOctal%molcellparam(5,subcell)
 
+!Calculate absorption from dust if reqd.
+
         if(usedust) then
            alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
            dustjnu = nmol * thisOctal%molcellparam(8,subcell)
@@ -2571,13 +2617,15 @@ endif
 
         thisPosition = currentPosition
 
+!Get velocity at start and end of ray inside cell. Assume linear gradient.
+
         startVel = Velocity(currentPosition, grid, startoctal = thisoctal, subcell = subcell)
         endPosition = currentPosition + tval * direction
 
         endVel = Velocity(endPosition, grid, startoctal = thisoctal, subcell = subcell)
 
+!Directional velocity gradient
         Veldiff = endVel - startVel
-
         dvAcrossCell = (veldiff.dot.direction)
 
         if ( h21cm ) then 
@@ -2589,28 +2637,36 @@ endif
         else
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
         end if
+        
+!Determine number of line segments based on velocity gradient to ensure 
+!adequate resolution of velocity field
 
         if(densitysubsample) then ! should replace 5 with maxdensity/mindensity * fac
            nTau = min(max(5, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
         else
            nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
         endif
-        
+      
         OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
-        
+      
         ds = tval * OneOvernTauMinusOne
         
-! Calculate column density
-! Factor of 1.d10 is to convert ds to cm 
+!Calculate column density
+!Factor of 1.d10 is to convert ds to cm 
         if (present(nCol)) then 
            nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * tval * 1.d10
         end if
 
         dsvector = ds * direction
 
+!Repeat intensity calculation of all line segments
+
         do i = 2, nTau 
 
            thisPosition = thisPosition + dsvector
+
+!Determine local velocity.
+!Check haven't fallen off the edge of the grid. If so move way back (effectively assume 0 velocity gradient
            if(.not. inoctal(grid%octreeroot, thisposition)) thisPosition = thisPosition - 0.99d0 * dsvector
            thisVel = Velocity(thisPosition, grid, startoctal = thisoctal, subcell = subcell)
 
@@ -2620,13 +2676,14 @@ endif
 
            dv = (thisVel .dot. direction) - deltaV
 
+!Calculate position in line to determine emission/absorption characteristics
            if ( h21cm ) then 
               phiprofval = gauss (sigma_thermal, real(dv) ) / thisMolecule%transfreq(1)
            else  
               phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
            end if
 
-           
+!Determine jnu and alphanu           
            if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid) / &
                      (2.d0 * mhydrogen))
@@ -2650,20 +2707,28 @@ endif
               alphanu1 = (nmol * thisOctal%molcellparam(6,subcell)) * phiprofval
            endif
 
+
            alpha = alphanu1 + alphanu2
+!Contribution to tau by line segment. dtauovercell is tracked per subcell.
            dTau = alpha * ds * 1.d10
            dtauovercell = dtauovercell + dtau
 
+!Calculate emissivity weighted by phi
            jnu = etaLine * phiProfVal
 
            if(useDust) jnu = jnu + dustjnu
 
+!Determine local source function
            if (alpha .ne. 0.d0) then
               snu = jnu/alpha
            else
               snu = tiny(snu)
               i0 = i0 + tiny(i0)
            endif
+
+!Calculate and store contribution of dI to integrated intensity
+!dIovercell is that which comes from the cell 
+!attenuateddIovercell will be the true amount contributed to total LOS intensity
 
            opticaldepth = exp(-tau)
            dI = (1.d0-exp(-dtau))*snu
@@ -2674,25 +2739,45 @@ endif
            dI = opticaldepth * dI
            attenuateddIovercell = attenuateddIovercell + dI
 
-           if(dI .gt. i0 * 1d-10 .and. tau .lt. 100) then
+!Check still worth adding dI in optically thick case. If so add dI to I
+!This should really exit the entire ray but doesn't so is commented out at the moment
+!           if(dI .gt. i0 * 1d-10 .and. tau .lt. 100) then
               i0 = i0 + dI
-           else
-              i0 = i0
-           endif
+!           else
+!              i0 = i0
+!           endif
               
-        enddo
+           enddo
 
+!i0max is a parameter for calculating the depth to which information is being received
+!probably strongly linked to tau?! This method requires 2 passes. One to determine i0max
+!the second to determine when 99% of total intensity has been reached.
         if(present(i0max) .and. i0 .gt. 0.99d0 * i0max) then 
            exit
         endif
 
+!These lines store various parameters of interest regarding the contribution of a cell
+
+!None of this is normalised by path length
+!I presume this is all integrated over velocity as well at the moment so it would need to be taken into account
+!depending on what one wanted to do with the data.
+
+!This is a counter as they're all stored as running averages. I hope this is initialised to 0 somewhere!
         n = thisoctal%newmolecularlevel(4,subcell)
-                    
-        thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0) ! average intensity in this cell
-        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0) ! average intensity in this cell
-        
-        thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + attenuateddIoverCell) / (n + 1.d0) ! average intensity in this cell (attenuated)
-        thisoctal%newmolecularlevel(3,subcell) = (n * thisoctal%newmolecularlevel(3,subcell) + i0) / (n + 1.d0) ! average attenuated intensity at this cells edge 
+
+!Store average dtau inside cell
+        thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0)
+
+!Store average intensity contribution inside cell
+        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0)
+
+!Store average attenuated intensity contribution inside cell
+        thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + attenuateddIoverCell) / (n + 1.d0)
+
+!Store average i0 to date. It felt like this should be useful. I cannot say why...
+        thisoctal%newmolecularlevel(3,subcell) = (n * thisoctal%newmolecularlevel(3,subcell) + i0) / (n + 1.d0)
+
+!Increment counter
         thisoctal%newmolecularlevel(4,subcell) = thisoctal%newmolecularlevel(4,subcell) + 1.d0
 
         currentPosition = currentPosition + (tval + origdeps) * direction
@@ -3879,7 +3964,6 @@ subroutine compare_molbench
 
   implicit none 
 
-
   character(len=*), parameter :: model_file="results.dat"
   character(len=*), parameter :: bench_file="moltest.dat"
   character(len=*), parameter :: test_file="check.dat"
@@ -3904,6 +3988,7 @@ subroutine compare_molbench
   integer :: nlines, status
 
   max_diff = tolerance * sqrt(275.d0) ! sqrt(Nvoxels)
+
   diff = -999.
   diffmax = -1.
 
