@@ -128,7 +128,7 @@ addnewmoldata F
 rotateviewaboutx 90.0
 rotateviewaboutz 0.0
 
-quasi T
+quasi F
 dongstep T
 
 setmaxlevel 10
