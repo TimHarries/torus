@@ -37,6 +37,7 @@ module utils_mod
   end interface
 
   interface sort
+     module procedure sortinteger
      module procedure sortsingle
      module procedure sortdouble
   end interface
@@ -466,6 +467,44 @@ contains
     RA(I)=RRA
     GO TO 10
   END subroutine sortsingle
+
+  SUBROUTINE SORTinteger(N,RA)
+    INTEGER N, L, IR, I, J
+    integer RRA
+    integer RA(N)
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       RRA=RA(L)
+    ELSE
+       RRA=RA(IR)
+       RA(IR)=RA(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          RA(1)=RRA
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(RA(J).LT.RA(J+1))J=J+1
+       ENDIF
+       IF(RRA.LT.RA(J))THEN
+          RA(I)=RA(J)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    RA(I)=RRA
+    GO TO 10
+  END subroutine sortinteger
 
   SUBROUTINE SORTdouble(N,RA)
     INTEGER N, L, IR, I, J
@@ -4328,6 +4367,7 @@ END SUBROUTINE GAUSSJ
     use mpi_global_mod, only: myRankGlobal
 
     INTEGER :: i, n, clock
+    integer(bigint) :: ibig
     INTEGER, DIMENSION(:), ALLOCATABLE :: seed
 
     CALL RANDOM_SEED(size = n)
@@ -4335,7 +4375,11 @@ END SUBROUTINE GAUSSJ
 
     CALL SYSTEM_CLOCK(COUNT=clock)
 
-    seed = clock + 37 * (/ (i - 1, i = 1, n) /) + myRankGlobal*1000
+    do i = 1, n
+       ibig = (myRankGlobal+i)*clock
+       ibig = mod(ibig, huge(clock)-1)
+       seed(i) = ibig
+    enddo
     CALL RANDOM_SEED(PUT = seed)
 !    write(*,*) "Setting random seed for rank ",myrankglobal, " to: ",seed(1:n)
     DEALLOCATE(seed)

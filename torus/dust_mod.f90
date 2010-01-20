@@ -577,6 +577,7 @@ contains
 
   subroutine setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
        ngrain, abundance, grainname, lambdaTau)
+    use mieDistCrossSection_mod, only: mieDistCrossSection
 
     implicit none
     type(GRIDTYPE) :: grid
@@ -693,6 +694,7 @@ contains
   subroutine MieCrossSection(sigmaExt, sigmaAbs, sigmaSca, &
        aMin, aMax, a0, qDist, pDist, grainType, &
        ngrain, abundance, grainname, lambda)
+    use mieDistCrossSection_mod, only: mieDistCrossSection
 
     implicit none
     real, intent(out) :: sigmaExt, sigmaAbs, sigmaSca ! total, absorption and scattering  x-sections

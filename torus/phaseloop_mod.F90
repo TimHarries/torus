@@ -44,7 +44,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
   use gridtype_mod, only: GRIDTYPE       
   use gridio_mod, only: readamrgrid, writeamrgrid
-  use parallel_mod, only: torus_mpi_barrier
+  use parallel_mod, only: torus_mpi_barrier, test_random_across_threads
   use utils_mod, only: locate, hunt, findIlambda, blackBody, init_random_seed, spline, splint, systemInfo
   use grid_mod, only: freeGrid
   use unix_mod, only: unixTimes
@@ -1311,7 +1311,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         nInnerLoop = nPhotons / nOuterLoop
      endif
 
-
+#ifdef MPI
+     call test_random_across_threads()
+#endif
 
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
         if (mie) then

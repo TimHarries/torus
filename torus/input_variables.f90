@@ -32,6 +32,7 @@ module input_variables
   logical :: quickThermal
   logical :: dustOnly
   logical :: molecular
+  logical :: dumpdi
   logical :: h21cm 
   real :: beamSize
   real :: eccentricity

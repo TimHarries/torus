@@ -2493,7 +2493,7 @@ endif
      real(double) ::  OneOvernTauMinusOne, ds
 
      real(double) :: dTau, etaline, dustjnu
-     real(double), intent(out), optional :: tau
+     real(double), intent(out) :: tau
      real(double),save :: BnuBckGrnd
 
 
@@ -2575,7 +2575,6 @@ endif
         ! thisOctal%molcellparam(8,subcell) = (kappaAbs / 1d10) * Bnu
 
         icount = icount + 1
-           
         call findSubcelllocal(currentPosition, thisOctal, subcell)
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
@@ -2769,7 +2768,8 @@ endif
         thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0)
 
 !Store average intensity contribution inside cell
-        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0)
+!        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0)
+        thisoctal%newmolecularlevel(1,subcell) = thisoctal%newmolecularlevel(1,subcell) +  attenuateddiovercell
 
 !Store average attenuated intensity contribution inside cell
         thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + attenuateddIoverCell) / (n + 1.d0)
@@ -4222,5 +4222,138 @@ end subroutine compare_molbench
       oldstep = step
       
     end function nextStep
-    
+
+! this routine writes a file of intensity, density, cellsize, cellvolume etc
+
+    subroutine dumpIntensityContributions(grid, thisMolecule) 
+     use mpi_global_mod, only: nThreadsGlobal, myRankGlobal
+     use parallel_mod
+      use input_variables, only : itrans
+      type(MOLECULETYPE) :: thisMolecule
+      type(GRIDTYPE) :: grid
+      type(VECTOR) :: viewVec, rayStart
+      integer :: nx, ny, nv
+      real(double) :: x, y, z, v, tau
+      real(double) :: vmax, vmin, nuStart, nuEnd, deltaNu
+      real(double) :: itot, i0, icheck
+      integer :: i, j ,k, iv1, iv2
+      logical, save :: firstTime=.true.
+      
+
+      viewVec = VECTOR(0.d0, 1.d0, 0.d0)
+      nx = 2000
+      ny = 2000
+      nv = 20
+
+      vmin = -2.d0*(1.d5)/cspeed
+      vmax =  2.d0*(1.d5)/cspeed
+      iv1 = 1
+      iv2 = nv
+      
+
+#ifdef MPI
+    iv1 = (myrankglobal) * (nv / (nThreadsGlobal)) + 1
+    iv2 = (myrankglobal+1) * (nv / (nThreadsGlobal))
+    if (myrankglobal == (nThreadsGlobal-1)) iv2 = nv
+#endif
+
+
+
+      nuStart = thisMolecule%transfreq(itrans) * (1.d0+vmin)
+      nuEnd = thisMolecule%transfreq(itrans) * (1.d0+vmax)
+      deltaNu = nuEnd - nuStart
+      itot = 0.d0
+      do i = 1, nx
+         if (myrankglobal == 0) write(*,*) "i ",i
+         do j = 1, ny 
+            do k = iv1, iv2
+               x = -grid%octreeRoot%subcellSize + (2.d0*grid%octreeRoot%subcellSize)*dble(i-1)/dble(nx-1)
+               z = -grid%octreeRoot%subcellSize + (2.d0*grid%octreeRoot%subcellSize)*dble(j-1)/dble(ny-1)
+               y = -grid%octreeRoot%subcellSize
+               v = vMin + (vMax-vMin)*dble(k-1)/dble(nv-1)
+
+               if(firstTime) then
+                  call writeinfo("Filling Octal parameters for first time",TRIVIAL)
+                  call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, v)
+                  firstTime = .false.
+               endif
+
+               rayStart = VECTOR(x, y, z)
+               call intensityAlongRay(rayStart, viewvec, grid, thisMolecule, iTrans, v, i0, tau)
+            enddo
+         enddo
+      enddo
+      itot = 0.d0
+      call sumDi(grid%octreeRoot, deltaNu, itot)
+      if (myrankGlobal == 0) then
+         open(33, file="contribs.dat", status="unknown",form="formatted")
+         icheck = 0.d0
+         call writeContributions(grid%octreeRoot, deltaNu, itot, icheck)
+         write(*,*) "sanity check ",icheck/itot, icheck,itot
+         close(33)
+      endif
+      call torus_mpi_barrier()
+666 continue
+    end subroutine dumpIntensityContributions
+
+
+ recursive subroutine sumDi(thisOctal, deltaNu, itot)
+   include 'mpif.h'
+   type(octal), pointer   :: thisOctal
+   type(octal), pointer  :: child 
+   integer :: subcell, i, ierr
+   real(double) :: deltaNu, itot,icheck, temp
+   do subcell = 1, thisOctal%maxChildren
+      if (thisOctal%hasChild(subcell)) then
+         ! find the child
+         do i = 1, thisOctal%nChildren, 1
+            if (thisOctal%indexChild(i) == subcell) then
+               child => thisOctal%child(i)
+               call sumdi(child, deltaNu, itot)
+               exit
+            end if
+         end do
+      else
+#ifdef MPI
+         temp = 0.d0
+         call MPI_REDUCE(thisOctal%newMolecularlevel(1,subcell),temp,1,MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+         thisOctal%newMolecularLevel(1,subcell) = temp
+#endif
+         itot = itot + thisOctal%newMolecularlevel(1, subcell)
+      endif
+   end do
+   
+ end subroutine sumDi
+
+ recursive subroutine writeContributions(thisOctal, deltaNu, itot, icheck)
+
+   type(octal), pointer   :: thisOctal
+   type(octal), pointer  :: child 
+   integer :: subcell, i
+   real(double) :: deltaNu, itot,icheck
+   do subcell = 1, thisOctal%maxChildren
+      if (thisOctal%hasChild(subcell)) then
+         ! find the child
+         do i = 1, thisOctal%nChildren, 1
+            if (thisOctal%indexChild(i) == subcell) then
+               child => thisOctal%child(i)
+               call writeContributions(child, deltaNu, itot, icheck)
+               exit
+            end if
+         end do
+      else
+         if (thisOctal%rho(subcell) > 1.d-30) then
+            write(33, '(1p,5e12.3)') thisOctal%rho(subcell)/(2.d0*mhydrogen), thisOctal%newMolecularlevel(1, subcell), &
+                cellVolume(thisOctal,subcell), thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)
+
+
+            icheck = icheck + thisOctal%newMolecularlevel(1, subcell)
+         endif
+
+      endif
+   end do
+   
+ end subroutine writeContributions
+
   end module molecular_mod

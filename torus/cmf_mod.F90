@@ -2154,6 +2154,7 @@ contains
     character(len=30) :: plotfile,message
     type(DATACUBE) :: cube
     integer :: nFreqArray
+    real(double) :: totalOmega
     integer, parameter :: maxFreq = 2000
     real(double) :: freqArray(maxFreq), broadBandFreq, transitionFreq
     logical :: doCube, doSpec
@@ -2183,7 +2184,7 @@ contains
 
     nlambda = 100
 
-    doCube = .true.
+    doCube = .false.
     doSpec = .true.
 
     broadBandFreq = 1.d15
@@ -2256,8 +2257,7 @@ contains
     iray2 = (my_rank+1) * (nray / (np))
     if (my_rank == (np-1)) iv2 = nray
 #endif
-
-
+    totalOmega = 0.d0
        do iRay = iray1, iray2
           if (PRESENT(occultingDisc)) then
              i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
@@ -2267,6 +2267,9 @@ contains
                   nFreqArray, freqArray)
           endif
           spec(iv) = spec(iv) + i0 * domega(iRay) 
+          if (i0 > 1.d-20) then
+             totalOmega = totalOmega + domega(iray)
+          endif
        enddo
     enddo
 #ifdef MPI
@@ -2276,7 +2279,18 @@ contains
           MPI_SUM,MPI_COMM_WORLD,ierr)
      spec(1:nLambda) = tempArray(1:nLambda)
      deallocate(tempArray)
+
+     allocate(tempArray(1:1))
+     call MPI_ALLREDUCE(totalOmega,tempArray,1,MPI_DOUBLE_PRECISION,&
+          MPI_SUM,MPI_COMM_WORLD,ierr)
+     totalOmega=temparray(1)
+     deallocate(tempArray)
+     
+
 #endif
+     if (myrankiszero) then
+        write(*,*) "Solid angle check: ", totalOmega, pi* grid%rCore**2/distance**2
+     endif
 
     if (myRankIsZero) then
        write(plotfile,'(a,i3.3,a)') "spec",nfile,".dat"
@@ -2318,8 +2332,6 @@ contains
 !    rMax = 2.d0*grid%octreeRoot%subcellSize
     rMax = 5.d0*grid%rCore
 
-    write(*,*) "rcore ",grid%rCore*1.d10/rsol
-    write(*,*) "router ",grid%rOuter*1.d10/rsol
     do ir = 1, nr1
        r1 = rMin * dble(ir-1)/dble(nr1)
        r2 = rMin * dble(ir)/dble(nr1)

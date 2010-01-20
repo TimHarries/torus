@@ -44,7 +44,8 @@ program torus
   use discwind_class, only: discwind, new, add_discwind
   use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
   use photoion_mod, only: photoIonizationloop
-  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image
+  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image, &
+       dumpIntensityContributions
   use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
   use cmf_mod, only: atomLoop, calculateAtomSpectrum
   use vtk_mod, only: writeVtkfile
@@ -181,7 +182,7 @@ program torus
   type(cluster)   :: young_cluster
 
   ! Name of the file to output various message from torus
-  character(len=80) :: message
+  character(len=80) :: message, phaseFilename
   real :: h 
 !  integer :: iTime
 
@@ -193,6 +194,7 @@ program torus
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
   real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, vMag, bMag
+  real(double) :: A_v, E_b_minus_V
   type(VECTOR) :: viewVec, outVec
 
 
@@ -584,11 +586,15 @@ program torus
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
-        if (writeoutput) &
-           open(33, file="phase.dat", status="unknown", form="formatted")
+        if (writeoutput) then
+           write(phaseFilename,"(a,i2.2,a,i2.2,a)") &
+             "phase_",nint(mdotParameter1/1.d-8),"_",&
+             nint(dipoleOffset*radtodeg),".dat"
+           open(33, file=phaseFilename, status="unknown", form="formatted")
+        endif
            nphi = 20
            do i = 1, nphi
-              ang = pi + twoPi * real(i-1)/real(nphi)
+              ang = twoPi * real(i-1)/real(nphi)  +pi
               t = 75.d0*degtorad
               viewVec = VECTOR(0.d0, 0.d0, -1.d0)
               viewVec = rotateY(viewVec,t)
@@ -596,14 +602,19 @@ program torus
               call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                    viewVec, 140.d0*pctocm/1.d10, &
                    source, nsource,i, totalFlux, occultingDisc=.true., forceLambda = 5500.d0)
+              write(*,*) "TOTAL FLUX at 5500 ", totalflux
               vMag = returnMagnitude(totalFlux, "V")
               call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                    viewVec, 140.d0*pctocm/1.d10, &
                    source, nsource,i,totalFlux,occultingDisc=.true.,forceLambda=4400.d0)
               bMag = returnMagnitude(totalFlux, "B")
+
+              A_v = 0.8d0
+              E_b_minus_v = a_v / 3.1d0
+              bMag = bmag + E_b_minus_v + A_v
+              vmag = vmag + A_v
               if (Writeoutput) then
-                 write(33,'(5e12.5)') real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
-                 write(*,*)  real(i-1)/real(nphi), totalFlux, bMag, vMag, bMag-vMag
+                 write(33,'(5f12.3)') real(i-1)/real(nphi),  vMag, bMag, bMag-vMag
               endif
         enddo
         close(33)
@@ -731,6 +742,10 @@ program torus
            call writeInfo(message, TRIVIAL)
            write(message,*) "Minimum Density: ",minrho, " g/cm^3"
            call writeInfo(message, TRIVIAL)
+        endif
+        if (dumpdi) then
+           call  dumpIntensityContributions(grid, co)
+           goto 666
         endif
         call calculateMoleculeSpectrum(grid, co)
      endif
@@ -2282,7 +2297,12 @@ subroutine set_up_sources
     case ("cluster", "molcluster")
        ! Extract some info from cluster object.
        nstar = get_nstar(young_cluster)  ! number of stars in the cluster
-       nSource =  n_stars_in_octal(young_cluster, grid%octreeRoot)
+       if (associated(grid%octreeRoot)) then
+          nSource =  n_stars_in_octal(young_cluster, grid%octreeRoot)
+       else
+          call writeWarning("grid%octreeroot not associated for call to n_stars_in_octal")
+          nSource = 0
+       endif
        
        ! copy the star over in the array.
        ! This is ugly. Maybe lucyRadiativeEquilibriumAMR should be changed to take

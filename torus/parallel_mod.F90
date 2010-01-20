@@ -2,6 +2,10 @@ module parallel_mod
 
 ! subprograms used for parallel computation
 
+  use kind_mod
+  use mpi_global_mod
+  use messages_mod
+  use utils_mod
   implicit none
 
 contains  
@@ -292,6 +296,51 @@ contains
     deallocate(iSeed)
 
   end subroutine sync_random_seed
+
+
+! Test whether all threads are producing independent random numbers
+  subroutine test_random_across_threads(debug)
+
+    implicit none
+    include 'mpif.h'
+    real(double) :: r
+    integer :: i, ierr
+    integer, allocatable :: itest(:), itemp(:)
+    logical :: different
+    logical, optional :: debug
+    call random_number(r)
+    i = nint(r * 100000000.d0)
+    allocate(itest(1:nThreadsGlobal))
+    itest = 0
+    itest(myRankGlobal+1) = i
+    allocate(itemp(SIZE(itest)))
+     itemp = 0
+     call MPI_REDUCE(itest,itemp,SIZE(itest),MPI_INTEGER,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     itest = itemp
+     deallocate(itemp)
+     if (myrankGlobal ==0) then
+        if (present(debug)) then
+           if (debug) then
+              do i = 1, nThreadsGlobal
+                 write(*,*) "Thread ",i-1," random integer ", itest(i)
+              enddo
+           endif
+        endif
+        different = .true.
+        call sort(size(itest),itest)
+        different = .true.
+        do i = 1, size(itest)-1
+           if (itest(i) == itest(i+1)) different=.false.
+        enddo
+        if (.not.different) then
+           call writeFatal("Thread do not have independent random sequences")
+           stop
+        endif
+     endif
+     call torus_mpi_barrier
+     deallocate(itest)
+   end subroutine test_random_across_threads
 
 ! End of MPI routines ----------------------------------------------------------
 

@@ -4349,7 +4349,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: close_to_star
     real(double)      :: thisScale
     real(double) :: h0
-    logical :: inflow
+    logical :: inflow, insideStar,outSideStar
     logical,save  :: firstTime = .true.
 
     type(VECTOR) :: minV, maxV
@@ -4548,26 +4548,41 @@ IF ( .NOT. gridConverged ) RETURN
      cellCentre = subcellCentre(thisOctal,subcell)
      cellSize = thisOctal%subcellSize
      r0 = modulus(cellCentre)
+
+!     if (thisOctal%threed) then
+!        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
+!     endif
+
      inflow=.false.
-     do i = 1, 1000
+     insideStar = .false.
+     outsideStar = .false.
+     do i = 1, 100
         rVec = randomPositionInCell(thisOctal,subcell)
         if (inFLowMahdavi(1.d10*rVec)) then
            inFlow = .true.
-           exit
         endif
+        r = modulus(rVec)
+        if (r < (1.05*ttauriRstar/1.d10)) insideStar = .true.
      enddo
      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
 
      if (inFlow) then
-        if (cellSize/(ttauriRstar/1.d10) > 0.01d0*(r0/(TTaurirStar/1.d10))**3) split = .true.
+        if (cellSize/(ttauriRstar/1.d10) > 0.01d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
 !        write(*,*) "split ",cellSize, r, cellSize/(ttauriRstar/1.d10),  0.1d0*(r/(TTaurirStar/1.d10)), thisOctal%ndepth, &
 !             ttaurirstar
-        if ((split).and.((r0-cellsize/2.d0) < (1.05d0*ttauriRstar/1.d10)).and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
+!        if ((inflow).and.((r0-cellsize/2.d0) < (1.01d0*ttauriRstar/1.d10)).and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
+        if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
+           split = .true.
            splitinazimuth = .true.
         endif
      endif
 
-     
+     if (insidestar) then
+        if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 5.)) then
+           split = .true.
+           splitInAzimuth = .true.
+        endif
+     endif
 
      if (inflow) then
         if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
@@ -4575,6 +4590,7 @@ IF ( .NOT. gridConverged ) RETURN
            splitInAzimuth = .true.
         endif
      endif
+
 
      inflow = .false.
      do i = 1, 100
@@ -16673,7 +16689,7 @@ end function readparameterfrom2dmap
     totalmdot = 0.d0
 
     do i = 1, surface%nElements
-       rVec = surface%element(i)%position + 2.d0*grid%halfSmallestSubcell * surface%element(i)%norm
+       rVec = surface%element(i)%position + 2.d0*grid%halfsmallestsubcell * surface%element(i)%norm
        CALL findSubcellTD(rVec,grid%octreeRoot,thisOctal,subcell)
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)

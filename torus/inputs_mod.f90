@@ -1175,6 +1175,10 @@ contains
     call getLogical("molecular", molecular, cLine, nLines, &
          "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("dumpdi", dumpdi, cLine, nLines, &
+         "Dump intensity contributions: ","(a,1l,a)", .false., ok, .false.)
+
+
     call getLogical("h21cm", h21cm, cLine, nLines, &
          "Compute 21cm emission: ","(a,1l,a)", .false., ok, .false.)
 
@@ -1231,7 +1235,7 @@ contains
        call getInteger("setmaxlevel", setmaxlevel, cLine, nLines, &
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
        call getReal("molAbundance", molAbundance, cLine, nLines, &
-            "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
+            "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .true.)
        call getLogical("useDust", useDust, cLine, nLines, &
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
        call getLogical("isinlte", isinlte, cLine, nLines, &
@@ -3121,7 +3125,7 @@ end subroutine getBigInteger
     default = " (default)"
  endif
  if (musthave) then
-    write(output,format) trim(message),rval,default
+   write(output,format) trim(message),rval,default
     call writeInfo(output, TRIVIAL)
  endif
  end subroutine getReal
