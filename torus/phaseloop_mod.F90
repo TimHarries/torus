@@ -35,6 +35,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use mpi_global_mod, only: myRankGlobal
 #ifdef MPI
   use mpi_global_mod, only: nThreadsGlobal
+  use parallel_mod, only :  test_random_across_threads
 #endif
   use TTauri_mod, only: fillGridMagneticAccretion, infallenhancment
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
@@ -44,7 +45,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
   use gridtype_mod, only: GRIDTYPE       
   use gridio_mod, only: readamrgrid, writeamrgrid
-  use parallel_mod, only: torus_mpi_barrier, test_random_across_threads
+  use parallel_mod, only: torus_mpi_barrier
   use utils_mod, only: locate, hunt, findIlambda, blackBody, init_random_seed, spline, splint, systemInfo
   use grid_mod, only: freeGrid
   use unix_mod, only: unixTimes

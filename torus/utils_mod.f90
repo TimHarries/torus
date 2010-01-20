@@ -4377,7 +4377,7 @@ END SUBROUTINE GAUSSJ
 
     do i = 1, n
        ibig = (myRankGlobal+i)*clock
-       ibig = mod(ibig, huge(clock)-1)
+       ibig = mod(ibig, huge(clock)-1_bigint)
        seed(i) = ibig
     enddo
     CALL RANDOM_SEED(PUT = seed)

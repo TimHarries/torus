@@ -1294,6 +1294,9 @@ contains
     real(double) :: distanceGridAdot(nx)
     real(double) :: distanceGridPhotonFromGas(nx)
     real(double) :: distanceGridPhotonFromSource(nx)
+    real(double) :: energyIntoCell(nx)
+    real(double) :: energyFromCell(nx)
+    real(double) :: deltaUtransport(nx)
     logical :: photonFromSource, photonFromGas
     real(double) :: prob(nProb)
     real(double) :: bias(nProb)
@@ -1348,9 +1351,9 @@ contains
     real(double) :: tdump, timeofnextdump, photonBias, Be
     real(double) :: totalLuminosity
     real(double) :: chanceSource, chanceGas, weightSource, weightGas, etest, deltaTmin
-    real(double) :: deltaTmax
+    real(double) :: deltaTmax, matterInteractionTerm
     integer :: nFromMatter, nFromGas, nFromStar
-    logical :: diffusion
+    logical :: diffusion, leftCell
 
     reflecting = .true.
     diffusion = .false.
@@ -1420,7 +1423,7 @@ contains
 
 ! test2
 
-    nMonte = 100
+    nMonte = 1000
     photonEnergyDensity = 0.d0
     udens = 1.d8
     rho = 1.d-7
@@ -1537,6 +1540,7 @@ contains
     write(69,*) "#time"
     close(69)
     oldudens = udens
+
     do while (currentTime < 1.e30)
        meanFreePath = 1.d0/(kappa(1)*rho(1))
 
@@ -1548,6 +1552,8 @@ contains
 !       endif
 
        distanceGridAdot = 0.d0
+       energyIntoCell = 0.d0
+       energyFromCell = 0.d0
        distanceGridPhotonFromSource = 0.d0
        distanceGridPhotonFromGas = 0.d0
        do i = 1, nx
@@ -1603,6 +1609,7 @@ contains
        photonArray = 0.d0
        do iMonte = 1, nPhotons
 !          write(*,*) "imonte ", imonte, nPhotons 
+
           if (oldnStack > 0)  then
              call getPhotonFromStacktest(oldnStack, rVec, uHat, photonTime, epsOverDeltaT, &
                   photonFromSource, photonFromGas, &
@@ -1611,7 +1618,6 @@ contains
              photonTime = 0.d0
           else
              call random_number(r)
-
              if (r < fracSource) then
                 rVec = VECTOR(1.d-18, 0.d0, 0.d0)
                 uHat = VECTOR(1.d0, 0.d0, 0.d0)
@@ -1642,8 +1648,16 @@ contains
           scattered = .false.
           finished = .false.
           outOfTime = .false.
+
+          if (photonFromSource) then
+             call findArrayIndex(xCen, nx, rVec%x, iPos)
+             energyIntoCell(ipos) = energyIntoCell(ipos) + epsOverDeltaT
+          endif
+
+
           do while (.not.finished)
 
+             leftCell = .false.
              timeBoundary = .false.
              spaceBoundary = .false.
 
@@ -1653,6 +1667,9 @@ contains
              else
                 distToBoundary = abs( (((xCen(iPos)-dx/2.d0) - rVec%x )/uHat%x ))
              endif
+
+! photon created from a stellar source in a cell so we add its energy
+
 
              timeToBoundary = distToBoundary / photonSpeed
              if ((timeToBoundary+photonTime) > deltaT) then
@@ -1669,10 +1686,12 @@ contains
 !             write(*,*) "tau ", tau, " tautoboundary ", &
 !                  tautoboundary, iPos, rVec%x, xCen(iPos)-dx/2.d0, xCen(iPos)+dx/2.d0
 
+             leftCell = .false.
 
              if (tau > tauToBoundary) then
                 distanceToEvent = distToBoundary
                 absorbed = .false.
+                leftCell = .true.
                 if (.not.timeBoundary) spaceBoundary = .true.
              else
                 distanceToEvent = distToBoundary * tau/tauToBoundary
@@ -1706,7 +1725,13 @@ contains
                 distanceGridPhotonFromGas(iPos) = distanceGridPhotonFromGas(iPos) + &
                      distanceToEvent * epsOverDeltaT
              endif
+
+             if (leftCell.and.spaceboundary) then
+                energyFromCell(iPos) = energyFromCell(ipos) + epsOverDeltaT
+             endif
+
              rVec = rVec + (distanceToEvent + 1.d-10*dx) * uHat
+
              if (rVec%x < (xCen(1)-dx/2.d0)) then
                 rVec%x =  xCen(1)-dx/2.d0+1.d-10*dx
                 if (reflecting) then
@@ -1723,6 +1748,14 @@ contains
                    finished = .true.
                 endif
              endif
+
+             if (leftCell.and.(.not.finished)) then
+                call findArrayIndex(xCen, nx, rVec%x, iPos)
+                energyIntoCell(iPos) = energyIntoCell(iPos) + epsOverDeltaT
+             endif
+
+
+
              if (scattered) then
                 uhat = randomUnitVector2()!!!!!!!!!!
                 scattered = .false.
@@ -1749,10 +1782,13 @@ contains
                photonEnergyDensityFromGas, xCen, dx, nx, deltaT, photonSpeed)
           call calculatePhotonEnergyDensity(distanceGridPhotonFromSource, &
                photonEnergyDensityFromSource, xCen, dx, nx, deltaT, photonSpeed)
+          call calculateTranportTerms(deltaUtransport, energyFromCell, energyIntoCell, xCen, dx, nx, deltaT)
+
           photonEnergyDensity = photonEnergyDensityFromSource + photonEnergyDensityFromGas
           call solveNewUdens(xCen, kappa, rho, photonDensAnalytical, uDensAnalytical, nx, k, deltaT, &
                currentTime, diffusion)
 
+          write(*,*) "Transport terms ",deltaUtransport(1)
           write(*,*) "Doing step with deltat= ",deltaT
           oldudens = udens
           do i = 1, nx
@@ -1762,7 +1798,13 @@ contains
 !                     photonEnergyDensity(i), &
 !                     kappa(i), rho(i), adot(i), 0.6d0, 5.d0/3.d0, deltaT,ok)
 !             udens(i) = udens_n_plus_1 
-             udens(i) = udens(i) + deltaT*(adot(i) - etaCont(i))
+
+
+!             udens(i) = udens(i) + deltaT*(adot(i) - etaCont(i))
+             
+             matterInteractionTerm = photonEnergyDensity(i) - oldPhotonEnergyDensity(i) - deltaUTransport(i)
+             udens(i) = udens(i) - matterInteractionTerm
+
 
              Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
              newUdens =  uDensFunc(Teq, rho(i),  5.d0/3.d0, 0.6d0)
@@ -1853,7 +1895,7 @@ contains
 !          photondensAnalytical(1), udensanalytical(1)
 
           write(69,*) currentTime, udens(nx/2),photonEnergyDensity(nx/2), &
-               photonDensAnalytical(nx/2), udensAnalytical(nx/2), &
+               udensAnalytical(nx/2), photonDensAnalytical(nx/2), &
                nphotons,100.d0*(SUM(udens*dx)/xSize+SUM(photonEnergyDensity*dx)/xSize-1.d8)/1.d8
           close(69)
           write(*,*) "TOTAL ENERGY: ",SUM(udens*dx)+SUM(photonEnergyDensity*dx)
@@ -2570,5 +2612,20 @@ contains
       enddo
       close(20)
     end subroutine calculateLag
+
+    subroutine calculateTranportTerms(deltaUTransport, energyFromCell, energyIntoCell, xCen, dx, nx, deltaT)
+      integer :: nx
+      real(double) :: energyFromCell(:), energyIntoCell(:), deltaUtransport(:)
+      real(double) :: xCen(:), dx, deltaT
+      integer :: i
+
+      energyIntoCell = energyIntoCell / dx
+      energyFromCell = energyFromCell / dx
+      deltaUTransport = energyIntoCell - energyFromCell
+      do i = 1, nx
+         write(*,*) i, " trans ",energyintocell(i), energyFromcell(i),deltaUTransport(i)
+      enddo
+    end subroutine calculateTranportTerms
+      
 
 end module timeDep_mod

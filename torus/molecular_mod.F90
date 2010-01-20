@@ -4226,7 +4226,7 @@ end subroutine compare_molbench
 ! this routine writes a file of intensity, density, cellsize, cellvolume etc
 
     subroutine dumpIntensityContributions(grid, thisMolecule) 
-     use mpi_global_mod, only: nThreadsGlobal, myRankGlobal
+     use mpi_global_mod, only:  myRankGlobal
      use parallel_mod
       use input_variables, only : itrans
       type(MOLECULETYPE) :: thisMolecule
@@ -4293,16 +4293,19 @@ end subroutine compare_molbench
          close(33)
       endif
       call torus_mpi_barrier()
-666 continue
     end subroutine dumpIntensityContributions
 
 
  recursive subroutine sumDi(thisOctal, deltaNu, itot)
-   include 'mpif.h'
+#ifdef MPI
+     include 'mpif.h'
+     real(double) :: temp
+     integer :: ierr
+#endif
    type(octal), pointer   :: thisOctal
    type(octal), pointer  :: child 
-   integer :: subcell, i, ierr
-   real(double) :: deltaNu, itot,icheck, temp
+   integer :: subcell, i
+   real(double) :: deltaNu, itot
    do subcell = 1, thisOctal%maxChildren
       if (thisOctal%hasChild(subcell)) then
          ! find the child

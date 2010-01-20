@@ -695,7 +695,7 @@ contains
 
     do iSource = 1, nSource
        do i = 1, source(iSource)%surface%nElements
-          write(lunit,*) 1.
+          write(lunit,*) 0.5
        enddo
     enddo
     close(lunit)
