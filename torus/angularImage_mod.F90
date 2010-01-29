@@ -654,8 +654,8 @@ module angularImage
                     
         thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0)
 
-        ! average change in brightness temperature over this cell
-        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0) 
+        ! average change in brightness temperature (per column density) over this cell
+        thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + (dIovercell/nCol) ) / (n + 1.d0) 
 
         ! Image co-ordinates        
         thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + this_gal_lon) / (n + 1.d0)
