@@ -2967,42 +2967,44 @@ endif
 
            else
 
-           if (.not.associated(thisOctal%molmicroturb)) then
-              allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
-           endif
+              if (.not.associated(thisOctal%molmicroturb)) then
+                 allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
+              endif
 
-           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+              thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
 
-           if (.not.associated(thisOctal%molcellparam)) then
-              allocate(thisOctal%molcellparam(8,1:thisOctal%maxChildren))
-           endif
+              if (.not.associated(thisOctal%molcellparam)) then
+                 allocate(thisOctal%molcellparam(8,1:thisOctal%maxChildren))
+              endif
 
-           thisOctal%molcellparam(1,subcell) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+              thisOctal%molcellparam(1,subcell) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
            
-           nMol = thisOctal%molcellparam(1,subcell)
+              nMol = thisOctal%molcellparam(1,subcell)
            
-           iUpper = thisMolecule%iTransUpper(iTrans)
-           iLower = thisMolecule%iTransLower(iTrans)
+              iUpper = thisMolecule%iTransUpper(iTrans)
+              iLower = thisMolecule%iTransLower(iTrans)
            
-           thisOctal%molcellparam(2,subcell) = thisOctal%molecularLevel(iLower,subcell)! * nMol
-           thisOctal%molcellparam(3,subcell) = thisOctal%molecularLevel(iUpper,subcell)! * nMol
+              thisOctal%molcellparam(2,subcell) = thisOctal%molecularLevel(iLower,subcell)! * nMol
+              thisOctal%molcellparam(3,subcell) = thisOctal%molecularLevel(iUpper,subcell)! * nMol
               
-           nLower = thisOctal%molcellparam(2,subcell)
-           nUpper = thisOctal%molcellparam(3,subcell)
-           thisOctal%molcellparam(4,subcell) = nLower * thisMolecule%einsteinBlu(iTrans) &
-                - nUpper * thisMolecule%einsteinBul(iTrans)
+              nLower = thisOctal%molcellparam(2,subcell)
+              nUpper = thisOctal%molcellparam(3,subcell)
+              thisOctal%molcellparam(4,subcell) = nLower * thisMolecule%einsteinBlu(iTrans) &
+                   - nUpper * thisMolecule%einsteinBul(iTrans)
               
-           etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
+              etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
            
-           thisOctal%molcellparam(5,subcell) = etaLine * nUpper
-           thisOctal%molcellparam(6,subcell) = hCgsOverFourPi * thisOctal%molcellparam(4,subcell)! balance
+              thisOctal%molcellparam(5,subcell) = etaLine * nUpper
+              thisOctal%molcellparam(6,subcell) = hCgsOverFourPi * thisOctal%molcellparam(4,subcell)! balance
+           endif
         endif
-     endif
 
-     allocate(thisoctal%newmolecularlevel(5, thisoctal%maxchildren))
-     thisOctal%newmolecularlevel(:,subcell) = 0.0d0
+        if( .not. associated(thisOctal%newmolecularlevel) ) then
+           allocate(thisoctal%newmolecularlevel(5, thisoctal%maxchildren))
+           thisOctal%newmolecularlevel(:,:) = 0.0d0
+        end if
 
-  end do
+     end do
 
 end subroutine calculateOctalParams
 
