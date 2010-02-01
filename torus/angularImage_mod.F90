@@ -713,6 +713,7 @@ module angularImage
 
     real(double) :: dI, n_sample
     real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
+    real(double) :: H2_frac
 
 #ifdef MPI
     character(len=3)    :: char_my_rank
@@ -721,7 +722,7 @@ module angularImage
     integer, parameter  :: LUIN = 10 ! unit number of output file
 
 ! Re-read particle data which has been deleted to save memory
-     call read_galaxy_sph_data(sphdatafilename)
+     call read_galaxy_sph_data(sphdatafilename, set_H2=.true.)
 
 #ifdef MPI
      write(char_my_rank, '(i3)') myRankGlobal
@@ -749,10 +750,13 @@ module angularImage
            
            dI       =  thisOctal%newmolecularlevel(1,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
+           
+           ! Calculate mass fraction of molecular hydrogen (sphdata%rhon is the mass of HI)
+           H2_frac = sphdata%rhoH2(ipart) / ( sphdata%rhon(ipart) + sphdata%rhoH2(ipart) )
 
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
-           if ( n_sample > 0.99 ) write(LUIN,'(8(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
-                sphdata%rhon(ipart), dI, n_sample, ipart
+           if ( n_sample > 0.99 ) write(LUIN,'(9(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
+                sphdata%rhon(ipart), dI, n_sample, H2_frac, ipart
 
         end if
 
@@ -770,6 +774,7 @@ module angularImage
      write(LUIN,'(a)') "rho"
      write(LUIN,'(a)') "dI"
      write(LUIN,'(a)') "nsample"
+     write(LUIN,'(a)') "H2frac"
      write(LUIN,'(a)') "index"
      close (LUIN)
 

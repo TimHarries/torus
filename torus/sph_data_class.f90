@@ -63,6 +63,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: hn                 ! Smoothing length
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
+     ! Density of H2
+     real(double), pointer, dimension(:) :: rhoH2
      ! Temperature of the gas particles
      real(double), pointer, dimension(:) :: temperature
      ! Smoothing lengths of the sink particles
@@ -472,12 +474,14 @@ contains
   end subroutine new_read_sph_data
 
 ! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
-  subroutine read_galaxy_sph_data(filename)
+  subroutine read_galaxy_sph_data(filename, set_H2)
     use input_variables, only: internalView, galaxyPositionAngle, galaxyInclination
 
     implicit none
     
     character(len=*), intent(in) :: filename
+    logical, intent(in) :: set_H2
+
     character(LEN=150) :: message
 
     integer :: i, j, iiigas
@@ -534,7 +538,10 @@ contains
     read(LUIN) udist, umass, utime, dummy
 
     time=0.0
+
     call init_sph_data(udist, umass, utime, time, nptmass)
+    if (set_H2) allocate(sphdata%rhoH2(npart)) 
+
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
     sphdata%codeEnergytoTemperature = 1.0 ! no conversion required
 
@@ -579,6 +586,7 @@ contains
 
     close(LUIN)
 
+
 !
 ! Set up SPH data structure
 !
@@ -600,6 +608,7 @@ contains
           hI_mass = hI_mass + xyzmh(4,i) * (h1rho(i) / rho(i))
 
           sphData%rhon(iiigas)        = h1rho(i)
+          if (set_H2) sphData%rhoH2(iiigas) = h2rho(i)
 
           if ( internalView ) then 
 
