@@ -26,7 +26,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use input_variables, only : suppressLucySmooth
+    use input_variables, only : suppressLucySmooth, object
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -240,6 +240,12 @@ contains
 !       call fillDustUniform(grid, grid%octreeRoot)
 !    endif
 
+
+    if (object == "ab_aur") then
+       call writeInfo("Filling dust with large dust in midplane", FORINFO)
+       call fillDustUniform(grid, grid%octreeRoot)
+    endif
+       
     if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
        call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
@@ -1677,13 +1683,15 @@ contains
              endif
 
 
-             if (thisOctal%nCrossings(subcell) .ge. 10) then
-                thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + deltaT)
-             endif
+             if (.not.thisOctal%fixedTemperature(subcell)) then
+                if (thisOctal%nCrossings(subcell) .ge. 10) then
+                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + deltaT)
+                endif
  
-             if (thisOctal%nCrossings(subcell) .lt. minCrossings) then
-                nUnderSampled = nUndersampled + 1
-                thisOctal%undersampled(subcell) = .true.
+                if (thisOctal%nCrossings(subcell) .lt. minCrossings) then
+                   nUnderSampled = nUndersampled + 1
+                   thisOctal%undersampled(subcell) = .true.
+                endif
              endif
 
 

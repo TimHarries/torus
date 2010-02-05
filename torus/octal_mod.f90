@@ -181,6 +181,7 @@ MODULE octal_mod
     real(double)               :: phi, dphi
     
     logical, dimension(:), pointer                 :: diffusionApprox => null()
+    logical, dimension(:), pointer                 :: fixedTemperature => null()
     real, dimension(:), pointer :: nDiffusion => null()
     real(double), dimension(:), pointer :: eDens => null()
     real(double), pointer :: diffusionCoeff(:) => null()

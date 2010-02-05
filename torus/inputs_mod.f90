@@ -1478,6 +1478,32 @@ contains
        call getReal("ttauridiskheight", TTauriDiskHeight, cLine, nLines, &
             "T Tauri disk height (in R_star): ","(a,f7.1,1x,a)", 6.e-2, ok, .false.)
        TTauriDiskHeight = TTauriDiskHeight * TTauriRstar
+
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+       rInner = rInner * ttauriRstar/1.d10
+       call getReal("router", rOuter, cLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+       rOuter = rOuter * autocm/1.e10
+
+       call getReal("rsub", rSublimation, cLine, nLines, &
+            "Sublimation radius (rstar): ","(a,f5.1,a)", 20., ok, .true.)
+       rSublimation = rSublimation * ttauriRstar/1.d10
+       mie = .true.
+
+       call getReal("height", height, cLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+       height = height * autocm/1.d10
+       call getReal("mdisc", mDisc, cLine, nLines, &
+            "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+       mdisc = mdisc * msol
+       call getReal("alphadisc", alphaDisc, cLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, cLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+
        call getReal("ttauridiskrin", TTauriDiskRin, cLine, nLines, &
             "T Tauri disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
        call getReal("thindiskrin", ThinDiskRin, cLine, nLines, &
@@ -1562,11 +1588,11 @@ contains
             "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
 
              DW_rMin = ttauriRouter/1.d10
-             DW_rMax = 10.d0 * DW_rMin
+             DW_rMax = 2.d0 * DW_rMin
              DW_theta = 60.d0 * degtoRad
              DW_mdot = 0.1d0 * mDotparameter1
-             DW_temperature = 2000.d0
-             
+             DW_temperature = 8000.d0
+
        if (useHartmannTemp .and. isoTherm) then 
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
           stop
@@ -2185,6 +2211,9 @@ contains
 
        oneKappa = .true.
        fastIntegrate = .true.
+
+       call getString("object", contFluxFile, cLine, nLines, &
+            "Object name: ","(a,a,1x,a)","generic", ok, .true.)
 
        call getReal("mdot", mdot, cLine, nLines, &
             "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)

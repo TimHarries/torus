@@ -48,8 +48,10 @@ contains
 
     inflowMahdavi = .false.
     if ((thisRmax > rMaxMin).and.(thisRmax < rMaxMax)) inflowMahdavi = .true.
-    if ((rVec%z < 0.d0).and.(rVec%x > 0.d0)) inflowMahdavi = .false.
-    if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdavi = .false.
+    if (dipoleOffset /= 0.) then
+       if ((rVec%z < 0.d0).and.(rVec%x > 0.d0)) inflowMahdavi = .false.
+       if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdavi = .false.
+    endif
     if (r < ttauriRstar) inflowMahdavi = .false.
 666 continue
   end function inFlowMahdavi
@@ -192,5 +194,30 @@ contains
      endif
 
    end function rhoBlandfordPayne
+
+   function rhoAlphaDisc(grid, rVec) result(rho)
+     use input_variables, only : rinner, router, mdisc, alphaDisc, betaDisc, height
+     type(GRIDTYPE) :: grid
+     type(VECTOR) :: rVec
+     real(double) :: rho, r, fac, r0
+     real(double) :: h, rho0
+
+     r0 = 100.d0 * autocm/1.d10
+     fac = betaDisc - alphaDisc + 2.d0
+     rho0 = mDisc / (twoPi**1.5 * height * r0**(-betaDisc) * rInner**alphaDisc * &
+          (rOuter**fac - rInner**fac))
+     rho0 = rho0 / 1.d30
+     r = sqrt(rvec%x**2 + rvec%y**2)
+      rho = 1.d-30
+!      write(*,*) "r ",r*1d10/rsol,rinner*1.d10/rsol,router*1.d10/rsol
+      if ( (r > Rinner).and.(r < rOuter) ) then
+         r = sqrt(rVec%x**2 + rVec%y**2)
+         h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+         fac = -0.5d0 * (dble(rVec%z)/h)**2
+         rho = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+      endif
+
+
+   end function rhoAlphaDisc
 
 end module magnetic_mod

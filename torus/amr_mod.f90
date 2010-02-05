@@ -1234,8 +1234,8 @@ CONTAINS
        SELECT CASE (grid%geometry)
 
        CASE ("ttauri")
-          IF (.NOT. useHartmannTemp) &
-               CALL calcTTauriTemperature(thisOctal,subcell)
+!          IF (.NOT. useHartmannTemp) &
+!               CALL calcTTauriTemperature(thisOctal,subcell)
           
        CASE ("jets")
           CALL calcJetsTemperature(thisOctal,subcell, grid)
@@ -4302,7 +4302,7 @@ IF ( .NOT. gridConverged ) RETURN
          maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
-    use input_variables, only: DW_rMin
+    use input_variables, only: DW_rMin, rSublimation
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4567,10 +4567,7 @@ IF ( .NOT. gridConverged ) RETURN
      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
 
      if (inFlow) then
-        if (cellSize/(ttauriRstar/1.d10) > 0.01d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
-!        write(*,*) "split ",cellSize, r, cellSize/(ttauriRstar/1.d10),  0.1d0*(r/(TTaurirStar/1.d10)), thisOctal%ndepth, &
-!             ttaurirstar
-!        if ((inflow).and.((r0-cellsize/2.d0) < (1.01d0*ttauriRstar/1.d10)).and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
+        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
         if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
            split = .true.
            splitinazimuth = .true.
@@ -4606,17 +4603,27 @@ IF ( .NOT. gridConverged ) RETURN
      endif
 
 
-      phi = atan2(cellCentre%y,cellCentre%x)
-      height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
-      if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
-         if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
-            if (abs(cellCentre%z-height) < 2.d0*cellSize) then
-               split = .true.
-               splitInAzimuth = .true.
-            endif
-         endif
-      endif
+!      phi = atan2(cellCentre%y,cellCentre%x)
+!      height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
+!      if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
+!         if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
+!            if (abs(cellCentre%z-height) < 2.d0*cellSize) then
+!               split = .true.
+!               splitInAzimuth = .true.
+!            endif
+!         endif
+!      endif
 
+
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+      if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
+           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
    case("lexington")
       if (thisOctal%nDepth < mindepthamr) then
@@ -10175,6 +10182,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%Heheating,  source%Heheating)
     call copyAttribute(dest%changed,  source%changed)
 
+    call copyAttribute(dest%fixedTemperature,  source%fixedTemperature)
+
 
     call copyAttribute(dest%scatteredIntensity, source%scatteredIntensity)
     call copyAttribute(dest%temperaturedust, source%temperatureDust)
@@ -13164,6 +13173,48 @@ end function readparameterfrom2dmap
     enddo
   end subroutine assignDensitiesBlandfordPayne
 
+  recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
+    use magnetic_mod, only : rhoAlphaDisc
+    use input_variables, only : rSublimation
+    type(GRIDTYPE) :: grid
+    real(double) :: thisRho, r, fac
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: cellCentre
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignDensitiesAlphaDisc(grid, child)
+                exit
+             end if
+          end do
+       else
+          cellCentre = subcellCentre(thisOctal, subcell)
+          thisRho  = rhoAlphaDisc(grid, cellCentre)
+          r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+          thisOctal%dustTypeFraction(subcell,:) = 0.d0
+          thisOctal%fixedTemperature(subcell) = .true.
+          if ((r > rSublimation).and.(thisRho > thisOctal%rho(subcell))) then
+             thisOctal%dustTypeFraction(subcell,1) = 1.d0
+             thisOctal%fixedTemperature(subcell) = .false.
+             thisOctal%temperature(subcell) = 10.
+             if (r < rSublimation*1.01d0) then
+                fac = ((rSublimation*1.01 - r)/(0.001*rSublimation))
+                thisOctal%dustTypeFraction(subcell,1) = exp(-fac)
+             endif
+          endif
+          thisOCtal%rho(subcell) = max(thisRho, thisOctal%rho(subcell))
+          
+             
+       endif
+    enddo
+  end subroutine assignDensitiesAlphaDisc
+
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot)
     use input_variables, only :  vturb, isothermTemp, ttauriRstar
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
@@ -13214,11 +13265,12 @@ end function readparameterfrom2dmap
   
 
   recursive subroutine fillVelocityCornersMahdavi(thisOctal,grid)
-    use magnetic_mod, only : velocityMahdavi
+    use magnetic_mod, only : velocityMahdavi, inflowMahdavi
     use input_variables, only : vturb, isothermtemp
     type(GRIDTYPE) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -13232,7 +13284,7 @@ end function readparameterfrom2dmap
              end if
           end do
        else
-          thisOctal%temperature(subcell) = isothermTemp
+
           if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
 
           IF ((thisoctal%threed).and.(subcell == 8)) &
@@ -16666,7 +16718,7 @@ end function readparameterfrom2dmap
   end function getVel
 
 
-  subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion)
+  subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
     use input_variables, only : ttauriRstar
@@ -16688,9 +16740,11 @@ end function readparameterfrom2dmap
     totallum = 0.d0
     totalmdot = 0.d0
 
+    thisOctal => grid%octreeRoot
     do i = 1, surface%nElements
-       rVec = surface%element(i)%position + 2.d0*grid%halfsmallestsubcell * surface%element(i)%norm
-       CALL findSubcellTD(rVec,grid%octreeRoot,thisOctal,subcell)
+       rVec = surface%element(i)%position + &
+            0.01d0*modulus(surface%element(i)%position-surface%centre) * surface%element(i)%norm
+       CALL findSubcellLocal(rVec,thisOctal,subcell)
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)
        mdot = thisOctal%rho(subcell) * v * area
@@ -16762,6 +16816,8 @@ end function readparameterfrom2dmap
     if (mie) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
        thisOctal%oldFrac = 1.d-30
+       call allocateAttribute(thisOctal%fixedTemperature, thisOctal%maxChildren)
+       thisOctal%fixedTemperature = .false.
        call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
@@ -16966,6 +17022,7 @@ end function readparameterfrom2dmap
       type(OCTAL):: thisOctal
 
        call deallocateAttribute(thisOctal%oldFrac)
+       call deallocateAttribute(thisOctal%fixedtemperature)
        call deallocateAttribute(thisOctal%dustType)
        call deallocateAttribute(thisOctal%dusttypefraction)
        call deallocateAttribute(thisOctal%diffusionApprox)

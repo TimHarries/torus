@@ -495,6 +495,8 @@ contains
           call writeAttributePointerFlexi(20, "utotal", thisOctal%photonEnergyDensity, fileFormatted)
           call writeAttributePointerFlexi(20, "oldutotal", thisOctal%oldphotonEnergyDensity, fileFormatted)
 
+          call writeAttributePointerFlexi(20, "fixedtemperature", thisOctal%fixedTemperature, fileFormatted)
+
           call writeAttributeStaticFlexi(20, "mpiThread", thisOctal%mpiThread, fileFormatted)
           call writeFileTag(20, "OCTALENDS", fileFormatted)
        endif
@@ -1019,6 +1021,9 @@ contains
             call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
          case("oldutotal")
             call readPointerFlexi(20, thisOctal%oldphotonEnergyDensity, fileFormatted)
+
+         case("fixedtemperature")
+            call readPointerFlexi(20, thisOctal%fixedtemperature, fileFormatted)
 
 
          case DEFAULT

@@ -307,7 +307,7 @@ program torus
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 6)
+        call stripAtomLevels(thisAtom(i), 10)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif
@@ -584,7 +584,9 @@ program torus
 
      call init_random_seed()
      if (cmf) then
-        if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
+        nlucy = 100000
+        call do_lucyRadiativeEq
+        call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
         if (writeoutput) then
            write(phaseFilename,"(a,i2.2,a,i2.2,a)") &
@@ -592,22 +594,26 @@ program torus
              nint(dipoleOffset*radtodeg),".dat"
            open(33, file=phaseFilename, status="unknown", form="formatted")
         endif
-           nphi = 20
+           nphi = 1
            do i = 1, nphi
               ang = twoPi * real(i-1)/real(nphi)  +pi
               t = 75.d0*degtorad
+              t = 35.d0*degtorad
               viewVec = VECTOR(0.d0, 0.d0, -1.d0)
               viewVec = rotateY(viewVec,t)
               viewVec = rotateZ(viewVec, ang)
               call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                    viewVec, 140.d0*pctocm/1.d10, &
-                   source, nsource,i, totalFlux, occultingDisc=.true., forceLambda = 5500.d0)
-              write(*,*) "TOTAL FLUX at 5500 ", totalflux
-              vMag = returnMagnitude(totalFlux, "V")
-              call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                   viewVec, 140.d0*pctocm/1.d10, &
-                   source, nsource,i,totalFlux,occultingDisc=.true.,forceLambda=4400.d0)
-              bMag = returnMagnitude(totalFlux, "B")
+                   source, nsource,i, totalFlux)
+ !             call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+ !                  viewVec, 140.d0*pctocm/1.d10, &
+ !                  source, nsource,i, totalFlux, occultingDisc=.true., forceLambda = 5500.d0)
+ !             write(*,*) "TOTAL FLUX at 5500 ", totalflux
+ !             vMag = returnMagnitude(totalFlux, "V")
+ !             call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
+ !                  viewVec, 140.d0*pctocm/1.d10, &
+ !                  source, nsource,i,totalFlux,occultingDisc=.true.,forceLambda=4400.d0)
+ !             bMag = returnMagnitude(totalFlux, "B")
 
               A_v = 0.8d0
               E_b_minus_v = a_v / 3.1d0
@@ -911,6 +917,7 @@ CONTAINS
 
   elseif (geometry == "ttauri".or.(geometry == "magstream")) then
      onekappa=.false.
+     onekappa = .true.!!!!!!!!!!!!!!
      if (ttau_disc_on)  &
           call new(ttauri_disc, dble(TTauriDiskRin*TTauriRstar/1.0e10), 1.5d3*100.d0, &
           dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
@@ -1682,7 +1689,8 @@ end subroutine pre_initAMRGrid
              if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
              call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
              call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
-             call addWarpedDisc(grid%octreeRoot)
+             call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+!             call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0
              call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
@@ -1806,7 +1814,7 @@ end subroutine pre_initAMRGrid
               endif
            end if
 
-     end select
+        end select
    
 !        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
 !        gridconverged = .false.
@@ -1864,7 +1872,7 @@ end subroutine pre_initAMRGrid
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-              call genericAccretionSurface(starsurface, grid, nu,coreContinuumFlux,fAccretion)
+              call genericAccretionSurface(starsurface, grid, nu,coreContinuumFlux,fAccretion, lAccretion)
            elseif (geometry == "magstream") then
               
            elseif (geometry == "romanova") then
@@ -2100,7 +2108,7 @@ subroutine set_up_sources
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-              call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+              call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion,laccretion) 
            elseif (geometry == "magstream") then
               
            elseif (geometry == "romanova") then
@@ -2114,16 +2122,16 @@ subroutine set_up_sources
            nSource = 1
            allocate(source(1:1))
            source(:)%outsideGrid = .false.
-           source(1)%luminosity = grid%lCore
+           source(1)%luminosity = fourPi * stefanBoltz * ttauriRstar**2 * teff**4
            source(1)%radius = ttaurirStar/1.d10
-           source(1)%teff = 4000.
+           source(1)%teff = teff
            source(1)%position = VECTOR(0.,0.,0.)
            call fillSpectrumBB(source(1)%spectrum, source(1)%teff,  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
            call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile)
 !           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
-           call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
-
+           call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion, lAccretion) 
+           source(1)%luminosity = source(1)%luminosity + lAccretion
         endif
 
         
@@ -2155,7 +2163,7 @@ subroutine set_up_sources
           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile)
        endif
        nu =1.d15
-       call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+       call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion, lAccretion)
        call testSurface(source(1)%surface)
 
     case("melvin")

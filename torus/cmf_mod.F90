@@ -385,8 +385,10 @@ contains
        hCol, HeIcol, HeIIcol, nAtom, thisAtom, source, nSource, &
        hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom, nHAtom, nHeIAtom, nHeIIAtom, &
        nFreq, freq, iCont)
-    use input_variables, only : opticallyThickContinuum
-    use amr_mod, only: randomPositionInCell
+    use input_variables, only : opticallyThickContinuum, nLambda
+    use amr_mod, only: randomPositionInCell, returnKappa
+    use utils_mod, only : findIlambda
+    use atom_mod, only : bnu
     type(SOURCETYPE) :: source(:)
     integer :: nfreq
     real(double) :: freq(:)
@@ -434,8 +436,10 @@ contains
     logical, save :: firstWarning = .true.
     logical, save :: firstTime = .true.
     real(double) :: nStar(5,40)
-    logical :: passThroughResonance, velocityIncreasing
-    real(double) :: x1, x2, fac, deltaDist
+    logical :: passThroughResonance, velocityIncreasing, ok
+    real(double) :: x1, x2, fac, deltaDist, lambda, kappaSca, kappaExt, kappaAbs
+    real(double) :: dustOpac, dustEmiss
+    Integer :: ilambda
     integer, allocatable,save :: iFreqRBB(:)
 
     if (firstTime) then
@@ -639,6 +643,17 @@ contains
                      nStar, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
                      thisOctal%jnuCont(subcell,ifreq), ifreq=ifreq)/fourpi
 
+                lambda = (cSpeed/freq(ifreq)) /angstromTocm
+                iLambda = findIlambda(real(lambda), grid%lamArray, nLambda, ok)
+                call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                kappaExt = kappaAbs + kappaSca
+
+                dustOpac = kappaExt/1.d10
+                dustEmiss = kappaAbs * bnu(freq(ifreq), dble(thisOctal%temperature(subcell)))/1.d10
+
+                
+                jnuCont(ifreq) = jnuCont(ifreq) + dustEmiss
+                alphaNuCont(iFreq) = alphaNuCont(ifreq) + dustOpac
 
                 if (alphanuCont(ifreq) /= 0.d0) then
                    snuCont(iFreq) = jnuCont(iFreq)/alphanuCont(iFreq)
@@ -1219,7 +1234,7 @@ contains
                    thisOctal%inFlow(subcell) = &
                         thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
 
-                   if (thisOctal%inflow(subcell)) then
+                   if (thisOctal%inflow(subcell).and.(.not.thisOctal%fixedTemperature(subcell))) then
                       nHit = 0
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position, direction, &
@@ -1776,8 +1791,10 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : ttauriRinner, lineOff
-    use amr_mod, only: distanceToGridFromOutside
+    use input_variables, only : ttauriRinner, lineOff, nlambda
+    use amr_mod, only: distanceToGridFromOutside, returnKappa
+    use utils_mod, only : findIlambda
+    use atom_mod, only : bnu
     logical ::     justPhotosphere
     type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
@@ -1820,11 +1837,14 @@ contains
     logical :: endLoopAtPhotosphere
     real(double) :: nstar(10,50), rhoCol
     real(double) :: bfOpac, bfEmiss, x1, x2, fac
+    real(double) :: dustOpac, dustEmiss
+    integer :: ilambda
+    real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
     integer :: j, k
-    logical :: passThroughResonance, velocityIncreasing
+    logical :: passThroughResonance, velocityIncreasing, ok
 
     i0 = tiny(i0)
-    justPhotosphere = .true.
+    justPhotosphere = .false.
 
     hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
     a = 0.d0; blu = 0.d0; bul = 0.d0
@@ -1845,6 +1865,10 @@ contains
 
     call locate(freqArray, nFreq, transitionFreq, iFreq)
 
+    transitionLambda = (cSpeed/transitionFreq) /angstromTocm
+    iLambda = findIlambda(real(transitionLambda), grid%lamArray, nLambda, ok)
+
+
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
     currentposition = position
@@ -1856,15 +1880,17 @@ contains
           distToDisc = 1.d30
        endif
     endif
-    if (occultingDisc) then
-       if (distToDisc < distToGrid) then
-          i0 = tiny(i0)
-          goto 666
+    if (present(OccultingDisc)) then
+       if (occultingDisc) then
+          if (distToDisc < distToGrid) then
+             i0 = tiny(i0)
+             goto 666
+          endif
        endif
     endif
 
     if (distToGrid > 1.e29) then
-       !       write(*,*) "ray does not intersect grid",position,direction
+!              write(*,*) "ray does not intersect grid",position,direction
        i0 = tiny(i0)
        goto 666
     endif
@@ -2043,6 +2069,13 @@ contains
                      thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
                 bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom, nstar, &
                      dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
+
+                call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                kappaExt = kappaAbs + kappaSca
+
+                dustOpac = kappaExt/1.d10
+                dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
+!                write(*,*) "opac/emiss ",dustopac,dustemiss, thisOctal%rho(subcell), thisOctal%dustTypeFraction(subcell,1)
              endif
 
 
@@ -2066,11 +2099,11 @@ contains
                 snu = 0.d0
              endif
 
-             alphanu = alphanu + bfOpac
+             alphanu = alphanu + bfOpac + dustOpac
 
              ! add continuous bf and ff emissivity of hydrogen
 
-             jnu = jnu + bfEmiss
+             jnu = jnu + bfEmiss + dustEmiss
 
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
@@ -2085,8 +2118,9 @@ contains
              !               passthroughresonance, dv*cspeed/1.e5, phiProf(dv, thisOctal%microturb(subcell)), &
              !               snu,dtau,tau
 
-             !          write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
-             !             i0,tau, jnu,alphanu,snu, nlower,nupper
+!                       write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, &
+!                            dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
+!                          i0,tau, jnu,alphanu,snu, nlower,nupper
 
              if (thisOctal%inflow(subcell)) then
                 i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
@@ -2184,8 +2218,8 @@ contains
 
     nlambda = 100
 
-    doCube = .false.
-    doSpec = .true.
+    doCube = .true.
+    doSpec = .false.
 
     broadBandFreq = 1.d15
     if (PRESENT(forceLambda)) then
@@ -2388,7 +2422,7 @@ contains
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
-    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar
+    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar, rSublimation
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2415,8 +2449,8 @@ contains
 
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
-    integer :: j
 #ifdef MPI
+    integer :: j
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     integer       ::   n
@@ -2444,9 +2478,9 @@ contains
 
     vStart = -500.d0
     vEnd = 500.d0
-    nv = 1
-    nx = 1000
-    ny = 1000
+    nv = 10
+    nx = 200
+    ny = 200
 
 
 
@@ -2501,8 +2535,11 @@ contains
        !       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
        !            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
 
-       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
-            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
+!       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
+!            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
+
+       call addSpatialAxes(cube, -1.2d0*rSublimation,1.2d0*rSublimation, &
+            -1.2d0*rSublimation, 1.2d0*rSublimation)
     endif
     !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
     !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)

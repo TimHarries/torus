@@ -1415,29 +1415,39 @@ contains
 
 ! test1
 
+    nMonte = 100
     photonEnergyDensity = 1.d12
-    udens = 1.d10
+    udens = 1.d2
     rho = 1.d-7
     kappa = 4.d-1
     oldNstack = nMonte
-
-! test2
-
-    nMonte = 1000
-    photonEnergyDensity = 0.d0
-    udens = 1.d8
-    rho = 1.d-7
-    kappa = 4.d-1
-    oldnStack = 0
-    deltaT = 1.d-11
+    deltaTmin = 1.d-16
+    deltaTmax = 1.e-5
+    deltaT = 1.d-16
     udensAnalytical = udens
     photonDensAnalytical = photonEnergyDensity
-    deltaTmin = 1.d-12
-    deltaTmax = 1.e-5
     do i = 1, nx
        temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0, 0.6d0)
     enddo
     oldetaCont = fourPi * (stefanBoltz/pi) * temperature**4 * kappa * rho 
+
+! test2
+
+!    nMonte = 1000
+!    photonEnergyDensity = 0.d0
+!    udens = 1.d8
+!    rho = 1.d-7
+!    kappa = 4.d-1
+!    oldnStack = 0
+!    deltaT = 1.d-11
+!    udensAnalytical = udens
+!    photonDensAnalytical = photonEnergyDensity
+!    deltaTmin = 1.d-12
+!    deltaTmax = 1.e-5
+!    do i = 1, nx
+!       temperature(i) = temperatureFunc(uDens(i),  rho(i), 5.d0/3.d0, 0.6d0)
+!    enddo
+!    oldetaCont = fourPi * (stefanBoltz/pi) * temperature**4 * kappa * rho 
     
 ! test3
 
@@ -1782,8 +1792,9 @@ contains
                photonEnergyDensityFromGas, xCen, dx, nx, deltaT, photonSpeed)
           call calculatePhotonEnergyDensity(distanceGridPhotonFromSource, &
                photonEnergyDensityFromSource, xCen, dx, nx, deltaT, photonSpeed)
+          write(*,*) "calling calctransterms"
           call calculateTranportTerms(deltaUtransport, energyFromCell, energyIntoCell, xCen, dx, nx, deltaT)
-
+          write(*,*) "done"
           photonEnergyDensity = photonEnergyDensityFromSource + photonEnergyDensityFromGas
           call solveNewUdens(xCen, kappa, rho, photonDensAnalytical, uDensAnalytical, nx, k, deltaT, &
                currentTime, diffusion)
@@ -1800,10 +1811,11 @@ contains
 !             udens(i) = udens_n_plus_1 
 
 
-!             udens(i) = udens(i) + deltaT*(adot(i) - etaCont(i))
+             udens(i) = udens(i) + deltaT*(adot(i) - etaCont(i))
              
-             matterInteractionTerm = photonEnergyDensity(i) - oldPhotonEnergyDensity(i) - deltaUTransport(i)
-             udens(i) = udens(i) - matterInteractionTerm
+
+!             matterInteractionTerm = photonEnergyDensity(i) - oldPhotonEnergyDensity(i) - deltaUTransport(i)
+!             udens(i) = udens(i) - matterInteractionTerm
 
 
              Teq = max(0.d0,(aDot(i) / (4.d0 * stefanBoltz * kappa(i) *rho(i)))**0.25d0) ! in radiative equilibrium
@@ -1842,7 +1854,7 @@ contains
           currentTime = currentTime + deltaT
 
           newDeltaT = 1.d30
-          fac = 0.1d0
+          fac = 1.d0
           do i = 1, nx
              if ((uDens(i) > 0.d0).and.(abs(adot(i) - etaCont(i)) /= 0.d0)) then
                 if (adot(i) > 0.d0) then
@@ -1892,9 +1904,9 @@ contains
 !          SUM(photonEnergyDensityFromSource*dx), &
 !	  SUM(udens*dx)+SUM(photonEnergyDensityFromGas*dx) + &
 !	  SUM(photonEnergyDensityFromSource*dx), etest, &
-!          photondensAnalytical(1), udensanalytical(1)
+!          photondensAnalytical(1), udensanalytical(1
 
-          write(69,*) currentTime, udens(nx/2),photonEnergyDensity(nx/2), &
+          write(69,*) currentTime, SUM(udens(1:nx))/dble(nx),SUM(photonEnergyDensity(1:nx))/dble(nx), &
                udensAnalytical(nx/2), photonDensAnalytical(nx/2), &
                nphotons,100.d0*(SUM(udens*dx)/xSize+SUM(photonEnergyDensity*dx)/xSize-1.d8)/1.d8
           close(69)

@@ -23,6 +23,7 @@ module input_variables
   real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
   character(len=10) :: geometry
+  character(len=10) :: object
   real :: bigomega, eddingtonGamma, alphaCAK
   logical :: uniformStar
   character(len=80) :: absolutePath
@@ -245,7 +246,7 @@ module input_variables
   real :: Mbol
   real :: radius, kfac, xfac
   real :: rCore, rInner
-  real :: rTorus, rOuter
+  real :: rTorus, rOuter, rSublimation
   real :: rho, rho0
   real :: scale, rscale
   real :: mCore, diskTemp, mDisc

@@ -909,6 +909,48 @@ contains
 
   end subroutine fillDustShakara
 
+  recursive subroutine fillDustABAur(grid, thisOctal)
+
+    use input_variables, only : rInner, rOuter
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rVec
+    real :: x, z
+    real :: height
+    real(double) :: fac
+    integer :: subcell, i
+    height = 0.d0
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustABAur(grid, child)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%DustTypeFraction(subcell,1:2) = 0.d0
+          thisOctal%DustTypeFraction(subcell,1) = 1.d0
+          rVec = subcellCentre(thisOctal, subcell)
+          x = rVec%x
+          z = rVec%z
+          if ( (x > rInner).and.(x < rOuter)) then
+             call returnScaleHeight(grid, x, height)
+             fac = exp(-abs(z/height))
+             thisOctal%dustTypeFraction(subcell,1) = 1.d0 - fac
+             thisOctal%dustTypeFraction(subcell,2) = fac
+          endif
+
+       end if
+    end do
+
+  end subroutine fillDustABAur
+
 
 
 
