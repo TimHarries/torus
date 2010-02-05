@@ -12243,7 +12243,8 @@ end function readparameterfrom2dmap
       if(grid%onekappa) then
 
          if (nDustType .eq. 1) then
-            kappaAbsArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaAbsT(1:nlambda,1)
+            kappaAbsArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaAbsT(1:nlambda,1) &
+                 * thisOctal%dustTypeFraction(subcell,1)
          else
             kappaAbsArray(1:grid%nLambda) = 0.            
             do i = 1, nDustType
@@ -12266,7 +12267,8 @@ end function readparameterfrom2dmap
        if(grid%onekappa) then
  
           if (nDustType .eq. 1) then
-             kappaScaArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaScaT(1:nlambda,1)
+             kappaScaArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaScaT(1:nlambda,1) * &
+                  thisOctal%dustTypeFraction(subcell,1)
           else
              kappaScaArray(1:grid%nLambda) = 0.   
              do i = 1, nDustType
