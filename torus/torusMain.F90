@@ -585,6 +585,8 @@ program torus
      call init_random_seed()
      if (cmf) then
         nlucy = 100000
+	storeScattered = .true.
+	scatteredLightWavelength = 2.166e4
         call do_lucyRadiativeEq
         call atomLoop(grid, nAtom, thisAtom, nsource, source)
 

@@ -90,6 +90,7 @@ module input_variables
   real :: grainSize
   logical :: mie
   logical :: storescattered
+  real :: scatteredLightWavelength
   logical :: readMiePhase
   logical :: writeMiePhase
   logical :: useOldMiePhaseCalc

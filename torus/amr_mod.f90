@@ -10186,6 +10186,7 @@ end function readparameterfrom2dmap
 
 
     call copyAttribute(dest%scatteredIntensity, source%scatteredIntensity)
+    call copyAttribute(dest%meanIntensity, source%meanIntensity)
     call copyAttribute(dest%temperaturedust, source%temperatureDust)
     call copyAttribute(dest%temperaturegas, source%temperaturegas)
     call copyAttribute(dest%dustType, source%dustType)
@@ -16827,8 +16828,9 @@ end function readparameterfrom2dmap
        thisOctal%dustTypeFraction(:,:) = 1.d0
        thisOctal%inflow = .true.
 
-       if (storescattered) allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
+!       if (storescattered) allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
 
+       call allocateAttribute(thisOctal%meanIntensity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)

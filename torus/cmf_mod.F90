@@ -2075,9 +2075,10 @@ contains
 
                 dustOpac = kappaExt/1.d10
                 dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
+
+                dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
 !                write(*,*) "opac/emiss ",dustopac,dustemiss, thisOctal%rho(subcell), thisOctal%dustTypeFraction(subcell,1)
              endif
-
 
 
              if (.not.lineoff) then
@@ -2105,11 +2106,16 @@ contains
 
              jnu = jnu + bfEmiss + dustEmiss
 
+
+             alphanu = dustOpac
+             jnu = dustemiss
+
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
              else
                 snu = tiny(snu)
              endif
+
 
              dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
@@ -2478,7 +2484,7 @@ contains
 
     vStart = -500.d0
     vEnd = 500.d0
-    nv = 10
+    nv = 1
     nx = 200
     ny = 200
 
@@ -2500,9 +2506,13 @@ contains
        call initCube(cube, nx, ny, iv2-iv1+1)
     endif
     allocate(vArray(1:nv))
-    do i = 1, nv
-       vArray(i) = vStart + (vEnd-vStart)*dble(i-1)/dble(nv-1)
-    enddo
+    if (nv > 1) then
+       do i = 1, nv
+          vArray(i) = vStart + (vEnd-vStart)*dble(i-1)/dble(nv-1)
+       enddo
+    else
+       vArray(1) = 0.d0
+    endif
 
 
     !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &

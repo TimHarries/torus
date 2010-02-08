@@ -24,7 +24,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
-    use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore
+    use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore, scatteredLightWavelength
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth, object
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
@@ -715,6 +715,8 @@ contains
 
           totalEmission = 0.
 
+          call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
+          call calculateMeanIntensity(grid%octreeRoot, epsOverDeltaT,dnu(i))
 
           call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
                nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
@@ -988,11 +990,12 @@ contains
        call writeInfo(message, FORINFO)
     endif
 
-    if (storescattered) then 
-       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
-       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
-       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
-    endif
+!    if (storescattered) then 
+!       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
+!       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+!       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+!    endif
+
   end subroutine lucyRadiativeEquilibriumAMR
 
   subroutine getSublimationRadius(grid, subRadius)
@@ -1526,9 +1529,38 @@ contains
           thisOCtal%nDiffusion(subcell) = 0.
           if (associated(thisOctal%scatteredIntensity)) &
                thisOctal%scatteredIntensity(subcell,:,:) = 0.d0
+
+          if (associated(thisOctal%meanIntensity)) &
+               thisOctal%meanIntensity(subcell) = 0.d0
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine calculateMeanIntensity(thisOctal, epsOverDt, dnu)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: epsOverDt, dV, dnu
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateMeanIntensity(child, epsOVerDt, dnu)
+                exit
+             end if
+          end do
+       else
+
+          if (associated(thisOctal%meanIntensity)) then
+             dv = cellVolume(thisOctal, subcell)*1.d30
+             thisOctal%meanIntensity(subcell) = (1.d0/fourPi) * (1.d0/dv) * (epsOverDt) * thisOctal%meanIntensity(subcell)/dnu
+          endif
+       endif
+    enddo
+  end subroutine calculateMeanIntensity
 
   recursive subroutine checkUndersampled(thisOctal, nUndersampled, nCellsInDiffusion)
     use input_variables, only : minCrossings
@@ -2010,7 +2042,7 @@ contains
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
-   use input_variables, only : storeScattered
+   use input_variables, only : storeScattered, scatteredLightWavelength
    use diffusion_mod, only: randomwalk
 
    type(GRIDTYPE) :: grid
@@ -2054,7 +2086,7 @@ contains
    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
 
    if (firstTime) then
-      call hunt(lamArray, nLambda, 1.e4, iLamScat)
+      call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
       firstTime = .false.
    endif
 
@@ -2218,8 +2250,12 @@ contains
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
 
-          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
-               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
+!          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
+!               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
+
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addMeanIntensity(octVec, thisOctal, subcell, uHat, tVal*1.d10)
+
 
 !$OMP END CRITICAL (changegrid)
 
@@ -2336,8 +2372,11 @@ contains
                   + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
-          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
-               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
+!          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
+!               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
+
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addMeanIntensity(octVec, thisOctal, subcell, uHat, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
 
 
@@ -2468,15 +2507,15 @@ contains
 
 
 
-    if (storeScattered) then
-       allocate(tempDoubleArray(nVoxels*nTheta*nPhi))
-       tempDoubleArray = 0.d0
-       call MPI_ALLREDUCE(scatteredIntensity,tempDoubleArray, &
-            nVoxels*nTheta*nPhi,MPI_DOUBLE_PRECISION,&
-            MPI_SUM,MPI_COMM_WORLD,ierr)
-       scatteredIntensity= tempDoubleArray 
-       deallocate(tempDoubleArray)
-    endif
+!    if (storeScattered) then
+!       allocate(tempDoubleArray(nVoxels*nTheta*nPhi))
+!       tempDoubleArray = 0.d0
+!       call MPI_ALLREDUCE(scatteredIntensity,tempDoubleArray, &
+!            nVoxels*nTheta*nPhi,MPI_DOUBLE_PRECISION,&
+!            MPI_SUM,MPI_COMM_WORLD,ierr)
+!       scatteredIntensity= tempDoubleArray 
+!       deallocate(tempDoubleArray)
+!    endif
 
 
     allocate(tempRealArray(nVoxels))
@@ -2714,14 +2753,14 @@ contains
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
           nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
-          if (storeScattered) then
-             do j = 1, nTheta
-                do k = 1, nPhi
-                   nIndexScattered = nIndexScattered+1
-                   scatteredIntensity(nIndexScattered) = thisOctal%scatteredIntensity(subcell, j ,k)
-                enddo
-             enddo
-          endif
+!          if (storeScattered) then
+!             do j = 1, nTheta
+!                do k = 1, nPhi
+!                   nIndexScattered = nIndexScattered+1
+!                   scatteredIntensity(nIndexScattered) = thisOctal%scatteredIntensity(subcell, j ,k)
+!                enddo
+!             enddo
+!          endif
 
        endif
     enddo
@@ -2755,14 +2794,14 @@ contains
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
-          if (storescattered) then
-             do j = 1, nTheta
-                do k = 1, nPhi
-                   nIndexScattered = nIndexScattered + 1
-                   thisOctal%scatteredIntensity(subcell,j,k) = scatteredIntensity(nIndexScattered)
-                enddo
-             enddo
-          endif
+!          if (storescattered) then
+!             do j = 1, nTheta
+!                do k = 1, nPhi
+!                   nIndexScattered = nIndexScattered + 1
+!                   thisOctal%scatteredIntensity(subcell,j,k) = scatteredIntensity(nIndexScattered)
+!                enddo
+!             enddo
+!          endif
        endif
     enddo
   end subroutine unpackvalues
@@ -3247,6 +3286,16 @@ subroutine setBiasOnTau(grid, iLambda)
     thisOctal%scatteredIntensity(subcell,iTheta,iPhi) = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) + tval*1.d10
 !    write(*,*) thisOctal%scatteredIntensity(subcell,itheta,iphi)
   end subroutine addToScatteredIntensity
+
+  subroutine addMeanIntensity(position, thisOctal, subcell, uHat, tVal)
+
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: uHat, thisVec, position
+    real(double) :: tVal
+    thisOctal%meanIntensity(subcell) = thisOctal%meanIntensity(subcell) + tVal
+    
+  end subroutine addMeanIntensity
 
 
   recursive subroutine calcIntensityFromGrid(thisOctal, epsOverDt, dnu)
