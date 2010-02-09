@@ -97,8 +97,11 @@ contains
 
   ! model parameters
   integer :: i, j
+
+#ifdef MPI
   character(len=80) :: tempChar
-  
+#endif  
+
   real :: theta1, theta2
   type(SURFACETYPE) :: starSurface
 
