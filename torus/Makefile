@@ -28,19 +28,6 @@ MPIFLAG =
 #
 # Set system-dependent variables
 #
-ifeq ($(SYSTEM), intelmac)
-    F95COMP  = g95
-    F77COMP  = g95
-    F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror 
-    STATICFLAG = -static
-    FASTFLAG = -O3
-    UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
-    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
-    EXE = torus.intelmac
-    KNOWN_SYSTEM = yes
-endif
 
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
@@ -71,7 +58,7 @@ ifeq ($(SYSTEM), g95)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check -ftrace=full  -fimplicit-none -Wall -Wno=140,141,112
+    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
 #    FASTFLAG = -O3 -mcpu=G5
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
