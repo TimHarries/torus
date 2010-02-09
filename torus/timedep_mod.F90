@@ -1351,7 +1351,7 @@ contains
     real(double) :: tdump, timeofnextdump, photonBias, Be
     real(double) :: totalLuminosity
     real(double) :: chanceSource, chanceGas, weightSource, weightGas, etest, deltaTmin
-    real(double) :: deltaTmax, matterInteractionTerm
+    real(double) :: deltaTmax !, matterInteractionTerm
     integer :: nFromMatter, nFromGas, nFromStar
     logical :: diffusion, leftCell
 

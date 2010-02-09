@@ -2428,7 +2428,7 @@ contains
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
-    use input_variables, only : cylindrical, ttauriRouter, ttauriRstar, rSublimation
+    use input_variables, only : cylindrical, ttauriRouter, rSublimation !, ttauriRstar
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'

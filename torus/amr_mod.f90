@@ -1207,7 +1207,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
     
-    USE input_variables, ONLY : useHartmannTemp
+!    USE input_variables, ONLY : useHartmannTemp
     USE cluster_class, ONLY:    assign_grid_values 
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
@@ -13269,11 +13269,10 @@ end function readparameterfrom2dmap
 
   recursive subroutine fillVelocityCornersMahdavi(thisOctal,grid)
     use magnetic_mod, only : velocityMahdavi, inflowMahdavi
-    use input_variables, only : vturb, isothermtemp
+    use input_variables, only : vturb
     type(GRIDTYPE) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  type(VECTOR) :: rVec
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -16799,8 +16798,8 @@ end function readparameterfrom2dmap
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, sobolev, storeScattered, h21cm, timeDependentRT, &
-         lineEmission
+         photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
+         lineEmission !, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid

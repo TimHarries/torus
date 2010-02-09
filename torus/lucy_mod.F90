@@ -24,9 +24,9 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
-    use input_variables, only : variableDustSublimation, iterlucy, storeScattered, rCore, scatteredLightWavelength
+    use input_variables, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use input_variables, only : suppressLucySmooth, object
+    use input_variables, only : suppressLucySmooth, object !, storeScattered
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -2478,7 +2478,7 @@ contains
 
 
   subroutine updateGridMPI(grid)
-    use input_variables, only : storeScattered
+!    use input_variables, only : storeScattered
     implicit none
     include 'mpif.h'
     type(gridtype) :: grid
@@ -2727,7 +2727,7 @@ contains
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
        distanceGrid,nCrossings, nDiffusion, scatteredIntensity)
-    use input_variables, only : storeScattered
+!    use input_variables, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
@@ -2735,7 +2735,7 @@ contains
   real :: nCrossings(:)
   real :: nDiffusion(:)
   integer :: nIndex, nIndexScattered
-  integer :: subcell, i, j , k
+  integer :: subcell, i !, j , k
   integer, parameter :: nTheta = 10, nPhi = 10
   
   do subcell = 1, thisOctal%maxChildren
@@ -2767,14 +2767,14 @@ contains
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,nCrossings, nDiffusion, scatteredIntensity)
-    use input_variables, only : storeScattered
+!    use input_variables, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), scatteredIntensity(:)
   real :: ncrossings(:)
   real :: ndiffusion(:)
   integer :: nIndex
-  integer :: subcell, i, j, k
+  integer :: subcell, i !, j, k
   integer :: nIndexScattered
   integer, parameter :: nTheta = 10, nPhi = 10
   
@@ -3291,7 +3291,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: uHat, thisVec, position
+    type(VECTOR) :: uHat, position
     real(double) :: tVal
     thisOctal%meanIntensity(subcell) = thisOctal%meanIntensity(subcell) + tVal
     
