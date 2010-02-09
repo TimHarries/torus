@@ -82,17 +82,8 @@ run_hydro()
 {
 cd ${WORKING_DIR}/benchmarks/hydro
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
-
-case ${SYSTEM} in
-    ompi) mpirun -np 3 torus.ompi > run_log_hydro.txt 2>&1 ;;
-
-    zen) mpirun -np 3 torus.zen > run_log_hydro.txt 2>&1 ;;
-
-    *) echo "Hydro benchmark does not run on this system. Skipping";;
-esac
-
+mpirun -np 3 torus.${SYSTEM} > run_log_hydro.txt 2>&1
 ln -s tune.dat tune_hydro.txt
-
 }
 
 run_sphbench()
@@ -187,9 +178,12 @@ for sys in ${SYS_TO_TEST}; do
     make_comparespec
 
 # Run hydro benchmark
-    echo "Running hydro benchmark"
-    run_hydro
-    check_hydro
+    case ${SYSTEM} in
+	"ompi","zen")  echo "Running hydro benchmark"
+	    run_hydro
+	    check_hydro;;
+	*) echo "Hydro benchmark does not run on this system. Skipping";;
+    esac
 
 # Run 2D disc
     echo "Running disc benchmark"
