@@ -66,7 +66,7 @@ ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 case ${SYSTEM} in
     ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
-    intelmac) ./torus.intelmac  > run_log_${THIS_BENCH}.txt 2>&1 ;;
+    g95) ./torus.g95  > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
     zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
@@ -106,7 +106,7 @@ ln -s ${TEST_DIR}/torus/isochrones/iso* .
 case ${SYSTEM} in
     ompi) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1;; 
 
-    intelmac) ./sphbench > run_log_sphbench.txt 2>&1;;
+    g95) ./sphbench > run_log_sphbench.txt 2>&1;;
 
     zen) mpirun -np 8 sphbench > run_log_sphbench.txt 2>&1 ;;
 
@@ -209,7 +209,7 @@ for sys in ${SYS_TO_TEST}; do
     check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
 
 # Only run these tests for MPI systems and not in the daily test
-    if [[ ${SYSTEM} != intelmac && ${MODE} != daily ]]; then
+    if [[ ${SYSTEM} != g95 && ${MODE} != daily ]]; then
 
 	echo "Running cylindrical polar disc benchmark"
 	export THIS_BENCH=disc_cylindrical
@@ -265,15 +265,15 @@ case ${MODE} in
     daily) export SYS_TO_TEST="ompi"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
-	   export PATH=/sw/bin:/usr/local/bin:${PATH}
+	   export PATH=~/bin:/usr/local/bin:${PATH}
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    stable) export SYS_TO_TEST="intelmac ompi"
+    stable) export SYS_TO_TEST="g95 ompi"
             export DEBUG_OPTS="yes no"
 	    export TORUS_FC="g95"
-	    export PATH=/sw/bin:/usr/local/bin:${PATH}
+	    export PATH=~/bin:/usr/local/bin:${PATH}
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
 	    echo;;
