@@ -869,7 +869,7 @@ contains
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
-    real(double) :: r, h, rhoOut, warpHeight, fac
+    real(double) :: r, h, rhoOut, warpHeight, fac, fac2
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
@@ -928,6 +928,16 @@ contains
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+       if (smoothInnerEdge) then
+          fac = 1.d0
+          if (r < 1.01d0*rinner) then
+             fac = (1.01d0*rinner - r)/(0.01d0*rinner)
+             fac = 10.d0*fac
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+       endif
+
     endif
 
 

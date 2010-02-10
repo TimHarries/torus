@@ -4117,7 +4117,7 @@ end subroutine readHeIIrecombination
     type(VECTOR) :: rHat, observerDirection
     logical :: endLoop
     type(IMAGETYPE) :: thisimage
-    logical :: escaped, absorbed, stillSCattering
+    logical :: escaped, absorbed, stillSCattering  
     real(double) :: totalEmission
     integer :: iLambdaPhoton, nInf
     real(double) :: lCore, probsource, r

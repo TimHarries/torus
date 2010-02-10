@@ -60,7 +60,7 @@ contains
     real(double) :: mdot
     real(double) :: photonsPerStep
     real(double) :: gridCrossingTime
-    integer, parameter :: nSedWavelength = 100, nTime = 2001
+    integer, parameter :: nSedWavelength = 100, nTime = 1001
     real(double) :: sedTime(nTime),fac
     integer :: i
     real(double) :: sedWavelength(nSedWavelength)
@@ -143,8 +143,8 @@ contains
        i = findIlambda(1.e5, xArray, nLambda, ok)
        call setBiasOnTau(grid, i)
        luminosityPeriod =  24.d0 * 3600.d0
-       varyUntilTime = 2.d0 * luminosityPeriod
-       startVaryTime = 0.d0 * luminosityPeriod
+       startVaryTime = 500.d0
+       varyUntilTime = 1.d0 * luminosityPeriod  + startVaryTime
        seedRun = .true.
 
        deltaTMax = (varyUntilTime)/dble(nTime-1)
@@ -273,7 +273,8 @@ contains
           if (myrankGlobal == 0) then
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
              call writeVtkFile(grid, vtkfilename, &
-                  valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    "/))
+                  valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
+                  "crossings    "/))
 
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
@@ -884,6 +885,7 @@ contains
 
     thisOctal%distanceGridAdot(subcell) = thisOctal%distanceGridAdot(subcell) + &
          distanceToEvent * kappaAbs* eps
+    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
     if (photonFromSource) then
        thisOctal%distanceGridPhotonFromSource(subcell) = thisOctal%distanceGridPhotonFromSource(subcell) + &
             distanceToEvent * eps
@@ -900,7 +902,8 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     real(double) :: deltaT, currentTime
-    real(double) :: udens_n_plus_1
+    real(double) :: deltaUdens
+    real(double) :: time_equilibrium, temp_equilibrium, newUDens
     real :: kappaP
     integer :: subcell, i
     logical :: ok
@@ -922,13 +925,29 @@ contains
 
           rVec = subcellCentre(thisOctal, subcell)
           if (modulus(rVec) < cSpeed * (currentTime+deltaT) /1.d10) then ! can source photons have reached this cell?
-             if ((thisOctal%photonEnergyDensity(subcell) > 0.d0).and.(thisOctal%adot(subcell) > 0.d0)) then
+             if ((thisOctal%photonEnergyDensity(subcell) > 0.d0).and.(thisOctal%adot(subcell) > 0.d0).and.&
+                  (thisOctal%nCrossings(subcell)>10)) then
+
                 call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-                call quarticSub(udens_n_plus_1,  &
-                     thisOctal%udens(subcell), &
-                     thisOctal%photonEnergyDensity(subcell), &
-                     dble(kappap), thisOctal%rho(subcell), thisOctal%Adot(subcell), 2.33d0, 7.d0/5.d0, deltaT,ok)
-                if (ok) thisOctal%udens(subcell) = udens_n_plus_1 
+                Temp_equilibrium  = &
+                     max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
+                newUdens =  uDensFunc(temp_equilibrium, thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
+                deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
+                time_equilibrium = deltaUdens/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
+
+!                call quarticSub(udens_n_plus_1,  &
+!                     thisOctal%udens(subcell), &
+!                     thisOctal%photonEnergyDensity(subcell), &
+!                     dble(kappap), thisOctal%rho(subcell), thisOctal%Adot(subcell), 2.33d0, 7.d0/5.d0, deltaT,ok)
+!                if (ok) thisOctal%udens(subcell) = udens_n_plus_1 
+                if (deltaT > time_equilibrium) then
+                   thisOctal%uDens(subcell) = newUdens
+                else
+                   thisOctal%uDens(subcell) = thisOctal%uDens(subcell) + deltaT * (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
+                   thisOctal%uDens(subcell) = max(0.d0, thisOctal%uDens(subcell))
+                endif
+
+
              endif
           endif
              
@@ -1228,6 +1247,7 @@ contains
           thisOctal%distancegridAdot(subcell) = 0.d0
           thisOctal%distancegridphotonFromGas(subcell) = 0.d0
           thisOctal%distancegridphotonFromSource(subcell) = 0.d0
+          thisOctal%ncrossings(subcell) = 0
        endif
     enddo
   end subroutine zeroDistanceGrids

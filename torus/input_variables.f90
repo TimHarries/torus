@@ -54,6 +54,7 @@ module input_variables
   integer :: setmaxlevel ! Subsonic turbulent velocity
   real :: vturb ! Subsonic turbulent velocity
   logical :: lineEmission
+  logical :: smoothInnerEdge
   logical :: lineimage
   logical :: quasi ! use quasirandom numbers
   logical :: dongstep ! controls Ng Acceleration

@@ -430,6 +430,9 @@ contains
                case("dust1")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))
 
+               case("dust2")
+                  write(lunit, *) real(thisOctal%dustTypeFraction(subcell,2))
+
                case("bias")
                   write(lunit, *) real(thisOctal%biasCont3d(subcell))
 

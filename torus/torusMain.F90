@@ -591,8 +591,8 @@ program torus
         call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
         if (writeoutput) then
-           write(phaseFilename,"(a,i2.2,a,i2.2,a)") &
-             "phase_",nint(mdotParameter1/1.d-8),"_",&
+           write(phaseFilename,"(a,f4.2,a,i2.2,a)") &
+             "phase_",hoverr,"_",&
              nint(dipoleOffset*radtodeg),".dat"
            open(33, file=phaseFilename, status="unknown", form="formatted")
         endif
@@ -681,8 +681,8 @@ program torus
 #endif
 
   if (timeDependentRT) then
-!     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
-     call timeDependentRTtest()
+     call runTimeDependentRT(grid, source, nSource, nLambda, xArray)
+!     call timeDependentRTtest()
 
 
 !     do itime = 1, 20
@@ -1885,13 +1885,13 @@ end subroutine pre_initAMRGrid
         endif
 
         if ((geometry == "shakara").and.(nDustType>1)) then
-           if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
-              call writeInfo("Filling dust with large dust in midplane", FORINFO)
-              call fillDustShakara(grid, grid%octreeRoot)
-           else
+!           if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
+!              call writeInfo("Filling dust with large dust in midplane", FORINFO)
+!              call fillDustShakara(grid, grid%octreeRoot)
+!           else
               call writeInfo("Filling disc with uniform dust fractions", FORINFO)
               call fillDustUniform(grid, grid%octreeRoot)
-           endif
+!           endif
         endif
 
         if ((geometry == "whitney").and.(nDustType ==4)) then

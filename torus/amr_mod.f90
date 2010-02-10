@@ -4302,7 +4302,7 @@ IF ( .NOT. gridConverged ) RETURN
          maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
-    use input_variables, only: DW_rMin, rSublimation
+    use input_variables, only: DW_rMin, smoothInnerEdge, rSublimation
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4598,9 +4598,9 @@ IF ( .NOT. gridConverged ) RETURN
         endif
      enddo
 
-     if (inflow) then
-        if ((cellSize/DW_rMin) > 0.01) split = .true.
-     endif
+!     if (inflow) then
+!        if ((cellSize/DW_rMin) > 0.01) split = .true.
+!     endif
 
 
 !      phi = atan2(cellCentre%y,cellCentre%x)
@@ -5260,9 +5260,14 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-
+      if (.not.smoothInnerEdge) then
+         if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      else
+         fac = grid%rinner * 1.01d0
+         if (((r-cellsize/2.d0) < fac).and. ((r+cellsize/2.d0) > fac) .and. &
+              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      endif
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
 

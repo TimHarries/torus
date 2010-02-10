@@ -2222,6 +2222,9 @@ contains
        call getLogical("noscat", noScattering, cLine, nLines, &
             "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("smoothinneredge", smoothInnerEdge, cLine, nLines, &
+            "Smooth density drop at inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getReal("rcore", rCore, cLine, nLines, &
             "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
 
