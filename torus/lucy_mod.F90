@@ -449,7 +449,7 @@ contains
                 !$OMP DO SCHEDULE(runtime)
                 photonloop: do iMonte = imonte_beg, imonte_end
 
-
+                   if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
@@ -569,7 +569,7 @@ contains
                             logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
                             icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
                             icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
-
+!			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
 
                             do i = 1, icritupper
                                iLam = nfreq - i + 1

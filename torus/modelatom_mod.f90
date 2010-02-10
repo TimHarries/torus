@@ -703,7 +703,11 @@ contains
           if (N1overN0 /= 0.d0) then
              ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
           else
-             ratio = 1.d10
+             if (level == 1) then
+                ratio = 1.d0
+             else
+                ratio = 0.d0
+             endif
           endif
        case(2)
           select case(thisAtom%charge)

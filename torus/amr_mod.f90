@@ -3887,7 +3887,34 @@ IF ( .NOT. gridConverged ) RETURN
   
   END SUBROUTINE smoothAMRgrid
 
-  RECURSIVE SUBROUTINE findSubcellTD(point,currentOctal,resultOctal,subcell)
+  SUBROUTINE findSubcellTD(point,currentOctal,resultOctal,subcell)
+  ! finds the octal (and that octal's subcell) containing a point.
+  !   only searches in downwards direction (TD = top-down) , so
+  !   probably best to start from root of tree
+
+    IMPLICIT NONE
+
+    TYPE(vector), INTENT(IN) :: point
+    type(vector) :: point_local
+    TYPE(octal), POINTER :: currentOctal
+    TYPE(octal), POINTER :: resultOctal
+    INTEGER, INTENT(OUT) :: subcell
+
+    if (currentoctal%threeD) then
+       point_local = point
+    elseif (currentoctal%twoD) then
+       point_local = projectToXZ(point)
+    else !oneD
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+    end if
+
+    CALL findSubcellTDprivate(point_local,currentOctal,resultOctal,subcell)
+
+
+  contains
+
+
+  RECURSIVE SUBROUTINE findSubcellTDPrivate(point,currentOctal,resultOctal,subcell)
   ! finds the octal (and that octal's subcell) containing a point.
   !   only searches in downwards direction (TD = top-down) , so
   !   probably best to start from root of tree
@@ -3910,11 +3937,13 @@ IF ( .NOT. gridConverged ) RETURN
       DO i = 1, currentOctal%maxChildren, 1
         IF ( currentOctal%indexChild(i) == subcell ) THEN
           child => currentOctal%child(i)
-          CALL findSubcellTD(point,child,resultOctal,subcell)
+          CALL findSubcellTDprivate(point,child,resultOctal,subcell)
           EXIT
         END IF
       END DO
     END IF
+
+  END SUBROUTINE findSubcellTDPrivate
 
   END SUBROUTINE findSubcellTD
 
@@ -4098,6 +4127,7 @@ IF ( .NOT. gridConverged ) RETURN
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
            write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
            write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
+           write(*,*) " r min/max ",thisOctal%r-thisOctal%subcellsize,thisOctal%r+thisOctal%subcellsize
            write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, &
                 thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
@@ -4302,7 +4332,7 @@ IF ( .NOT. gridConverged ) RETURN
          maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
-    use input_variables, only: DW_rMin, smoothInnerEdge, rSublimation
+    use input_variables, only: DW_rMin, rSublimation, ttauriwind, ttauridisc, ttauriwarp, smoothInnerEdge
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4567,7 +4597,7 @@ IF ( .NOT. gridConverged ) RETURN
      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
 
      if (inFlow) then
-        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
+        if (cellSize/(ttauriRstar/1.d10) > 0.01d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
         if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
            split = .true.
            splitinazimuth = .true.
@@ -4589,42 +4619,45 @@ IF ( .NOT. gridConverged ) RETURN
      endif
 
 
-     inflow = .false.
-     do i = 1, 100
-        rVec = randomPositionInCell(thisOctal,subcell)
-        if (inFLowBlandfordPayne(rVec)) then
-           inFlow = .true.
-           exit
+     if (ttauriwind) then
+        inflow = .false.
+        do i = 1, 100
+           rVec = randomPositionInCell(thisOctal,subcell)
+           if (inFLowBlandfordPayne(rVec)) then
+              inFlow = .true.
+              exit
+           endif
+        enddo
+        
+        if (inflow) then
+           if ((cellSize/DW_rMin) > 0.01) split = .true.
         endif
-     enddo
+     endif
 
-!     if (inflow) then
-!        if ((cellSize/DW_rMin) > 0.01) split = .true.
-!     endif
+     if (ttauriwarp) then
+        phi = atan2(cellCentre%y,cellCentre%x)
+        height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
+        if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
+           if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
+              if (abs(cellCentre%z-height) < 2.d0*cellSize) then
+                 split = .true.
+                 splitInAzimuth = .true.
+              endif
+           endif
+        endif
+     endif
 
-
-!      phi = atan2(cellCentre%y,cellCentre%x)
-!      height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
-!      if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
-!         if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
-!            if (abs(cellCentre%z-height) < 2.d0*cellSize) then
-!               split = .true.
-!               splitInAzimuth = .true.
-!            endif
-!         endif
-!      endif
-
-
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
-      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-      if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
-           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-
+     if (ttauridisc) then
+        cellSize = thisOctal%subcellSize 
+        cellCentre = subcellCentre(thisOctal,subCell)
+        r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+        hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+        
+        if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+        if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+        if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
+             (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+     endif
    case("lexington")
       if (thisOctal%nDepth < mindepthamr) then
          split = .true.
@@ -13216,6 +13249,9 @@ end function readparameterfrom2dmap
                 thisOctal%dustTypeFraction(subcell,1) = exp(-fac)
              endif
           endif
+          if ((thisRho > thisOctal%rho(subcell)).and.(r < rSublimation)) then
+             thisOctal%temperature(subcell) = 2000.
+          endif
           thisOCtal%rho(subcell) = max(thisRho, thisOctal%rho(subcell))
           
              
@@ -16751,7 +16787,7 @@ end function readparameterfrom2dmap
     do i = 1, surface%nElements
        rVec = surface%element(i)%position + &
             0.01d0*modulus(surface%element(i)%position-surface%centre) * surface%element(i)%norm
-       CALL findSubcellLocal(rVec,thisOctal,subcell)
+       CALL findSubcellTD(rVec, grid%octreeRoot, thisOctal,subcell)
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)
        mdot = thisOctal%rho(subcell) * v * area

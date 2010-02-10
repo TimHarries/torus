@@ -126,7 +126,7 @@ contains
 
     n = 0
     do i = 1, nTheta
-       theta = pi*real(i-1)/real(nTheta-1)
+       theta = max(1.d-10,pi*real(i-1)/real(nTheta-1))
 !       nphi = max(1,nint(real(nTheta)*sin(theta)))
        nPhi = ntheta
        do j = 1, nPhi

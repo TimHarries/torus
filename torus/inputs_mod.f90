@@ -1475,39 +1475,37 @@ contains
        call getReal("ttauririnner", TTauriRinner, cLine, nLines, &
             "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
        TTauriRinner = TTauriRinner * TTauriRstar
-       call getReal("ttauridiskheight", TTauriDiskHeight, cLine, nLines, &
-            "T Tauri disk height (in R_star): ","(a,f7.1,1x,a)", 6.e-2, ok, .false.)
-       TTauriDiskHeight = TTauriDiskHeight * TTauriRstar
 
-       call getReal("rinner", rInner, cLine, nLines, &
-            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
-       rInner = rInner * ttauriRstar/1.d10
-       call getReal("router", rOuter, cLine, nLines, &
-            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
-       rOuter = rOuter * autocm/1.e10
-
-       call getReal("rsub", rSublimation, cLine, nLines, &
-            "Sublimation radius (rstar): ","(a,f5.1,a)", 20., ok, .true.)
-       rSublimation = rSublimation * ttauriRstar/1.d10
-       mie = .true.
-
-       call getReal("height", height, cLine, nLines, &
-            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
-       height = height * autocm/1.d10
-       call getReal("mdisc", mDisc, cLine, nLines, &
-            "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
-       mdisc = mdisc * msol
-       call getReal("alphadisc", alphaDisc, cLine, nLines, &
-            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
-
-       call getReal("betadisc", betaDisc, cLine, nLines, &
-            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+       call getLogical("ttauridisc", ttauriDisc, cLine, nLines, &
+            "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
-       call getReal("ttauridiskrin", TTauriDiskRin, cLine, nLines, &
-            "T Tauri disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
-       call getReal("thindiskrin", ThinDiskRin, cLine, nLines, &
-            "Thin disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
+       if (ttauriDisc) then
+          call getReal("rinner", rInner, cLine, nLines, &
+               "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+          rInner = rInner * ttauriRstar/1.d10
+          call getReal("router", rOuter, cLine, nLines, &
+               "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+          rOuter = rOuter * autocm/1.e10
+          
+          call getReal("rsub", rSublimation, cLine, nLines, &
+               "Sublimation radius (rstar): ","(a,f5.1,a)", 20., ok, .true.)
+          rSublimation = rSublimation * ttauriRstar/1.d10
+          mie = .true.
+
+          call getReal("height", height, cLine, nLines, &
+               "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+          height = height * autocm/1.d10
+          call getReal("mdisc", mDisc, cLine, nLines, &
+               "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+          mdisc = mdisc * msol
+          call getReal("alphadisc", alphaDisc, cLine, nLines, &
+               "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+          call getReal("betadisc", betaDisc, cLine, nLines, &
+               "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+       endif
+
        call getReal("curtainsphi1s", curtainsPhi1s, cLine, nLines, &
             "Curtains 1: Phi start: (degrees): ","(a,f7.1,1x,a)", 30.0, ok, .false.)
        call getReal("curtainsphi1e", curtainsPhi1e, cLine, nLines, &
@@ -1548,6 +1546,9 @@ contains
        call getReal("mdotpar6", MdotParameter6, cLine, nLines, &
             "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
 
+       call getLogical("ttauriwarp", ttauriwarp, cLine, nLines, &
+            "Include warped disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getDouble("hoverr", hoverr, cLine, nLines, &
             "Warped disc H/R: ","(a,f7.4,1x,a)", 0.3d0, ok, .false.)
 
@@ -1587,11 +1588,31 @@ contains
        call getReal("isothermtemp", isoThermTemp, cLine, nLines, &
             "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
 
-             DW_rMin = ttauriRouter/1.d10
-             DW_rMax = 2.d0 * DW_rMin
-             DW_theta = 60.d0 * degtoRad
-             DW_mdot = 0.1d0 * mDotparameter1
-             DW_temperature = 8000.d0
+       call getLogical("ttauriwind", ttauriWind, cLine, nLines, &
+            "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (ttauriwind) then
+          call getDouble("DW_Rmin", DW_Rmin, cLine, nLines, &
+               "Disc wind:: Inner radius of the disc wind [magnetospheric radii]: ", &
+               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Rmax", DW_Rmax, cLine, nLines, &
+               "Disc wind:: Outer radius of the disc [disc wind inner radii]: ", &
+               "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
+          call getDouble("DW_Mdot", DW_Mdot, cLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [mass accretion rate]: ", &
+               "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
+          call getDouble("DW_theta", DW_theta, cLine, nLines, &
+               "Disc wind:: Disc wind angle [degrees]: ", &
+               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("DW_Twind", DW_temperature, cLine, nLines, &
+               "Disc wind:: Isotherma temperature of disc wind [K]: ", &
+               "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
+          DW_rMin = DW_rmin * ttauriRouter/1.d10
+          DW_rMax = DW_rmax * DW_rMin
+          DW_theta = 60.d0 * degtoRad
+          DW_mdot = DW_mdot * mDotparameter1
+       endif
+
 
        if (useHartmannTemp .and. isoTherm) then 
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"

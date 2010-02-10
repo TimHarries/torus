@@ -385,7 +385,7 @@ contains
        hCol, HeIcol, HeIIcol, nAtom, thisAtom, source, nSource, &
        hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom, nHAtom, nHeIAtom, nHeIIAtom, &
        nFreq, freq, iCont)
-    use input_variables, only : opticallyThickContinuum, nLambda
+    use input_variables, only : opticallyThickContinuum, nLambda, mie
     use amr_mod, only: randomPositionInCell, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -643,14 +643,16 @@ contains
                      nStar, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
                      thisOctal%jnuCont(subcell,ifreq), ifreq=ifreq)/fourpi
 
-                lambda = (cSpeed/freq(ifreq)) /angstromTocm
-                iLambda = findIlambda(real(lambda), grid%lamArray, nLambda, ok)
-                call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-                kappaExt = kappaAbs + kappaSca
-
-                dustOpac = kappaExt/1.d10
-                dustEmiss = kappaAbs * bnu(freq(ifreq), dble(thisOctal%temperature(subcell)))/1.d10
-
+                dustOpac = 0.d0
+                dustEmiss = 0.d0
+                if (mie) then
+                   lambda = (cSpeed/freq(ifreq)) /angstromTocm
+                   iLambda = findIlambda(real(lambda), grid%lamArray, nLambda, ok)
+                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                   kappaExt = kappaAbs + kappaSca
+                   dustOpac = kappaExt/1.d10
+                   dustEmiss = kappaAbs * bnu(freq(ifreq), dble(thisOctal%temperature(subcell)))/1.d10
+                endif
                 
                 jnuCont(ifreq) = jnuCont(ifreq) + dustEmiss
                 alphaNuCont(iFreq) = alphaNuCont(ifreq) + dustOpac
@@ -1061,7 +1063,9 @@ contains
      ionized = .false.
      if (grid%geometry == "gammavel") ionized = .true.
      if (grid%geometry == "wrshell") ionized = .true.
-    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
+     call writeInfo("Allocating levels and applying LTE...")
+     call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
+     call writeInfo("Done.")
 
     do i = 1, nAtom
        call addCrossSectionstoAtom(thisAtom(i), nFreq, freq)
@@ -1655,10 +1659,13 @@ contains
   end subroutine calcChiLine
 
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
+    use stateq_mod, only : z_hi
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
+    real(double) :: ne, n_h, ntot, phit, t
+    real(double), parameter  :: CI = 2.07d-16   ! in cgs units
     integer :: subcell, i
     integer :: nAtom
     integer :: nRBBTrans
@@ -1708,9 +1715,30 @@ contains
           if (ionized) then
              thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
           else
-             thisOctal%ne(subcell) = 1.d-2 * thisOctal%rho(subcell)/mHydrogen
+             thisOctal%ne(subcell) = tiny(1.d-30 * thisOctal%rho(subcell)/mHydrogen)
           endif
 
+          t = thisOctal%temperature(subcell)
+
+          if (real(hydE0eV,kind=double)/(kev*T) < 60.d0) then
+             N_H = thisOctal%rho(subcell)/mHydrogen  ! number density of HI plus number density of HII
+             phiT = CI*Z_HI(10,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
+             
+             ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
+             ! nTot is the number density of particles includeing all species.
+             ! ==> phi(T)*ne^2 + ne - N_H =0
+             ! Th physical solution  is chosen out of two ...  
+             !    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
+             Ne = (sqrt(4.0_db*N_H*phiT+1.0_db) -1.0_db)/(2.0_db*phiT)
+          else 
+             ne = tiny(ne)
+          endif
+             nTot = Ne + N_H
+          !    Ne = min(Ne, nTot)     ! to avoid unphysical solution.
+          !    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
+          if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
+          thisOctal%ne(subcell) = ne
+!          write(*,*) "ne ",thisOctal%ne(subcell),4.0_db*N_H*phiT+1.0_db, t,phit,n_h
           do iAtom = 1, nAtom
              thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
                   * thisOctal%atomAbundance(subcell, iAtom)
@@ -1791,7 +1819,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : ttauriRinner, lineOff, nlambda
+    use input_variables, only : ttauriRinner, lineOff, nlambda, mie
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -2069,15 +2097,15 @@ contains
                      thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
                 bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom, nstar, &
                      dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
-
-                call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-                kappaExt = kappaAbs + kappaSca
-
-                dustOpac = kappaExt/1.d10
-                dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
-
-                dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
-!                write(*,*) "opac/emiss ",dustopac,dustemiss, thisOctal%rho(subcell), thisOctal%dustTypeFraction(subcell,1)
+                dustOpac = 0.d0
+                dustEmiss = 0.d0
+                if (mie) then
+                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                   kappaExt = kappaAbs + kappaSca
+                   dustOpac = kappaExt/1.d10
+                   dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
+                   dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
+                endif
              endif
 
 
@@ -2105,10 +2133,6 @@ contains
              ! add continuous bf and ff emissivity of hydrogen
 
              jnu = jnu + bfEmiss + dustEmiss
-
-
-             alphanu = dustOpac
-             jnu = dustemiss
 
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
@@ -2281,9 +2305,13 @@ contains
     if (PRESENT(forceLambda)) then
        varray(1) = 0.d0
     else
-       do iv = 1, nLambda
-          vArray(iv) = 500.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
-       enddo
+       if (iv == 1) then
+          varray(1) = 0.d0
+       else
+          do iv = 1, nLambda
+             vArray(iv) = 500.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+          enddo
+       endif
     endif
     
     do iv = iv1, iv2
@@ -2485,8 +2513,8 @@ contains
     vStart = -500.d0
     vEnd = 500.d0
     nv = 1
-    nx = 200
-    ny = 200
+    nx = 1000
+    ny = 1000
 
 
 

@@ -587,7 +587,8 @@ program torus
         nlucy = 100000
 	storeScattered = .true.
 	scatteredLightWavelength = 2.166e4
-        call do_lucyRadiativeEq
+
+        if (ttauridisc) call do_lucyRadiativeEq
         call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
         if (writeoutput) then
@@ -600,7 +601,7 @@ program torus
            do i = 1, nphi
               ang = twoPi * real(i-1)/real(nphi)  +pi
               t = 75.d0*degtorad
-              t = 35.d0*degtorad
+!              t = 35.d0*degtorad
               viewVec = VECTOR(0.d0, 0.d0, -1.d0)
               viewVec = rotateY(viewVec,t)
               viewVec = rotateZ(viewVec, ang)
@@ -1690,9 +1691,9 @@ end subroutine pre_initAMRGrid
              astar = accretingAreaMahdavi(grid)
              if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
              call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
-             call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
-             call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
-!             call addWarpedDisc(grid%octreeRoot)
+	     if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
              mass_accretion_old = 0.0d0
              call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
@@ -2107,7 +2108,7 @@ subroutine set_up_sources
         if (.not.cmf) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile)
+           call buildSphere(VECTOR(0.d0, 0.d0, 0.d0), dble(grid%rCore), starSurface, 1000, contFluxFile)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
               call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion,laccretion) 

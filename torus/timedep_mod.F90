@@ -274,7 +274,7 @@ contains
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
              call writeVtkFile(grid, vtkfilename, &
                   valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-                  "crossings    "/))
+                  "crossings  "/))
 
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
@@ -906,7 +906,6 @@ contains
     real(double) :: time_equilibrium, temp_equilibrium, newUDens
     real :: kappaP
     integer :: subcell, i
-    logical :: ok
 
     type(VECTOR) :: rVec
 
@@ -943,7 +942,8 @@ contains
                 if (deltaT > time_equilibrium) then
                    thisOctal%uDens(subcell) = newUdens
                 else
-                   thisOctal%uDens(subcell) = thisOctal%uDens(subcell) + deltaT * (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
+                   thisOctal%uDens(subcell) = thisOctal%uDens(subcell) + &
+                        deltaT * (thisOctal%adot(subcell) - thisOctal%etaCont(subcell))
                    thisOctal%uDens(subcell) = max(0.d0, thisOctal%uDens(subcell))
                 endif
 
