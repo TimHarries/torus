@@ -179,7 +179,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Run hydro benchmark
     case ${SYSTEM} in
-	"ompi","zen")  echo "Running hydro benchmark"
+	ompi|zen)  echo "Running hydro benchmark"
 	    run_hydro
 	    check_hydro;;
 	*) echo "Hydro benchmark does not run on this system. Skipping";;
