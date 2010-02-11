@@ -2512,9 +2512,9 @@ contains
 
     vStart = -500.d0
     vEnd = 500.d0
-    nv = 1
-    nx = 1000
-    ny = 1000
+    nv = 50
+    nx = 500
+    ny = 500
 
 
 
@@ -2597,9 +2597,8 @@ contains
 
 
     do iv = iv1, iv2
-       write(*,*) iv,iv1,iv2
+       write(*,*) "rank ",myrankGlobal, " iv ",iv,iv1,iv2
        do ix = 1, cube%nx
-          write(*,*) "ix ",ix
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
                 if (nMonte > 1) then

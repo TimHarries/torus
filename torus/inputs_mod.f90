@@ -2234,7 +2234,7 @@ contains
        fastIntegrate = .true.
 
        call getString("object", contFluxFile, cLine, nLines, &
-            "Object name: ","(a,a,1x,a)","generic", ok, .true.)
+            "Object name: ","(a,a,1x,a)","generic", ok, .false.)
 
        call getReal("mdot", mdot, cLine, nLines, &
             "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)
