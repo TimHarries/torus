@@ -280,6 +280,7 @@ program torus
 
   hydrodynamics = .false.
   storeScattered = .false.
+  scatteredLightWavelength = 1.e4
   fastIntegrate = .false.
 
   ! get the model parameters
