@@ -16838,7 +16838,7 @@ end function readparameterfrom2dmap
 
 
   subroutine allocateOctalAttributes(grid, thisOctal)
-    use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
+    use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
          lineEmission !, storeScattered
     use gridtype_mod, only: statEqMaxLevels
@@ -16896,20 +16896,6 @@ end function readparameterfrom2dmap
 
     endif
 
-    if (cmf) then
-       ALLOCATE(thisOctal%N(8,grid%maxLevels))
-
-       allocate(thisOctal%atomAbundance(8, 1:nAtom))
-       thisOctal%atomAbundance(:, 1) = 0.71d0 / mHydrogen
-       if (nAtom > 1) then
-          thisOctal%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
-       endif
-       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
-
-    endif
 
     if (sobolev) then
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)

@@ -18,7 +18,7 @@ module cmf_mod
   use timing, only: tune
   use parallel_mod, only: torus_mpi_barrier
   use vtk_mod, only: writeVtkfile
-
+  use octal_mod, only : allocateAttribute
 
   implicit none
 
@@ -1666,95 +1666,80 @@ contains
     type(octal), pointer  :: child 
     real(double) :: ne, n_h, ntot, phit, t
     real(double), parameter  :: CI = 2.07d-16   ! in cgs units
-    integer :: subcell, i
+    integer :: i, subcell
     integer :: nAtom
     integer :: nRBBTrans
     integer :: iatom
     logical :: ionized
     integer :: nFreq
+    
 
-  do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans, nfreq, ionized)
-                exit
-             end if
-          end do
-       else
-
-          if (.not.associated(thisOctal%atomLevel)) then
-             allocate(thisOctal%atomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
-          endif
-
-          if (.not.associated(thisOctal%newatomLevel)) then
-             allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
-             thisOctal%newatomLevel = 1.d-10
-             if (.not.ionized) then
-                do iAtom = 1, nAtom
-                   if (thisAtom(iAtom)%charge == 0) then
-                      thisOctal%newAtomLevel(1:thisOctal%maxChildren, 1:nAtom, 1) = thisOctal%rho(subcell) &
-                           * thisOctal%atomAbundance(subcell, iAtom)
-                   endif
-                enddo
-             endif
-          endif
-
-          if (.not.associated(thisOctal%jnuLine)) then
-             allocate(thisOctal%jnuLine(1:thisOctal%maxChildren, 1:nRBBTrans))
-             thisOctal%jnuLine = 1.d-30
-          endif
-
-          if (.not.associated(thisOctal%jnuCont)) then
-             allocate(thisOctal%jnuCont(1:thisOctal%maxChildren, 1:nFreq))
-             thisOctal%jnuCont = 1.d-30
-          endif
-
-          if (ionized) then
-             thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-          else
-             thisOctal%ne(subcell) = tiny(1.d-30 * thisOctal%rho(subcell)/mHydrogen)
-          endif
-
-          t = thisOctal%temperature(subcell)
-
-          if (real(hydE0eV,kind=double)/(kev*T) < 60.d0) then
-             N_H = thisOctal%rho(subcell)/mHydrogen  ! number density of HI plus number density of HII
-             phiT = CI*Z_HI(10,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
-             
-             ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
-             ! nTot is the number density of particles includeing all species.
-             ! ==> phi(T)*ne^2 + ne - N_H =0
-             ! Th physical solution  is chosen out of two ...  
-             !    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
-             Ne = (sqrt(4.0_db*N_H*phiT+1.0_db) -1.0_db)/(2.0_db*phiT)
-          else 
-             ne = tiny(ne)
-          endif
-             nTot = Ne + N_H
-          !    Ne = min(Ne, nTot)     ! to avoid unphysical solution.
-          !    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
-          if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
-          thisOctal%ne(subcell) = ne
-!          write(*,*) "ne ",thisOctal%ne(subcell),4.0_db*N_H*phiT+1.0_db, t,phit,n_h
-          do iAtom = 1, nAtom
-             thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
-                  * thisOctal%atomAbundance(subcell, iAtom)
-
-             do i = 1, thisAtom(iatom)%nLevels-1
-                thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaGeneral(thisAtom(iAtom), 1, i, &
-                     thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell))) * &
-                     thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-             enddo
-          enddo
-          thisOctal%newAtomLevel(subcell,:,:) = thisOctal%atomLevel(subcell,:,:)
+    if ( thisOctal%nChildren > 0) then
+       do i = 1, thisOctal%nChildren
+          child => thisOctal%child(i)
+          call  allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans, nfreq, ionized)
+       end do
+    end if
+    call allocateAttribute(thisOctal%atomAbundance,thisOctal%maxchildren, nAtom)
+    thisOctal%atomAbundance(:, 1) = 0.71d0 / mHydrogen
+    if (nAtom > 1) then
+       thisOctal%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
+    endif
+    call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+    call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+    call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+    call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
 
 
+    call allocateAttribute(thisOctal%atomLevel, thisOctal%maxChildren, nAtom, maxval(thisAtom(1:nAtom)%nLevels))
+    call allocateAttribute(thisOctal%newatomLevel, thisOctal%maxChildren, nAtom, maxval(thisAtom(1:nAtom)%nLevels))
+
+
+    call allocateAttribute(thisOctal%jnuLine, thisOctal%maxChildren, nRBBTrans)
+    call allocateAttribute(thisOctal%jnuCont, thisOctal%maxChildren, nFreq)
+
+    if (ionized) then
+       thisOctal%ne = thisOctal%rho/mHydrogen
+    else
+       thisOctal%ne = tiny(1.d-30 * thisOctal%rho/mHydrogen)
+    endif
+
+
+    do subcell = 1, thisOctal%maxChildren
+       t = thisOctal%temperature(subcell)
+       if (real(hydE0eV,kind=double)/(kev*T) < 60.d0) then 
+         N_H = thisOctal%rho(subcell)/mHydrogen  ! number density of HI plus number density of HII
+          phiT = CI*Z_HI(10,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
+
+          ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
+          ! nTot is the number density of particles includeing all species.
+          ! ==> phi(T)*ne^2 + ne - N_H =0
+          ! Th physical solution  is chosen out of two ...  
+          !    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
+          Ne = (sqrt(4.0_db*N_H*phiT+1.0_db) -1.0_db)/(2.0_db*phiT)
+       else 
+          ne = tiny(ne)
        endif
+       nTot = Ne + N_H
+       !    Ne = min(Ne, nTot)     ! to avoid unphysical solution.
+       !    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
+       if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
+       thisOctal%ne(subcell) = ne
+       !          write(*,*) "ne ",thisOctal%ne(subcell),4.0_db*N_H*phiT+1.0_db, t,phit,n_h
+       do iAtom = 1, nAtom
+          thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
+               * thisOctal%atomAbundance(subcell, iAtom)/ thisAtom(iatom)%mass
+
+          do i = 1, thisAtom(iatom)%nLevels-1
+             thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaGeneral(thisAtom(iAtom), 1, i, &
+                  thisOctal%ne(subcell), &
+                  dble(thisOctal%temperature(subcell))) * &
+                  thisOctal%AtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+          enddo
+       enddo
     enddo
+    thisOctal%newAtomLevel = thisOctal%atomLevel
+
   end subroutine allocateLevels
   
 
@@ -2118,7 +2103,6 @@ contains
                 etaline = 0.d0
              endif
 
-
              if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
                 bfOpac = 1.d30
                 bfEmiss = 0.d0
@@ -2317,7 +2301,6 @@ contains
     do iv = iv1, iv2
        deltaV  = vArray(iv)
 
-
        iray1 = 1
        iray2 = nray
 #ifdef MPI
@@ -2512,9 +2495,9 @@ contains
 
     vStart = -500.d0
     vEnd = 500.d0
-    nv = 50
-    nx = 500
-    ny = 500
+    nv = 100
+    nx = 1000
+    ny = 1000
 
 
 
@@ -2613,7 +2596,7 @@ contains
                 rayPos =  (xval * xProj) + (yval * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
                 deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
-
+ 
                 if (PRESENT(occultingDisc)) then
                    cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
                         iTrans, -deltaV, source, nSource, nFreqArray, freqArray, occultingDisc=.true.)

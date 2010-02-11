@@ -598,7 +598,7 @@ program torus
              nint(dipoleOffset*radtodeg),".dat"
            open(33, file=phaseFilename, status="unknown", form="formatted")
         endif
-           nphi = 1
+           nphi = 50
            do i = 1, nphi
               ang = twoPi * real(i-1)/real(nphi)  +pi
               t = 75.d0*degtorad

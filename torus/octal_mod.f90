@@ -57,6 +57,8 @@ MODULE octal_mod
 
   interface allocateAttribute
      module procedure allocateAttributeDouble
+     module procedure allocateAttributeDouble2D
+     module procedure allocateAttributeDouble3D
      module procedure allocateAttributeReal
      module procedure allocateAttributeInteger
      module procedure allocateAttributeLogical
@@ -663,6 +665,26 @@ CONTAINS
        array = TINY(array)
     endif
   end subroutine allocateAttributeDouble
+
+  subroutine allocateAttributeDouble2d(array, nSize1, nSize2)
+    integer :: nSize1, nSize2
+    real(double), pointer :: array(:,:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize1, 1:nSize2))
+       array = TINY(array)
+    endif
+  end subroutine allocateAttributeDouble2d
+
+  subroutine allocateAttributeDouble3d(array, nSize1, nSize2, nsize3)
+    integer :: nSize1, nSize2, nSize3
+    real(double), pointer :: array(:,:,:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize1, 1:nSize2, 1:nSize3))
+       array = TINY(array)
+    endif
+  end subroutine allocateAttributeDouble3d
   
   subroutine allocateAttributeReal(array, nSize)
     integer :: nSize
