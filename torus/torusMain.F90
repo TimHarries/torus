@@ -61,6 +61,7 @@ program torus
   use angularImage, only: make_angular_image, map_dI_to_particles
   use timedep_mod, only : runTimeDependentRT, timeDependentRTtest
   use magnetic_mod, only : accretingAreaMahdavi
+  use lucy_mod, only : getSublimationRadius
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -185,7 +186,7 @@ program torus
   character(len=80) :: message, phaseFilename
   real :: h 
 !  integer :: iTime
-
+  real(double) :: rsub, tsub
 ! molecular line stuff
   type(MOLECULETYPE) :: co
 
@@ -576,6 +577,18 @@ program torus
   endif ! (gridusesAMR)
   !=================================================================
 
+  if (dumpInnerEdge) then
+     if (myRankGlobal == 0) then
+        call getSublimationRadius(grid, rsub, tsub)
+        open(73, file="sublimation.dat", status="unknown", form="formatted")
+        write(73,*) "# sublimation radius (cm), temperature (k)"
+        write(73,*) rsub*1.d10, tsub
+        close(73)
+     endif
+     goto 666
+  endif
+
+
   ! set up the sources
   if(.not. (restart .or. addnewmoldata)) call set_up_sources
 
@@ -808,6 +821,7 @@ program torus
      call pathTest(grid)
      goto 666
   endif
+
 
   if ( nInclination > 0 ) then
      call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &

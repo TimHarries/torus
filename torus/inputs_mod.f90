@@ -1008,6 +1008,9 @@ contains
 
     call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
          "Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
+    call getLogical("dumpinneredge", dumpInnerEdge, cLine, nLines, &
+         "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .false., ok, .false.)
+    if (dumpinneredge) isotropicScattering = .true.
 
 
     call getLogical("storescattered", storeScattered, cLine, nLines, &

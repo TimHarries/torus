@@ -998,11 +998,15 @@ contains
 
   end subroutine lucyRadiativeEquilibriumAMR
 
-  subroutine getSublimationRadius(grid, subRadius)
+  subroutine getSublimationRadius(grid, subRadius, temperature)
     use amr_mod, only: tauAlongPath
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: subRadius
+    real(double), optional :: temperature
     real(double) :: tau
+    type(VECTOR) :: point
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
     real(double), allocatable :: tauArray(:), xArray(:)
     integer :: nTau, i
     allocate(tauArray(1:100000), xArray(1:100000))
@@ -1012,6 +1016,11 @@ contains
     if (tauArray(nTau) > 0.667d0) then
        call locate(tauArray, nTau, 0.667d0, i)
        subRadius = xArray(i) + ((0.667d0-tauArray(i))/(tauArray(i+1)-tauArray(i)))*(xArray(i+1) - xArray(i))
+       if (present(temperature)) then
+          point = VECTOR(subRadius, 0.d0, 0.d0)
+          call findSubcellTD(point, grid%octreeRoot, thisOctal, subcell)
+          temperature = thisOctal%temperature(subcell)
+       endif
     else
        call writeWarning("No tau_ross = 2/3 boundary")
     endif

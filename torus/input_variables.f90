@@ -18,6 +18,7 @@ module input_variables
   logical :: debug
   logical :: suppressWarnings
   integer :: idump ! hydrodynamics time step dump number
+  logical :: dumpInnerEdge
   logical :: doSelfGrav
   real(double) :: gridDistanceScale
   real :: cflNumber
