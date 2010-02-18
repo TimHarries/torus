@@ -271,7 +271,12 @@ module angularImage
       cube%xAxis(:) = 90.0 + ( phi_axis(:)   / degToRad )
       cube%yAxis(:) = 90.0 - ( theta_axis(:) / degToRad )
 
+!$OMP PARALLEL default(none), private(ipixels, jpixels, this_gal_lon, this_gal_lat, viewvec),  &
+!$OMP private(viewvec_x, viewvec_y, viewvec_z), &
+!$OMP shared(npixels, galaxyPositionAngle, galaxyInclination, grid, thisMolecule), &
+!$OMP shared(ix1, ix2, cube, theta_axis, phi_axis, iTrans, deltaV, subpixels, imagegrid)
       do jpixels = 1, npixels ! raster over image
+!$OMP DO
          do ipixels = ix1, ix2
 
             this_gal_lon = cube%xAxis(ipixels)
@@ -292,8 +297,9 @@ module angularImage
                  AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV, subpixels)
 
          enddo
-
+!$OMP END DO
       enddo
+!$OMP END PARALLEL
 
     end subroutine makeAngImageGrid
 
