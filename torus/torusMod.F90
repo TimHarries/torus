@@ -65,7 +65,7 @@ contains
   use mpi_global_mod, only: myRankGlobal
   use photoionAMR_mod, only: radiationhydro
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
-  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
+  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, freeAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
   use unix_mod, only: unixGetHostname
   use parallel_mod, only: sync_random_seed
 #endif
@@ -444,6 +444,10 @@ deallocate(miePhase)
 deallocate(xArray)
 
 call torus_mpi_barrier
+
+#ifdef MPI
+call freeAMRCOMMUNICATOR
+#endif
 
 CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------

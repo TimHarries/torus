@@ -38,6 +38,19 @@ contains
 
   end subroutine setupAMRCOMMUNICATOR
 
+! Free communicator created by setupAMRCOMMUNICATOR
+  subroutine freeAMRCOMMUNICATOR
+    implicit none
+
+    include 'mpif.h'
+    integer :: ierr
+
+    if ( myRankGlobal /= 0 ) then 
+       call MPI_COMM_FREE(amrCOMMUNICATOR, ierr)
+    end if
+
+  end subroutine freeAMRCOMMUNICATOR
+
   subroutine findMassOverAllThreads(grid, mass)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
