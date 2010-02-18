@@ -15060,8 +15060,6 @@ end function readparameterfrom2dmap
     type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
     real(double) :: tval
-    type(VECTOR),save :: norm(6)
-    logical, save :: firsttime = .true.
     real(double) :: distTor1, theta, mu
     real(double) :: distToRboundary, compz,currentZ
     real(double) :: distToZboundary
@@ -15075,15 +15073,6 @@ end function readparameterfrom2dmap
     real(double) :: subcellsize
     type(VECTOR) :: normdiff
 
-    if(firsttime) then
-       norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
-       norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
-       norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
-       norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
-       norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
-       norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
-       firsttime = .false.
-    endif
 
    tval = HUGE(tval)
 
@@ -17726,8 +17715,10 @@ end function readparameterfrom2dmap
     real(double) :: xyweights(9)
     real(double) :: weights(27)
     real(double), save :: oldweights(27)
-      
-    if(t1 .eq. t1old) then
+! OpenMP has problems with saved variables so set reuse=.false. 
+    logical, parameter :: reuse=.true. 
+
+    if(reuse .and. t1 .eq. t1old) then
        if(t2 .eq. t2old) then
           if(t3 .eq. t3old) then
              weights = oldweights
@@ -17763,10 +17754,12 @@ end function readparameterfrom2dmap
     weights(10:18) = zv * xyweights
     weights(19:27) = zw * xyweights
     
-    oldweights = weights
-    t1old = t1
-    t2old = t2
-    t3old = t3
+    if ( reuse ) then 
+       oldweights = weights
+       t1old = t1
+       t2old = t2
+       t3old = t3
+    end if
 
   end subroutine quadint
 

@@ -3566,10 +3566,12 @@ end subroutine plotdiscValues
        implicit none
        
        type(VECTOR), intent(in) :: position
-       type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
        type(gridtype), intent(in) :: grid
        type(octal), pointer, optional :: startOctal
        integer, optional :: subcell
+
+#ifndef _OPENMP
+       type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
        integer, save :: savecounter = 0
 
        if(oldposition .eq. position) then
@@ -3577,6 +3579,7 @@ end subroutine plotdiscValues
           out = oldout
           return
        endif
+#endif
 
        if(molebench) then
           Out = Molebenchvelocity(Position, grid) 
@@ -3590,8 +3593,10 @@ end subroutine plotdiscValues
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, actualSubcell = subcell, linearinterp = .false.)
        endif
 
+#ifndef _OPENMP
        oldout = out
        oldposition = position
+#endif
 
   end function velocity
 
