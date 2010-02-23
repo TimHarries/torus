@@ -186,7 +186,7 @@ program torus
   character(len=80) :: message, phaseFilename
   real :: h 
 !  integer :: iTime
-  real(double) :: rsub, tsub, tsub_theory
+  real(double) :: rsub, tsub, tsub_theory, density
 ! molecular line stuff
   type(MOLECULETYPE) :: co
 
@@ -579,10 +579,10 @@ program torus
 
   if (dumpInnerEdge) then
      if (myRankGlobal == 0) then
-        call getSublimationRadius(grid, rsub, tsub, tsub_theory)
+        call getSublimationRadius(grid, rsub, tsub, tsub_theory, density)
         open(73, file="sublimation.dat", status="unknown", form="formatted")
-        write(73,*) "# sublimation radius (cm), temperature (k), theoretical temperature (:)"
-        write(73,*) rsub*1.d10, tsub, tsub_theory
+        write(73,*) "# sublimation radius (cm), temperature (k), theoretical temperature (k), Density(gcm**3)" 
+        write(73,*) rsub*1.d10, tsub, tsub_theory, density
         close(73)
      endif
      goto 666

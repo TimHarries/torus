@@ -998,7 +998,7 @@ contains
 
   end subroutine lucyRadiativeEquilibriumAMR
 
-  subroutine getSublimationRadius(grid, subRadius, temperature, sublimationTemp)
+  subroutine getSublimationRadius(grid, subRadius, temperature, sublimationTemp, density)
     use amr_mod, only: tauAlongPath
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: subRadius
