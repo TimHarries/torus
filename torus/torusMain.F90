@@ -580,8 +580,8 @@ program torus
   if (dumpInnerEdge) then
      if (myRankGlobal == 0) then
         call getSublimationRadius(grid, rsub, tsub, tsub_theory, density)
-        open(73, file="sublimation.dat", status="unknown", form="formatted")
-        write(73,*) "# sublimation radius (cm), temperature (k), theoretical temperature (k), Density(gcm**3)" 
+        open(73, file="sublimation.dat", status="unknown", form="formatted", recl=200)
+        write(73,*) "#Radius_inner(cm), T_inner (k), T_sub (k), Density (gcm**3)" 
         write(73,*) rsub*1.d10, tsub, tsub_theory, density
         close(73)
      endif
