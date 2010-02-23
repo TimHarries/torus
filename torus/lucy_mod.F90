@@ -449,7 +449,7 @@ contains
                 !$OMP DO SCHEDULE(runtime)
                 photonloop: do iMonte = imonte_beg, imonte_end
 
-                   if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
+                  ! if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
@@ -998,11 +998,11 @@ contains
 
   end subroutine lucyRadiativeEquilibriumAMR
 
-  subroutine getSublimationRadius(grid, subRadius, temperature)
+  subroutine getSublimationRadius(grid, subRadius, temperature, sublimationTemp)
     use amr_mod, only: tauAlongPath
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: subRadius
-    real(double), optional :: temperature
+    real(double), optional :: temperature, density, sublimationTemp
     real(double) :: tau
     type(VECTOR) :: point
     type(OCTAL), pointer :: thisOctal
@@ -1020,6 +1020,9 @@ contains
           point = VECTOR(subRadius, 0.d0, 0.d0)
           call findSubcellTD(point, grid%octreeRoot, thisOctal, subcell)
           temperature = thisOctal%temperature(subcell)
+          density = thisOctal%rho(subcell)
+          sublimationTemp = max(700.d0,2000.d0 *density**(1.95d-2))
+          if (temperature > sublimationTemp) call writeWarning("Inner edge too hot!") 
        endif
     else
        call writeWarning("No tau_ross = 2/3 boundary")

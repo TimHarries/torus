@@ -1367,7 +1367,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
 !           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
 !           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
-            if (writeoutput) write(*,*) "nInnerloop ",nInnerloop
+!           if (writeoutput) write(*,*) "nInnerloop ",nInnerloop
 
         endif
 
