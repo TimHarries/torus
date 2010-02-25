@@ -226,26 +226,26 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-!    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
-!       if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
-!          call writeInfo("Filling dust with large dust in midplane", FORINFO)
-!          call fillDustShakara(grid, grid%octreeRoot)
-!       else
-!          call writeInfo("Filling disc with uniform dust fractions", FORINFO)
-!          call fillDustUniform(grid, grid%octreeRoot)
-!       endif
-!    endif
-!
-!    if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
-!       call fillDustUniform(grid, grid%octreeRoot)
-!    endif
+    !    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
+    !       if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
+    !          call writeInfo("Filling dust with large dust in midplane", FORINFO)
+    !          call fillDustShakara(grid, grid%octreeRoot)
+    !       else
+    !          call writeInfo("Filling disc with uniform dust fractions", FORINFO)
+    !          call fillDustUniform(grid, grid%octreeRoot)
+    !       endif
+    !    endif
+    !
+    !    if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
+    !       call fillDustUniform(grid, grid%octreeRoot)
+    !    endif
 
 
     if (object == "ab_aur") then
        call writeInfo("Filling dust with large dust in midplane", FORINFO)
        call fillDustUniform(grid, grid%octreeRoot)
     endif
-       
+
     if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
        call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
@@ -282,7 +282,7 @@ contains
        !       endif
 
        nIter = 1
-      
+
 
        do iIter = 1, nIter
 
@@ -290,48 +290,48 @@ contains
 
           thisSmooth = .false.
 
-!          if (iIter_grand <= 3) thisSmooth = .true.
+          !          if (iIter_grand <= 3) thisSmooth = .true.
 
-!          if (variableDustSublimation) thisSmooth = .false.
+          !          if (variableDustSublimation) thisSmooth = .false.
 
-!          if ( suppressLucySmooth ) thisSmooth = .false.
+          !          if ( suppressLucySmooth ) thisSmooth = .false.
 
           if (thisSmooth) then
-                 call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
-                call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, iSmoothLam !nLambda, 2
-                   write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-                   call writeInfo(message, TRIVIAL)
-                   if (grid%octreeRoot%twoD) then
-                      do
-                         gridConverged = .true.
-                         call putTau(grid, grid%lamArray(j))
-                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
-                         if (gridConverged) exit
-                      end do
-                   else
-                      do
-                         gridConverged = .true.
-                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true.)
-                         if (gridConverged) exit
-                      end do
-                   endif
-                enddo
-                call writeInfo("...grid smoothing complete", TRIVIAL)
+             call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)
+             call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+             do j = iSmoothLam, iSmoothLam !nLambda, 2
+                write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                call writeInfo(message, TRIVIAL)
+                if (grid%octreeRoot%twoD) then
+                   do
+                      gridConverged = .true.
+                      call putTau(grid, grid%lamArray(j))
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
+                      if (gridConverged) exit
+                   end do
+                else
+                   do
+                      gridConverged = .true.
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true.)
+                      if (gridConverged) exit
+                   end do
+                endif
+             enddo
+             call writeInfo("...grid smoothing complete", TRIVIAL)
 
-                call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-                do
-                   gridConverged = .true.
-                   call myScaleSmooth(smoothFactor, grid, &
-                        gridConverged,  inheritProps = .false., interpProps = .true.)
-                   if (gridConverged) exit
-                end do
-                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-                call writeInfo("...grid smoothing complete", TRIVIAL)
+             call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+             do
+                gridConverged = .true.
+                call myScaleSmooth(smoothFactor, grid, &
+                     gridConverged,  inheritProps = .false., interpProps = .true.)
+                if (gridConverged) exit
+             end do
+             call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+             call writeInfo("...grid smoothing complete", TRIVIAL)
 
-             endif
+          endif
 
           call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
 
@@ -449,7 +449,7 @@ contains
                 !$OMP DO SCHEDULE(runtime)
                 photonloop: do iMonte = imonte_beg, imonte_end
 
-                  ! if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
+                   ! if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
@@ -569,7 +569,7 @@ contains
                             logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
                             icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
                             icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
-!			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
+                            !			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
 
                             do i = 1, icritupper
                                iLam = nfreq - i + 1
@@ -842,37 +842,37 @@ contains
              if (iIter_grand == 6) tauMax = 10.d0
              if (iIter_grand == 8) tauMax = 1.e30
 
-
+             ! Sublimate the dust and smooth at the photosphere on the last pass
              if (iIter_Grand <= 8) &
                   call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
              endif
 
-!             if (iiter_grand == 6) then
-!
-!                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-!                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-!                gridconverged = .false.
-!                do while(.not.gridconverged)
-!                   gridconverged = .true.
-!                   nUnrefine = 0
-!                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged, .false.)
-!                   if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
-!                end do
-!                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-!                if (writeoutput) then
-!                   write(*,*) "done."
-!                endif
-!             endif
+             !             if (iiter_grand == 6) then
+             !
+             !                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+             !                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+             !                gridconverged = .false.
+             !                do while(.not.gridconverged)
+             !                   gridconverged = .true.
+             !                   nUnrefine = 0
+             !                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged, .false.)
+             !                   if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+             !                end do
+             !                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+             !                if (writeoutput) then
+             !                   write(*,*) "done."
+             !                endif
+             !             endif
 
              if (iiter_grand == 8) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
                 do j = iSmoothLam, nLambda, 2
-                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-                 call writeInfo(message, TRIVIAL)
+                   write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                   call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
                       call putTau(grid, grid%lamArray(j))
@@ -928,7 +928,7 @@ contains
           converged = .false.
        endif
 
-       
+
        if ((grid%geometry == "shakara").and.variableDustSublimation.and.(iIter_grand > 2)) then
           call getSublimationRadius(grid, subRadius)
           write(message, '(a, i3, a, f7.3,a )') "End of lucy iteration ",iIter_grand,&
@@ -937,7 +937,7 @@ contains
           write(message, '(a, i3, a, f7.3,a )') "End of lucy iteration ",iIter_grand,&
                ": Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
           call writeInfo(message, FORINFO)
-       endif
+      endif
 
 
 
@@ -965,7 +965,7 @@ contains
        else
           tfilename = "lucy.vtk"
        endif
-       
+
        if ( .not. suppressLucySmooth ) call putTau(grid, 6.e4)
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
@@ -982,6 +982,41 @@ contains
 
     enddo
 
+    if (variableDustSublimation.and.thisIsFinalPass) then
+       call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+       if ((nfrac /= 0).and.(writeoutput)) then
+          write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
+       endif
+       call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+       
+       call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+       do j = iSmoothLam, nLambda, 2
+          write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+          call writeInfo(message, TRIVIAL)
+          do
+             gridConverged = .true.
+             call putTau(grid, grid%lamArray(j))
+             call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                  inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+             
+             if (gridConverged) exit
+          end do
+       enddo
+       call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+       call writeInfo("...grid smoothing complete", TRIVIAL)
+
+       call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+       do
+          gridConverged = .true.
+          call myScaleSmooth(smoothFactor, grid, &
+               gridConverged,  inheritProps = .false., interpProps = .true.)
+          if (gridConverged) exit
+       end do
+       call writeInfo("...grid smoothing complete", TRIVIAL)
+       
+    endif
+
+
     if (grid%geometry == "shakara") then
        call getSublimationRadius(grid, subRadius)
        write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
@@ -990,11 +1025,11 @@ contains
        call writeInfo(message, FORINFO)
     endif
 
-!    if (storescattered) then 
-!       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
-!       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
-!       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
-!    endif
+    !    if (storescattered) then 
+    !       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
+    !       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+    !       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+    !    endif
 
   end subroutine lucyRadiativeEquilibriumAMR
 
@@ -1008,21 +1043,21 @@ contains
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double), allocatable :: tauArray(:), xArray(:)
-    integer :: nTau, i
+    integer :: nTau, i, iarray
     allocate(tauArray(1:100000), xArray(1:100000))
 
-    call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), &
-         tau,  ross = .true., nTau = nTau, xArray = xArray, tauArray = tauArray)
-    if (tauArray(nTau) > 0.667d0) then
-       call locate(tauArray, nTau, 0.667d0, i)
-       subRadius = xArray(i) + ((0.667d0-tauArray(i))/(tauArray(i+1)-tauArray(i)))*(xArray(i+1) - xArray(i))
+   call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 1.d-3*grid%halfSmallestSubcell), VECTOR(1.d0, 0.d0, 0.d0), &
+         tau,  ross = .true., tauMax=0.667d0, subRadius=subRadius)
+
+   if (tau >= 0.667d0) then
        if (present(temperature)) then
           point = VECTOR(subRadius, 0.d0, 0.d0)
           call findSubcellTD(point, grid%octreeRoot, thisOctal, subcell)
           temperature = thisOctal%temperature(subcell)
           density = thisOctal%rho(subcell)
           sublimationTemp = max(700.d0,2000.d0 *density**(1.95d-2))
-          if (temperature > sublimationTemp) call writeWarning("Inner edge too hot!") 
+          if (temperature > (sublimationTemp + 100.0)) &
+               call writeWarning("Inner edge too hot by >100K") 
        endif
     else
        call writeWarning("No tau_ross = 2/3 boundary")

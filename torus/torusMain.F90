@@ -79,6 +79,8 @@ program torus
   type(SOURCETYPE), allocatable :: source(:)
   real :: inclination
 
+  integer :: nFrac
+  
   ! variables for the grid
 
   type(GRIDTYPE) :: grid
@@ -577,18 +579,6 @@ program torus
   endif ! (gridusesAMR)
   !=================================================================
 
-  if (dumpInnerEdge) then
-     if (myRankGlobal == 0) then
-        call getSublimationRadius(grid, rsub, tsub, tsub_theory, density)
-        open(73, file="sublimation.dat", status="unknown", form="formatted", recl=200)
-        write(73,*) "#Radius_inner(cm), T_inner (k), T_sub (k), Density (gcm**3)" 
-        write(73,*) rsub*1.d10, tsub, tsub_theory, density
-        close(73)
-     endif
-     goto 666
-  endif
-
-
   ! set up the sources
   if(.not. (restart .or. addnewmoldata)) call set_up_sources
 
@@ -821,6 +811,18 @@ program torus
      call pathTest(grid)
      goto 666
   endif
+  
+  ! For Shakara geometry, get the inner edge details before creating the SEDs
+  if (geometry=="shakara") then
+     if (myRankGlobal == 0) then
+        call getSublimationRadius(grid, rsub, tsub, tsub_theory, density)
+        open(73, file="sublimation.dat", status="unknown", form="formatted", recl=200)
+        write(73,*) "#Radius_inner(cm), T_inner (k), T_sub (k), Density (g/cm**3)" 
+        write(73,*) rsub*1.d10, tsub, tsub_theory, density
+        close(73)
+     endif
+  endif
+
 
 
   if ( nInclination > 0 ) then
@@ -2638,10 +2640,16 @@ end subroutine post_initAMRgrid
 subroutine do_lucyRadiativeEq
 
   use benchmark_mod, only: check_benchmark_values
-  use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy
+  use amr_mod, only : myTauSmooth, myScaleSmooth, countvoxels
+  use dust_mod, only : sublimateDust
+  use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy, &
+       getSublimationRadius, putTau
   use disc_hydro_mod, only: verticalHydrostatic, getbetavalue
   use cluster_utils, only: analyze_cluster
   use cluster_class, only: reassign_10k_temperature, restrict, kill_all
+  logical :: gridConverged
+  real :: totFrac
+  integer :: nOctals, nVoxels
 
   type(VECTOR) :: outVec
   outVec = (-1.d0)* originalViewVec
@@ -2658,14 +2666,52 @@ subroutine do_lucyRadiativeEq
         if (readLucy .and. .not. redoLucy) then
            continue
         else
-
-           if (solveVerticalHydro) then
+           ! Solve the vertical hydrostatic equilibrium unless
+           ! we are only redoing the inner edge
+           if (solveVerticalHydro .and. .not.(dumpinneredge)) then
               call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
                    source, nSource, nLucy, massEnvelope)
+              call writeVtkFile(grid, "lucy.vtk", &
+                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                   "dust1      ", "deltaT     ", "etaline    "/))
+
            else
-              call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, &
-                   lucy_undersampled)
+
+              totFrac = 0.
+              call sublimateDust(grid, grid%octreeRoot, totfrac, nFrac, 1.e30)
+              if ((nfrac /= 0).and.(writeoutput)) then
+                 write(*,*) "Average absolute change in sublimation fraction: ",totfrac/real(nfrac)
+              endif
+              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+       
+              call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+              do j = iSmoothLam, nLambda, 2
+                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                 call writeInfo(message, TRIVIAL)
+                 do
+                    gridConverged = .true.
+                    call putTau(grid, grid%lamArray(j))
+                    call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                         inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+             
+                    if (gridConverged) exit
+                 end do
+              enddo
+              call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+              call writeInfo("...grid smoothing complete", TRIVIAL)
+              
+              call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+              do
+                 gridConverged = .true.
+                 call myScaleSmooth(smoothFactor, grid, &
+                      gridConverged,  inheritProps = .false., interpProps = .true.)
+                 if (gridConverged) exit
+              end do
+              call writeInfo("...grid smoothing complete", TRIVIAL)
+       
+              call writeVtkFile(grid, "lucy.vtk", &
+                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                   "dust1      ", "deltaT     ", "etaline    "/))
            endif
 
         endif

@@ -16286,13 +16286,14 @@ end function readparameterfrom2dmap
 
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
-       xArray, tauArray, distanceToEdge)
+       xArray, tauArray, distanceToEdge, subRadius)
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     real(double), optional,intent(out) :: xArray(:), tauArray(:)
     integer, optional, intent(out) :: nTau
     integer :: iLambda
+    real(double), optional :: subRadius
     real(double), intent(out) :: tau
     real(double), optional, intent(out) :: distanceToEdge
     real(double) :: distToNextCell
@@ -16366,7 +16367,13 @@ end function readparameterfrom2dmap
        endif
        if (PRESENT(distanceToEdge)) distanceToEdge = distanceToEdge + distToNextCell
        if (PRESENT(tauMax)) then
-          if (tau > tauMax) exit
+          if (tau > tauMax) then
+             if (PRESENT(subRadius)) then
+                subRadius = modulus(subcellCentre(thisOctal,subcell))
+             endif
+             exit
+          endif
+          
        endif
     end do
   end subroutine tauAlongPath
