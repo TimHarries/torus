@@ -1043,7 +1043,7 @@ contains
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double), allocatable :: tauArray(:), xArray(:)
-    integer :: nTau, i, iarray
+
     allocate(tauArray(1:100000), xArray(1:100000))
 
    call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 1.d-3*grid%halfSmallestSubcell), VECTOR(1.d0, 0.d0, 0.d0), &
