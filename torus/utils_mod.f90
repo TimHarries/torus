@@ -919,7 +919,7 @@ contains
     endif
 
     h = xa(khi) - xa(klo)
-    if (h .eq. 0.d0) pause 'Bad xa input in splint_double.'
+    if (h .eq. 0.d0) call writeFatal("Bad xa input in splint_double.")
     a = (xa(khi)-x)/h
     b = (x-xa(klo))/h
     y = a*ya(klo) + b*ya(khi) + ((a**3-a)*y2a(klo) + (b**3-b)*y2a(khi)) &
@@ -3864,7 +3864,7 @@ END SUBROUTINE GAUSSJ
         do 11 j=1,n
           if (abs(a(i,j)).gt.aamax) aamax=abs(a(i,j))
 11      continue
-        if (aamax.eq.0.d0) pause 'singular matrix.'
+        if (aamax.eq.0.d0) call writeFatal("ludcmp: singular matrix.")
         vv(i)=1.d0/aamax
 12    continue
       do 19 j=1,n
@@ -4121,7 +4121,7 @@ END SUBROUTINE GAUSSJ
             endif
             go to 3
           endif
-          if (its.eq.30) pause 'no convergence in 30 iterations'
+          if (its.eq.30) call writeFatal("no convergence in 30 iterations")
           x=w(l)
           nm=k-1
           y=w(nm)

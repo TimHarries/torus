@@ -3394,81 +3394,71 @@ subroutine setBiasOnTau(grid, iLambda)
     deallocate(iNuDOmega)
   end subroutine calcIntensityFromGrid
 
-  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, nUnrefine, converged, finalPass)
-    use input_variables, only : height, betaDisc, rOuter, minDepthAMR, heightSplitFac, maxDepthAMR
+  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, nUnrefine, converged)
+    use input_variables, only : minDepthAMR
     use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: ilambda
     real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i
+    integer :: subcell, i, j
     logical :: unrefine, converged
     integer :: nc
-    logical :: split
-    real(double) :: cellSize, r, hr
-    logical :: finalPass
     integer :: oldNChildren
     integer :: nUnrefine
+    integer :: nChild
 
-    type(VECTOR) :: cellCentre
     
 
     kappaAbs = 0.d0; kappaSca = 0.d0
-    unrefine = .true.
     nc = 0
 
     if ( thisOctal%nChildren > 0) then
        do i = 1, thisOctal%nChildren
           child => thisOctal%child(i)
           oldNChildren = thisOctal%nChildren
-          call unrefineThinCells(child, grid, ilambda, nUnrefine, converged,  finalPass)
+          call unrefineThinCells(child, grid, ilambda, nUnrefine, converged)
           if (thisOctal%NChildren /= oldNChildren) return
        end do
     else
+       unrefine = .true.
        do subcell = 1, thisOctal%maxChildren
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          if (tau > 1.e-5) then
+          if (tau > 1.e-10) then
              unrefine = .false.
              exit
           endif
        enddo
-       split = .true.
-       if (.not.associated(thisOctal%parent).and.(myrankGlobal==1)) then
+       if (.not.associated(thisOctal%parent).and.writeoutput) then
           write(*,*) "Parent of thisoctal not assocaited ",thisOctal%nDepth
        endif
-       if (associated(thisOctal%parent).and.unrefine) then
-          cellSize = thisOctal%parent%subcellSize 
-          cellCentre = subcellCentre(thisOctal%parent,thisOctal%parentSubcell)
-          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-
-          split = .false.
-          
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
-          
-          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-          
-          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
-               (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
-
-          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-          
-          if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
-          if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
-          
-          if (finalPass) split = .false.
-       
-          if ((.not.split).and.(thisOctal%nDepth > minDepthAMR)) then
-             call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
-               grid = grid, adjustGridInfo = .true.)
-             converged = .false.
-             nUnrefine = nUnrefine + 1
+       if (associated(thisOctal%parent).and.unrefine) then       
+          if (thisOctal%nDepth > minDepthAMR) then
+             if ((thisOctal%nChildren == 0).and.unrefine.and.converged) then
+                nChild = 0
+                do j = 1, thisOctal%parent%nChildren
+                   if (thisOctal%parent%indexChild(j) == thisOctal%parentSubcell) then
+                      nChild = j
+                      exit
+                   endif
+                enddo
+                if (nChild == 0) then
+                   write(*,*) "fatal bug"
+                   write(*,*) thisOctal%parent%nChildren,thisOctal%parent%indexchild
+                   stop
+                endif
+                   
+                call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+                     grid = grid, adjustGridInfo = .true.)
+                converged = .false.
+                nUnrefine = nUnrefine + 1
+             endif
           endif
        endif
     endif
+
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)

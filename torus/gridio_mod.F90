@@ -538,10 +538,11 @@ contains
           if (iThread == myRankGlobal) then
 #endif
              call readAmrGridSingle(filename, fileFormatted, grid)
+             CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
 #ifdef MPI
           endif
           call torus_mpi_barrier
-       enddo
+       Enddo
 #endif
     endif
     

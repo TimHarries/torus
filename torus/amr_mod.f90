@@ -10062,39 +10062,6 @@ end function readparameterfrom2dmap
       IF ( adjustGridInfo ) grid%nOctals = grid%nOctals - 1
 
 
-      IF (ASSOCIATED(thisOctal%ionFrac)) DEALLOCATE(thisOctal%ionFrac,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=2) 
-      NULLIFY(thisOctal%ionFrac)
-
-      IF (ASSOCIATED(thisOctal%photoIonCoeff)) DEALLOCATE(thisOctal%photoIonCoeff,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=2) 
-      NULLIFY(thisOctal%photoIonCoeff)
-
-
-      IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=2) 
-      NULLIFY(thisOctal%kappaAbs)
-
-      IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=3) 
-      NULLIFY(thisOctal%kappaSca)
-    
-      IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=4) 
-      NULLIFY(thisOctal%N)
-
-      IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=5) 
-      NULLIFY(thisOctal%departCoeff)
-
-      IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=6) 
-      NULLIFY(thisOctal%gas_particle_list)
-
-      IF (ASSOCIATED(thisOctal%dustTypeFraction)) DEALLOCATE(thisOctal%dustTypeFraction,STAT=error)
-      IF ( error /= 0 ) CALL deallocationError(error,location=7) 
-      NULLIFY(thisOctal%dustTypeFraction)
-
       call deallocateOctalDynamicAttributes(thisOctal)
 
     END SUBROUTINE deleteOctalPrivate
@@ -11025,6 +10992,13 @@ end function readparameterfrom2dmap
       PRINT *, "In shrinkChildArray, attempting to delete a "
       PRINT *, "child that doesn't exist."
       PRINT *, error, childrenToDelete
+      write(*,*) "nchildren ",parent%nChildren
+      write(*,*) "haschild ",parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "mask ",checkmask
+      write(*,*) " and ",childrenToDelete(1:SIZE(childrenToDelete)) .AND. parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "xor ",childrentodelete.neqv.(childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete)))
+      write(*,*) nChildrentodelete,nchildrenstay,deleteallchildren
+
       STOP
     END IF
  
@@ -11190,7 +11164,7 @@ end function readparameterfrom2dmap
   SUBROUTINE updateParentFromChild(childOctal)
     ! uses the 4 or 8 subcells in an octal to compute the physical
     !   variables in the appropriate subcell of that octal's parent.
-
+    use input_variables, only : nDustType
     TYPE(OCTAL), INTENT(INOUT) :: childOctal 
     
     TYPE(OCTAL), POINTER :: parentOctal
@@ -11258,6 +11232,10 @@ end function readparameterfrom2dmap
        enddo
     endif
     
+    if (.not.associated(parentOctal%dustTypeFraction)) then
+       allocate(parentOctal%dustTypeFraction(1:parentOctal%maxChildren,1:nDustType))
+    endif
+
     if (associated(parentOctal%dustTypeFraction)) then
        do i = 1, SIZE(childOCtal%dustTypeFraction,2)
           parentOctal%dustTypeFraction(parentSubcell,i) =     &

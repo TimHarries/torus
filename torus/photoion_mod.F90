@@ -4494,7 +4494,7 @@ end subroutine readHeIIrecombination
     type(GRIDTYPE),intent(in) :: grid
     real(double),intent(in) :: lambda
     integer, intent(out) :: iIon, iTransition
-    logical, intent(out) :: ok
+    logical, intent(inout) :: ok
     integer :: i, j
     character(len=80) :: message
 

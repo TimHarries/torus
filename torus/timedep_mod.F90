@@ -2435,13 +2435,13 @@ contains
       integer :: n, j
       real(double) ::  GAM(NMAX),A(N),B(N),C(N),R(N),U(N)
       real(double) :: bet
-      IF(B(1).EQ.0.)PAUSE
+      IF(B(1).EQ.0.) call writeFatal("TRIDIAG: fatal error 1")
       BET=B(1)
       U(1)=R(1)/BET
       DO J=2,N
         GAM(J)=C(J-1)/BET
         BET=B(J)-A(J)*GAM(J)
-        IF(BET.EQ.0.)PAUSE
+        IF(BET.EQ.0.) call writeFatal("TRIDIAG: fatal error 2")
         U(J)=(R(J)-A(J)*U(J-1))/BET
      enddo
       DO  J=N-1,1,-1

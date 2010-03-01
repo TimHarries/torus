@@ -2674,39 +2674,55 @@ subroutine do_lucyRadiativeEq
   use amr_mod, only : myTauSmooth, myScaleSmooth, countvoxels
   use dust_mod, only : sublimateDust
   use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy, &
-       getSublimationRadius, putTau
+       getSublimationRadius, putTau, unrefineThinCells
   use disc_hydro_mod, only: verticalHydrostatic, getbetavalue
   use cluster_utils, only: analyze_cluster
   use cluster_class, only: reassign_10k_temperature, restrict, kill_all
   logical :: gridConverged
   real :: totFrac
-  integer :: nOctals, nVoxels
+  integer :: nOctals, nVoxels, nUnrefine
 
   type(VECTOR) :: outVec
   outVec = (-1.d0)* originalViewVec
 
-!  call getBetaValue(grid, betaFit, heightat100AU)
+  !  call getBetaValue(grid, betaFit, heightat100AU)
 
-     if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
- 
-     call allocateMemoryForLucy(grid%octreeRoot)
+  if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
 
-     if (.not.grid%adaptive) then
-        call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
+  call allocateMemoryForLucy(grid%octreeRoot)
+
+  if (.not.grid%adaptive) then
+     call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
+  else
+     if (readLucy .and. .not. redoLucy) then
+        continue
      else
-        if (readLucy .and. .not. redoLucy) then
-           continue
-        else
-           ! Solve the vertical hydrostatic equilibrium unless
-           ! we are only redoing the inner edge
-           if (solveVerticalHydro .and. .not.(dumpinneredge)) then
-              call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope)
-              call writeVtkFile(grid, "lucy.vtk", &
-                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                   "dust1      ", "deltaT     ", "etaline    "/))
+        ! Solve the vertical hydrostatic equilibrium unless
+        ! we are only redoing the inner edge
+        if (solveVerticalHydro .and. .not.(dumpinneredge)) then
+           call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                source, nSource, nLucy, massEnvelope)
+           call writeVtkFile(grid, "lucy.vtk", &
+                valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                "dust1      ", "deltaT     ", "etaline    "/))
 
-           else
+        else
+
+
+           if (variableDustSublimation) then
+              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+              if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+              gridconverged = .false.
+              do while(.not.gridconverged)
+                 gridconverged = .true.
+                 nUnrefine = 0
+                 call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged)
+                 if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+              end do
+                             call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+                             if (writeoutput) then
+                                write(*,*) "done."
+                             endif
 
               totFrac = 0.
               call sublimateDust(grid, grid%octreeRoot, totfrac, nFrac, 1.e30)
@@ -2714,7 +2730,7 @@ subroutine do_lucyRadiativeEq
                  write(*,*) "Average absolute change in sublimation fraction: ",totfrac/real(nfrac)
               endif
               call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-       
+
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
               do j = iSmoothLam, nLambda, 2
                  write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
@@ -2724,13 +2740,13 @@ subroutine do_lucyRadiativeEq
                     call putTau(grid, grid%lamArray(j))
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
                          inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
-             
+
                     if (gridConverged) exit
                  end do
               enddo
               call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
               call writeInfo("...grid smoothing complete", TRIVIAL)
-              
+
               call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
               do
                  gridConverged = .true.
@@ -2739,54 +2755,54 @@ subroutine do_lucyRadiativeEq
                  if (gridConverged) exit
               end do
               call writeInfo("...grid smoothing complete", TRIVIAL)
-       
+
               call writeVtkFile(grid, "lucy.vtk", &
                    valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
                    "dust1      ", "deltaT     ", "etaline    "/))
            endif
-
         endif
-
-        
-
-        if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
      endif
 
-     if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-     if (grid%geometry(1:7) == "cluster") then
 
-        if (myRankIsZero) then
-           ! Finding apperant magnitudes and colors of the stars in cluster
-           write (*,*) " "
-           write (*,*) "Computing the magnitudes and colors of stars ..."
-           ! -- note grid distance here is in [pc]
-           call analyze_cluster(young_cluster,outVec,dble(gridDistance),grid)
-        end if
+     if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
+  endif
 
-        call torus_mpi_barrier
+  if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-        ! restricting the sed and images calculations to the star 
-        ! with ID number = idx_restrict_star. 
-        ! By default idx_restrict_star =0 which means all stars the cluster
-        ! are included in the calculations.  Specifty a value in your
-        ! parameter file to restrict to one star.  (10 AU cylinder
-        ! zone is used to restrict the effective computational domain.
-        call restrict(grid%octreeroot, idx_restrict_star, nsource, &
-                      source,  outVec, 7.5d4) ! the last value is 50 AU (in 10^10cm)
-	!                      source,  s2o(outVec), 1.5d4) ! the last value is 10 AU (in 10^10cm)
+  if (grid%geometry(1:7) == "cluster") then
 
-        call reassign_10K_temperature(grid%octreeroot)
-        ! delete the cluster object since it won't be used any more.
-        call kill_all(young_cluster)
-     endif
-
+     if (myRankIsZero) then
+        ! Finding apperant magnitudes and colors of the stars in cluster
+        write (*,*) " "
+        write (*,*) "Computing the magnitudes and colors of stars ..."
+        ! -- note grid distance here is in [pc]
+        call analyze_cluster(young_cluster,outVec,dble(gridDistance),grid)
+     end if
 
      call torus_mpi_barrier
 
-! Check benchmark results against values read in from file
-! If the file does not exist then the routine will return cleanly
-     if (myRankIsZero .and. grid%geometry == 'benchmark') call check_benchmark_values(grid, "part_out.dat")
+     ! restricting the sed and images calculations to the star 
+     ! with ID number = idx_restrict_star. 
+     ! By default idx_restrict_star =0 which means all stars the cluster
+     ! are included in the calculations.  Specifty a value in your
+     ! parameter file to restrict to one star.  (10 AU cylinder
+     ! zone is used to restrict the effective computational domain.
+     call restrict(grid%octreeroot, idx_restrict_star, nsource, &
+          source,  outVec, 7.5d4) ! the last value is 50 AU (in 10^10cm)
+     !                      source,  s2o(outVec), 1.5d4) ! the last value is 10 AU (in 10^10cm)
+
+     call reassign_10K_temperature(grid%octreeroot)
+     ! delete the cluster object since it won't be used any more.
+     call kill_all(young_cluster)
+  endif
+
+
+  call torus_mpi_barrier
+
+  ! Check benchmark results against values read in from file
+  ! If the file does not exist then the routine will return cleanly
+  if (myRankIsZero .and. grid%geometry == 'benchmark') call check_benchmark_values(grid, "part_out.dat")
 
 end subroutine do_lucyRadiativeEq
 

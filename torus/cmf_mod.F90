@@ -810,7 +810,6 @@ contains
   subroutine calculateJbar(grid, thisOctal, subcell, thisAtom, nRay, position, direction, rayDeltaV, &
        ds, phi, i0, iTrans, jbar, nPops, &
        freq, nfreq, weight, iRBB, tauAv)
-    use input_variables, only : onTheSpot
     type(GRIDTYPE) :: grid
     type(VECTOR) :: position(:), direction(:), thisPosition, startVel, thisVel
     real(double) :: dds, dv, rayDeltaV(:)
@@ -963,7 +962,7 @@ contains
     real(double) :: alphanu
     integer :: iFreq
     real(double) :: jnu, snu
-    real(double) :: nstar(10,50), expMinusTau, w, x1
+    real(double) :: nstar(10,50), expMinusTau
     integer :: iAtom, j
     allocate(jBarContExternal(1:nFreq))
     allocate(jBarContInternal(1:nFreq))
@@ -1014,7 +1013,6 @@ contains
          else
             expMinusTau = 0.d0
          endif
-`      
 
          if (.not.onTheSpot) then
             jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq) * expMinusTau * weight(iRay)
