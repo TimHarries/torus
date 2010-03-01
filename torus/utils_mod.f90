@@ -68,16 +68,21 @@ contains
 
   ! solve a quadratic equation
 
-  real(double) function myExp(x) result(y)
-    real(double) :: x
 
-    if (abs(x) < 1.d-2) then
-       y = 1.d0  - x
-    else
-       y = exp(x)
-    endif
-  end function myExp
+  subroutine reverse(x)
+    real(double) :: x(:)
+    real(double), allocatable :: t(:)
+    integer :: n, i
 
+    n = SIZE(x)
+    allocate(t(1:n))
+    do i = 1 , n
+       t(i) = x(n-i+1)
+    enddo
+    x = t
+    deallocate(t)
+  end subroutine reverse
+       
 
   subroutine solveQuad(a, b, c, x1, x2,ok)
     implicit none

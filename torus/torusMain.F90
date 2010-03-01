@@ -311,7 +311,7 @@ program torus
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 10)
+        call stripAtomLevels(thisAtom(i), 6)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif
@@ -593,6 +593,7 @@ program torus
 	scatteredLightWavelength = 2.166e4
 
         if (ttauridisc) call do_lucyRadiativeEq
+	if (.not.readlucy) &
         call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
         if (writeoutput) then
@@ -962,7 +963,7 @@ CONTAINS
      onekappa=.false.
      call read_cmfgen_data("OPACITY_DATA")
      call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
-     call put_cmfgen_Rmax(dble(amrGridSize)/2.0d0)  ! in [10^10cm]
+     call put_cmfgen_Rmax(CMFGEN_Rmax)  ! in [10^10cm]
 
   elseif (geometry == "romanova") then
      onekappa=.false.
@@ -1359,7 +1360,7 @@ end subroutine pre_initAMRGrid
            call fillGridPuls(grid, mDot, rcore, tEff, v0, vterm, beta, xfac, blobs, maxBlobs, .false., vContrast)
    !        call initGridStateq(grid, contFluxFile, contFluxFile2, popFilename, &
    !                            readPops, writePops, lte, nLower, nUpper)
-        case("wind")
+!        case("wind")
 !           call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
 !           lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
 
@@ -1887,7 +1888,7 @@ end subroutine pre_initAMRGrid
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif
 
-	if (lineEmission.and.(geometry /= "cmfgen")) then
+	if (lineEmission.and.(geometry /= "cmfgen").and.(geometry /= "wind")) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile)
@@ -2154,6 +2155,36 @@ subroutine set_up_sources
            call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion, lAccretion) 
            source(1)%luminosity = source(1)%luminosity + lAccretion
         endif
+
+    case("cmfgen")
+
+           nSource = 1
+           allocate(source(1:1))
+	   teff = 1.d5
+           source(:)%outsideGrid = .false.
+           source(1)%luminosity = fourPi * stefanBoltz * (CMFGEN_rmin*1.d10)**2 * teff**4
+           source(1)%radius = CMFgen_rmin
+           source(1)%teff = teff
+           source(1)%position = VECTOR(0.,0.,0.)
+           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
+!           call fillSpectrumBB(source(1)%spectrum, 1.d5, 10.d0, 1000.d4,1000)
+           call normalizedSpectrum(source(1)%spectrum)
+	   write(*,*) "calling build sphere..."
+           call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, contFluxFile)
+
+    case("wind")
+
+           nSource = 1
+           allocate(source(1:1))
+           source(:)%outsideGrid = .false.
+           source(1)%luminosity = fourPi * stefanBoltz * (rcore*1.d10)**2 * teff**4
+           source(1)%radius = rcore
+           source(1)%teff = teff
+           source(1)%position = VECTOR(0.,0.,0.)
+           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
+           call normalizedSpectrum(source(1)%spectrum)
+	   write(*,*) "calling build sphere..."
+           call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, contFluxFile)
 
         
     case("testamr","benchmark")

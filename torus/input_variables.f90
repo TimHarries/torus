@@ -68,7 +68,7 @@ module input_variables
   logical :: doIntensivePeelOff
   logical :: fastIntegrate
   real(double) :: etaViscosity
-  logical :: opticallyThickContinuum
+  logical :: opticallyThickContinuum, onTheSpot
   logical :: sed, jansky, SIsed, inArcsec, dustySED
 
   ! Data cube parameters
@@ -244,6 +244,7 @@ module input_variables
   real :: rMin, rMaj
   real :: shellFrac
   real :: Teff, Teff1, Teff2
+  real :: twind
   real :: rstar1, rstar2, mstar1, mstar2
   real :: mdot1, mdot2
   real :: Mbol
@@ -473,6 +474,7 @@ module input_variables
 
   !---------------------------------------------------------------------------------
   real(double)    :: CMFGEN_Rmin       ! radius of central star  [10^10cm]
+  real(double)    :: CMFGEN_Rmax        ! max radius
   !---------------------------------------------------------------------------------
   
 

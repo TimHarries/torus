@@ -59,6 +59,7 @@ module cmfgen_class
      real(double), pointer  :: T(:)      ! temperature [K]
      real(double), pointer  :: sigma(:)  ! 
      real(double), pointer  :: V(:)      ! radial velocity [km/s]
+     real(double), pointer  :: rho(:)      ! mass density
      real(double), pointer  :: eta(:)    ! thermal emissivity  [ ]
      real(double), pointer  :: chi_th(:) ! thermal opacity     [ ]
      real(double), pointer  :: esec(:)   ! electron scattering opacity []
@@ -83,6 +84,7 @@ contains
   !
   ! -- Intialize the object and read the data.
   subroutine read_cmfgen_data(filename)
+    use utils_mod, only : reverse
     implicit none
     character(LEN=*), intent(in) :: filename ! File name for velocity and density    
     !
@@ -91,6 +93,7 @@ contains
     integer :: i, nd
     integer :: luin =88
     real(double) :: freq
+    character(len=14) :: tstring
 
     open(unit=luin, file=filename, status="old")
 
@@ -123,7 +126,7 @@ contains
     nd = cmfgen_opacity%nd
     ALLOCATE(cmfgen_opacity%r(nd), cmfgen_opacity%T(nd), cmfgen_opacity%sigma(nd), cmfgen_opacity%V(nd))
     ALLOCATE(cmfgen_opacity%eta(nd), cmfgen_opacity%chi_th(nd), cmfgen_opacity%esec(nd), &
-         cmfgen_opacity%etal(nd), cmfgen_opacity%chil(nd))
+         cmfgen_opacity%etal(nd), cmfgen_opacity%chil(nd), cmfgen_opacity%rho(nd))
 
     do i = 1, nd
        read(luin, *)              &
@@ -141,11 +144,21 @@ contains
     ! changing units of T from 10^4 K to K
     cmfgen_opacity%T(1:nd) = 1.0d4*cmfgen_opacity%T(1:nd)
 
-    ! to be consistent with the notation in stateq_mod::generateOpacitiesAMR
+    ! to be consisetnt with the notation in stateq_mod::generateOpacitiesAMR
     cmfgen_opacity%eta(1:nd) = 1.0d10*cmfgen_opacity%eta(1:nd)
     cmfgen_opacity%etal(1:nd) = 1.0d10*cmfgen_opacity%etal(1:nd)
 
     close(luin)
+
+    open(luin, file="RVTJ", status="old", form="formatted")
+10 continue
+    read(luin,'(a14)') tstring
+    if (trim(tstring) /= " Mass Density") goto 10
+    read(luin,*) cmfgen_opacity%rho(1:nd)
+    call reverse(cmfgen_opacity%rho)
+    close(luin)
+
+
 
   end subroutine read_cmfgen_data
   
@@ -217,6 +230,8 @@ contains
        array(1:nd) = cmfgen_opacity%etal(1:nd)
     case ("chil")
        array(1:nd) = cmfgen_opacity%chil(1:nd)
+    case ("rho")
+       array(1:nd) = cmfgen_opacity%rho(1:nd)
     case default
        print *, "Error:: Unknown name passed to [cmfgen_class::get_cmfgen_data_array]."
        print *, "       name = ", name
@@ -251,6 +266,8 @@ contains
        out = cmfgen_opacity%etal(i)
     case ("chil")
        out = cmfgen_opacity%chil(i)
+    case ("rho")
+       out = cmfgen_opacity%rho(i)
     case default
        print *, "Error:: Unknown name passed to [cmfgen_class::get_cmfgen_data_array]."
        print *, "       name = ", name
@@ -286,7 +303,7 @@ contains
        out = rho_min  ! just assign a small value and return
     else       
        ! using a routine in utils_mod
-       out = loginterp_dble(cmfgen_opacity%esec, cmfgen_opacity%nd, cmfgen_opacity%R, ri)    
+       out = loginterp_dble(cmfgen_opacity%rho, cmfgen_opacity%nd, cmfgen_opacity%R, ri)    
     end if
 
   END FUNCTION cmfgen_density
@@ -448,7 +465,7 @@ contains
     thisOctal%temperature(subcell) = cmfgen_temperature(point)  ! [K]
     ! we will initialise the bias distribution
     !  --- I am not sure why this should be done here....
-    thisOctal%biasLine3D(subcell) = 1.0
+!    thisOctal%biasLine3D(subcell) = 1.0
     
   END SUBROUTINE calc_cmfgen_temperature
 

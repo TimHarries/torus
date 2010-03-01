@@ -230,6 +230,9 @@ CONTAINS
 
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
+
+    CASE ("wind")
+       CALL WindSubcell(thisOctal, subcell ,grid)
        
     CASE("cluster","molcluster","theGalaxy")
        ! using a routine in cluster_class.f90
@@ -1200,7 +1203,6 @@ CONTAINS
     END SUBROUTINE sift_down 
 
   END SUBROUTINE sortOctalArray    
-    
   
   RECURSIVE SUBROUTINE finishGrid(thisOctal, grid, romData)
     ! takes the octree grid that has been created using 'splitGrid'
@@ -4959,6 +4961,35 @@ IF ( .NOT. gridConverged ) RETURN
 
       if (cellSize > 100.0d0)  split=.true.
 
+   case("wind") 
+      if (first_time) then
+         nr = 50
+         do i = 1, nr
+            r_tmp(i) = log10(grid%rcore) + real(i-1)/real(nr-1) * (log10(2.d0*grid%rcore) - log10(grid%rcore))
+         enddo
+         nr = 50
+         do i = 1, nr
+            r_tmp(i+50) = log10(2.*grid%rcore) + &
+                 real(i)/real(nr) * (log10(2.*grid%octreeRoot%subcellSize)-log10(2.*grid%rcore))
+         enddo
+         nr = 100
+         r_tmp(1:nr) = 10.d0**r_tmp(1:nr)
+        write(*,*) r_tmp(1:nr)/rcore
+         first_time=.false.         
+      end if
+      cellSize = thisOctal%subcellSize
+      cellCentre = subcellCentre(thisOctal,subCell)
+      nr = 100
+      r = modulus(cellcentre)+sqrt(2.)*cellSize/2.
+      if (r > grid%rCore) then
+         call locate(R_tmp, nr, r, i)      
+         if (cellsize > (R_tmp(i+1)-R_tmp(i))) then
+            split = .true.
+         else
+            split = .false.
+         end if
+      endif
+
    case("cmfgen") 
       nr = get_cmfgen_nd()
       if (first_time) then
@@ -4988,7 +5019,7 @@ IF ( .NOT. gridConverged ) RETURN
             split = .false.
          end if
       end if
-      if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen)/4.0d0)  split=.true.
+      if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen))  split=.true.
       if ((r < Rmin_cmfgen).and.((r+sqrt(2.d0)*cellsize/2.d0)>rMin_cmfgen).and.&
            (cellSize > (r_cmfgen(2)-r_cmfgen(1))) ) split = .true.
 
@@ -5200,44 +5231,6 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 !      write(*,*) nparticle,thisOctal%nDepth,subcell
-
-   case ("windtest")
-
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-
-      nr = 25
-      r  = 1. 
-      dr = 1.e-3
-      do i = 1, nr, 1
-        rgrid(i) = r 
-        r = r + dr
-        dr = dr * 1.25
-      end do
-      do i = 2, nr, 1
-        rgrid(i) = grid%rInner + ((grid%rOuter - grid%rInner) * (rgrid(i)-rgrid(1))/(rgrid(nr) - rGrid(1)))
-      end do
-      rgrid(1) = grid%rInner
- !    print *, rgrid(1), rgrid(nr) 
-!      nr1 = 30
-!      nr2 = 0
-!      nr = nr1 + nr2
-!      do i = 1, nr1
-!         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(grid%rOuter)-log10(grid%rInner))/dble(nr1-1)
-!      end do
-!      do i = 1, nr2
-!         rgrid(nr1+i) = log10(0.01*grid%rOuter)+dble(i)*(log10(grid%rOuter)-log10(0.01*grid%rOuter))/dble(nr2)
-!      end do
-      
-!      rgrid(1:nr) = 10.d0**rgrid(1:nr)
-      r = modulus(cellcentre)
-      if ((r < grid%rOuter).and.(r > grid%rinner)) then
-         call locate(rGrid, nr, r, i)      
-         if (i == 0) i = nr-1
-         if (i == nr) i = nr-1
-         if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
-      endif
-      if (thisOctal%nDepth < 4) split = .true.
 
    case("ggtau")
 ! used to be 5
@@ -9838,25 +9831,55 @@ end function readparameterfrom2dmap
 
   end subroutine spiralWindSubcell
 
+  subroutine windSubcell(thisOctal, subcell, grid)
+    use input_variables, only : v0, vterm, beta, twind, mdot, rcore
+    real(double) :: v, r, rhoOut
+    type(VECTOR) :: rHat, rvec
+    type(VECTOR) :: octVec
+    integer :: subcell
+    type(OCTAL) :: thisOctal
+    type(GRIDTYPE) :: grid
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)
+
+    thisOctal%inFlow(subcell) = .false.
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+    thisOctal%temperature(subcell) = Twind
+    thisOctal%rho(subcell) = 1.d-30
+    if (r > rCore) then
+       r = modulus(rVec)
+       v = v0 + (vTerm - v0) * (1. - rCore/r)**beta
+       rhoOut = mdot / (fourPi * (r*1.e10)**2 * v)
+       rHat = rVec / r
+       octVec = rVec
+       thisOctal%rho(subcell) = rhoOut
+       thisOctal%velocity(subcell)  = (v/cSpeed) * rHat
+       thisOctal%inFlow(subcell) = .true.
+    endif
+
+    CALL fillVelocityCorners(thisOctal,grid,ostarVelocity,thisOctal%threed)
+
+  end subroutine WindSubcell
+
 
   TYPE(vector) FUNCTION ostarVelocity(point,grid)
+    use input_variables, only : v0, vterm, beta, rcore
     real(double) :: r1
     type(VECTOR), intent(in) :: point
-!    type(VECTOR) rHat
+    type(VECTOR) rHat
     type(GRIDTYPE), intent(in) :: grid
-    real :: v, v0, vterm, beta
-    v0 = 100.e5
-    vterm = 2500.e5
-    beta = 1.
-
+    real :: v
 
     r1 = modulus(point)
 
-    if (r1 > grid%rCore) then
-!       rHat = (1.d0/r1) * point 
+    rhat = point
+    call normalize(rHat)
+    if (r1 > rCore) then
        v = v0 + (vTerm - v0) * (1. - grid%rCore/r1)**beta
-!       ostarVelocity  = (dble(v/cSpeed)) * rHat
-       ostarvelocity = vector(0.,0.,0.)
+       ostarVelocity  = (dble(v/cSpeed)) * rHat
+    else
+       ostarVelocity  = VECTOR(0., 0., 0.)
     endif
   end FUNCTION ostarVelocity
 

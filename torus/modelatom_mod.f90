@@ -7,7 +7,7 @@ module modelatom_mod
   use messages_mod
   use unix_mod, only: unixGetenv
   use hyd_col_coeff, only: tempTable, omegaij, omegaik
-  use stateq_mod, only: gii, expint
+  use stateq_mod, only:  expint
   use utils_mod, only: locate, sort
   use source_mod, only: SOURCETYPE
 
@@ -250,8 +250,6 @@ contains
     integer :: iLevel
     real(double) :: nu, e
     real :: x
-    real(double) :: photonEnergy, lamMicrons, logKappa
-    real(double) :: sigma0, nuThresh, alpha, s, gIIx, gIIy, gIIz
     photoCrossSection = tiny(photoCrossSection)
 
 
@@ -267,61 +265,10 @@ contains
        case(2)
           select case(thisAtom%charge)
              case(0)
-                photonEnergy = nu * hCgs * ergtoEv
-                if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
-                   select case(iLevel)  ! from Gingerich 1964
-                     case(1)
-                        logKappa = 14.47d0 - 2.d0 * log10(nu)
-                        photoCrossSection = (10.d0**logKappa)
-                        call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
-!                        write(*,*) "xsec", x * 1.d-10,photocrosssection
-                        photocrosssection = x * 1.d-10
-                     case(2)
-                        logKappa = -17.387d0 + 0.679*log10(nu*1.d-14) - 0.727d0*log10(nu*1.d-14)
-                        photoCrossSection = (10.d0**logKappa)
-                     case(3)
-                        logKappa = 11.65d0 - 1.91d0*log10(nu)
-                        photoCrossSection = (10.d0**logKappa)
-                     case(4)
-                        logKappa = 26.57d0 - 2.9d0*log10(nu)
-                        photoCrossSection = (10.d0**logKappa)
-                     case(5)
-                        logKappa = 35.31d0 - 3.5d0*log10(nu)
-                        photoCrossSection = (10.d0**logKappa)
-                     case(6)
-                        logKappa = 31.06d0 - 3.3d0*log10(nu)
-                        photoCrossSection = (10.d0**logKappa)
-                     case(7)
-                        logKappa = 35.48d0 - 3.6d0*log10(nu)
-                        photoCrossSection = (10.d0**logKappa)
-                     case DEFAULT
-                        lamMicrons = (cspeed/nu)/microntocm
-                        photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5) 
-                   end select
-                endif
+                photoCrossSection = annu_He_I(ilevel,nu)
              case(1)
-                select case(thisAtom%equation(iTrans))
-                   case(1)
-                      nuThresh = (thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))*evtoerg/hCgs
-                      if (nu > nuThresh) then
-                         sigma0 = thisAtom%params(iTrans,1)
-                         alpha = thisAtom%params(iTrans,2)
-                         s = thisAtom%params(iTrans,3)
-                         photoCrossSection = sigma0 * (nuThresh/nu)**s * (alpha + (1.d0-alpha)*(nuThresh/nu))
-                      endif
-                   case(2)
-                      nuThresh = (thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))*evtoerg/hCgs
-                      if (nu > nuThresh) then
-                         sigma0 = thisAtom%params(iTrans,1)
-                         alpha = thisAtom%params(iTrans,2)
-                         s = thisAtom%params(iTrans,3)
-                         gIIx = thisAtom%params(iTrans,4)
-                         gIIy = thisAtom%params(iTrans,5)
-                         gIIz = thisAtom%params(iTrans,6)
-                         photoCrossSection = sigma0 * (nuThresh/nu)**s * (alpha + (1.d0-alpha)*(nuThresh/nu))!*gauntII(gIIx, GIIy, gIIz)
-                      endif
-                  end select
-               end select
+                photoCrossSection =  annu_He_II(ilevel,nu)
+          end select
        case(20)
           e = nu * hcgs * ergtoev
           select case(thisAtom%charge)
@@ -337,7 +284,11 @@ contains
           stop
      end select
    end function photoCrossSection
-
+   
+   real(double) function gauntTest(nu, gIIx, gIIy, gIIz)
+     real(double) :: nu, gIIx, gIIy, gIIz
+     gauntTest = gIIx + gIIy / nu + GIIz / nu**2
+   end function gauntTest
 
   real(double) function quickPhotoCrossSection(thisAtom, iRBF, iFreq)
     type(MODELATOM) :: thisAtom
@@ -488,8 +439,8 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
-!          write(*,*) rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
-!               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
+          write(*,*) rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
+               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
           stop
@@ -611,7 +562,7 @@ contains
     real(double)            :: lam,e ! the photon wavelength
     integer :: level
     real(double), parameter :: eTrans(23) =                      &
-         (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
+         (/ (hydE0eVdb*(1.0d0 - 1.0d0/dble(level)**2),level=1,SIZE(eTrans)) /) 
 
     lam=cSpeed/nu
     lam=lam * 1.e8_db
@@ -688,7 +639,8 @@ contains
           0.07460e0, -0.75759e0, 2.58494e0, -3.53170e0, 1.65240e0, &
           0.34383e0, -0.41472e0, 1.01550e0,  0.31930e0, 0.00000e0  &
            /), shape=(/5,5/))
-    real(double) :: u0, u1, u2, N1overN0, N2overN1, pe
+    real(double) :: u0, u1, u2, N1overN0, N2overN1, pe, ci
+    real(double) :: n0overn1,n1overn2
        pe = ne * kerg * t
        tReal = t
        select case(thisAtom%nz)
@@ -710,19 +662,26 @@ contains
              endif
           endif
        case(2)
+
+          ci = 2.07d-16
+          u0 = getUT(treal, uCoeff(2,:))
+          u1 = getUT(treal, uCoeff(3,:))
+          u2 = 1.d0
+
+
+          if (t > 3.) then
+             N0overN1 = ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5
+             n1overn2 = ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5
+          else
+             n0overn1 = 1.d10
+             n1overn2 = 1.d10
+          endif
+
           select case(thisAtom%charge)
           case(0)
-             u0 = getUT(treal, uCoeff(2,:))
-             u1 = getUT(treal, uCoeff(3,:))
-             N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-             N1overN0 = (10.d0**N1overN0)/pe
-             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+             ratio = ((thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0) * N0overn1
           case(1)
-             u1 = getUT(treal, uCoeff(3,:))
-             u2 = 1.d0
-             N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
-             N2overN1 = (10.d0**N2overN1)/pe
-             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
+             ratio = ((thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1) * N1overn2
           case DEFAULT
              write(*,*) "wrong charge for He"
              stop
@@ -740,6 +699,7 @@ contains
              u2 = getUT(treal, uCoeff(5,:))
              N2overN1 = ((-5040.d0/t)*11.87d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
              N2overN1 = (10.d0**N2overN1)/pe
+
              ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
           case DEFAULT
              write(*,*) "wrong charge for Ca"
@@ -786,7 +746,7 @@ contains
               indexAtom(nRBBTrans) = iAtom
               indexRBBTrans(nRBBTrans) = iTrans
               thisAtom(iAtom)%nRBBTrans = thisAtom(iAtom)%nRBBTrans + 1
-              thisAtom(iAtom)%indexRBBtrans(itrans) = thisAtom(iAtom)%nRBBTrans
+              thisAtom(iAtom)%indexRBBtrans(itrans) = nRBBTrans
            endif
            if (thisAtom(iAtom)%transType(iTrans) == "RBF") then
               thisAtom(iAtom)%nRBFTrans = thisAtom(iAtom)%nRBFTrans + 1
@@ -843,7 +803,7 @@ contains
   end function oldcikt_ma
 
 
-  function etaContHydrogen(freq, thisAtom, pops, nLevels, ne, temperature) result(eta)
+  function etaContHydrogen(freq, thisAtom, pops, nLevels, ne, temperature, nh) result(eta)
 
 ! bound-free and free-free continuum emissivity
 
@@ -851,7 +811,7 @@ contains
     real(double) :: freq
     real(double) :: pops(:)
     integer :: nLevels
-    real(double) :: ne
+    real(double) :: ne, nh
     real(double) :: temperature
     real(double) :: nStar
     real(double) :: eta
@@ -888,6 +848,7 @@ contains
       
      wav=1.e8_db*cSpeed/freq
      gauntf=giii_hyd(1.e0_db,t,wav)
+     gauntf = 1.
      alpkk_hyd=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
      
    end function alpkk_hyd
@@ -986,37 +947,47 @@ contains
        integer :: iTrans
        real(double) :: kappa, fac, ne, temperature
        real(double) :: nStar(:,:)
-       integer :: i, j
+       integer :: ilower, j
+       logical, save :: firstTime = .true.
 
        kappa = 0.d0
-       do iAtom = 1, nAtom
+       do iAtom = 1, 2!nAtom
           do j = 1, thisAtom(iAtom)%nRBFtrans
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
-             i = thisAtom(iAtom)%iLower(iTrans)
-             if (i < 7) then
-!                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
+          if (thisAtom(iatom)%transType(itrans) /= "RBF") then
+             write(*,*) "transtype bug in bfemissivity"
+             stop
+          endif
+             ilower = thisAtom(iAtom)%iLower(iTrans)
+             if (ilower < 2) then
                 fac = exp(-hCgs*freq / (kerg * temperature))
                 if (present(iFreq)) then
                    kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
-                        (pops(iAtom, i) - nStar(iatom,i)*fac)
+                        (pops(iAtom, ilower)-nstar(iatom,ilower)*fac)
                 else
-                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * &
-                        (pops(iAtom, i) - nStar(iatom,i) *fac) 
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * &
+                        (pops(iAtom, ilower)-nstar(iatom,ilower)*fac)
                 endif
              endif
           enddo
        enddo
 
+       kappa = kappa +  ne * pops(1,thisAtom(1)%nlevels) * &
+            alpkk_hyd(freq,dble(temperature)) * (1.d0-exp(-(hcgs*freq)/(kerg*temperature)))
        kappa = kappa + ne * sigmae
 
-       if (kappa < 0.d0) kappa = 0.d0 
-
+       if (kappa < 0.d0) then
+          if (firstTime) then
+             write(*,*) "negative bfopacity!!!!"
+             firstTime = .false.
+          endif
+          kappa = 0.d0 
+       endif
        
-!write(*,*) "kappa",kappa
-
      end function bfOpacity
 
-  function bfEmissivity(freq, nAtom, thisAtom, nStar, temperature, ne, Jnu, ifreq) result(eta)
+  function bfEmissivity(freq, nAtom, thisAtom, pops, nStar, temperature, ne, Jnu, ifreq) result(eta)
+
 
 ! bound-free and free-free continuum emissivity
 
@@ -1027,40 +998,60 @@ contains
     integer, optional :: iFreq
     integer :: iTrans
     real(double) :: temperature
-    real(double) :: eta
+    real(double) :: eta, fac
     integer :: iAtom, i, iLower, iUpper
     real(double) :: Jnu ! mean intensity
     real(double) :: ne
     real(double) :: thresh, photonEnergy, expFac
+    logical, save :: firsttime = .true.
+    real(double) :: pops(:,:)
 
     eta=0.d0
 
 !    bound-free
 
-    expFac = exp(-(hcgs*freq)/(kerg*temperature)) * (2.d0 * hCgs * freq**3)/(cSpeed**2)
-
-    do iAtom = 1, nAtom
-
+    fac = (2.d0 * hCgs * freq**3)/(cSpeed**2)
+    expFac = exp(-(hcgs*freq)/(kerg*temperature)) 
+ 
+    do iAtom = 1, 2!nAtom
 
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)
           iLower = thisAtom(iAtom)%iLower(iTrans)
           iUpper = thisAtom(iAtom)%iUpper(iTrans)
-          if (iLower < 7) then
+          if (thisAtom(iatom)%transType(itrans) /= "RBF") then
+             write(*,*) "transtype bug in bfemissivity"
+             stop
+          endif
+          if (iLower < 2) then
              thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(iLower))
              photonEnergy = freq * hCgs * ergtoEv
              if (photonEnergy.ge.thresh) then
+
                 if (present(ifreq)) then
-                   eta = eta + nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
+                   eta = eta + fac * nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
                 else
-                   eta = eta + nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iTrans, iLower, freq) * expFac
+                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iTrans, iLower, freq) * expFac
                 endif
              endif
           endif
        enddo
     enddo
+! hydrogen f-f
+
+    eta = eta + fac * ne *  pops(1,thisAtom(1)%nlevels) * alpkk_hyd(freq,dble(temperature)) * expFac
+
     eta = eta +  ne * sigmaE * Jnu ! coherent electron scattering
-!    eta = tiny(eta)
+
+
+    if (eta < 0.d0) then
+       if (firstTime)  then
+          write(*,*) "negative bf emissivity"
+          firstTime = .false.
+       endif
+       eta = 0.d0
+    endif
+
   end function bfEmissivity
 
 
@@ -1079,9 +1070,9 @@ contains
     integer :: iTrans
 
     nuStart = cSpeed / (8.d5 * 1.d-8)
-    nuEnd = cSpeed / (10.d0 * 1.d-8)
+    nuEnd = cSpeed / (5.d0 * 1.d-8)
 
-    nEven = 50
+    nEven = 200
 
 
     do i = 1, nEven
@@ -1181,5 +1172,352 @@ contains
          30461.2d0, 25074.7d0, 21164.8d0, 18209.2d0, 15904.0d0/)
     xSec = (ai(i) / (temp + bi(i))) *sqrt(temp)*exp(-iPot/(kev*temp))
   end function HeIICollisionalIonRates
+
+  !
+  ! Bound-free (photoionization X-section from n-th energy level) for a
+  ! photon with its frequency nu.
+  !
+  ! See sub_phot_gen.f in CMFGEN source files distrubution
+  !
+  ! The data tabulation is from Hillier.. Don't know where the original 
+  ! data is from.... Need to ask him  
+  ! Units in cm^2.
+  function annu_He_I(n,nu) result(out)
+    implicit none
+    real(double) :: out 
+    integer, intent(in)      :: n   ! [-] energy level
+    real(double), intent(in) :: nu  ! [Hz]  frequency of photon
+    !
+    integer, parameter :: nmax= 19  ! max level in the data file.. skipping the SuperLevels
+    integer, parameter :: npar=8    ! # of parameter in the fitting function 
+    !
+    real(double),save :: a(nmax,npar)     ! fitting parameters
+    logical, save :: first_time = .true.
+    !
+    real(double) :: alpha
+    character(LEN=80) :: msg
+    !
+    real(double), parameter :: E_1k=198310.7600d0 !  [Ry] ionization energy from ground 
+    ! Conversion factor for unit change from [Ry] to [Hz]
+    real(double), parameter :: conv_fac = (13.6056923/109737.316 * 1.60217646d-12/6.626205d-27)  
+    ! Conversion factor for unit change from [Ry] to [eV]
+    real(double), parameter :: Ry2eV = 13.6056923/109737.316  !
+    !
+    
+    ! Energy levels with respect the the ground state... in Hillier's data
+    ! Units are in [Ry]
+    real(double), parameter :: E_i(nmax) =  &
+         (/ 0.00000000, 159850.32000000, 166271.70000000, 169081.26000000, 171129.15000000, &
+         183231.08000000, 184859.06000000, 185559.01000000, 186095.90000000, 186099.22000000, &
+         186203.62000000, 190292.46000000, 190934.50000000, 191211.42000000, 191438.83000000, &
+         191440.71000000, 191446.61000000, 191447.24000000, 191486.95000000 /)
+
+    real(double) :: Eion_from_n, U, X, T1, EDGE
+
+!    ! JUST FOR TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!    out = annu(n,nu)   !hydrogen!!
+!    return 
+    !
+
+
+
+    if (first_time) then
+       first_time =.false.
+       !
+       ! Assiging the data (just copying from heiphot_a4.dat of Hillier's CMFGEN data file)
+       !
+       ! For level 1 ==> 1s1s1Se
+       a(1,1:npar) = (/ 8.734D-01, -1.545D+00, -1.093D+00, 5.918D-01, 0.3262d0, 0.695319d0, -1.29300d0, 0.384251d0 /)
+       ! For level 2 ==> 1s2s3Se
+       a(2,1:npar) = (/ 7.377D-01, -9.327D-01, -1.466D+00, 6.891D-01, 0.7228d0, 0.901802d0, -1.85905d0, 0.854216d0 /)
+       ! For level 3 ==> 1s2s1Se
+       a(3,1:npar) = (/ 9.771D-01, -1.567D+00, -4.739D-01, -1.302D-01,0.6135d0, 1.13101d0,  -2.15771d0, 0.989081d0 /)
+       ! For level 4 ==> 1s2p3Po
+       a(4,1:npar) = (/ 1.204D+00, -2.809D+00, -3.094D-01, 1.100D-01, 0.9302d0, 1.16294d0,  -2.95758d0, 1.06043d0  /)
+       ! For level 5 ==> 1s2p1Po
+       a(5,1:npar) = (/ 1.129D+00, -3.149D+00, -1.910D-01, -5.244D-01,0.7360d0, 1.79027d0,  -4.47151d0, 0.986915d0 /)
+       ! For level 6 ==> 1s3s3Se
+       a(6,1:npar) = (/ 9.031D-01, -1.157D+00, -7.151D-01, 1.832D-01, 1.076d0,  1.25389d0,  -2.04057d0, 1.25914d0  /)
+       ! For level 7 ==> 1s3s1Se
+       a(7,1:npar) = (/ 1.174D+00, -1.638D+00, -2.831D-01, -3.281D-02, 0.9233d0, 1.36313d0, -2.13263d0, 1.34758d0  /)
+       ! For level 8 ==> 1s3p3Po
+       a(8,1:npar) = (/ 1.455D+00, -2.254D+00, -4.795D-01,  6.872D-02, 1.1440d0, 1.86467d0, -3.07110d0, 1.39913d0  /)
+       ! For level 9 ==> 1s3d3De
+       a(9,1:npar) = (/ 1.267D+00, -3.417D+00, -5.038D-01, -1.797D-02, 0.9585d0, 1.74181d0, -4.41218d0, 1.36716d0  /)
+       ! For level 10 ==> 1s3d1De
+       a(10,1:npar)= (/ 1.258D+00, -3.442D+00, -4.731D-01, -9.522D-02, 0.9586d0, 1.83599d0, -4.85608d0, 1.38737d0  /)
+       ! For level 11 ==> 1s3p1Po
+       a(11,1:npar)= (/ 1.431D+00, -2.511D+00, -3.710D-01, -1.933D-01, 1.0410d0, 2.23543d0, -4.3993d0,  1.35996d0  /)
+       ! For level 12 ==> 1s4s3Se
+       a(12,1:npar)= (/ 1.031D+00, -1.313D+00, -4.517D-01,  9.207D-02, 1.206d0,  1.39033d0, -2.02189d0, 1.52406d0  /)
+       ! For level 13 ==> 1s4s1Se
+       a(13,1:npar)= (/ 1.324D+00, -1.692D+00, -2.916D-01,  9.027D-02, 0.8438d0, 1.51684d0, -2.10272d0, 1.60093d0  /)
+       ! For level 14 ==> 1s4p3Po
+       a(14,1:npar)= (/ 1.619D+00, -2.109D+00, -3.357D-01, -2.532D-02, 1.0280d0, 2.02110d0, -2.87157d0, 1.64584d0  /)
+       ! For level 15 ==>1s4d3De 
+       a(15,1:npar)= (/ 1.565D+00, -2.781D+00, -6.497D-01, -5.979D-03, 1.0410d0, 2.25756d0, -4.12940d0, 1.60889d0  /)
+       ! For level 16 ==>1s4d1De
+       a(16,1:npar)= (/ 1.553D+00, -2.781D+00, -6.841D-01, -4.083D-03, 1.1870d0, 2.50403d0, -4.40022d0, 1.63108d0  /)
+       ! For level 17 ==>1s4f3Fo  ===> Modefied Seaton Fit for this level
+       a(17,1:npar)= (/ 4.000D+00,  3.000D+00,  3.000D+00,  0.000D+00, 0.0000d0, 0.0000d0,   0.0000d0,  0.0000d0   /)
+       ! For level 18 ==>1s4f1Fo  ===> Modefied Seaton Fit for this level
+       a(18,1:npar)= (/ 4.000D+00,  3.000D+00,  3.000D+00,  0.000D+00, 0.0000d0, 0.0000d0,   0.0000d0,  0.0000d0   /)
+       ! For level 19 ==>1s4p1Po
+       a(19,1:npar)= (/ 1.620D+00, -2.303D+00, -3.045D-01, -1.391D-01, 1.2720d0, 2.63942d0, -3.71668d0, 1.60525d0  /)
+    end if
+    
+    ! Checking 
+
+    if (nu <= 0.0d0) then
+       write(msg,*) "Error:: nu <= 0.0d0 in annu_He_I!!!"
+       call writeInfo(msg)
+       write(msg,*) "   nu = ", nu
+       call writefatal(msg)
+       stop
+    end if
+    
+
+    !
+    ! Computes the cross section...
+
+    if (n == 17 .or. n==18) then
+       ! This is TYPE =3 in Hillier
+       ! XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+       ! XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+       out = 1.0d-20  ! just returning for small number for now
+    elseif (n > nmax) then
+       ! No data exists
+       out = 1.0d-20  ! just returning for small number for now
+    elseif (n<1) then 
+       ! out of range
+       write(msg,*) "Error:: n is negative in photoion_xsect::annu_He_I."       
+       call writeinfo(msg)
+       write(msg,*) "n, nmax = ", n, nmax
+       call writefatal(msg)
+       stop
+    else
+       !  This is TYPE =6 in Hillier
+       !
+       ! This type is for the Hummer fits to the Opacity cross sections of HeI.
+       ! See HEI_PHOT_OPAC.
+       !
+       ! We issue the SPACING command to ensure that rounding error does not
+       ! cause X to be < 0 at the bound-free edge.
+       !
+       ! U+SPACING(U) is the smallest number different from U (and lager).
+       !
+
+       ! Ionization energy from level n
+       Eion_from_n = E_1k - E_i(n)    ! [Ry]
+
+       EDGE=  Eion_from_n*conv_fac ! edge freqenecy  [Hz]
+
+       
+       if (EDGE <= 0.0d0) then
+          write(msg,*) "Error:: EDGE <= 0.0d0 in annu_He_I!!!"
+          call writeInfo(msg)
+          write(msg,*) "   EDGE, n, nu = ",  EDGE, n, nu
+          call writefatal(msg)
+          stop
+       end if
+
+       U= nu/EDGE  ! dimensionless
+
+       !
+       X=LOG10(U+3.0D0*SPACING(U)) ! slightly larger than U
+!       if (n == 1) then
+!          print *, "n            = ", n
+!          print *, "EDGE [in eV] = ", Eion_from_n*Ry2eV 
+!          print *, "EDGE [in Hz] = ", Eion_from_n*conv_fac 
+!          print *, "U [-]        = " , U
+!          print *, "X [-]        = " , X
+!          print *, "a(n,5)       = " , a(n,5)
+!       end if
+
+       IF(X .GE. 0)THEN
+          IF(X .LT. a(n,5))THEN
+             T1=((a(n,4)*X+a(n,3))*X + a(n,2))*X + a(n,1)
+          ELSE
+             T1=a(n,6)+a(n,7)*X    ! This is as in Hillier (sub_photo_gen.f
+          END IF
+          alpha = 10.0D0**(T1)  ! this should be in megabarn
+
+          out = alpha*megabarn  ! should be in cm^2 here now.
+
+       ELSE ! this is below the edge 
+          out = 1.0d-30
+       END IF
+
+    end if
+  
+   end function annu_He_I
+
+
+
+  !
+  !
+  ! Bound-Free abs. coeff. for Helium (He II)
+  !
+  real(double) function annu_He_II(n,nu)
+    !
+    ! this subroutine calculates the photoionization x-section
+    ! for He II from the n-th level for a given freq photon.
+    !
+    !  See P.132 of the book entitled:
+    !  "The observation and analysis of stellar photosphere" by D. F. Gray
+    !
+    ! We use the fact that He II is hydrogenic ion and use propertionality 
+    ! from the proton number (Z).  (see Mihalas's book)
+    !
+    integer, intent(in)              :: n     ! the level
+    real(double), intent(in):: nu    ! the photon frequency
+    !
+    !
+    real(double), parameter :: Z = 2.0d0 ! proton number for He
+
+    ! Using b-f x-section of hyrdogen and rescale..
+
+
+    annu_He_II = annu_hgi(n,z,nu)   ! using a fucntion in this module
+
+
+  end function annu_He_II
+
+
+
+  !
+  !
+  ! Bound-Free abs. coeff. hydrogenic ion with nuclear charge z
+  !
+  real(double) function annu_hgi(n,z,nu)
+    !
+    ! this subroutine calculates the photoionization x-section
+    ! for hydrogenenic ion from the n-th level for a given freq photon.
+    !
+    !  See P.132 of the book entitled:
+    !  "The observation and analysis of stellar photosphere" by D. F. Gray
+    !
+    ! Note: Mihals's Stellar Atomosphere book on P105 states
+    !       1. En (energy level) scales as Z^2
+    !       2. B-F cross section scales as Z^4
+    !       3. F-F cross section scales as Z^2
+    !
+    integer, intent(in)     :: n      ! the level
+    real(double), intent(in):: z      ! Nuclear charge
+    real(double), intent(in):: nu     ! the photon frequency
+    real(double)            :: lam, E ! the photon wavelength
+    real(double)            :: E_ion  ! ionization energy 
+    real(double)            :: En     ! Energy level
+    real(double) :: z2, annu_hyd
+    !
+    ! Enegry levels of H I
+    real(double), parameter :: En_H_I(30) =   &
+       & (/ 0.0d0, 10.19882475d0, 12.087496d0, 12.74853094d0, 13.05449568d0,  &
+       &    13.22069875d0, 13.32091396d0, 13.38595748d0, 13.43055111d0, 13.46244867d0,  & 
+       &    13.48604926d0, 13.50399944d0, 13.5179689d0, 13.52905324d0,  13.53799552d0,  &
+       &    13.54531412d0, 13.5513796d0,  13.55646253d0, 13.56076421d0, 13.56443692d0,  &
+       &    13.56759755d0, 13.57033706d0, 13.57272708d0, 13.57482461d0, 13.57667551d0,  &
+       &    13.57831697d0, 13.57977946d0, 13.58108806d0, 13.58226364d0, 13.58332363d0   /)
+    
+    lam=cSpeed/nu
+    lam=lam * 1.d8
+
+    z2 = z*z
+    E_ion = hydE0eV*z2
+    En    = En_H_I(n)*z2
+
+    E = hCgs * nu * ergToEv  ! energy of photon
+
+    ! Check if the energy is the edge energy/frequency 
+    if (E > (E_ion - En)) then
+
+!       annu_hyd = 1.044d-26*gii(n,1.0d0,lam)*(lam**3)/dble(n)**5
+       annu_hyd = 1.044d-26*gii(n,z,lam)*(lam**3)/dble(n)**5
+       annu_hgi = annu_hyd*z2*z2  ! Z^4 factor 
+    else
+       annu_hgi = 1.d-30
+    endif
+
+
+  end function annu_hgi
+
+
+
+  !
+  !
+  !
+  real(double) pure function gii(n,z,wl)
+    !
+    ! returns bound-free gaunt factors (nicked from idh)
+    !
+    ! the original code had real/integer divisions, I'm asuming these are
+    !   intentional and leaving them in. nhs.
+    integer, intent(in)   :: n
+    real(double), intent(in) ::  z,wl
+    real(double) ::  efree,sum,ag,alam
+    integer               :: i
+    
+    real(double) :: nDouble 
+    ! making coeff  a PARAMETER may cause problems with XL Fortran
+    real(double),dimension(6), parameter :: coeff = &
+          (/-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
+              -6.61998d-3, 1.15609d-4 /)
+    nDouble = real(n,kind=double)
+
+    efree=(911.76e0_db/wl - 1.e0_db/(nDouble*nDouble)) / (z*z)
+
+    if (efree.le.(1.e0_db+2.e0_db/n)) then
+       gii = giia(nDouble,z,wl)
+       return
+    elseif (efree.gt.10.e0_db) then
+       sum=coeff(1)
+       ag = 1.e0_db
+       efree = log10(efree)
+       do i = 2, 6
+          ag = ag * efree
+          sum = sum + coeff(i) * ag
+       enddo
+       gii = 10.e0_db**sum
+       return
+    else
+       alam = 911.76e0_db / (z*z*(1.e0_db+2.e0_db/n)+1.e0_db/(n*n))
+       alam = giia(nDouble,z,alam)
+       sum = log10(1.e0 + 2.e0/n)
+       efree = log10(efree)
+       sum = (efree-sum) / (1.e0_db-sum)
+       gii = (1.e0-sum) * alam + 0.93e0_db*sum+0.2e0_db*sum*(1.e0_db-sum)
+       return
+    endif
+    
+  end function gii
+  
+
+
+  !
+  ! Used in gii function above.
+  !
+  real pure function giia(nDouble,z,wl)
+    real(double), intent(in) :: nDouble
+    real(double), intent(in) :: z, wl
+
+    real(double)             :: u, gii, term
+    real(double), parameter  :: twoThirds = 2.e0_db/3.e0_db
+    real(double), parameter  :: fourThirds = 2.0_db * twoThirds 
+
+    u = nDouble*nDouble*911.76e0_db / (wl*z*z)-1.e0_db
+    gii = 1.e0_db + 0.1728e0_db * (u-1.e0_db) / ((nDouble*(u+1.e0_db))**twoThirds)
+    term = 0.0496e0_db * (1.e0_db+u*(u+1.333e0_db))/(nDouble*(u+1.e0_db)**(fourThirds))
+    if ((term/gii).le.0.25e0_db) then
+       giia=gii-term
+       return
+    else
+       giia = 1.0_db
+       return
+    endif
+    
+  end function giia
+
+
+
 
 end module modelatom_mod

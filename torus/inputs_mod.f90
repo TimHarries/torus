@@ -458,43 +458,24 @@ contains
             "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
        call getReal("teff", teff, cLine, nLines, &
             "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("twind", twind, cLine, nLines, &
+            "Wind temperature (effective temp)): ","(a,f7.0,a)", 1., ok, .true.)
        call getReal("v0", v0, cLine, nLines, &
             "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
        call getReal("vterm", vTerm, cLine, nLines, &
             "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-       call getReal("vcont", vContrast, cLine, nLines, &
-            "Polar/equator wind speed contrast: ","(a,f8.1,a)", 1., ok, .true.)
        call getReal("beta", beta, cLine, nLines, &
             "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
        call getReal("mdot", mdot, cLine, nLines, &
             "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-       call getString("coreprofile", intProFilename, cLine, nLines, &
-            "Core profile: ","(a,a,1x,a)","none", ok, .false.)
-       call getReal("vrot", vRot, cLine, nLines, &
-            "Rotational velocity (km/s): ","(a,f5.1,a)", 0., ok, .true.)
-       call getLogical("lycontthick", LyContThick, cLine, nLines, &
-            "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
        call getString("contflux", contFluxFile, cLine, nLines, &
             "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-       call getString("popfile", popFilename, cLine, nLines, &
-            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
-       call getLogical("writepops", writePops, cLine, nLines, &
-            "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-       call getLogical("readpops", readPops, cLine, nLines, &
-            "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-       call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
-       call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
 
-
-       call getReal("xfac", xFac, cLine, nLines, &
-            "Latitudinal x-fac: ","(a,f6.3,a)", 0., ok, .true.)
-
-
-       rCore = rCore * rSol
+       rCore = rCore * rSol/1.d10
        v0 = v0 * 1.e5
        vTerm = vTerm * 1.e5
        mdot = mdot*msol/(365.25*24.*3600.)
-       vRot = vRot * 1.e5
+       twind = twind * teff
 
     endif
 
@@ -1389,6 +1370,10 @@ contains
        call getInteger("iatom", itransAtom, cLine, nLines, &
             "Index of line transition: ","(a,i12,a)",4,ok,.true.)
 
+       call getReal("vturb", vturb, cLine, nLines, &
+            "Turbulent velocity (km/s):","(a,f4.1,1x,a)", 50., ok, .true.)
+       vturb = vturb * 1.e5/cSpeed
+
     endif
 
     call getLogical("debug", debug, cLine, nLines, &
@@ -1397,6 +1382,10 @@ contains
 
     call getLogical("thickcont", opticallyThickContinuum, cLine, nLines, &
          "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+
+
+    call getLogical("onthespot", onTheSpot, cLine, nLines, &
+         "On the spot estimate of Jnu from stellar field only: ","(a,1l,a)", .false., ok, .false.)
 
     if (photoionization) then
        call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
@@ -1554,10 +1543,6 @@ contains
 
        call getDouble("hoverr", hoverr, cLine, nLines, &
             "Warped disc H/R: ","(a,f7.4,1x,a)", 0.3d0, ok, .false.)
-
-       call getReal("vturb", vturb, cLine, nLines, &
-            "Turbulent velocity (km/s):","(a,f4.1,1x,a)", 50., ok, .true.)
-       vturb = vturb * 1.e5/cSpeed
 
        call getLogical("lte", lte, cLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1762,6 +1747,13 @@ contains
        call getDouble("CMFGEN_Rmin", CMFGEN_Rmin, cLine, nLines, &
             "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
        rcore = CMFGEN_Rmin      ! [10^10cm]
+
+       call getDouble("CMFGEN_Rmax", CMFGEN_Rmax, cLine, nLines, &
+            "max radius of cmfgen data  [rStar] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+       CMFGEN_rmax = CMFGEN_Rmin * CMFGEN_Rmax
+
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
 
        call getReal("omega", bigOmega, cLine, nLines, &
             "Ratio of w/w_c: ","(a,f7.2,1x,a)", 0.0, ok, .true.)

@@ -162,7 +162,7 @@ contains
 
           if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
              if (thisOctal%threed) then
-                dv = cellVolume(thisOctal, subcell)
+                dv = cellVolume(thisOctal, subcell) * 1.d30
              else if (thisOctal%twoD) then
                 dv = thisOctal%subcellSize**2
              else if (thisOctal%oneD) then

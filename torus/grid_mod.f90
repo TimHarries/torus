@@ -699,8 +699,8 @@ contains
     case("cluster","wr104","molcluster", "theGalaxy")
        call initClusterAMR(grid)
        
-    case("spiralwind")
-       grid%rCore = rCore / 1.e10
+    case("spiralwind","wind")
+       grid%rCore = rCore 
 
     case("ppdisk")
        grid%geometry = "ppdisk"
