@@ -3426,7 +3426,7 @@ subroutine setBiasOnTau(grid, iLambda)
        do subcell = 1, thisOctal%maxChildren
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          if (tau > 1.e-10) then
+          if (tau > 1.e-5) then
              unrefine = .false.
              exit
           endif

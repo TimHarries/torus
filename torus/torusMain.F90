@@ -2713,16 +2713,26 @@ subroutine do_lucyRadiativeEq
               call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
               if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
               gridconverged = .false.
+              nUnrefine = 0
+
+              call writeVtkFile(grid, "beforeunrefine.vtk", &
+                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                   "dust1      ", "etaline    "/))
+
               do while(.not.gridconverged)
                  gridconverged = .true.
-                 nUnrefine = 0
                  call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged)
-                 if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
               end do
-                             call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-                             if (writeoutput) then
-                                write(*,*) "done."
-                             endif
+                 if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " octals"
+                 call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+                 if (writeoutput) then
+                    write(*,*) "done."
+                 endif
+
+
+              call writeVtkFile(grid, "afterunrefine.vtk", &
+                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                   "dust1      ", "etaline    "/))
 
               totFrac = 0.
               call sublimateDust(grid, grid%octreeRoot, totfrac, nFrac, 1.e30)
@@ -2758,7 +2768,7 @@ subroutine do_lucyRadiativeEq
 
               call writeVtkFile(grid, "lucy.vtk", &
                    valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                   "dust1      ", "deltaT     ", "etaline    "/))
+                   "dust1      ", "etaline    "/))
            endif
         endif
      endif
