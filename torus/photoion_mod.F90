@@ -4144,7 +4144,7 @@ end subroutine readHeIIrecombination
     totalEmission = totalEmission * 1.d30
 
     if (nSource > 0) then              
-       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
+       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)), grid)
     else
        lcore = tiny(lcore)
     endif

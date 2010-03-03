@@ -23,6 +23,7 @@ module source_mod
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
      type(SURFACETYPE) :: surface
      logical :: outsideGrid
+     real(double) :: distance
   end type SOURCETYPE
 
 
@@ -149,7 +150,8 @@ module source_mod
       enddo
     end function sumSourceLuminosity
 
-    real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam) result (tot)
+    real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam, grid) result (tot)
+      type(gridtype) :: grid
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       real(double) :: lam, flux
@@ -164,9 +166,14 @@ module source_mod
 
            flux =  loginterp_dble(source(i)%spectrum%flux(1:source(i)%spectrum%nLambda), &
                 source(i)%spectrum%nLambda, source(i)%spectrum%lambda(1:source(i)%spectrum%nLambda), lam)
-           tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
-         endif
-      enddo
+           if (.not.source(i)%outsideGrid) then
+              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2 
+           else
+              tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
+                   (source(i)%radius*1.d10)**2 / (source(i)%distance**2)
+           endif
+        endif
+     enddo
     end function sumSourceLuminosityMonochromatic
 
 

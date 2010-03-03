@@ -60,7 +60,7 @@ contains
     real(double) :: mdot
     real(double) :: photonsPerStep
     real(double) :: gridCrossingTime
-    integer, parameter :: nSedWavelength = 100, nTime = 1001
+    integer, parameter :: nSedWavelength = 100, nTime = 2001
     real(double) :: sedTime(nTime),fac
     integer :: i
     real(double) :: sedWavelength(nSedWavelength)
@@ -143,8 +143,8 @@ contains
        i = findIlambda(1.e5, xArray, nLambda, ok)
        call setBiasOnTau(grid, i)
        luminosityPeriod =  24.d0 * 3600.d0
-       startVaryTime = 500.d0
-       varyUntilTime = 1.d0 * luminosityPeriod  + startVaryTime
+       startVaryTime = 0.d0
+       varyUntilTime = 2.d0 * luminosityPeriod  + startVaryTime
        seedRun = .true.
 
        deltaTMax = (varyUntilTime)/dble(nTime-1)

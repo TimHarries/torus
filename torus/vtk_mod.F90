@@ -816,6 +816,11 @@ contains
        write(lunit,'(a,a)') "TORUS AMR data"
        write(lunit,'(a)') "ASCII"
        write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
+       write(lunit,'(a)') "FIELD FieldData 2"
+       write(lunit,'(a)') "TIME 1 1 double"
+       write(lunit,*) grid%currentTime
+       write(lunit,'(a)') "CYCLE 1 1 int"
+       write(lunit,*) grid%idump
        close(lunit)
     endif
 

@@ -641,16 +641,21 @@ program torus
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
 
-       inclination = 77.5d0 * degToRad
+       inclination = 90.d0 * degToRad
        viewVec%x = 0.
        viewVec%y = -sin(inclination)
        viewVec%z = -cos(inclination)
-       viewVec = rotateZ(viewVec, 30.d0*degtorad)
+!       viewVec = rotateZ(viewVec, 30.d0*degtorad)
        outVec = (-1.d0)*viewVec
 
-!       call createImageSplitGrid(grid, nSource, source, outVec, i, fac)
-!       call torus_mpi_barrier
-!       stop
+        if (idump /= 1) then
+           call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+           write(message,'(a,i4.4,a)') "dump_",idump,".grid"
+           call readAMRgrid(message, .false., grid)
+
+           call createImageSplitGrid(grid, nSource, source, outVec, i, fac)
+           call torus_mpi_barrier
+        endif
 
 
     call writeVtkFile(grid, "first.vtk", &
@@ -1440,7 +1445,9 @@ end subroutine pre_initAMRGrid
     use lucy_mod, only: allocateMemoryForLucy, putTau
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
     use magnetic_mod, only : accretingAreaMahdavi
-
+#ifdef MPI
+    use mpi_amr_mod, only : countSubcellsMPI
+#endif
     type(VECTOR) :: amrGridCentre ! central coordinates of grid
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new, astar
     real         :: sigmaExt0
@@ -1675,12 +1682,6 @@ end subroutine pre_initAMRGrid
 
           nOctals = 0
           nVoxels = 0
-          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-          write(message,*) "Adaptive grid currently contains: ",nOctals," octals"
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "                                : ",nVoxels," unique voxels"
-          call writeInfo(message, TRIVIAL)
-           
 
 
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -1855,13 +1856,7 @@ end subroutine pre_initAMRGrid
 !        call writeInfo("Done.", TRIVIAL)
 
 
-        nOctals = 0
-        nVoxels = 0
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-        write(message,*) "Adaptive grid contains: ",nOctals," octals"
-        call writeInfo(message, TRIVIAL)
-        write(message,*) "                      : ",nVoxels," unique voxels"
-        call writeInfo(message, TRIVIAL)
         grid%nOctals = nOctals
         call howmanysplits()
 
@@ -1881,11 +1876,14 @@ end subroutine pre_initAMRGrid
 #ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
+           call grid_info_mpi(grid, "*")
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+           if ( myRankIsZero ) call grid_info(grid, "*")
         endif
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+        if ( myRankIsZero ) call grid_info(grid, "*")
 #endif
 
 	if (lineEmission.and.(geometry /= "cmfgen").and.(geometry /= "wind")) then
@@ -2325,8 +2323,9 @@ subroutine set_up_sources
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
 
-       source(1)%luminosity = source(1)%luminosity * (2.d0*1.5d9*1.d10)**2 / &
+       source(1)%luminosity = source(1)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
             (fourPi*(50.d0* pctocm)**2)
+       source(1)%distance = 50.d0 * pctocm
        if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
@@ -2697,79 +2696,87 @@ subroutine do_lucyRadiativeEq
      if (readLucy .and. .not. redoLucy) then
         continue
      else
-        ! Solve the vertical hydrostatic equilibrium unless
-        ! we are only redoing the inner edge
-        if (solveVerticalHydro .and. .not.(dumpinneredge)) then
-           call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                source, nSource, nLucy, massEnvelope)
-           call writeVtkFile(grid, "lucy.vtk", &
-                valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                "dust1      ", "deltaT     ", "etaline    "/))
-
-        else
 
 
-           if (variableDustSublimation) then
-              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-              if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-              gridconverged = .false.
-              nUnrefine = 0
-
-              call writeVtkFile(grid, "beforeunrefine.vtk", &
-                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                   "dust1      ", "etaline    "/))
-
-              do while(.not.gridconverged)
-                 gridconverged = .true.
-                 call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged)
-              end do
-                 if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " octals"
-                 call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-                 if (writeoutput) then
-                    write(*,*) "done."
-                 endif
+        if (.not.(dumpinneredge)) then
 
 
-              call writeVtkFile(grid, "afterunrefine.vtk", &
-                   valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                   "dust1      ", "etaline    "/))
+           ! Solve the vertical hydrostatic equilibrium unless
+           ! we are only redoing the inner edge
+           if (solveVerticalHydro) then
 
-              totFrac = 0.
-              call sublimateDust(grid, grid%octreeRoot, totfrac, nFrac, 1.e30)
-              if ((nfrac /= 0).and.(writeoutput)) then
-                 write(*,*) "Average absolute change in sublimation fraction: ",totfrac/real(nfrac)
-              endif
-              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-
-              call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, nLambda, 2
-                 write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-                 call writeInfo(message, TRIVIAL)
-                 do
-                    gridConverged = .true.
-                    call putTau(grid, grid%lamArray(j))
-                    call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                         inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
-
-                    if (gridConverged) exit
-                 end do
-              enddo
-              call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-              call writeInfo("...grid smoothing complete", TRIVIAL)
-
-              call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-              do
-                 gridConverged = .true.
-                 call myScaleSmooth(smoothFactor, grid, &
-                      gridConverged,  inheritProps = .false., interpProps = .true.)
-                 if (gridConverged) exit
-              end do
-              call writeInfo("...grid smoothing complete", TRIVIAL)
-
+              call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                   source, nSource, nLucy, massEnvelope)
               call writeVtkFile(grid, "lucy.vtk", &
                    valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-                   "dust1      ", "etaline    "/))
+                   "dust1      ", "deltaT     ", "etaline    "/))
+           else
+              call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
            endif
+
+        endif
+
+
+        if (variableDustSublimation) then
+           call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+           if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+           gridconverged = .false.
+           nUnrefine = 0
+
+           call writeVtkFile(grid, "beforeunrefine.vtk", &
+                valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                "dust1      ", "etaline    "/))
+
+           do while(.not.gridconverged)
+              gridconverged = .true.
+              call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged)
+           end do
+           if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " octals"
+           call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+           if (writeoutput) then
+              write(*,*) "done."
+           endif
+
+
+           call writeVtkFile(grid, "afterunrefine.vtk", &
+                valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                "dust1      ", "etaline    "/))
+
+           totFrac = 0.
+           call sublimateDust(grid, grid%octreeRoot, totfrac, nFrac, 1.e30)
+           if ((nfrac /= 0).and.(writeoutput)) then
+              write(*,*) "Average absolute change in sublimation fraction: ",totfrac/real(nfrac)
+           endif
+           call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+
+           call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+           do j = iSmoothLam, nLambda, 2
+              write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+              call writeInfo(message, TRIVIAL)
+              do
+                 gridConverged = .true.
+                 call putTau(grid, grid%lamArray(j))
+                 call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                      inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+
+                 if (gridConverged) exit
+              end do
+           enddo
+           call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+           call writeInfo("...grid smoothing complete", TRIVIAL)
+
+           call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+           do
+              gridConverged = .true.
+              call myScaleSmooth(smoothFactor, grid, &
+                   gridConverged,  inheritProps = .false., interpProps = .true.)
+              if (gridConverged) exit
+           end do
+           call writeInfo("...grid smoothing complete", TRIVIAL)
+
+           call writeVtkFile(grid, "lucy.vtk", &
+                valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                "dust1      ", "etaline    "/))
         endif
      endif
 

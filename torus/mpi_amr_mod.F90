@@ -1913,7 +1913,7 @@ contains
     integer :: maxDepth
     integer :: ierr
     
-    if (myrankGlobal == 0) then
+    if (myrankGlobal == 1) then
        if (filename(1:1) == '*') then
           UN = 6   ! prints on screen
        else
@@ -1925,22 +1925,14 @@ contains
 
 
     nOctals=0; nVoxels=0
-    call countVoxels(thisGrid%octreeRoot,nOctals,nVoxels)
-    if (myrankGlobal == 0) then
-       nOctals = 0
-       nVoxels = 0
-    endif
-    call MPI_REDUCE(nOctals, tempInt,1,MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    nOctals = tempInt(1)
-    call MPI_REDUCE(nVoxels, tempInt,1,MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    nVoxels = tempInt(1)
-    call MPI_REDUCE(thisgrid%maxDepth, tempInt,1,MPI_INTEGER, MPI_MAX, 0, MPI_COMM_WORLD, ierr)
+    if (myrankglobal /= 0) call countSubcellsMPI(thisgrid, nVoxels)
+    call MPI_REDUCE(thisgrid%maxDepth, tempInt,1,MPI_INTEGER, MPI_MAX, 1, MPI_COMM_WORLD, ierr)
     maxDepth = tempInt(1)
-    call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, MPI_COMM_WORLD, ierr)
     halfSmallestSubcell = tempDouble(1)
     
     
-    if (myRankGlobal == 0) then
+    if (myRankGlobal == 1) then
        write(UN,'(a)') ' '
        write(UN,'(a)') '######################################################'
        write(UN,'(a)') 'Grid info :'
@@ -1948,7 +1940,6 @@ contains
        write(UN,*)     'geometry             = ', thisGrid%geometry
        write(UN,*)     'maxDepth             = ', maxDepth
        write(UN,*)     'halfSmallestSubcell  = ', halfSmallestSubcell, ' [10^10 cm]'
-       write(UN,*)     'nOctals              = ', nOctals
        write(UN,*)     'nVoxels              = ', nVoxels
        write(UN,*)     'smoothingFactor      = ', thisGrid%smoothingFactor
        write(UN,*)     'grid center          =', thisGrid%octreeRoot%centre
@@ -1962,7 +1953,7 @@ contains
           write(UN,'(a)') "**** WARNING: Grid cell depth is so great numerical problems may occur****"
        endif
     endif
-    if (myrankGlobal == 0) then
+    if (myrankGlobal == 1) then
        if (filename(1:1) /= '*')  close(UN)
     endif
     

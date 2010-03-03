@@ -350,7 +350,7 @@ contains
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-               "hydrovelocity"/))
+               "hydrovelocity","dust1"/))
 
 
        endif
@@ -760,6 +760,8 @@ contains
              enddo
           endif
        enddo
+
+       call quickSublimate(grid%octreeRoot) ! do dust sublimation
     endif
 
     deallocate(octalArray)
@@ -2806,6 +2808,33 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
     enddo
   end subroutine sumLineLuminosity
 
+recursive subroutine quickSublimate(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call quickSublimate(child)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%temperature(subcell) > 1500.d0) then
+             thisOctal%dustTypeFraction(subcell,:) = 0.d0
+          else
+             thisOctal%dustTypeFraction(subcell,:) = 1.d0
+          endif
+          
+       endif
+    enddo
+  end subroutine quickSublimate
+
 
 subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, temperature, total, debug)
   type(IONTYPE) :: ionArray(*)
@@ -4112,7 +4141,7 @@ end subroutine readHeIIrecombination
     totalEmission = totalEmission * 1.d30
 
     if (nSource > 0) then              
-       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
     else
        lcore = tiny(lcore)
     endif
@@ -4125,7 +4154,7 @@ end subroutine readHeIIrecombination
     endif
 
     nPhotons = 1000000
-    nInf = 0
+    Ninf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     
@@ -4270,7 +4299,7 @@ end subroutine readHeIIrecombination
      totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1)) * powerPerPhoton
     if (myrankGlobal == 0) then
-       write(imageFilename, '(a,i4.4,a)') "test_",ilambdaPhoton,".fits"
+       write(imageFilename, '(a,i4.4,a)') "test_",nint(lambdaLine),".fits"
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
     call freeImage(thisImage)

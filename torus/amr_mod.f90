@@ -8180,8 +8180,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%etaCont(subcell) = 0.
     endif
 
-    zplusbound = 4
-    zminusbound = 4
+    zplusbound = 2
+    zminusbound = 2
     xplusbound = 4
     xminusbound = 4
     yplusbound = 4
@@ -11232,10 +11232,6 @@ end function readparameterfrom2dmap
        enddo
     endif
     
-    if (.not.associated(parentOctal%dustTypeFraction)) then
-       allocate(parentOctal%dustTypeFraction(1:parentOctal%maxChildren,1:nDustType))
-    endif
-
     if (associated(parentOctal%dustTypeFraction)) then
        do i = 1, SIZE(childOCtal%dustTypeFraction,2)
           parentOctal%dustTypeFraction(parentSubcell,i) =     &

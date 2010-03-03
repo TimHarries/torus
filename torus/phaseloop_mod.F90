@@ -1335,7 +1335,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            lcore = grid%lCore
            if (nSource > 0) then              
               if (.not.starOff) then
-                 lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+                 lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
               else
                  lcore = tiny(lcore)
               endif
