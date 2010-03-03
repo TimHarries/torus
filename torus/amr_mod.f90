@@ -11164,7 +11164,6 @@ end function readparameterfrom2dmap
   SUBROUTINE updateParentFromChild(childOctal)
     ! uses the 4 or 8 subcells in an octal to compute the physical
     !   variables in the appropriate subcell of that octal's parent.
-    use input_variables, only : nDustType
     TYPE(OCTAL), INTENT(INOUT) :: childOctal 
     
     TYPE(OCTAL), POINTER :: parentOctal

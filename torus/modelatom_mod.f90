@@ -833,7 +833,7 @@ contains
     
 ! free-free
 
-    eta = eta + (ne**2) * alpkk_hyd(freq,temperature) * exp(-(hcgs*freq)/(kerg*temperature))
+    eta = eta + (ne**2) * alpkk_hyd(freq,temperature) * exp(-(hcgs*freq)/(kerg*temperature))/fourPi
   
     eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
   
@@ -848,9 +848,8 @@ contains
       
      wav=1.e8_db*cSpeed/freq
      gauntf=giii_hyd(1.e0_db,t,wav)
-     gauntf = 1.
      alpkk_hyd=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
-     
+ 
    end function alpkk_hyd
 
 
@@ -951,7 +950,7 @@ contains
        logical, save :: firstTime = .true.
 
        kappa = 0.d0
-       do iAtom = 1, 2!nAtom
+       do iAtom = 1, nAtom
           do j = 1, thisAtom(iAtom)%nRBFtrans
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
           if (thisAtom(iatom)%transType(itrans) /= "RBF") then
@@ -959,7 +958,7 @@ contains
              stop
           endif
              ilower = thisAtom(iAtom)%iLower(iTrans)
-             if (ilower < 2) then
+             if (ilower < 6) then
                 fac = exp(-hCgs*freq / (kerg * temperature))
                 if (present(iFreq)) then
                    kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
@@ -1002,7 +1001,7 @@ contains
     integer :: iAtom, i, iLower, iUpper
     real(double) :: Jnu ! mean intensity
     real(double) :: ne
-    real(double) :: thresh, photonEnergy, expFac
+    real(double) :: thresh, photonEnergy, expFac, thisFac
     logical, save :: firsttime = .true.
     real(double) :: pops(:,:)
 
@@ -1013,7 +1012,7 @@ contains
     fac = (2.d0 * hCgs * freq**3)/(cSpeed**2)
     expFac = exp(-(hcgs*freq)/(kerg*temperature)) 
  
-    do iAtom = 1, 2!nAtom
+    do iAtom = 1, nAtom
 
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)
@@ -1023,25 +1022,24 @@ contains
              write(*,*) "transtype bug in bfemissivity"
              stop
           endif
-          if (iLower < 2) then
+          if (iLower < 6) then
              thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(iLower))
              photonEnergy = freq * hCgs * ergtoEv
              if (photonEnergy.ge.thresh) then
-
+                thisFac = exp(-(hCgs*freq)/(kerg*temperature))
                 if (present(ifreq)) then
-                   eta = eta + fac * nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
+                   eta = eta + fac * nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * thisFac
                 else
-                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iTrans, iLower, freq) * expFac
+                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iTrans, iLower, freq) * thisFac
                 endif
              endif
           endif
        enddo
     enddo
-! hydrogen f-f
 
-    eta = eta + fac * ne *  pops(1,thisAtom(1)%nlevels) * alpkk_hyd(freq,dble(temperature)) * expFac
 
-    eta = eta +  ne * sigmaE * Jnu ! coherent electron scattering
+    eta = eta + fac *  ne *  pops(1,thisAtom(1)%nlevels) * alpkk_hyd(freq,dble(temperature)) * expFac
+
 
 
     if (eta < 0.d0) then

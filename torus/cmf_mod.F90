@@ -945,6 +945,7 @@ contains
        hitPhotosphere, sourceNumber, freq, nfreq, &
        iCont, jBarCont, cosTheta, weight)
     use input_variables, only : opticallyThickContinuum, onTheSpot
+    use atom_mod, only : bnu
     real(double) :: iCont(:,:), jBarCont(:), ds(:), ne
     integer :: nAtom
     type(OCTAL), pointer :: thisOctal
@@ -976,6 +977,8 @@ contains
           nStar(iAtom,j) = BoltzSahaGeneral(thisAtom(iAtom), 1, j, ne, &
                dble(thisOctal%temperature(subcell))) * &
                Thisoctal%atomlevel(subcell, iAtom,thisAtom(iatom)%nLevels)
+          write(*,*) "iatom ", iatom, " j ",nstar(iatom,j), thisOctal%atomlevel(subcell, iatom,thisAtom(iatom)%nLevels)
+
        enddo
        if (any(nstar(iatom,1:thisAtom(iatom)%nlevels-1) < 0.d0)) then
           write(*,*) "atom: ",thisAtom(iatom)%name
@@ -996,7 +999,7 @@ contains
              jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                   thisOctal%atomLevel(subcell,:,:), nstar, &
                   dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell,ifreq), &
-                  ifreq=ifreq) 
+                  ifreq=ifreq)
              tau = alphaNu * ds(iray)
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
@@ -1031,8 +1034,6 @@ contains
     enddo
     jBarContExternal = jBarContExternal / SUM(weight(1:nRay))
     jBarContInternal = jBarContInternal / SUM(weight(1:nRay))
-
-
     if (onthespot) jbarcontinternal = 0.d0
     jbarCont = jBarContExternal + jBarContInternal
 
@@ -2248,15 +2249,13 @@ contains
 
 
              if (i == 2) then
-                if (.not.lineOff) then
-                   do k = 1, nAtom
-                      do j = 1, thisAtom(k)%nLevels - 1
-                         nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
-                              dble(thisOctal%temperature(subcell))) * &
-                              Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
-                      enddo
+                do k = 1, nAtom
+                   do j = 1, thisAtom(k)%nLevels - 1
+                      nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
+                           dble(thisOctal%temperature(subcell))) * &
+                           Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
                    enddo
-                endif
+                enddo
                 bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
                      thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
                 bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
