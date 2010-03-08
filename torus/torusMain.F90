@@ -2711,7 +2711,8 @@ subroutine do_lucyRadiativeEq
                    valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
                    "dust1      ", "deltaT     ", "etaline    "/))
            else
-              call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
+              call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                   source, nSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
            endif
 
         endif
