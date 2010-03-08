@@ -25,13 +25,13 @@ module molecular_mod
    use mkl95_lapack
    use mkl95_precision
 #endif
-
-!#ifdef USEMKL
-!   use mkl_lapack
-!   use mkl_precision
-!#endif
-
    implicit none
+
+   interface LTEpops
+      module procedure LTEpopsReal
+      module procedure LTEpopsDouble
+   end interface
+
 
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels
    integer :: grand_iter, ngcounter
@@ -79,7 +79,8 @@ module molecular_mod
       integer, pointer :: iCollUpper(:,:)
       integer, pointer :: iCollLower(:,:)
       integer :: nCollPart
-      character(len=20), pointer :: collBetween(:)
+      character(len=10),pointer :: collPartnerName(:)
+      integer, pointer :: iCollPartner(:)
       integer, pointer :: nCollTrans(:)
       integer, pointer :: nCollTemps(:)
       real(double), pointer :: collTemps(:,:)
@@ -178,7 +179,9 @@ module molecular_mod
         allocate(thisMolecule%nCollTrans(1:thisMolecule%nCollPart))
         allocate(thisMolecule%nCollTemps(1:thisMolecule%nCollPart))
         allocate(thisMolecule%collTemps(1:maxnCollTrans, 1:maxnCollTemps))
-        allocate(thisMolecule%collBetween(1:thisMolecule%nCollPart))
+        allocate(thisMolecule%collPartnerName(1:thisMolecule%nCollPart))
+        allocate(thisMolecule%iCollPartner(1:thisMolecule%nCollPart))
+        
 
         allocate(thisMolecule%collRates(1:thisMolecule%nCollPart, maxnCollTrans, &
              maxnCollTemps))
@@ -190,7 +193,9 @@ module molecular_mod
         do iPart = 1, thisMolecule%nCollPart
 
            read(30,*) junk
-           read(30,*) thisMolecule%collBetween(iPart)
+           read(30,*) junk
+
+           call parseCollisionPartner(junk, iPart, thisMolecule)
 
            read(30,*) junk
            read(30,*) thisMolecule%nCollTrans(iPart)
@@ -216,7 +221,8 @@ module molecular_mod
         if(preprocess1) then
            deallocate(thisMolecule%energy, thisMolecule%g, thisMolecule%j, thisMolecule%einsteinA, thisMolecule%einsteinBlu, &
                       thisMolecule%einsteinBul, thisMolecule%transfreq, thisMolecule%itransUpper, thisMolecule%itransLower, &
-                      thisMolecule%Eu, thisMolecule%iCollUpper, thisMolecule%iCollLower, thisMolecule%collBetween, &
+                      thisMolecule%Eu, thisMolecule%iCollUpper, thisMolecule%iCollLower, thisMolecule%collPartnerName, &
+                      thisMolecule%iCollPartner,&
                       thisMolecule%collTemps, thisMolecule%collRates)
         endif
 
@@ -225,6 +231,15 @@ module molecular_mod
 
      call writeInfo("Done.", IMPORTANT)
    end subroutine readMolecule
+
+   subroutine parseCollisionPartner(cstring, iPart, thisMolecule)
+     type(MOLECULETYPE) :: thisMolecule
+     integer :: iPart
+     character(len=*) :: cString
+     
+     read(cString,'(i1,a)') thisMolecule%iCollPartner(iPart),thisMolecule%collPartnerName(iPart)
+
+   end subroutine parseCollisionPartner
 
  ! Same routine for benchmark molecule (slightly different file format)
    subroutine readBenchmarkMolecule(thisMolecule, molFilename)
@@ -529,7 +544,8 @@ module molecular_mod
 
               if(any(thisoctal%microturb(:) .le. 1d-20)) then
                  do isubcell = 1,thisoctal%maxchildren
-                    if(.not. molebench) thisOctal%microturb(isubcell) = max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(isubcell) / &
+                    if(.not. molebench) thisOctal%microturb(isubcell) = &
+                         max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(isubcell) / &
                          (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
               ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
                  enddo
@@ -654,7 +670,7 @@ module molecular_mod
      integer :: subcell, ichild
      real(double) :: temparray(100,8)
      integer, optional :: upperlev
-     integer :: h, upperlevel
+     integer :: upperlevel
      logical, optional :: everything
      logical :: deallocateeverything
 
@@ -764,8 +780,7 @@ module molecular_mod
       integer :: maxerrorloc, maxlocerror(1)
       integer :: mintransold
 
-      real(double) :: collrateatTen(60)
-      integer :: ipart
+      real(double) :: nh, nHe, ne, nProtons
       integer :: dummy, ijunk
       logical :: ljunk
       logical :: juststarted = .true.
@@ -1063,13 +1078,17 @@ module molecular_mod
                         phi(1:nRay), i0(1:nRay,itrans), iTrans, thisOctal%jnu(iTrans,subcell), &
                         thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
                 enddo
+                nh = 0.d0
+                nHe = 0.d0
+                ne = 0.d0
+                nProtons = 0.d0
                 
                 where(isnan(thisOctal%jnu(1:maxtrans,subcell))) thisOctal%jnu(1:maxtrans,subcell) = 0.d0
 
                 call solveLevels(thisOctal%newMolecularLevel(1:maxlevel,subcell), &
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
-                     thisMolecule, thisOctal%nh2(subcell))
-                
+                     thisMolecule, thisOctal%nh2(subcell), nh, nHe, ne, nprotons)
+
                 if(ng) then
                    if(mod(iter, accstep) .eq. 0) then
                       oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
@@ -1440,11 +1459,13 @@ end subroutine molecularLoop
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
         balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(1:maxtrans) &
                      - thisOctal%molecularLevel(iupper(:),subcell) * thisMolecule%einsteinBul(1:maxtrans))
-
+        
         spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
 
-        snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
-
+        snu = tiny(snu)
+        where (balance /= 0.d0)
+           snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
+        end where
         dvAcrossCell = ((startVel - endvel) .dot. direction) ! start - end
         dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
 
@@ -1511,7 +1532,6 @@ end subroutine molecularLoop
               endif
               
            enddo
-           
         enddo
 
         currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
@@ -1632,11 +1652,11 @@ end subroutine molecularLoop
    
    end subroutine calculateJbar ! solves rate equation in matrix format - equation 10
 
-   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2)
+   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2, nH, nHe, ne, nprotons)
      real(double) :: nPops(:)
      real(double) :: temperature
      real(double) :: jnu(:)
-     real(double) :: nh2
+     real(double) :: nh2, nH, nHe, ne, nProtons
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1,1), collMatrix(50,50), cTot(maxlevel)! collmatrix fixed at 50 must be changed
      real(double) :: matrixAsave(maxlevel+1,maxlevel+1), matrixBsave(maxlevel+1,1), matrixArad(maxlevel+1,maxlevel+1)
@@ -1688,7 +1708,10 @@ end subroutine molecularLoop
            if(l .gt. maxlevel) cycle
            
            boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
-           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
+
+
+           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * &
+                collPartnerDensity(thisMolecule, ipart, itrans, nh2, nH, nHe, ne, nProtons)
            collEx = colldeEx * boltzFac * thisMolecule%g(k) / thisMolecule%g(l)
            collMatrix(l, k) = collMatrix(l, k) + collEx
            collMatrix(k, l) = collMatrix(k, l) + colldeEx
@@ -1716,6 +1739,10 @@ end subroutine molecularLoop
      matrixA(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
      matrixA(1:maxlevel+1,maxlevel+1) = 1.d-60 ! fix highest population to small non-zero value
 
+!     do i = 1, maxLevel
+!        write(*,'(100(1pe9.2))') matrixA(i,1:maxLevel)
+!     enddo
+     
      matrixAsave = matrixA
      matrixBsave = matrixB
 
@@ -1766,7 +1793,8 @@ end subroutine molecularLoop
             if(.not. any(isnan(matrixB))) then
                matrixB = abs(matrixB) ! stops negative level populations causing problems
                nPops = matrixB(1:maxlevel,1)
-               write(66,*) "error fixed 3 ", npops(minlevel), npops(maxlevel), maxval(thismolecule%einsteinA(1:maxlevel) / ctot(1:maxlevel)), nh2 * 2.d0 * mhydrogen
+               write(66,*) "error fixed 3 ", npops(minlevel), npops(maxlevel), maxval(thismolecule%einsteinA(1:maxlevel) &
+                    / ctot(1:maxlevel)), nh2 * 2.d0 * mhydrogen
             else
                write(66,*) "error still 4 ", npops(minlevel), npops(maxlevel)
             endif
@@ -1810,6 +1838,39 @@ end subroutine molecularLoop
      endif
 
    end function collRate
+
+
+   function collPartnerDensity(thisMolecule, ipart, itrans, nh2, nH, nHe, ne, nProtons) result(nx)
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: nx
+     integer :: iPart, iTrans
+     real(double) :: nh2, ne, nh, nHe, nProtons
+
+! note we assume an ortho:para ratio of 5.e-5
+! http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2004A%26A...418.1035W&db_key=AST
+
+     select case (thisMolecule%iCollPartner(iPart))
+        case(2) ! para-H2
+           nx = nH2 * (1.d0-5.d-5)
+        case(3) ! ortho-H2
+           nx = nH2 * 05.d-5
+        case(4) ! electrons
+           nx = ne
+           call writeWarning("collPartnerDensity: Ne not yet implemented as a collision partner")
+        case(5) ! H atom
+           nx = nH
+           call writeWarning("collPartnerDensity: N(H) not yet implemented as a collision partner")
+        case(6) ! He atom
+           nx = nHe
+           call writeWarning("collPartnerDensity: N(He) not yet implemented as a collision partner")
+        case(7) ! H+
+           nx = nProtons
+           call writeWarning("collPartnerDensity: N(H+) not yet implemented as a collision partner")
+        case DEFAULT
+           call writeFatal("collRate: collision partner type not recognised")
+     end select
+
+   end function collPartnerDensity
 
  ! this subroutine calculates the maximum fractional change in the first 6 energy levels
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
@@ -1856,7 +1917,8 @@ end subroutine molecularLoop
 
                  if(fixedrays) then
                        thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                            abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), doubleweight = .false.))
+                            abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), &
+                            oldpops4(1:minlevel-2), doubleweight = .false.))
                  else
                     thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
                     abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
@@ -1990,7 +2052,8 @@ end subroutine molecularLoop
 
      call findSubcellTD(VECTOR(1.,1.,1.), grid%octreeroot, thisOctal, subcell)
      if(writeoutput) then
-        write(message, *) 'Recovering unused memory', size(thisoctal%molecularlevel(:,1)) - (thismolecule%itransupper(itrans) + 1), 'levels'
+        write(message, *) 'Recovering unused memory', size(thisoctal%molecularlevel(:,1)) - &
+             (thismolecule%itransupper(itrans) + 1), 'levels'
         call writeinfo(message, TRIVIAL)
      endif
 
@@ -2011,9 +2074,11 @@ end subroutine molecularLoop
 !     write(filename, *) 'MolRT.fits' ! can be changed to a variable name someday
      if(observerpos .gt. 0) then
         if(observerpos .lt. 10) then
-           write(filename, '(a,i1,i1,a,i1,a)') trim(thisMolecule%molecule),thismolecule%itransupper(itrans)-1,thismolecule%itranslower(itrans)-1,'_0',observerpos,'.fits'
+           write(filename, '(a,i1,i1,a,i1,a)') trim(thisMolecule%molecule),thismolecule%itransupper(itrans)-1, &
+                thismolecule%itranslower(itrans)-1,'_0',observerpos,'.fits'
         else
-           write(filename, '(a,i1,i1,a,i2,a)') trim(thisMolecule%molecule),thismolecule%itransupper(itrans)-1,thismolecule%itranslower(itrans)-1,'_',observerpos,'.fits'
+           write(filename, '(a,i1,i1,a,i2,a)') trim(thisMolecule%molecule),thismolecule%itransupper(itrans)-1, &
+                thismolecule%itranslower(itrans)-1,'_',observerpos,'.fits'
         endif
      else
         write(filename, *) 'MolRT.fits' ! can be changed to a variable name someday
@@ -2060,7 +2125,6 @@ end subroutine molecularLoop
 !      integer :: itune
 
 !      real(double) :: taucheck, ncol,i0,ncol2
-      character(len=100) :: message
 
 !      call intensityalongray(VECTOR(8.d8,7.99d8,8.01d8), VECTOR(-0.577350269, -0.577350269, -0.577350269),grid,thisMolecule,itrans,0.d0,i0,tau = taucheck, nCol=nCol)
 
@@ -3016,11 +3080,9 @@ end subroutine molecularLoop
      type(MOLECULETYPE) :: thisMolecule
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
-     type(VECTOR)  :: rvec
      integer :: subcell, i, isubcell
      integer :: iupper, ilower
      real(double) :: nmol, nlower, nupper, etaline
-     character(len=10) :: out
 
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
@@ -3483,7 +3545,7 @@ end subroutine molecularLoop
         use input_variables, only : observerpos ! line number of observer position in observerfile 
         use input_variables, only : centrevecX, centrevecY, centrevecZ
         use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
-        use input_variables, only : galaxyPositionAngle, galaxyInclination
+!        use input_variables, only : galaxyPositionAngle, galaxyInclination
 
         logical :: paraxial = .true.
         real(double) :: pixelwidth, theta
@@ -3715,7 +3777,7 @@ end subroutine plotdiscValues
        type(VECTOR), intent(in) :: position
        type(gridtype), intent(in) :: grid
        type(octal), pointer, optional :: startOctal
-       type(octal), pointer :: thisoctal
+!       type(octal), pointer :: thisoctal
        integer, optional :: subcell
 
 #ifndef _OPENMP
@@ -3751,12 +3813,12 @@ end subroutine plotdiscValues
 
   real(double) function densite(position, grid, startOctal, subcell) RESULT(out)
 
-    use input_variables, only : sphdatafilename    
+!    use input_variables, only : sphdatafilename    
     implicit none
     type(VECTOR), intent(in) :: position
 !    type(VECTOR), save :: oldposition
 !    real(double) :: oldout = -8.8d88
-    type(VECTOR):: outv
+!    type(VECTOR):: outv
     type(gridtype), intent(in) :: grid
     type(octal), pointer, optional :: startOctal
     integer, optional :: subcell
@@ -3921,7 +3983,8 @@ end subroutine plotdiscValues
 
     if(all(convergenceCounter(1,1:minlevel) > (1.-1e-3) * real(nvoxels))) then 
        allCellsConverged = .true.
-       write(message,'(a,6(tr1,f7.5),tr1,i7)') "Cells converged to tolerence",real(convergenceCounter(1,1:min(6,minlevel))) / real(nvoxels), nvoxels
+       write(message,'(a,6(tr1,f7.5),tr1,i7)') "Cells converged to tolerence",real(convergenceCounter(1,1:min(6,minlevel))) &
+            / real(nvoxels), nvoxels
        call writeinfo(message, FORINFO)
     endif
 
@@ -4038,6 +4101,7 @@ end subroutine calculateConvergenceData
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
      integer :: subcell, i
+     real(double) :: nh, nHe, ne, nProtons
 
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
@@ -4050,14 +4114,41 @@ end subroutine calculateConvergenceData
               end if
            end do
         else ! once octal has no more children, solve for current parameter set
+
+           nh = 0.d0
+           nHe = 0.d0
+           ne = 0.d0
+           nProtons = 0.d0
+
            call solveLevels(thisOctal%molecularLevel(1:maxlevel,subcell), &
                 thisOctal%jnu(1:maxtrans,subcell),  &
-                dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
+                dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell), nh, nHe, ne, nprotons)
         endif
      enddo
    end subroutine solveAllPops
 
- subroutine LTEpops(thisMolecule, temperature, levelpops)
+ subroutine LTEpopsReal(thisMolecule, temperature, levelpops)
+
+   type(MOLECULETYPE) :: thisMolecule
+   real(double) :: temperature, nsum
+   real :: levelpops(:)
+   real(double) :: fac
+   integer :: i
+
+   levelpops(1) = 1.d0
+   nsum = 1.d0
+
+   do i=2,size(levelpops)
+      fac = abs(thisMolecule%energy(i)-thisMolecule%energy(i-1)) / (kev*temperature)
+      levelpops(i) = max(1d-30,levelpops(i-1) * thisMolecule%g(i)/thisMolecule%g(i-1) * exp(-fac))
+      nsum = nsum + levelpops(i)
+   enddo
+
+   levelpops = levelpops / nsum
+
+ end subroutine LTEpopsReal
+
+ subroutine LTEpopsDouble(thisMolecule, temperature, levelpops)
 
    type(MOLECULETYPE) :: thisMolecule
    real(double) :: temperature, nsum
@@ -4076,7 +4167,7 @@ end subroutine calculateConvergenceData
 
    levelpops = templevelpops(1:size(levelpops)) / nsum
 
- end subroutine LTEpops
+ end subroutine LTEpopsDouble
 
 !-----------------------------------------------------------------------------------------------------------
 
@@ -4406,7 +4497,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      integer :: subcell
      type(VECTOR) :: currentPosition, thisPosition, endPosition
      type(VECTOR) :: startVel, endVel, thisVel, veldiff
-     real(double) :: alphanu1, alphanu2, jnu, snu, balance
+     real(double) :: alphanu1, alphanu2, snu, balance
      real(double) :: alpha
      real(double)  :: dv, deltaV, dVacrossCell
      integer :: i, icount
@@ -4428,7 +4519,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      logical, optional :: tautest
      logical :: dotautest
 
-     real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, opticaldepth, n
+     real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, opticaldepth
      real(double), optional, intent(out) :: rhomax
      real(double), optional, intent(in) :: i0max
 
@@ -4436,7 +4527,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      real(double) :: nlower, nupper
      
      real(double) :: dpos
-     type(VECTOR) :: curpos, endpos
+     type(VECTOR) :: curpos
 
      if(present(tautest)) then
         dotautest = tautest
@@ -4696,7 +4787,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
    type(moleculetype) :: thisMolecule
    real(double),allocatable :: fluxspec(:), inspec(:)
    real(double) :: fac, dA, fac2
-   integer :: i
    integer :: itrans
 
    allocate(fluxspec(1:cube%nv))
@@ -4916,7 +5006,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
      real(double) :: nlower, nupper
      
      real(double) :: dpos
-     type(VECTOR) :: curpos, endpos
+     type(VECTOR) :: curpos
 
 !     real(double) :: dscounter, tvalcounter
 !     real(double) :: lowtau, midtau, hitau,vhitau,xhitau
@@ -5224,7 +5314,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
               thisoctal%newmolecularlevel(5,subcell) = (n * thisoctal%newmolecularlevel(5,subcell) + dtauovercell) / (n + 1.d0) ! average intensity in this cell
               thisoctal%newmolecularlevel(1,subcell) = (n * thisoctal%newmolecularlevel(1,subcell) + dIovercell) / (n + 1.d0) ! average intensity in this cell
               
-              thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + attenuateddIoverCell) / (n + 1.d0) ! average intensity in this cell (attenuated)
+              thisoctal%newmolecularlevel(2,subcell) = (n * thisoctal%newmolecularlevel(2,subcell) + &
+                   attenuateddIoverCell) / (n + 1.d0) ! average intensity in this cell (attenuated)
               thisoctal%newmolecularlevel(3,subcell) = (n * thisoctal%newmolecularlevel(3,subcell) + i0) / (n + 1.d0) ! average attenuated intensity at this cells edge 
               thisoctal%newmolecularlevel(4,subcell) = thisoctal%newmolecularlevel(4,subcell) + 1.d0
            endif

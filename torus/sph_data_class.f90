@@ -1431,7 +1431,8 @@ contains
        Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
        RhoArray(:) = sphdata%rhon(ind(:))
        etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
-       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
+       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
+            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
 
        write(message, *) "Critical smoothing Length in code units", hcrit
        call writeinfo(message, TRIVIAL)
@@ -1492,7 +1493,8 @@ contains
     if(done) then
        if (allocated(PositionArray)) then
 
-          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, tempPosArray, q2Array, HullArray, etaarray, tempetaarray)
+          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, tempPosArray, &
+               q2Array, HullArray, etaarray, tempetaarray)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)

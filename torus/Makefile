@@ -19,6 +19,7 @@ static  = no
 trace   = no
 openmp  = no 
 ndf     = no
+v2      = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -63,6 +64,8 @@ ifeq ($(SYSTEM), g95)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
+    XMLLIBS = -L/usr/local/lib -lFoX_common -lFoX_utils -lFoX_sax -lFoX_fsys -lFoX_dom
+    XMLINCLUDE = -I/usr/local/finclude		
 #    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
@@ -599,11 +602,22 @@ ifeq ($(openmp), yes)
    ETCFLAG += -openmp 
 endif
 
+
+ifeq ($(v2), yes)
+   TORUSMAINSOURCE= torusMainV2.F90
+   INPUTSMODSOURCE= inputs_modV2.f90
+   ETCFLAG += -DUSEXML
+else	
+   TORUSMAINSOURCE= torusMain.F90
+   INPUTSMODSOURCE= inputs_mod.f90
+endif
+
 #
 # Source files
 #
+
 F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
-            unix_mod.f90 inputs_mod.f90 utils_mod.f90 bhmie_mod.f90 mieDistCrossSection_mod.f90 \
+            unix_mod.f90 utils_mod.f90 bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90  TTauri_mod.f90 puls_mod.f90 \
@@ -626,14 +640,15 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90 magnetic_mod.f90
+            mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90 magnetic_mod.f90 \
+            setupamr_mod.f90
 
 F77SOURCE = phfit2.f
 
 
 CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
-	         parallel_mod.F90 stateq_mod.F90 torusMain.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
+	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90 spec_ndf.F90 image_ndf.F90 timedep_mod.F90
 
 CAPF90SOURCELIB = photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F90 \
@@ -643,18 +658,20 @@ CAPF90SOURCELIB = photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F
 
 # Object files
 #
+TORUSMAINOBJ = $(TORUSMAINSOURCE:.F90=.o)
+INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
 F77OBJ = $(F77SOURCE:.f=.o)
-ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ)
-LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ)
+ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(TORUSMAINOBJ) $(INPUTSMODOBJ)
+LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ) $(INPUTSMODSOURCE)
 
 #
 # Compilers and compiler flags
 #
 
-F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG)
+F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG) $(XMLINCLUDE)
 F77 = $(F77COMP) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG) $(MPI_INC)
 
 #
@@ -666,8 +683,8 @@ all: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS)
+	    $(TORUSMAINOBJ) $(INPUTSMODOBJ) $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS) $(XMLLIBS)
 	    @echo "...done"
     else
 	    @echo ""
@@ -679,7 +696,7 @@ lib: depends $(LIBOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files making a library..."
-	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(F77OBJ)
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(F77OBJ) $(INPUTSMODOBJ)
 	    @echo "...done"
     else
 	    @echo ""
@@ -720,7 +737,7 @@ link: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(TORUSMAINOBJ) $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
     else

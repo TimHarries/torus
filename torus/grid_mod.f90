@@ -748,6 +748,9 @@ contains
     case("gammavel")
        grid%geometry = "gammavel"
 
+    case("fogel")
+       grid%geometry = "fogel"
+
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
        print *, '            for use with an adaptive grid.'

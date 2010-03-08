@@ -27,7 +27,7 @@ program torus
 
   use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
        setupNeighbourPointers, findtotalmass
-
+  use setupAMR_mod
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
   use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
@@ -188,7 +188,7 @@ program torus
   character(len=80) :: message, phaseFilename
   real :: h 
 !  integer :: iTime
-  real(double) :: rsub, tsub, tsub_theory, density
+  real(double) :: rsub, tsub, tsub_theory
 ! molecular line stuff
   type(MOLECULETYPE) :: co
 
@@ -197,7 +197,7 @@ program torus
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
   real(double) :: totalmass, totalmasstrap, maxRho, minRho, totalFlux, vMag, bMag
-  real(double) :: A_v, E_b_minus_V
+  real(double) :: A_v, E_b_minus_V, densityval
   type(VECTOR) :: viewVec, outVec
 
 
@@ -833,10 +833,10 @@ program torus
   ! For Shakara geometry, get the inner edge details before creating the SEDs
   if (geometry=="shakara") then
      if (myRankGlobal == 0) then
-        call getSublimationRadius(grid, rsub, tsub, tsub_theory, density)
+        call getSublimationRadius(grid, rsub, tsub, tsub_theory, densityval)
         open(73, file="sublimation.dat", status="unknown", form="formatted", recl=200)
         write(73,*) "#Radius_inner(cm), T_inner (k), T_sub (k), Density (g/cm**3)" 
-        write(73,*) rsub*1.d10, tsub, tsub_theory, density
+        write(73,*) rsub*1.d10, tsub, tsub_theory, densityval
         close(73)
      endif
   endif
@@ -1609,7 +1609,15 @@ end subroutine pre_initAMRGrid
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        
        select case (geometry)
+
+       case("fogel")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call setupFogel(grid, "harries_e0p1.dat", "HCN")
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+
        case("cluster", "theGalaxy")
+
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)

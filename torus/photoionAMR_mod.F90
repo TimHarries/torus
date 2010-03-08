@@ -350,7 +350,7 @@ contains
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-               "hydrovelocity","dust1"/))
+               "hydrovelocity","dust1        "/))
 
 
        endif

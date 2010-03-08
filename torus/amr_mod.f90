@@ -17715,9 +17715,9 @@ end function readparameterfrom2dmap
   subroutine nnint(t1,t2,t3,weights)
 
     real(double) :: t1, t2, t3
-    real(double), save :: t1old, t2old, t3old
+!    real(double), save :: t1old, t2old, t3old
     real(double) :: weights(27)
-    real(double), save :: oldweights(27)
+!    real(double), save :: oldweights(27)
       
 !    if(t1 .eq. t1old) then
 !       if(t2 .eq. t2old) then
@@ -17878,7 +17878,7 @@ end function readparameterfrom2dmap
     real(double) :: t1, t2, t3
     real(double) :: inc, fac
     real(double) :: weights(27)
-    real(double) :: rhoa(1)
+!    real(double) :: rhoa(1)
 
     logical, save :: firsttime = .true.
     logical, optional :: linearinterp
