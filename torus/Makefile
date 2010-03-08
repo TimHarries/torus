@@ -64,7 +64,7 @@ ifeq ($(SYSTEM), g95)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    XMLLIBS = -L/usr/local/lib -lFoX_common -lFoX_utils -lFoX_sax -lFoX_fsys -lFoX_dom
+    XMLLIBS = `FoX-config`
     XMLINCLUDE = -I/usr/local/finclude		
 #    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
