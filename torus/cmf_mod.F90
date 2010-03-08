@@ -2827,7 +2827,7 @@ contains
     write(*,*) "Process ",my_rank, " reduce done."
 #endif
 
-    cube%flux = cube%intensity
+!    cube%flux = cube%intensity
 
   end subroutine createDataCube
 

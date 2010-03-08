@@ -38,21 +38,19 @@ ifeq ($(SYSTEM), davesmac)
     F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
 #   DEBUGFLAG = -warn -g -no-ipo  # 
-    DEBUGFLAG=-g -O0 -warn -traceback -debug full -check pointer -CB -ftz
+    DEBUGFLAG=-gdwarf-2 -O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps
 #    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
-    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -g #-ipo #-g
+    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt #-g -ipo #-g
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-#    CFITSIOLIBS = -L/Users/${USER}/cfitsio/ -lcfitsio
-    CFITSIOLIBS = -L/scisoft/i386/lib/ -lcfitsio
+    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
+#    CFITSIOLIBS = -L/star/lib -lcfitsio
     MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
-#    STARLIBS = -L/star/lib `ndf_link`                                                                   
-#    F2CLIB   = -L$(PATH2G2C) -lg2c                                                                      
+#    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
+#    STARLIBS = -limf                                                                   
     EXE = torus.intelmac
     KNOWN_SYSTEM = yes
 endif
-
-
 
 ifeq ($(SYSTEM), g95)
     F95COMP  = g95
@@ -318,8 +316,11 @@ ifeq ($(SYSTEM), zen)
     F77COMP= mpif90
 
 #    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
+
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
-    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+#    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT -mcmodel=medium -i-dynamic #-ipo 
+    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic# -ipo
+#    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic 
 #    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 
 # Include run-time error checking using ifort. Use environment variable to avoid clash with 

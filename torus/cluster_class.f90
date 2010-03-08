@@ -346,7 +346,7 @@ contains
 
     use sph_data_class, only: Clusterparameter, sphData
     use constants_mod, only: mhydrogen
-    use input_variables, only: h21cm, tMinGlobal
+    use input_variables, only: h21cm, tMinGlobal,doCOchemistry, x_D
     use h21cm_mod, only: hi_emop
 
     IMPLICIT NONE
@@ -372,9 +372,12 @@ contains
     
     if ( associated(thisOctal%nh2) ) then
        thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
-       thisOctal%molAbundance(subcell) = 4e-10
-       if(thisOctal%rho(subcell) .lt. 1d-19) thisOctal%molAbundance(subcell) = 4e-9 ! 3e4/cm^3
-       if(thisOctal%rho(subcell) .gt. 1.5d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
+       if(doCOchemistry) then
+!       thisOctal%molAbundance(subcell) = 4e-10
+          if(thisOctal%nh2(subcell) .lt. 3e4) thisOctal%molAbundance(subcell) = x_D ! drop fraction
+!       if(thisOctal%rho(subcell) .gt. 1.55885d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
+          if(thisOctal%temperature(subcell) .gt. 30.) thisOctal%molAbundance(subcell) = x_D ! drop fraction
+       endif
     endif
     
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)

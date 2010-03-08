@@ -1225,8 +1225,10 @@ CONTAINS
     TYPE(octal), POINTER   :: child
   
     INTEGER :: subcell, iChild
-    REAL T1, T2
+
+    REAL :: T1, T2
     real, save :: TSTART 
+
     logical, save :: firsttime = .true.
     integer, save :: counter = 0
      
@@ -1262,9 +1264,10 @@ CONTAINS
                 call CPU_TIME(tstart)
                 firsttime = .false.
              endif
-             CALL CPU_TIME(T1)
-            
+
              if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+                CALL CPU_TIME(T1)
+                if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
                 recentoctal => thisoctal
                 CALL fillDensityCorners(thisOctal,grid,clusterdensity, clustervelocity, thisOctal%threed)
                 thisOctal%velocity = thisoctal%cornervelocity(14)
@@ -1277,8 +1280,8 @@ CONTAINS
              if (writeoutput) write(112, *) counter, t2 - t1, t2 - tstart
           endif
           
-          CASE("molebench")
-             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
+!          CASE("molebench")
+!             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
 
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return. 
@@ -5051,7 +5054,7 @@ IF ( .NOT. gridConverged ) RETURN
          massPerCell = amrlimitscalar
       end if
 
-      thisOctal%rho(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0) ! placeholder for maximum expected smoothing length (not rho!) 
+      thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0) ! placeholder for maximum expected smoothing length
 
       total_mass = ave_density * total_mass
 
@@ -17708,7 +17711,107 @@ end function readparameterfrom2dmap
     intensity = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) 
 !    intensity = SUM(thisOctal%scatteredIntensity(subcell,:,:))/100.d0
   end function returnScatteredIntensity
-  
+
+  subroutine nnint(t1,t2,t3,weights)
+
+    real(double) :: t1, t2, t3
+    real(double), save :: t1old, t2old, t3old
+    real(double) :: weights(27)
+    real(double), save :: oldweights(27)
+      
+!    if(t1 .eq. t1old) then
+!       if(t2 .eq. t2old) then
+!          if(t3 .eq. t3old) then
+!             weights = oldweights
+!             return
+!          endif
+!       endif
+!    endif
+
+    weights(:) = 0.d0
+
+    if(t3 .le. 0.25) then
+       if(t2 .le. 0.25) then
+          if(t1 .le. 0.25) then
+             weights(1) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(3) = 1.d0
+          else
+             weights(2) = 1.d0
+          endif
+       elseif(t2 .ge. 0.75) then
+          if(t1 .le. 0.25) then
+             weights(7) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(9) = 1.d0
+          else
+             weights(8) = 1.d0
+          endif
+       else
+          if(t1 .le. 0.25) then
+             weights(4) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(6) = 1.d0
+          else
+             weights(5) = 1.d0
+          endif
+       endif
+    elseif(t3 .ge. 0.75) then
+       if(t2 .le. 0.25) then
+          if(t1 .le. 0.25) then
+             weights(19) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(21) = 1.d0
+          else
+             weights(20) = 1.d0
+          endif
+       elseif(t2 .ge. 0.75) then
+          if(t1 .le. 0.25) then
+             weights(25) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(27) = 1.d0
+          else
+             weights(26) = 1.d0
+          endif
+       else
+          if(t1 .le. 0.25) then
+             weights(22) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(24) = 1.d0
+          else
+             weights(23) = 1.d0
+          endif
+       endif
+    else
+       if(t2 .le. 0.25) then
+          if(t1 .le. 0.25) then
+             weights(10) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(12) = 1.d0
+          else
+             weights(11) = 1.d0
+          endif
+       elseif(t2 .ge. 0.75) then
+          if(t1 .le. 0.25) then
+             weights(16) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(18) = 1.d0
+          else
+             weights(17) = 1.d0
+          endif
+       else
+          if(t1 .le. 0.25) then
+             weights(13) = 1.d0
+          elseif(t1 .ge. 0.75) then
+             weights(15) = 1.d0
+          else
+             weights(14) = 1.d0
+          endif
+       endif
+    endif
+
+  end subroutine nnint
+
   subroutine quadint(t1,t2,t3,weights)
 
     real(double) :: t1, t2, t3
@@ -17780,8 +17883,10 @@ end function readparameterfrom2dmap
     logical, save :: firsttime = .true.
     logical, optional :: linearinterp
     logical :: linear
+    integer :: i
 
     weights = 0.d0
+    rho = 0.d0
 
     if(present(linearinterp)) then
        linear = linearinterp
@@ -17825,7 +17930,6 @@ end function readparameterfrom2dmap
 
        return
     endif
-    
 
     if(linear) then
 
@@ -17932,12 +18036,17 @@ end function readparameterfrom2dmap
             end SELECT
             
          else
-            call quadint(t1,t2,t3,weights)
-            rho = sum(weights(:) * resultoctal%cornerrho(:))
-            if(rho .lt. 0.d0) then
-               rhoa = resultoctal%cornerrho(maxloc(weights))
-               rho = rhoa(1)
-            endif
+!            call quadint(t1,t2,t3,weights)
+!            if(rho .lt. 0.d0) then
+!               rhoa = resultoctal%cornerrho(maxloc(weights))
+!               rho = rhoa(1)
+!            endif
+
+            call nnint(t1,t2,t3,weights)
+!            rho = sum(weights(:) * resultoctal%cornerrho(:))
+            do i = 1, 27
+               rho = rho + weights(i) * resultoctal%cornerrho(i)
+            enddo
          endif
     
        end function amrgriddensity
@@ -17987,7 +18096,6 @@ end function readparameterfrom2dmap
        goto 667
     endif
 
-
     if (thisOctal%threed) then
        if (.not.thisOctal%cylindrical) then ! 3d cartesian case
           ! we first store the values we use to assemble the position vectors
@@ -18003,69 +18111,69 @@ end function readparameterfrom2dmap
           z1 = thisOctal%centre%z - thisOctal%subcellSize
           z2 = thisOctal%centre%z
           z3 = thisOctal%centre%z + thisOctal%subcellSize
-                    
-          ! now store the 'base level' values
 
           thisOctal%cornerrho(14) = densityFunc(vector(x2,y2,z2),grid)          
           thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2),grid)          
+                    
+          ! now store the 'base level' values
                               
-          thisOctal%cornerrho(1) = densityFunc(vector(x1,y1,z1),grid)
+          thisOctal%cornerrho(1)      =  densityFunc(vector(x1,y1,z1),grid)
           thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
-          thisOctal%cornerrho(2) = densityFunc(vector(x2,y1,z1),grid)
+          thisOctal%cornerrho(2)      =  densityFunc(vector(x2,y1,z1),grid)
           thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1),grid)
-          thisOctal%cornerrho(3) = densityFunc(vector(x3,y1,z1),grid)
+          thisOctal%cornerrho(3)      =  densityFunc(vector(x3,y1,z1),grid)
           thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1),grid)
-          thisOctal%cornerrho(4) = densityFunc(vector(x1,y2,z1),grid)
+          thisOctal%cornerrho(4)      =  densityFunc(vector(x1,y2,z1),grid)
           thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1),grid)
-          thisOctal%cornerrho(5) = densityFunc(vector(x2,y2,z1),grid)
+          thisOctal%cornerrho(5)      =  densityFunc(vector(x2,y2,z1),grid)
           thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1),grid)
-          thisOctal%cornerrho(6) = densityFunc(vector(x3,y2,z1),grid)
+          thisOctal%cornerrho(6)      =  densityFunc(vector(x3,y2,z1),grid)
           thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1),grid)
-          thisOctal%cornerrho(7) = densityFunc(vector(x1,y3,z1),grid)
+          thisOctal%cornerrho(7)      =  densityFunc(vector(x1,y3,z1),grid)
           thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1),grid)
-          thisOctal%cornerrho(8) = densityFunc(vector(x2,y3,z1),grid)
+          thisOctal%cornerrho(8)      =  densityFunc(vector(x2,y3,z1),grid)
           thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1),grid)
-          thisOctal%cornerrho(9) = densityFunc(vector(x3,y3,z1),grid)
+          thisOctal%cornerrho(9)      =  densityFunc(vector(x3,y3,z1),grid)
           thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1),grid)
 
           ! middle level
           
-          thisOctal%cornerrho(10) = densityFunc(vector(x1,y1,z2),grid)
+          thisOctal%cornerrho(10)      =  densityFunc(vector(x1,y1,z2),grid)
           thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2),grid)          
-          thisOctal%cornerrho(11) = densityFunc(vector(x2,y1,z2),grid)
+          thisOctal%cornerrho(11)      =  densityFunc(vector(x2,y1,z2),grid)
           thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2),grid)
-          thisOctal%cornerrho(12) = densityFunc(vector(x3,y1,z2),grid)
+          thisOctal%cornerrho(12)      =  densityFunc(vector(x3,y1,z2),grid)
           thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2),grid)
-          thisOctal%cornerrho(13) = densityFunc(vector(x1,y2,z2),grid)
+          thisOctal%cornerrho(13)      =  densityFunc(vector(x1,y2,z2),grid)
           thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2),grid)
 
-          thisOctal%cornerrho(15) = densityFunc(vector(x3,y2,z2),grid)
+          thisOctal%cornerrho(15)      =  densityFunc(vector(x3,y2,z2),grid)
           thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2),grid)
-          thisOctal%cornerrho(16) = densityFunc(vector(x1,y3,z2),grid)
+          thisOctal%cornerrho(16)      =  densityFunc(vector(x1,y3,z2),grid)
           thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2),grid)
-          thisOctal%cornerrho(17) = densityFunc(vector(x2,y3,z2),grid)
+          thisOctal%cornerrho(17)      =  densityFunc(vector(x2,y3,z2),grid)
           thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2),grid)
-          thisOctal%cornerrho(18) = densityFunc(vector(x3,y3,z2),grid)
+          thisOctal%cornerrho(18)      =  densityFunc(vector(x3,y3,z2),grid)
           thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2),grid)          
           ! top level         
 
-          thisOctal%cornerrho(19) = densityFunc(vector(x1,y1,z3),grid)
+          thisOctal%cornerrho(19)      =  densityFunc(vector(x1,y1,z3),grid)
           thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3),grid)
-          thisOctal%cornerrho(20) = densityFunc(vector(x2,y1,z3),grid)
+          thisOctal%cornerrho(20)      =  densityFunc(vector(x2,y1,z3),grid)
           thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3),grid)
-          thisOctal%cornerrho(21) = densityFunc(vector(x3,y1,z3),grid)
+          thisOctal%cornerrho(21)      =  densityFunc(vector(x3,y1,z3),grid)
           thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3),grid)
-          thisOctal%cornerrho(22) = densityFunc(vector(x1,y2,z3),grid)
+          thisOctal%cornerrho(22)      =  densityFunc(vector(x1,y2,z3),grid)
           thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3),grid)
-          thisOctal%cornerrho(23) = densityFunc(vector(x2,y2,z3),grid)
+          thisOctal%cornerrho(23)      =  densityFunc(vector(x2,y2,z3),grid)
           thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3),grid)
-          thisOctal%cornerrho(24) = densityFunc(vector(x3,y2,z3),grid)
+          thisOctal%cornerrho(24)      =  densityFunc(vector(x3,y2,z3),grid)
           thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3),grid)
-          thisOctal%cornerrho(25) = densityFunc(vector(x1,y3,z3),grid)
+          thisOctal%cornerrho(25)      =  densityFunc(vector(x1,y3,z3),grid)
           thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3),grid)
-          thisOctal%cornerrho(26) = densityFunc(vector(x2,y3,z3),grid)
+          thisOctal%cornerrho(26)      =  densityFunc(vector(x2,y3,z3),grid)
           thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3),grid)
-          thisOctal%cornerrho(27) = densityFunc(vector(x3,y3,z3),grid)
+          thisOctal%cornerrho(27)      =  densityFunc(vector(x3,y3,z3),grid)
           thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3),grid)
 
        else ! cylindrical 
@@ -18106,15 +18214,15 @@ end function readparameterfrom2dmap
 
              ! top level
 
-             thisOctal%cornerrho(10) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerrho(11) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerrho(12) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3),grid)
-             thisOctal%cornerrho(13) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerrho(14) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerrho(15) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3),grid)
-             thisOctal%cornerrho(16) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerrho(17) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
-             thisOctal%cornerrho(18) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3),grid)
+             thisOctal%cornerrho(19) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
+             thisOctal%cornerrho(20) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
+             thisOctal%cornerrho(21) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3),grid)
+             thisOctal%cornerrho(22) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
+             thisOctal%cornerrho(23) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
+             thisOctal%cornerrho(24) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3),grid)
+             thisOctal%cornerrho(25) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
+             thisOctal%cornerrho(26) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
+             thisOctal%cornerrho(27) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3),grid)
 
           else
 

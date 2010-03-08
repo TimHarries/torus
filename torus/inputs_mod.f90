@@ -98,6 +98,9 @@ contains
     call getReal("distance", gridDistance, cLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
+    call getInteger("observerpos", observerpos, cLine, nLines, &
+         "Observer.dat line no: ","(a,i3,1x,a)", 0, ok, .false.)
+
     call getReal("tminglobal", TMinGlobal, cLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
 
@@ -1196,9 +1199,9 @@ contains
        call getString("molfileout", molFilenameOut, cLine, nLines, &
             "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
        call getLogical("writemol", writeMol, cLine, nLines, &
-            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .true.)
        call getLogical("readmol", readMol, cLine, nLines, &
-            "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+            "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .true.)
        call getLogical("writeLucy", writeLucy, cLine, nLines, &
             "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("readLucy", readLucy, cLine, nLines, &
@@ -1216,6 +1219,8 @@ contains
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
        call getReal("vturb", vturb, cLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
+       call getLogical("noturb", noturb, cLine, nLines, &
+            "No microturbulence","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, nLines, &
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
        call getReal("molAbundance", molAbundance, cLine, nLines, &
@@ -1231,6 +1236,16 @@ contains
        call getLogical("realdust", realdust, cLine, nLines, &
             "Use realistic dust model: ", "(a,1l,1x,a)", .true., ok, .false.)
 
+       call getLogical("doCOchemistry", doCOchemistry, cLine, nLines, &
+            "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if(doCOchemistry) then
+
+          call getReal("fracCOdepletion", x_D, cLine, nLines, &
+               "Fraction of CO depletion", "(a,1l,1x,a)", 0.1, ok, .true.)
+          
+       endif
+
 
        if(geometry .eq. 'molcluster') then
           call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
@@ -1245,10 +1260,18 @@ contains
                "Max Rho Calc: ","(a,1l,a)", .true., ok, .true.)
           call getLogical("lineimage", lineImage, cLine, nLines, &
                "Line emission: ","(a,1l,a)", .true., ok, .true.)
-          call getReal("lamline", lamLine, cLine, nLines, &
-               "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
-
+          if(.not. lineimage) then
+             call getReal("lamline", lamLine, cLine, nLines, &
+                  "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
           lamline = lamline * 1e4
+          endif
+
+          call getLogical("plotlevels", plotlevels, cLine, nLines, &
+               "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
+
+          call getLogical("writetempfits", writetempfits, cLine, nLines, &
+               "Write Temporary Fits files","(a,1l,1x,a)", .false., ok, .false.)
+
           call getReal("imageside", imageside, cLine, nLines, &
                "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
           call getInteger("npixels", npixels, cLine, nLines, &
@@ -1278,6 +1301,8 @@ contains
                "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecz", centrevecz, cLine, nLines, &
                "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+          call getLogical("wanttau", wanttau, cLine, nLines, &
+               "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
           if(writelucy .or. readlucy) then

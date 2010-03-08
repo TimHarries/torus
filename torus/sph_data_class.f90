@@ -90,15 +90,19 @@ module sph_data_class
 
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:)
+
+  logical, allocatable :: HullArray(:)
   type(sph_data), save :: sphdata
   integer, save :: npart
-  real(double), allocatable :: partArray(:), q2array(:), xarray(:)
+
+  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:), xarray(:), etaarray(:), tempetaarray(:)
   Integer, allocatable :: indexArray(:)
   integer,save :: nparticles
   real(double), save :: rcrit, rmax
   type(VECTOR), save :: prevpos
-  
 
+  real(double) :: maxx, maxy, maxz, maxr2 ! maximum extents of particles
+  
   private:: &
        kill_sph_data
 
@@ -391,7 +395,7 @@ contains
     call writeinfo(message, TRIVIAL)
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
     ! velocity unit is derived from distance and time unit (converted to seconds from years)
-    sphdata%codeVelocitytoTORUS = (udist / (utime * 31536000.)) / cspeed 
+    sphdata%codeVelocitytoTORUS = uvel / cspeed 
     sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
     sphData%useSphTem = .true.
     sphdata%totalgasmass = 0.d0
@@ -408,10 +412,10 @@ contains
 
     do ipart=1, nlines
 
-       read(LUIN,'(tr1,12(es14.7,tr2),es14.7,tr1,i1)') xn, yn, zn, gaspartmass, h, rhon, vx, vy, vz, u, junk, junk, junk, itype
+       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, vx, vy, vz, u, junk, junk, junk, itype
        icount = icount + 1
 
-       if(itype .ne. 4) then ! .or. itype .eq. 4) then
+       if(itype .ne. 2) then ! .or. itype .eq. 4) then
           igas = igas + 1
 
           sphdata%xn(igas) = xn
@@ -419,7 +423,6 @@ contains
           sphdata%zn(igas) = zn
 
           sphdata%gasmass(igas) = gaspartmass
-          sphdata%rhon(igas) = rhon
 
           sphdata%vxn(igas) = vx
           sphdata%vyn(igas) = vy
@@ -429,9 +432,15 @@ contains
 
           sphdata%hn(igas) = h
 
+          if(rhon .gt. 0.d0) then
+             sphdata%rhon(igas) = rhon
+          else
+             sphdata%rhon(igas) = gaspartmass / h**3
+          endif
+
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
           
-       if(itype .eq. 3) then
+       if(itype .eq. 4) then
 
           iptmass = iptmass + 1
 
@@ -1283,6 +1292,8 @@ contains
 
     type(vector), intent(in) :: point
     type(vector) :: posvec
+    type(vector),save :: oldpoint = VECTOR(0.d0,0.d0,0.d0)
+    type(vector),save :: oldvel = VECTOR(2.d0,2.d0,2.d0)
 
     integer :: i
 
@@ -1299,6 +1310,7 @@ contains
     real(double) :: d
     real(double) :: fac
     real(double), save :: sumWeight
+    real(double) :: bigx, bigy, bigz, Hedge
     real(double) :: paramValue(4)
     
     character(len=100) :: message
@@ -1316,6 +1328,7 @@ contains
     logical, save :: firsttime = .true.
     integer :: subcell
     integer, save :: prevsubcell
+
     
     if(present(rhomin)) then
        rhomin = 1d30
@@ -1346,13 +1359,19 @@ contains
        allocate(PositionArray(3,npart)) ! allocate memory
        allocate(xArray(npart))
        allocate(q2Array(npart))
+       allocate(tempetaArray(npart))
+       allocate(etaArray(npart)) ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
        allocate(RhoArray(npart))
        allocate(TemArray(npart))
        allocate(Harray(npart))
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
 
-       PositionArray = 0.d0; ; hArray = 0.d0; ind = 0; q2array = 0.d0
+       allocate(tempPosArray(npart,3))
+       allocate(HullArray(npart))
+
+
+       PositionArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0; etaarray = 0.d0; tempetaarray = 0.d0
 
        Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
        xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
@@ -1383,7 +1402,7 @@ contains
 !             call torus_abort("Error in function Clusterparameter: vxn is associated but vzn is not")
           end if
 
-          write(message, *) "Max/min Vx", maxval(VelocityArray(1,:)), minval(VelocityArray(1,:))
+          write(message, *) "Max/min Vx", maxval(VelocityArray(1,:)), minval(VelocityArray(1,:))          
           call writeinfo(message, TRIVIAL)
           write(message, *) "Max/min Vy", maxval(VelocityArray(2,:)), minval(VelocityArray(2,:))
           call writeinfo(message, TRIVIAL)
@@ -1392,6 +1411,12 @@ contains
           
        end if
 
+       maxx = max(maxval(PositionArray(1,:)), abs(minval(PositionArray(1,:))))
+       maxy = max(maxval(PositionArray(2,:)), abs(minval(PositionArray(2,:))))
+
+       maxz = max(maxval(PositionArray(3,:)), abs(minval(PositionArray(3,:))))
+       maxr2 = maxx**2 + maxy**2 + maxz**2
+
        write(message, *) "Max/min x", maxval(PositionArray(1,:)), minval(PositionArray(1,:)) 
        call writeinfo(message, TRIVIAL)
        write(message, *) "Max/min y", maxval(PositionArray(2,:)), minval(PositionArray(2,:)) 
@@ -1399,24 +1424,27 @@ contains
        write(message, *) "Max/min z", maxval(PositionArray(3,:)), minval(PositionArray(3,:))
        call writeinfo(message, TRIVIAL)
 
-       RhoArray(:) = sphdata%rhon(ind(:)) * codeDensitytoTORUS
+       Harray(:) = sphdata%hn(ind(:)) ! fill h array
+
+       call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .true.) ! find hcrit as percentile of total h
+       call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
+       Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
+       RhoArray(:) = sphdata%rhon(ind(:))
+       etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
+       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
+
+       write(message, *) "Critical smoothing Length in code units", hcrit
+       call writeinfo(message, TRIVIAL)
+       write(message, *) "Maximum smoothing Length in code units", hmax
+       Call writeinfo(message, TRIVIAL)
+
+       RhoArray(:) = Rhoarray(:) * codeDensitytoTORUS
        TemArray(:) = sphdata%temperature(ind(:)) * sphdata%codeEnergytoTemperature
 
        write(message, *) "Max/min rho", maxval(RhoArray(:)), minval(RhoArray(:))
        call writeinfo(message, TRIVIAL)
        write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))
        call writeinfo(message, TRIVIAL)
-
-       Harray(:) = sphdata%hn(ind(:)) ! fill h array
-
-       call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .true.) ! find hcrit as percentile of total h
-       call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
-       Harray(:) = sphdata%hn(ind(:)) ! fill h array
-
-       write(message, *) "Critical smoothing Length in code units", hcrit
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Maximum smoothing Length in code units", hmax
-       Call writeinfo(message, TRIVIAL)
 
        hcrit = hcrit * codeLengthtoTORUS
        OneOverHcrit = 1.d0 / hcrit
@@ -1425,6 +1453,27 @@ contains
        OneOverHmax = 1.d0 / hmax
 
        Harray(:) = Harray(:) * codeLengthtoTORUS  ! fill h array
+
+       bigx = maxval(PositionArray(1,:)) - minval(PositionArray(1,:))
+       bigy = maxval(PositionArray(2,:)) - minval(PositionArray(2,:))
+       bigz = maxval(PositionArray(3,:)) - minval(PositionArray(3,:))
+
+       Hedge = ((bigX * bigY * bigZ / npart) ** (1.d0/3.d0))
+
+       do i=1, npart
+          if(Harray(i) .ge. Hedge) then
+             HullArray(i) = .true.
+          else
+             HullArray(i) = .false.
+          endif
+       enddo
+
+       write(message,*) "Hull smoothing Length in 10^10cm ", Hedge
+       call writeinfo(message, TRIVIAL)
+
+       write(message,*) "Percentage of Hull particles ", 100. * real(count(HullArray)) / real(npart)
+       call writeinfo(message, TRIVIAL)
+
        OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
 
        write(message,*) "Critical smoothing Length in 10^10cm", hcrit
@@ -1434,15 +1483,16 @@ contains
 
        rcrit = 2.d0 * hcrit ! edge of smoothing sphere
        rmax = 2.d0 * hmax ! edge of smoothing sphere
-
+       
        allocate(partarray(npart), indexarray(npart))
 
        firsttime = .false.
     endif
-
+ 
     if(done) then
        if (allocated(PositionArray)) then
-          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, q2Array)
+
+          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, tempPosArray, q2Array, HullArray, etaarray, tempetaarray)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
@@ -1455,6 +1505,26 @@ contains
     endif
               
     posVec = point
+
+    d = min(thisoctal%h(subcell), rmax)! using the placeholder h from splitgrid
+
+!   d = thisoctal%subcellsize ! the splitgrid routine effectively picks the grid size based on smoothing length (mass condition)
+
+    ! hope the compiler optimizes this (for a disc, first condition is simpler to test)
+    if(abs(posvec%z) .gt. maxz + rmax .or. (posvec .dot. posvec) .gt. maxr2) then ! if point is outside particles then there will be no information
+       if(param .eq. 1) then
+          if(modulus(posvec - oldpoint) .lt. 2. * d) then! cells nearby?
+             Clusterparameter = oldvel ! Velocity of nearby cells
+          else
+             Clusterparameter = VECTOR(2.d0,2.d0,2.d0) ! 2c is not a real velocity and everything should be trying to handle this error
+          endif
+          return
+       elseif(param .eq. 2) then
+          Clusterparameter = VECTOR(1d-37, tcbr, 0.d0)  ! density ! stays as vector for moment
+          return
+       endif
+    endif
+
     if(posvec .eq. prevpos) goto 500
 
     if(associated(previousoctal)) then
@@ -1470,12 +1540,6 @@ contains
     previousoctal => thisoctal
     prevsubcell = subcell
 
-    if(thisoctal%rho(subcell) .gt. 1.d0) then
-       d = thisoctal%rho(subcell) ! using the placeholder h from splitgrid
-    else
-       d = thisoctal%subcellsize ! the splitgrid routine effectively picks the grid size based on smoothing length (mass condition)
-    endif
-
     notfound = .false.
     nparticles = 0
     rcounter = 0
@@ -1487,7 +1551,7 @@ contains
        if(nparticles .gt. 0) call doweights(sumweight)
     else
        ! tradeoff time for accuracy in low density regions
-       r = min(2.d0 * d, rcrit) ! 4d is far enough away to have particles with their smoothing lengths captured, rcrit puts an upper limit on time
+       r = min(4.d0 * d, rcrit) ! 4d is far enough away to have particles with their smoothing lengths captured, rcrit puts an upper limit on time
        ! 2 rcrit is essential for the mass to be correctly done... (in my case it had to be hcrit = 99%)
  
        do while (sumweight .le. 1d-3)
@@ -1513,10 +1577,11 @@ contains
     paramvalue(:) = 0.d0
 
     if(.not. notfound) then
-       
+!       thisoctal%inflow(subcell) = .false. ! octal is occupied by something at least cf. inflow = .true.
        if(param .eq. 1) then
 
           fac = 1.d0 / sumweight
+!          fac = 1.d0
 
           do i = 1, nparticles
              Paramvalue(1) = paramValue(1) + partArray(i) * VelocityArray(1, indexArray(i)) ! Vx
@@ -1525,13 +1590,24 @@ contains
           enddo
           
           Clusterparameter = VECTOR(paramValue(1) * fac, paramValue(2) * fac, paramValue(3) * fac) ! Velocity 
-          
+          oldvel = clusterparameter ! store this point in case it's nearby an empty cell (for velocity)
+          oldpoint = posvec
+
        elseif(param .eq. 2) then
+
+          if(any(HullArray(indexarray(1:nparticles)))) then
+             fac = 1.d0
+          else
+             fac = 1.d0 / sumWeight
+!             fac = 1.d0
+          endif
           
           if(sumweight .gt. sph_norm_limit) then
-             fac = 1.d0 / sumWeight
+             HullArray(indexarray(1:nparticles)) = .false.
+!          if(sumweight .gt. sph_norm_limit) then
+!             fac = 1.d0 / sumWeight
           else
-             fac = 1.d0
+             HullArray(indexarray(1:nparticles)) = .true.
           endif
           
           do i = 1, nparticles
@@ -1543,8 +1619,13 @@ contains
           
        endif
     else
+!       thisoctal%inflow(subcell) = .true. ! what to do about stuff with nothing in it...
        if(param .eq. 1) then
-          Clusterparameter = VECTOR(1d-3,1d-3,1d-3) ! Velocity 
+          if(modulus(posvec - oldpoint) .lt. 2. * d) then! cells nearby?
+             Clusterparameter = oldvel ! Velocity of nearby cells
+          else
+             Clusterparameter = VECTOR(2.d0,2.d0,2.d0) ! 2c is not a real velocity and everything should be trying to handle this error
+          endif
        elseif(param .eq. 2) then
           Clusterparameter = VECTOR(1d-37, tcbr, 0.d0)  ! density ! stays as vector for moment
        endif
@@ -1712,6 +1793,7 @@ contains
                 partcount = partcount + 1
                 indexArray(partcount) = testIndex
                 q2array(partcount) = q2test
+                tempetaarray(partcount) = etaarray(testindex)
              endif
           endif
        endif
@@ -1723,7 +1805,6 @@ contains
 
     use input_variables, only : kerneltype
 
-    real(double), parameter :: OneOversqrtPiCubed = 1.d0 / 5.568328000d0
     real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
     real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed
 
@@ -1742,7 +1823,8 @@ contains
           
           do i = 1, nparticles
              sqrtq = sqrt(q2array(i))
-             partarray(i) = num * SmoothingKernel3d(sqrtq)
+!             partarray(i) = num * SmoothingKernel3d(sqrtq)
+             partarray(i) = etaarray(i) * SmoothingKernel3d(sqrtq)
           enddo
           
        endif

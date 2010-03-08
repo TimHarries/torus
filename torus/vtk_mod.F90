@@ -461,6 +461,12 @@ contains
                   endif
                case("velocity")
                   if (thisOctal%threed) then
+                     ! stop vectors from showing up in visit if too big
+                     if(thisoctal%velocity(subcell)%x .ge. 1.d0) then
+                        thisoctal%velocity(subcell)%x = 0.d0
+                        thisoctal%velocity(subcell)%y = 0.d0
+                        thisoctal%velocity(subcell)%z = 0.d0
+                     endif
                      write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
                           real(thisOctal%velocity(subcell)%y*cspeed/1.e5), &
                           real(thisOctal%velocity(subcell)%z*cspeed/1.e5)

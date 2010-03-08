@@ -4460,9 +4460,9 @@ END SUBROUTINE GAUSSJ
 
  end subroutine bonnorEbertRun
       
-!!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974
+!!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974 and OAB JQSRT (35) 431, 1986
 !!! coded by DAR Feb 09
-  function ngStep(q, r, s, t, doubleweight) result(out)
+  function ngStep(q, r, s, t, weight, doubleweight) result(out)
 
     real(double) :: q(:), r(:), s(:), t(:)
     real(double), allocatable :: diff1(:), diff2(:)
@@ -4472,6 +4472,8 @@ END SUBROUTINE GAUSSJ
     real(double), allocatable :: out(:)
     real(double), allocatable :: rorig(:), sorig(:), torig(:)
     real(double) :: det
+    real(double), optional :: weight(:)
+    real(double), allocatable :: OABweight(:)
    
     integer :: vectorsize
     logical, optional :: doubleweight
@@ -4487,7 +4489,13 @@ END SUBROUTINE GAUSSJ
     
     allocate(diff1(vectorsize), diff2(vectorsize), &
          diff01(vectorsize), diff02(vectorsize), diff(vectorsize), out(vectorsize), &
-         rorig(vectorsize), sorig(vectorsize), torig(vectorsize))
+         rorig(vectorsize), sorig(vectorsize), torig(vectorsize), OABweight(vectorsize))
+
+    if(present(weight)) then
+       OABweight = weight
+    else
+       OABweight = 1.
+    endif
 
       rorig = r
       sorig = s
@@ -4505,31 +4513,22 @@ END SUBROUTINE GAUSSJ
          t = t
       endif
 
-      diff  =(t - s)
-      diff1 =(s - r)
-      diff2 =(r - q)
+      diff  = (t - s)
+      diff1 = (s - r)
+      diff2 = (r - q)
       
       diff01 = (diff - diff1)
       diff02 = (diff - diff2)
       
-      a = sum(diff01**2)
-      b = sum(diff01 * diff02)
-      d = sum(diff02**2)
-      e = sum(diff * diff01)
-      f = sum(diff * diff02)
+      a = sum(diff01**2 * OABweight)
+      b = sum(diff01 * diff02 * OABweight)
+      d = sum(diff02**2 * OABweight)
+      e = sum(diff * diff01 * OABweight)
+      f = sum(diff * diff02 * OABweight)
       
       det = a*d - b*b
       
       if(det .eq. 0.d0) then
-!         call writeinfo("det=0", TRIVIAL)
-!         call random_number(q)
-!         q = q / t
-!         diff2 =(r - q)
-!         diff02 = (diff - diff2)
-!         b = sum(diff01 * diff02)
-!         d = sum(diff02**2)
-!         f = sum(diff * diff02)
-!         det = a*d - b*b
          out = torig
          return
       endif
@@ -4539,7 +4538,7 @@ END SUBROUTINE GAUSSJ
 
       out = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
 
-      deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig)
+      deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig, OABweight)
     end function ngStep   
 
       SUBROUTINE LINFIT(X,Y,SIGMAY,NPTS,MODE,A,SIGMAA,B,SIGMAB,R)

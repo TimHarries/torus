@@ -45,7 +45,7 @@ program torus
   use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
   use photoion_mod, only: photoIonizationloop
   use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image, &
-       dumpIntensityContributions
+       dumpIntensityContributions, readbenchmarkmolecule
   use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
   use cmf_mod, only: atomLoop, calculateAtomSpectrum
   use vtk_mod, only: writeVtkfile
@@ -304,7 +304,11 @@ program torus
   end if
 
   if (molecular) then
-     call readMolecule(co, moleculefile)
+!     if(geometry == "molebench") then
+!        call readbenchmarkMolecule(co, moleculefile)
+!     else
+        call readMolecule(co, moleculefile)
+!     endif
   endif
 
   if (cmf) then
@@ -383,6 +387,7 @@ program torus
 
 ! Carry out geometry specific initialisation before setting up the AMR grid. 
 ! Applies to: cluster, molcluster, wr104, ttauri, magstream, luc_cir3d, cmfgen, romanova.
+  
   call pre_initAMRGrid
 
   ! allocate the grid - this might crash out through memory problems
@@ -734,9 +739,10 @@ program torus
           call writeVtkFile(grid, "rho.vtk", "test.txt")
 
      if (writemol) call molecularLoop(grid, co)
-     
+
      if(.not. writemol) then
-        if (molecular .and. readmol .and. .not. (lucyRadiativeEq)) then
+
+        if (molecular .and. readmol .and. (.not. lucyRadiativeEq)) then
            if(openlucy) then
               call readAMRgrid(lucyFileNamein,.false.,grid)
            else
@@ -751,7 +757,11 @@ program torus
      endif
 
      if (readmol) then 
-        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
+        if(amr3d) then
+           call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
+        else
+           call findTotalMass(grid%octreeRoot, totalMass, maxrho=maxrho, minrho=minrho)
+        endif
         write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
            call writeInfo(message, TRIVIAL)
         if(geometry .eq. 'molcluster') then
@@ -762,10 +772,12 @@ program torus
            write(message,*) "Minimum Density: ",minrho, " g/cm^3"
            call writeInfo(message, TRIVIAL)
         endif
+
         if (dumpdi) then
            call  dumpIntensityContributions(grid, co)
            goto 666
         endif
+        
         call calculateMoleculeSpectrum(grid, co)
      endif
 

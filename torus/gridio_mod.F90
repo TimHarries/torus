@@ -371,7 +371,6 @@ contains
           call writeAttributeStaticFlexi(20, "inFlow", thisOctal%inFlow, fileFormatted)
           call writeAttributeStaticFlexi(20, "velocity", thisOctal%velocity, fileFormatted)
           call writeAttributeStaticFlexi(20, "cornervelocity", thisOctal%cornervelocity, fileFormatted)
-          call writeAttributeStaticFlexi(20, "cornerrho", thisOctal%cornerrho, fileFormatted)
           
           call writeAttributeStaticFlexi(20, "xMax", thisOctal%xMax, fileFormatted)
           call writeAttributeStaticFlexi(20, "yMax", thisOctal%yMax, fileFormatted)
@@ -408,16 +407,14 @@ contains
           call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
           call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
           
-
-
-
           call writeAttributePointerFlexi(20, "molecularLevel", thisOctal%molecularLevel, fileFormatted)
           call writeAttributePointerFlexi(20, "jnu", thisOctal%jnu, fileFormatted)
           call writeAttributePointerFlexi(20, "bnu", thisOctal%bnu, fileFormatted)
           call writeAttributePointerFlexi(20, "molAbundance", thisOctal%molAbundance, fileFormatted)
           call writeAttributePointerFlexi(20, "nh2", thisOctal%nh2, fileFormatted)
           call writeAttributePointerFlexi(20, "microTurb", thisOctal%microTurb, fileFormatted)
-          
+          call writeAttributePointerFlexi(20, "cornerrho", thisOctal%cornerrho, fileFormatted)          
+
           call writeAttributePointerFlexi(20, "N", thisOctal%n, fileFormatted)
           call writeAttributePointerFlexi(20, "departCoeff", thisOctal%departCoeff, fileFormatted)
           call writeAttributePointerFlexi(20, "dustTypeFraction", thisOctal%dustTypeFraction, fileFormatted)
@@ -833,7 +830,7 @@ contains
          case("cornervelocity")
             call readArrayFlexi(20, thisOctal%cornervelocity, fileFormatted)
          case("cornerrho")
-            call readArrayFlexi(20, thisOctal%cornerrho, fileFormatted)
+            call readPointerFlexi(20, thisOctal%cornerrho, fileFormatted)
          case("chiLine")
             call readPointerFlexi(20, thisOctal%chiLine, fileFormatted)
          case("etaLine")

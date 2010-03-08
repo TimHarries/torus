@@ -167,6 +167,7 @@ MODULE octal_mod
     real(double), pointer :: gamma(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
+    real(double) :: h(8) ! used for cluster geometries where the smoothing length of a cell can be stored
 
     LOGICAL, DIMENSION(8)              :: inFlow
 
@@ -179,7 +180,7 @@ MODULE octal_mod
 !    TYPE(vector), DIMENSION(8)         :: quadvelocity       ! DAR very temporary velocity expires 28 Feb 2009
 !    TYPE(vector), DIMENSION(8)         :: linearvelocity       ! DAR very temporary velocity expires 28 Feb 2009
     TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells
-    real(double), DIMENSION(27)    :: cornerrho ! velocity at corners of subcells
+    real(double), DIMENSION(:), pointer    :: cornerrho ! velocity at corners of subcells
     real(double)               :: phi, dphi
     
     logical, dimension(:), pointer                 :: diffusionApprox => null()

@@ -38,7 +38,6 @@ module datacube_mod
      character(len=8) :: yaxisType ! To be written as a FITS keyword
      character(len=8) :: vaxisType ! To be written as a FITS keyword
      real, pointer :: intensity(:,:,:) => null()
-     real, pointer :: flux(:,:,:) => null()
      real, pointer :: tau(:,:,:) => null()
      real, pointer :: nCol(:,:) => null()
      real, pointer :: i0_pos(:,:,:) => null() ! Positive contribution to flux
@@ -166,6 +165,7 @@ contains
     extend=.true.
     group=1
     fpixel=1
+
 
     ! 1st HDU : flux
     if( do_write_Intensity ) then
@@ -581,7 +581,8 @@ contains
 
 ! Initialises cube - sets intensity for cube to 0 
   subroutine initCube(thisCube, nx, ny, nv, mytelescope)
-    use input_variables, only: splitCubes
+    use input_variables, only: splitCubes, wanttau
+
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
@@ -604,7 +605,6 @@ contains
     thisCube%yAxisType    = "Y"
     thisCube%xUnit        = "10^10cm "
     thisCube%IntensityUnit= " "
-    thisCube%FluxUnit     = " "
 
     thisCube%nx = nx
     thisCube%ny = ny
@@ -613,8 +613,7 @@ contains
     allocate(thisCube%yAxis(1:ny))
     allocate(thisCube%vAxis(1:nv))
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
-    allocate(thisCube%flux(1:nx,1:ny,1:nv))
-    allocate(thisCube%tau(1:nx,1:ny,1:nv))
+    if(wanttau) allocate(thisCube%tau(1:nx,1:ny,1:nv))
     allocate(thisCube%nCol(1:nx,1:ny))
 !    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
 !    allocate(thisCube%converged(1:nx,1:ny,1:nv))
@@ -624,15 +623,12 @@ contains
     thisCube%tau =  0.d0
     thisCube%nCol = 0.d0
 
-!    thisCube%flux = 0.d0
 !    thisCube%nsubpixels = 0.d0
 !    thisCube%converged = 0
 !    thisCube%weight = 1.d0
 
     if (splitCubes) then 
        ! flux component not required in configurations which use split cubes 
-       deallocate (thisCube%flux)
-       nullify (thisCube%flux)
        allocate(thisCube%i0_pos(1:nx,1:ny,1:nv))
        allocate(thisCube%i0_neg(1:nx,1:ny,1:nv))
        thisCube%i0_pos(:,:,:) = 0.0
@@ -740,7 +736,7 @@ contains
     do i = ix1, ix2
        do j = iy1, iy2
           n = n + 1
-          spec(1:cube%nv) = spec(1:cube%nv) + cube%flux(i,j,1:cube%nv)
+          spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv)
        enddo
     enddo
 !    spec = spec / dble(n)
@@ -783,7 +779,7 @@ contains
 
     do iv = 1, cube%nv
 
-       background = cube%flux(cube%nx,cube%ny,iv)
+       background = cube%intensity(cube%nx,cube%ny,iv) ! This needs to be in flux units not Intensity
        newArray = 0.d0
 
        do ix = 1, cube%nx
@@ -792,7 +788,7 @@ contains
              do i = ix - cube%nx, ix + cube%nx
                 do j = iy - cube%ny, iy + cube%ny
                    if ((i > 0).and.(i<=cube%nx).and.(j > 0).and.(j <= cube%ny)) then
-                      flux = cube%flux(i,j,iv)
+                      flux = cube%intensity(i,j,iv) ! This needs to be in flux units not Intensity
                    else
                       flux = background
                    endif
@@ -811,7 +807,8 @@ contains
           !write(*,*) "Weight",tot
        enddo
 
-       cube%flux(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny)
+       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny) 
+       ! For flux calculations this needs to be in flux units not Intensity
     enddo
     deallocate(newArray)
     call writeInfo("Done.",TRIVIAL)
@@ -862,11 +859,6 @@ subroutine freeDataCube(thiscube)
     if (associated(thisCube%intensity)) then 
        deallocate(thiscube%intensity)
        nullify(thiscube%intensity)
-    end if
-
-    if (associated(thisCube%flux)) then 
-       deallocate(thiscube%flux)
-       nullify(thiscube%flux)
     end if
 
     if (associated(thisCube%tau)) then 

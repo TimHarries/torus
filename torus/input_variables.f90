@@ -54,12 +54,14 @@ module input_variables
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   integer :: setmaxlevel ! Subsonic turbulent velocity
   real :: vturb ! Subsonic turbulent velocity
+  logical :: noturb ! Subsonic turbulent velocity
   logical :: lineEmission
   logical :: smoothInnerEdge
   logical :: lineimage
   logical :: quasi ! use quasirandom numbers
   logical :: dongstep ! controls Ng Acceleration
   logical :: densitysubsample ! do you want to subsample density in your images?
+  logical :: lowmemory ! if memory is tight
   logical :: maxrhocalc
   logical :: resonanceLine
   real :: probContPhoton
@@ -106,13 +108,16 @@ module input_variables
   logical :: forcedWavelength
   real :: usePhotonWavelength
   logical :: useDust, realdust ! molecular_mod includes continuum emission
+  logical :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
   real :: r0, rhoC ! Filamentry parameters
+  real :: x_D
 
   real(double) :: minVel, maxVel
   real :: imageside ! molecular_mod image parameters
   integer :: itrans, npixels, nsubpixels !nv already exists
   real(double) :: centrevecx, centrevecy, centrevecz
+  logical :: wanttau
 
   logical :: blockHandout
 
@@ -142,6 +147,7 @@ module input_variables
   real :: imageScale
   real :: vMin, vMax
   real :: gridDistance
+  integer :: observerpos
 
   integer :: npix    ! Number of pixels for polimages  
   character(LEN=30) :: filter_set_name  ! name of filter set used for images
@@ -194,6 +200,7 @@ module input_variables
 
   logical :: plot_maps
   logical :: plotlevels
+  logical :: writetempfits
 
   ! output arrays
 

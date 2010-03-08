@@ -167,7 +167,7 @@ module angularImage
 
         if(iv .eq. 1) then
            call writeinfo("Filling Octal parameters for first time",TRIVIAL)
-           call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule, deltaV)
+           call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
            call writeinfo("Done filling Octal parameters for first time",TRIVIAL)
         endif
 
