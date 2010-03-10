@@ -361,7 +361,9 @@ contains
 
 
     do iAtom = 1, nAtom
-       nPops(iAtom,1:thisAtom(iAtom)%nLevels) = matrixB(1+nOffset(iAtom):thisAtom(1)%nLevels+nOffset(iAtom))
+       nPops(iAtom,1:thisAtom(iAtom)%nLevels) = matrixB(1+nOffset(iAtom):thisAtom(iatom)%nLevels+nOffset(iAtom))
+       if (continuumGround(iatom)) npops(iAtom,thisAtom(iatom)%nlevels) = matrixB(1+nOffset(iatom+1))
+       write(*,*) "iatom ",iatom, continuumGround(iatom)
     enddo
     deallocate(matrixA, matrixB)
 
@@ -1468,6 +1470,8 @@ contains
                             thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
                                  thisOctal%newAtomLevel(subcell,1:nAtom,:)  + underCorrect * dPops
 
+                            thisOctal%atomLevel(subcell,:,:) = thisOctal%newatomLevel(subcell,:,:)!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
                             where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-30)
                                thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-30
@@ -1689,9 +1693,8 @@ contains
           if (maxFracChange < tolerance) then
              gridConverged = .true.
           endif
-          gridconverged = .false.
-          write(*,*) " not letting grid converge !!!!!!!!!!"
-          stop
+          gridconverged = .true.
+          write(*,*) "forcing convergence !!!!!!!!!!"
 
 #ifdef MPI
        deallocate(octalsBelongRank)
@@ -2067,9 +2070,13 @@ contains
     currentposition = position
     distToDisc = 1.d30
     if ((currentposition.dot.direction) < 0.d0) then
-       distToDisc = abs(currentPosition%z/direction%z)
-       oldPosition = currentPosition + distToDisc * direction
-       if (sqrt(oldPosition%x**2 + oldPosition%y**2)*1.d10 < ttauriRinner) then
+       if (direction%z /= 0.d0) then
+          distToDisc = abs(currentPosition%z/direction%z)
+          oldPosition = currentPosition + distToDisc * direction
+          if (sqrt(oldPosition%x**2 + oldPosition%y**2)*1.d10 < ttauriRinner) then
+             distToDisc = 1.d30
+          endif
+       else
           distToDisc = 1.d30
        endif
     endif

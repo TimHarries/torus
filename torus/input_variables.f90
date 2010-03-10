@@ -10,6 +10,24 @@ module input_variables
 
   public
 
+
+  logical :: readGrid, writeGrid
+
+    logical :: molecularPhysics
+    logical :: photoionPhysics
+    logical :: atomicPhysics
+    logical :: dustPhysics
+
+    logical :: radiativeEquilibrium
+    logical :: statisticalEquilibrium
+    logical :: photoionEquilibrium
+
+    logical :: calcDataCube
+    logical :: calcImage
+    logical :: calcSpectrum
+
+    character(len=80) :: gridInputFilename, gridOutputFilename
+
  ! globally applied minimum temperature
   real    :: TMinGlobal     
 
@@ -338,7 +356,13 @@ module input_variables
 
   logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
 
+  integer :: inputNsource
+  real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10)
+  type(VECTOR) :: sourcePos(10)
+  character(len=80) :: inputContFluxFile(10)
+
   ! binary parameters
+
 
   real :: period
   real :: shockWidth, shockFac

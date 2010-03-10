@@ -92,6 +92,38 @@ contains
     endif
   end subroutine writeInfo
 
+  subroutine writeBanner(message, cLine, level)
+    integer, optional :: level
+    character(len=*) :: message
+    character(len=1) :: cline
+    character(len=80) :: banner
+    logical :: thisoutputinfo
+    integer :: i, n
+
+
+    thisoutputinfo = outputinfo
+    if (present(level)) then
+       if (verbositylevel .lt. Level) then
+          thisoutputinfo = .false.
+       endif
+    endif
+
+    if (writeoutput.and.thisoutputInfo) then
+       n = LEN(TRIM(message))
+       banner = " "
+       do i = 1 , n 
+          banner(i:i) = cline
+       enddo
+       
+       write(*,'(a)') " "
+       write(*,'(a)') trim(banner)
+       write(*,'(a)') trim(message)
+       write(*,'(a)') trim(banner)
+       write(*,'(a)') " "
+
+    endif
+
+  end subroutine writeBanner
 
 end module messages_mod
 

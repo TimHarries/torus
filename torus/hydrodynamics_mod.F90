@@ -22,6 +22,19 @@ module hydrodynamics_mod
 
 contains
 
+  subroutine hydrodynamics(grid)
+    type(GRIDTYPE) :: grid
+
+    if (grid%octreeRoot%twoD) then
+       call doHydrodynamics2d(grid)
+    else if (grid%octreeRoot%oneD) then
+       call doHydrodynamics1d(grid)
+    else if (grid%octreeRoot%threeD) then
+       call doHydrodynamics3d(grid)
+    endif
+    
+  end subroutine hydrodynamics
+
   recursive subroutine fluxlimiter(thisoctal, limitertype)
     include 'mpif.h'
     integer :: myrank, ierr

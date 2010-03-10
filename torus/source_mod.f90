@@ -26,7 +26,8 @@ module source_mod
      real(double) :: distance
   end type SOURCETYPE
 
-
+  type(SOURCETYPE), pointer :: globalSourceArray(:)
+  integer :: globalnSource
 
   contains
 

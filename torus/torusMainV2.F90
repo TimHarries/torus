@@ -25,8 +25,54 @@ program torus
   use constants_mod
   use messages_mod
   use mpi_global_mod
+  use utils_mod
   use inputs_mod
+  use timing
+  use grid_mod
+  use setupamr_mod
+  use physics_mod
+  use outputs_mod
+
+  type(GRIDTYPE) :: grid
+
+
+  writeoutput    = .true.
+  doTuning       = .true.
+  outputwarnings = .true.
+  outputinfo     = .true.
+  myRankIsZero   = .true.
+
+  call setVersion("V2.0")
+  grid%version = torusVersion
+  verbosityLevel = 5
+  call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
+
+
+#ifdef MPI
+  if (myRankGlobal/=1) writeoutput  = .false.
+  if (myRankGlobal/=1) doTuning     = .false.
+  if (myRankGlobal/=0) myRankIsZero = .false.
+#endif
+  
+  ! For time statistics
+  if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
+
+  ! set up a random seed
+  
+  call init_random_seed()
   
   call inputs()
+
+  call  setupamrgrid(grid)
+
+  call setupMicrophysics()
+
+  call doPhysics(grid)
+
+  call doOutputs(grid)
+
+  if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
+
+  call writeBanner("Torus completed","o",TRIVIAL)
 
 end program torus

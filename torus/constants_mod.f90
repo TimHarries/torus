@@ -100,6 +100,9 @@ module constants_mod
 
   real(double), parameter :: msolpercAUtogpercc = msol / (autocm**3)    
 
+  ! unit conversions
+  real(double), parameter :: kmsToC = 1.d5/cSpeed
+
 end module constants_mod
 
 

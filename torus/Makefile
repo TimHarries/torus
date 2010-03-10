@@ -64,8 +64,6 @@ ifeq ($(SYSTEM), g95)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    XMLLIBS = `FoX-config`
-    XMLINCLUDE = -I/usr/local/finclude		
 #    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
@@ -606,7 +604,6 @@ endif
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90
    INPUTSMODSOURCE= inputs_modV2.f90
-   ETCFLAG += -DUSEXML
 else	
    TORUSMAINSOURCE= torusMain.F90
    INPUTSMODSOURCE= inputs_mod.f90
@@ -641,7 +638,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90 magnetic_mod.f90 \
-            setupamr_mod.f90
+            setupamr_mod.f90 physics_mod.f90 outputs_mod.f90
 
 F77SOURCE = phfit2.f
 

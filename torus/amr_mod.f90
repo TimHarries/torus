@@ -379,12 +379,6 @@ CONTAINS
     enddo
     
     ! allocate any variables that need to be 
-    if (.not.grid%oneKappa) then
-       ALLOCATE(grid%octreeRoot%kappaAbs(8,grid%nOpacity))
-       ALLOCATE(grid%octreeRoot%kappaSca(8,grid%nOpacity))
-       grid%octreeRoot%kappaAbs = 1.e-30
-       grid%octreeRoot%kappaSca = 1.e-30
-    endif
 
 
     if (oneD) then
@@ -629,18 +623,18 @@ CONTAINS
     parent%indexChild(newChildIndex) = iChild
 
     ! allocate any variables that need to be  
-    IF (.NOT.grid%oneKappa) THEN
-       ! The kappa arrays should be allocated with grid%nopacity instead of grid%nlambda
-       ! because for line calculation, there is only one kappa needed.
-       ! (but grid%nlambda is not 1). If you allocate the arrays with grid%nlambda,
-       ! it will be a huge waste of RAM. ---  (RK) 
-       ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity))
-       ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity))
-       ! ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nlambda))
-       ! ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nlambda))
-       parent%child(newChildIndex)%kappaAbs = 1.e-30
-       parent%child(newChildIndex)%kappaSca = 1.e-30
-    ENDIF
+!    IF (.NOT.grid%oneKappa) THEN
+!       ! The kappa arrays should be allocated with grid%nopacity instead of grid%nlambda
+!       ! because for line calculation, there is only one kappa needed.
+!       ! (but grid%nlambda is not 1). If you allocate the arrays with grid%nlambda,
+!       ! it will be a huge waste of RAM. ---  (RK) 
+!       ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity))
+!       ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity))
+!       ! ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nlambda))
+!       ! ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nlambda))
+!       parent%child(newChildIndex)%kappaAbs = 1.e-30
+!       parent%child(newChildIndex)%kappaSca = 1.e-30
+!    ENDIF
     NULLIFY(parent%child(newChildIndex)%child)
 
 
@@ -16835,7 +16829,7 @@ end function readparameterfrom2dmap
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
-         lineEmission !, storeScattered
+         lineEmission, atomicPhysics!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -16903,6 +16897,20 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        ALLOCATE(thisOctal%N(8,1:stateqMaxLevels))
        ALLOCATE(thisOctal%kappaAbs(8,1))
+    endif
+
+    if (atomicPhysics) then
+       call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaAbs, thisOctal%maxChildren,1)
+       call allocateAttribute(thisOctal%kappaSca, thisOctal%maxChildren,1)
+       write(*,*) "SIZE ",size(thisOctal%kappaAbs,1),size(thisOctal%kappaAbs,2)
     endif
 
     if (molecular) then

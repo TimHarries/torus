@@ -58,6 +58,7 @@ module modelatom_mod
      real(double), pointer :: xSection(:,:)
   end type TOPBASETYPE
 
+  type(MODELATOM), pointer :: globalAtomArray(:)
 
 contains
 
@@ -950,7 +951,7 @@ contains
        logical, save :: firstTime = .true.
 
        kappa = 0.d0
-       do iAtom = 1, nAtom
+       do iAtom = 1, 1!nAtom
           do j = 1, thisAtom(iAtom)%nRBFtrans
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
           if (thisAtom(iatom)%transType(itrans) /= "RBF") then
@@ -961,11 +962,15 @@ contains
              if (ilower < 6) then
                 fac = exp(-hCgs*freq / (kerg * temperature))
                 if (present(iFreq)) then
-                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
-                        (pops(iAtom, ilower)-nstar(iatom,ilower)*fac)
+!                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
+!                        (pops(iAtom, ilower)-nstar(iatom,ilower)*fac)
+
+                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * pops(iAtom, ilower)
                 else
-                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * &
-                        (pops(iAtom, ilower)-nstar(iatom,ilower)*fac)
+!                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * &
+!                        (pops(iAtom, ilower) - nstart(iatom,ilower)*fac)
+
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * pops(iatom,ilower)
                 endif
              endif
           enddo
@@ -1012,7 +1017,7 @@ contains
     fac = (2.d0 * hCgs * freq**3)/(cSpeed**2)
     expFac = exp(-(hcgs*freq)/(kerg*temperature)) 
  
-    do iAtom = 1, nAtom
+    do iAtom = 1, 1!nAtom
 
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)

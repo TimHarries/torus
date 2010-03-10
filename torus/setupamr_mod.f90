@@ -1,8 +1,11 @@
 module setupamr_mod
 
+  use cmfgen_class
+  use stateq_mod
   use amr_mod
   use vtk_mod
   use vector_mod
+  use magnetic_mod
   use messages_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
@@ -14,6 +17,216 @@ module setupamr_mod
   implicit none
 
 contains
+
+
+  subroutine setupamrgrid(grid)
+    use cluster_class
+    use gridio_mod
+    use amr_mod
+    use lucy_mod
+    use grid_mod
+    use input_variables, only : readgrid, gridinputfilename, geometry, mdot
+    use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
+    use input_variables, only : amr1d, amr2d, amr3d
+    use input_variables, only : amrGridSize, doSmoothGrid, dustPhysics, dosmoothGridTau, photoionPhysics
+    use input_variables, only : nDustType, nLambda, lambdaSmooth, variableDustSublimation
+    use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
+    use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
+    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax
+    use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
+    use discwind_class, only: discwind, new, add_discwind
+    ! For romanova geometry case
+    type(romanova) :: romData ! parameters and data for romanova geometry
+    type(cluster)   :: young_cluster
+    type(VECTOR) :: amrGridCentre
+    character(len=80) :: newContFluxFile
+    real :: theta1, theta2
+    logical :: ok, flatspec
+    type(GRIDTYPE) :: grid
+    logical :: gridConverged
+    real(double) :: astar, mass_accretion_old
+    character(len=80) :: message
+    integer :: j, ismoothLam
+    integer :: nVoxels, nOctals
+
+    flatspec = .true.
+     call new(young_cluster, dble(amrGridSize), .false.)
+
+    if (readgrid) then
+       call readAMRgrid(gridInputfilename, .false., grid)
+    else
+
+       select case (geometry)
+          case("cmfgen")
+             onekappa=.false.
+             call read_cmfgen_data("OPACITY_DATA")
+             call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
+             call put_cmfgen_Rmax(CMFGEN_Rmax)  ! in [10^10cm]
+          case DEFAULT
+       end select
+
+       call initAMRGrid(newContFluxFile,flatspec,grid,ok,theta1,theta2)
+
+       amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
+       call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
+
+       select case (geometry)
+
+       case("fogel")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call setupFogel(grid, "harries_e0p1.dat", "HCN")
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+
+       case("cluster", "theGalaxy")
+
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+       case("molcluster")
+             call writeInfo("Initialising adaptive grid...", TRIVIAL)
+             call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+             call writeInfo("Done. Splitting grid...", TRIVIAL)
+             call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+             call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+       case("wr104")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+          do
+             gridConverged = .true.
+             call myScaleSmooth(smoothFactor, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .false.)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+
+       case("starburst")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          gridconverged = .false.
+          !          do while(.not.gridconverged) 
+          !             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
+          !          enddo
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+
+       case DEFAULT
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call writeInfo("First octal initialized.", TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+          ! This section is getting rather long. Maybe this should be done in 
+          ! wrapper subroutine in amr_mod.f90.
+          if (geometry=="ttauri") then 
+             mdot = 2.d-8 * msol * secstoyears
+             !             do i = 1, 2
+             !                call zeroDensity(grid%octreeRoot)
+             !                call assignDensitiesMahdavi(grid, dble(mdot))
+             !                gridconverged = .false.
+             !                do while (.not.gridconverged)
+             !                   gridConverged = .true.
+             !                   call massSplit(grid%octreeRoot, grid, gridconverged, inheritProps=.true., interpProps=.false.)
+             !                   if (gridConverged) exit
+             !                enddo
+             !             enddo
+             call zeroDensity(grid%octreeRoot)
+             astar = accretingAreaMahdavi(grid)
+             if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
+             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
+	     if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
+             ! Finding the total mass in the accretion flow
+             mass_accretion_old = 0.0d0
+             call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
+             write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
+             call writeInfo(message,FORINFO)
+
+
+          end if  ! gemoetry == "ttaruri"
+
+          ! 
+          if (doSmoothGrid) then
+             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             do
+                gridConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothFactor, grid, &
+                     gridConverged,  inheritProps = .false., &
+                     interpProps = .false.,  &
+                     stellar_cluster=young_cluster, romData=romData)
+                if (gridConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+          endif
+
+          call writeVtkFile(grid, "beforesmooth.vtk")
+
+          ! Smooth the grid with respect to optical depth, if requested
+          if (doSmoothGridTau.and.dustPhysics) then
+             call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+             call locate(grid%lamArray, nLambda,lambdaSmooth,ismoothlam)
+             do j = iSmoothLam,  nLambda, 2
+                write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                call writeInfo(message, TRIVIAL)
+                do
+                   gridConverged = .true.
+                   call putTau(grid, grid%lamArray(j))
+                   call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                        inheritProps = .false., interpProps = .false., &
+                        photosphereSplit = ((.not.variableDustSublimation).and.(.not.photoionPhysics)))
+                   if (gridConverged) exit
+                end do
+             enddo
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+
+             call writeVtkFile(grid, "aftersmooth.vtk")
+             ! The tau smoothing may result in large differences in the size
+             ! of neighbouring octals, so we smooth the grid again.
+
+             if (doSmoothgrid) then
+                call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+                do
+                   gridConverged = .true.
+                   ! The following is Tim's replacement for soomthAMRgrid.
+                   call myScaleSmooth(smoothFactor, grid, &
+                        gridConverged,  inheritProps = .false., interpProps = .false., &
+                        stellar_cluster=young_cluster, romData=romData)
+                   if (gridConverged) exit
+                end do
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+             endif
+          end if
+
+       end select
+
+
+        call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+        grid%nOctals = nOctals
+        call howmanysplits()
+
+        call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
+        call finishGrid(grid%octreeRoot, grid, romData=romData)
+
+
+        call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
+        call howmanysplits()
+
+       select case (geometry)
+          case("cmfgen")
+              call map_cmfgen_opacities(grid)
+              call distort_cmfgen(grid%octreeRoot, grid)
+          case DEFAULT
+       end select
+
+
+    endif
+  end subroutine setupamrgrid
 
   subroutine setupFogel(grid, filename, speciesName)
     use input_variables, only : rinner, rOuter

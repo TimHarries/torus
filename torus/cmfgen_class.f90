@@ -353,7 +353,11 @@ contains
        v = VECTOR(1.0e-10, 1.0e-10, 1.0e-10)  ! [c]
     else
        Vr = loginterp_dble(cmfgen_opacity%V, cmfgen_opacity%nd, cmfgen_opacity%R, r)    
-       v = (point/r) * (Vr*1.0e5/cspeed_dbl)   ! [c]
+       if (r/=0.d0) then
+          v = (point/r) * (Vr*1.0e5/cspeed_dbl)   ! [c]
+       else
+          v = VECTOR(0.d0, 0.d0, 0.d0)
+       endif
        !     \hat(r) x  Vr/c
     end if
 
@@ -655,7 +659,11 @@ contains
        else
           
           rVec = subcellCentre(thisOctal, subcell)
-          mu = rVec%z/modulus(rVec)
+          if (modulus(rVec) /= 0.d0) then
+             mu = rVec%z/modulus(rVec)
+          else
+             mu = 0.d0
+          endif
           sinTheta = sqrt(1.d0-mu**2)
           
 ! Dwarkadas and Owocki, 2002, ApJ 581, 1337

@@ -58,8 +58,9 @@ module surface_mod
 
 contains
 
-  subroutine buildSphere(centre, radius, surface, nTheta, contFile)
-    use input_variables, only : teff, lamstart, lamEnd, nLambda
+  subroutine buildSphere(centre, radius, surface, nTheta, contFile, teff)
+    use input_variables, only : lamstart, lamEnd, nLambda
+    real(double) :: teff
     type(VECTOR),intent(in) :: centre
     real(double),intent(in) :: radius ! 1.e10 cm
     real(double) :: area ! 1.e20 cm^2
@@ -87,7 +88,8 @@ contains
     if (contfile /= "blackbody") then
        call readSpectrum(hotSpec, contfile, ok)
     else
-       call fillSpectrumBB(hotSpec, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
+       write(*,*) lamstart,lamend,nlambda
+       call fillSpectrumBB(hotSpec, teff,  dble(lamstart), dble(lamEnd), nLambda)
     endif
 
 
@@ -161,7 +163,7 @@ contains
           dTheta = pi / real(nTheta)
           dPhi = twoPi / real(nPhi)
           area = radius * dTheta * radius * sin(theta) * dPhi
-          call addElement(surface, radius, rVec, dtheta, dphi, area, teff)
+          call addElement(surface, radius, rVec, dtheta, dphi, area, real(teff))
           surface%angleArray(i,j) = n
        enddo
     enddo
