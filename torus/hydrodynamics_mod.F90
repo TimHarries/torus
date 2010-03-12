@@ -22,7 +22,7 @@ module hydrodynamics_mod
 
 contains
 
-  subroutine hydrodynamics(grid)
+  subroutine dohydrodynamics(grid)
     type(GRIDTYPE) :: grid
 
     if (grid%octreeRoot%twoD) then
@@ -33,7 +33,7 @@ contains
        call doHydrodynamics3d(grid)
     endif
     
-  end subroutine hydrodynamics
+  end subroutine dohydrodynamics
 
   recursive subroutine fluxlimiter(thisoctal, limitertype)
     include 'mpif.h'
