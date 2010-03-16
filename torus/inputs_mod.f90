@@ -1154,7 +1154,8 @@ contains
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
     call getLogical("quickthermal", quickThermal, cLine, nLines, &
-         "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+         "Do quick thermal balance calculation: ","(a,1l,a)", .false., ok, .false.)
+
 
     call getLogical("dustonly", dustonly, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
@@ -1417,6 +1418,11 @@ contains
        call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
             "Minimum percentage of undersampled cell in lucy iteration: ", &
             "(a,f4.2,a)",0.0,ok,.false.)
+
+
+    call getLogical("usemetals", usemetals, cLine, nLines, &
+         "Do quick thermal balance calculation: ","(a,1l,a)", .false., ok, .true.)
+
 
        call getReal("inclination", thisinclination, cLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)

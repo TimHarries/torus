@@ -44,8 +44,13 @@ module source_mod
     end function newSource
 
 
-
-
+    function ionizingFlux(source, grid) result(flux)
+      type(sourcetype) :: source
+      type(GRIDTYPE) :: grid
+      real(double) :: flux
+      flux = sumPhotonsOverBand(source%spectrum, 1.d0, 912.d0)
+      flux = flux * (source%radius*1.d10)**2/source%distance**2
+    end function ionizingFlux
 
 
 !    subroutine randomSource(source, nSource, iSource)

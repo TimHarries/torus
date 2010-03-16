@@ -49,6 +49,7 @@ module input_variables
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
   logical :: photoionization
+  logical :: usemetals 
   logical :: quickThermal
   logical :: dustOnly
   logical :: molecular

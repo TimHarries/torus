@@ -36,7 +36,7 @@ program torus
   use TTauri_mod, only: infallenhancment, initInfallEnhancement 
   use romanova_class, only: romanova
   use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
-  use source_mod, only: sourceType, buildSphere 
+  use source_mod, only: sourceType, buildSphere, ionizingFlux
   use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter
   use cluster_class, only: cluster
   use surface_mod, only: surfaceType
@@ -288,6 +288,7 @@ program torus
 
   ! get the model parameters
 
+  usemetals = .true.
   call inputs() ! variables are passed using the input_variables module
 
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
@@ -2346,14 +2347,15 @@ subroutine set_up_sources
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
 
+       source(1)%distance = 7. * pctocm
        source(1)%luminosity = source(1)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-            (fourPi*(50.d0* pctocm)**2)
-       source(1)%distance = 50.d0 * pctocm
+            (fourPi*source(1)%distance**2)
        if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
        source%outsideGrid = .true.
+       if (writeoutput) write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
 
     case("symbiotic")
        nSource = 2

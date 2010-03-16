@@ -114,7 +114,7 @@ contains
     if (grid%geometry == "hii_test") deltaTforDump = 100.d0/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
-    if (grid%geometry == "bonnor") startFromNeutral = .true.
+!    if (grid%geometry == "bonnor") startFromNeutral = .true.
 
 
     if (readlucy) then
@@ -184,7 +184,7 @@ contains
 
     loopLimitTime = 1.e30
     if (startFromNeutral) loopLimitTime = grid%currentTime
-
+    loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed
     do irefine = 1, 1
 
        if (irefine == 1) then
@@ -308,7 +308,8 @@ contains
 
 
        loopLimitTime = 1.e30
-       if (startFromNeutral) loopLimitTime = grid%currentTime
+!       loopLimitTime = grid%currentTime
+!       loopLimitTime = max(loopLimitTime,(grid%halfSmallestSubcell*1.d10)/cSpeed)
 
        call setupNeighbourPointers(grid, grid%octreeRoot)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
@@ -371,6 +372,7 @@ contains
     real(double) :: tLimit
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
+    character(len=80) :: vtkFilename
     logical :: readlucy, writelucy
     type(OCTAL), pointer :: thisOctal, currentOctal !, tempOctal
     integer :: currentSubcell
@@ -484,7 +486,7 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 1000000
+    nMonte = 10000000
 
     nIter = 0
     
@@ -753,15 +755,12 @@ contains
                 if (quickThermal) then
                    call quickThermalCalc(thisOctal)
                 else
-                   if (.not.firstCall) then
-                      call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
-                   endif
+                   call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
                 endif
              enddo
           endif
        enddo
 
-       call quickSublimate(grid%octreeRoot) ! do dust sublimation
     endif
 
     deallocate(octalArray)
@@ -867,9 +866,16 @@ if (.false.) then
 
 
 
-    firstCall = .false.
+
+ call quickSublimate(grid%octreeRoot) ! do dust sublimation
+
+! write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+! call writeVtkFile(grid, vtkFilename, &
+!      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+!      "hydrovelocity","dust1"/))
 
  enddo
+
 
 ! thisOctal => grid%octreeRoot
 ! call writeInfo("Calculating continuum emissivities...",TRIVIAL)
@@ -1520,8 +1526,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        else
           thisOctal%ionFrac(subcell,1) = 1.e-10
           thisOctal%ionFrac(subcell,2) = 1.
-          thisOctal%ionFrac(subcell,3) = 1.e-10
-          thisOctal%ionFrac(subcell,4) = 1.       
+          if (SIZE(thisOctal%ionFrac,2)>2) then
+             thisOctal%ionFrac(subcell,3) = 1.e-10
+             thisOctal%ionFrac(subcell,4) = 1.       
+          endif
        endif
     enddo
   end subroutine ionizeGrid

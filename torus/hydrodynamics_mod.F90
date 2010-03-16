@@ -4373,6 +4373,7 @@ contains
    end function getBoundary
 
   subroutine refineGridGeneric(grid, tol)
+    use input_variables, only : minDepthAMR, maxDepthAMR
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iThread
@@ -4381,6 +4382,7 @@ contains
     real(double) :: tol
     globalConverged = .false.
     if (myrankGlobal == 0) goto 666
+    if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
     do
        call setAllUnchanged(grid%octreeRoot)
        globalConverged(myRankGlobal) = .true.
@@ -4957,6 +4959,7 @@ end subroutine refineGridGeneric2
 
   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
 
+    use input_Variables, only : minDepthAMR, maxDepthAMR
     type(GRIDTYPE) :: grid
     logical :: inheritFlag
     integer, optional :: dumpfiles
@@ -4998,6 +5001,8 @@ end subroutine refineGridGeneric2
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
+
+    if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
 
     allThreadsConverged = .false.
     do while(.not.allThreadsConverged)

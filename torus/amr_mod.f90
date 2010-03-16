@@ -8172,8 +8172,10 @@ IF ( .NOT. gridConverged ) RETURN
     
        thisOctal%ionFrac(subcell,1) = 1.e-10
        thisOctal%ionFrac(subcell,2) = 1.
-       thisOctal%ionFrac(subcell,3) = 1.e-10
-       thisOctal%ionFrac(subcell,4) = 1.       
+       if (SIZE(thisOctal%ionFrac,2) > 2) then
+          thisOctal%ionFrac(subcell,3) = 1.e-10
+          thisOctal%ionFrac(subcell,4) = 1.       
+       endif
        thisOctal%etaCont(subcell) = 0.
     endif
 
