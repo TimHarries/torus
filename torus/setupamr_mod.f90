@@ -25,9 +25,10 @@ contains
     use amr_mod
     use lucy_mod
     use grid_mod
+    use photoionAMR_mod, only : resizePhotoionCoeff
     use input_variables, only : readgrid, gridinputfilename, geometry, mdot
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
-    use input_variables, only : amr1d, amr2d, amr3d
+    use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
     use input_variables, only : amrGridSize, doSmoothGrid, dustPhysics, dosmoothGridTau, photoionPhysics
     use input_variables, only : nDustType, nLambda, lambdaSmooth, variableDustSublimation
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
@@ -53,7 +54,11 @@ contains
      call new(young_cluster, dble(amrGridSize), .false.)
 
     if (readgrid) then
+       grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
+
+       if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
+
     else
 
        select case (geometry)
@@ -66,6 +71,7 @@ contains
        end select
 
        call initAMRGrid(newContFluxFile,flatspec,grid,ok,theta1,theta2)
+       grid%splitOverMPI = splitOverMPI
 
        amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)

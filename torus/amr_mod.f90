@@ -8114,7 +8114,6 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
 
-    use input_variables, only : photoionization
     use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use utils_mod, only: bonnorebertrun
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -8162,13 +8161,12 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%gamma(subcell) = 1.d01
     thisOctal%iEquationOfState(subcell) = 1
       
-    if (photoionization) then
-       thisOctal%inFlow(subcell) = .true.
-       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-       thisOctal%ne(subcell) = thisOctal%nh(subcell)
-       thisOctal%nhi(subcell) = 1.e-5
-       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
     
        thisOctal%ionFrac(subcell,1) = 1.e-10
        thisOctal%ionFrac(subcell,2) = 1.
@@ -8177,7 +8175,6 @@ IF ( .NOT. gridConverged ) RETURN
           thisOctal%ionFrac(subcell,4) = 1.       
        endif
        thisOctal%etaCont(subcell) = 0.
-    endif
 
     zplusbound = 2
     zminusbound = 2
@@ -16831,7 +16828,7 @@ end function readparameterfrom2dmap
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
-         lineEmission, atomicPhysics!, storeScattered
+         lineEmission, atomicPhysics, photoionPhysics!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -16926,7 +16923,7 @@ end function readparameterfrom2dmap
     endif
 
 
-    if (photoionization) then
+    if (photoionization.or.photoionPhysics) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
        thisOctal%oldFrac = 1.d-30
        call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)

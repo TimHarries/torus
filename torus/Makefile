@@ -320,7 +320,7 @@ ifeq ($(SYSTEM), zen)
 
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT -mcmodel=medium -i-dynamic #-ipo 
-    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic# -ipo
+    FASTFLAG= -O3 -mcmodel=medium -i-dynamic# -ipo
 #    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic 
 #    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 
@@ -646,7 +646,8 @@ F77SOURCE = phfit2.f
 CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
-                 phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90 spec_ndf.F90 image_ndf.F90 timedep_mod.F90
+                 phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90 spec_ndf.F90 image_ndf.F90 timedep_mod.F90 \
+	         $(TORUSMAINSOURCE)
 
 CAPF90SOURCELIB = photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F90 \
 	          diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
@@ -655,13 +656,12 @@ CAPF90SOURCELIB = photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F
 
 # Object files
 #
-TORUSMAINOBJ = $(TORUSMAINSOURCE:.F90=.o)
 INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
 F77OBJ = $(F77SOURCE:.f=.o)
-ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(TORUSMAINOBJ) $(INPUTSMODOBJ)
+ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(INPUTSMODOBJ)
 LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ) $(INPUTSMODOBJ)
 
 #
@@ -680,7 +680,7 @@ all: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(TORUSMAINOBJ) $(INPUTSMODOBJ) $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(INPUTSMODOBJ) $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS) $(XMLLIBS)
 	    @echo "...done"
     else
@@ -734,7 +734,7 @@ link: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(TORUSMAINOBJ) $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
     else

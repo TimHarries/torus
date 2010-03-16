@@ -64,6 +64,11 @@ contains
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
 
+       call getLogical("splitovermpi", splitOverMPI, cLine, nLines, &
+            "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .true.)
+
+
+
     call getLogical("readgrid", readGrid, cLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
@@ -225,6 +230,61 @@ contains
   subroutine readDustPhysicsParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+    real :: grainFracTotal
+    integer :: i
+    character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, &
+         aMaxLabel, qDistLabel, pdistLabel, a0label
+
+       oneKappa = .true.
+
+       call getReal("dusttogas", dusttoGas, 1., cLine, nLines, &
+            "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+
+       call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
+       if (nDustType .gt. maxDustTypes) then
+          if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
+          stop
+       end if
+
+
+       grainFracTotal = 0.
+       do i = 1, nDustType
+          write(grainTypeLabel, '(a,i1.1)') "graintype",i
+          write(grainFracLabel, '(a,i1.1)') "grainfrac",i
+          write(aMinLabel, '(a,i1.1)') "amin",i
+          write(aMaxLabel, '(a,i1.1)') "amax",i
+          write(qDistLabel, '(a,i1.1)') "qdist",i
+          write(pDistLabel, '(a,i1.1)') "pdist",i
+          write(a0Label, '(a,i1.1)') "a0",i
+          !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
+          !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
+          !       if (writeoutput) write(*,*)
+          call getString(grainTypeLabel, grainType(i), cLine, nLines, &
+               "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+
+          call getReal(grainFracLabel, grainFrac(i), 1., cLine, nLines, &
+               "Grain fractional abundance: ","(a,f8.5,1x,a)",1. , ok, .false.)
+          grainFracTotal = grainFracTotal + grainFrac(i)
+
+          call getReal(aminLabel, aMin(i), 1., cLine, nLines, &
+               "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
+
+          call getReal(amaxLabel, aMax(i), 1., cLine, nLines, &
+               "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
+
+          call getReal(qDistLabel, qdist(i), 1., cLine, nLines, &
+               "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
+
+          call getReal(a0Label, a0(i), 1., cLine, nLines, &
+               "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
+
+
+          call getReal(pdistLabel, pdist(i), 1., cLine, nLines, &
+               "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
+          if (writeoutput) write(*,*)
+       enddo
+
   end subroutine readDustPhysicsParameters
 
   subroutine readAtomicPhysicsParameters(cLine, nLines)
@@ -369,6 +429,39 @@ contains
   subroutine readPhotoionPhysicsParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getLogical("quickthermal", quickThermal, cLine, nLines, &
+         "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+    call getReal("h_abund", h_abund, 1., cLine, nLines, &
+         "Hydrogen abdunance: ","(a,1PF8.3,a)", &
+         1., ok, .false.)
+
+    call getReal("he_abund", he_abund, 1., cLine, nLines, &
+         "Helium abdunance: ","(a,1PF8.3,a)", &
+         0.1, ok, .false.)
+
+    call getReal("c_abund", c_abund, 1., cLine, nLines, &
+         "Carbon abdunance: ","(a,1PF8.3,a)", &
+         22.e-5, ok, .false.)
+
+    call getReal("n_abund", n_abund, 1., cLine, nLines, &
+         "Nitrogen abdunance: ","(a,1PF8.3,a)", &
+         4.e-5, ok, .false.)
+
+    call getReal("o_abund", o_abund, 1., cLine, nLines, &
+         "Oxygen abdunance: ","(a,1PF8.3,a)", &
+         33.e-5, ok, .false.)
+
+    call getReal("ne_abund", ne_abund, 1., cLine, nLines, &
+         "Neon abdunance: ","(a,1PF8.3,a)", &
+         5.e-5, ok, .false.)
+
+    call getReal("s_abund", s_abund, 1., cLine, nLines, &
+         "Sulphur abdunance: ","(a,1PF8.3,a)", &
+         0.9e-5, ok, .false.)
+
   end subroutine readPhotoionPhysicsParameters
 
 

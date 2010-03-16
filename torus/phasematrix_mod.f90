@@ -388,17 +388,24 @@ contains
     integer :: nDustType, nLambda, nMuMie
     type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     integer :: i, j
+    logical, save :: firstTime = .true.
 
     do i = 1, nDustType
        do j = 1, nLambda
           if ((miePhase(i,j,nMuMie)%element(1,1)/miePhase(i,j,nMuMie-1)%element(1,1)) > 10.d0) then
              miePhase(i,j,nMuMie)%element  = 10.d0 * miePhase(i,j,nMuMie-1)%element
-             if (writeoutput) write(*,*) "! Undersampeld miephase fixed (near 180)"
+             if (writeoutput.and.firstTime) then
+                write(*,*) "! Undersampeld miephase fixed (near 180)"
+                firstTime = .false.
+             endif
           endif
 
           if ((miePhase(i,j,1)%element(1,1)/miePhase(i,j,2)%element(1,1)) > 10.d0) then
              miePhase(i,j,1)%element  = 10.d0 * miePhase(i,j,2)%element
-             if (writeoutput) write(*,*) "! Undersampeld miephase fixed (near 0)"
+             if (writeoutput.and.firstTime) then
+                write(*,*) "! Undersampeld miephase fixed (near 0)"
+                firstTime = .false.
+             endif
           endif
        enddo
     enddo

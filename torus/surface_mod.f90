@@ -88,7 +88,6 @@ contains
     if (contfile /= "blackbody") then
        call readSpectrum(hotSpec, contfile, ok)
     else
-       write(*,*) lamstart,lamend,nlambda
        call fillSpectrumBB(hotSpec, teff,  dble(lamstart), dble(lamEnd), nLambda)
     endif
 

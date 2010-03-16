@@ -34,6 +34,24 @@ program torus
   use outputs_mod
 
   type(GRIDTYPE) :: grid
+#ifdef MPI
+   include 'mpif.h'  
+#endif
+#ifdef MPI
+  ! For MPI implementations =====================================================
+  integer ::   ierr           ! error flag
+#endif
+
+#ifdef MPI
+  ! FOR MPI IMPLEMENTATION=======================================================
+  !  initialize the system for running MPI
+  call MPI_INIT(ierr) 
+
+  ! Set up amrCOMMUNICATOR and global mpi groups
+  call setupAMRCOMMUNICATOR
+
+  !===============================================================================
+#endif
 
 
   writeoutput    = .true.
@@ -42,18 +60,20 @@ program torus
   outputinfo     = .true.
   myRankIsZero   = .true.
 
-  call setVersion("V2.0")
-  grid%version = torusVersion
-  verbosityLevel = 5
-  call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
-
 
 #ifdef MPI
   if (myRankGlobal/=1) writeoutput  = .false.
   if (myRankGlobal/=1) doTuning     = .false.
   if (myRankGlobal/=0) myRankIsZero = .false.
 #endif
-  
+
+
+  call setVersion("V2.0")
+  grid%version = torusVersion
+  verbosityLevel = 5
+  call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
+
+
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
@@ -63,15 +83,35 @@ program torus
   
   call inputs()
 
+
+  call setupMicrophysics(grid)
+
   call  setupamrgrid(grid)
 
-  call setupMicrophysics()
+  call setupGlobalSources(grid)
+
+
+  call writeVtkFile(grid, "rho.vtk")
+
+
+  call writeBanner("Run-time messages","+",TRIVIAL)
 
   call doPhysics(grid)
 
   call doOutputs(grid)
 
-  if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
+  if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
+
+
+  call torus_mpi_barrier
+  call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+  call freeGrid(grid)
+
+#ifdef MPI
+  call torus_mpi_barrier
+  call freeAMRCOMMUNICATOR
+  call MPI_FINALIZE(ierr)
+#endif
 
   call writeBanner("Torus completed","o",TRIVIAL)
 

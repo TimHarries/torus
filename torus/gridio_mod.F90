@@ -747,6 +747,7 @@ contains
       character(len=20) :: tag
 
       type(octal), pointer :: thisChild => null()
+      type(octal), pointer :: topOctal => null()
       type(octal), pointer :: tempChildPointer => null()
       type(octal), pointer :: tempChildPointer2 => null()
       integer              :: iChild
@@ -1125,9 +1126,10 @@ contains
                      do iChild = 1, thisOctal%nChildren, 1
                         do iThread = 1, myRankGlobal
                            thisChild => thisOctal%child(iChild)
+                           topOctal => thisChild
                            call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
                            if (iThread /= myRankGlobal) then
-                              call deleteOctreeBranch(thisChild,onlyChildren=.false., adjustParent=.false.)
+                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
                            else
                               exit
                            endif
@@ -1157,9 +1159,10 @@ contains
                      do iChild = 1, thisOctal%nChildren, 1
                         do iThread = 1, myRankGlobal
                            thisChild => thisOctal%child(iChild)
+                           topOctal => thisChild
                            call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
                            if (iThread /= myRankGlobal) then
-                              call deleteOctreeBranch(thisChild,onlyChildren=.false., adjustParent=.false.)
+                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
                            else
                               exit
                            endif

@@ -25,7 +25,8 @@ use phasematrix_mod
 implicit none
 
 private
-public :: photoIonizationloopAMR, radiationHydro, createImagesplitgrid
+public :: photoIonizationloopAMR, radiationHydro, createImagesplitgrid, ionizeGrid, &
+     resizePhotoionCoeff
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -372,7 +373,6 @@ contains
     real(double) :: tLimit
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
-    character(len=80) :: vtkFilename
     logical :: readlucy, writelucy
     type(OCTAL), pointer :: thisOctal, currentOctal !, tempOctal
     integer :: currentSubcell
@@ -628,7 +628,8 @@ contains
                             
                             if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
                                call random_number(r1)
-                               if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
+
+                               if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
                                   call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                   call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                                   call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
@@ -695,7 +696,9 @@ contains
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        epsOverDeltaT = (lCore) / dble(nMonte)
        if (myrank == 1) then
-          write(*,*) "Thread 1 had ",real(nTotScat)/real(nPhot), " scatters per photon"
+          if (nPhot > 0) then
+             write(*,*) "Thread 1 had ",real(nTotScat)/real(nPhot), " scatters per photon"
+          endif
        endif
 
 
@@ -785,6 +788,8 @@ contains
 
 !       call tune(6, "Gauss-Seidel sweeps")
 
+    call writeVtkFile(grid, "current.vtk", &
+         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
 !    if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
 if (.false.) then
@@ -1448,6 +1453,57 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    endif
 
   end subroutine intersectCubeAMR2D
+
+  RECURSIVE SUBROUTINE resizePhotoionCoeff(thisOctal, grid)
+
+    type(GRIDTYPE) :: grid
+    TYPE(OCTAL), POINTER  :: thisOctal 
+    TYPE(OCTAL), POINTER  :: child
+    INTEGER :: i, j, k, m
+    real(double), allocatable :: temp(:,:)
+
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       DO i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          CALL resizePhotoionCoeff(child, grid)
+       END DO
+    endif
+
+    j = SIZE(thisOctal%photoIonCoeff,1)
+    k = SIZE(thisOctal%photoIonCoeff,2)
+    allocate(temp(1:j,1:k))
+    temp = thisOctal%photoIonCoeff
+    deallocate(thisOctal%photoionCoeff)
+    allocate(thisOctal%photoionCoeff(j,grid%nion))
+    thisOctal%photoionCoeff = 0.d0
+    do m = 1, j
+       if (k > grid%nion) then
+          thisOctal%photoionCoeff(m, 1:grid%nion) = temp(m,1:grid%nion)
+       else
+          thisOctal%photoionCoeff(m, 1:k) = temp(m,1:k)
+       endif
+    enddo
+    deallocate(temp)
+
+
+    j = SIZE(thisOctal%ionFrac,1)
+    k = SIZE(thisOctal%ionFrac,2)
+    allocate(temp(1:j,1:k))
+    temp = thisOctal%ionFrac
+    deallocate(thisOctal%ionFrac)
+    allocate(thisOctal%ionFrac(j,grid%nion))
+    thisOctal%photoionCoeff = 0.d0
+    do m = 1, j
+       if (k > grid%nion) then
+          thisOctal%ionFrac(m, 1:grid%nion) = temp(m,1:grid%nion)
+       else
+          thisOctal%ionFrac(m, 1:k) = temp(m,1:k)
+       endif
+    enddo
+    deallocate(temp)
+          
+  END SUBROUTINE resizePhotoionCoeff
 
   recursive subroutine zeroDistanceGrid(thisOctal)
   type(octal), pointer   :: thisOctal
