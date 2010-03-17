@@ -557,9 +557,6 @@ contains
        grid%geometry = "toruslogo"
        grid%rStar1 = rSol/1.e10
 
-    case("pathtest")
-       grid%geometry = "pathtest"
-
     case("whitney")
        grid%geometry = "whitney"
        grid%rCore = rStellar/1.e10
@@ -568,7 +565,6 @@ contains
        grid%rOuter = erOuter/1.e10
        grid%starPos1 = vector(1.e-6,1.e-6,1.e-6)
 
-
     case("benchmark")
        grid%geometry = "benchmark"
        grid%rCore = rCore
@@ -576,33 +572,11 @@ contains
        grid%rInner = rInner
        grid%rOuter = rOuter
 
-    case("molebench")
-       grid%geometry = "molebench"
-
-    case("h2obench1")
-       grid%geometry = "h2obench1"
-
-    case("h2obench2")
-       grid%geometry = "h2obench2"
-
-    case("agbstar")
-       grid%geometry = "agbstar"
-
-    case("molefil")
-       grid%geometry = "molefil"
-
-    case("ggtau")
-       grid%geometry = "ggtau"
-
     case("circumbin")
        grid%geometry = "circumbin"
        grid%rInner = rInner
        grid%rOuter = rOuter
        grid%rCore = rSol/1.e10
-
-
-    case("hii_test")
-       grid%geometry = "hii_test"
 
     case("shakara")
        grid%geometry = "shakara"
@@ -692,7 +666,6 @@ contains
        grid%geometry = "starburst"
        grid%lineEmission = .false.
 
-
     case ("proto")
        call initProtoAMR(grid)
 
@@ -723,37 +696,10 @@ contains
        grid%rOuter = rOuter
        grid%rCore = rCore
 
-    case("hydro1d")
-       grid%geometry = "hydro1d"
-
-    case("kelvin")
-       grid%geometry = "kelvin"
-
-    case("rtaylor")
-       grid%geometry = "rtaylor"
-
-    case("bonnor")
-       grid%geometry = "bonnor"
-
-    case("unisphere")
-       grid%geometry = "unisphere"
-
-
-    case("sedov")
-       grid%geometry = "sedov"
-
-    case("protobin")
-       grid%geometry = "protobin"
-
-    case("gammavel")
-       grid%geometry = "gammavel"
-
-    case("fogel")
-       grid%geometry = "fogel"
-
     case DEFAULT
-       print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
-       print *, '            for use with an adaptive grid.'
+       ! In the defalt case nothing special needs to be done
+       grid%geometry = geometry
+
     end select
     
 

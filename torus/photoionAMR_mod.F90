@@ -4858,6 +4858,46 @@ end subroutine readHeIIrecombination
 !       endif
 !    endif
   end subroutine checkReflectPhoton
+
+#else
+
+contains
+
+! Dummy subroutines for non-MPI case
+  SUBROUTINE resizePhotoionCoeff(thisOctal, grid)
+
+    use grid_mod
+    implicit none
+
+    type(GRIDTYPE) :: grid
+    TYPE(OCTAL), POINTER  :: thisOctal 
+  END SUBROUTINE resizePhotoionCoeff
+
+  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+       lucyfileout, lucyfilein, maxIter, tLimit)
+
+    use grid_mod
+    use source_mod
+
+    implicit none
+
+    type(GRIDTYPE) :: grid
+    character(len=*) :: lucyfileout, lucyfilein    
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    integer :: nlambda
+    real :: lamArray(:)
+    logical :: readLucy, writeLucy
+    integer :: maxIter
+    real(double) :: tlimit
+
+  end subroutine photoIonizationloopAMR
+
+  subroutine ionizeGrid(thisOctal)
+    use octal_mod
+    type(octal) :: thisOctal
+  end subroutine ionizeGrid
+
 #endif    
 end module photoionAMR_mod
 

@@ -889,6 +889,7 @@ CONTAINS
     use wr104_mod, only: readwr104particles
     use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
     use luc_cir3d_class, only: new
+    use vh1_mod, only: read_vh1
 
     type(isochrone) :: isochrone_data
     real(double)    :: objectDistance
@@ -997,6 +998,9 @@ CONTAINS
 
   elseif (geometry == "theGalaxy" ) then
      call read_galaxy_sph_data(sphdatafilename, set_H2=.false.)
+
+  elseif (geometry == "runaway" ) then
+     call read_vh1
 
   end if
 
@@ -2326,7 +2330,7 @@ subroutine set_up_sources
        call readSpectrum(source(2)%spectrum, "wr.flx", ok)
        call normalizedSpectrum(source(2)%spectrum)
 
-    case("lexington","fractal")
+    case("lexington","fractal","runaway")
        nSource = 1
        allocate(source(1:nSource)) 
        source(:)%outsideGrid = .false.

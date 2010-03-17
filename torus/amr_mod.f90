@@ -63,6 +63,7 @@ CONTAINS
     use cmfgen_class, only: cmfgen_mass_velocity
     use jets_mod, only: calcJetsMassVelocity
     use romanova_class, only: calc_romanova_mass_velocity
+    use vh1_mod, only: assign_from_vh1
 
     IMPLICIT NONE
 
@@ -304,6 +305,8 @@ CONTAINS
       thisOctal%rho = 100.d0 * mHydrogen
       thisOctal%temperature = 8000.
 
+   CASE ("runaway")
+      call assign_from_vh1(thisOctal, subcell)
 
     CASE ("magstream")
 
@@ -5644,11 +5647,6 @@ IF ( .NOT. gridConverged ) RETURN
 !      END IF
 
 
-   case DEFAULT
-      PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
-      PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
-      PRINT *, 'Exiting the program .... '
-      STOP
    end select
 
    if (thisOctal%nDepth == maxDepthAmr) then
