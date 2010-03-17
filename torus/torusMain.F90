@@ -305,11 +305,11 @@ program torus
   end if
 
   if (molecular) then
-!     if(geometry == "molebench") then
-!        call readbenchmarkMolecule(co, moleculefile)
-!     else
+     if(geometry == "molebench") then
+        call readbenchmarkMolecule(co, moleculefile)
+     else
         call readMolecule(co, moleculefile)
-!     endif
+     endif
   endif
 
   if (cmf) then

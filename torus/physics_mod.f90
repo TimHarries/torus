@@ -8,7 +8,10 @@ module physics_mod
   use timing
   use grid_mod
   use setupamr_mod
+  use vector_mod
+
   implicit none
+
 
 contains
 

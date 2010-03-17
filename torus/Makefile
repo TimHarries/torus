@@ -44,8 +44,8 @@ ifeq ($(SYSTEM), davesmac)
     FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt #-g -ipo #-g
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
-#    CFITSIOLIBS = -L/star/lib -lcfitsio
+#    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
+    CFITSIOLIBS = -L/Users/drundle/bin/cfitsio/lib/ -lcfitsio
     MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
 #    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
 #    STARLIBS = -limf                                                                   

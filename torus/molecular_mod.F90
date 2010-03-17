@@ -51,7 +51,7 @@ module molecular_mod
 
    character(len=20) :: molgridfilename, molgridltefilename
 
-   logical :: allCellsConverged
+   logical :: allCellsConverged, gridConverged, gridConvergedTest
 
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
@@ -303,7 +303,11 @@ module molecular_mod
      read(30,*) junk
 
      thisMolecule%nCollPart = 1 ! only one collision partner considered in benchmark
+
      iPart = 1 ! follows from ^
+     allocate(thisMolecule%iCollPartner(1:1), thisMolecule%collPartnerName(1:1))
+     thisMolecule%iCollPartner(iPart) = 2
+     thisMolecule%collPartnerName(iPart) = "pH2"
 
      allocate(thisMolecule%nCollTrans(1:thisMolecule%nCollPart))
      allocate(thisMolecule%nCollTemps(1:thisMolecule%nCollPart))
@@ -747,7 +751,7 @@ module molecular_mod
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
      integer, parameter :: maxIter = 100
-     logical :: popsConverged, gridConverged, gridConvergedTest
+     logical :: popsConverged
      character(len=200) :: message
      integer :: iRay, iTrans, iter, i 
      integer :: iStage
@@ -981,7 +985,7 @@ module molecular_mod
             if((mintransold .ne. mintrans) .or. (grand_iter .eq. 0)) then
                call writeinfo("Reallocating memory", TRIVIAL)
                call allocateother(grid, grid%octreeroot)
-               ngcounter = 0
+!              ngcounter = 0
             endif
             
             write(message,'(a,i3)') "Iteration ",grand_iter
@@ -1515,22 +1519,8 @@ end subroutine molecularLoop
            di0(:) = attenuation(:) * localradiationfield(:) * snu(:) ! 2nd term is local radiation field from this cell 
 
            do itrans = 1, maxtrans
-
-              if(di0(itrans) .gt. 1d-10 * i0(itrans) .or. i0(itrans) .eq. 0.d0) then
-                 i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
-                 tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
-              else
-                 done(itrans) = .true.
-                 i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
-                 tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
-
-                 if(any(done(1:mintrans)) .eqv. .false.) then
-                    continue
-                 else
-                    goto 118
-                 endif
-              endif
-              
+              i0(itrans) = i0(itrans) + di0(itrans) ! summed radiation intensity from line integral 
+              tau(itrans) = tau(itrans) + dtau(itrans) ! contribution to optical depth from this line integral
            enddo
         enddo
 
