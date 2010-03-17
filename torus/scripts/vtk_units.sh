@@ -1,4 +1,4 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 # Convert axis units in a VTK file
 # Written by Dave Acreman, October 2009
