@@ -12,6 +12,7 @@ use lucy_mod, only : calcContinuumEmissivityLucyMono
 use gridio_mod
 use source_mod
 use timing
+use image_mod
 use grid_mod
 use amr_mod
 use diffusion_mod
@@ -19,7 +20,6 @@ use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
 use photon_mod
-use image_mod
 use phasematrix_mod
 
 implicit none
@@ -484,7 +484,15 @@ contains
        lCore = lCore + source(i)%luminosity
     enddo
 
+
+
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
+
+    if (writeoutput) write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
+
+
+    call writeVtkFile(grid, "start.vtk", &
+         valueTypeString=(/"rho        ", "HI         ","temperature", "dust1      " /))
 
     nMonte = 10000000
 
@@ -1582,6 +1590,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        else
           thisOctal%ionFrac(subcell,1) = 1.e-10
           thisOctal%ionFrac(subcell,2) = 1.
+          thisOctal%ne(subcell) = thisOctal%nh(subcell)
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.e-10
              thisOctal%ionFrac(subcell,4) = 1.       
@@ -1812,7 +1821,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,tLow)
-                   !             write(*,*) thisOctal%temperature(subcell), niter
+                                write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
                 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
@@ -4123,8 +4132,9 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, iLambdaPhoton, totalflux)
-    use photoion_mod, only : addEmissionLine
+  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename)
+    use photoion_mod, only : addForbiddenEmissionLine, addRecombinationEmissionLine
+    use input_variables, only : lambdaImage, freeFreeImage, outputimageType
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=80) :: imageFilename
@@ -4135,6 +4145,7 @@ end subroutine readHeIIrecombination
     type(OCTAL), pointer :: thisOctal
     real(double) :: totalFlux
     real(double), allocatable :: totalFluxArray(:), tempTotalFlux(:)
+    logical :: directFromSource
     integer :: subcell
     integer :: iPhoton, nPhotons
     integer :: iSource
@@ -4142,7 +4153,7 @@ end subroutine readHeIIrecombination
     type(VECTOR) ::  rHat, observerDirection
     logical :: endLoop, addToiMage
     integer :: newthread
-    type(IMAGETYPE) :: thisimage
+    type(IMAGETYPE) :: thisImage
     logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing, stillSCattering
     real(double) :: totalEmission
     integer :: iLambdaPhoton, nInf
@@ -4168,47 +4179,67 @@ end subroutine readHeIIrecombination
 
 
 
-
-    if (readlucy) then
-       if (ilambdaPhoton == 1) then
-          call readAMRgrid("lucy.dat", .false., grid)
-          call writeVtkFile(grid, "current.vtk", &
-               valueTypeString=(/"rho        ","HI         " ,"temperature" /))
-       endif
-    endif
-
-    if (writeLucy) then
-       if (iLambdaPhoton == 1) then
-          call writeAMRgrid("lucy.dat", .false., grid)
-          call writeVtkFile(grid, "current.vtk", &
-               valueTypeString=(/"rho        ","HI         " ,"temperature" /))
-          call  dumpValuesAlongLine(grid, "radial.dat", VECTOR(0.d0,0.d0,0.0d0), &
-               VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
-       endif
-    endif
+    call zeroEtaCont(grid%octreeRoot)
 
 
-    thisImage = initImage(100, 100, real(3.*grid%octreeRoot%subcellSize), &
-         real(3.*grid%octreeRoot%subcellSize), 0., 0.)
+    thisImage = initImage(200, 200, real(2.*grid%octreeRoot%subcellSize), &
+         real(2.*grid%octreeRoot%subcellSize), 0., 0.)
 
     allocate(threadProbArray(1:nThreadsGlobal-1))
-    
 
-    lambdaLine = 5007.
-    call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
-    call addEmissionLine(grid, 1.d0, lambdaLine)
-    call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+
+    select case (outputimageType)
+       case("freefree")
+          freefreeImage = .true.
+          call  addRadioContinuumEmissivity(grid%octreeRoot)
+          lcore = tiny(lcore)
+
+       case("forbidden")
+
+          call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+          call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
+
+          if (nSource > 0) then              
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+          else
+             lcore = tiny(lcore)
+          endif
+
+       case("recombination")
+
+          call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+          call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
+
+          if (nSource > 0) then              
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+          else
+             lcore = tiny(lcore)
+          endif
+
+       case("dustonly")
+
+          call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+
+          if (nSource > 0) then              
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+          else
+             lcore = tiny(lcore)
+          endif
+       case DEFAULT
+          call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
+          stop
+
+    end select
+
 
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
 
     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
     totalEmission = totalEmission * 1.d30
 
-    if (nSource > 0) then              
-       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
-    else
-       lcore = tiny(lcore)
-    endif
 
 
     probSource = lCore / (lCore + totalEmission)
@@ -4217,11 +4248,11 @@ end subroutine readHeIIrecombination
        write(*,*) "Probability of photon from sources: ", probSource
     endif
 
-    nPhotons = 1000000
+    nPhotons = 100000
     Ninf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
-    
+    if (Writeoutput) write(*,*) "power per photon ",powerperphoton
 
     if (myRankGlobal == 0) then
        np = 0
@@ -4237,10 +4268,16 @@ end subroutine readHeIIrecombination
           if (r < probSource) then
              call randomSource(source, nSource, iSource)
              thisSource = source(iSource)
-             call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
+             call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
+             if (thisSource%outsideGrid) then
+                thisPhoton%stokes%i = thisPhoton%stokes%i * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
+                   (thisSource%radius*1.d10)**2 / (thisSource%distance**2)
+             endif
+
              call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
              iThread = thisOctal%mpiThread(subcell)
              call sendPhoton(thisPhoton, iThread, endloop = .false.) 
+             directFromSource = .true.
           else
              call random_number(r)
              if (r < threadProbArray(1)) then
@@ -4254,13 +4291,16 @@ end subroutine readHeIIrecombination
              thisPhoton%direction = randomUnitVector()
              call sendPhoton(thisPhoton, iThread, endloop = .false., getPosition=.true.) 
              call receivePhoton(thisPhoton, iSignal)
+             directFromSource = .false.
           endif
 
-          observerPhoton = thisPhoton
-          observerPhoton%observerPhoton = .true.
-          observerPhoton%tau = 0.d0
-          observerPhoton%direction = observerDirection
-          call sendPhoton(observerPhoton, iThread, endLoop = .false.)
+          if ((directFromSource.and.(.not.thisSource%outsideGrid)).or.(.not.directFromSource)) then
+             observerPhoton = thisPhoton
+             observerPhoton%observerPhoton = .true.
+             observerPhoton%tau = 0.d0
+             observerPhoton%direction = observerDirection
+             call sendPhoton(observerPhoton, iThread, endLoop = .false.)
+          endif
 
        end do mainloop
 
@@ -4318,7 +4358,11 @@ end subroutine readHeIIrecombination
 
              if (thisPhoton%observerPhoton) then
                 newThread = -1
-                call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
+                if (.not.freeFreeImage) then
+                   call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
+                else
+                   addtoImage = .true.
+                endif
                 if (addToImage) then
                    call addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
                    goto 777
@@ -4327,7 +4371,11 @@ end subroutine readHeIIrecombination
                    goto 777
                 endif
              else
-                call moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
+                if (.not.freeFreeImage) then
+                   call moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
+                else
+                   escaped = .true.
+                endif
                 
                 if (escaped.or.absorbed) then
                    stillScattering = .false.
@@ -4361,9 +4409,8 @@ end subroutine readHeIIrecombination
 
      call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalFluxArray = tempTotalFlux
-     totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1)) * powerPerPhoton
+     totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1))
     if (myrankGlobal == 0) then
-       write(imageFilename, '(a,i4.4,a)') "test_",nint(lambdaLine),".fits"
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
     call freeImage(thisImage)
@@ -4696,6 +4743,9 @@ end subroutine readHeIIrecombination
               
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
+
+!        write(*,*) xpix,ypix, thisImage%pixel(xpix,ypix)%i, &
+!             thisPhoton%stokes%i,  thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
      endif
      totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau)
            
@@ -4784,12 +4834,18 @@ end subroutine readHeIIrecombination
              
              totalProb = totalProb + dV * &
                   thisOctal%etaCont(subcell) * thisOctal%biasCont3D(subcell)
-              
+
              totalEmission = totalEmission + dV * thisOctal%etaCont(subcell)
+
+!             if (thisOctal%etaCont(subcell) > 0.d0) then
+!                write(*,*) "teff ", thisOctal%temperature(subcell), thisOctal%dustTypeFraction(subcell,1), &
+!                     thisOctal%nDepth
+!             endif
           endif
 
        end if
-       
+
+       if (.not.associated(thisOctal%probDistCont)) allocate(thisOctal%probDistCont(1:thisOctal%maxChildren))
        thisOctal%probDistCont(subcell) = totalProb
       
     end do
@@ -4834,6 +4890,24 @@ end subroutine readHeIIrecombination
     end do 
   end subroutine computeProbDist3AMRMpi
 
+  recursive subroutine zeroEtaCont(thisOctal)
+
+    implicit none
+    type(octal), pointer              :: thisOctal
+    integer :: subcell
+    type(octal), pointer  :: child 
+
+    if (thisOctal%nChildren > 0) then
+       ! call this subroutine recursively on each of its children
+       do subcell = 1, thisOctal%nChildren, 1 
+          child => thisOctal%child(subcell)
+          call zeroEtaCont(child)
+       end do 
+    end if
+    thisOctal%biasCont3D = 1.d0
+    thisOctal%etaCont = 0.d0
+  end subroutine zeroEtaCont
+
   subroutine checkReflectPhoton(grid, rVec, uhat, oldrVec, oldOctal, oldSubcell, nextOctal, nextSubcell, stillinGrid, escaped)
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, uHat, oldRVec
@@ -4858,6 +4932,46 @@ end subroutine readHeIIrecombination
 !       endif
 !    endif
   end subroutine checkReflectPhoton
+
+  recursive subroutine addRadioContinuumEmissivity(thisOctal)
+
+    use stateq_mod, only : alpkk
+    type(octal), pointer                 :: thisOctal
+    type(octal), pointer  :: child 
+    integer               :: subcell
+    integer               :: i
+    real(double) :: eta, freq
+    
+    
+    do subcell = 1, thisOctal%maxChildren, 1
+
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call addRadioContinuumEmissivity(child)
+                exit
+             end if
+          end do
+            
+       else
+
+          freq = cspeed / (20.d0) ! 20 cm radio free-free
+          eta =  thisOctal%Ne(subcell)**2 * &
+               alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
+               exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
+          
+          eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+             
+          thisOctal%etaCont(subcell) = eta * 1.d10
+          thisOctal%biasCont3d(subcell) = 1.d0
+       end if
+
+    end do
+
+  end subroutine addRadioContinuumEmissivity
+
 
 #else
 
@@ -4897,6 +5011,18 @@ contains
     use octal_mod
     type(octal) :: thisOctal
   end subroutine ionizeGrid
+
+
+  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename)
+    use gridtype_mod
+    use vector_mod
+    use source_mod
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: observerDirection
+    character(len=*) :: imageFilename
+  end subroutine createImageSplitGrid
 
 #endif    
 end module photoionAMR_mod

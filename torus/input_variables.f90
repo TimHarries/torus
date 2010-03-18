@@ -211,6 +211,9 @@ module input_variables
 
   ! filenames
   character(len=80) :: outFile
+  character(len=80) :: imageFilename
+  character(len=80) :: datacubeFilename
+  character(len=80) :: outputimageType
   character(len=80) :: intProFilename
   character(len=80) :: intProFilename2
   character(len=80) :: opacityDataFile
@@ -225,6 +228,8 @@ module input_variables
   ! output arrays
 
   integer :: nLambda, nLambdaInput
+  real :: lambdaImage
+  logical :: freeFreeImage
   real :: lamStart, lamEnd
   logical :: lamLinear
   logical :: oneKappa

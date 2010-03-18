@@ -3027,7 +3027,7 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, iPhotonL
   real :: lamArray(:)
   real(double) :: kappaAbs
   kappaAbs = 0.d0
-  thisOctal%etaCont(subcell) = 1.d-30
+  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
   call returnKappa(grid, thisOctal, subcell, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
 

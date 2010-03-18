@@ -16,10 +16,15 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use input_variables, only : atomicPhysics, photoionPhysics, nAtom
+    use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization
+    use molecular_mod
     use modelatom_mod
     use source_mod
     type(GRIDTYPE) :: grid
+
+    if (molecularPhysics) then
+       call readMolecule(globalMolecule, moleculefile)
+    endif
 
 
     if (atomicPhysics) then
@@ -30,6 +35,7 @@ contains
 
   if (photoionPhysics) then
      call addIons(grid%ion, grid%nion)
+     photoionization = .true.
   endif
 
 
@@ -95,19 +101,18 @@ contains
     use dust_mod
     use modelatom_mod, only : globalAtomArray
     use input_variables, only : atomicPhysics, mie, photoionPhysics, photoionEquilibrium
-    use input_variables, only : statisticalEquilibrium, nAtom, nDustType
+    use input_variables, only : dustPhysics
+    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, photoionization
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray
     use source_mod, only : globalNsource, globalSourceArray
-    use photoion_mod, only : refineLambdaArray
+    use molecular_mod, only : molecularLoopV2, globalMolecule
 
-    real, allocatable :: xArray(:)
-    integer :: nLambda
+    real, pointer :: xArray(:)
+    integer :: nLambda 
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
-    integer :: nCurrent, nt, i
-    real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
     type(GRIDTYPE) :: grid
 
 !    if (molecularPhysics) then
@@ -120,9 +125,9 @@ contains
 !             source, nSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
 !     endif
 
-!     if (molecularPhysics.and.statisticalEquilibrium) then
-!        call molecularLoop(grid, co)
-!     endif
+     if (molecularPhysics.and.statisticalEquilibrium) then
+        call molecularLoopV2(grid, globalMolecule)
+     endif
      
      if (atomicPhysics.and.statisticalEquilibrium) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
@@ -133,46 +138,10 @@ contains
 !           call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
 !             lucyfileNameout, lucyfileNamein)
         else
-           nLambda = SIZE(globalsourcearray(1)%spectrum%flux)
-           allocate(xArray(1:nLambda))
-           xArray = globalsourcearray(1)%spectrum%lambda
-           mie = .true.
 
-           lamStart = 10.d0
-           lamEnd = 1.d7
-           logLamStart = log10(lamStart)
-           logLamEnd = log10(lamEnd)
-           nLambda = 1000
-           xArray(1) = lamStart
-           xArray(2) = lamEnd
-           nCurrent = 2
-           call refineLambdaArray(xArray, nCurrent, grid)
-           nt = nLambda - nCurrent
-           do i = 1, nt
-              fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-              fac = 10.**fac
-              nCurrent=nCurrent + 1
-              xArray(nCurrent) = fac
-              call sort(nCurrent, xArray)
-           enddo
+           call setupXarray(grid, xArray, nLambda)
 
-           grid%nLambda = nLambda
-           if (associated(grid%lamArray)) deallocate(grid%lamArray)
-           allocate(grid%lamArray(1:nLambda))
-           grid%lamArray = xarray
-
-
-
-           grid%nTempRossArray = 1000
-           if (associated(grid%kappaRossArray)) deallocate(grid%kappaRossArray)
-           if (associated(grid%tempRossArray)) deallocate(grid%tempRossArray)
-           allocate(grid%kappaRossArray(nDustType,1:grid%nTempRossArray))
-           allocate(grid%tempRossArray(1:grid%nTempRossArray))
-
-
-           call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
-!           call refineLambdaArray(xArray, nLambda, grid)
-!           call ionizeGrid(grid%octreeRoot)
+           if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, .false., .false., &
              " ", " ", 5, 1.d30)
         endif
@@ -190,6 +159,46 @@ contains
 
    end subroutine doPhysics
 
+   subroutine setupXarray(grid, xArray, nLambda)
+     use inputs_mod, only : photoionPhysics
+     use photoion_mod, only : refineLambdaArray
+     type(GRIDTYPE) :: grid
+     real, pointer :: xArray(:)
+     integer :: nLambda
+     integer :: nCurrent, nt, i
+     real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
+     if (associated(xarray)) deallocate(xarray)
+
+     if (photoionPhysics) then
+        nLambda = 1000
+        allocate(xarray(1:nLambda))
+        lamStart = 10.d0
+        lamEnd = 1.d7
+        logLamStart = log10(lamStart)
+        logLamEnd = log10(lamEnd)
+        xArray(1) = lamStart
+        xArray(2) = lamEnd
+        nCurrent = 2
+        call refineLambdaArray(xArray, nCurrent, grid)
+        nt = nLambda - nCurrent
+        do i = 1, nt
+           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+           fac = 10.**fac
+           nCurrent=nCurrent + 1
+           xArray(nCurrent) = fac
+           call sort(nCurrent, xArray)
+        enddo
+     endif
+
+
+
+     grid%nLambda = nLambda
+     if (associated(grid%lamArray)) deallocate(grid%lamArray)
+     allocate(grid%lamArray(1:nLambda))
+     grid%lamArray = xarray
+
+   end subroutine setupXarray
+
    subroutine setupGlobalSources(grid)     
      use source_mod, only : globalNsource, globalSourceArray
      use input_variables, only : inputNsource
@@ -204,5 +213,26 @@ contains
      endif
 end subroutine setupGlobalSources
 
+subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
+  use input_variables, only : mie
+  use phasematrix_mod
+  use dust_mod
+  type(GRIDTYPE) :: grid
+  real, pointer :: xArray(:)
+  integer :: nLambda
+  type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
+  integer :: nMuMie
+
+  grid%oneKappa = .true.
+  mie = .true.
+  grid%nTempRossArray = 1000
+  if (associated(grid%kappaRossArray)) deallocate(grid%kappaRossArray)
+  if (associated(grid%tempRossArray)) deallocate(grid%tempRossArray)
+  allocate(grid%kappaRossArray(nDustType,1:grid%nTempRossArray))
+  allocate(grid%tempRossArray(1:grid%nTempRossArray))
+
+
+  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+end subroutine setupDust
 
 end module physics_mod

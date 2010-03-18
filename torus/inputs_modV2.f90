@@ -94,7 +94,7 @@ contains
          "Include atomic physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("photoionphysics", photoionPhysics, cLine, nLines, &
-         "Include atomic physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (.not.(dustPhysics.or.atomicPhysics.or.molecularPhysics.or.photoionPhysics)) then
        call writeFatal("Must include one of: dustPhysics, atomicPhysics, molecularPhysics, photoionPhysics")
@@ -330,7 +330,7 @@ contains
        write(message,'(a,i1)') "Source number: ",i
        call writeInfo(message,TRIVIAL)
        write(keyword, '(a,i1)') "radius",i
-       call getDouble(keyword, sourceRadius(i), rsol, cLine, nLines, &
+       call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, nLines, &
             "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
 
        write(keyword, '(a,i1)') "teff",i
@@ -364,21 +364,7 @@ contains
        call getLogical("addnewmoldata", addnewmoldata, cLine, nLines, &
             "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
        call getString("moleculefile", moleculefile, cLine, nLines, &
-            "Input molecule filename: ","(a,a,1x,a)","none", ok, .false.)
-       call getString("molfilein", molFilenameIn, cLine, nLines, &
-            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-       call getString("molfileout", molFilenameOut, cLine, nLines, &
-            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-       call getLogical("writemol", writeMol, cLine, nLines, &
-            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .true.)
-       call getLogical("readmol", readMol, cLine, nLines, &
-            "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .true.)
-       call getLogical("writeLucy", writeLucy, cLine, nLines, &
-            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("readLucy", readLucy, cLine, nLines, &
-            "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("openlucy", openLucy, cLine, nLines, &
-            "Open Existing lucy file: ","(a,1l,1x,a)", .false., ok, .false.)
+            "Input molecule filename: ","(a,a,1x,a)","none", ok, .true.)
        call getReal("distance", gridDistance, real(pctocm), cLine, nLines, &
             "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
        call getLogical("dongstep", dongstep, cLine, nLines, &
@@ -387,7 +373,7 @@ contains
                "Use Quasirandom numbers: ","(a,1l,a)", .false., ok, .false.)
        call getReal("tolerance", tolerance, 1., cLine, nLines, &
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
-       call getReal("vturb", vturb, 1., cLine, nLines, &
+       call getReal("vturb", vturb, real(kmstoc), cLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
        call getLogical("noturb", noturb, cLine, nLines, &
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
@@ -395,8 +381,6 @@ contains
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
        call getReal("molAbundance", molAbundance, 1., cLine, nLines, &
             "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .true.)
-       call getLogical("useDust", useDust, cLine, nLines, &
-            "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
        call getLogical("isinlte", isinlte, cLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, 1., cLine, nLines, &
@@ -408,6 +392,9 @@ contains
 
        call getLogical("doCOchemistry", doCOchemistry, cLine, nLines, &
             "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("useDust", useDust, cLine, nLines, &
+            "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
 
        if(doCOchemistry) then
 
@@ -433,6 +420,10 @@ contains
 
     call getLogical("quickthermal", quickThermal, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("usemetals", usemetals, cLine, nLines, &
+         "Use metals in photoionization calculation: ","(a,1l,a)", .true., ok, .false.)
+
 
     call getReal("h_abund", h_abund, 1., cLine, nLines, &
          "Hydrogen abdunance: ","(a,1PF8.3,a)", &
@@ -501,11 +492,52 @@ contains
   subroutine readDataCubeParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getString("datacubefile", datacubeFilename, cLine, nLines, &
+         "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
+    call getReal("imageside", imageside, 1., cLine, nLines, &
+         "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+    call getInteger("npixels", npixels, cLine, nLines, &
+         "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
+    call getInteger("nv", nv, cLine, nLines, &
+         "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
+    call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
+         "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .true.)
+    call getInteger("itrans", itrans, cLine, nLines, &
+         "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
+    call getReal("beamsize", beamsize, 1., cLine, nLines, &
+         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .true.)
+    call getDouble("rotateviewaboutx", rotateViewAboutX, 1.d0, cLine, nLines, &
+         "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+    call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, nLines, &
+         "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+    call getDouble("maxVel", maxVel, 1.d0, cLine, nLines, &
+         "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
+    call getDouble("centrevecx", centrevecx, 1.d0, cLine, nLines, &
+         "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+    call getDouble("centrevecy", centrevecy, 1.d0, cLine, nLines, &
+         "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+    call getDouble("centrevecz", centrevecz, 1.d0, cLine, nLines, &
+         "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+    call getLogical("wanttau", wanttau, cLine, nLines, &
+         "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
   end subroutine readDataCubeParameters
 
   subroutine readImageParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getString("imagefile", imageFilename, cLine, nLines, &
+         "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
+    call getReal("lambdaimage", lambdaImage,1., cLine, nLines, &
+         "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+    call getString("imagetype", outputimageType, cLine, nLines, &
+         "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+
   end subroutine readImageParameters
 
   subroutine readSpectrumParameters(cLine, nLines)

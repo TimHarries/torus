@@ -620,7 +620,7 @@ contains
 !    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
-    thisCube%tau =  0.d0
+    if (wanttau) thisCube%tau =  0.d0
     thisCube%nCol = 0.d0
 
 !    thisCube%nsubpixels = 0.d0
@@ -649,9 +649,9 @@ contains
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
 
-    write(message,'(a,f7.3,a)') "Linear pixel resolution  : ", dx*1e10/autocm, " AU"
+    write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dx*1e10/autocm, " AU"
     call writeinfo(message,TRIVIAL)
-    write(message,'(a,f7.3,a)') "Linear pixel resolution  : ", dx*1e10/rSol, " Rsol"
+    write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dx*1e10/rSol, " Rsol"
     call writeinfo(message,TRIVIAL)
     write(message,*) "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
     call writeinfo(message,TRIVIAL)
