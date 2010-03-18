@@ -5612,8 +5612,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       integer :: mintransold
 
       real(double) :: nh, nHe, ne, nProtons
-      integer :: dummy, ijunk
-      logical :: ljunk
+      integer :: dummy
       logical :: juststarted = .true.
 
       logical :: ng

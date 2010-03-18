@@ -100,9 +100,9 @@ contains
     use phasematrix_mod
     use dust_mod
     use modelatom_mod, only : globalAtomArray
-    use input_variables, only : atomicPhysics, mie, photoionPhysics, photoionEquilibrium
+    use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics
-    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, photoionization
+    use input_variables, only : statisticalEquilibrium, nAtom
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray
@@ -220,7 +220,7 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
   type(GRIDTYPE) :: grid
   real, pointer :: xArray(:)
   integer :: nLambda
-  type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
+  type(PHASEMATRIX), pointer :: miePhase(:,:,:)
   integer :: nMuMie
 
   grid%oneKappa = .true.

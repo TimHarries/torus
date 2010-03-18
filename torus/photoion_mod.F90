@@ -4529,14 +4529,13 @@ end subroutine readHeIIrecombination
 
    recursive subroutine addRecombinationToEmission(grid, thisOctal, dLambda, ilower, iupper)
      type(GRIDTYPE) :: grid
-     real(double) :: dLambda, rate
-     real :: pops(10)
+     real(double) :: dLambda
      integer :: iLower, iUpper
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
      integer :: subcell, i
      real :: emissivity(3:15,2:8)
-     real(double) :: lymanalpha, hBeta, LineEmissivity, lineFreq, energy
+     real(double) :: hBeta, LineEmissivity
 
      real(double) :: lambdaTrans(20,20) = reshape( source=&
           (/ 000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8,937.803d-8,930.748d-8,926.226d-8,923.150d-8,920.963d00,&
@@ -4629,8 +4628,6 @@ end subroutine readHeIIrecombination
     real(double),intent(in) :: lambdaLine
     integer, intent(out) :: ilower, iupper
     logical, intent(inout) :: ok
-    integer :: i, j
-    character(len=80) :: message
     integer :: iup, ilow
      real(double) :: lambdaTrans(20,20) = reshape( source=&
           (/ 000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8,937.803d-8,930.748d-8,926.226d-8,923.150d-8,920.963d00,&
