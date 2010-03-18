@@ -521,7 +521,7 @@ module molecular_mod
                  
                  do isubcell = 1, thisoctal%maxchildren
                     do i = 1, maxtrans
-                       thisOctal%bnu(i,subcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(isubcell)))
+                       thisOctal%bnu(i,isubcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(isubcell)))
                     enddo
                  enddo
               endif
@@ -4776,7 +4776,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      else
         i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side
      endif
-
    end subroutine lteintensityAlongRay2
 
  subroutine createFluxSpectra(cube,thismolecule,itrans)
@@ -5670,6 +5669,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       call writeinfo("Allocating and initialising molecular levels", FORINFO)
       call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
+      call writeVtkFile(grid, "test.vtk", "vcheck.txt")
+
       dummy = 0
 
       allocate(octalArray(grid%nOctals))
@@ -6048,6 +6049,32 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
   close(33)
 666 continue
 end subroutine molecularLoopV2
+
+   recursive subroutine  photoionChemistry(grid, thisOctal)
+     use input_variables, only : molAbundance
+     type(GRIDTYPE) :: grid
+     type(octal), pointer   :: thisOctal
+     type(octal), pointer  :: child
+     integer :: subcell, i
+
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren ! What's this?
+              if (thisOctal%indexChild(i) .eq. subcell) then
+                 child => thisOctal%child(i)
+                 call photoionChemistry(grid, child)
+                 exit
+              end if
+           end do
+        else ! once octal has no more children, solve for current parameter set
+
+           thisOctal%molAbundance(subcell) = molAbundance
+           if (thisOctal%temperature(subcell) > 100.d0) &
+                thisOctal%molAbundance(subcell) = tiny(thisOctal%molAbundance)
+        endif
+     enddo
+   end subroutine photoionChemistry
 
 
   end module molecular_mod

@@ -53,6 +53,7 @@ contains
 
     if (molecularPhysics.and.calcDataCube) then
        lineimage =  .true.
+        call photoionChemistry(grid, grid%octreeRoot)
        call calculateMoleculeSpectrum(grid, globalMolecule)
     endif
 

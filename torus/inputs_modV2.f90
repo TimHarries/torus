@@ -359,6 +359,8 @@ contains
 
        call getLogical("lte", lte, cLine, nLines, &
             "Read in LTE grid: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
+               "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("suppresswarnings", suppressWarnings, cLine, nLines, &
             "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.) 
        call getLogical("addnewmoldata", addnewmoldata, cLine, nLines, &

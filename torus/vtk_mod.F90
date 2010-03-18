@@ -400,6 +400,9 @@ contains
                case("niter")
                   write(lunit, *) int(thisOctal%convergence(subcell)/100)
 
+               case("nh2")
+                  write(lunit, *) real(thisOctal%nh2(subcell))
+
                case("convergence")
                   write(lunit, *) mod(thisOctal%convergence(subcell),1.0)
 
@@ -408,6 +411,10 @@ contains
 
                case("molabundance")
                   write(lunit, *) thisOctal%molabundance(subcell)
+
+               case("bnu")
+	       write(*,*) thisOctal%bnu(1,subcell)
+                  write(lunit, *) real(thisOctal%bnu(1,subcell))
 
                case("dc0")
                   write(lunit, *) thisOctal%molecularlevel(1,subcell) * thisOctal%departcoeff(1,subcell)
