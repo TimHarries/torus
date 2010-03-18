@@ -942,6 +942,7 @@ module molecular_mod
          else
             fixedRays = .false.
             nRay = max(100, nray)
+            blockhandout = .true.
          endif
 
          if(restart .and. juststarted) then 
@@ -1528,8 +1529,6 @@ end subroutine molecularLoop
 
      enddo
      
-118  continue
-     
      i0(:) = i0(:) + BnuBckGrnd(1:maxtrans) * attenuation(:)
 
    end subroutine getRay
@@ -1843,7 +1842,7 @@ end subroutine molecularLoop
         case(2) ! para-H2
            nx = nH2 * (1.d0-5.d-5)
         case(3) ! ortho-H2
-           nx = nH2 * 05.d-5
+           nx = nH2 * 5.d-5
         case(4) ! electrons
            nx = ne
            call writeWarning("collPartnerDensity: Ne not yet implemented as a collision partner")
@@ -1933,9 +1932,9 @@ end subroutine molecularLoop
 
            do j=1, minlevel-1
                  if(newFracChangePerLevel(j) < 0.5 * tolerance) counter(4,j) = counter(4,j) + 1 ! used for itransdone
-                 if(newFracChangePerLevel(j) < tolerance) counter(1,j) = counter(1,j) + 1
-                 if(newFracChangePerLevel(j) < 2. * tolerance) counter(2,j) = counter(2,j) + 1
-                 if(newFracChangePerLevel(j) < 5. * tolerance) counter(3,j) = counter(3,j) + 1
+                 if(newFracChangePerLevel(j) < 1.0 * tolerance) counter(1,j) = counter(1,j) + 1
+                 if(newFracChangePerLevel(j) < 2.0 * tolerance) counter(2,j) = counter(2,j) + 1
+                 if(newFracChangePerLevel(j) < 5.0 * tolerance) counter(3,j) = counter(3,j) + 1
            enddo
 
            if(maxval(temp) .lt. 5. * tolerance) then
@@ -1958,7 +1957,7 @@ end subroutine molecularLoop
            thisOctal%oldestMolecularLevel(1:minlevel-2,subcell) = thisOctal%oldmolecularLevel(1:minlevel-2,subcell) ! Store previous level so can use updated one in future
            thisOctal%oldmolecularLevel(1:minlevel-2,subcell) = thisOctal%molecularLevel(1:minlevel-2,subcell) 
            thisOctal%molecularLevel(1:maxlevel,subcell) = thisOctal%newmolecularLevel(1:maxlevel,subcell)
-!           write(*,*) thisOctal%molecularLevel(1,subcell)
+
         endif
      enddo
 
