@@ -4139,7 +4139,6 @@ end subroutine readHeIIrecombination
     type(GRIDTYPE) :: grid
     character(len=80) :: imageFilename
     integer :: nSource
-    real(double) :: lambdaLine
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal

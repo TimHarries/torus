@@ -31,16 +31,6 @@ module gridio_mod
      module procedure writeAttributePointerReal2dFlexi
   end interface
 
-  interface sendAttributePointerFlexi
-     module procedure sendAttributePointerInteger1dFlexi
-     module procedure sendAttributePointerLogical1dFlexi
-     module procedure sendAttributePointerReal1dFlexi
-     module procedure sendAttributePointerVector1dFlexi
-     module procedure sendAttributePointerDouble1dFlexi
-     module procedure sendAttributePointerDouble2dFlexi
-     module procedure sendAttributePointerDouble3dFlexi
-     module procedure sendAttributePointerReal2dFlexi
-  end interface
 
   interface writeAttributeStaticFlexi
      module procedure writeAttributeStaticIntegerSingleFlexi
@@ -54,6 +44,77 @@ module gridio_mod
      module procedure writeAttributeStaticReal1dFlexi
      module procedure writeAttributeStaticDoubleSingleFlexi
      module procedure writeAttributeStaticLogicalSingleFlexi
+  end interface
+
+
+  interface readSingleFlexi
+     module procedure readSingleIntegerFlexi
+     module procedure readSingleRealFlexi
+     module procedure readSingleDoubleFlexi
+     module procedure readSingleCharacterFlexi
+     module procedure readSingleLogicalFlexi
+     module procedure readSingleVectorFlexi
+  end interface
+
+  interface readArrayFlexi
+     module procedure readArrayVectorFlexi
+     module procedure readArrayRealFlexi
+     module procedure readArrayDoubleFlexi
+     module procedure readArrayIntegerFlexi
+     module procedure readArrayLogicalFlexi
+  end interface
+
+  interface readPointerFlexi
+     module procedure readDoublePointer1DFlexi
+     module procedure readRealPointer1DFlexi
+     module procedure readLogicalPointer1DFlexi
+     module procedure readIntegerPointer1DFlexi
+     module procedure readVectorPointer1DFlexi
+     module procedure readDoublePointer2DFlexi
+     module procedure readDoublePointer3DFlexi
+     module procedure readRealPointer2DFlexi
+  end interface
+
+#ifdef MPI
+
+  interface receiveSingleFlexi
+     module procedure receiveSingleIntegerFlexi
+     module procedure receiveSingleRealFlexi
+     module procedure receiveSingleDoubleFlexi
+     module procedure receiveSingleCharacterFlexi
+     module procedure receiveSingleLogicalFlexi
+     module procedure receiveSingleVectorFlexi
+  end interface
+
+  interface receivePointerFlexi
+     module procedure receiveDoublePointer1DFlexi
+     module procedure receiveRealPointer1DFlexi
+     module procedure receiveLogicalPointer1DFlexi
+     module procedure receiveIntegerPointer1DFlexi
+     module procedure receiveVectorPointer1DFlexi
+     module procedure receiveDoublePointer2DFlexi
+     module procedure receiveDoublePointer3DFlexi
+     module procedure receiveRealPointer2DFlexi
+  end interface
+
+
+  interface receiveArrayFlexi
+     module procedure receiveArrayVectorFlexi
+     module procedure receiveArrayRealFlexi
+     module procedure receiveArrayDoubleFlexi
+     module procedure receiveArrayIntegerFlexi
+     module procedure receiveArrayLogicalFlexi
+  end interface
+
+  interface sendAttributePointerFlexi
+     module procedure sendAttributePointerInteger1dFlexi
+     module procedure sendAttributePointerLogical1dFlexi
+     module procedure sendAttributePointerReal1dFlexi
+     module procedure sendAttributePointerVector1dFlexi
+     module procedure sendAttributePointerDouble1dFlexi
+     module procedure sendAttributePointerDouble2dFlexi
+     module procedure sendAttributePointerDouble3dFlexi
+     module procedure sendAttributePointerReal2dFlexi
   end interface
 
   interface sendAttributeStaticFlexi
@@ -70,61 +131,7 @@ module gridio_mod
      module procedure sendAttributeStaticLogicalSingleFlexi
   end interface
 
-  interface readSingleFlexi
-     module procedure readSingleIntegerFlexi
-     module procedure readSingleRealFlexi
-     module procedure readSingleDoubleFlexi
-     module procedure readSingleCharacterFlexi
-     module procedure readSingleLogicalFlexi
-     module procedure readSingleVectorFlexi
-  end interface
-
-  interface receiveSingleFlexi
-     module procedure receiveSingleIntegerFlexi
-     module procedure receiveSingleRealFlexi
-     module procedure receiveSingleDoubleFlexi
-     module procedure receiveSingleCharacterFlexi
-     module procedure receiveSingleLogicalFlexi
-     module procedure receiveSingleVectorFlexi
-  end interface
-
-  interface readArrayFlexi
-     module procedure readArrayVectorFlexi
-     module procedure readArrayRealFlexi
-     module procedure readArrayDoubleFlexi
-     module procedure readArrayIntegerFlexi
-     module procedure readArrayLogicalFlexi
-  end interface
-
-  interface receiveArrayFlexi
-     module procedure receiveArrayVectorFlexi
-     module procedure receiveArrayRealFlexi
-     module procedure receiveArrayDoubleFlexi
-     module procedure receiveArrayIntegerFlexi
-     module procedure receiveArrayLogicalFlexi
-  end interface
-
-  interface readPointerFlexi
-     module procedure readDoublePointer1DFlexi
-     module procedure readRealPointer1DFlexi
-     module procedure readLogicalPointer1DFlexi
-     module procedure readIntegerPointer1DFlexi
-     module procedure readVectorPointer1DFlexi
-     module procedure readDoublePointer2DFlexi
-     module procedure readDoublePointer3DFlexi
-     module procedure readRealPointer2DFlexi
-  end interface
-
-  interface receivePointerFlexi
-     module procedure receiveDoublePointer1DFlexi
-     module procedure receiveRealPointer1DFlexi
-     module procedure receiveLogicalPointer1DFlexi
-     module procedure receiveIntegerPointer1DFlexi
-     module procedure receiveVectorPointer1DFlexi
-     module procedure receiveDoublePointer2DFlexi
-     module procedure receiveDoublePointer3DFlexi
-     module procedure receiveRealPointer2DFlexi
-  end interface
+#endif
 
 contains
 
@@ -670,7 +677,6 @@ contains
 
       logical, intent(in)  :: fileFormatted
       integer :: nOctal
-      character(len=20) :: tag
 
       type(octal), pointer :: thisChild => null()
       type(octal), pointer :: topOctal => null()
@@ -1362,6 +1368,8 @@ contains
       endif
     end subroutine writeFileTag
 
+#ifdef MPI
+
     subroutine receiveSingleIntegerFlexi(value)
       include 'mpif.h'
       integer, intent(out) :: value
@@ -1431,7 +1439,7 @@ contains
       call MPI_RECV(value, i, MPI_CHARACTER, 0, tag, MPI_COMM_WORLD, status, ierr)
 
     end subroutine receiveSingleCharacterFlexi
-    
+#endif    
 
     subroutine readSingleIntegerFlexi(lUnit, value, fileFormatted)
       integer :: lUnit
@@ -1780,6 +1788,7 @@ contains
       endif
     end subroutine readArrayDoubleFlexi
 
+#ifdef MPI
 
   subroutine sendAttributePointerInteger1DFlexi(iThread, name, value)
     include 'mpif.h'
@@ -2482,7 +2491,7 @@ contains
       deallocate(temp)
     end subroutine receiveVectorPointer1dFlexi
 
-
+#endif
 
     subroutine testDataType(thisType, fileFormatted)
       character(len=*) :: thisType
@@ -2689,10 +2698,11 @@ contains
 
        end subroutine skipOctalsToDepth
 
+#ifdef MPI
+
        subroutine readGridSplitOverMPI(grid, gridFilename, fileFormatted)
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
-         type(OCTAL) :: thisOctal
          logical :: fileFormatted
          integer :: iThread, nOctal
 
@@ -2723,186 +2733,19 @@ contains
             nOctal = 0
 
 
-            call readZerothThread(grid%octreeRoot, null())
+            call readZerothThread(grid%octreeRoot, null(), fileFormatted)
          endif
-
+         close(20)
        end subroutine readGridSplitOverMPI
 
-       recursive subroutine readZerothThread(thisOctal, parent)
+       recursive subroutine readZerothThread(thisOctal, parent, fileFormatted)
+         logical :: fileFormatted
          type(OCTAL), pointer :: thisOctal, parent
 
 
          thisOctal%parent => parent
          write(*,*) myrankGlobal, " reading octal from file"
          call readOctalViaTags(thisOctal, fileFormatted)
-
-
-
-
-         if (nHydroThreadsGlobal == 4) then
-            if (myrankGlobal == 0) then
-               thisOctal%nChildren = 0
-            else
-               if (thisOctal%nDepth == 1) then
-                  thisOctal%nChildren = 1
-                  thisOctal%hasChild = .false.
-                  thisOctal%indexChild(1) = myRankGlobal
-                  thisOctal%hasChild(myRankGlobal) = .true.
-               endif
-            endif
-         endif
-
-         if (nHydroThreadsGlobal == 8) then
-            if (myrankGlobal == 0) then
-               thisOctal%nChildren = 0
-            else
-               if (thisOctal%nDepth == 1) then
-                  thisOctal%nChildren = 1
-                  thisOctal%hasChild = .false.
-                  thisOctal%indexChild(1) = myRankGlobal
-                  thisOctal%hasChild(myRankGlobal) = .true.
-               endif
-            endif
-         endif
-
-         if (nHydroThreadsGlobal == 64) then
-            if (myrankGlobal == 0) then
-               if (thisOctal%nDepth == 2) then
-                  thisOctal%nChildren = 0
-                  thisOctal%hasChild = .false.
-               endif
-            else
-               if (thisOctal%nDepth == 2) then
-                  if (.not.octalOnThread(thisOctal%parent, thisOctal%parentSubcell, myrankGlobal)) then
-                     thisOctal%nChildren = 0
-                     thisOctal%hasChild = .false.
-                  else
-                     thisOctal%nChildren = 1
-                     thisOctal%hasChild = .false.
-                     iChild = thisOctal%parentSubcell
-                     thisOctal%indexChild(1) = iChild
-                     thisOctal%hasChild(iChild) = .true.
-                  endif
-               endif
-            endif
-         endif
-
-
-
-         if (nHydroThreadsGlobal == 4) then
-            if (thisOctal%nDepth > 1) then
-               if (thisOctal%nChildren > 0) then 
-                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
-                  do iChild = 1, thisOctal%nChildren, 1
-                     thisChild => thisOctal%child(iChild)
-                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-                  end do
-               end if
-            else
-               if (myrankGlobal == 0) then
-                  thisOctal%nChildren = 0
-                  thisOctal%hasChild = .false.
-               else
-                  if (thisOctal%nChildren > 0) then 
-                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
-                     do iChild = 1, thisOctal%nChildren, 1
-                        do iThread = 1, myRankGlobal
-                           thisChild => thisOctal%child(iChild)
-                           topOctal => thisChild
-                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-                           if (iThread /= myRankGlobal) then
-                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
-                           else
-                              exit
-                           endif
-                        enddo
-                     end do
-                  end if
-               endif
-            endif
-         endif
-
-         if (nHydroThreadsGlobal == 8) then
-            if (thisOctal%nDepth > 1) then
-               if (thisOctal%nChildren > 0) then 
-                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
-                  do iChild = 1, thisOctal%nChildren, 1
-                     thisChild => thisOctal%child(iChild)
-                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-                  end do
-               end if
-            else
-               if (myrankGlobal == 0) then
-                  thisOctal%nChildren = 0
-                  thisOctal%hasChild = .false.
-               else
-                  if (thisOctal%nChildren > 0) then 
-                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
-                     do iChild = 1, thisOctal%nChildren, 1
-                        do iThread = 1, myRankGlobal
-                           thisChild => thisOctal%child(iChild)
-                           topOctal => thisChild
-                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-                           if (iThread /= myRankGlobal) then
-                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
-                           else
-                              exit
-                           endif
-                        enddo
-                     end do
-                  end if
-               endif
-            endif
-         endif
-
-         if (nHydroThreadsGlobal == 64) then
-            if (thisOctal%nDepth > 2) then
-               if (thisOctal%nChildren > 0) then 
-                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
-                  do iChild = 1, thisOctal%nChildren, 1
-                     tempChildPointer2 => thisOctal%child(iChild)
-                     call readOctreePrivateFlexi(tempChildPointer2,thisOctal,fileFormatted, nOctal, grid)               
-                  end do
-               end if
-            else if (thisOctal%nDepth ==   1) then 
-               allocate(thisOctal%child(1:thisOctal%nChildren)) 
-               do iChild = 1, thisOctal%nChildren, 1
-                  thisChild => thisOctal%child(iChild)
-                  call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
-               end do
-            else  if (thisOctal%nDepth ==  2) then 
-               if (thisOctal%nChildren == 1) then
-                  allocate(thisOctal%child(1))
-               endif
-               foundBranch = .false.
-               do iChild = 1, 8
-
-
-                  allocate(grid%tempBranch)
-                  tempChildPointer => grid%tempBranch
-
-                  call readOctreePrivateFlexi(tempChildPointer,thisOctal,fileFormatted, nOctal, grid)               
-
-                  if (thisOctal%mpiThread(iChild) /= myRankGlobal) then
-                     call deleteOctreeBranch(tempChildPointer,onlyChildren=.true., adjustParent=.false.)
-                     deallocate(grid%tempBranch)
-                     grid%tempBranch => null()
-!                     call skipOctalsToDepth(fileformatted, 2)
-
-                  else
-                     call insertOctreeBranch(thisOctal%child(1), grid%tempBranch, onlyChildren = .false.)
-
-                     thisOctal%hasChild = .false.
-                     thisOctal%hasChild(iChild) = .true.
-                     thisOctal%indexChild(1) = iChild
-                     thisOctal%child(1)%parent => thisOctal
-                     thisOctal%child(1)%parentSubcell = iChild
-                  endif
-
-               end do
-            end if
-         endif
-
 
 
 
@@ -2933,6 +2776,7 @@ contains
 
        end subroutine getBranchOverMPI
 
+#endif
 
        subroutine openGridFile(gridFilename, fileFormatted)
          character(len=*) :: gridFilename
@@ -2995,7 +2839,8 @@ contains
             case("version")
                call readSingleFlexi(20, grid%version, fileFormatted)
                if (grid%version /= torusVersion) then
-                  write(message,'(a,a,a,a)') "This dump file written with ", trim(grid%version), " and read with ", trim(torusVersion)
+                  write(message,'(a,a,a,a)') "This dump file written with ", trim(grid%version), &
+                       " and read with ", trim(torusVersion)
                   call writeWarning(message)
                   grid%version = torusVersion
                endif
@@ -3369,6 +3214,8 @@ contains
 
       end do
     end subroutine readOctalViaTags
+
+#ifdef MPI
 
    subroutine receiveOctalViaMPI(thisOctal)
      include 'mpif.h'
@@ -3818,5 +3665,6 @@ contains
 
 
     end subroutine sendOctalViaMPI
+#endif
 
  end module gridio_mod

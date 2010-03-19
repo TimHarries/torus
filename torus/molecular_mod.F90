@@ -1306,7 +1306,7 @@ end subroutine molecularLoop
      real(double) :: ds, phi, i0(:), r, di0(maxtrans)
      integer :: iTrans
      type(VECTOR) :: position, direction, currentPosition, thisPosition, thisVel, rayvel
-     type(VECTOR) :: startVel, endVel, endPosition
+     type(VECTOR) :: startVel, endVel
 
      real(double) :: alphanu(maxtrans,2), alpha(maxtrans),  snu(maxtrans), jnu(maxtrans)
      real(double) :: dv, deltaV
@@ -1330,7 +1330,7 @@ end subroutine molecularLoop
      real(double) :: balance(maxtrans), spontaneous(maxtrans)
      real(double) :: nMol
      logical :: done(maxtrans)
-
+     type(VECTOR) :: endPosition
      type(VECTOR),save :: possave, dirsave
      real(double),save :: rsave,s
 
@@ -2137,7 +2137,7 @@ end subroutine molecularLoop
         call MPI_FINALIZE(ierr)
      endif
 #endif
-666 continue
+
 #ifdef MPI
      if (grid%splitOverMPI) then
         if (myrankGlobal == 1) then
@@ -6164,46 +6164,23 @@ end subroutine molecularLoopV2
 
 
    subroutine intensityAlongRaySplitOverMPI(position, direction, grid, thisMolecule, iTrans, deltaV,i0)
-     use input_variables, only : useDust, h21cm, densitysubsample, lowmemory
      include 'mpif.h'
-     type(VECTOR) :: position, direction, dsvector
+     type(VECTOR) :: position, direction
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: disttoGrid
      integer :: itrans
-     real(double) :: nMol
      real(double), intent(out) :: i0
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
-     type(VECTOR) :: currentPosition, thisPosition, endPosition
-     type(VECTOR) :: startVel, endVel, thisVel, veldiff
-     real(double) :: alphanu1, alphanu2, jnu, snu, balance
-     real(double) :: alpha
-     real(double)  :: dv, deltaV, dVacrossCell
-     integer :: i
-     real(double) :: tval
-     integer :: nTau
-     real(double) ::  OneOvernTauMinusOne, ds
-
-     real(double) :: dTau, etaline, dustjnu
-     real(double), save :: BnuBckGrnd
-
-     real(double) :: phiProfVal
-     real         :: sigma_thermal
+     type(VECTOR) :: currentPosition
+     real(double)  :: deltaV
      real(double) :: deps, origdeps
 
      logical,save :: firsttime = .true.
      logical,save :: havebeenWarned = .false.
      character(len = 80) :: message
-     logical :: dotautest
-
-     real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, opticaldepth, n
-
-     integer :: iupper, ilower
-     real(double) :: nlower, nupper
      
-     real(double) :: dpos
-     type(VECTOR) :: curpos
 
 !     real(double) :: dscounter, tvalcounter
 !     real(double) :: lowtau, midtau, hitau,vhitau,xhitau
@@ -6291,7 +6268,7 @@ end subroutine molecularLoopV2
      include 'mpif.h'
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
-     type(VECTOR) :: startPosition, direction, observerVelocity
+     type(VECTOR) :: startPosition, direction
      real(double) :: startIntensity, deltaV
      logical :: stillServing
      integer :: nStorage
@@ -6301,7 +6278,7 @@ end subroutine molecularLoopV2
      integer, parameter :: tag = 50
      integer :: ierr
      integer :: itrans
-     real(double) :: lengthOfray, i0, tau, tautest,rhomax,i0max,ncol, startTau
+     real(double) :: lengthOfray, i0, tau, starttau
 
      stillServing = .true.
      do while (stillServing)
