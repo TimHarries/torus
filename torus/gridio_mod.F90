@@ -2736,6 +2736,7 @@ contains
             call readZerothThread(grid%octreeRoot, null(), fileFormatted)
          endif
          close(20)
+         call torus_mpi_barrier
        end subroutine readGridSplitOverMPI
 
        recursive subroutine readZerothThread(thisOctal, parent, fileFormatted)
