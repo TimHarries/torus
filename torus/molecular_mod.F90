@@ -2139,6 +2139,7 @@ end subroutine molecularLoop
 #endif
 
 #ifdef MPI
+666  continue
      if (grid%splitOverMPI) then
         if (myrankGlobal == 1) then
            writeoutput = .true.
