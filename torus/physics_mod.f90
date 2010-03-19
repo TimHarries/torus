@@ -108,7 +108,9 @@ contains
     use photoion_mod, only : refineLambdaArray
     use source_mod, only : globalNsource, globalSourceArray
     use molecular_mod, only : molecularLoopV2, globalMolecule
-
+    use setupamr_mod, only : fillVelocityCornersFromCentres
+    use amr_mod, only : fillVelocityCorners
+    use amr_mod, only : hydroVelocityConvert
     real, pointer :: xArray(:)
     integer :: nLambda 
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
@@ -126,6 +128,8 @@ contains
 !     endif
 
      if (molecularPhysics.and.statisticalEquilibrium) then
+        call hydroVelocityConvert(grid%octreeRoot)
+        call fillVelocityCornersFromCentres(grid%octreeRoot, grid)
         call molecularLoopV2(grid, globalMolecule)
      endif
      

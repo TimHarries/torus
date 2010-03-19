@@ -2607,9 +2607,10 @@ contains
       logical :: check
 
       ! Set return value of function to prevent a compiler warning. 
-      check=.false.
-      call writefatal("octalOnThread called in non-MPI code")
-      STOP
+      check = .true.
+!      check=.false.
+!      call writefatal("octalOnThread called in non-MPI code")
+!      STOP
 
     end function octalOnThread
 

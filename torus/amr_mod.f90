@@ -9079,6 +9079,30 @@ end function readparameterfrom2dmap
 
   end FUNCTION AGBStarVelocity
 
+  recursive subroutine hydroVelocityconvert(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call hydroVelocityConvert(child)
+                exit
+             end if
+          end do
+       else 
+          thisOctal%velocity(subcell)%x = (thisOctal%rhou(subcell)/thisOctal%rho(subcell))/cSpeed
+          thisOctal%velocity(subcell)%y = (thisOctal%rhov(subcell)/thisOctal%rho(subcell))/cSpeed
+          thisOctal%velocity(subcell)%z = (thisOctal%rhow(subcell)/thisOctal%rho(subcell))/cSpeed
+       endif
+    enddo
+  end subroutine hydroVelocityconvert
+
+
   TYPE(vector)  function keplerianVelocity(point, grid)
     use input_variables, only : mcore
     type(vector), intent(in) :: point

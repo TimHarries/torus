@@ -20,7 +20,8 @@ module molecular_mod
    use gridio_mod, only: readamrgrid, writeamrgrid
    use atom_mod, only: bnu
    use vtk_mod, only: writeVtkFile
-   
+   use mpi_amr_mod, only : octalOnThread
+   use mpi_global_mod
 #ifdef USEMKL
    use mkl95_lapack
    use mkl95_precision
@@ -385,6 +386,8 @@ module molecular_mod
            end do
         else
 
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
            if (.not.associated(thisOctal%nh2)) allocate(thisOctal%nh2(1:thisOctal%maxChildren))
            thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
 
@@ -609,6 +612,8 @@ module molecular_mod
            end do
         else
 
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
            if(associated(thisOctal%newmolecularlevel)) then
               temparray(1:maxlevel,1:thisoctal%maxchildren) = thisoctal%newmolecularlevel(1:maxlevel,1:thisoctal%maxchildren)
               deallocate(thisoctal%newmolecularlevel)
@@ -711,6 +716,9 @@ module molecular_mod
               end if
            end do
         else
+
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
            if(deallocateeverything) then
               if(.not. (densitysubsample .and. associated(thisoctal%cornerrho))) deallocate(thisoctal%cornerrho)
               if(associated(thisoctal%microturb)) deallocate(thisoctal%microturb)
@@ -2007,6 +2015,28 @@ end subroutine molecularLoop
      call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+#ifdef MPI
+     if (grid%splitOverMPI) then
+        if (myrankGlobal == 0) then
+           writeoutput = .true.
+        else
+           writeoutput = .false.
+        endif
+     endif
+#endif
+
+#ifdef MPI
+   if (grid%SplitOverMPI) then
+      if (myrankGlobal /= 0) then
+         call deallocateUnused(grid,grid%octreeroot,everything = .true.)
+         call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
+         call intensityAlongRayServer(grid, thisMolecule)
+         goto 666
+      endif
+   endif
+#endif
+
+
      if(grid%geometry .eq. 'molebench') molebench = .true.
      if(grid%geometry .eq. 'molcluster') molcluster = .true.
      if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
@@ -2050,9 +2080,11 @@ end subroutine molecularLoop
 
      call findSubcellTD(VECTOR(1.,1.,1.), grid%octreeroot, thisOctal, subcell)
      if(writeoutput) then
-        write(message, *) 'Recovering unused memory', size(thisoctal%molecularlevel(:,1)) - &
-             (thismolecule%itransupper(itrans) + 1), 'levels'
-        call writeinfo(message, TRIVIAL)
+        if (.not.grid%splitOverMPI) then
+           write(message, *) 'Recovering unused memory', size(thisoctal%molecularlevel(:,1)) - &
+                (thismolecule%itransupper(itrans) + 1), 'levels'
+           call writeinfo(message, TRIVIAL)
+        endif
      endif
 
      call deallocateUnused(grid,grid%octreeroot,thismolecule%itransupper(itrans)+1)
@@ -2082,20 +2114,37 @@ end subroutine molecularLoop
         write(filename, *) 'MolRT.fits' ! can be changed to a variable name someday
      endif
 
+
+#ifdef MPI
+   if (grid%SplitOverMPI) then
+         call shutdownServers()
+   endif
+#endif
+
      status = 0
      if(writeoutput) call writeinfo('Deleting previous Fits file', TRIVIAL)
      call deleteFitsFile (filename, status)
-     call torus_mpi_barrier	
+!     call torus_mpi_barrier	
      if(writeoutput) call writeinfo('Writing Cube to Fits file', TRIVIAL)
      if(writeoutput) call writedatacube(cube, filename)
 
 !     call torus_mpi_barrier
 !     call createFluxSpectra(cube, thismolecule, itrans)
 
-     call torus_mpi_barrier
+!     call torus_mpi_barrier
 #ifdef MPI
      if(molcluster) then
         call MPI_FINALIZE(ierr)
+     endif
+#endif
+666 continue
+#ifdef MPI
+     if (grid%splitOverMPI) then
+        if (myrankGlobal == 1) then
+           writeoutput = .true.
+        else
+           writeoutput = .false.
+        endif
      endif
 #endif
 
@@ -2160,7 +2209,6 @@ end subroutine molecularLoop
             index = (/ipixels,jpixels/)
             imagegrid(ipixels,jpixels,:) = PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
                  iTrans,deltaV, subpixels)
-
             pixelcorner = pixelcorner + imagebasis(1)
          enddo
       enddo
@@ -2203,6 +2251,7 @@ end subroutine molecularLoop
    
 !   real(double) :: sink
 
+
    if(firsttime) then
       
       call sobseq(rtemp,-1)
@@ -2219,6 +2268,8 @@ end subroutine molecularLoop
    pixelbasis(2) = imagebasis(2)
   
    avgIntensityOld = 0.
+   ncol = 0.
+   opticaldepth = 0.
    varIntensityOld = 0.
    avgNColOld      = 0.0
 !   sink = 0.d0
@@ -2246,12 +2297,17 @@ end subroutine molecularLoop
       else
          if(lineimage) then
 !            if(present(sink)) then
-            if(isinlte) then
-               call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, ncol = ncol)
+            if (.not.grid%splitOverMPI) then
+               if(isinlte) then
+                  call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, ncol = ncol)
+               else
+                  call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, ncol = ncol)
+               endif
             else
-               call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, ncol = ncol)
+#ifdef MPI
+               call intensityalongRaySplitOverMpI(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0)
+#endif
             endif
-               
 !            else
 !               call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0,tau = opticaldepth, ncol = ncol)
 !            endif
@@ -2350,6 +2406,10 @@ end subroutine molecularLoop
      real(double), allocatable :: tempArray(:), tempArray2(:)
 #endif
 
+
+
+
+
  ! SHOULD HAVE CASE(TELESCOPE) STATEMENT HERE
 
      if(.not. lineimage) then
@@ -2399,12 +2459,16 @@ end subroutine molecularLoop
 
 ! Divide up the image along the x axis for MPI case, otherwise work on the whole image
 #ifdef MPI
-     ix1 = (myRankGlobal)   * (cube%nx / (nThreadsGlobal)) + 1
-     ix2 = (myRankGlobal+1) * (cube%nx / (nThreadsGlobal))
-     if (myRankGlobal == (nThreadsGlobal-1)) ix2 = cube%nx
-
-     n = (npixels*npixels)
-     allocate(tempArray(1:n), tempArray2(1:n))
+     if (.not.grid%splitOverMPI) then
+        ix1 = (myRankGlobal)   * (cube%nx / (nThreadsGlobal)) + 1
+        ix2 = (myRankGlobal+1) * (cube%nx / (nThreadsGlobal))
+        if (myRankGlobal == (nThreadsGlobal-1)) ix2 = cube%nx
+        n = (npixels*npixels)
+        allocate(tempArray(1:n), tempArray2(1:n))
+     else
+        ix1 = 1
+        ix2 = npixels
+     endif
 #else
      ix1 = 1
      ix2 = npixels
@@ -2447,21 +2511,22 @@ end subroutine molecularLoop
 
 ! Put results from makeImageGrid into data cube, performing MPI communication if required
 #ifdef MPI
-           ! Communicate intensity
-           tempArray = reshape(temp(:,:,1), (/ n /))
-           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
-           temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
-
-           ! Communicate tau
-           tempArray = reshape(temp(:,:,2), (/ n /))
-           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
-           temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
-
-           ! Communicate column density
-           tempArray = reshape(temp(:,:,3), (/ n /))
-           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
-           temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
-
+           if (.not.grid%splitOverMPI) then
+              ! Communicate intensity
+              tempArray = reshape(temp(:,:,1), (/ n /))
+              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+              temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
+              
+              ! Communicate tau
+              tempArray = reshape(temp(:,:,2), (/ n /))
+              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+              temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
+              
+              ! Communicate column density
+              tempArray = reshape(temp(:,:,3), (/ n /))
+              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+              temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
+           endif
 #endif           
 
            cube%intensity(:,:,iv) = real(temp(:,:,1))
@@ -2522,7 +2587,7 @@ end subroutine molecularLoop
      endif
 
 #ifdef MPI
-     deallocate(tempArray, tempArray2)
+     if (.not.grid%splitOverMPI) deallocate(tempArray, tempArray2)
 #endif
 
    end subroutine createimage
@@ -3093,6 +3158,8 @@ end subroutine molecularLoop
               end if
            end do
         else
+
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
            
 !           if(grid%geometry .eq. "iras04158") then
               
@@ -4476,7 +4543,7 @@ end subroutine compare_molbench
     end function nextStep
 
 subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol, &
-     observerVelocity)
+     observerVelocity, startI0, startTau, lengthOfRay)
 
 !subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest,rhomax, i0max, nCol, ncol2,&
 !     observerVelocity, tunable)
@@ -4485,6 +4552,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
+     real(double), optional :: starti0, startTau, lengthofRay
      real(double) :: disttoGrid
      integer :: itrans
      real(double) :: nMol
@@ -4527,6 +4595,9 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      real(double) :: nlower, nupper
      
      real(double) :: dpos
+
+     real(double) :: rayLength, maxLengthofRay
+
      type(VECTOR) :: curpos
 
      if(present(tautest)) then
@@ -4572,6 +4643,13 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      i0 = 0.d0
      tau = 0.d0
 
+     maxLengthOfRay = 1.d30
+     if (PRESENT(lengthofRay)) maxLengthOfRay = lengthofRay
+
+     if (PRESENT(starti0)) i0 = starti0
+
+     if (PRESENT(startTau)) tau = startTau
+
      if (present(nCol)) nCol = 0.d0
 
      if(present(rhomax)) rhomax = 0.d0
@@ -4584,7 +4662,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         currentPosition = position + (distToGrid + deps) * direction
      enddo
    
-     do while(inOctal(grid%octreeRoot, currentPosition))
+     rayLength = 0.d0
+     do while(inOctal(grid%octreeRoot, currentPosition).and.(rayLength < maxLengthOfRay))
 
         icount = icount + 1
 
@@ -4744,6 +4823,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         
            currentPosition = currentPosition + (tval + origdeps) * direction
 
+           rayLength = rayLength + tVal + origDeps
+
         if((inoctal(thisoctal,currentposition)) .and. (whichsubcell(thisoctal, currentposition) .eq. subcell)) then
            write(99,*) "fail"
 
@@ -4774,7 +4855,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      if(present(rhomax) .and. .not. present(i0max)) then
         return
      else
-        i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side
+        if (.not.inOctal(grid%octreeRoot, currentPosition)) &
+             i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side
      endif
    end subroutine lteintensityAlongRay2
 
@@ -5669,8 +5751,6 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       call writeinfo("Allocating and initialising molecular levels", FORINFO)
       call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
-      call writeVtkFile(grid, "test.vtk", "vcheck.txt")
-
       dummy = 0
 
       allocate(octalArray(grid%nOctals))
@@ -6069,12 +6149,210 @@ end subroutine molecularLoopV2
            end do
         else ! once octal has no more children, solve for current parameter set
 
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
            thisOctal%molAbundance(subcell) = molAbundance
            if (thisOctal%temperature(subcell) > 100.d0) &
                 thisOctal%molAbundance(subcell) = tiny(thisOctal%molAbundance)
         endif
      enddo
    end subroutine photoionChemistry
+
+
+#ifdef MPI
+
+
+
+   subroutine intensityAlongRaySplitOverMPI(position, direction, grid, thisMolecule, iTrans, deltaV,i0)
+     use input_variables, only : useDust, h21cm, densitysubsample, lowmemory
+     include 'mpif.h'
+     type(VECTOR) :: position, direction, dsvector
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: disttoGrid
+     integer :: itrans
+     real(double) :: nMol
+     real(double), intent(out) :: i0
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+     type(VECTOR) :: currentPosition, thisPosition, endPosition
+     type(VECTOR) :: startVel, endVel, thisVel, veldiff
+     real(double) :: alphanu1, alphanu2, jnu, snu, balance
+     real(double) :: alpha
+     real(double)  :: dv, deltaV, dVacrossCell
+     integer :: i
+     real(double) :: tval
+     integer :: nTau
+     real(double) ::  OneOvernTauMinusOne, ds
+
+     real(double) :: dTau, etaline, dustjnu
+     real(double), save :: BnuBckGrnd
+
+     real(double) :: phiProfVal
+     real         :: sigma_thermal
+     real(double) :: deps, origdeps
+
+     logical,save :: firsttime = .true.
+     logical,save :: havebeenWarned = .false.
+     character(len = 80) :: message
+     logical :: dotautest
+
+     real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, opticaldepth, n
+
+     integer :: iupper, ilower
+     real(double) :: nlower, nupper
+     
+     real(double) :: dpos
+     type(VECTOR) :: curpos
+
+!     real(double) :: dscounter, tvalcounter
+!     real(double) :: lowtau, midtau, hitau,vhitau,xhitau
+!     real(double) :: lowi0, midi0, hii0,vhii0,xhii0
+     real(double) :: tempStorage(2)
+     real(double) :: loc(11)
+     integer :: status(MPI_STATUS_SIZE)
+     integer, parameter :: tag = 50
+     integer :: ierr
+     integer :: nStorage
+     real(double) :: lengthOfRay, tau
+     integer :: iThread
+
+     if(inOctal(grid%octreeRoot, Position)) then
+        disttogrid = 0.
+!        call writeinfo("inside",TRIVIAL)
+!        write(*,*) position
+     else
+        distToGrid = distanceToGridFromOutside(grid, position, direction) 
+     endif
+
+     if (distToGrid > 1.e29) then
+        if (.not. haveBeenWarned) then
+           call writewarning("ray does not intersect grid")
+           write(message, *) position
+           call writeinfo(message, FORINFO)
+           write(message, *) direction
+           call writeinfo(message, FORINFO)
+           havebeenWarned = .true.
+
+        endif
+        
+        i0 = 1.d-60
+        goto 666
+     endif
+     
+     deps = 5.d-4 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     origdeps = deps
+
+     currentPosition = position + (distToGrid + deps) * direction
+
+!     if(inoctal(grid%octreeroot,currentposition)) then
+!        call writeinfo("inside",TRIVIAL)
+!     else
+!        call writeinfo("notinside",TRIVIAL)
+!     endif
+
+     i0 = 0.d0
+     tau = 0.d0
+     nstorage = 2
+
+     thisOctal => grid%octreeRoot
+     do while (inOctal(grid%octreeRoot, currentPosition))
+        call findSubcellLocal(currentPosition, thisOctal, subcell)
+        call distanceToCellBoundary(grid, currentPosition, direction, lengthOfRay, &
+             sOctal=thisOctal, sSubcell = subcell)
+        iThread = thisOctal%mpiThread(subcell)
+        loc(1) = currentPosition%x
+        loc(2) = currentPosition%y
+        loc(3) = currentPosition%z
+        loc(4) = direction%x
+        loc(5) = direction%y
+        loc(6) = direction%z
+        loc(7) = lengthOfRay
+        loc(8) = i0
+        loc(9) = deltaV
+        loc(10) = dble(itrans)
+        loc(11) = tau
+
+!        write(*,*) myrankGlobal, " sending message to ", ithread
+        call MPI_SEND(loc, 11, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+!        write(*,*) myrankGlobal, " message sent awaiting recv"
+        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!        write(*,*) myrankGlobal, " message received from ",ithread
+
+        i0 = tempStorage(1)
+        tau = tempStorage(2)
+
+        currentPosition = currentPosition + (lengthofRay+1.d-6*grid%halfSmallestSubcell)*direction
+     enddo
+666 continue
+   end subroutine intensityAlongRaySplitOverMPI
+
+   subroutine intensityAlongRayServer(grid, thisMolecule)
+     include 'mpif.h'
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     type(VECTOR) :: startPosition, direction, observerVelocity
+     real(double) :: startIntensity, deltaV
+     logical :: stillServing
+     integer :: nStorage
+     real(double) :: tempStorage(2)
+      real(double) :: loc(11)
+     integer :: status(MPI_STATUS_SIZE)
+     integer, parameter :: tag = 50
+     integer :: ierr
+     integer :: itrans
+     real(double) :: lengthOfray, i0, tau, tautest,rhomax,i0max,ncol, startTau
+
+     stillServing = .true.
+     do while (stillServing)
+!        write(*,*) myrankGlobal, " waiting for send from thread 0"
+       call MPI_RECV(loc, 11, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+!        write(*,*) myrankGlobal, " received a message from thread 0"
+       startposition%x = loc(1)
+       startposition%y = loc(2)
+       startposition%z = loc(3)
+       direction%x = loc(4)
+       direction%y = loc(5)
+       direction%z = loc(6)
+       lengthOfRay = loc(7)
+       startIntensity = loc(8)
+       deltaV = loc(9)
+       itrans = int(loc(10))
+       starttau = loc(11)
+
+       if (startposition%x > 1.d29) then
+          stillServing= .false.
+          write(*,*) myrankGlobal, " received server shutdown signal"
+       else
+
+          call lteintensityAlongRay2(startposition, direction, grid, thisMolecule, iTrans, deltaV, i0, tau=tau, &
+               startI0=startIntensity, startTau=starttau, lengthOfRay=lengthofRay)
+          tempStorage(1) = i0
+          tempStorage(2) = tau
+          nStorage = 2
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+  end subroutine intensityAlongRayServer
+
+
+  subroutine shutdownServers()
+    include 'mpif.h'
+    integer :: iThread
+    real(double) :: loc(10)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    do iThread = 1, nThreadsGlobal-1
+       if (iThread /= myrankGlobal) then
+          loc = 0.d0
+          loc(1) = 1.d30
+          call MPI_SEND(loc, 10, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+  end subroutine shutdownServers
+
+#endif
 
 
   end module molecular_mod

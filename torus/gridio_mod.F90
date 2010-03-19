@@ -31,6 +31,17 @@ module gridio_mod
      module procedure writeAttributePointerReal2dFlexi
   end interface
 
+  interface sendAttributePointerFlexi
+     module procedure sendAttributePointerInteger1dFlexi
+     module procedure sendAttributePointerLogical1dFlexi
+     module procedure sendAttributePointerReal1dFlexi
+     module procedure sendAttributePointerVector1dFlexi
+     module procedure sendAttributePointerDouble1dFlexi
+     module procedure sendAttributePointerDouble2dFlexi
+     module procedure sendAttributePointerDouble3dFlexi
+     module procedure sendAttributePointerReal2dFlexi
+  end interface
+
   interface writeAttributeStaticFlexi
      module procedure writeAttributeStaticIntegerSingleFlexi
      module procedure writeAttributeStaticRealSingleFlexi
@@ -45,6 +56,20 @@ module gridio_mod
      module procedure writeAttributeStaticLogicalSingleFlexi
   end interface
 
+  interface sendAttributeStaticFlexi
+     module procedure sendAttributeStaticIntegerSingleFlexi
+     module procedure sendAttributeStaticRealSingleFlexi
+     module procedure sendAttributeStaticCharacterSingleFlexi
+     module procedure sendAttributeStaticVectorSingleFlexi
+     module procedure sendAttributeStaticInteger1DFlexi
+     module procedure sendAttributeStaticLogical1DFlexi
+     module procedure sendAttributeStaticVector1DFlexi
+     module procedure sendAttributeStaticDouble1dFlexi
+     module procedure sendAttributeStaticReal1dFlexi
+     module procedure sendAttributeStaticDoubleSingleFlexi
+     module procedure sendAttributeStaticLogicalSingleFlexi
+  end interface
+
   interface readSingleFlexi
      module procedure readSingleIntegerFlexi
      module procedure readSingleRealFlexi
@@ -54,12 +79,29 @@ module gridio_mod
      module procedure readSingleVectorFlexi
   end interface
 
+  interface receiveSingleFlexi
+     module procedure receiveSingleIntegerFlexi
+     module procedure receiveSingleRealFlexi
+     module procedure receiveSingleDoubleFlexi
+     module procedure receiveSingleCharacterFlexi
+     module procedure receiveSingleLogicalFlexi
+     module procedure receiveSingleVectorFlexi
+  end interface
+
   interface readArrayFlexi
      module procedure readArrayVectorFlexi
      module procedure readArrayRealFlexi
      module procedure readArrayDoubleFlexi
      module procedure readArrayIntegerFlexi
      module procedure readArrayLogicalFlexi
+  end interface
+
+  interface receiveArrayFlexi
+     module procedure receiveArrayVectorFlexi
+     module procedure receiveArrayRealFlexi
+     module procedure receiveArrayDoubleFlexi
+     module procedure receiveArrayIntegerFlexi
+     module procedure receiveArrayLogicalFlexi
   end interface
 
   interface readPointerFlexi
@@ -71,6 +113,17 @@ module gridio_mod
      module procedure readDoublePointer2DFlexi
      module procedure readDoublePointer3DFlexi
      module procedure readRealPointer2DFlexi
+  end interface
+
+  interface receivePointerFlexi
+     module procedure receiveDoublePointer1DFlexi
+     module procedure receiveRealPointer1DFlexi
+     module procedure receiveLogicalPointer1DFlexi
+     module procedure receiveIntegerPointer1DFlexi
+     module procedure receiveVectorPointer1DFlexi
+     module procedure receiveDoublePointer2DFlexi
+     module procedure receiveDoublePointer3DFlexi
+     module procedure receiveRealPointer2DFlexi
   end interface
 
 contains
@@ -518,11 +571,13 @@ contains
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: readFile
+    integer ::  nOctals, nVoxels
 #ifdef MPI
-    integer :: iThread, nOctals, nVoxels
+    integer :: iThread
 #endif
 
     readFile = .true.
+
 
     if (associated(grid%octreeRoot)) then
        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
@@ -535,7 +590,12 @@ contains
           if (iThread == myRankGlobal) then
 #endif
              call readAmrGridSingle(filename, fileFormatted, grid)
-             CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+             call updateMaxDepth(grid)
+             call setSmallestSubcell(grid)
+             call checkAMRgrid(grid, .false.)
+             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+             grid%nOctals = nOctals
+!             CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
 #ifdef MPI
           endif
           call torus_mpi_barrier
@@ -545,17 +605,18 @@ contains
     
 #ifdef MPI
     if (grid%splitOverMPI) then
-       do iThread = 0, nThreadsGlobal-1
-          if (iThread == myRankGlobal) then
-             call readAmrGridSingle(filename, fileFormatted, grid)
-             call updateMaxDepth(grid)
-             call setSmallestSubcell(grid)
-             call checkAMRgrid(grid, .false.)
-             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-             grid%nOctals = nOctals
-          endif
-          call torus_mpi_barrier
-       enddo
+       call readGridSplitOverMPI(grid, filename, fileFormatted)
+!       do iThread = 0, nThreadsGlobal-1
+!          if (iThread == myRankGlobal) then
+!             call readAmrGridSingle(filename, fileFormatted, grid)
+!             call updateMaxDepth(grid)
+!             call setSmallestSubcell(grid)
+!             call checkAMRgrid(grid, .false.)
+!             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+!             grid%nOctals = nOctals
+!          endif
+!          call torus_mpi_barrier
+!       enddo
        call grid_info_mpi(grid, "info_grid.dat")
     endif
 #endif
@@ -568,15 +629,12 @@ contains
     implicit none
 
     character(len=*)            :: filename
-    character(len=80)            :: message
     logical, intent(in)         :: fileFormatted
     type(GRIDTYPE), intent(inout) :: grid
     
-    integer, dimension(8) :: timeValues    ! system date and time
     integer               :: error         ! status code
     integer :: nOctal
     character(len=80) :: absolutePath, inFile, updatedFilename
-    character(len=20) :: tag
     integer :: ithread
 
     absolutePath = " "
@@ -588,142 +646,10 @@ contains
 
   updatedFilename = inFile
 
-
-    if (fileFormatted) then
-       open(unit=20, iostat=error, file=updatedFilename, form="formatted", status="old")
-       if (error /=0) then
-         print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
-       end if
-       ! read the file's time stamp
-       read(unit=20,fmt=*,iostat=error) timeValues 
-       if (error /=0) then
-         print *, 'Panic: read error in readAMRgrid (formatted timeValues)' ; stop
-       end if
-    else
-       open(unit=20, iostat=error, file=updatedFilename, form="unformatted", status="old")
-       if (error /=0) then
-         print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
-       end if
-       ! read the file's time stamp
-       read(unit=20,iostat=error) timeValues
-       if (error /=0) then
-         print *, 'Panic: read error in readAMRgrid (unformatted timeValues)' ; stop
-       end if
-    end if
-
-    write(message,'(a,a)') "Reading flexible AMR file from: ",trim(filename)
-    call writeInfo(message,TRIVIAL)
-
-    write(message,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
-                          timeValues(1),'/',timeValues(2),'/',&
-                          timeValues(3),'  ',timeValues(5),':',timeValues(6)
-    call writeInfo(message,TRIVIAL)
+  call openGridFile(updatedFilename, fileformatted)
 
 
-    do while(.true.)
-       if (fileFormatted) then 
-         read(20, '(a)') tag
-       else
-          read(20) tag
-       endif 
-       tag = ADJUSTL(tag)
-       if (tag == "GRIDBEGINS") cycle
-       if (tag == "GRIDENDS") exit
-
-       select case (trim(tag))
-          
-          case("version")
-             call readSingleFlexi(20, grid%version, fileFormatted)
-             if (grid%version /= torusVersion) then
-                write(message,'(a,a,a,a)') "This dump file written with ", trim(grid%version), " and read with ", trim(torusVersion)
-                call writeWarning(message)
-                grid%version = torusVersion
-             endif
-          case("nLambda")
-             call readSingleFlexi(20, grid%nLambda, fileFormatted)
-          case("flatSpec")
-             call readSingleFlexi(20,grid%flatSpec, fileFormatted)
-          case("adaptive")
-             call readSingleFlexi(20,grid%adaptive, fileFormatted)
-          case("cartesian")
-             call readSingleFlexi(20,grid%cartesian, fileFormatted)
-          case("isotropic")
-             call readSingleFlexi(20,grid%isotropic, fileFormatted)
-          case("hitCore")
-             call readSingleFlexi(20,grid%hitCore, fileFormatted)
-          case("diskRadius")
-             call readSingleFlexi(20,grid%diskRadius, fileFormatted)
-          case("diskNormal")
-             call readSingleFlexi(20,grid%diskNormal, fileFormatted)
-          case("DipoleOffset")
-             call readSingleFlexi(20,grid%DipoleOffset, fileFormatted)
-          case("geometry")
-             call readSingleFlexi(20,grid%geometry, fileFormatted)
-          case("rCore")
-             call readSingleFlexi(20,grid%rCore, fileFormatted)
-          case("lCore")
-             call readSingleFlexi(20,grid%lCore, fileFormatted)
-          case("chanceWind")
-             call readSingleFlexi(20,grid%chanceWindOverTotalContinuum, fileFormatted)
-          case("lineEmission")
-             call readSingleFlexi(20,grid%lineEmission, fileFormatted)
-          case("contEmission")
-             call readSingleFlexi(20,grid%contEmission, fileFormatted)
-          case("doRaman")
-             call readSingleFlexi(20,grid%doRaman, fileFormatted)
-          case("resonanceLine")
-             call readSingleFlexi(20,grid%resonanceLine, fileFormatted)
-          case("rStar1")
-             call readSingleFlexi(20,grid%rStar1, fileFormatted)
-          case("rStar2")
-             call readSingleFlexi(20,grid%rStar2, fileFormatted)
-          case("lumRatio")
-             call readSingleFlexi(20,grid%lumRatio, fileFormatted)
-          case("tempSource")
-             call readSingleFlexi(20,grid%tempSource, fileFormatted)
-          case("starPos1")
-             call readSingleFlexi(20,grid%starPos1, fileFormatted)
-          case("starPos2")
-             call readSingleFlexi(20,grid%starPos2, fileFormatted)
-          case("lambda2")
-             call readSingleFlexi(20,grid%lambda2, fileFormatted)
-          case("maxLevels")
-             call readSingleFlexi(20,grid%maxLevels, fileFormatted)
-          case("maxDepth")
-             call readSingleFlexi(20,grid%maxDepth, fileFormatted)
-          case("halfSmallestSubcell")
-             call readSingleFlexi(20,grid%halfSmallestSubcell, fileFormatted)
-          case("nOctals")
-             call readSingleFlexi(20,grid%nOctals, fileFormatted)
-          case("smoothingFactor")
-             call readSingleFlexi(20,grid%smoothingFactor, fileFormatted)
-          case("oneKappa")
-             call readSingleFlexi(20,grid%oneKappa, fileFormatted)
-          case("rInner")
-             call readSingleFlexi(20,grid%rInner, fileFormatted)
-          case("rOuter")
-             call readSingleFlexi(20,grid%rOuter, fileFormatted)
-          case("amr2dOnly")
-             call readSingleFlexi(20,grid%amr2dOnly, fileFormatted)
-          case("photoionization")
-             call readSingleFlexi(20,grid%photoionization, fileFormatted)
-          case("iDump")
-             call readSingleFlexi(20,grid%iDump, fileFormatted)
-          case("currentTime")
-             call readSingleFlexi(20,grid%currentTime, fileFormatted)
-          case("lamarray")
-             call readPointerFlexi(20,grid%lamarray,fileFormatted)
-          case("oneKappaAbs")
-             call readPointerFlexi(20,grid%oneKappaAbs,fileFormatted)
-          case("oneKappaSca")
-             call readPointerFlexi(20,grid%oneKappaSca,fileFormatted)
-          case DEFAULT
-             write(message,'(a,a)') "Unrecognised grid attribute: "//trim(tag)
-        end select
-     end do
-
-
-
+    call readStaticComponents(grid, fileformatted)
 
        allocate(grid%octreeRoot)
        grid%octreeRoot%nDepth = 1
@@ -758,284 +684,7 @@ contains
       nOctal = nOctal+1
       thisOctal%parent => parent
 
-      do while (.true.)
-
-         if (fileFormatted) then
-            read(20, *) tag
-         else
-            read(20) tag
-         endif
-         tag = ADJUSTL(tag)
-         if (tag == "OCTALBEGINS") cycle
-         if (tag == "OCTALENDS") exit
-
-         select case (tag)
-         case("nDepth")
-            call readSingleFlexi(20, thisOctal%nDepth, fileFormatted)
-         case("nChildren")
-            call readSingleFlexi(20, thisOctal%nChildren, fileFormatted)
-         case("indexChild")
-            call readArrayFlexi(20, thisOctal%indexChild, fileFormatted)
-         case("hasChild")
-            call readArrayFlexi(20, thisOctal%hasChild, fileFormatted)
-         case("centre")
-            call readSingleFlexi(20, thisOctal%centre, fileFormatted)
-         case("rho")
-            call readArrayFlexi(20, thisOctal%rho, fileFormatted)
-         case("temperature")
-            call readArrayFlexi(20, thisOctal%temperature, fileFormatted)
-         case("label")
-            call readArrayFlexi(20, thisOctal%label, fileFormatted)
-         case("subcellSize")
-            call readSingleFlexi(20, thisOctal%subcellSize, fileFormatted)
-         case("threeD")
-            call readSingleFlexi(20, thisOctal%threeD, fileFormatted)
-         case("twoD")
-            call readSingleFlexi(20, thisOctal%twoD, fileFormatted)
-         case("oneD")
-            call readSingleFlexi(20, thisOctal%oneD, fileFormatted)
-         case("maxChildren")
-            call readSingleFlexi(20, thisOctal%maxChildren, fileFormatted)
-         case("cylindrical")
-            call readSingleFlexi(20, thisOctal%cylindrical, fileFormatted)
-         case("splitAzimuthally")
-            call readSingleFlexi(20, thisOctal%splitAzimuthally, fileFormatted)
-         case("phi")
-            call readSingleFlexi(20, thisOctal%phi, fileFormatted)
-         case("dphi")
-            call readSingleFlexi(20, thisOctal%dphi, fileFormatted)
-         case("r")
-            call readSingleFlexi(20, thisOctal%r, fileFormatted)
-
-         case("xMax")
-            call readSingleFlexi(20, thisOctal%xMax, fileFormatted)
-         case("yMax")
-            call readSingleFlexi(20, thisOctal%yMax, fileFormatted)
-         case("zMax")
-            call readSingleFlexi(20, thisOctal%zMax, fileFormatted)
-         case("xMin")
-            call readSingleFlexi(20, thisOctal%xMin, fileFormatted)
-         case("yMin")
-            call readSingleFlexi(20, thisOctal%yMin, fileFormatted)
-         case("zMin")
-            call readSingleFlexi(20, thisOctal%zMin, fileFormatted)
-
-         case("parentSubcell")
-            call readSingleFlexi(20, thisOctal%parentSubcell, fileFormatted)
-         case("inStar")
-            call readArrayFlexi(20, thisOctal%inStar, fileFormatted)
-         case("inFlow")
-            call readArrayFlexi(20, thisOctal%inFlow, fileFormatted)
-         case("velocity")
-            call readArrayFlexi(20, thisOctal%velocity, fileFormatted)
-         case("cornervelocity")
-            call readArrayFlexi(20, thisOctal%cornervelocity, fileFormatted)
-         case("cornerrho")
-            call readPointerFlexi(20, thisOctal%cornerrho, fileFormatted)
-         case("chiLine")
-            call readPointerFlexi(20, thisOctal%chiLine, fileFormatted)
-         case("etaLine")
-            call readPointerFlexi(20, thisOctal%etaLine, fileFormatted)
-         case("etaCont")
-            call readPointerFlexi(20, thisOctal%etaCont, fileFormatted)
-         case("biasLine3D")
-            call readPointerFlexi(20, thisOctal%biasLine3D, fileFormatted)
-         case("biasCont3D")
-            call readPointerFlexi(20, thisOctal%biasCont3D, fileFormatted)
-         case("probDistLine")
-            call readPointerFlexi(20, thisOctal%probDistLine, fileFormatted)
-         case("probDistCont")
-            call readPointerFlexi(20, thisOctal%probDistCont, fileFormatted)
-         case("ne")
-            call readPointerFlexi(20, thisOctal%ne, fileFormatted)
-         case("nH")
-            call readPointerFlexi(20, thisOctal%nH, fileFormatted)
-         case("nTot")
-            call readPointerFlexi(20, thisOctal%nTot, fileFormatted)
-         case("dustType")
-            call readPointerFlexi(20, thisOctal%dustType, fileFormatted)
-         case("dustTypeFraction")
-            call readPointerFlexi(20, thisOctal%dustTypeFraction, fileFormatted)
-         case("oldFrac")
-            call readPointerFlexi(20, thisOctal%oldFrac, fileFormatted)
-         case("scatteredIntensity")
-            call readPointerFlexi(20, thisOctal%scatteredIntensity, fileFormatted)
-         case("meanIntensity")
-            call readPointerFlexi(20, thisOctal%meanIntensity, fileFormatted)
-         case("mpiThread")
-            call readArrayFlexi(20, thisOctal%mpiThread,fileFormatted)
-         case("kappaAbs")
-            call readPointerFlexi(20, thisOctal%kappaAbs, fileFormatted)
-         case("kappaSca")
-            call readPointerFlexi(20, thisOctal%kappaSca, fileFormatted)
-         case("ionFrac")
-            call readPointerFlexi(20, thisOctal%ionFrac, fileFormatted)
-         case("photoIonCoeff")
-            call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
-         case("distanceGrid")
-            call readPointerFlexi(20, thisOctal%distanceGrid, fileFormatted)
-
-         case("nCrossings")
-            call readPointerFlexi(20, thisOctal%nCrossings, fileFormatted)
-         case("hHeating")
-            call readPointerFlexi(20, thisOctal%hHeating, fileFormatted)
-         case("heHeating")
-            call readPointerFlexi(20, thisOctal%heHeating, fileFormatted)
-
-         case("undersampled")
-            call readPointerFlexi(20, thisOctal%undersampled, fileFormatted)
-         case("nDiffusion")
-            call readPointerFlexi(20, thisOctal%nDiffusion, fileFormatted)
-         case("diffusionApprox")
-            call readPointerFlexi(20, thisOctal%diffusionApprox, fileFormatted)
-
-
-         case("molecularLevel")
-            call readPointerFlexi(20, thisOctal%molecularLevel, fileFormatted)
-         case("jnu")
-            call readPointerFlexi(20, thisOctal%jnu, fileFormatted)
-         case("bnu")
-            call readPointerFlexi(20, thisOctal%bnu, fileFormatted)
-         case("molAbundance")
-            call readPointerFlexi(20, thisOctal%molAbundance, fileFormatted)
-         case("nh2")
-            call readPointerFlexi(20, thisOctal%nh2, fileFormatted)
-         case("microTurb")
-            call readPointerFlexi(20, thisOctal%microTurb, fileFormatted)
-         case("N")
-            call readPointerFlexi(20, thisOctal%n, fileFormatted)
-         case("departCoeff")
-            call readPointerFlexi(20, thisOctal%departCoeff, fileFormatted)
-         case("atomAbundance")
-            call readPointerFlexi(20, thisOctal%atomAbundance, fileFormatted)
-         case("atomLevel")
-            call readPointerFlexi(20, thisOctal%atomLevel, fileFormatted)
-         case("jnuCont")
-            call readPointerFlexi(20, thisOctal%jnuCont, fileFormatted)
-         case("jnuLine")
-            call readPointerFlexi(20, thisOctal%jnuLine, fileFormatted)
-
-         case("q_i")
-            call readPointerFlexi(20, thisOctal%q_i, fileFormatted)
-         case("q_i_plus_1")
-            call readPointerFlexi(20, thisOctal%q_i_plus_1, fileFormatted)
-         case("q_i_minus_1")
-            call readPointerFlexi(20, thisOctal%q_i_minus_1, fileFormatted)
-         case("q_i_minus_2")
-            call readPointerFlexi(20, thisOctal%q_i_minus_2, fileFormatted)
-
-         case("x_i")
-            call readPointerFlexi(20, thisOctal%x_i, fileFormatted)
-         case("x_i_plus_1")
-            call readPointerFlexi(20, thisOctal%x_i_plus_1, fileFormatted)
-         case("x_i_minus_1")
-            call readPointerFlexi(20, thisOctal%x_i_minus_1, fileFormatted)
-
-         case("u_interface")
-            call readPointerFlexi(20, thisOctal%u_interface, fileFormatted)
-         case("u_i_plus_1")
-            call readPointerFlexi(20, thisOctal%u_i_plus_1, fileFormatted)
-         case("u_i_minus_1")
-            call readPointerFlexi(20, thisOctal%u_i_minus_1, fileFormatted)
-
-         case("flux_i")
-            call readPointerFlexi(20, thisOctal%flux_i, fileFormatted)
-         case("flux_i_plus_1")
-            call readPointerFlexi(20, thisOctal%flux_i_plus_1, fileFormatted)
-         case("flux_i_minus_1")
-            call readPointerFlexi(20, thisOctal%flux_i_minus_1, fileFormatted)
-
-
-         case("phiLimit")
-            call readPointerFlexi(20, thisOctal%phiLimit, fileFormatted)
-
-         case("ghostCell")
-            call readPointerFlexi(20, thisOctal%ghostCell, fileFormatted)
-         case("feederCell")
-            call readPointerFlexi(20, thisOctal%feederCell, fileFormatted)
-         case("edgeCell")
-            call readPointerFlexi(20, thisOctal%edgeCell, fileFormatted)
-         case("refinedLastTime")
-            call readPointerFlexi(20, thisOctal%refinedLastTime, fileFormatted)
-
-         case("pressure_i")
-            call readPointerFlexi(20, thisOctal%pressure_i, fileFormatted)
-         case("pressure_i_plus_1")
-            call readPointerFlexi(20, thisOctal%pressure_i_plus_1, fileFormatted)
-         case("pressure_i_minus_1")
-            call readPointerFlexi(20, thisOctal%pressure_i_minus_1, fileFormatted)
-
-         case("rhou")
-            call readPointerFlexi(20, thisOctal%rhou, fileFormatted)
-         case("rhov")
-            call readPointerFlexi(20, thisOctal%rhov, fileFormatted)
-         case("rhow")
-            call readPointerFlexi(20, thisOctal%rhow, fileFormatted)
-
-         case("rhoe")
-            call readPointerFlexi(20, thisOctal%rhoe, fileFormatted)
-         case("energy")
-            call readPointerFlexi(20, thisOctal%energy, fileFormatted)
-
-
-         case("phi_i")
-            call readPointerFlexi(20, thisOctal%phi_i, fileFormatted)
-         case("phi_i_plus_1")
-            call readPointerFlexi(20, thisOctal%phi_i_plus_1, fileFormatted)
-         case("phi_i_minus_1")
-            call readPointerFlexi(20, thisOctal%phi_i_minus_1, fileFormatted)
-
-         case("rho_i_plus_1")
-            call readPointerFlexi(20, thisOctal%rho_i_plus_1, fileFormatted)
-         case("rho_i_minus_1")
-            call readPointerFlexi(20, thisOctal%rho_i_minus_1, fileFormatted)
-
-         case("boundaryCondition")
-            call readPointerFlexi(20, thisOctal%boundaryCondition, fileFormatted)
-         case("boundaryPartner")
-            call readPointerFlexi(20, thisOctal%boundaryPartner, fileFormatted)
-         case("gravboundaryPartner")
-            call readPointerFlexi(20, thisOctal%gravboundaryPartner, fileFormatted)
-         case("changed")
-            call readPointerFlexi(20, thisOctal%changed, fileFormatted)
-         case("rLimit")
-            call readPointerFlexi(20, thisOctal%rLimit, fileFormatted)
-
-         case("iEquationOfState")
-            call readPointerFlexi(20, thisOctal%iEquationOfState, fileFormatted)
-         case("gamma")
-            call readPointerFlexi(20, thisOctal%gamma, fileFormatted)
-
-         case("udens")
-            call readPointerFlexi(20, thisOctal%udens, fileFormatted)
-         case("adot")
-            call readPointerFlexi(20, thisOctal%aDot, fileFormatted)
-         case("adotdist")
-            call readPointerFlexi(20, thisOctal%distanceGridaDot, fileFormatted)
-         case("dfromgas")
-            call readPointerFlexi(20, thisOctal%distanceGridPhotonFromGas, fileFormatted)
-         case("dfromsource")
-            call readPointerFlexi(20, thisOctal%distanceGridPhotonFromSource, fileFormatted)
-         case("ufromgas")
-            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromGas, fileFormatted)
-         case("ufromsource")
-            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
-         case("utotal")
-            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
-         case("oldutotal")
-            call readPointerFlexi(20, thisOctal%oldphotonEnergyDensity, fileFormatted)
-
-         case("fixedtemperature")
-            call readPointerFlexi(20, thisOctal%fixedtemperature, fileFormatted)
-
-
-         case DEFAULT
-            write(message,*) "Unrecognised tag on read: "//trim(tag)
-            call writeWarning(message)
-            call readDummyData(20, fileFormatted)
-         end select
-
-      end do
+      call readOctalViaTags(thisOctal, fileFormatted)
 
 #ifdef MPI
 
@@ -1713,6 +1362,77 @@ contains
       endif
     end subroutine writeFileTag
 
+    subroutine receiveSingleIntegerFlexi(value)
+      include 'mpif.h'
+      integer, intent(out) :: value
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(value, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveSingleIntegerFlexi
+
+    subroutine receiveSingleRealFlexi(value)
+      include 'mpif.h'
+      real, intent(out) :: value
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(value, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveSingleRealFlexi
+
+    subroutine receiveSingleDoubleFlexi(value)
+      include 'mpif.h'
+      real(double), intent(out) :: value
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(value, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveSingleDoubleFlexi
+
+    subroutine receiveSingleLogicalFlexi(value)
+      include 'mpif.h'
+      logical, intent(out) :: value
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(value, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveSingleLogicalFlexi
+
+    subroutine receiveSingleVectorFlexi(value)
+      include 'mpif.h'
+      type(VECTOR), intent(out) :: value
+      real(double) :: v(3)
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(v, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      
+      value = VECTOR(v(1), v(2), v(3))
+
+    end subroutine receiveSingleVectorFlexi
+
+    subroutine receiveSingleCharacterFlexi(value)
+      include 'mpif.h'
+      character(len=*), intent(out) :: value
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr, i
+
+      call MPI_RECV(i, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, i, MPI_CHARACTER, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveSingleCharacterFlexi
+    
+
     subroutine readSingleIntegerFlexi(lUnit, value, fileFormatted)
       integer :: lUnit
       integer, intent(out) :: value
@@ -2060,6 +1780,710 @@ contains
       endif
     end subroutine readArrayDoubleFlexi
 
+
+  subroutine sendAttributePointerInteger1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer, pointer :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+
+    endif
+  end subroutine sendAttributePointerInteger1DFlexi
+
+  subroutine sendAttributePointerReal1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real, pointer :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+
+    endif
+  end subroutine sendAttributePointerReal1DFlexi
+
+  subroutine sendAttributePointerDouble1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double), pointer :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+
+    endif
+  end subroutine sendAttributePointerDouble1DFlexi
+
+  subroutine sendAttributePointerDouble2DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double), pointer :: value(:,:)
+    real(double), allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       allocate(temp(SIZE(value,1)*SIZE(value,2)))
+       temp = RESHAPE(value,SHAPE(temp))
+       call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       deallocate(temp)
+
+    endif
+  end subroutine sendAttributePointerDouble2DFlexi
+
+  subroutine sendAttributePointerReal2DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real, pointer :: value(:,:)
+    real, allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       allocate(temp(SIZE(value,1)*SIZE(value,2)))
+       temp = RESHAPE(value,SHAPE(temp))
+       call MPI_SEND(temp, SIZE(temp), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       deallocate(temp)
+
+    endif
+  end subroutine sendAttributePointerREAL2DFlexi
+
+  subroutine sendAttributePointerDouble3DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double), pointer :: value(:,:,:)
+    real(double), allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value,3), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       allocate(temp(SIZE(value,1)*SIZE(value,2)*SIZE(value,3)))
+       temp = RESHAPE(value,SHAPE(temp))
+       call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       deallocate(temp)
+
+    endif
+  end subroutine sendAttributePointerDouble3DFlexi
+
+  subroutine sendAttributeStaticLogical1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    logical :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticLogical1DFlexi
+
+  subroutine sendAttributeStaticLogicalSingleFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    logical :: value
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticLogicalSingleFlexi
+
+  subroutine sendAttributeStaticIntegerSingleFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer :: value
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticIntegerSingleFlexi
+
+  subroutine sendAttributeStaticRealSingleFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real :: value
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticRealSingleFlexi
+
+  subroutine sendAttributeStaticDoubleSingleFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double) :: value
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticDoubleSingleFlexi
+
+  subroutine sendAttributeStaticVectorSingleFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    type(VECTOR) :: value
+    real(double) :: loc(3)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    loc(1) = value%x
+    loc(2) = value%y
+    loc(3) = value%z
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticVECTORSingleFlexi
+
+  subroutine sendAttributeStaticCharacterSingleFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    character(len=*) :: value
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(len(value), 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, len(value), MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       
+  end subroutine sendAttributeStaticCharacterSingleFlexi
+
+  subroutine sendAttributeStaticVector1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    TYPE(VECTOR) :: value(:)
+    real(double), allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+    integer :: n, n3
+    integer :: i,j
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    n = SIZE(value)
+    n3 = 3 * n
+    allocate(temp(1:n3))
+    do i = 1, n
+       j = (i-1)*3
+       temp(j+1) = value(i)%x
+       temp(j+2) = value(i)%y
+       temp(j+3) = value(i)%z
+    enddo
+    call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(temp, n3, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    deallocate(temp)
+  end subroutine sendAttributeStaticVector1DFlexi
+  
+
+  subroutine sendAttributeStaticInteger1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+
+  end subroutine sendAttributeStaticInteger1DFlexi
+
+  subroutine sendAttributeStaticReal1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+
+  end subroutine sendAttributeStaticReal1DFlexi
+
+  subroutine sendAttributeStaticDouble1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double) :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+
+  end subroutine sendAttributeStaticDouble1DFlexi
+
+  subroutine sendAttributeStaticDouble2DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double) :: value(:,:)
+    real(double), allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    allocate(temp(SIZE(value,1)*SIZE(value,2)))
+    temp = RESHAPE(value,SHAPE(temp))
+    call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    deallocate(temp)
+
+     end subroutine sendAttributeStaticDouble2DFlexi
+
+  subroutine sendAttributeStaticReal2DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real :: value(:,:)
+    real, allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    allocate(temp(SIZE(value,1)*SIZE(value,2)))
+    temp = RESHAPE(value,SHAPE(temp))
+    call MPI_SEND(temp, SIZE(temp), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    deallocate(temp)
+
+  end subroutine sendAttributeStaticReal2DFlexi
+
+  subroutine sendAttributeStaticDouble3DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    real(double) :: value(:,:,:)
+    real(double), allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(SIZE(value,3), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    allocate(temp(SIZE(value,1)*SIZE(value,2)*SIZE(value,3)))
+    temp = RESHAPE(value,SHAPE(temp))
+    call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    deallocate(temp)
+    
+  end subroutine sendAttributeStaticDouble3DFlexi
+
+  subroutine sendAttributePointerLogical1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    logical, pointer :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+
+    endif
+  end subroutine sendAttributePointerLogical1DFlexi
+
+  subroutine sendAttributePointerVector1DFlexi(iThread, name, value)
+    include 'mpif.h'
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    TYPE(VECTOR), pointer :: value(:)
+    real(double), allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+    integer :: n, n3
+    integer :: i,j
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       n = SIZE(value)
+       n3 = 3 * n
+       allocate(temp(1:n3))
+       do i = 1, n
+          j = (i-1)*3
+          temp(j+1) = value(i)%x
+          temp(j+2) = value(i)%y
+          temp(j+3) = value(i)%z
+       enddo
+       call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(temp, n3, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       deallocate(temp)
+    endif
+  end subroutine sendAttributePointerVector1DFlexi
+
+
+
+    subroutine receiveArrayIntegerFlexi(value)
+      include 'mpif.h'
+      integer, intent(out) :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveArrayIntegerFlexi
+
+    subroutine receiveArrayRealFlexi(value)
+      include 'mpif.h'
+      real, intent(out) :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(n, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveArrayRealFlexi
+
+    subroutine receiveArrayLogicalFlexi(value)
+      include 'mpif.h'
+      logical, intent(out) :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(n, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveArrayLogicalFlexi
+
+    subroutine receiveArrayDoubleFlexi(value)
+      include 'mpif.h'
+      real(double), intent(out) :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(n, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveArrayDoubleFlexi
+
+    subroutine receiveArrayVectorFlexi(value)
+      include 'mpif.h'
+      type(VECTOR), intent(out) :: value(:)
+      integer :: n , n3, i, j
+      real(double), allocatable :: temp(:)
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      call MPI_RECV(n, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      n3 = 3 * n
+      allocate(temp(1:n3))
+      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      do i = 1, n
+         j = (i-1)*3
+         value(i) = VECTOR(temp(j+1), temp(j+2), temp(j+3))
+      enddo
+      deallocate(temp)
+
+    end subroutine receiveArrayVectorFlexi
+
+
+
+    subroutine receiveIntegerPointer1dFlexi(value)
+      include 'mpif.h'
+      integer, pointer :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n))
+      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveIntegerPointer1dFlexi
+
+    subroutine receiveRealPointer1dFlexi(value)
+      include 'mpif.h'
+      real, pointer :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n))
+      call MPI_RECV(value, n, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveRealPointer1dFlexi
+
+    subroutine receiveDoublePointer1dFlexi(value)
+      include 'mpif.h'
+      real(double), pointer :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n))
+      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveDoublePointer1dFlexi
+
+    subroutine receiveDoublePointer2dFlexi(value)
+      include 'mpif.h'
+      real(double), pointer :: value(:,:)
+      integer :: n, m
+      real(double), allocatable :: temp(:)
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n, 1:m))
+      allocate(temp(1:(n*m)))
+      call MPI_RECV(temp, n*m, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
+      deallocate(temp)
+    end subroutine receiveDoublePointer2dFlexi
+
+    subroutine receiveDoublePointer3dFlexi(value)
+      include 'mpif.h'
+      real(double), pointer :: value(:,:,:)
+      integer :: n, m, l
+      real(double), allocatable :: temp(:)
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(l, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n, 1:m, 1:l))
+      allocate(temp(1:(n*m*l)))
+      call MPI_RECV(temp, n*m*l, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      value(1:n,1:m,1:l) = RESHAPE(temp, SHAPE(value))
+      deallocate(temp)
+    end subroutine receiveDoublePointer3dFlexi
+
+    subroutine receiveRealPointer2dFlexi(value)
+      include 'mpif.h'
+      real, pointer :: value(:,:)
+      integer :: n, m
+      real, allocatable :: temp(:)
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n, 1:m))
+      allocate(temp(1:(n*m)))
+      call MPI_RECV(temp, n*m, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
+      deallocate(temp)
+    end subroutine receiveRealPointer2dFlexi
+
+
+    subroutine receiveLogicalPointer1dFlexi(value)
+      include 'mpif.h'
+      logical, pointer :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n))
+      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
+    end subroutine receiveLogicalPointer1dFlexi
+
+
+
+    subroutine receiveVectorPointer1dFlexi(value)
+      include 'mpif.h'
+      type(VECTOR), pointer :: value(:)
+      integer :: n, n3, i, j
+      integer :: status(MPI_STATUS_SIZE)
+      real(double), allocatable :: temp(:)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      allocate(value(1:n))
+      n3 = 3 * n
+      allocate(temp(1:n3))
+      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      do i = 1, n
+         j = (i-1)*3
+         value(i) = VECTOR(temp(j+1), temp(j+2), temp(j+3))
+      enddo
+      deallocate(temp)
+    end subroutine receiveVectorPointer1dFlexi
+
+
+
     subroutine testDataType(thisType, fileFormatted)
       character(len=*) :: thisType
       logical :: fileFormatted
@@ -2249,20 +2673,1150 @@ contains
             if (tag == "OCTALENDS") cycle
 
             select case (tag)
-               case ("nDepth") 
-                  call readSingleFlexi(20, thisNDepth, fileFormatted)
-                  if (thisNDepth == nDepth) then
-                     runToEndOfOctal = .true.
-                  endif
-               case DEFAULT
-                  call readDummyData(20, fileFormatted)
+            case ("nDepth") 
+               call readSingleFlexi(20, thisNDepth, fileFormatted)
+               if (thisNDepth == nDepth) then
+                  runToEndOfOctal = .true.
+               endif
+            case DEFAULT
+               call readDummyData(20, fileFormatted)
             end select
 
 
 
-          enddo
-666 continue
+         enddo
+666      continue
 
-        end subroutine skipOctalsToDepth
+       end subroutine skipOctalsToDepth
 
-end module gridio_mod
+       subroutine readGridSplitOverMPI(grid, gridFilename, fileFormatted)
+         type(GRIDTYPE) :: grid
+         character(len=*) :: gridFilename
+         type(OCTAL) :: thisOctal
+         logical :: fileFormatted
+         integer :: iThread, nOctal
+
+         if (associated(grid%octreeRoot)) then
+            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+            grid%octreeRoot => null()
+         endif
+
+         do iThread = 1, nThreadsGlobal - 1
+            if (myrankGlobal == iThread) then
+               call openGridFile(gridFilename, fileformatted)
+               call readStaticComponents(grid, fileFormatted)
+               close(20)
+            endif
+            call torus_mpi_barrier
+         enddo
+
+         if (myrankGlobal /= 0) then
+            allocate(grid%octreeRoot)
+            grid%octreeRoot%nDepth = 1
+            nOctal = 0
+            call getBranchOverMPI(grid%octreeRoot, null())
+         else
+            call openGridFile(gridFilename, fileformatted)
+            call readStaticComponents(grid, fileFormatted)
+            allocate(grid%octreeRoot)
+            grid%octreeRoot%nDepth = 1
+            nOctal = 0
+
+
+            call readZerothThread(grid%octreeRoot, null())
+         endif
+
+       end subroutine readGridSplitOverMPI
+
+       recursive subroutine readZerothThread(thisOctal, parent)
+         type(OCTAL), pointer :: thisOctal, parent
+
+
+         thisOctal%parent => parent
+         write(*,*) myrankGlobal, " reading octal from file"
+         call readOctalViaTags(thisOctal, fileFormatted)
+
+
+
+
+         if (nHydroThreadsGlobal == 4) then
+            if (myrankGlobal == 0) then
+               thisOctal%nChildren = 0
+            else
+               if (thisOctal%nDepth == 1) then
+                  thisOctal%nChildren = 1
+                  thisOctal%hasChild = .false.
+                  thisOctal%indexChild(1) = myRankGlobal
+                  thisOctal%hasChild(myRankGlobal) = .true.
+               endif
+            endif
+         endif
+
+         if (nHydroThreadsGlobal == 8) then
+            if (myrankGlobal == 0) then
+               thisOctal%nChildren = 0
+            else
+               if (thisOctal%nDepth == 1) then
+                  thisOctal%nChildren = 1
+                  thisOctal%hasChild = .false.
+                  thisOctal%indexChild(1) = myRankGlobal
+                  thisOctal%hasChild(myRankGlobal) = .true.
+               endif
+            endif
+         endif
+
+         if (nHydroThreadsGlobal == 64) then
+            if (myrankGlobal == 0) then
+               if (thisOctal%nDepth == 2) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               endif
+            else
+               if (thisOctal%nDepth == 2) then
+                  if (.not.octalOnThread(thisOctal%parent, thisOctal%parentSubcell, myrankGlobal)) then
+                     thisOctal%nChildren = 0
+                     thisOctal%hasChild = .false.
+                  else
+                     thisOctal%nChildren = 1
+                     thisOctal%hasChild = .false.
+                     iChild = thisOctal%parentSubcell
+                     thisOctal%indexChild(1) = iChild
+                     thisOctal%hasChild(iChild) = .true.
+                  endif
+               endif
+            endif
+         endif
+
+
+
+         if (nHydroThreadsGlobal == 4) then
+            if (thisOctal%nDepth > 1) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     thisChild => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else
+               if (myrankGlobal == 0) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               else
+                  if (thisOctal%nChildren > 0) then 
+                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                     do iChild = 1, thisOctal%nChildren, 1
+                        do iThread = 1, myRankGlobal
+                           thisChild => thisOctal%child(iChild)
+                           topOctal => thisChild
+                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                           if (iThread /= myRankGlobal) then
+                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
+                           else
+                              exit
+                           endif
+                        enddo
+                     end do
+                  end if
+               endif
+            endif
+         endif
+
+         if (nHydroThreadsGlobal == 8) then
+            if (thisOctal%nDepth > 1) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     thisChild => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else
+               if (myrankGlobal == 0) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               else
+                  if (thisOctal%nChildren > 0) then 
+                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                     do iChild = 1, thisOctal%nChildren, 1
+                        do iThread = 1, myRankGlobal
+                           thisChild => thisOctal%child(iChild)
+                           topOctal => thisChild
+                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                           if (iThread /= myRankGlobal) then
+                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
+                           else
+                              exit
+                           endif
+                        enddo
+                     end do
+                  end if
+               endif
+            endif
+         endif
+
+         if (nHydroThreadsGlobal == 64) then
+            if (thisOctal%nDepth > 2) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     tempChildPointer2 => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(tempChildPointer2,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else if (thisOctal%nDepth ==   1) then 
+               allocate(thisOctal%child(1:thisOctal%nChildren)) 
+               do iChild = 1, thisOctal%nChildren, 1
+                  thisChild => thisOctal%child(iChild)
+                  call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+               end do
+            else  if (thisOctal%nDepth ==  2) then 
+               if (thisOctal%nChildren == 1) then
+                  allocate(thisOctal%child(1))
+               endif
+               foundBranch = .false.
+               do iChild = 1, 8
+
+
+                  allocate(grid%tempBranch)
+                  tempChildPointer => grid%tempBranch
+
+                  call readOctreePrivateFlexi(tempChildPointer,thisOctal,fileFormatted, nOctal, grid)               
+
+                  if (thisOctal%mpiThread(iChild) /= myRankGlobal) then
+                     call deleteOctreeBranch(tempChildPointer,onlyChildren=.true., adjustParent=.false.)
+                     deallocate(grid%tempBranch)
+                     grid%tempBranch => null()
+!                     call skipOctalsToDepth(fileformatted, 2)
+
+                  else
+                     call insertOctreeBranch(thisOctal%child(1), grid%tempBranch, onlyChildren = .false.)
+
+                     thisOctal%hasChild = .false.
+                     thisOctal%hasChild(iChild) = .true.
+                     thisOctal%indexChild(1) = iChild
+                     thisOctal%child(1)%parent => thisOctal
+                     thisOctal%child(1)%parentSubcell = iChild
+                  endif
+
+               end do
+            end if
+         endif
+
+
+
+
+         call sendOctalviaMPI(thisOctal, 1)
+         write(*,*) myrankGlobal, " done."
+
+
+
+       end subroutine readZerothThread
+
+       recursive subroutine getBranchOverMPI(thisOctal, parent)
+         type(OCTAL), pointer :: thisOctal
+         type(OCTAL), pointer :: parent
+         type(OCTAL), pointer :: child
+         integer :: i
+
+         thisOctal%parent => parent
+         write(*,*) myrankGlobal, " receiving octal from 0"
+         call receiveOctalVIaMPI(thisOctal)
+         write(*,*) myrankGlobal, " received successfully"
+         if (thisOctal%nChildren > 0) then
+            allocate(thisOctal%child(1:thisOctal%nChildren)) 
+            do i = 1, thisOctal%nChildren
+               child => thisOctal%child(i)
+               call getBranchOverMpi(child, thisOctal)
+            enddo
+         endif
+
+       end subroutine getBranchOverMPI
+
+
+       subroutine openGridFile(gridFilename, fileFormatted)
+         character(len=*) :: gridFilename
+         logical :: fileFormatted
+         integer, dimension(8) :: timeValues    ! system date and time
+         integer               :: error         ! status code
+         character(len=80) :: message
+         if (fileFormatted) then
+            open(unit=20, iostat=error, file=gridFilename, form="formatted", status="old")
+            if (error /=0) then
+               print *, 'Panic: file open error in readAMRgrid, file:',trim(gridFilename) ; stop
+            end if
+            ! read the file's time stamp
+            read(unit=20,fmt=*,iostat=error) timeValues 
+            if (error /=0) then
+               print *, 'Panic: read error in readAMRgrid (formatted timeValues)' ; stop
+            end if
+         else
+            open(unit=20, iostat=error, file=gridFilename, form="unformatted", status="old")
+            if (error /=0) then
+               print *, 'Panic: file open error in readAMRgrid, file:',trim(gridFilename) ; stop
+            end if
+            ! read the file's time stamp
+            read(unit=20,iostat=error) timeValues
+            if (error /=0) then
+               print *, 'Panic: read error in readAMRgrid (unformatted timeValues)' ; stop
+            end if
+         end if
+
+         write(message,'(a,a)') "Reading flexible AMR file from: ",trim(gridfilename)
+         call writeInfo(message,TRIVIAL)
+
+         write(message,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
+              timeValues(1),'/',timeValues(2),'/',&
+              timeValues(3),'  ',timeValues(5),':',timeValues(6)
+         call writeInfo(message,TRIVIAL)
+
+
+       end subroutine openGridFile
+
+
+       subroutine readStaticComponents(grid, fileformatted)
+         type(GRIDTYPE) :: grid
+         logical :: fileFormatted
+         character(len=20) :: tag
+         character(len=80) :: message
+
+         do while(.true.)
+            if (fileFormatted) then 
+               read(20, '(a)') tag
+            else
+               read(20) tag
+            endif
+            tag = ADJUSTL(tag)
+            if (tag == "GRIDBEGINS") cycle
+            if (tag == "GRIDENDS") exit
+
+            select case (trim(tag))
+
+            case("version")
+               call readSingleFlexi(20, grid%version, fileFormatted)
+               if (grid%version /= torusVersion) then
+                  write(message,'(a,a,a,a)') "This dump file written with ", trim(grid%version), " and read with ", trim(torusVersion)
+                  call writeWarning(message)
+                  grid%version = torusVersion
+               endif
+            case("nLambda")
+               call readSingleFlexi(20, grid%nLambda, fileFormatted)
+            case("flatSpec")
+               call readSingleFlexi(20,grid%flatSpec, fileFormatted)
+            case("adaptive")
+               call readSingleFlexi(20,grid%adaptive, fileFormatted)
+            case("cartesian")
+               call readSingleFlexi(20,grid%cartesian, fileFormatted)
+            case("isotropic")
+               call readSingleFlexi(20,grid%isotropic, fileFormatted)
+            case("hitCore")
+               call readSingleFlexi(20,grid%hitCore, fileFormatted)
+            case("diskRadius")
+               call readSingleFlexi(20,grid%diskRadius, fileFormatted)
+            case("diskNormal")
+               call readSingleFlexi(20,grid%diskNormal, fileFormatted)
+            case("DipoleOffset")
+               call readSingleFlexi(20,grid%DipoleOffset, fileFormatted)
+            case("geometry")
+               call readSingleFlexi(20,grid%geometry, fileFormatted)
+            case("rCore")
+               call readSingleFlexi(20,grid%rCore, fileFormatted)
+            case("lCore")
+               call readSingleFlexi(20,grid%lCore, fileFormatted)
+            case("chanceWind")
+               call readSingleFlexi(20,grid%chanceWindOverTotalContinuum, fileFormatted)
+            case("lineEmission")
+               call readSingleFlexi(20,grid%lineEmission, fileFormatted)
+            case("contEmission")
+               call readSingleFlexi(20,grid%contEmission, fileFormatted)
+            case("doRaman")
+               call readSingleFlexi(20,grid%doRaman, fileFormatted)
+            case("resonanceLine")
+               call readSingleFlexi(20,grid%resonanceLine, fileFormatted)
+            case("rStar1")
+               call readSingleFlexi(20,grid%rStar1, fileFormatted)
+            case("rStar2")
+               call readSingleFlexi(20,grid%rStar2, fileFormatted)
+            case("lumRatio")
+               call readSingleFlexi(20,grid%lumRatio, fileFormatted)
+            case("tempSource")
+               call readSingleFlexi(20,grid%tempSource, fileFormatted)
+            case("starPos1")
+               call readSingleFlexi(20,grid%starPos1, fileFormatted)
+            case("starPos2")
+               call readSingleFlexi(20,grid%starPos2, fileFormatted)
+            case("lambda2")
+               call readSingleFlexi(20,grid%lambda2, fileFormatted)
+            case("maxLevels")
+               call readSingleFlexi(20,grid%maxLevels, fileFormatted)
+            case("maxDepth")
+               call readSingleFlexi(20,grid%maxDepth, fileFormatted)
+            case("halfSmallestSubcell")
+               call readSingleFlexi(20,grid%halfSmallestSubcell, fileFormatted)
+            case("nOctals")
+               call readSingleFlexi(20,grid%nOctals, fileFormatted)
+            case("smoothingFactor")
+               call readSingleFlexi(20,grid%smoothingFactor, fileFormatted)
+            case("oneKappa")
+               call readSingleFlexi(20,grid%oneKappa, fileFormatted)
+            case("rInner")
+               call readSingleFlexi(20,grid%rInner, fileFormatted)
+            case("rOuter")
+               call readSingleFlexi(20,grid%rOuter, fileFormatted)
+            case("amr2dOnly")
+               call readSingleFlexi(20,grid%amr2dOnly, fileFormatted)
+            case("photoionization")
+               call readSingleFlexi(20,grid%photoionization, fileFormatted)
+            case("iDump")
+               call readSingleFlexi(20,grid%iDump, fileFormatted)
+            case("currentTime")
+               call readSingleFlexi(20,grid%currentTime, fileFormatted)
+            case("lamarray")
+               call readPointerFlexi(20,grid%lamarray,fileFormatted)
+            case("oneKappaAbs")
+               call readPointerFlexi(20,grid%oneKappaAbs,fileFormatted)
+            case("oneKappaSca")
+               call readPointerFlexi(20,grid%oneKappaSca,fileFormatted)
+            case DEFAULT
+               write(message,'(a,a)') "Unrecognised grid attribute: "//trim(tag)
+            end select
+         end do
+   end subroutine readStaticComponents
+
+
+   subroutine readOctalViaTags(thisOctal, fileformatted)
+     type(OCTAL) :: thisOctal
+     logical :: fileFormatted
+     character(len=20) :: tag
+     character(len=80) :: message
+
+      do while (.true.)
+
+         if (fileFormatted) then
+            read(20, *) tag
+         else
+            read(20) tag
+         endif
+         tag = ADJUSTL(tag)
+         if (tag == "OCTALBEGINS") cycle
+         if (tag == "OCTALENDS") exit
+
+         select case (tag)
+         case("nDepth")
+            call readSingleFlexi(20, thisOctal%nDepth, fileFormatted)
+         case("nChildren")
+            call readSingleFlexi(20, thisOctal%nChildren, fileFormatted)
+         case("indexChild")
+            call readArrayFlexi(20, thisOctal%indexChild, fileFormatted)
+         case("hasChild")
+            call readArrayFlexi(20, thisOctal%hasChild, fileFormatted)
+         case("centre")
+            call readSingleFlexi(20, thisOctal%centre, fileFormatted)
+         case("rho")
+            call readArrayFlexi(20, thisOctal%rho, fileFormatted)
+         case("temperature")
+            call readArrayFlexi(20, thisOctal%temperature, fileFormatted)
+         case("label")
+            call readArrayFlexi(20, thisOctal%label, fileFormatted)
+         case("subcellSize")
+            call readSingleFlexi(20, thisOctal%subcellSize, fileFormatted)
+         case("threeD")
+            call readSingleFlexi(20, thisOctal%threeD, fileFormatted)
+         case("twoD")
+            call readSingleFlexi(20, thisOctal%twoD, fileFormatted)
+         case("oneD")
+            call readSingleFlexi(20, thisOctal%oneD, fileFormatted)
+         case("maxChildren")
+            call readSingleFlexi(20, thisOctal%maxChildren, fileFormatted)
+         case("cylindrical")
+            call readSingleFlexi(20, thisOctal%cylindrical, fileFormatted)
+         case("splitAzimuthally")
+            call readSingleFlexi(20, thisOctal%splitAzimuthally, fileFormatted)
+         case("phi")
+            call readSingleFlexi(20, thisOctal%phi, fileFormatted)
+         case("dphi")
+            call readSingleFlexi(20, thisOctal%dphi, fileFormatted)
+         case("r")
+            call readSingleFlexi(20, thisOctal%r, fileFormatted)
+
+         case("xMax")
+            call readSingleFlexi(20, thisOctal%xMax, fileFormatted)
+         case("yMax")
+            call readSingleFlexi(20, thisOctal%yMax, fileFormatted)
+         case("zMax")
+            call readSingleFlexi(20, thisOctal%zMax, fileFormatted)
+         case("xMin")
+            call readSingleFlexi(20, thisOctal%xMin, fileFormatted)
+         case("yMin")
+            call readSingleFlexi(20, thisOctal%yMin, fileFormatted)
+         case("zMin")
+            call readSingleFlexi(20, thisOctal%zMin, fileFormatted)
+
+         case("parentSubcell")
+            call readSingleFlexi(20, thisOctal%parentSubcell, fileFormatted)
+         case("inStar")
+            call readArrayFlexi(20, thisOctal%inStar, fileFormatted)
+         case("inFlow")
+            call readArrayFlexi(20, thisOctal%inFlow, fileFormatted)
+         case("velocity")
+            call readArrayFlexi(20, thisOctal%velocity, fileFormatted)
+         case("cornervelocity")
+            call readArrayFlexi(20, thisOctal%cornervelocity, fileFormatted)
+         case("cornerrho")
+            call readPointerFlexi(20, thisOctal%cornerrho, fileFormatted)
+         case("chiLine")
+            call readPointerFlexi(20, thisOctal%chiLine, fileFormatted)
+         case("etaLine")
+            call readPointerFlexi(20, thisOctal%etaLine, fileFormatted)
+         case("etaCont")
+            call readPointerFlexi(20, thisOctal%etaCont, fileFormatted)
+         case("biasLine3D")
+            call readPointerFlexi(20, thisOctal%biasLine3D, fileFormatted)
+         case("biasCont3D")
+            call readPointerFlexi(20, thisOctal%biasCont3D, fileFormatted)
+         case("probDistLine")
+            call readPointerFlexi(20, thisOctal%probDistLine, fileFormatted)
+         case("probDistCont")
+            call readPointerFlexi(20, thisOctal%probDistCont, fileFormatted)
+         case("ne")
+            call readPointerFlexi(20, thisOctal%ne, fileFormatted)
+         case("nH")
+            call readPointerFlexi(20, thisOctal%nH, fileFormatted)
+         case("nTot")
+            call readPointerFlexi(20, thisOctal%nTot, fileFormatted)
+         case("dustType")
+            call readPointerFlexi(20, thisOctal%dustType, fileFormatted)
+         case("dustTypeFraction")
+            call readPointerFlexi(20, thisOctal%dustTypeFraction, fileFormatted)
+         case("oldFrac")
+            call readPointerFlexi(20, thisOctal%oldFrac, fileFormatted)
+         case("scatteredIntensity")
+            call readPointerFlexi(20, thisOctal%scatteredIntensity, fileFormatted)
+         case("meanIntensity")
+            call readPointerFlexi(20, thisOctal%meanIntensity, fileFormatted)
+         case("mpiThread")
+            call readArrayFlexi(20, thisOctal%mpiThread,fileFormatted)
+         case("kappaAbs")
+            call readPointerFlexi(20, thisOctal%kappaAbs, fileFormatted)
+         case("kappaSca")
+            call readPointerFlexi(20, thisOctal%kappaSca, fileFormatted)
+         case("ionFrac")
+            call readPointerFlexi(20, thisOctal%ionFrac, fileFormatted)
+         case("photoIonCoeff")
+            call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
+         case("distanceGrid")
+            call readPointerFlexi(20, thisOctal%distanceGrid, fileFormatted)
+
+         case("nCrossings")
+            call readPointerFlexi(20, thisOctal%nCrossings, fileFormatted)
+         case("hHeating")
+            call readPointerFlexi(20, thisOctal%hHeating, fileFormatted)
+         case("heHeating")
+            call readPointerFlexi(20, thisOctal%heHeating, fileFormatted)
+
+         case("undersampled")
+            call readPointerFlexi(20, thisOctal%undersampled, fileFormatted)
+         case("nDiffusion")
+            call readPointerFlexi(20, thisOctal%nDiffusion, fileFormatted)
+         case("diffusionApprox")
+            call readPointerFlexi(20, thisOctal%diffusionApprox, fileFormatted)
+
+
+         case("molecularLevel")
+            call readPointerFlexi(20, thisOctal%molecularLevel, fileFormatted)
+         case("jnu")
+            call readPointerFlexi(20, thisOctal%jnu, fileFormatted)
+         case("bnu")
+            call readPointerFlexi(20, thisOctal%bnu, fileFormatted)
+         case("molAbundance")
+            call readPointerFlexi(20, thisOctal%molAbundance, fileFormatted)
+         case("nh2")
+            call readPointerFlexi(20, thisOctal%nh2, fileFormatted)
+         case("microTurb")
+            call readPointerFlexi(20, thisOctal%microTurb, fileFormatted)
+         case("N")
+            call readPointerFlexi(20, thisOctal%n, fileFormatted)
+         case("departCoeff")
+            call readPointerFlexi(20, thisOctal%departCoeff, fileFormatted)
+         case("atomAbundance")
+            call readPointerFlexi(20, thisOctal%atomAbundance, fileFormatted)
+         case("atomLevel")
+            call readPointerFlexi(20, thisOctal%atomLevel, fileFormatted)
+         case("jnuCont")
+            call readPointerFlexi(20, thisOctal%jnuCont, fileFormatted)
+         case("jnuLine")
+            call readPointerFlexi(20, thisOctal%jnuLine, fileFormatted)
+
+         case("q_i")
+            call readPointerFlexi(20, thisOctal%q_i, fileFormatted)
+         case("q_i_plus_1")
+            call readPointerFlexi(20, thisOctal%q_i_plus_1, fileFormatted)
+         case("q_i_minus_1")
+            call readPointerFlexi(20, thisOctal%q_i_minus_1, fileFormatted)
+         case("q_i_minus_2")
+            call readPointerFlexi(20, thisOctal%q_i_minus_2, fileFormatted)
+
+         case("x_i")
+            call readPointerFlexi(20, thisOctal%x_i, fileFormatted)
+         case("x_i_plus_1")
+            call readPointerFlexi(20, thisOctal%x_i_plus_1, fileFormatted)
+         case("x_i_minus_1")
+            call readPointerFlexi(20, thisOctal%x_i_minus_1, fileFormatted)
+
+         case("u_interface")
+            call readPointerFlexi(20, thisOctal%u_interface, fileFormatted)
+         case("u_i_plus_1")
+            call readPointerFlexi(20, thisOctal%u_i_plus_1, fileFormatted)
+         case("u_i_minus_1")
+            call readPointerFlexi(20, thisOctal%u_i_minus_1, fileFormatted)
+
+         case("flux_i")
+            call readPointerFlexi(20, thisOctal%flux_i, fileFormatted)
+         case("flux_i_plus_1")
+            call readPointerFlexi(20, thisOctal%flux_i_plus_1, fileFormatted)
+         case("flux_i_minus_1")
+            call readPointerFlexi(20, thisOctal%flux_i_minus_1, fileFormatted)
+
+
+         case("phiLimit")
+            call readPointerFlexi(20, thisOctal%phiLimit, fileFormatted)
+
+         case("ghostCell")
+            call readPointerFlexi(20, thisOctal%ghostCell, fileFormatted)
+         case("feederCell")
+            call readPointerFlexi(20, thisOctal%feederCell, fileFormatted)
+         case("edgeCell")
+            call readPointerFlexi(20, thisOctal%edgeCell, fileFormatted)
+         case("refinedLastTime")
+            call readPointerFlexi(20, thisOctal%refinedLastTime, fileFormatted)
+
+         case("pressure_i")
+            call readPointerFlexi(20, thisOctal%pressure_i, fileFormatted)
+         case("pressure_i_plus_1")
+            call readPointerFlexi(20, thisOctal%pressure_i_plus_1, fileFormatted)
+         case("pressure_i_minus_1")
+            call readPointerFlexi(20, thisOctal%pressure_i_minus_1, fileFormatted)
+
+         case("rhou")
+            call readPointerFlexi(20, thisOctal%rhou, fileFormatted)
+         case("rhov")
+            call readPointerFlexi(20, thisOctal%rhov, fileFormatted)
+         case("rhow")
+            call readPointerFlexi(20, thisOctal%rhow, fileFormatted)
+
+         case("rhoe")
+            call readPointerFlexi(20, thisOctal%rhoe, fileFormatted)
+         case("energy")
+            call readPointerFlexi(20, thisOctal%energy, fileFormatted)
+
+
+         case("phi_i")
+            call readPointerFlexi(20, thisOctal%phi_i, fileFormatted)
+         case("phi_i_plus_1")
+            call readPointerFlexi(20, thisOctal%phi_i_plus_1, fileFormatted)
+         case("phi_i_minus_1")
+            call readPointerFlexi(20, thisOctal%phi_i_minus_1, fileFormatted)
+
+         case("rho_i_plus_1")
+            call readPointerFlexi(20, thisOctal%rho_i_plus_1, fileFormatted)
+         case("rho_i_minus_1")
+            call readPointerFlexi(20, thisOctal%rho_i_minus_1, fileFormatted)
+
+         case("boundaryCondition")
+            call readPointerFlexi(20, thisOctal%boundaryCondition, fileFormatted)
+         case("boundaryPartner")
+            call readPointerFlexi(20, thisOctal%boundaryPartner, fileFormatted)
+         case("gravboundaryPartner")
+            call readPointerFlexi(20, thisOctal%gravboundaryPartner, fileFormatted)
+         case("changed")
+            call readPointerFlexi(20, thisOctal%changed, fileFormatted)
+         case("rLimit")
+            call readPointerFlexi(20, thisOctal%rLimit, fileFormatted)
+
+         case("iEquationOfState")
+            call readPointerFlexi(20, thisOctal%iEquationOfState, fileFormatted)
+         case("gamma")
+            call readPointerFlexi(20, thisOctal%gamma, fileFormatted)
+
+         case("udens")
+            call readPointerFlexi(20, thisOctal%udens, fileFormatted)
+         case("adot")
+            call readPointerFlexi(20, thisOctal%aDot, fileFormatted)
+         case("adotdist")
+            call readPointerFlexi(20, thisOctal%distanceGridaDot, fileFormatted)
+         case("dfromgas")
+            call readPointerFlexi(20, thisOctal%distanceGridPhotonFromGas, fileFormatted)
+         case("dfromsource")
+            call readPointerFlexi(20, thisOctal%distanceGridPhotonFromSource, fileFormatted)
+         case("ufromgas")
+            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromGas, fileFormatted)
+         case("ufromsource")
+            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
+         case("utotal")
+            call readPointerFlexi(20, thisOctal%photonEnergyDensityFromSource, fileFormatted)
+         case("oldutotal")
+            call readPointerFlexi(20, thisOctal%oldphotonEnergyDensity, fileFormatted)
+
+         case("fixedtemperature")
+            call readPointerFlexi(20, thisOctal%fixedtemperature, fileFormatted)
+
+
+         case DEFAULT
+            write(message,*) "Unrecognised tag on read: "//trim(tag)
+            call writeWarning(message)
+            call readDummyData(20, fileFormatted)
+         end select
+
+      end do
+    end subroutine readOctalViaTags
+
+   subroutine receiveOctalViaMPI(thisOctal)
+     include 'mpif.h'
+     type(OCTAL) :: thisOctal
+     integer :: status(MPI_STATUS_SIZE)
+     integer, parameter :: mpitag = 50
+     character(len=20) :: tag
+     character(len=80) :: message
+     integer :: ierr
+
+      do while (.true.)
+
+         call MPI_RECV(tag, 20, MPI_CHARACTER, 0, mpitag, MPI_COMM_WORLD, status, ierr)
+         tag = ADJUSTL(tag)
+         if (tag == "OCTALBEGINS") cycle
+         if (tag == "OCTALENDS") exit
+
+         select case (tag)
+         case("nDepth")
+            call receiveSingleFlexi(thisOctal%nDepth)
+         case("nChildren")
+            call receiveSingleFlexi(thisOctal%nChildren)
+         case("indexChild")
+            call receiveArrayFlexi(thisOctal%indexChild)
+         case("hasChild")
+            call receiveArrayFlexi(thisOctal%hasChild)
+         case("centre")
+            call receiveSingleFlexi(thisOctal%centre)
+         case("rho")
+            call receiveArrayFlexi(thisOctal%rho)
+         case("temperature")
+            call receiveArrayFlexi(thisOctal%temperature)
+         case("label")
+            call receiveArrayFlexi(thisOctal%label)
+         case("subcellSize")
+            call receiveSingleFlexi(thisOctal%subcellSize)
+         case("threeD")
+            call receiveSingleFlexi(thisOctal%threeD)
+         case("twoD")
+            call receiveSingleFlexi(thisOctal%twoD)
+         case("oneD")
+            call receiveSingleFlexi(thisOctal%oneD)
+         case("maxChildren")
+            call receiveSingleFlexi(thisOctal%maxChildren)
+         case("cylindrical")
+            call receiveSingleFlexi(thisOctal%cylindrical)
+         case("splitAzimuthally")
+            call receiveSingleFlexi(thisOctal%splitAzimuthally)
+         case("phi")
+            call receiveSingleFlexi(thisOctal%phi)
+         case("dphi")
+            call receiveSingleFlexi(thisOctal%dphi)
+         case("r")
+            call receiveSingleFlexi(thisOctal%r)
+
+         case("xMax")
+            call receiveSingleFlexi(thisOctal%xMax)
+         case("yMax")
+            call receiveSingleFlexi(thisOctal%yMax)
+         case("zMax")
+            call receiveSingleFlexi(thisOctal%zMax)
+         case("xMin")
+            call receiveSingleFlexi(thisOctal%xMin)
+         case("yMin")
+            call receiveSingleFlexi(thisOctal%yMin)
+         case("zMin")
+            call receiveSingleFlexi(thisOctal%zMin)
+
+         case("parentSubcell")
+            call receiveSingleFlexi(thisOctal%parentSubcell)
+         case("inStar")
+            call receiveArrayFlexi(thisOctal%inStar)
+         case("inFlow")
+            call receiveArrayFlexi(thisOctal%inFlow)
+         case("velocity")
+            call receiveArrayFlexi(thisOctal%velocity)
+         case("cornervelocity")
+            call receiveArrayFlexi(thisOctal%cornervelocity)
+         case("cornerrho")
+            call receivePointerFlexi(thisOctal%cornerrho)
+         case("chiLine")
+            call receivePointerFlexi(thisOctal%chiLine)
+         case("etaLine")
+            call receivePointerFlexi(thisOctal%etaLine)
+         case("etaCont")
+            call receivePointerFlexi(thisOctal%etaCont)
+         case("biasLine3D")
+            call receivePointerFlexi(thisOctal%biasLine3D)
+         case("biasCont3D")
+            call receivePointerFlexi(thisOctal%biasCont3D)
+         case("probDistLine")
+            call receivePointerFlexi(thisOctal%probDistLine)
+         case("probDistCont")
+            call receivePointerFlexi(thisOctal%probDistCont)
+         case("ne")
+            call receivePointerFlexi(thisOctal%ne)
+         case("nH")
+            call receivePointerFlexi(thisOctal%nH)
+         case("nTot")
+            call receivePointerFlexi(thisOctal%nTot)
+         case("dustType")
+            call receivePointerFlexi(thisOctal%dustType)
+         case("dustTypeFraction")
+            call receivePointerFlexi(thisOctal%dustTypeFraction)
+         case("oldFrac")
+            call receivePointerFlexi(thisOctal%oldFrac)
+         case("scatteredIntensity")
+            call receivePointerFlexi(thisOctal%scatteredIntensity)
+         case("meanIntensity")
+            call receivePointerFlexi(thisOctal%meanIntensity)
+         case("mpiThread")
+            call receiveArrayFlexi(thisOctal%mpiThread)
+         case("kappaAbs")
+            call receivePointerFlexi(thisOctal%kappaAbs)
+         case("kappaSca")
+            call receivePointerFlexi(thisOctal%kappaSca)
+         case("ionFrac")
+            call receivePointerFlexi(thisOctal%ionFrac)
+         case("photoIonCoeff")
+            call receivePointerFlexi(thisOctal%photoIonCoeff)
+         case("distanceGrid")
+            call receivePointerFlexi(thisOctal%distanceGrid)
+
+         case("nCrossings")
+            call receivePointerFlexi(thisOctal%nCrossings)
+         case("hHeating")
+            call receivePointerFlexi(thisOctal%hHeating)
+         case("heHeating")
+            call receivePointerFlexi(thisOctal%heHeating)
+
+         case("undersampled")
+            call receivePointerFlexi(thisOctal%undersampled)
+         case("nDiffusion")
+            call receivePointerFlexi(thisOctal%nDiffusion)
+         case("diffusionApprox")
+            call receivePointerFlexi(thisOctal%diffusionApprox)
+
+
+         case("molecularLevel")
+            call receivePointerFlexi(thisOctal%molecularLevel)
+         case("jnu")
+            call receivePointerFlexi(thisOctal%jnu)
+         case("bnu")
+            call receivePointerFlexi(thisOctal%bnu)
+         case("molAbundance")
+            call receivePointerFlexi(thisOctal%molAbundance)
+         case("nh2")
+            call receivePointerFlexi(thisOctal%nh2)
+         case("microTurb")
+            call receivePointerFlexi(thisOctal%microTurb)
+         case("N")
+            call receivePointerFlexi(thisOctal%n)
+         case("departCoeff")
+            call receivePointerFlexi(thisOctal%departCoeff)
+         case("atomAbundance")
+            call receivePointerFlexi(thisOctal%atomAbundance)
+         case("atomLevel")
+            call receivePointerFlexi(thisOctal%atomLevel)
+         case("jnuCont")
+            call receivePointerFlexi(thisOctal%jnuCont)
+         case("jnuLine")
+            call receivePointerFlexi(thisOctal%jnuLine)
+
+         case("q_i")
+            call receivePointerFlexi(thisOctal%q_i)
+         case("q_i_plus_1")
+            call receivePointerFlexi(thisOctal%q_i_plus_1)
+         case("q_i_minus_1")
+            call receivePointerFlexi(thisOctal%q_i_minus_1)
+         case("q_i_minus_2")
+            call receivePointerFlexi(thisOctal%q_i_minus_2)
+
+         case("x_i")
+            call receivePointerFlexi(thisOctal%x_i)
+         case("x_i_plus_1")
+            call receivePointerFlexi(thisOctal%x_i_plus_1)
+         case("x_i_minus_1")
+            call receivePointerFlexi(thisOctal%x_i_minus_1)
+
+         case("u_interface")
+            call receivePointerFlexi(thisOctal%u_interface)
+         case("u_i_plus_1")
+            call receivePointerFlexi(thisOctal%u_i_plus_1)
+         case("u_i_minus_1")
+            call receivePointerFlexi(thisOctal%u_i_minus_1)
+
+         case("flux_i")
+            call receivePointerFlexi(thisOctal%flux_i)
+         case("flux_i_plus_1")
+            call receivePointerFlexi(thisOctal%flux_i_plus_1)
+         case("flux_i_minus_1")
+            call receivePointerFlexi(thisOctal%flux_i_minus_1)
+
+
+         case("phiLimit")
+            call receivePointerFlexi(thisOctal%phiLimit)
+
+         case("ghostCell")
+            call receivePointerFlexi(thisOctal%ghostCell)
+         case("feederCell")
+            call receivePointerFlexi(thisOctal%feederCell)
+         case("edgeCell")
+            call receivePointerFlexi(thisOctal%edgeCell)
+         case("refinedLastTime")
+            call receivePointerFlexi(thisOctal%refinedLastTime)
+
+         case("pressure_i")
+            call receivePointerFlexi(thisOctal%pressure_i)
+         case("pressure_i_plus_1")
+            call receivePointerFlexi(thisOctal%pressure_i_plus_1)
+         case("pressure_i_minus_1")
+            call receivePointerFlexi(thisOctal%pressure_i_minus_1)
+
+         case("rhou")
+            call receivePointerFlexi(thisOctal%rhou)
+         case("rhov")
+            call receivePointerFlexi(thisOctal%rhov)
+         case("rhow")
+            call receivePointerFlexi(thisOctal%rhow)
+
+         case("rhoe")
+            call receivePointerFlexi(thisOctal%rhoe)
+         case("energy")
+            call receivePointerFlexi(thisOctal%energy)
+
+
+         case("phi_i")
+            call receivePointerFlexi(thisOctal%phi_i)
+         case("phi_i_plus_1")
+            call receivePointerFlexi(thisOctal%phi_i_plus_1)
+         case("phi_i_minus_1")
+            call receivePointerFlexi(thisOctal%phi_i_minus_1)
+
+         case("rho_i_plus_1")
+            call receivePointerFlexi(thisOctal%rho_i_plus_1)
+         case("rho_i_minus_1")
+            call receivePointerFlexi(thisOctal%rho_i_minus_1)
+
+         case("boundaryCondition")
+            call receivePointerFlexi(thisOctal%boundaryCondition)
+         case("boundaryPartner")
+            call receivePointerFlexi(thisOctal%boundaryPartner)
+         case("gravboundaryPartner")
+            call receivePointerFlexi(thisOctal%gravboundaryPartner)
+         case("changed")
+            call receivePointerFlexi(thisOctal%changed)
+         case("rLimit")
+            call receivePointerFlexi(thisOctal%rLimit)
+
+         case("iEquationOfState")
+            call receivePointerFlexi(thisOctal%iEquationOfState)
+         case("gamma")
+            call receivePointerFlexi(thisOctal%gamma)
+
+         case("udens")
+            call receivePointerFlexi(thisOctal%udens)
+         case("adot")
+            call receivePointerFlexi(thisOctal%aDot)
+         case("adotdist")
+            call receivePointerFlexi(thisOctal%distanceGridaDot)
+         case("dfromgas")
+            call receivePointerFlexi(thisOctal%distanceGridPhotonFromGas)
+         case("dfromsource")
+            call receivePointerFlexi(thisOctal%distanceGridPhotonFromSource)
+         case("ufromgas")
+            call receivePointerFlexi(thisOctal%photonEnergyDensityFromGas)
+         case("ufromsource")
+            call receivePointerFlexi(thisOctal%photonEnergyDensityFromSource)
+         case("utotal")
+            call receivePointerFlexi(thisOctal%photonEnergyDensityFromSource)
+         case("oldutotal")
+            call receivePointerFlexi(thisOctal%oldphotonEnergyDensity)
+         case("fixedtemperature")
+            call receivePointerFlexi(thisOctal%fixedtemperature)
+
+
+         case DEFAULT
+            write(message,*) "Unrecognised tag on receive: "//trim(tag)
+            call writeFatal(message)
+            stop
+         end select
+
+      end do
+    end subroutine receiveOctalViaMPI
+
+    subroutine sendOctalViaMPI(thisOctal, ithread)
+     include 'mpif.h'
+     type(OCTAL) :: thisOctal
+     integer, parameter :: mpitag = 50
+     character(len=20) :: tmp
+     integer :: ierr
+     integer :: iThread
+
+      tmp = "OCTALBEGINS"
+      call MPI_SEND(tmp, 20, MPI_CHARACTER, iThread, mpitag, MPI_COMM_WORLD, ierr)
+      call sendAttributeStaticFlexi(iThread, "nDepth", thisOctal%nDepth)
+      call sendAttributeStaticFlexi(iThread, "nChildren", thisOctal%nChildren)
+      call sendAttributeStaticFlexi(iThread, "indexChild", thisOCtal%IndexChild)
+      call sendAttributeStaticFlexi(iThread, "hasChild", thisOctal%HasChild)
+      call sendAttributeStaticFlexi(iThread, "centre", thisOctal%centre)
+      call sendAttributeStaticFlexi(iThread, "rho", thisOctal%rho)
+      call sendAttributeStaticFlexi(iThread, "temperature", thisOctal%temperature)
+      call sendAttributeStaticFlexi(iThread, "label", thisOctal%label)
+      call sendAttributeStaticFlexi(iThread, "subcellSize", thisOctal%subcellSize)
+      call sendAttributeStaticFlexi(iThread, "threeD", thisOctal%threeD)
+      call sendAttributeStaticFlexi(iThread, "twoD", thisOctal%twoD)
+      call sendAttributeStaticFlexi(iThread, "oneD", thisOctal%oneD)
+      call sendAttributeStaticFlexi(iThread, "maxChildren", thisOctal%maxChildren)
+      call sendAttributeStaticFlexi(iThread, "cylindrical", thisOctal%cylindrical)
+      call sendAttributeStaticFlexi(iThread, "splitAzimuthally", thisOctal%splitAzimuthally)
+      call sendAttributeStaticFlexi(iThread, "phi", thisOctal%phi)
+      call sendAttributeStaticFlexi(iThread, "dphi", thisOctal%dphi)
+      call sendAttributeStaticFlexi(iThread, "r", thisOctal%r)
+      call sendAttributeStaticFlexi(iThread, "parentSubcell", thisOctal%parentSubcell)
+      call sendAttributeStaticFlexi(iThread, "inStar", thisOctal%inStar)
+      call sendAttributeStaticFlexi(iThread, "inFlow", thisOctal%inFlow)
+      call sendAttributeStaticFlexi(iThread, "velocity", thisOctal%velocity)
+      call sendAttributeStaticFlexi(iThread, "cornervelocity", thisOctal%cornervelocity)
+
+      call sendAttributeStaticFlexi(iThread, "xMax", thisOctal%xMax)
+      call sendAttributeStaticFlexi(iThread, "yMax", thisOctal%yMax)
+      call sendAttributeStaticFlexi(iThread, "zMax", thisOctal%zMax)
+      call sendAttributeStaticFlexi(iThread, "xMin", thisOctal%xMin)
+      call sendAttributeStaticFlexi(iThread, "yMin", thisOctal%yMin)
+      call sendAttributeStaticFlexi(iThread, "zMin", thisOctal%zMin)
+
+      call sendAttributePointerFlexi(iThread, "chiLine", thisOctal%chiLine)
+      call sendAttributePointerFlexi(iThread, "etaLine", thisOctal%etaLine)
+      call sendAttributePointerFlexi(iThread, "etaCont", thisOctal%etaCont)
+      call sendAttributePointerFlexi(iThread, "biasLine3D", thisOctal%biasLine3D)
+      call sendAttributePointerFlexi(iThread, "biasCont3D", thisOctal%biasCont3D)
+      call sendAttributePointerFlexi(iThread, "probDistLine", thisOctal%probDistLine)
+      call sendAttributePointerFlexi(iThread, "probDistCont", thisOctal%probDistCont)
+      call sendAttributePointerFlexi(iThread, "ne", thisOctal%ne)
+      call sendAttributePointerFlexi(iThread, "nH", thisOctal%nH)
+      call sendAttributePointerFlexi(iThread, "nTot", thisOctal%nTot)
+      call sendAttributePointerFlexi(iThread, "dustType", thisOctal%dustType)
+
+
+      call sendAttributePointerFlexi(iThread, "kappaAbs", thisOctal%kappaAbs)
+      call sendAttributePointerFlexi(iThread, "kappaSca", thisOctal%kappaSca)
+
+      call sendAttributePointerFlexi(iThread, "ionFrac", thisOctal%ionFrac)
+      call sendAttributePointerFlexi(iThread, "photoIonCoeff", thisOctal%photoIonCoeff)
+
+      call sendAttributePointerFlexi(iThread, "distanceGrid", thisOctal%distanceGrid)
+
+      call sendAttributePointerFlexi(iThread, "nCrossings", thisOctal%nCrossings)
+      call sendAttributePointerFlexi(iThread, "hHeating", thisOctal%hHeating)
+      call sendAttributePointerFlexi(iThread, "heHeating", thisOctal%heHeating)
+      call sendAttributePointerFlexi(iThread, "undersampled", thisOctal%undersampled)
+      call sendAttributePointerFlexi(iThread, "nDiffusion", thisOctal%nDiffusion)
+      call sendAttributePointerFlexi(iThread, "diffusionApprox", thisOctal%diffusionApprox)
+
+      call sendAttributePointerFlexi(iThread, "molecularLevel", thisOctal%molecularLevel)
+      call sendAttributePointerFlexi(iThread, "jnu", thisOctal%jnu)
+      call sendAttributePointerFlexi(iThread, "bnu", thisOctal%bnu)
+      call sendAttributePointerFlexi(iThread, "molAbundance", thisOctal%molAbundance)
+      call sendAttributePointerFlexi(iThread, "nh2", thisOctal%nh2)
+      call sendAttributePointerFlexi(iThread, "microTurb", thisOctal%microTurb)
+      call sendAttributePointerFlexi(iThread, "cornerrho", thisOctal%cornerrho)
+
+      call sendAttributePointerFlexi(iThread, "N", thisOctal%n)
+      call sendAttributePointerFlexi(iThread, "departCoeff", thisOctal%departCoeff)
+      call sendAttributePointerFlexi(iThread, "dustTypeFraction", thisOctal%dustTypeFraction)
+      call sendAttributePointerFlexi(iThread, "oldFrac", thisOctal%oldFrac)
+      call sendAttributePointerFlexi(iThread, "scatteredIntensity", thisOctal%scatteredIntensity)
+
+      call sendAttributePointerFlexi(iThread, "meanIntensity", thisOctal%meanIntensity)
+
+
+      call sendAttributePointerFlexi(iThread, "atomAbundance", thisOctal%atomAbundance)
+      call sendAttributePointerFlexi(iThread, "atomLevel", thisOctal%atomLevel)
+      call sendAttributePointerFlexi(iThread, "jnuCont", thisOctal%jnuCont)
+      call sendAttributePointerFlexi(iThread, "jnuLine", thisOctal%jnuLine)
+
+      call sendAttributePointerFlexi(iThread, "q_i", thisOctal%q_i)
+      call sendAttributePointerFlexi(iThread, "q_i_plus_1", thisOctal%q_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "q_i_minus_1", thisOctal%q_i_minus_1)
+      call sendAttributePointerFlexi(iThread, "q_i_minus_2", thisOctal%q_i_minus_2)
+
+      call sendAttributePointerFlexi(iThread, "x_i", thisOctal%x_i)
+      call sendAttributePointerFlexi(iThread, "x_i_plus_1", thisOctal%x_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "x_i_minus_1", thisOctal%x_i_minus_1)
+
+      call sendAttributePointerFlexi(iThread, "u_interface", thisOctal%u_interface)
+      call sendAttributePointerFlexi(iThread, "u_i_plus_1", thisOctal%u_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "u_i_minus_1", thisOctal%u_i_minus_1)
+
+      call sendAttributePointerFlexi(iThread, "flux_i", thisOctal%flux_i)
+      call sendAttributePointerFlexi(iThread, "flux_i_plus_1", thisOctal%flux_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "flux_i_minus_1", thisOctal%flux_i_minus_1)
+
+
+      call sendAttributePointerFlexi(iThread, "phiLimit", thisOctal%phiLimit)
+
+      call sendAttributePointerFlexi(iThread, "ghostCell", thisOctal%ghostCell)
+      call sendAttributePointerFlexi(iThread, "feederCell", thisOctal%feederCell)
+      call sendAttributePointerFlexi(iThread, "edgeCell", thisOctal%edgeCell)
+      call sendAttributePointerFlexi(iThread, "refinedLastTime", thisOctal%refinedLastTime)
+
+      call sendAttributePointerFlexi(iThread, "pressure_i", thisOctal%pressure_i)
+      call sendAttributePointerFlexi(iThread, "pressure_i_plus_1", thisOctal%pressure_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "pressure_i_minus_1", thisOctal%pressure_i_minus_1)
+
+      call sendAttributePointerFlexi(iThread, "rhou", thisOctal%rhou)
+      call sendAttributePointerFlexi(iThread, "rhov", thisOctal%rhov)
+      call sendAttributePointerFlexi(iThread, "rhow", thisOctal%rhow)
+
+      call sendAttributePointerFlexi(iThread, "rhoe", thisOctal%rhoe)
+      call sendAttributePointerFlexi(iThread, "energy", thisOctal%energy)
+
+
+      call sendAttributePointerFlexi(iThread, "phi_i", thisOctal%phi_i)
+      call sendAttributePointerFlexi(iThread, "phi_i_plus_1", thisOctal%phi_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "phi_i_minus_1", thisOctal%phi_i_minus_1)
+
+      call sendAttributePointerFlexi(iThread, "rho_i_plus_1", thisOctal%rho_i_plus_1)
+      call sendAttributePointerFlexi(iThread, "rho_i_minus_1", thisOctal%rho_i_minus_1)
+
+      call sendAttributePointerFlexi(iThread, "boundaryCondition", thisOctal%boundaryCondition)
+      call sendAttributePointerFlexi(iThread, "boundaryPartner", thisOctal%boundaryPartner)
+      call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
+      call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)
+      call sendAttributePointerFlexi(iThread, "rLimit", thisOctal%rLimit)
+
+      call sendAttributePointerFlexi(iThread, "iEquationOfState", thisOctal%iEquationOfState)
+
+      call sendAttributePointerFlexi(iThread, "gamma", thisOctal%gamma)
+
+
+      call sendAttributePointerFlexi(iThread, "udens", thisOctal%udens)
+      call sendAttributePointerFlexi(iThread, "adot", thisOctal%adot)
+      call sendAttributePointerFlexi(iThread, "adotdist", thisOctal%distanceGridAdot)
+      call sendAttributePointerFlexi(iThread, "dfromgas", thisOctal%distanceGridPhotonFromGas)
+      call sendAttributePointerFlexi(iThread, "dfromsource", thisOctal%distanceGridPhotonFromSource)
+      call sendAttributePointerFlexi(iThread, "ufromgas", thisOctal%photonEnergyDensityFromGas)
+      call sendAttributePointerFlexi(iThread, "ufromsource", thisOctal%photonEnergyDensityFromSource)
+      call sendAttributePointerFlexi(iThread, "utotal", thisOctal%photonEnergyDensity)
+      call sendAttributePointerFlexi(iThread, "oldutotal", thisOctal%oldphotonEnergyDensity)
+
+      call sendAttributePointerFlexi(iThread, "fixedtemperature", thisOctal%fixedTemperature)
+
+      call sendAttributeStaticFlexi(iThread, "mpiThread", thisOctal%mpiThread)
+      tmp = "OCTALENDS"
+      call MPI_SEND(tmp, 20, MPI_CHARACTER, iThread, mpitag, MPI_COMM_WORLD, ierr)
+
+
+    end subroutine sendOctalViaMPI
+
+ end module gridio_mod
