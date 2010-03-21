@@ -17,55 +17,6 @@ module setupamr_mod
   implicit none
 
 contains
-
-  recursive subroutine fillVelocityCornersFromCentres(thisOctal, grid)
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, child
-    integer :: i
-
-    if (thisOctal%nChildren > 0) then
-       do i = 1, thisOctal%nChildren
-          child => thisOctal%child(i)
-          call fillVelocityCornersFromCentres(child, grid)
-       enddo
-    else
-       call fillVelocityCorners(thisOctal, grid, velocityCornerFixedGrid, grid%octreeRoot%threed)
-    endif
-  end subroutine fillVelocityCornersFromCentres
-
-  function velocityCornerFixedGrid(rVec, grid) result(meanVel)
-    type(GRIDTYPE), intent(in) :: grid
-    type(OCTAL), pointer :: thisOctal, currentOctal
-    integer :: subcell, i, currentSubcell
-    type(VECTOR), intent(in) :: rVec
-    type(VECTOR) :: vel(8), cVec, pVec(8), meanVel
-
-    pVec(1) = VECTOR(+0.1,+0.1,+0.1)
-    pVec(2) = VECTOR(-0.1,+0.1,+0.1)
-    pVec(3) = VECTOR(+0.1,-0.1,+0.1)
-    pVec(4) = VECTOR(-0.1,-0.1,+0.1)
-    pVec(5) = VECTOR(+0.1,+0.1,-0.1)
-    pVec(6) = VECTOR(-0.1,+0.1,-0.1)
-    pVec(7) = VECTOR(+0.1,-0.1,-0.1)
-    pVec(8) = VECTOR(-0.1,-0.1,-0.1)
-    currentOctal => grid%octreeRoot
-    call findSubcellLocal(rVec, currentOctal, currentSubcell)
-    thisOctal => currentOctal
-    meanVel = VECTOR(0.d0, 0.d0, 0.d0)
-    do i = 1, 8
-
-       cVec = rVec + grid%halfSmallestSubcell*pvec(i) 
-       if (inOctal(grid%octreeRoot, cVec)) then
-          call findSubcellLocal(cVec, thisOctal, subcell)
-          vel(i) = thisOctal%velocity(subcell)
-       else
-          vel(i) = currentOctal%velocity(currentSubcell)
-       endif
-       meanVel = meanVel + vel(i)
-    enddo
-    meanVel  = meanVel / 8.d0
-  end function velocityCornerFixedGrid
-    
     
 
   subroutine setupamrgrid(grid)
