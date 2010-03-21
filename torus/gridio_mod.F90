@@ -2757,7 +2757,7 @@ contains
 
        end subroutine readGridSplitOverMPI
 
-       recursive subroutine readZerothThread(thisOctal, parent, fileFormatted)
+       subroutine readZerothThread(thisOctal, parent, fileFormatted)
          logical :: fileFormatted
          type(OCTAL), pointer :: thisOctal, parent, child
          character(len=80) :: message
@@ -2818,12 +2818,12 @@ contains
             do iChild = 1, thisOctal%nChildren
                child => thisOctal%child(iChild)
                call readOctalViaTags(child, fileFormatted)
-               child%nChildren = 1
-               do i = 1, nHydroThreadsGlobal
-                  child%hasChild = .false.
+               child%nChildren = thisOctal%maxChildren
+               child%hasChild = .false.
+               do i = 1, thisOctal%maxChildren
                   child%hasChild(i) = .true.
                   child%indexChild(1) = i
-                  call sendOctalviaMPI(child,i)
+                  call sendOctalviaMPI(child,(iChild-1)*8+i)
                enddo
                child%hasChild = .false.
                child%nChildren = 0 
@@ -2877,7 +2877,6 @@ contains
                call getBranchOverMpi(child, thisOctal)
             enddo
          endif
-
        end subroutine getBranchOverMPI
 
 #endif

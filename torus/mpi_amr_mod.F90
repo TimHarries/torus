@@ -2563,7 +2563,7 @@ contains
           stillServing= .false.
        else
           call findSubcellLocal(position, thisOctal, subcell)
-          if (.not.thisOctal%changed(subcell)) then
+!          if (.not.thisOctal%changed(subcell)) then
 
              tempStorage(1) = thisOctal%nDepth
              tempStorage(2) = thisOctal%rho(subcell)
@@ -2573,17 +2573,17 @@ contains
              tempStorage(6) = thisOctal%rhow(subcell)        
              tempStorage(7) = thisOctal%energy(subcell)
              tempStorage(8) = thisOctal%phi_i(subcell)
-          else
-             parent => thisOctal%parent
-             tempStorage(1) = parent%nDepth
-             tempStorage(2) = parent%rho(thisOctal%parentSubcell)
-             tempStorage(3) = parent%rhoe(thisOctal%parentsubcell)             
-             tempStorage(4) = parent%rhou(thisOctal%parentsubcell)             
-             tempStorage(5) = parent%rhov(thisOctal%parentsubcell)             
-             tempStorage(6) = parent%rhow(thisOctal%parentsubcell)        
-             tempStorage(7) = parent%energy(thisOctal%parentsubcell)        
-             tempStorage(8) = parent%phi_i(thisOctal%parentsubcell)        
-          endif
+!          else
+!             parent => thisOctal%parent
+!             tempStorage(1) = parent%nDepth
+!             tempStorage(2) = parent%rho(thisOctal%parentSubcell)
+!             tempStorage(3) = parent%rhoe(thisOctal%parentsubcell)             
+!             tempStorage(4) = parent%rhou(thisOctal%parentsubcell)             
+!             tempStorage(5) = parent%rhov(thisOctal%parentsubcell)             
+!             tempStorage(6) = parent%rhow(thisOctal%parentsubcell)        
+!             tempStorage(7) = parent%energy(thisOctal%parentsubcell)        
+!             tempStorage(8) = parent%phi_i(thisOctal%parentsubcell)        
+!          endif
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
     enddo
