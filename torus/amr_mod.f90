@@ -17075,6 +17075,18 @@ end function readparameterfrom2dmap
     subroutine deallocateOctalDynamicAttributes(thisOctal)
       type(OCTAL):: thisOctal
 
+
+       call deallocateAttribute(thisOctal%HHeating)
+       call deallocateAttribute(thisOctal%HeHeating)
+
+
+       call deallocateAttribute(thisOctal%ne)
+       call deallocateAttribute(thisOctal%nh)
+       call deallocateAttribute(thisOctal%ntot)
+
+       call deallocateAttribute(thisOctal%jnu)
+       call deallocateAttribute(thisOctal%bnu)
+
        call deallocateAttribute(thisOctal%oldFrac)
        call deallocateAttribute(thisOctal%fixedtemperature)
        call deallocateAttribute(thisOctal%dustType)
@@ -17175,6 +17187,17 @@ end function readparameterfrom2dmap
        call deallocateAttribute(thisOctal%neighbourSubcell)
 
        call deallocateAttribute(thisOctal%mpiBoundaryStorage)
+
+       call deallocateAttribute(thisOctal%departCoeff)
+       call deallocateAttribute(thisOctal%molAbundance)
+
+       call deallocateAttribute(thisOctal%molecularLevel)
+       call deallocateAttribute(thisOctal%molcellparam)
+       call deallocateAttribute(thisOctal%newmolecularLevel)
+       call deallocateAttribute(thisOctal%oldmolecularLevel)
+       call deallocateAttribute(thisOctal%oldestmolecularLevel)
+
+
      end subroutine deallocateOctalDynamicAttributes
 
 

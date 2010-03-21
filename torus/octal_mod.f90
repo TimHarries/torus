@@ -68,6 +68,7 @@ MODULE octal_mod
   interface deallocateAttribute
      module procedure deallocateAttributeDouble
      module procedure deallocateAttributeDouble2D
+     module procedure deallocateAttributeReal2D
      module procedure deallocateAttributeDouble3D
      module procedure deallocateAttributeReal
      module procedure deallocateAttributeInteger
@@ -820,6 +821,15 @@ CONTAINS
        nullify(array)
     endif
   end subroutine deallocateAttributeDouble2d
+
+  subroutine deallocateAttributeReal2d(array)
+    real, pointer :: array(:,:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeReal2d
 
   subroutine deallocateAttributeDouble3d(array)
     real(double), pointer :: array(:,:,:)

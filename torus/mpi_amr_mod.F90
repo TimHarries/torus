@@ -2542,7 +2542,7 @@ contains
     logical :: stillServing
     real(double) :: loc(3)
     type(VECTOR) :: position
-    type(OCTAL), pointer :: thisOctal, parent
+    type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: iThread
     integer, parameter :: nStorage = 8

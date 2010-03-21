@@ -671,8 +671,8 @@ contains
       ! read in an octal to the grid octree
 
       implicit none
-      type(octal), target :: thisOctal
-      type(octal), target :: parent
+      type(octal), pointer :: thisOctal
+      type(octal), pointer :: parent
       type(gridtype) :: grid
 
       logical, intent(in)  :: fileFormatted
@@ -800,6 +800,7 @@ contains
                if (thisOctal%nChildren > 0) then 
                   allocate(thisOctal%child(1:thisOctal%nChildren)) 
                   do iChild = 1, thisOctal%nChildren, 1
+                     write(*,*) "myrank ",myrankglobal, " ichild ",ichild, size(thisOctal%child),thisOctal%nchildren
                      thisChild => thisOctal%child(iChild)
                      call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
                   end do
@@ -2038,7 +2039,7 @@ contains
 
     attributeName = name
     call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(len(value), 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(len(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
     call MPI_SEND(value, len(value), MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
        
   end subroutine sendAttributeStaticCharacterSingleFlexi
@@ -2068,7 +2069,7 @@ contains
        temp(j+3) = value(i)%z
     enddo
     call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(temp, n3, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(temp, n3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
     deallocate(temp)
   end subroutine sendAttributeStaticVector1DFlexi
   
@@ -2242,7 +2243,7 @@ contains
           temp(j+3) = value(i)%z
        enddo
        call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(temp, n3, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(temp, n3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        deallocate(temp)
     endif
   end subroutine sendAttributePointerVector1DFlexi
@@ -2270,7 +2271,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
       call MPI_RECV(value, n, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
 
     end subroutine receiveArrayRealFlexi
@@ -2283,7 +2284,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
       call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
 
     end subroutine receiveArrayLogicalFlexi
@@ -2296,7 +2297,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
       call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
 
     end subroutine receiveArrayDoubleFlexi
@@ -2310,7 +2311,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
       n3 = 3 * n
       allocate(temp(1:n3))
       call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
@@ -2744,6 +2745,7 @@ contains
          call updateMaxDepth(grid)
          call setSmallestSubcell(grid)
          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+         write(*,*) myrankglobal , " has ",nvoxels, " voxels"
          grid%nOctals = nOctals
          call checkAMRgrid(grid, .false.)
          close(20)
@@ -2782,7 +2784,6 @@ contains
                call writeInfo(message,TRIVIAL)
             enddo
 
-            write(*,*) myrankglobal, "setting nchildren to zero"
             thisOctal%nChildren = 0 
             thisOctal%hasChild = .false.
          endif
@@ -2836,7 +2837,6 @@ contains
                call writeInfo(message,TRIVIAL)
             enddo
 
-            write(*,*) myrankglobal, "setting nchildren to zero"
             thisOctal%nChildren = 0 
             thisOctal%hasChild = .false.
          endif
@@ -2847,13 +2847,17 @@ contains
        recursive subroutine readBranchFromFile(iThread, fileFormatted)
          integer :: ithread
          logical :: fileFormatted
-         type(OCTAL) :: thisOctal
-	 integer :: i
+         type(OCTAL), pointer :: thisOctal => null()
+	 integer :: i, n
 
+         allocate(thisOctal)
          call readOctalViaTags(thisOctal, fileFormatted)
          call sendOctalViaMPI(thisOctal, iThread)
-         if (thisOctal%nChildren > 0) then
-            do i = 1, thisOctal%nChildren
+         n = thisOctal%nChildren
+         call deallocateOctalDynamicAttributes(thisOctal)
+         deallocate(thisOctal)
+         if (n > 0) then
+            do i = 1, n
                call readBranchFromFile(iThread, fileFormatted)
             enddo
          endif
@@ -2868,7 +2872,7 @@ contains
 
          thisOctal%parent => parent
 !         write(*,*) myrankGlobal, " receiving octal from 0"
-         call receiveOctalVIaMPI(thisOctal)
+         call receiveOctalViaMPI(thisOctal)
 !         write(*,*) myrankGlobal, " received successfully. depth ",thisOctal%nDepth, thisOctal%nChildren, thisOctal%mpiThread
          if (thisOctal%nChildren > 0) then
             allocate(thisOctal%child(1:thisOctal%nChildren)) 
@@ -3033,7 +3037,7 @@ contains
 
 
    subroutine readOctalViaTags(thisOctal, fileformatted)
-     type(OCTAL) :: thisOctal
+     type(OCTAL), pointer  :: thisOctal
      logical :: fileFormatted
      character(len=20) :: tag
      character(len=80) :: message
@@ -3322,7 +3326,7 @@ contains
 
    subroutine receiveOctalViaMPI(thisOctal)
      include 'mpif.h'
-     type(OCTAL) :: thisOctal
+     type(OCTAL), pointer :: thisOctal
      integer :: status(MPI_STATUS_SIZE)
      integer, parameter :: mpitag = 50
      character(len=20) :: tag
@@ -3335,7 +3339,6 @@ contains
          tag = ADJUSTL(tag)
          if (tag == "OCTALBEGINS") cycle
          if (tag == "OCTALENDS") exit
-
          select case (tag)
          case("nDepth")
             call receiveSingleFlexi(thisOctal%nDepth)
@@ -3606,7 +3609,7 @@ contains
 
     subroutine sendOctalViaMPI(thisOctal, ithread)
      include 'mpif.h'
-     type(OCTAL) :: thisOctal
+     type(OCTAL), pointer :: thisOctal
      integer, parameter :: mpitag = 50
      character(len=20) :: tmp
      integer :: ierr
