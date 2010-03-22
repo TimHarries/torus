@@ -13,6 +13,7 @@ module vtk_mod
   use amr_mod
   use mpi_amr_mod
   use messages_mod
+  use vector_mod
 
   implicit none
 
@@ -229,25 +230,25 @@ contains
     integer :: lunit = 69
     character(len=*) :: valueType
     character(len=*) :: vtkFilename
-    logical :: vector, scalar
+    logical :: vectorvalue, scalarvalue
 
 
     select case (valueType)
-       case("velocity","hydrovelocity","linearvelocity","quadvelocity")
-          scalar = .false.
-          vector = .true.
+       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel")
+          scalarvalue = .false.
+          vectorvalue = .true.
        case DEFAULT
-          scalar = .true.
-          vector = .false.
+          scalarvalue = .true.
+          vectorvalue = .false.
     end select
 
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
     if (writeHeader) then
-       if (scalar) then
+       if (scalarvalue) then
           write(69,'(a,a,a)') "SCALARS ",trim(valueType)," float"
           write(69, '(a)') "LOOKUP_TABLE default"
        endif
-       if (vector) then
+       if (vectorvalue) then
           write(69, '(a,a,a)') "VECTORS ", trim(valueType), " float"
        endif
 
@@ -265,6 +266,7 @@ contains
       include 'mpif.h'  
 #endif
       type(GRIDTYPE), intent(in) :: grid
+      type(VECTOR) :: rVec, vel
       integer :: lunit = 69
       integer :: subcell, i
       integer, save :: iLambda
@@ -481,6 +483,12 @@ contains
                      write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
                            real(thisOctal%velocity(subcell)%z*cspeed/1.e5), 0.
                      endif
+              case("cornervel")
+                 rVec = subcellCentre(thisOctal, subcell)
+                 vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
+                      actualSubcell=subcell) 
+                 write(lunit, *) real(vel%x*cspeed/1.e5), real(vel%y*cspeed/1.e5), &
+                      real(vel%z*cspeed/1.e5)
 
 !               case("quadvelocity")
 !                     write(lunit, *) thisOctal%quadvelocity(subcell)%x*cspeed/1.e5, &

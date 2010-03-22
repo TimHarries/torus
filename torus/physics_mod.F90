@@ -108,7 +108,9 @@ contains
     use photoion_mod, only : refineLambdaArray
     use source_mod, only : globalNsource, globalSourceArray
     use molecular_mod, only : molecularLoopV2, globalMolecule
+#ifdef MPI
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
+#endif
     use amr_mod, only : hydroVelocityConvert
     real, pointer :: xArray(:)
     integer :: nLambda 
@@ -127,10 +129,15 @@ contains
 !     endif
 
      if (molecularPhysics.and.statisticalEquilibrium) then
-        call hydroVelocityConvert(grid%octreeRoot)
-        if (myrankGlobal /= 0) then
-           call fillVelocityCornersFromHydro(grid)
+#ifdef MPI
+        if (grid%splitOverMPI) then
+           call setallUnchanged(grid%octreeRoot)
+           call hydroVelocityConvert(grid%octreeRoot)
+           if (myrankGlobal /= 0) then
+              call fillVelocityCornersFromHydro(grid)
+           endif
         endif
+#endif
         call molecularLoopV2(grid, globalMolecule)
      endif
      
