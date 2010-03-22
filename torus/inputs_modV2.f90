@@ -346,7 +346,7 @@ contains
             "Continuum flux file: ","(a,a,a)","none", ok, .true.)
 
        write(keyword, '(a,i1)') "sourcepos",i
-       call getVector(keyword, sourcePos(i), 1.d10, cLine, nLines, &
+       call getVector(keyword, sourcePos(i), 1.d0, cLine, nLines, &
             "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
     enddo
 
@@ -539,6 +539,10 @@ contains
          "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
     call getString("imagetype", outputimageType, cLine, nLines, &
          "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+    call getBigInteger("nphotons", nphotons, cLine, nLines, &
+         "Number of photons in image","(a,i8,a)", 10000, ok, .true.)
+    call getInteger("npixels", npixels, cLine, nLines, &
+         "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
   end subroutine readImageParameters
 

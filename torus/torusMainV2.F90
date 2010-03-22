@@ -90,10 +90,6 @@ program torus
 
   call setupGlobalSources(grid)
 
-
-  call writeVtkFile(grid, "rho.vtk")
-
-
   call writeBanner("Run-time messages","+",TRIVIAL)
 
   call doPhysics(grid)

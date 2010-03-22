@@ -659,7 +659,7 @@ program torus
            write(message,'(a,i4.4,a)') "dump_",idump,".grid"
            call readAMRgrid(message, .false., grid)
 
-           call createImageSplitGrid(grid, nSource, source, outVec, i, fac)
+           call createImageSplitGrid(grid, nSource, source, outVec, "test.fits")
            call torus_mpi_barrier
         endif
 

@@ -1821,7 +1821,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,tLow)
-                                write(*,*) thisOctal%temperature(subcell), niter
+!                                write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
                 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
@@ -4134,7 +4134,7 @@ end subroutine readHeIIrecombination
 
   subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename)
     use photoion_mod, only : addForbiddenEmissionLine, addRecombinationEmissionLine
-    use input_variables, only : lambdaImage, freeFreeImage, outputimageType
+    use input_variables, only : lambdaImage, freeFreeImage, outputimageType, nPhotons, nPixels
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=80) :: imageFilename
@@ -4146,7 +4146,7 @@ end subroutine readHeIIrecombination
     real(double), allocatable :: totalFluxArray(:), tempTotalFlux(:)
     logical :: directFromSource
     integer :: subcell
-    integer :: iPhoton, nPhotons
+    integer :: iPhoton
     integer :: iSource
     integer :: iThread
     type(VECTOR) ::  rHat, observerDirection
@@ -4169,6 +4169,8 @@ end subroutine readHeIIrecombination
 
     call init_random_seed()
 
+    absorbed = .false.
+    escaped = .false.
 
     allocate(nDoneArray(1:nThreadsGlobal-1))
     allocate(totalFluxArray(1:nThreadsGlobal-1))
@@ -4181,7 +4183,7 @@ end subroutine readHeIIrecombination
     call zeroEtaCont(grid%octreeRoot)
 
 
-    thisImage = initImage(200, 200, real(2.*grid%octreeRoot%subcellSize), &
+    thisImage = initImage(npixels, npixels, real(2.*grid%octreeRoot%subcellSize), &
          real(2.*grid%octreeRoot%subcellSize), 0., 0.)
 
     allocate(threadProbArray(1:nThreadsGlobal-1))
@@ -4190,6 +4192,7 @@ end subroutine readHeIIrecombination
     select case (outputimageType)
        case("freefree")
           freefreeImage = .true.
+          ilambdaPhoton = grid%nLambda
           call  addRadioContinuumEmissivity(grid%octreeRoot)
           lcore = tiny(lcore)
 
@@ -4247,7 +4250,6 @@ end subroutine readHeIIrecombination
        write(*,*) "Probability of photon from sources: ", probSource
     endif
 
-    nPhotons = 100000
     Ninf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)

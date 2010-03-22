@@ -80,7 +80,6 @@ contains
                (fourPi*source(isource)%distance**2)
        endif
 
-
        if (inputcontfluxfile(isource) /= "blackbody") then
           call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
        else
@@ -172,7 +171,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda)
-     use inputs_mod, only : photoionPhysics
+     use input_variables, only : photoionPhysics
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)

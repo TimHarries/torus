@@ -671,7 +671,7 @@ module image_mod
 
        scale = scale / dlam * lamCen
 
-       
+       scale = 1.
        array = 1.d-30
        select case(type)
           case("intensity")
