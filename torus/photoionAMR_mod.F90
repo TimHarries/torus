@@ -4137,7 +4137,7 @@ end subroutine readHeIIrecombination
     use input_variables, only : lambdaImage, freeFreeImage, outputimageType, nPhotons, nPixels
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    character(len=80) :: imageFilename
+    character(:) :: imageFilename
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
