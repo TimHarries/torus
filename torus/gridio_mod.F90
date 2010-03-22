@@ -671,8 +671,8 @@ contains
       ! read in an octal to the grid octree
 
       implicit none
-      type(octal), pointer :: thisOctal
-      type(octal), pointer :: parent
+      type(octal), target :: thisOctal
+      type(octal), target :: parent
       type(gridtype) :: grid
 
       logical, intent(in)  :: fileFormatted
@@ -753,7 +753,6 @@ contains
          if (thisOctal%nChildren > 0) then 
             allocate(thisOctal%child(1:thisOctal%nChildren)) 
             do iChild = 1, thisOctal%nChildren, 1
-
                thisChild => thisOctal%child(iChild)
                call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
             end do
@@ -3037,7 +3036,7 @@ contains
 
 
    subroutine readOctalViaTags(thisOctal, fileformatted)
-     type(OCTAL), pointer  :: thisOctal
+     type(OCTAL)  :: thisOctal
      logical :: fileFormatted
      character(len=20) :: tag
      character(len=80) :: message
