@@ -262,6 +262,9 @@ CONTAINS
     CASE ("agbstar")
        CALL AGBStarBenchmark(thisOctal, subcell ,grid)
 
+    CASE ("clumpyagb")
+       CALL clumpyagb(thisOctal, subcell ,grid)
+
     CASE ("molefil")
        CALL molecularFilamentFill(thisOctal, subcell ,grid)
 
@@ -5506,6 +5509,8 @@ IF ( .NOT. gridConverged ) RETURN
       end if
       if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
 
+   case("clumpyagb")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
 
 
    case("clumpydisc")
@@ -8654,6 +8659,26 @@ IF ( .NOT. gridConverged ) RETURN
 
    CALL fillVelocityCorners(thisOctal,grid,AGBStarVelocity,thisOctal%threed)
   end subroutine AGBStarBenchmark
+
+  subroutine clumpyAgb(thisOctal,subcell,grid)
+
+    use input_variables, only : rinner, router, vterm, mdot
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(VECTOR) :: rvec
+    real(double) :: r
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)
+    thisOctal%rho(subcell) = 1.d-30
+       thisOctal%temperature(subcell) = 10.
+    if ((r > rinner).and.(r < router)) then
+       thisOctal%rho(subcell) = mdot / (fourpi* (r*1.d10)**2 * vterm)
+    endif
+
+
+  end subroutine ClumpyAgb
 
   subroutine iras04158(thisOctal, subcell ,grid)
 
@@ -16863,7 +16888,7 @@ end function readparameterfrom2dmap
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
-         lineEmission, atomicPhysics, photoionPhysics!, storeScattered
+         lineEmission, atomicPhysics, photoionPhysics, dustPhysics!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -16879,7 +16904,7 @@ end function readparameterfrom2dmap
        return
     end if
 
-    if (mie) then
+    if (mie.or.dustPhysics) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
        thisOctal%oldFrac = 1.d-30
        call allocateAttribute(thisOctal%fixedTemperature, thisOctal%maxChildren)

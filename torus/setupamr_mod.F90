@@ -110,6 +110,13 @@ contains
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
 
+       case("clumpyagb")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+
        case("starburst")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
@@ -230,7 +237,7 @@ contains
           case DEFAULT
        end select
 
-
+       call writeVTKfile(grid, "rho.vtk")
     endif
   end subroutine setupamrgrid
 

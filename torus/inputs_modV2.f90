@@ -64,9 +64,8 @@ contains
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
 
-       call getLogical("splitovermpi", splitOverMPI, cLine, nLines, &
-            "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .true.)
-
+    call getLogical("splitovermpi", splitOverMPI, cLine, nLines, &
+         "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .true.)
 
 
     call getLogical("readgrid", readGrid, cLine, nLines, &
@@ -74,6 +73,7 @@ contains
 
     if (.not.readgrid) then
        call readGridInitParameters(cLine, nLines)
+       call readGeometrySpecificParameters(cLine, nLines)
     else
        call getString("inputfile", gridInputFilename, cLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
@@ -181,6 +181,30 @@ contains
   end subroutine inputs
 
 
+  subroutine readGeometrySpecificParameters(cLine, nLines)
+    character(len=80) :: cLine(:)
+    integer :: nLines
+    logical :: ok
+
+    select case(geometry)
+       case("clumpyagb")
+          call getReal("rinner", rinner, real(rsol/1.e10), cLine, nLines, &
+               "Inner radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+
+          call getReal("router", router, rinner, cLine, nLines, &
+               "Outer radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+
+          call getReal("vterm", vterm, 1.e5, cLine, nLines, &
+               "Terminal velocity (km/s): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+
+          call getReal("mdot", mdot, real(mSol) /( 365.25 * 24. * 3600.),  cLine, nLines, &
+               "Mass-loss rate (solar masses per year): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+
+
+    end select
+  end subroutine readGeometrySpecificParameters
+         
+
   subroutine readGridInitParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
@@ -202,10 +226,10 @@ contains
          "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("mindepthamr", minDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
-         & "(a,i3,a)",5,ok,.false.)
+         & "(a,i3,a)",5,ok,.true.)
 
     call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Maximum cell depth of AMR grid: ", &
-         & "(a,i3,a)",31,ok,.false.)
+         & "(a,i3,a)",31,ok,.true.)
 
     call getReal("amrgridsize", amrGridSize, 1., cLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 

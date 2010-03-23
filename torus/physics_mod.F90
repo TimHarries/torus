@@ -107,6 +107,7 @@ contains
     use photoion_mod, only : refineLambdaArray
     use source_mod, only : globalNsource, globalSourceArray
     use molecular_mod, only : molecularLoopV2, globalMolecule
+    use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
 #endif
@@ -122,10 +123,13 @@ contains
 !    endif
 
 
-!     if (dustPhysics.and.radiativeEquilibrium) then
-!        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
-!             source, nSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
-!     endif
+     if (dustPhysics.and.radiativeEquilibrium) then
+        call setupXarray(grid, xarray, nLambda)
+        call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+        call fillDustUniform(grid, grid%octreeRoot)
+        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
+             globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
+     endif
 
      if (molecularPhysics.and.statisticalEquilibrium) then
 #ifdef MPI
@@ -171,7 +175,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda)
-     use input_variables, only : photoionPhysics
+     use input_variables, only : photoionPhysics, dustPhysics
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -179,6 +183,20 @@ contains
      integer :: nCurrent, nt, i
      real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
      if (associated(xarray)) deallocate(xarray)
+
+     if (dustPhysics) then
+        nLambda = 1000
+        allocate(xarray(1:nLambda))
+        lamStart = 10.d0
+        lamEnd = 1.d7
+        logLamStart = log10(lamStart)
+        logLamEnd = log10(lamEnd)
+        do i = 1, nlambda
+           fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+           fac = 10.**fac
+           xArray(i) = fac
+        enddo
+     endif
 
      if (photoionPhysics) then
         nLambda = 1000
@@ -200,6 +218,7 @@ contains
            call sort(nCurrent, xArray)
         enddo
      endif
+
 
 
 
