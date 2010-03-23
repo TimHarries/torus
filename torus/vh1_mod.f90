@@ -77,6 +77,8 @@ contains
     use vector_mod
     implicit none
 
+    real(db), parameter :: rho_bg=1.0e-23_db
+
     TYPE(OCTAL), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
 
@@ -87,10 +89,10 @@ contains
 
     if ( thisCentre%x < xaxis(1)  .or. &
          thisCentre%x > xaxis(nx) .or. &
-         abs(thisCentre%z) < yaxis(1)  .or. &
-         abs(thisCentre%z) > yaxis(ny) ) then 
+         thisCentre%z < yaxis(1)  .or. &
+         thisCentre%z > yaxis(ny) ) then 
        
-       thisOctal%rho(subcell) = 1.0e-33_db
+       thisOctal%rho(subcell) = rho_bg
 
     else
 
@@ -102,15 +104,15 @@ contains
        end do
 
 ! In a 2D grid the octal y value doesn't change
-! Use abs value for mirror half
        do j=2, ny
-          if ( abs(thisCentre%z) < yaxis(j) ) then 
+          if ( thisCentre%z < yaxis(j) ) then 
              this_j = j
              exit
           end if
        end do
 
-       thisOctal%rho(subcell) = rho(this_i, this_j)
+! Flip axes
+       thisOctal%rho(subcell) = rho(this_j, this_i)
 
     end if
 
