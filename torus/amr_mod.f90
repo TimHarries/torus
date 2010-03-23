@@ -4689,6 +4689,14 @@ IF ( .NOT. gridConverged ) RETURN
 !         if (thisOctal%nDepth < 7) split = .true.
 !      endif
 
+   case("runaway")
+      cellCentre = subcellCentre(thisOctal,subCell)
+      if ( cellCentre%z > 0.0 .and. cellCentre%x < 5.0e6 .and. thisOctal%nDepth < 7 ) then
+         split = .true.
+      else
+         split=.false.
+      end if
+
    case("starburst")
       if (thisOctal%nDepth < mindepthamr) then
          split = .true.

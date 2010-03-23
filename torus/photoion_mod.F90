@@ -660,7 +660,7 @@ end if ! (my_rank /= 0)
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
-    if (grid%geometry == "melvin") then
+    if (grid%geometry == "melvin" .or. grid%geometry == "runaway") then
       if (niter < 10) nMonte = nMonte * 2
    endif
 
