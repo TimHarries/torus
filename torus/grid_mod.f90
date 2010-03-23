@@ -618,7 +618,7 @@ contains
        grid%oneKappa = .true.
        oneKappa = .true.
 
-    case("lexington","fractal")
+    case("lexington","fractal","runaway")
        grid%rCore = 18.67 * rSol / 1.e10
        grid%rInner = rinner
        grid%rOuter = 2.e09

@@ -307,6 +307,19 @@ CONTAINS
 
    CASE ("runaway")
       call assign_from_vh1(thisOctal, subcell)
+      thisOctal%temperature(subcell) = 10000.
+      thisOctal%etaCont(subcell) = 0.
+      thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+      thisOctal%ne(subcell) = thisOctal%nh(subcell)
+      thisOctal%nhi(subcell) = 1.e-8
+      thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+      thisOctal%inFlow(subcell) = .true.
+      thisOctal%velocity = VECTOR(0.,0.,0.)
+      thisOctal%biasCont3D = 1.
+      thisOctal%etaLine = 1.e-30
+      if (thisOctal%nDepth > 1) then
+         thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+      endif
 
     CASE ("magstream")
 

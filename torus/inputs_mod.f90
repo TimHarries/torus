@@ -1450,7 +1450,7 @@ contains
     endif
 
 
-    if (geometry == "lexington") then
+    if (geometry == "lexington" .or. geometry == "runaway") then
        photoionization = .true.
        onekappa = .true.
        call getReal("rinner", rInner, cLine, nLines, &

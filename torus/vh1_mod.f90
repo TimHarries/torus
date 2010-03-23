@@ -87,8 +87,8 @@ contains
 
     if ( thisCentre%x < xaxis(1)  .or. &
          thisCentre%x > xaxis(nx) .or. &
-         thisCentre%z < yaxis(1)  .or. &
-         thisCentre%z > yaxis(ny) ) then 
+         abs(thisCentre%z) < yaxis(1)  .or. &
+         abs(thisCentre%z) > yaxis(ny) ) then 
        
        thisOctal%rho(subcell) = 1.0e-33_db
 
@@ -102,15 +102,15 @@ contains
        end do
 
 ! In a 2D grid the octal y value doesn't change
+! Use abs value for mirror half
        do j=2, ny
-          if ( thisCentre%z < yaxis(j) ) then 
+          if ( abs(thisCentre%z) < yaxis(j) ) then 
              this_j = j
              exit
           end if
        end do
 
        thisOctal%rho(subcell) = rho(this_i, this_j)
-       thisOctal%temperature(subcell) = 10.0
 
     end if
 
