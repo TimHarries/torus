@@ -4358,6 +4358,7 @@ IF ( .NOT. gridConverged ) RETURN
     use sph_data_class, only:  sphVelocityPresent
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
+    use vh1_mod, only: get_density_vh1
 
     IMPLICIT NONE
 
@@ -4691,11 +4692,16 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("runaway")
       cellCentre = subcellCentre(thisOctal,subCell)
-      if ( cellCentre%z > 0.0 .and. cellCentre%x < 5.0e6 .and. thisOctal%nDepth < 7 ) then
+      if ( cellCentre%z > 0.0 .and. cellCentre%x < 5.0e6 .and. thisOctal%nDepth < 5 ) then
          split = .true.
       else
          split=.false.
       end if
+
+      call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
+      fac = ( maxDensity - minDensity ) / ( maxDensity + minDensity )
+      if ( npt_subcell >= 2 .and. fac > 0.1 ) split = .true. 
+
 
    case("starburst")
       if (thisOctal%nDepth < mindepthamr) then
