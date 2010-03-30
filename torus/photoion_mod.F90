@@ -132,6 +132,10 @@ contains
     integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
     integer ::  nVoxels, nOctals
 
+! For testing convergence
+    real(double) :: sumDeltaT, globalSumDeltaT, meanDeltaT
+    integer      :: numDeltaT, globalNumDeltaT
+
 #ifdef MPI
     ! For MPI implementations
   ! For MPI implementations =====================================================
@@ -433,6 +437,7 @@ contains
     my_rank = 1
 #endif
     firstTime = .true.
+    sumDeltaT = 0.0_db; numDeltaT = 0
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -453,7 +458,7 @@ contains
     ! we will use an array to store the rank of the process
     !   which will calculate each octal's variables
     allocate(octalsBelongRank(size(octalArray)))
-    
+
     if (my_rank == 0) then
        call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=10,tag=tag,&
                             setDebug=.false.)
@@ -485,7 +490,7 @@ contains
 
        do i = 1 , 3
           call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT, sumDeltaT, numDeltaT)
        enddo
 
     enddo
@@ -534,14 +539,17 @@ end if ! (my_rank /= 0)
        call unpackIonFrac(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
      enddo
 
-
-
+     call MPI_ALLREDUCE(sumDeltaT,globalSumDeltaT,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+     call MPI_ALLREDUCE(numDeltaT,globalNumDeltaT,1,MPI_INTEGER,         MPI_SUM,MPI_COMM_WORLD,ierr)
 
 
      deallocate(tempArray, tArray, tempArrayd, tArrayd)
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
      deallocate(octalsBelongRank)
+#else
+     globalSumDeltaT = sumDeltaT
+     globalNumDeltaT = numDeltaT
 #endif
        deallocate(octalArray)
 
@@ -641,6 +649,9 @@ end if ! (my_rank /= 0)
        write(*,'(a20,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
     endif
 
+! Make sure the output above has finished writing before proceeding
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
 
 !       if ((niter > 2).and.(nIter < 8)) then
 !          call locate(grid%lamArray, grid%nLambda,900.,ilam)
@@ -671,7 +682,20 @@ end if ! (my_rank /= 0)
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
          "OII        ", "OIII       "/))
 
-    if (niter == 12) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Convergence conditions: work in progess (DMA March 2010)
+    meanDeltaT = globalSumDeltaT / real(globalNumDeltaT,db)
+    write(message,*) "Mean dT = ", meanDeltaT
+    call writeInfo(message,FORINFO)
+    if ( abs(meanDeltaT) < 1.0_db) then 
+! Not applied at present
+!       converged = .true.
+       call writeInfo("Temperature converged to within 1K",FORINFO)
+    else if (niter == 12) then 
+       converged = .true. 
+       call writeInfo("Maximum number of iterations reached",FORINFO)
+    else
+       converged = .false.
+    end if
 
  enddo
 
@@ -1272,7 +1296,7 @@ end subroutine photoIonizationloop
     enddo
   end subroutine calculateIonizationBalance
 
-  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT, sumDeltaT, numDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
@@ -1284,6 +1308,10 @@ end subroutine photoIonizationloop
     real :: deltaT
     real :: underCorrection = 1.
     integer :: nIter
+! For testing convergence
+    real(double), intent(inout) :: sumDeltaT
+    integer, intent(inout)      :: numDeltaT
+
     heheating = 0.d0; hheating = 0.d0; dustHeating = 0.d0; totalHeating = 0.d0
 
     do subcell = 1, thisOctal%maxChildren
@@ -1352,6 +1380,8 @@ end subroutine photoIonizationloop
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
+                   sumDeltaT = sumDeltaT + deltaT
+                   numDeltaT = numDeltaT + 1 
                    !             write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
@@ -4121,6 +4151,7 @@ end subroutine readHeIIrecombination
     real(double) :: powerPerPhoton
     real(double) :: totalLineEmission, chanceSource, weightSource, weightEnv
     integer :: iBeg, iEnd
+    character(len=80) :: message
 #ifdef MPI
     real(double) :: tempTotalFlux
     integer :: i
@@ -4146,8 +4177,10 @@ end subroutine readHeIIrecombination
        lcore = tiny(lcore)
     endif
 
-    write(*,*) "Total line emission ",totalEmission
-    write(*,*) "Total source emission ",lCore
+    write(message,*) "Total line emission ",totalEmission
+    call writeInfo (message, FORINFO)
+    write(message,*) "Total source emission ",lCore
+    call writeInfo (message, FORINFO)
 
     chanceSource = lCore / (lCore + totalEmission)
 

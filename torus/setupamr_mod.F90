@@ -36,6 +36,7 @@ contains
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
+    use vh1_mod, only: read_vh1
     ! For romanova geometry case
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(cluster)   :: young_cluster
@@ -126,6 +127,12 @@ contains
           !          enddo
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+       case("runaway")
+          call read_vh1
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call writeInfo("First octal initialized.", TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 

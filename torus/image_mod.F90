@@ -51,6 +51,18 @@ module image_mod
      real :: vmax, vmin
      integer :: i
 
+! Check the requested image size is sensible
+! If not then set size to 1 to prevent problems with unallocated arrays
+     if ( nx < 1 ) then 
+        call writewarning("initImage: nx < 1")
+        nx = 1
+     end if
+
+     if ( ny < 1 ) then 
+        call writewarning("initImage: ny < 1")
+        ny = 1
+     end if
+
      allocate(initImage%pixel(1:nx,1:ny))
      allocate(initImage%vel(1:nx,1:ny))
      allocate(initImage%totWeight(1:nx,1:ny))

@@ -7,6 +7,8 @@ module inputs_mod
   use input_variables
   use constants_mod
 
+  implicit none
+
 contains
   
   subroutine  inputs()
@@ -508,6 +510,11 @@ contains
   subroutine readPhotoionEquilibriumParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getReal("taudiff", tauDiff, 1., cLine, nLines, &
+         "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
+
   end subroutine readPhotoionEquilibriumParameters
 
   subroutine readHydrodynamicsParameters(cLine, nLines)

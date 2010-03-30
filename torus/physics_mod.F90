@@ -104,7 +104,7 @@ contains
     use input_variables, only : statisticalEquilibrium, nAtom
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
-    use photoion_mod, only : refineLambdaArray
+    use photoion_mod, only : refineLambdaArray, photoionizationLoop
     use source_mod, only : globalNsource, globalSourceArray
     use molecular_mod, only : molecularLoopV2, globalMolecule
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
@@ -149,17 +149,18 @@ contains
      endif
 
      if (photoionPhysics.and.photoionEquilibrium) then 
+
+        call setupXarray(grid, xArray, nLambda)
+        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+
         if (.not.grid%splitOverMPI) then
-!           call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-!             lucyfileNameout, lucyfileNamein)
+           call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray, readlucy, writelucy, &
+             lucyfileNameout, lucyfileNamein)
         else
-
-           call setupXarray(grid, xArray, nLambda)
-
-           if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, .false., .false., &
              " ", " ", 5, 1.d30)
         endif
+
      end if
 
 !     if (hydrodynamics) then
