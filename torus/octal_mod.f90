@@ -258,6 +258,7 @@ MODULE octal_mod
     real, pointer :: molAbundance(:) => null() ! molecular abundances ! only 1D because only deal with one molecule at a time
     real, pointer :: convergence(:) => null() ! convergence
     integer*2, pointer :: levelconvergence(:,:) => null() ! convergence
+    integer*2, pointer :: nsplit(:) => null() ! nsplit
     real(double), pointer, DIMENSION(:) :: NHI => null()           ! neutral H
     real(double),  pointer, DIMENSION(:) :: NHII  => null()           ! HII
     real(double),  pointer, DIMENSION(:) :: NHeI => null()            ! HeI
