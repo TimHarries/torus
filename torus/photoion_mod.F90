@@ -649,8 +649,10 @@ end if ! (my_rank /= 0)
        write(*,'(a20,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
     endif
 
+#ifdef MPI
 ! Make sure the output above has finished writing before proceeding
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+#endif
 
 
 !       if ((niter > 2).and.(nIter < 8)) then
