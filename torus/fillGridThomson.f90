@@ -1,8 +1,7 @@
 subroutine fillGridThomson(grid)
 
-use gridtype_mod
-use grid_mod
-use constants_mod
+use gridtype_mod, only: gridtype
+
 implicit none
 type(GRIDTYPE) :: grid
 real, parameter :: sigmaThomson = 6.65e-25

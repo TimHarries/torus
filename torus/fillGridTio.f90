@@ -1,9 +1,8 @@
 subroutine fillGridTio(grid,  scale)
 
-use gridtype_mod
-use grid_mod
+use gridtype_mod, only: gridtype
 use constants_mod
-use TioCrossSection_mod
+use TioCrossSection_mod, only: readTioCrossSection
 
 implicit none
 real :: scale

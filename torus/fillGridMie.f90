@@ -2,7 +2,6 @@
 subroutine fillGridMie2(grid, scale, aMin, aMax, a0, qDist, pDist, grainType)
 
   use gridtype_mod
-  use grid_mod
   use constants_mod
   implicit none
   type(GRIDTYPE) :: grid
