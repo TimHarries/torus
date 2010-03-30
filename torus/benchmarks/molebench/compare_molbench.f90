@@ -47,11 +47,11 @@ program compare_molbench
         exit
      end if
 
-     diff(:,nlines) = abs(model_J(:) - bench_J(:)) / bench_J(:) 
-     diffmax = maxval(diff(:,:))
-     diffmaxloc = maxloc(diff(:,:))
+     diff(1:ncheck,nlines) = abs(model_J(1:ncheck) - bench_J(1:ncheck)) / bench_J(1:ncheck) 
+     diffmax = maxval(diff(1:ncheck,:))
+     diffmaxloc = maxloc(diff(1:ncheck,:))
 
-     write(*,'(6(tr2,es12.5))') diff(1:ncheck,nlines)
+     write(*,'(7(tr2,es12.5))') model_R, diff(1:ncheck,nlines)
 
   end do
 
