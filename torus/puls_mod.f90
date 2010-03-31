@@ -1,14 +1,16 @@
 module puls_mod
 
-  use gridtype_mod
-  use grid_mod
-  use stateq_mod
-  use blob_mod
-
 contains
 
   subroutine fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, &
        xfac, blobs, maxBlobs, doBlobs, vContrast)
+
+    use constants_mod
+    use vector_mod
+    use gridtype_mod, only: GRIDTYPE
+    use stateq_mod, only: boltzsaha, generateOpacities
+    use utils_mod, only: solveQuadDble
+    use blob_mod, only: distortGridWithBlobs, BLOBTYPE
 
     implicit none
     real :: mDot, rStar, tEff, v0, vTerm, beta

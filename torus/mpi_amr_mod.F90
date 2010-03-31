@@ -4,7 +4,6 @@ module mpi_amr_mod
   use kind_mod
   use amr_mod
   use mpi_global_mod
-  use ion_mod
 
   implicit none
 
@@ -959,6 +958,7 @@ contains
   end subroutine determineBoundaryPairs
 
   subroutine returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    use utils_mod, only: indexx
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nPairs, thread1(:), thread2(:), nBound(:), nGroup, group(:)
