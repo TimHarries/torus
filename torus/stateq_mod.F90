@@ -4,17 +4,17 @@
 !
 module stateq_mod
 
-  use gridtype_mod
-  use grid_mod
-  use math_mod
   use vector_mod
+  use octal_mod
   use constants_mod
-  use path_integral
-  use jets_mod
-  use opacity_lte_mod
-  use hyd_col_coeff
-  use cmfgen_class
-  use utils_mod, only: locate, hunt
+  use amr_mod, only: getoctalarray
+  use surface_mod, only: SURFACETYPE
+  use math_mod, only: directionalderiv
+  use gridtype_mod, only: GRIDTYPE, statEqMaxLevels
+  use grid_mod, only: readGridPopulations, writeGridPopulations, getIndices
+  use jets_mod, only: dv_dn_jets
+  use hyd_col_coeff, only: omegaij, omegaik, tempTable
+  use utils_mod, only: locate, hunt, logInterp_dble, logint, solvequaddble
 				   
   implicit none
 !  public
@@ -174,6 +174,7 @@ module stateq_mod
 contains
 
   real function beta_mn(m, n, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
+    use amr_mod, only: AMRGRIDDIRECTIONALDERIV
 
     type(GRIDTYPE), intent(in)   :: grid
     type(VECTOR), intent(in)     :: rVec
@@ -264,6 +265,7 @@ contains
 
 
   real function beta_cmn(m,n,rVec,i1,i2,i3,grid,nstar,thisOctal,thisSubcell)
+    use amr_mod, only: AMRGRIDDIRECTIONALDERIV
 
     integer, intent(in)         :: m,n
     type(gridtype), intent(in)  :: grid
@@ -2862,6 +2864,7 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
+    USE amr_mod
     USE input_variables, ONLY: LyContThick, statEq1stOctant
 #ifdef MPI
     USE input_variables, ONLY: blockHandout
@@ -3695,6 +3698,8 @@ contains
   ! depdndecy this has to be in this module
   ! 
   subroutine map_cmfgen_opacities(grid)
+    use cmfgen_class, only: get_cmfgen_data_array, get_cmfgen_nd
+
     type(GRIDTYPE),intent(inout):: grid      
     !
     integer                     :: iOctal        ! loop counter
@@ -3778,6 +3783,7 @@ contains
   recursive subroutine map2DstatEq(thisOctal,grid,subcellMask)
     ! applies the departure coefficients from the 2-d plane to the rest of the
     !   grid (for rotationally symmetric geometries).
+    USE amr_mod, only: amrGridValues
 
     type(octal), pointer        :: thisOctal
     type(GRIDTYPE),intent(inout):: grid      
@@ -3869,6 +3875,7 @@ contains
  recursive subroutine mapOctantStatEq(thisOctal,grid,subcellMask)
     ! applies the departure coefficients from the 2-d plane to the rest of the
     !   grid (for rotationally symmetric geometries).
+   USE amr_mod, only: amrGridValues
 
     type(octal), pointer        :: thisOctal
     type(GRIDTYPE),intent(inout):: grid      
