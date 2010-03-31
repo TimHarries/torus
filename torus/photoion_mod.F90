@@ -135,6 +135,7 @@ contains
 ! For testing convergence
     real(double) :: sumDeltaT, globalSumDeltaT, meanDeltaT
     integer      :: numDeltaT, globalNumDeltaT
+    integer, parameter :: lun_convfile = 42 ! unit number for convergence file
 
 #ifdef MPI
     ! For MPI implementations
@@ -237,6 +238,9 @@ contains
     else
        nMonte = nlucy
     endif
+
+    if (writeoutput) &
+         open (unit=lun_convfile, status="replace",file="convergence.dat", form="formatted")
 
     do while(.not.converged)
        nIter = nIter + 1
@@ -686,8 +690,8 @@ end if ! (my_rank /= 0)
 
 ! Convergence conditions: work in progess (DMA March 2010)
     meanDeltaT = globalSumDeltaT / real(globalNumDeltaT,db)
-    write(message,*) "Mean dT = ", meanDeltaT
-    call writeInfo(message,FORINFO)
+    if (writeoutput) & 
+         write(lun_convfile,*) "Iteration ", niter, "Mean dT = ", meanDeltaT
     if ( abs(meanDeltaT) < 1.0_db) then 
 ! Not applied at present
 !       converged = .true.
@@ -700,6 +704,8 @@ end if ! (my_rank /= 0)
     end if
 
  enddo
+
+ if (writeoutput) close(lun_convfile)
 
  call writeInfo("Done.",TRIVIAL)
 
