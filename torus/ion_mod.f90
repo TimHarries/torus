@@ -856,6 +856,7 @@ subroutine addTransition(thisIon,term1, term2, lambda, a, gamma1, gamma2, gamma3
   real :: thisLam
   integer :: i, j, k, m
   real :: t(4) = (/5000., 10000., 15000., 20000./)
+  character(len=80) :: message
 
   gamma(1) = gamma1
   gamma(2) = gamma2
@@ -880,9 +881,11 @@ subroutine addTransition(thisIon,term1, term2, lambda, a, gamma1, gamma2, gamma3
 
 
   if (abs(thisLam-lambda)/lambda > 0.05) then
-     write(*,*) "WARNING! Given wavelength and  calculated wavelength differ by more than 5%"
-     write(*,*) "Calculated: ",thisLam, "Given: ", lambda
-     write(*,*) "For transition: ",trim(term1)," ",trim(term2), " in ion ",thisIon%species
+     call writeWarning("WARNING! Given wavelength and  calculated wavelength differ by more than 5%")
+     write(message,*) "Calculated: ",thisLam, "Given: ", lambda
+     call writeWarning(message)
+     write(message,*) "For transition: ",trim(term1)," ",trim(term2), " in ion ",thisIon%species
+     call writeWarning(message)
   endif
   thisIon%transition(k)%lambda = lambda
   thisIon%transition(k)%a = a
@@ -909,7 +912,7 @@ subroutine addTransition2(thisIon,term1, term2, lambda, a, t, gamma, nt)
   integer :: i, j, k, m
   real :: t(:)
   integer :: nt
-
+  character(len=80) :: message
 
   k = thisIon%nTransitions + 1
   thisIon%nTransitions = k
@@ -929,9 +932,11 @@ subroutine addTransition2(thisIon,term1, term2, lambda, a, t, gamma, nt)
 
 
   if (abs(thisLam-lambda)/lambda > 0.05) then
-     write(*,*) "WARNING! Given wavelength and  calculated wavelength differ by more than 5%"
-     write(*,*) "Calculated: ",thisLam, "Given: ", lambda
-     write(*,*) "For transition: ",trim(term1)," ",trim(term2), " in ion ",thisIon%species
+     call writeWarning("Given wavelength and  calculated wavelength differ by more than 5%")
+     write(message,*) "Calculated: ",thisLam, "Given: ", lambda
+     call writeWarning(message)
+     write(message,*) "For transition: ",trim(term1)," ",trim(term2), " in ion ",thisIon%species
+     call writeWarning(message)
   endif
   thisIon%transition(k)%lambda = lambda
   thisIon%transition(k)%a = a
