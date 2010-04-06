@@ -150,7 +150,7 @@ ${TORUS_FC} -o comparelex comparelex.f90
 ./comparelex > check_log_hII.txt
 }
 
-run_torus_test_suite()
+prepare_run()
 {
 if [[ -e ${TEST_DIR} ]]; then
     echo "Removing old ${TEST_DIR}"
@@ -163,6 +163,14 @@ cd ${TEST_DIR}
 
 echo Checking out torus from CVS archive...
 /usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
+}
+
+run_torus_test_suite()
+{
+
+echo 
+echo "Running benchmarks"
+echo 
 
 for sys in ${SYS_TO_TEST}; do
 
@@ -219,6 +227,26 @@ for sys in ${SYS_TO_TEST}; do
 done
 }
 
+build_only_tests()
+{
+
+echo 
+echo "Running build-only tests"
+echo 
+
+for sys in ${BUILD_ONLY}; do
+
+    export SYSTEM=${sys}
+    export WORKING_DIR=${TEST_DIR}/build_only_${SYSTEM}
+    mkdir ${WORKING_DIR}
+    cd    ${WORKING_DIR} 
+
+    make_build
+    make_lib
+
+done
+}
+
 print_help()
 {
 echo ""
@@ -257,6 +285,7 @@ done
 case ${MODE} in 
 
     daily) export SYS_TO_TEST="ompi"
+           export BUILD_ONLY="g95"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}
@@ -265,6 +294,7 @@ case ${MODE} in
 	   echo;;
 
     stable) export SYS_TO_TEST="g95 ompi"
+	    export BUILD_ONLY=""
             export DEBUG_OPTS="yes no"
 	    export TORUS_FC="g95"
 	    export PATH=~/bin:/usr/local/bin:${PATH}
@@ -273,6 +303,7 @@ case ${MODE} in
 	    echo;;
 
     zen) export SYS_TO_TEST="zen"
+         export BUILD_ONLY=""
 	 export DEBUG_OPTS="no yes"
 	 export TORUS_FC="ifort"
 	 echo TORUS zen tests started on `date`
@@ -319,6 +350,13 @@ for opt in ${DEBUG_OPTS}; do
 
     esac
 
+# Set up working dir and check out source code
+    prepare_run
+
+# Test build but don't run benchmarks
+    build_only_tests
+
+# Run benchmark tests
     run_torus_test_suite
 
 done
