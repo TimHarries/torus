@@ -9,7 +9,6 @@ module density_mod
   !
   
   use constants_mod
-  use magnetic_mod
   use vector_mod
   use gridtype_mod, only: GRIDTYPE
 
@@ -198,7 +197,7 @@ contains
     ! from the disc surface, and then use the mass accretion rate at the time
     ! when the material left the disc. 
 
-    
+    use magnetic_mod, only: inFlowMahdavi
     use flowSpeedVariables
     
     type(GRIDTYPE), intent(in)    :: grid
