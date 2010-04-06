@@ -10,7 +10,12 @@ echo "Building Torus for ${SYSTEM}"
 log_file=compile_log.txt
 ln -s ${TEST_DIR}/torus/* .
 /usr/bin/make depends > ${log_file} 2>&1 
-/usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1
+
+case ${SYSTEM} in
+    gfortran)  /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
+    *) /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
+esac
+
 if [[ $? -eq 0 ]]; then
 # Count number of warnings. Subtract 2 because there are always warnings
 # about include files from the make depends step (run twice).
@@ -285,7 +290,7 @@ done
 case ${MODE} in 
 
     daily) export SYS_TO_TEST="ompi"
-           export BUILD_ONLY="g95"
+           export BUILD_ONLY="gfortran g95"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}
