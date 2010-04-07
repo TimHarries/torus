@@ -258,7 +258,6 @@ module molecular_mod
 
      call unixGetenv("TORUS_DATA", dataDirectory)
      filename = trim(dataDirectory)//"/"//molfilename
-
      call writeInfo("Opening file: "//trim(filename),TRIVIAL)
      open(30, file=filename, status="old", form="formatted")
 
@@ -918,7 +917,7 @@ module molecular_mod
       if(usedust) then
          allocate(lamarray(size(grid%lamarray)))
          allocate(lambda(maxtrans))
-         lamarray(:) = grid%lamarray
+         lamarray = grid%lamarray
          lambda(1:maxtrans) = cspeed / thisMolecule%transfreq(1:maxtrans) * 1d8
          call locate(lamArray, size(lamArray), lambda(maxtrans/2), ilambda)
       endif
@@ -930,9 +929,9 @@ module molecular_mod
          call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
       endif
 
-      nRay = 100 ! number of rays used to establish estimate of jnu and pops
+      nRay = 10 ! number of rays used to establish estimate of jnu and pops
 
-      allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel) )
+      allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
 
       call init_random_seed()
 
@@ -962,10 +961,10 @@ module molecular_mod
          
          if (iStage == 1) then
             fixedRays = .true.
-            nRay = 100
+            nRay = 10
          else
             fixedRays = .false.
-            nRay = max(100, nray)
+            nRay = max(10, nray)
             blockhandout = .true.
          endif
 
@@ -1296,55 +1295,51 @@ module molecular_mod
 
 end subroutine molecularLoop
 
+!!! find the radiation incident at a point in a cell from a pencil beam along a particular direction
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
 
      use input_variables, only : useDust, realdust, quasi
 
-     type(MOLECULETYPE) :: thisMolecule
-     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE), intent(in) :: thisMolecule
+     type(GRIDTYPE), intent(in) :: grid
      type(OCTAL), pointer :: thisOctal, fromOctal
-
-     integer, parameter :: maxSamplePoints = 100
-
+     integer :: fromSubcell
      logical, optional :: fixedrays
      logical :: stage1
-     integer :: fromSubcell
+     real(double) :: di0(maxtrans)
+     real(double), intent(out) :: ds, phi, i0(:)
+	 	 
+     integer, parameter :: maxSamplePoints = 100
+	 
+     logical :: antithetic = .true.
+
+     logical, save :: firsttime = .true.	 
+     logical, save :: conj = .false.
+     type(VECTOR), save :: possave, dirsave
+     real(double), save :: rsave, s
+	 	 	 
+     real(double), allocatable, save :: OneArray(:)
+     real(double), save :: OneOverNTauArray(maxsamplePoints)
+     real(double), save :: BnuBckGrnd(128)
+	 
      integer :: subcell
-     real(double) :: ds, phi, i0(:), r, di0(maxtrans)
-     integer :: iTrans
-     type(VECTOR) :: position, direction, currentPosition, thisPosition, halfstep
-     type(VECTOR) :: startVel, endVel, thisVel, rayvel
+
+     integer :: nTau     
+     integer :: ilambda, iTrans, iTau	
+     integer :: iLower(maxtrans), iUpper(maxtrans)
 
      real(double) :: alphanu(maxtrans,2), alpha(maxtrans),  snu(maxtrans), jnu(maxtrans)
-     real(double) :: dv, deltaV
-     integer :: i
-     real(double) :: dist, dds, tval
-     integer :: nTau
-     real(double) :: dTau(maxtrans), kappaAbs, localradiationfield(maxtrans), attenuation(maxtrans)
-     real(double) :: tau(maxtrans)
-     real(double) :: dvAcrossCell, projVel, endprojVel
-     real(double) :: CellEdgeInterval, phiProfVal
-     real(double), allocatable, save :: OneArray(:)
-     integer :: ilambda
-     integer :: iCount
-
-     real(double), save :: OneOverNTauArray(maxsamplePoints)
-
-     logical,save :: firsttime = .true.
-
-     integer :: iLower(maxtrans), iUpper(maxtrans)
-     real(double),save :: BnuBckGrnd(128)
+     real(double) :: tau(maxtrans), dTau(maxtrans), localradiationfield(maxtrans), attenuation(maxtrans), kappaAbs
      real(double) :: balance(maxtrans), spontaneous(maxtrans)
-     real(double) :: nMol
-!     logical :: done(maxtrans)
-     type(VECTOR) :: endPosition
-     type(VECTOR),save :: possave, dirsave
-     real(double),save :: rsave,s
+	 	  
+     type(VECTOR) :: position, currentPosition, thisPosition, endposition, direction, halfstep
+     type(VECTOR) :: startVel, endVel, thisVel, rayvel
 
-     logical, save :: conj = .false.
-     logical :: antithetic = .true.
-!     logical :: antithetic = .false.
+     real(double) :: dv, deltaV
+     real(double) :: dist, dds, tval, dvAcrossCell, projVel, endprojVel, CellEdgeInterval, phiProfVal
+     real(double) :: r, nmol 
 
+!Set/initialise runtime parameters
      if(firsttime) then
 
         allocate(OneArray(maxtrans))
@@ -1354,41 +1349,41 @@ end subroutine molecularLoop
            BnuBckGrnd(itrans) = Bnu(thisMolecule%transfreq(itrans), Tcbr)
         enddo
 
-       do ntau = 2,maxsamplepoints
-          OneOverNtauArray(ntau) = 1.d0 / (dble(nTau) - 1.d0)
-       enddo
-
-       firsttime =.false.
+        do ntau = 2, maxsamplepoints
+           OneOverNtauArray(ntau) = 1.d0 / (dble(nTau) - 1.d0)
+        enddo
+        
+        firsttime =.false.
     endif
 
-     if(antithetic) then
 
-        if(conj) then
-           position = possave
-        else
-           position = randomPositionInCell(fromOctal, fromsubcell)
-           possave = position
-        endif
-     else
-        position = randomPositionInCell(fromOctal, fromsubcell)
-     endif
+!Set up antithetic variates to improve convergence
+    if(antithetic) then
+       
+       if(conj) then
+          position = possave
+       else
+          position = randomPositionInCell(fromOctal, fromsubcell)
+          possave = position
+       endif
+    else
+       position = randomPositionInCell(fromOctal, fromsubcell)
+    endif
 
-     if(present(fixedrays)) then
-        stage1 = fixedrays
-     else
+    if(present(fixedrays)) then
+       stage1 = fixedrays
+    else
         stage1 = .false.
      endif
 
+!Choose position in cell & determine velocity at that position
      position = randomPositionInCell(fromOctal, fromsubcell)
-
-     icount = 1
      thisOctal => fromOctal
      subcell = fromSubcell
-
      rayVel = Velocity(position, grid, thisOctal, subcell)
 
- !!! quasi random code!!!
 
+!Generate random direction and frequency using quasi/pseudo random number generators
      if(quasi) then     
         call sobseq(r1)    
         direction = specificUnitVector(r1(1),r1(2))
@@ -1396,32 +1391,28 @@ end subroutine molecularLoop
         deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line centre
      else
         if(antithetic) then
-
            if(conj) then
               r = 1. - rsave
               direction = (-1.d0) * dirsave
-              
-              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.
-              
+  
+              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.			
               if(s > 0.5) deltaV = deltaV * (-1.d0)
            else
               call random_number(r)
               rsave = r
-              direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
+              direction = randomUnitVector()
               dirsave = direction
-              
-              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.
+
+              deltaV = 2.15 * thisOctal%microturb(subcell) * r
               
               call random_number(s)
               if(s > 0.5) deltaV = deltaV * (-1.d0)
            endif
-        else
+        else ! pseudorandom
            call random_number(r)
            direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
            deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
-           
         endif
-
         conj = .not. conj
      endif
 
@@ -1437,8 +1428,10 @@ end subroutine molecularLoop
 
      call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
 
+! Get to cell boundary
      currentPosition = position + ds * direction
 
+! Get weighting for ray (see sumphi in calculatejbar)
      if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid
         thisVel = velocity(currentposition, grid) 
         endprojVel = deltaV - (thisVel.dot.direction)
@@ -1447,22 +1440,24 @@ end subroutine molecularLoop
         phi = phiProf(projVel, thisOctal%molmicroturb(subcell)) ! if fell off grid then assume phi is unchanged
      endif
 
-!    currentPosition = position !This line is wrong because the source function does not apply locally
-     ds = ds * 1.d10 ! convert from cm to torus units
-
+! Initialise more variables
+     ds = ds * 1.d10 ! convert from torus units to cm for use in calculatejbar
      i0 = 0.d0
      tau = 0.d0
-
      iUpper(:) = thisMolecule%iTransUpper(1:maxtrans)
      iLower(:) = thisMolecule%iTransLower(1:maxtrans)
 
+! Follow long characteristic of ray until edge of grid
      do while(inOctal(grid%octreeRoot, currentPosition))
 
+! Find distance to edge of cell
         call findSubcellLocal(currentPosition, thisOctal, subcell)
-
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, soctal = thisoctal)
-
-        if(fixedrays) then
+		
+! Determine how many velocity samples should be taken per grid cell.
+! If fixedrays then always check.
+! If ever greater than 2 then always calculate in this cell for rest of calculation.
+        if(fixedrays .or. thisOctal%nsplit(subcell) .eq. -1) then
            startVel = velocity(currentposition, grid) 
            endPosition = currentPosition + tval * direction
            
@@ -1475,22 +1470,21 @@ end subroutine molecularLoop
            dvAcrossCell = ((startVel - endvel) .dot. direction) ! start - end
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
 
-           nTau = min(max(2, nint(dvAcrossCell * 5.d0)), maxSamplePoints) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
-!           thisOctal%nsplit(subcell) = min(max(thisoctal%nsplit(subcell), ntau),100)
-           thisOctal%nsplit(subcell) = min(max(int((thisOctal%nsplit(subcell) + ntau) / (grand_iter+1)),2),maxsamplepoints)
+           nTau = min(max(2, nint(dvAcrossCell * 5.d0)), maxSamplePoints) 
+           ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
+
+           if(ntau .gt. 2) thisOctal%nsplit(subcell) = -1
+        else
+           ntau = 2
         endif
-
-        ntau = thisOctal%nsplit(subcell)
-
-        CellEdgeInterval = OneOverNtauArray(ntau)
-        dds = tval * cellEdgeInterval
-        halfstep = dds * 0.5 * direction
-
-        dist = 0.d0
-!        done = .false.
-
+        CellEdgeInterval = OneOverNtauArray(ntau) ! if ntau = 2 then the segment is taken in one chunk
+        dds = tval * cellEdgeInterval ! determine line segment length
+        halfstep = dds * 0.5 * direction ! find point halfway between start and end to take representative velocity
+        dist = 0.d0	
+					
+! Calculate absorption from (various types of) dust 		
         if(useDust) then     
-           do itrans = 1,maxtrans
+           do itrans = 1, maxtrans
               if(realdust) then
                  call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
                  call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), kappaAbs = kappaAbs)
@@ -1502,38 +1496,40 @@ end subroutine molecularLoop
                  endif
                  kappaAbs = kappaAbs * thisOctal%rho(subcell)
               endif
-              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right    !kappa already multiplied by density in amr_mod
+              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
+			  !kappa already multiplied by density in amr_mod
            enddo
         endif
 
+! Calculate number density of molecules
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-
-       balance(:) = (hcgsOverFourPi * nmol) * (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(1:maxtrans) &
-       - thisOctal%molecularLevel(iupper(:),subcell) * thisMolecule%einsteinBul(1:maxtrans))
-        
-       spontaneous(:) = (hCgsOverfourPi * nmol) * thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
-
+! Absorption by gas per length
+        balance(1:maxtrans) = (hcgsOverFourPi * nmol) * &
+	    (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(1:maxtrans) - &
+         thisOctal%molecularLevel(iupper(:),subcell) * thisMolecule%einsteinBul(1:maxtrans))
+! Emission by gas per length        
+       spontaneous(1:maxtrans) = (hCgsOverfourPi * nmol) * &
+	   thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
+! Source function 
        where (balance /= 0.d0)
-          snu(:) = spontaneous(:) / balance(:) ! Source function  -only true if no dust else replaced by gas test
+          snu(1:maxtrans) = spontaneous(1:maxtrans) / balance(1:maxtrans)
        end where
-
-        do i = 2, nTau
-
-              dist = dist + dds ! increment along distance counter
-              thisPosition = currentPosition + dist * direction
-   
-              if(inOctal(grid%octreeRoot, thisposition)) then
-                 thisVel = velocity(thisPosition-halfstep, grid)
-              endif
-
-              dv = deltaV - (thisVel .dot. direction)
-              PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
-           
+! Calculate total emission and absorption over entire cell (sum over all line segments)
+	   do itau = 2, nTau
+! Get next position	
+		   dist = dist + dds
+		   thisPosition = currentPosition + dist * direction
+! Get velocity at midpoint   
+		   thisVel = velocity(thisPosition-halfstep, grid)
+! Get velocity difference and weighting
+		   dv = deltaV - (thisVel .dot. direction)
+		   PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
+! Get weighted gas absorption (+dust if req). If usedust then update jnu and snu            
            if(usedust) then
-              alphanu(1:maxtrans,1) = phiprofval * balance(1:maxtrans) ! Equation 8
+              alphanu(1:maxtrans,1) = phiprofval * balance(1:maxtrans) 
               alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)
               jnu(1:maxtrans) = spontaneous(1:maxtrans) * phiProfVal + &
-                   alphanu(1:maxtrans,2) * thisOctal%bnu(1:maxtrans,subcell) ! jnu, emission coefficient - equation 7
+                   alphanu(1:maxtrans,2) * thisOctal%bnu(1:maxtrans,subcell) 
               
               do itrans = 1,maxtrans
                  if(alpha(itrans) .ne. 0.d0) then 
@@ -1544,25 +1540,25 @@ end subroutine molecularLoop
                  endif
               enddo
            else
-              alpha(:) = balance(:) * phiprofVal 
+              alpha(1:maxtrans) = balance(1:maxtrans) * phiprofVal 
            endif
 
-           dTau = alpha * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
+! Calculate optical depth and associated attenuation factor
+           dTau = alpha * dds * 1.d10
            attenuation = exp(-tau)
-
+! Intensity along ray owing to line segment
            localradiationfield = exp(-dtau) 
-!              localradiationfield = OneArray - localradiationfield
-           localradiationfield = 1.d0 - localradiationfield
-           di0 = attenuation * localradiationfield * snu ! 2nd term is local radiation field from this cell 
-           
-           i0 = i0 + di0
+	   localradiationfield = OneArray - localradiationfield
+           di0 = localradiationfield * snu
+! Add contribution to whole line           
+           i0 = i0 + attenuation * di0
            tau = tau + dtau
         enddo
-
-        currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
-
+! Update position into next cell making sure that new position is definitely in new cell
+        currentPosition = currentPosition + (tval + 1.d-3*grid%halfSmallestSubcell) * direction 
      enddo
-     
+
+! Add attenuated CMB to intensity at point.     
      i0(1:maxtrans) = i0(1:maxtrans) + BnuBckGrnd(1:maxtrans) * attenuation(1:maxtrans)
 
    end subroutine getRay
@@ -3041,7 +3037,7 @@ end subroutine molecularLoop
      endif
      
    end subroutine intensityAlongRay
-     
+
    subroutine continuumIntensityAlongRay(position, direction, grid, lambda, i0, tau, tautest)
 
      use input_variables, only : densitysubsample
@@ -3470,6 +3466,7 @@ end subroutine molecularLoop
 
 !              pops(1:minlevel) = pops(1:minlevel) + thisOctal%molecularLevel(1:minlevel,subcell)
               pops(1:minlevel) = pops(1:minlevel) + molout(1:minlevel)
+
               dc = dc + (thisOctal%molecularLevel(1:5,subcell) * thisOctal%departcoeff(1:5,subcell))
               fracChange(1:minlevel) = fracChange(1:minlevel) + abs(((thisOctal%molecularLevel(1:minlevel,subcell) - &
                    thisOctal%oldmolecularLevel(1:minlevel,subcell)) / thisOctal%molecularlevel(1:minlevel,subcell)))
@@ -5822,7 +5819,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       endif
       if (isinLTE) goto 666
 
-      nRay = 100 ! number of rays used to establish estimate of jnu and pops
+      nRay = 10 ! number of rays used to establish estimate of jnu and pops
 
       allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel) )
 
@@ -5844,10 +5841,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
          
          if (iStage == 1) then
             fixedRays = .true.
-            nRay = 100
+            nRay = 10
          else
             fixedRays = .false.
-            nRay = max(100, nray)
+            nRay = max(10, nray)
          endif
 
          if(restart .and. juststarted) then 
