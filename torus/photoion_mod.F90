@@ -690,15 +690,15 @@ end if ! (my_rank /= 0)
 
 ! Convergence conditions: work in progess (DMA March 2010)
     meanDeltaT = globalSumDeltaT / real(globalNumDeltaT,db)
-    if (writeoutput) & 
-         write(lun_convfile,*) "Iteration ", niter, "Mean dT = ", meanDeltaT
-    if ( abs(meanDeltaT) < 1.0_db) then 
-! Not applied at present
-!       converged = .true.
-       call writeInfo("Temperature converged to within 1K",FORINFO)
-    else if (niter == 12) then 
+    if (writeoutput) write(lun_convfile,*) "Iteration ", niter, "Mean dT = ", meanDeltaT
+
+    if (niter == 12) then 
        converged = .true. 
        call writeInfo("Maximum number of iterations reached",FORINFO)
+    elseif ( abs(meanDeltaT) < 1.0_db) then 
+! Not applied yet
+!       converged = .true.
+       call writeInfo("Temperature converged to within 1K",FORINFO)
     else
        converged = .false.
     end if
