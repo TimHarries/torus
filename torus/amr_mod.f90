@@ -9,7 +9,7 @@ module amr_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute
-  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint
+  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint
   use density_mod, only:    density, TTauriInFlow
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
@@ -2915,7 +2915,7 @@ CONTAINS
             dt2 = fac * (point_local%y - (centre%y - inc))
             dt3 = fac * (point_local%z - (centre%z - inc))
 
-            call quadint(dt1,dt2,dt3,weights)
+            call regular_tri_quadint(dt1,dt2,dt3,weights)
             amrgridvelocity = &
             VECTOR(sum(weights(:) * resultoctal%cornervelocity(:)%x), &
                    sum(weights(:) * resultoctal%cornervelocity(:)%y), &
@@ -17916,63 +17916,6 @@ end function readparameterfrom2dmap
 
   end subroutine nnint
 
-  subroutine quadint(t1,t2,t3,weights)
-
-    real(double) :: t1, t2, t3
-    real(double), save :: t1old, t2old, t3old
-    real(double) :: xu,xv,xw,yu,yv,yw,zu,zv,zw
-    real(double) :: xbasis1, xbasis2, ybasis1, ybasis2, zbasis1, zbasis2
-    real(double) :: xyweights(9)
-    real(double) :: weights(27)
-    real(double), save :: oldweights(27)
-! OpenMP has problems with saved variables so set reuse=.false. 
-    logical, parameter :: reuse=.true. 
-
-    if(reuse .and. t1 .eq. t1old) then
-       if(t2 .eq. t2old) then
-          if(t3 .eq. t3old) then
-             weights = oldweights
-             return
-          endif
-       endif
-    endif
-
-    xbasis1 = t1 - 1.d0
-    xbasis2 = 2.d0 * t1 - 1.d0
-    ybasis1 = t2 - 1.d0
-    ybasis2 = 2.d0 * t2 - 1.d0
-    zbasis1 = t3 - 1.d0
-    zbasis2 = 2.d0 * t3 - 1.d0
-    
-    xu = xbasis1 * xbasis2
-    xv = -4.d0 * xbasis1 * t1
-    xw = xbasis2 * t1
-            
-    yu = ybasis1 * ybasis2
-    yv = -4.d0 * ybasis1 * t2
-    yw = ybasis2 * t2
-
-    zu = zbasis1 * zbasis2
-    zv = -4.d0 * zbasis1 * t3
-    zw = zbasis2 * t3
-
-    ! base levels
-            
-    xyweights(:) = (/ xu*yu, xv*yu, xw*yu, xu*yv, xv*yv, xw*yv, xu*yw, xv*yw, xw*yw /) 
-            
-    weights(1:9) = zu * xyweights
-    weights(10:18) = zv * xyweights
-    weights(19:27) = zw * xyweights
-    
-    if ( reuse ) then 
-       oldweights = weights
-       t1old = t1
-       t2old = t2
-       t3old = t3
-    end if
-
-  end subroutine quadint
-
   real(double) function amrgriddensity(position, grid, linearinterp) result(rho)
 
     type(GRIDTYPE) :: grid
@@ -18140,7 +18083,7 @@ end function readparameterfrom2dmap
             end SELECT
             
          else
-!            call quadint(t1,t2,t3,weights)
+!            call regular_tri_quadint(t1,t2,t3,weights)
 !            if(rho .lt. 0.d0) then
 !               rhoa = resultoctal%cornerrho(maxloc(weights))
 !               rho = rhoa(1)

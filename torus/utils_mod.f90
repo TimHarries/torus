@@ -4541,6 +4541,94 @@ END SUBROUTINE GAUSSJ
       deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig, OABweight)
     end function ngStep   
 
+  subroutine regular_tri_quadint(t1,t2,t3,weights)
+
+    real(double) :: t1, t2, t3
+    real(double), save :: t1old, t2old, t3old
+    real(double) :: xu,xv,xw,yu,yv,yw,zu,zv,zw
+    real(double) :: xbasis1, xbasis2, ybasis1, ybasis2, zbasis1, zbasis2
+    real(double) :: xyweights(9)
+    real(double) :: weights(27)
+    real(double), save :: oldweights(27)
+! OpenMP has problems with saved variables so set reuse=.false. 
+    logical, parameter :: reuse=.true. 
+
+    if(reuse .and. t1 .eq. t1old) then
+       if(t2 .eq. t2old) then
+          if(t3 .eq. t3old) then
+             weights = oldweights
+             return
+          endif
+       endif
+    endif
+
+    xbasis1 = t1 - 1.d0
+    xbasis2 = 2.d0 * t1 - 1.d0
+    ybasis1 = t2 - 1.d0
+    ybasis2 = 2.d0 * t2 - 1.d0
+    zbasis1 = t3 - 1.d0
+    zbasis2 = 2.d0 * t3 - 1.d0
+    
+    xu = xbasis1 * xbasis2
+    xv = -4.d0 * xbasis1 * t1
+    xw = xbasis2 * t1
+            
+    yu = ybasis1 * ybasis2
+    yv = -4.d0 * ybasis1 * t2
+    yw = ybasis2 * t2
+
+    zu = zbasis1 * zbasis2
+    zv = -4.d0 * zbasis1 * t3
+    zw = zbasis2 * t3
+
+    ! base levels
+            
+    xyweights(:) = (/ xu*yu, xv*yu, xw*yu, xu*yv, xv*yv, xw*yv, xu*yw, xv*yw, xw*yw /) 
+            
+    weights(1:9) = zu * xyweights
+    weights(10:18) = zv * xyweights
+    weights(19:27) = zw * xyweights
+    
+    if ( reuse ) then 
+       oldweights = weights
+       t1old = t1
+       t2old = t2
+       t3old = t3
+    end if
+
+  end subroutine regular_tri_quadint
+
+   function general_quadint(xi,yi,x) result(y)
+     implicit none
+
+     real(double), intent(in) :: xi(3),yi(3),x
+     real(double) :: y
+     real(double) :: xxi(3),a(3), det
+     
+     xxi = xi * xi
+
+     det = xxi(1)*(xi(2)-xi(3))+&
+           xxi(2)*(xi(3)-xi(1))+&
+           xxi(3)*(xi(1)-xi(2))
+
+     a(1) = yi(1)*(xi(2)-xi(3))+&
+            yi(2)*(xi(3)-xi(1))+&
+            yi(3)*(xi(1)-xi(2))
+
+     a(2) = yi(1)*(xxi(3)-xxi(2))+&
+            yi(2)*(xxi(1)-xxi(3))+&
+            yi(3)*(xxi(2)-xxi(1))
+
+     a(3) = yi(1)*(xxi(2)*xi(3)-xxi(3)*xi(2))+&
+            yi(2)*(xxi(3)*xi(1)-xxi(1)*xi(3))+&
+            yi(3)*(xxi(1)*xi(2)-xxi(2)*xi(1))
+
+     a = a / det
+
+     y = ((a(1) * x) + a(2)) * x + a(3)
+
+   end function general_quadint
+
       SUBROUTINE LINFIT(X,Y,SIGMAY,NPTS,MODE,A,SIGMAA,B,SIGMAB,R)
         implicit none
         integer :: npts, mode, i

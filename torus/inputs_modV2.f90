@@ -42,6 +42,8 @@ contains
     nLines = 0
 
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
+!   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
+
     if (writeoutput) write(*,*) absolutePath
     paramFile = trim(absolutePath)//"parameters.dat"
 

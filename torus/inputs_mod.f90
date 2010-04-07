@@ -54,7 +54,12 @@ contains
     nBlobs = 0
     nLines = 0
 
+! Fortran2003 has the following intrinsic that works when one uses -assume nounderscore
+! which one might have to do in order to get Shark to work on Snow Leopard.
+!   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
+
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
+
     if (writeoutput) write(*,*) absolutePath
     paramFile = trim(absolutePath)//"parameters.dat"
 

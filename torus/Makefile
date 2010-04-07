@@ -39,9 +39,10 @@ ifeq ($(SYSTEM), davesmac)
     F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
 #   DEBUGFLAG = -warn -g -no-ipo  # 
-    DEBUGFLAG=-gdwarf-2 -O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps
+    DEBUGFLAG=-O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps #-assume nounderscore
+#    DEBUGFLAG=-g -save-temps -assume nounderscore
 #    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
-    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt #-g -ipo #-g
+    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt #-g -save-temps -traceback #-ipo #-g
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
 #    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
