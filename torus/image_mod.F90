@@ -613,8 +613,9 @@ module image_mod
      subroutine writeFitsImage(image, filename, objectDistance, type)
 
 ! Arguments
-
+#ifdef USECFITSIO
        use input_variables, only: lamStart, lamEnd, ImageinArcSec
+#endif
        type(IMAGETYPE), intent(in)   :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
