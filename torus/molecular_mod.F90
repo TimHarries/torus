@@ -41,11 +41,11 @@ module molecular_mod
    real(double), allocatable :: lamarray(:), lambda(:)
    integer :: ilambda
 
-   integer, parameter :: maxray = 819199
+   integer, parameter :: maxray = 500000
    integer, allocatable :: iseedpublic(:)
    real(double) :: r1(5) !! quasi random number generators
    integer :: accstep = 5
-   integer :: accstepgrand = 7
+   integer :: accstepgrand = 6
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
    integer :: deptharray(50) = 0
@@ -757,7 +757,7 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep
+          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep, initnray
      use messages_mod, only : myRankIsZero
      use parallel_mod
 
@@ -929,7 +929,7 @@ module molecular_mod
          call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
       endif
 
-      nRay = 10 ! number of rays used to establish estimate of jnu and pops
+      nRay = initnray ! number of rays used to establish estimate of jnu and pops
 
       allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
 
@@ -961,10 +961,10 @@ module molecular_mod
          
          if (iStage == 1) then
             fixedRays = .true.
-            nRay = 10
+            nRay = initnray
          else
             fixedRays = .false.
-            nRay = max(10, nray)
+            nRay = max(initnray, nray)
             blockhandout = .true.
          endif
 
@@ -1897,7 +1897,7 @@ end subroutine molecularLoop
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
                           iter, nVoxels,fixedrays)
 
-     use input_variables, only : tolerance, dongstep
+     use input_variables, only : tolerance, dongstep, initnray
 
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
@@ -1929,7 +1929,7 @@ end subroutine molecularLoop
            ! do the ng Acceleration step here
            if(ng) then
               if((fixedrays .and. mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) &
-                   .or. nray .eq. 12800 .or. nray .eq. 800) then
+                   .or. nray .eq. 2048*initnray .or. nray .eq. 128*initnray .or. nray .eq. 8*initnray) then
 
                  oldpops1(1:minlevel-2) = thisOctal%oldestmolecularLevel(1:minlevel-2,subcell)
                  oldpops2(1:minlevel-2) = thisOctal%oldmolecularLevel(1:minlevel-2,subcell)
@@ -1953,8 +1953,7 @@ end subroutine molecularLoop
 
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel-1,subcell) - &
                 thisOctal%molecularLevel(1:minlevel-1,subcell)) / &
-                thisOctal%newmolecularLevel(1:minlevel-1,subcell)))
-!           write(*,*) thisOctal%newMolecularLevel(1,subcell), thisOctal%MolecularLevel(1,subcell)
+                (thisOctal%newmolecularLevel(1:minlevel-1,subcell) + 1d-60)))
 
            thisoctal%levelconvergence(1:minlevel-1,subcell) = int((max(min(log10(newFracChangePerLevel),1.0),-9.0) + 4.0) * 6553.6)
 
@@ -4019,7 +4018,7 @@ end subroutine plotdiscValues
   
   subroutine calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
     
-    use input_variables, only : tolerance, dongstep
+    use input_variables, only : tolerance, dongstep, initnray
 
     integer :: nvoxels
     logical :: fixedrays
@@ -4051,9 +4050,9 @@ end subroutine plotdiscValues
     ng = dongstep
     if(ng .and.  &
       ((fixedrays .and. (mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0)) &
-      .or. nray .eq. 12800 &
-      .or. nray .eq. 800)) &
-      call writeinfo("Ng step", TRIVIAL)
+      .or. nray .eq. 2048*initnray &
+      .or. nray .eq. 128*initnray &
+      .or. nray .eq. 8*initnray)) call writeinfo("Ng step", TRIVIAL)
 
     call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
          convergenceCounter, grand_iter, nVoxels, fixedrays) ! compares level populations between this and previous levels 
@@ -5686,7 +5685,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, &
-          dustPhysics, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep
+          dustPhysics, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep, initnray
      use messages_mod, only : myRankIsZero
      use parallel_mod
 
@@ -5819,7 +5818,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       endif
       if (isinLTE) goto 666
 
-      nRay = 10 ! number of rays used to establish estimate of jnu and pops
+      nRay = initnray ! number of rays used to establish estimate of jnu and pops
 
       allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel) )
 
@@ -5841,10 +5840,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
          
          if (iStage == 1) then
             fixedRays = .true.
-            nRay = 10
+            nRay = initnray
          else
             fixedRays = .false.
-            nRay = max(10, nray)
+            nRay = max(initnray, nray)
          endif
 
          if(restart .and. juststarted) then 

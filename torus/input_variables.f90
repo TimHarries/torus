@@ -14,7 +14,7 @@ module input_variables
   logical :: readGrid, writeGrid
 
     logical :: molecularPhysics
-    logical :: photoionPhysics
+   logical :: photoionPhysics
     logical :: atomicPhysics
     logical :: dustPhysics
 
@@ -71,6 +71,7 @@ module input_variables
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
+  integer :: initnray ! number of rays to use in fixed ray case (stage 1)
   integer :: setmaxlevel ! Subsonic turbulent velocity
   real :: vturb ! Subsonic turbulent velocity
   logical :: noturb ! Subsonic turbulent velocity

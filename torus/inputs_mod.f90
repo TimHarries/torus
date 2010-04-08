@@ -1217,6 +1217,8 @@ contains
        call getReal("distance", gridDistance, cLine, nLines, &
             "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
        gridDistance = gridDistance * pcTocm   ! cm
+       call getInteger("initnray", initnray, cLine, nLines, &
+               "Number of fixed rays for stage 1: ","(a,i4,a)", 100, ok, .false.)
        call getLogical("dongstep", dongstep, cLine, nLines, &
                "Use Ng Acceleration: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("quasi", quasi, cLine, nLines, &
