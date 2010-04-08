@@ -112,7 +112,6 @@ vmin -100000.
 vmax +100000.                            
 line F                                   
 opaquecore T
-
 restart F
 isinlte F
 plotlevels F
@@ -130,3 +129,4 @@ quasi F
 dongstep T
 
 setmaxlevel 10
+initnray 16
