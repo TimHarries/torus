@@ -329,7 +329,7 @@ for opt in ${DEBUG_OPTS}; do
     case ${MODE} in 
 	daily)  export TEST_DIR=${HOME}/SCRATCH/torus_daily_test;;
 	stable) export TEST_DIR=${HOME}/SCRATCH/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
-	zen)    export TEST_DIR=/scratch/acreman/torus_tests/debug=${USEDEBUGFLAGS};;
+	zen)    export TEST_DIR=/scratch/${USER}/torus_tests/debug=${USEDEBUGFLAGS};;
     esac
 
     export TORUS_DATA=${TEST_DIR}/torus/data
