@@ -104,7 +104,7 @@ ifeq ($(SYSTEM), gfortran)
     F95COMP  = gfortran
     F77COMP  = gfortran
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check
+    DEBUGFLAG= -g -fbacktrace -fbounds-check 
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
