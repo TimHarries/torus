@@ -181,7 +181,7 @@ MODULE octal_mod
 !    TYPE(vector), DIMENSION(8)         :: quadvelocity       ! DAR very temporary velocity expires 28 Feb 2009
 !    TYPE(vector), DIMENSION(8)         :: linearvelocity       ! DAR very temporary velocity expires 28 Feb 2009
     TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells
-    real(double), DIMENSION(:), pointer    :: cornerrho ! velocity at corners of subcells
+    real(double), DIMENSION(:), pointer    :: cornerrho => null() ! velocity at corners of subcells
     real(double)               :: phi, dphi
     
     logical, dimension(:), pointer                 :: diffusionApprox => null()
