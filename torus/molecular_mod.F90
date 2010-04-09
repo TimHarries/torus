@@ -1955,6 +1955,7 @@ end subroutine molecularLoop
                 thisOctal%molecularLevel(1:minlevel-1,subcell)) / &
                 (thisOctal%newmolecularLevel(1:minlevel-1,subcell) + 1d-60)))
 
+           where ( newFracChangePerLevel <= 0.0 ) newFracChangePerLevel = 1.0e-60_db
            thisoctal%levelconvergence(1:minlevel-1,subcell) = int((max(min(log10(newFracChangePerLevel),1.0),-9.0) + 4.0) * 6553.6)
 
            maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel-1))
