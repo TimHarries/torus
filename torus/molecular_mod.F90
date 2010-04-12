@@ -1143,7 +1143,7 @@ module molecular_mod
                                                  min(0.99,maxval(error(1:minlevel-1))) 
 
 !                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
-                fac = sum(error(1:minlevel)**2) ! convergence criterion
+                fac = sum(error(1:minlevel-1)**2) ! convergence criterion
 
                if (fac < 1.d-10 .or. (iter .eq. maxiter)) then
 !                if (fac < 1.d-20 .or. (iter .eq. maxiter)) then
@@ -6022,7 +6022,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                                                  min(0.99,maxval(error(1:minlevel-1))) 
 
 !                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
-                fac = sum(error(1:minlevel)**2) ! convergence criterion
+                fac = sum(error(1:minlevel-1)**2) ! convergence criterion
 
                if (fac < 1.d-10 .or. (iter .eq. maxiter)) then
 !                if (fac < 1.d-20 .or. (iter .eq. maxiter)) then
