@@ -19,7 +19,7 @@ contains
 
   end subroutine unixGetenv
 
-  subroutine unixGetLogin(login, n)
+  subroutine unixGetLogin(login)
     
     use f90_unix_env
     
@@ -31,7 +31,7 @@ contains
 
   end subroutine unixGetLogin
 
-  subroutine unixGetHostname(name, n)
+  subroutine unixGetHostname(name)
 
     use f90_unix_env
     

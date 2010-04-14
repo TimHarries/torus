@@ -836,7 +836,7 @@ contains
                       if (.not.grid%inStar(i1,i2,i3)) then
                          if (modulus(rVec-grid%starpos1) /= 0.) then
                             if (.not.lte) then
-                               departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+                               departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.0_db,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
                             endif
                          endif
                          if (iIter == 1) then
@@ -1120,7 +1120,7 @@ contains
           where (departCoeff < 0.) 
              departCoeff = 1.
           end where
-          departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+          departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.0_db,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
           
           
           if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then

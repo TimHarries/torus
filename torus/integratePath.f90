@@ -551,7 +551,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
            dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2-1)
         endif
         fVec = VECTOR(dx, dy, dz)
-        dlambda  = min(modulus(fVec),dr)
+        dlambda  = min(real(modulus(fVec)),dr)
 !       dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
 
      endif
@@ -803,7 +803,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                  dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2-1)
               endif
               fVec = VECTOR(dx, dy, dz)
-              dlambda = min(modulus(fVec),dr)
+              dlambda = min(real(modulus(fVec)),dr)
 !             dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
            endif
 

@@ -26,6 +26,9 @@ module molecular_mod
    use mkl95_lapack
    use mkl95_precision
 #endif
+#ifdef USEIEEEISNAN
+   use ieee_arithmetic, isnan=> ieee_is_nan
+#endif
    implicit none
 
    interface LTEpops
@@ -1140,7 +1143,7 @@ module molecular_mod
                 maxerrorloc = maxlocerror(1)
                 thisoctal%convergence(subcell) = 100.0 * iter + &
                                                  real(maxerrorloc-1) + &
-                                                 min(0.99,maxval(error(1:minlevel-1))) 
+                                                 min(0.99_db,maxval(error(1:minlevel-1))) 
 
 !                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
                 fac = sum(error(1:minlevel-1)**2) ! convergence criterion
@@ -1956,7 +1959,8 @@ end subroutine molecularLoop
                 (thisOctal%newmolecularLevel(1:minlevel-1,subcell) + 1d-60)))
 
            where ( newFracChangePerLevel <= 0.0 ) newFracChangePerLevel = 1.0e-60_db
-           thisoctal%levelconvergence(1:minlevel-1,subcell) = int((max(min(log10(newFracChangePerLevel),1.0),-9.0) + 4.0) * 6553.6)
+           thisoctal%levelconvergence(1:minlevel-1,subcell) = &
+                int((max(min(log10(newFracChangePerLevel),1.0_db),-9.0_db) + 4.0) * 6553.6)
 
            maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel-1))
 
@@ -3526,7 +3530,7 @@ end subroutine molecularLoop
         else
 
            if (lte) then
-              maxtemp = max(maxtemp, thisOctal%temperature(subcell))     
+              maxtemp = max(real(maxtemp), thisOctal%temperature(subcell))     
            else
               mollevels(:) = max(mollevels(:), thisoctal%molecularlevel(1:nlevels,subcell))
            endif
@@ -3822,7 +3826,7 @@ end subroutine molecularLoop
               call locate(grid%lamArray, size(grid%lamArray), real(lamb), ilamb)
               call returnKappa(grid, thisOctal, subcell, ilambda = ilamb, lambda = real(lamb),&
                    kappaAbs = kappaAbs, kappaSca = kappaSca)
-              write(50, '(f8.4,tr3,f10.4,tr3,f10.4,tr3f10.4)') lamb * 1d-4, tau, kappaAbs*1e-10 / thisOctal%rho(subcell),&
+              write(50, '(f8.4,tr3,f10.4,tr3,f10.4,tr3,f10.4)') lamb * 1d-4, tau, kappaAbs*1e-10 / thisOctal%rho(subcell),&
                    (kappaAbs+kappaSca)*1e-10 / thisOctal%rho(subcell)
            enddo
            
@@ -4581,7 +4585,7 @@ end subroutine compare_molbench
       
       alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
       
-      step = (oldstep + min(max(25.d0/abs(alty2),0.5),4.d0))/2.d0
+      step = (oldstep + min(max(25.d0/abs(alty2),0.5_db),4.d0))/2.d0
       oldstep = step
       
     end function nextStep
@@ -6019,7 +6023,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                 maxerrorloc = maxlocerror(1)
                 thisoctal%convergence(subcell) = 100.0 * iter + &
                                                  real(maxerrorloc-1) + &
-                                                 min(0.99,maxval(error(1:minlevel-1))) 
+                                                 min(0.99_db,maxval(error(1:minlevel-1))) 
 
 !                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
                 fac = sum(error(1:minlevel-1)**2) ! convergence criterion

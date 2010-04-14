@@ -30,6 +30,21 @@ MPIFLAG =
 # Set system-dependent variables
 #
 
+# NAG Fortran compiler
+ifeq ($(SYSTEM), nagfor)
+    F95COMP  = nagfor
+    F77COMP  = nagfor
+    F95FLAG  = -colour -kind=byte -fpp -dcfuns -DUSEIEEEISNAN
+    F77FLAG  = -colour -kind=byte
+    DEBUGFLAG= -C=all -g -gline -info #-C=undefined
+    FASTFLAG = #-O4
+    UNIXMOD  = unix_mod.f90.linux
+    KINDMOD  = kind_mod.f90.linuxintel
+    CFITSIOLIBS = 
+    EXE = torus.nag
+    KNOWN_SYSTEM = yes
+endif
+
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
 #    F77COMP  = g95

@@ -49,8 +49,8 @@ contains
          do j = 1, nLambda
             do n = 1, nDist-1
                ! convert a(um) and xArray(A) to cm
-               x = max(1.e-5, 2.*pi*(a(n)*1.e-4)/(xArray(j)*1.e-8))
-               x = min(2.*pi*1000./0.1, x)
+               x = max(1.e-5, 2.*real(pi)*(a(n)*1.e-4)/(xArray(j)*1.e-8))
+               x = min(2.*real(pi)*1000./0.1, x)
                ! xc = x+4.05*x**.3333+2.0                         !               eq 4.16
                ! nci = int(xc)+1
                nci = int(x+4.05*x**.3333+2.0 )+1
@@ -588,7 +588,7 @@ contains
         a = 0.5*(a1+a2)
         x = 2.*pi*(a * micronsToCm)/(lambda*1.e-8)
         x = max(1.e-5, x)
-        x = min(2.*pi*1000./0.1, x)
+        x = min(2.*real(pi)*1000./0.1, x)
         gfac = pi*(a * micronsToCm)**2
 
 !       .........................................

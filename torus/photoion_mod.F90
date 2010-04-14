@@ -3121,7 +3121,7 @@ end subroutine addFreeFreeContinua
                 else
                 ! The top side with wedge of 1.05 where region 6 fails
                     g(i) = sqrt(12. * gamma2 / u)
-                    g(i) = min(1.05,g(i))
+                    g(i) = min(1.05_db,g(i))
                     if( (g(i)==1.05) .and. (log10Te>=2.5) .and. (log10Te<=8.0)) &
                          & iflag = 5
                     if( (g(i)<1.05) .and. (log10Te>=2.5) .and. (log10Te<=8.0)) &

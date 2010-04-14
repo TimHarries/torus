@@ -644,6 +644,8 @@ contains
     character(len=80) :: absolutePath, inFile, updatedFilename
     integer :: ithread
 
+    type(OCTAL), pointer :: mynull => null()
+
     absolutePath = " "
     error = 0
 
@@ -661,7 +663,7 @@ contains
        allocate(grid%octreeRoot)
        grid%octreeRoot%nDepth = 1
        nOctal = 0
-       call readOctreePrivateFlexi(grid%octreeRoot,null(),fileFormatted, nOctal, grid)
+       call readOctreePrivateFlexi(grid%octreeRoot,mynull,fileFormatted, nOctal, grid)
     
     close(unit=20)
 

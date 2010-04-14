@@ -8886,7 +8886,7 @@ IF ( .NOT. gridConverged ) RETURN
         zmaxint = z1max + (r - rmin) * gradmax
         d = zmaxint - zminint
         if (d /= 0.) then
-           v = max(min((z - zminint) / d,2.d0),-1.d0)
+           v = max(min((z - zminint) / d,2.e0),-1.e0)
         else
            v = 0.d0
         endif
@@ -9464,7 +9464,7 @@ end function readparameterfrom2dmap
     endif
 
     if (hydrodynamics) then
-       thisOctal%rho(subcell) = max(thisOCtal%rho(subcell), 1.e-20)
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
        thisOctal%temperature(subcell) = (1.d-15*10.d0)/thisOCtal%rho(subcell)
        thisOctal%velocity(subcell) = keplerianVelocity(rvec,grid)
        thisOctal%boundaryCondition(subcell) = 4

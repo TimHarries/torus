@@ -362,7 +362,7 @@ contains
     endif
 
 
-    theta = acos(max(-1.,min(1.,theta)))
+    theta = acos(max(-1.0_db,min(1.0_db,theta)))
     call random_number(r)
     phi = twoPi * r
 

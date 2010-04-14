@@ -4160,10 +4160,10 @@ contains
                 fac = 1.e-10
                 fac2 = yArray2(1)
              endif
-             grid%kappaSca(i,j,k,1) = max(1.e-30,grid%kappaSca(i,j,k,1) * fac)
-             grid%kappaAbs(i,j,k,1) = max(1.e-30,grid%kappaAbs(i,j,k,1) * fac)
-             grid%kappaScaRed(i,j,k,1) = max(1.e-30,grid%kappaScaRed(i,j,k,1) * fac)
-             grid%kappaAbsRed(i,j,k,1) = max(1.e-30,grid%kappaAbsRed(i,j,k,1) * fac)
+             grid%kappaSca(i,j,k,1) = max(1.e-30_db,grid%kappaSca(i,j,k,1) * fac)
+             grid%kappaAbs(i,j,k,1) = max(1.e-30_db,grid%kappaAbs(i,j,k,1) * fac)
+             grid%kappaScaRed(i,j,k,1) = max(1.e-30_db,grid%kappaScaRed(i,j,k,1) * fac)
+             grid%kappaAbsRed(i,j,k,1) = max(1.e-30_db,grid%kappaAbsRed(i,j,k,1) * fac)
              grid%etaLine(i,j,k) = grid%etaLine(i,j,k)*fac2**2
              grid%rho(i,j,k) = grid%rho(i,j,k) * fac
           enddo

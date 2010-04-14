@@ -1764,7 +1764,7 @@ contains
 
              if (.not.thisOctal%fixedTemperature(subcell)) then
                 if (thisOctal%nCrossings(subcell) .ge. 10) then
-                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + deltaT)
+                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + real(deltaT))
                 endif
  
                 if (thisOctal%nCrossings(subcell) .lt. minCrossings) then

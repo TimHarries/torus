@@ -351,11 +351,6 @@ module angularImage
      call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
           tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
 
-     if (isnan(i0)) then
-        write(*,*) "Got nan", opticaldepth, rayposition
-        i0 = 0.d0
-     endif
-
       avgIntensityNew = ((iray - 1) * avgIntensityOld + i0) / dble(iray)
       varIntensityNew = ((iray - 1) * varIntensityOld + ((i0 - avgIntensityNew) * (i0 - avgIntensityOld))) / dble(iray)
       avgNColNew      = ((iray - 1) * avgNColOld + nCol) / dble(iray)

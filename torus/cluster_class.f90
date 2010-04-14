@@ -365,9 +365,9 @@ contains
 
     thisOctal%rho(subcell) = clusterparam%x
     if ( sphData%useSphTem ) then 
-       thisOctal%temperature(subcell) =  max(clusterparam%y, tMinGlobal)
+       thisOctal%temperature(subcell) =  max(real(clusterparam%y), tMinGlobal)
     else
-       thisOctal%temperature(subcell) =  max(10., 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
+       thisOctal%temperature(subcell) =  max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
     end if
     
     if ( associated(thisOctal%nh2) ) then

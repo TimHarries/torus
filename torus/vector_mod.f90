@@ -608,7 +608,7 @@ contains
     dLon = pointB%phi - pointA%phi
     dLat = pointB%theta - pointA%theta
     a = (SIN(dLat/2.))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.)**2
-    distance = 2. * ASIN(MIN(1.,SQRT(a)))
+    distance = 2. * ASIN(MIN(1.0_db,SQRT(a)))
   
   END FUNCTION greatCircleDistance
   
