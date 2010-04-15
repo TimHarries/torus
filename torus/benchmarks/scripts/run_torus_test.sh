@@ -11,9 +11,10 @@ log_file=compile_log.txt
 ln -s ${TEST_DIR}/torus/* .
 /usr/bin/make depends > ${log_file} 2>&1 
 
+# cfitsio libraries are built with g95 on daily test machine
 case ${SYSTEM} in
-    gfortran)  /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
-    *) /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
+    g95)  /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
+    *) /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
 esac
 
 if [[ $? -eq 0 ]]; then
@@ -290,10 +291,11 @@ done
 case ${MODE} in 
 
     daily) export SYS_TO_TEST="ompi"
-           export BUILD_ONLY="gfortran g95"
+           export BUILD_ONLY="gfortran g95 nagfor"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
-	   export PATH=~/bin:/usr/local/bin:${PATH}
+	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
+	   export NAG_KUSARI_FILE=${HOME}/NAG/nag.licence
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
