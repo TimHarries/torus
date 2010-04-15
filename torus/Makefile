@@ -34,9 +34,9 @@ MPIFLAG =
 ifeq ($(SYSTEM), nagfor)
     F95COMP  = nagfor
     F77COMP  = nagfor
-    F95FLAG  = -colour -kind=byte -fpp -dcfuns -DUSEIEEEISNAN
+    F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN
     F77FLAG  = -colour -kind=byte
-    DEBUGFLAG= -C=all -g -gline -info #-C=undefined
+    DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = #-O4
     UNIXMOD  = unix_mod.f90.linux
     KINDMOD  = kind_mod.f90.linuxintel
