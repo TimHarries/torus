@@ -2765,7 +2765,7 @@ contains
          logical :: fileFormatted
          type(OCTAL), pointer :: thisOctal, parent, child, depth3
 !         character(len=80) :: message
-	 integer :: i, iChild, ithread, j
+	 integer :: i, iChild, ithread
 
 
          allocate(depth3)

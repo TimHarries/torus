@@ -1493,7 +1493,7 @@ contains
           endif
        endif
     endif
-666 continue
+
   end function octalOnThread
 
   subroutine periodBoundary(grid, justGrav)
