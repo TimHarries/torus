@@ -12,7 +12,7 @@ module setupamr_mod
        allocateattribute, copyattribute, deallocateattribute
   use gridtype_mod, only:   gridtype
   USE parallel_mod, ONLY:   torus_abort
-
+  use mpi_global_mod
 
   implicit none
 
@@ -36,7 +36,9 @@ contains
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
+    use photoionAMR_mod, only : ionizeGrid, resetNh
     use vh1_mod, only: read_vh1
+
     ! For romanova geometry case
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(cluster)   :: young_cluster
@@ -46,7 +48,7 @@ contains
     logical :: ok, flatspec
     type(GRIDTYPE) :: grid
     logical :: gridConverged
-    real(double) :: astar, mass_accretion_old
+    real(double) :: astar, mass_accretion_old, totalMass
     character(len=80) :: message
     integer :: j, ismoothLam
     integer :: nVoxels, nOctals
@@ -120,12 +122,19 @@ contains
 
        case("starburst")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           gridconverged = .false.
-          !          do while(.not.gridconverged) 
-          !             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
-          !          enddo
+          grid%octreeRoot%rho = 100.*mhydrogen
+          grid%octreeRoot%temperature = 10.
+         do while(.not.gridconverged) 
+             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
+          enddo
+          call ionizeGrid(grid%octreeRoot)
+          call resetNH(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          call findMassOverAllThreads(grid, totalmass)
+          write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol
+          call writeInfo(message,TRIVIAL)
 
        case("runaway")
           call read_vh1
@@ -529,6 +538,71 @@ contains
           enddo
         end subroutine fillGridFogel
 
+
+  recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
+    use input_variables, only : maxDepthAMR
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    real :: rho, aFac
+    integer :: subcell, i, j
+    real, allocatable :: r(:), s(:)
+    real :: rmin, rmax, tot, fac, mean
+    logical :: converged, split
+
+    converged = .true.
+
+! based on method 2 of Hetem and Lepine 1993 A&A 270 451
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitGridFractal(child, rho, aFac, grid, converged)
+                exit
+             end if
+          end do
+       else
+!          if (thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) > limitScalar) then
+          split = .false.
+          if (octalonThread(thisOctal, subcell, myrankGlobal)) split = .true.
+          if (thisOctal%nDepth == maxDepthAMR) split = .false.
+
+          if (split) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=.true., interp=.false.)
+             ! find the child
+             do j = 1, thisOctal%nChildren, 1
+                if (thisOctal%indexChild(j) == subcell) then
+                   child => thisOctal%child(j)
+                   exit
+                endif
+             enddo
+
+             allocate(r(1:thisOctal%maxChildren), s(1:thisOctal%maxChildren))
+             call random_number(r)
+             tot = sum(r)
+             mean = tot / real(thisOctal%maxChildren)
+             r = r / mean
+             rmin = minval(r)
+             rmax = maxval(r)
+             fac = (afac*rmin-rmax)/(1.-afac)
+             s = r + fac
+             tot=SUM(s)
+             s = s / tot
+             do j = 1, thisOctal%maxChildren
+                child%rho(j) = s(j) * thisOctal%rho(subcell) * &
+                     cellVolume(thisOctal, subcell)/cellVolume(child,j)
+             enddo
+             deallocate(r, s)
+             converged = .false.
+             exit
+          endif
+          
+       endif
+    end do
+  end subroutine splitGridFractal
 
 
       end module setupamr_mod

@@ -14,8 +14,9 @@ contains
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, molecularPhysics
-    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics
+    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage
     use photoionAMR_mod, only : createImageSplitGrid
+    use input_variables, only : lambdaImage, outputimagetype, npixelsArray
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
     use phasematrix_mod
@@ -27,7 +28,7 @@ contains
     integer :: nLambda
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
-
+    integer :: i
     
     viewVec = VECTOR(-1.d0, 0.d0, 0.d0)
     if (writegrid) then
@@ -47,8 +48,12 @@ contains
     endif
 
     if (photoionPhysics.and.splitoverMPI.and.calcImage) then
+       
        observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
-       call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename)
+       do i = 1, nImage
+          call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), lambdaImage(i), &
+               outputImageType(i), nPixelsArray(i))
+       enddo
     endif
 
     if (molecularPhysics.and.calcDataCube) then

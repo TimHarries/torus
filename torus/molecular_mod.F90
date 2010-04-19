@@ -4716,6 +4716,9 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         icount = icount + 1
 
         call findSubcelllocal(currentPosition, thisOctal, subcell)
+        if (grid%splitOverMpi.and.(.not.octalonThread(thisOctal,subcell,myrankGlobal))) then
+           exit!!!!
+        endif
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal, sSubcell = subcell)
         if(tval .le. 0.d0) then
            write(*,*) "This is the end. distanceToCellBoundary is the problem. Consult a doctor immediately.",tval,direction
@@ -4762,6 +4765,11 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
            nmol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
            etaline = nmol * etaline
         else
+           if (.not.associated(thisOctal%molCellParam)) then
+              write(*,*) myrankGlobal," bug ", currentPosition, inOctal(thisOctal,currentPosition), thisOctal%mpiThread(subcell)
+              stop
+           endif
+
            nmol = thisoctal%molcellparam(1,subcell)
            etaline = nmol * thisOctal%molcellparam(5,subcell)
         endif
@@ -4895,7 +4903,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
            currentposition = curpos
 
         endif
-        
      enddo
          
 666  continue
@@ -6307,7 +6314,7 @@ end subroutine molecularLoopV2
         i0 = tempStorage(1)
         tau = tempStorage(2)
 
-        currentPosition = currentPosition + (lengthofRay+1.d-6*grid%halfSmallestSubcell)*direction
+        currentPosition = currentPosition + (lengthofRay+1.d-3*grid%halfSmallestSubcell)*direction
      enddo
 666 continue
    end subroutine intensityAlongRaySplitOverMPI

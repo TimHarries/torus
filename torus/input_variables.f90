@@ -51,6 +51,7 @@ module input_variables
   logical :: photoionization
   logical :: usemetals 
   logical :: quickThermal
+  integer :: inputNMonte
   logical :: dustOnly
   logical :: molecular
   logical :: dumpdi
@@ -139,7 +140,8 @@ module input_variables
   integer :: itrans, npixels, nsubpixels !nv already exists
   real(double) :: centrevecx, centrevecy, centrevecz
   logical :: wanttau
-
+  integer :: nPixelsArray(10)
+  integer :: nImage
   logical :: blockHandout
 
 
@@ -212,9 +214,9 @@ module input_variables
 
   ! filenames
   character(len=80) :: outFile
-  character(len=80) :: imageFilename
+  character(len=80) :: imageFilename(10)
   character(len=80) :: datacubeFilename
-  character(len=80) :: outputimageType
+  character(len=80) :: outputimageType(10)
   character(len=80) :: intProFilename
   character(len=80) :: intProFilename2
   character(len=80) :: opacityDataFile
@@ -229,7 +231,7 @@ module input_variables
   ! output arrays
 
   integer :: nLambda, nLambdaInput
-  real :: lambdaImage
+  real :: lambdaImage(10)
   logical :: freeFreeImage
   real :: lamStart, lamEnd
   logical :: lamLinear

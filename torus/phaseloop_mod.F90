@@ -267,7 +267,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   ! torus images
 
-  integer           :: nImage  ! number of images in obsImageSet
+  integer           :: nImageLocal  ! number of images in obsImageSet
   type(filter_set)  :: filters ! a set of filters used for imaging
   character(LEN=30) :: name_filter
   real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
@@ -1144,10 +1144,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !!     endif 
 !!
         ! number of images = number of filters
-        nImage = get_nfilter(filters)
+        nImageLocal = get_nfilter(filters)
         ! Allocate the image array
         if (allocated(obsImageSet)) deallocate(obsImageSet)
-        allocate(obsImageSet(nImage))
+        allocate(obsImageSet(nImageLocal))
         
 
         ! Initializing the images ...
@@ -1188,7 +1188,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
         ! Initializing the images ...
-        do i = 1, nImage           
+        do i = 1, nImageLocal           
            if (grid%cartesian) then
               obsImageSet(i) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
               if (doRaman) then
@@ -1321,7 +1321,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
            iLambdaPhoton = iOuterLoop
 
-           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, grid%lamArray, iLambdaPhoton)
+           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, grid%lamArray, grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            
 !           if (doTuning) call tune(6,"Calculate bias on tau")
 !           call setBiasOnTau(grid, iLambdaPhoton)
@@ -1449,7 +1449,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
 !$OMP SHARED(sampleFreq, useInterp, photLine,tooFewSamples,boundaryProbs) &
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
-!$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
+!$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImageLocal) &
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
@@ -1739,7 +1739,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  endif
                  if (stokesImage) then
                     thisVel = 0. ! no velocity for dust continuum
-                    call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, thisPhoton,&
+                    call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, thisPhoton,&
                          thisVel, obs_weight, filters, grid%octreeRoot%centre)
 
                  endif
@@ -1771,7 +1771,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                     thisVel = (observedLambda-lamLine)/lamLine
                     if (stokesImage) then
-                       call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, &
+                       call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, &
                             thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif
                     if (dopvImage) then
@@ -1847,7 +1847,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        wtot0_cont = wtot0_cont + thisPhoton%stokes%i*obs_weight
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
-                          call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImage, &
+                          call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImageLocal, &
                                thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
                                grid%lamArray(iLambda))
                        endif
@@ -2016,7 +2016,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !                    write(*,*) iStep, lambda(istep),obs_weight,tauExt(istep),tauExtObs(nTauObs)
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
-                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
+                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
                             obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif
                     if (dopvImage) then
@@ -2280,7 +2280,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
-                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
+                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
                             obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif
                     if (dopvImage) then
@@ -2316,7 +2316,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        thisVel = observedLambda
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
-                          call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage, &
+                          call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
                                obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                        endif
                        if (dopvImage) then
@@ -2413,7 +2413,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                           thisVel = (observedlambda-lamLine)/lamLine
                           if (stokesImage) then
-                             call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage, &
+                             call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
                                   obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
                                   grid%lamArray(iLambda))
                           endif
@@ -2675,7 +2675,7 @@ enddo
      nTot = tempInt
 
  if (stokesimage) then
-   do i = 1, nImage
+   do i = 1, nImageLocal
      allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
      allocate(tempRealArray2(SIZE(obsImageSet(i)%pixel)))
      allocate(tempDoubleArray(SIZE(obsImageSet(i)%pixel)))
@@ -2863,7 +2863,7 @@ enddo
      endif
 
      if (stokesimage) then
-        do i = 1, nImage
+        do i = 1, nImageLocal
            name_filter = get_filter_name(filters, i)
            bandwidth = 0.5*FWHM_filters(filters, i)  ! 1/2 of FWHM  [A]
            lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
@@ -2905,7 +2905,7 @@ enddo
   end if ! (myRankIsZero)
 
      if (stokesImage) then
-        do i = 1, nImage
+        do i = 1, nImageLocal
            call freeImage(obsImageSet(i))
         end do
      end if

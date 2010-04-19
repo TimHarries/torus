@@ -49,7 +49,9 @@ module source_mod
       type(GRIDTYPE) :: grid
       real(double) :: flux
       flux = sumPhotonsOverBand(source%spectrum, 1.d0, 912.d0)
-      flux = flux * (source%radius*1.d10)**2/source%distance**2
+      if (source%outsidegrid) then
+         flux = flux * (source%radius*1.d10)**2/source%distance**2
+      endif
     end function ionizingFlux
 
 

@@ -130,8 +130,10 @@ contains
              
       end select
 
-      write(*,*) "number of sources in burst", nSource
-      write(*,*) "burst mass",totMass
+      if (Writeoutput) then
+         write(*,*) "number of sources in burst", nSource
+         write(*,*) "burst mass",totMass
+      endif
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
 
@@ -152,9 +154,11 @@ contains
             call removeSource(source, nSource, i)
          endif
       enddo
-      write(*,*) "Number of dead sources",  nDead
-      write(*,*) "Number of supernova",  nSupernova
-      write(*,*) "Burst luminosity",SUM(source(1:nSource)%luminosity)/lsol
+      if (Writeoutput) then
+         write(*,*) "Number of dead sources",  nDead
+         write(*,*) "Number of supernova",  nSupernova
+         write(*,*) "Burst luminosity",SUM(source(1:nSource)%luminosity)/lsol
+      endif
 
       nOB = 0
       do i = 1, nSource
@@ -162,8 +166,9 @@ contains
             nOB = nOB + 1
          endif
       enddo
-      write(*,*) "Number of OB stars (>15 msol): ",nOB
-
+      if (writeoutput) then
+         write(*,*) "Number of OB stars (>15 msol): ",nOB
+      endif
       do i = 1, nSource
          call fillSpectrum(source(i), nKurucz, kLabel, kSpectrum)
       enddo
@@ -353,7 +358,7 @@ contains
        t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
        if (t > 0.5) j = j + 1
        call createKuruczFilename(teff(i), loggArray(j), thisFile)
-       call readSpectrum(source%spectrum, thisFile, ok)
+!       call readSpectrum(source%spectrum, thisFile, ok)
 
        call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
        if (ok) then
@@ -386,6 +391,7 @@ contains
                 firstWarning  = .false.
              endif
              call fillSpectrumBB(source%spectrum,source%teff, 100.d0, 1.d7, 1000)
+             call normalizedSpectrum(source%spectrum)
           endif
        endif
 

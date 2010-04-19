@@ -10547,6 +10547,7 @@ end function readparameterfrom2dmap
           IF ( thisOctal%child(iIndex)%parentSubcell /= iSubcell ) THEN
             PRINT *, "Error: In checkAMRgridPrivate, child's parentSubcell doesn't match:"
             PRINT *, "       thisOctal%child(iIndex)%parentSubcell = ",thisOctal%child(iIndex)%parentSubcell
+            print *,         thisOctal%child(1:thisOctal%nChildren)%parentSubcell
             PRINT *, "       iIndex = ", iIndex
             PRINT *, "       iSubcell = ", iSubcell
             CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
@@ -12451,7 +12452,8 @@ end function readparameterfrom2dmap
        else
           kappaAbs = 0.
           if (ndusttype .eq. 1) then
-             kappaAbs = logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
+             kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
+                  logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
                   oneKappaAbsT(ilambda,1)*thisoctal%rho(subcell), &
                   oneKappaAbsT(ilambda+1,1)*thisoctal%rho(subcell))
 
@@ -15006,68 +15008,6 @@ end function readparameterfrom2dmap
     end do
 
   end subroutine getxValues
-
-  recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-!    use input_variables, only : limitScalar
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, child
-    real :: rho, aFac
-    integer :: subcell, i, j
-!    real, allocatable :: r(:), s(:)
-!    real :: rmin, rmax, tot, fac, mean
-    logical :: converged
-
-    converged = .true.
-
-! based on method 2 of Hetem and Lepine 1993 A&A 270 451
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call splitGridFractal(child, rho, aFac, grid, converged)
-                exit
-             end if
-          end do
-       else
-          if (thisOctal%nDepth < 5) then
-!          if (thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) > limitScalar) then
-             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                  inherit=.true., interp=.false.)
-             ! find the child
-             do j = 1, thisOctal%nChildren, 1
-                if (thisOctal%indexChild(j) == subcell) then
-                   child => thisOctal%child(j)
-                   exit
-                endif
-             enddo
-
-!             allocate(r(1:thisOctal%maxChildren), s(1:thisOctal%maxChildren))
-!             call random_number(r)
-!             tot = sum(r)
-!             mean = tot / real(thisOctal%maxChildren)
-!             r = r / mean
-!             rmin = minval(r)
-!             rmax = maxval(r)
-!             fac = (afac*rmin-rmax)/(1.-afac)
-!             s = r + fac
-!             tot=SUM(s)
-!             s = s / tot
-!             do j = 1, thisOctal%maxChildren
-!                child%rho(j) = s(j) * thisOctal%rho(subcell) * &
-!                     cellVolume(thisOctal, subcell)/cellVolume(child,j)
-!             enddo
-!             deallocate(r, s)
-             converged = .false.
-             exit
-          endif
-          
-          
-       endif
-    end do
-  end subroutine splitGridFractal
 
   !
   ! Recursively turn off the magnetosphere

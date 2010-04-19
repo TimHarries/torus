@@ -2705,6 +2705,8 @@ contains
        subroutine readGridSplitOverMPI(grid, gridFilename, fileFormatted)
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
+         
+         character(len=80) :: message
          logical :: fileFormatted
          integer :: iThread, nOctal, nOctals, nVoxels
 
@@ -2733,20 +2735,19 @@ contains
             grid%octreeRoot%nDepth = 1
             nOctal = 0
             call getBranchOverMPI(grid%octreeRoot, null())
+            write(message, '(a,i2.2)') "AMR grid read for thread: ",myrankGlobal
+            write(*,*) trim(message)
          else
             call openGridFile(gridFilename, fileformatted)
             call readStaticComponents(grid, fileFormatted)
             allocate(grid%octreeRoot)
             grid%octreeRoot%nDepth = 1
             nOctal = 0
-
-
             call readZerothThread(grid%octreeRoot, null(), fileFormatted)
          endif
          call updateMaxDepth(grid)
          call setSmallestSubcell(grid)
          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-         write(*,*) myrankglobal , " has ",nvoxels, " voxels"
          grid%nOctals = nOctals
          call checkAMRgrid(grid, .false.)
          close(20)
@@ -2762,11 +2763,12 @@ contains
 
        subroutine readZerothThread(thisOctal, parent, fileFormatted)
          logical :: fileFormatted
-         type(OCTAL), pointer :: thisOctal, parent, child
-         character(len=80) :: message
-	 integer :: i, iChild
+         type(OCTAL), pointer :: thisOctal, parent, child, depth3
+!         character(len=80) :: message
+	 integer :: i, iChild, ithread, j
 
 
+         allocate(depth3)
          thisOctal%parent => parent
          call readOctalViaTags(thisOctal, fileFormatted)
          
@@ -2781,8 +2783,6 @@ contains
 
             do i = 1, nHydroThreadsGlobal
                call readBranchFromFile(i, fileFormatted)
-               write(message, '(a,i2.2)') "AMR grid read for thread: ",i
-               call writeInfo(message,TRIVIAL)
             enddo
 
             thisOctal%nChildren = 0 
@@ -2800,8 +2800,6 @@ contains
 
             do i = 1, nHydroThreadsGlobal
                call readBranchFromFile(i, fileFormatted)
-               write(message, '(a,i2.2)') "AMR grid read for thread: ",i
-               call writeInfo(message,TRIVIAL)
             enddo
 
             write(*,*) myrankglobal, "setting nchildren to zero"
@@ -2812,36 +2810,44 @@ contains
 
          if (nHydroThreadsGlobal == 64) then
 
+!            allocate(child)
+!            do while (.true.)
+!               call readOctalViaTags(child, fileFormatted)
+!               write(*,*) "from tags depth: ",child%ndepth, child%mpiThread
+!            enddo
+
             do i = 1, nHydroThreadsGlobal
                call sendOctalviaMPI(thisOctal,i)
             enddo
+
 
             allocate(thisOctal%child(1:thisOctal%nChildren))
             do iChild = 1, thisOctal%nChildren
                child => thisOctal%child(iChild)
                call readOctalViaTags(child, fileFormatted)
-               child%nChildren = thisOctal%maxChildren
-               child%hasChild = .false.
-               do i = 1, thisOctal%maxChildren
-                  child%hasChild(i) = .true.
+               do i = 1, nHydroThreadsGlobal
+                  if (.not.octalonThread(thisOctal, iChild, i)) then 
+                     child%hasChild = .false.
+                     child%nChildren = 0
+                     call sendOctalviaMPI(child,i)
+                  endif
+               enddo
+
+               do i = 1, 8
+                  ithread = (ichild-1)*8 + i
+                  child%hasChild = .false.
+                  child%nChildren = 1
                   child%indexChild(1) = i
-                  call sendOctalviaMPI(child,(iChild-1)*8+i)
+                  child%hasChild(i) = .true.
+                  call sendOctalviaMPI(child,ithread)
+                  call readBranchFromFile(ithread, fileFormatted)
                enddo
                child%hasChild = .false.
                child%nChildren = 0 
                child%parent => thisOctal
             enddo
 
-            do i = 1, nHydroThreadsGlobal
-               call readBranchFromFile(i, fileFormatted)
-               write(message, '(a,i2.2)') "AMR grid read for thread: ",i
-               call writeInfo(message,TRIVIAL)
-            enddo
-
-            thisOctal%nChildren = 0 
-            thisOctal%hasChild = .false.
          endif
-
 
        end subroutine readZerothThread
 
@@ -2874,11 +2880,12 @@ contains
          thisOctal%parent => parent
 !         write(*,*) myrankGlobal, " receiving octal from 0"
          call receiveOctalViaMPI(thisOctal)
-!         write(*,*) myrankGlobal, " received successfully. depth ",thisOctal%nDepth, thisOctal%nChildren, thisOctal%mpiThread
+!         write(*,'(i4,a,i4,i4,8i4)') myrankGlobal, " received successfully. depth ",thisOctal%nDepth, thisOctal%nChildren, thisOctal%mpiThread
          if (thisOctal%nChildren > 0) then
             allocate(thisOctal%child(1:thisOctal%nChildren)) 
             do i = 1, thisOctal%nChildren
                child => thisOctal%child(i)
+!               write(*,*) myrankGlobal," getting branch for child ",i, " of ",thisOctal%nchildren, " at depth ",thisOctal%nDepth
                call getBranchOverMpi(child, thisOctal)
             enddo
          endif

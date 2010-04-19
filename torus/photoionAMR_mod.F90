@@ -26,7 +26,7 @@ implicit none
 
 private
 public :: photoIonizationloopAMR, radiationHydro, createImagesplitgrid, ionizeGrid, &
-     resizePhotoionCoeff
+     resizePhotoionCoeff, resetNH
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -111,7 +111,7 @@ contains
     grid%iDump = 0
     nextDumpTime = 0.d0
     tDump = 0.005d0
-    deltaTforDump = 2.d11
+    deltaTforDump = 2.d10
     if (grid%geometry == "hii_test") deltaTforDump = 100.d0/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
@@ -364,12 +364,14 @@ contains
 
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein, maxIter, tLimit)
-    use input_variables, only : quickThermal
+       lucyfileout, lucyfilein, maxIter, tLimit, sublimate)
+    use input_variables, only : quickThermal, inputnMonte
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
     integer :: nMonte
+    logical, optional :: sublimate
+    logical :: doSublimate
     real(double) :: tLimit
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
@@ -433,6 +435,9 @@ contains
     logical :: photonsStillProcessing
     integer, allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
+    character(len=80) :: vtkFilename
+    doSublimate = .true.
+    if (PRESENT(sublimate)) doSublimate = sublimate
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
@@ -488,18 +493,25 @@ contains
 
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    if (writeoutput) write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
-
+    if (writeoutput) then
+       write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
+    endif
 
     call writeVtkFile(grid, "start.vtk", &
          valueTypeString=(/"rho        ", "HI         ","temperature", "dust1      " /))
 
-    nMonte = 10000000
+
+    if (inputnMonte == 0) then
+       nMonte = 10000000
+    else
+       nMonte = inputnMonte
+    endif
 
     nIter = 0
     
     converged = .false.
-
+    if (nSource > 1) &
+         call randomSource(source, nSource, iSource, lamArray, nLambda, initialize=.true.)
     do while(.not.converged)
        nIter = nIter + 1
        nInf=0
@@ -778,7 +790,6 @@ contains
 
     if (writeoutput) &
          write(*,*) "Finished calculating ionization and thermal equilibria"
-
     if (myrank == 1) call tune(6, "Temperature/ion corrections")
 
 !       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
@@ -879,15 +890,16 @@ if (.false.) then
 
 
 
+    call quickSublimate(grid%octreeRoot) ! do dust sublimation
 
- call quickSublimate(grid%octreeRoot) ! do dust sublimation
+    call torus_mpi_barrier
 
-! write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
-! call writeVtkFile(grid, vtkFilename, &
-!      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-!      "hydrovelocity","dust1"/))
-
- enddo
+ write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+ call writeVtkFile(grid, vtkFilename, &
+      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+      "dust1"/))
+ call writeAMRgrid("tmp.grid",.false.,grid)
+enddo
 
 
 ! thisOctal => grid%octreeRoot
@@ -1764,8 +1776,16 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    nIter = 0
                    converged = .false.
                    
-                   t1 = tLow
-                   t2 = 50000.
+
+                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
+                      t1 = tlow
+                      t2 = 2000.
+                   else
+                      t1 = 5000.
+                      t2 = 20000.
+                   endif
+!                   t1 = tLow
+!                   t2 = 50000.
                    found = .true.
                    
                    if (found) then
@@ -2898,10 +2918,13 @@ recursive subroutine quickSublimate(thisOctal)
           end do
        else
 
-          if (thisOctal%temperature(subcell) > 1500.d0) then
+          if ((thisOctal%ionFrac(subcell,1) < 0.1).or.(thisOctal%temperature(subcell) > 1500.)) then
              thisOctal%dustTypeFraction(subcell,:) = 0.d0
           else
              thisOctal%dustTypeFraction(subcell,:) = 1.d0
+             thisOctal%ne(subcell) = tiny(thisOctal%ne(subcell))
+             thisOctal%ionFrac(subcell,1) = 1.d0
+             thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
           endif
           
        endif
@@ -3294,11 +3317,15 @@ real(double) function returnGamma(table, temp, freq) result(out)
   integer,save :: i, j
   real(double) :: tfac, ffac, gamma1, gamma2, logT, logF
 
-  logT = log10(temp)
-  logF = log10(freq)
+  logT = log10(min(temp,table%temp(table%nTemp)))
+  logF = log10(min(freq, table%freq(table%nfreq)))
 
   call hunt(table%temp, table%nTemp, logT, i)
   call hunt(table%freq, table%nFreq, logF, j)
+
+  if (i == table%nTemp) i = i - 1
+  if (j == table%nFreq) j = j - 1
+
 
   if (logF >= table%freq(1).and.logF <= table%freq(table%nFreq)) then
      tfac  = (logT - table%temp(i))/(table%temp(i+1) - table%temp(i))
@@ -4132,12 +4159,15 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename)
+  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
+       lambdaImage, outputimageType, nPixels)
     use photoion_mod, only : addForbiddenEmissionLine, addRecombinationEmissionLine
-    use input_variables, only : lambdaImage, freeFreeImage, outputimageType, nPhotons, nPixels
+    use input_variables, only : freeFreeImage, nPhotons
+    real :: lambdaImage
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    character(len=*) :: imageFilename
+    integer :: npixels
+    character(len=*) :: imageFilename, outputImageType
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
@@ -4181,6 +4211,9 @@ end subroutine readHeIIrecombination
 
 
     call zeroEtaCont(grid%octreeRoot)
+    call quickSublimate(grid%octreeRoot) ! do dust sublimation
+
+    call torus_mpi_barrier
 
 
     thisImage = initImage(npixels, npixels, real(2.*grid%octreeRoot%subcellSize), &
@@ -4199,7 +4232,7 @@ end subroutine readHeIIrecombination
        case("forbidden")
 
           call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage, iLambdaPhoton)
           call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
 
           if (nSource > 0) then              
@@ -4211,7 +4244,7 @@ end subroutine readHeIIrecombination
        case("recombination")
 
           call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage, iLambdaPhoton)
           call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
 
           if (nSource > 0) then              
@@ -4223,7 +4256,7 @@ end subroutine readHeIIrecombination
        case("dustonly")
 
           call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, iLambdaPhoton)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage,iLambdaPhoton)
 
           if (nSource > 0) then              
              lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
@@ -4270,10 +4303,10 @@ end subroutine readHeIIrecombination
              call randomSource(source, nSource, iSource)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
-             if (thisSource%outsideGrid) then
-                thisPhoton%stokes%i = thisPhoton%stokes%i * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
-                   (thisSource%radius*1.d10)**2 / (thisSource%distance**2)
-             endif
+!             if (thisSource%outsideGrid) then
+!                thisPhoton%stokes%i = thisPhoton%stokes%i * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
+!                   (thisSource%radius*1.d10)**2 / (thisSource%distance**2)
+!             endif
 
              call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
              iThread = thisOctal%mpiThread(subcell)
@@ -4641,9 +4674,10 @@ end subroutine readHeIIrecombination
              write(*,*) myrankGlobal , " has an error as photon moved outside subcell. ",thistau,tau,tval
              write(*,*) "halfsmallest ",grid%halfSmallestSubcell
           endif
-
           endLoop = .true.
           albedo = kappaScaDust/kappaExt
+!          write(*,*) "test tau  ",tau, " thistau ",thistau, "  albedo ",albedo, " ext ",kappaext, " sca ",kappaScaDust, &
+!               "dust ",thisOctal%dustTypeFraction(subcell,1)
           call random_number(r)
           if (r < albedo) then
              scattered = .true.

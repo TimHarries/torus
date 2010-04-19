@@ -158,7 +158,7 @@ contains
              lucyfileNameout, lucyfileNamein)
         else
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, .false., .false., &
-             " ", " ", 5, 1.d30)
+             " ", " ", 5, 1.d30, sublimate=.false.)
         endif
 
      end if
@@ -231,10 +231,11 @@ contains
    end subroutine setupXarray
 
    subroutine setupGlobalSources(grid)     
+     use parallel_mod
+     use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
      use input_variables, only : inputNsource
      type(GRIDTYPE) :: grid
-
 
      call writeBanner("Source setup","-",TRIVIAL)
      if (inputNsource > 0) then
@@ -242,6 +243,18 @@ contains
         allocate(globalsourceArray(1:globalnSource))
         call setupSources(globalnSource, globalsourceArray, grid)
      endif
+
+     if (grid%geometry == "starburst") then
+        call sync_random_seed()
+        allocate(globalsourcearray(1:10000))
+        globalsourceArray(:)%outsideGrid = .false.
+        globalnSource = 0
+        call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d3, 1.d0)
+        call init_random_seed()
+    endif
+    
+
+
 end subroutine setupGlobalSources
 
 subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)

@@ -37,9 +37,11 @@ contains
 
     grainSize = 1.
     nDustType = 1
+    freefreeImage = .false.
 
     nBlobs = 0
     nLines = 0
+    inputnMonte = 0
 
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
 !   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
@@ -516,6 +518,9 @@ contains
     integer :: nLines
     logical :: ok
 
+    call getInteger("nmonte", inputnMonte, cLine, nLines, &
+         "Number of photons in image","(a,i8,a)", 0, ok, .false.)
+
     call getReal("taudiff", tauDiff, 1., cLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
@@ -567,18 +572,43 @@ contains
     character(len=80) :: cLine(:)
     integer :: nLines
     logical :: ok
+    integer :: i
+    character(len=20) :: keyword
 
-    call getString("imagefile", imageFilename, cLine, nLines, &
-         "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
-    call getReal("lambdaimage", lambdaImage,1., cLine, nLines, &
-         "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
-    call getString("imagetype", outputimageType, cLine, nLines, &
-         "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+
     call getBigInteger("nphotons", nphotons, cLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 10000, ok, .true.)
-    call getInteger("npixels", npixels, cLine, nLines, &
-         "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+         "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
 
+    call getInteger("nimage", nimage, cLine, nLines, &
+         "Number of images to calculate: ","(a,i8,a)", 1, ok, .false.)
+    if (nimage == 1) then
+
+       call getString("imagefile", imageFilename(1), cLine, nLines, &
+            "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
+       call getReal("lambdaimage", lambdaImage(1),1., cLine, nLines, &
+         "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+       call getString("imagetype", outputimageType(1), cLine, nLines, &
+            "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+       call getInteger("npixels", npixelsArray(1), cLine, nLines, &
+            "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+    else
+       do i = 1, nImage
+
+          write(keyword,'(a,i1.1)') "imagefile",i
+          call getString(keyword, imageFilename(i), cLine, nLines, &
+               "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
+          write(keyword,'(a,i1.1)') "lambdaimage",i
+          call getReal(keyword, lambdaImage(i),1., cLine, nLines, &
+               "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+          write(keyword,'(a,i1.1)') "imagetype",i
+          call getString(keyword, outputimageType(i), cLine, nLines, &
+               "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          write(keyword,'(a,i1.1)') "npixels",i
+          call getInteger(keyword, npixelsArray(i), cLine, nLines, &
+               "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+    enddo
+ end if
+       
   end subroutine readImageParameters
 
   subroutine readSpectrumParameters(cLine, nLines)

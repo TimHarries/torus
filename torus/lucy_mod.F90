@@ -2954,11 +2954,11 @@ contains
     enddo
   end subroutine calcContinuumEmissivityLucy
 
-  recursive subroutine  calcContinuumEmissivityLucyMono(grid, thisOctal, nlambda, lamArray, iPhotonLambda)
+  recursive subroutine  calcContinuumEmissivityLucyMono(grid, thisOctal, nlambda, lamArray, lambda, iPhotonLambda)
     type(GRIDTYPE) :: grid
     integer :: nLambda
     integer :: iPhotonLambda
-    real :: lamArray(:)
+    real :: lamArray(:), lambda
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -2969,7 +2969,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calcContinuumEmissivityLucyMono(grid, child, nlambda, lamArray, iPhotonLambda)
+                call calcContinuumEmissivityLucyMono(grid, child, nlambda, lamArray, lambda, iPhotonLambda)
                 exit
              end if
           end do
@@ -2977,7 +2977,7 @@ contains
           thisOctal%etaCont(subcell) = 1.d-40
           if (thisOctal%temperature(subcell) > 1.d-3) then
 
-             call addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, iPhotonLambda)
+             call addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, lambda, iPhotonLambda)
              
           endif
 
@@ -3018,20 +3018,20 @@ end subroutine addDustContinuumLucy
 
 !-------------------------------------------------------------------------------
 
-subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, iPhotonLambda)
+subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, lambda, iPhotonLambda)
 
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
   integer :: iPhotonLambda
-  real :: lamArray(:)
+  real :: lamArray(:), lambda
   real(double) :: kappaAbs
   kappaAbs = 0.d0
   thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
-  call returnKappa(grid, thisOctal, subcell, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
+  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
 
-  thisOctal%etaCont(subcell) =  bLambda(dble(lamArray(iPhotonLambda)), dble(thisOctal%temperature(subcell))) * &
+  thisOctal%etaCont(subcell) =  bLambda(dble(lambda), dble(thisOctal%temperature(subcell))) * &
              kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 

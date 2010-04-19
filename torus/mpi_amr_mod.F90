@@ -1442,6 +1442,7 @@ contains
 
     if (thisOctal%threeD) then
        if (nHydroThreads == 8) then
+
           if (thisOctal%mpiThread(subcell) == myRank) then
              check = .true.
           else
@@ -1492,6 +1493,7 @@ contains
           endif
        endif
     endif
+666 continue
   end function octalOnThread
 
   subroutine periodBoundary(grid, justGrav)
