@@ -4259,7 +4259,7 @@ contains
        sum_Nm_nLTE = 0.0d0
        do j = 1, maxLevels
           Nm_nLTE = thisOctal%N(thisSubcell, j)
-          sum_Nm_nLTE = sum_Nm_LTE + Nm_nLTE
+          sum_Nm_nLTE = sum_Nm_nLTE + Nm_nLTE
        end do
 
        sum_Nm_LTE = 0.0d0
