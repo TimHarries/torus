@@ -1354,6 +1354,22 @@ CONTAINS
 
   END SUBROUTINE countVoxels
 
+  RECURSIVE SUBROUTINE fixParentPointers(thisOctal)
+      
+    TYPE(OCTAL), POINTER  :: thisOctal 
+    TYPE(OCTAL), POINTER  :: child
+    INTEGER :: i
+        
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       DO i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          thisOctal%child(i)%parent => thisOctal
+          CALL fixParentPointers(child)
+       END DO
+    END IF
+        
+  END SUBROUTINE fixParentPointers
 
   SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &

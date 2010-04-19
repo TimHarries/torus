@@ -1716,6 +1716,7 @@ end subroutine pre_initAMRGrid
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
            ! This section is getting rather long. Maybe this should be done in 
