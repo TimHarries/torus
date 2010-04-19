@@ -157,6 +157,7 @@ contains
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray, readlucy, writelucy, &
              lucyfileNameout, lucyfileNamein)
         else
+
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, .false., .false., &
              " ", " ", 5, 1.d30, sublimate=.false.)
         endif
@@ -245,7 +246,9 @@ contains
      endif
 
      if (grid%geometry == "starburst") then
+#ifdef MPI
         call sync_random_seed()
+#endif
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0

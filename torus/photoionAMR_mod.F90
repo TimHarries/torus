@@ -5023,7 +5023,7 @@ contains
   END SUBROUTINE resizePhotoionCoeff
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein, maxIter, tLimit)
+       lucyfileout, lucyfilein, maxIter, tLimit, sublimate)
 
     use grid_mod
     use source_mod
@@ -5031,6 +5031,7 @@ contains
     implicit none
 
     type(GRIDTYPE) :: grid
+    logical, optional :: sublimate
     character(len=*) :: lucyfileout, lucyfilein    
     integer :: nSource
     type(SOURCETYPE) :: source(:)
@@ -5048,7 +5049,7 @@ contains
   end subroutine ionizeGrid
 
 
-  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename)
+  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, lambdaImage, outputtype, npix)
     use gridtype_mod
     use vector_mod
     use source_mod
@@ -5056,7 +5057,9 @@ contains
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: observerDirection
-    character(len=*) :: imageFilename
+    real :: lambdaImage
+    character(len=*) :: imageFilename, outputType
+    integer :: npix
   end subroutine createImageSplitGrid
 
 #endif    

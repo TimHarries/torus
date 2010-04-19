@@ -36,7 +36,9 @@ contains
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
+#ifdef MPI 
     use photoionAMR_mod, only : ionizeGrid, resetNh
+#endif
     use vh1_mod, only: read_vh1
 
     ! For romanova geometry case
@@ -53,6 +55,7 @@ contains
     integer :: j, ismoothLam
     integer :: nVoxels, nOctals
 
+    totalmass = 0.
     flatspec = .true.
      call new(young_cluster, dble(amrGridSize), .false.)
 
@@ -121,6 +124,7 @@ contains
           call writeInfo("...grid smoothing complete", TRIVIAL)
 
        case("starburst")
+#ifdef MPI
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           gridconverged = .false.
@@ -135,6 +139,7 @@ contains
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol
           call writeInfo(message,TRIVIAL)
+#endif
 
        case("runaway")
           call read_vh1
