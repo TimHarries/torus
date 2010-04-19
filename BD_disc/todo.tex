@@ -1,0 +1,319 @@
+\begin{abstract}
+
+   1) All graphs of SEDS in log log units.
+
+  1a) Add in the new data and write in using more masses.
+
+  1b) Write in the extra inclinations-check from incs.lis.
+
+  1c) Write in that using same points for photosphere.dat
+
+  1) BOUY ET AL 2008, NEUGEBAUER 1984 AND SKRUTSKIE 2006 TRUNCATED AUTHOR LIST.
+
+  2) CHANGE SYMBOLS OF NAKED STARS IN IR EXCESS AND IR EXCESS 2 TO
+  MAKE CLEARER. 
+
+  3) REWRITE CONCLUSIONS WITH MORE REFERENCE TO
+  \cite{2004MNRAS.351..607W}, \cite{2006A&A...452..245N} AND
+  \cite{2006MNRAS.370L..10C}.
+
+  4) REDO \& CHECK ALL FIGURES.
+ 
+  5) COMPARE FINAL INNER RADIUS, AFTER SUBLIMATION, TO COROTATION
+  RADIUS-HOT GAS STUFF.
+
+  6) ADD IN DISCUSSION FOR MIPS AND CHECK ZEROPOINTS
+
+  7) NEED A DISCUSSION OF THE DISC SCALEHEIGHT ETC (PROBABLY IN MODEL
+  OR PAR SPACE): $\rho \propto R^{-\alpha}$, $\alpha =
+  2.25$. $h\propto R^{\beta}$, $\beta = 1.25$. $\sigma = R^{(\beta
+    -\alpha)}$, AND IS CONSERVED. $R_{\rm outer}=300$ AU. DISC SCALEHEIGHT
+  AT 100 AU $H(100)=12.5$ AU
+
+  8) ADD IN DISCUSSION OF THE TIME TAKEN FOR EACH MODEL AND
+  SED-JUSTIFY SMALL NUMBER OF GRID. EACH MODEL (FOR ALL INCLINATIONS)
+  =** HOURS OF SUPERCOMPUTER TIME ON ** CORES
+     
+  9) WHAT ABOUT EFFECT OF VERTICAL WALL FOR LONGER PERIOD OBJECTS (NO
+  DUST SUBLIMATION) VERSUS SHORTER PERIOD AND CURVED WALL
+ 
+  10) PUT IN INNER BOUNDARY PICTURES
+  
+  11) SORT OUT PLACEMENT OF CLEARPAGE.
+
+  12) SORT RESULTS BIT ABOUT IRAC FLUX, THIS IS FROM REGIONS BEHIND
+  THE INNER EDGE SO WHY IS THE TREND REVERSED, IT IS NOT COMING FROM
+  THE OUTER FLARED REGIONS OF THE DISC BUT FROM JUST BEHIND THE PUFFED
+  UP INNER EGDE. THEREFORE, FOR LONGER PERIOD OBJECTS THE INNER EDGE
+  IS SMALLER AND THE DISC FLARED SO REGIONS JUST BEHIND CAN EMIT MORE
+  FLUX. FOR SHORTER PERIOD OBJECTS, THE INNER EDGE IS PUFFED UP AND
+  DOMINATES THE SED.
+
+  13) TO PROVE THE POINT ABOVE PRODUCE AN IMAGE BATCH  FILE TO PRODUCE
+  IMAGES FOR A TEST CASE I.E. CLOSE INNER EDGE DISTANT ONE ETC.
+
+  14) Add in reference to the Mike Meyer paper about changes due to
+  inner radius.
+
+15) Reference to bouy et al 2008 showing that the outer radius has a
+negligible effect
+
+16) IMAGES.
+
+17) Add in the Herschel filters.
+
+18) Disc mass fraction.
+
+19) IMF implications.
+
+20) ADD IN RHO OPH 102 STUFF- and add in comparison to stars without accretion
+
+21) Write in a bit about do we expect to see the correlation with
+rotation rate.
+
+22) Colours of 0.01Msol and 0.01Gyr models are very different.-REMOVE
+
+23) Notes abnout isong 200 pts for SEDS naked in consisitency checks
+used full resolution
+
+24) NOTE ABOUT THE FACT THAT 0.01Msol STARS ARE OFF THE BOTTOM OF SOME
+PLOTS AS THEY DIVE DOWN VERY ABRUPTLY.ASK ISABELLE ABOUT THIS
+
+25) Add in comments to mention that due to numerics some models have
+inner edges up to 100K above the 1700K mean dust sublimation temps.
+
+27) For detections add in piece about the overlapping stars i.e what
+would be missed.
+
+34) Note about r=300 but outer radius doesnt matter largey see bouy
+and vitell 2008 or something.
+
+   \end{abstract}
+
+\section{Conclusions}
+\label{conclusions}
+
+**THIS CLEARLY NEEDS REWRITING AFTER THE NEW DATA ARE ANALYSED**
+
+We have constructed a model grid of SEDs, and subsequently photometric
+magnitudes and colours, for actively accreting BDs with or without an
+associated accretion disc. We have modeled the photospheric flux from
+these BDs by adopting (and interpolating) the interior `DUSTY00'
+models of \cite{2000ApJ...542..464C} combined with the `AMES-Dusty',
+atmospheric models of \cite{2000ApJ...542..464C}. We have then assumed
+that accretion occurs from an inner edge of a magnetically truncated
+accretion disc (truncated at the co-rotation radius). The accretion
+flux is calculated using a simple blackbody emission, given the
+derivation of a characteristic spot effective temperature. SEDs were
+then produced for both naked BDs and BDD systems. For the BDD systems
+we have modeled the disc using the TORUS radiative transfer code using
+the Lucy radiative transfer algorithm and incorporating dust
+sublimation and including including a treatment of vertical
+hydrostatic equilibrium (see Section \ref{model} for a discussion of
+the code). To produce a `grid' of simulated systems we have varied
+several input parameters namely: stellar mass, stellar age, stellar
+rotation rate, accretion rate, the areal coverage of the accretion
+stream and the system inclination (the disc mass was fixed). The
+ranges of these variables were selected to represent and bound typical
+pre-MS BD systems, justification is provided using evidence from
+observational studies in Section \ref{par_space} and a final list of
+the values of these variables can be found in Table
+\ref{par_space_table}.
+
+Accepting our assumptions, parameter ranges and radiative transfer
+code our resulting simulated dataset has allowed us to qualitatively
+explore the effects of \emph{active} (current not past accretion)
+accretion, and disc presence, on both the SEDs, and photometric
+colours and magnitudes of these systems. This analysis (described in
+Section \ref{results}) has important implications in two main areas.
+
+\textbf{Effect of accretion and disc on derived parameters:}
+
+Firstly, as disc presence and active accretion change the
+characteristics of BD stars, both in terms of its spectrum and
+photometric magnitudes, they also, subsequently, imply changes in any
+derived parameters from these primary quantities.
+
+\textit{Age.}
+
+As discussed in Section \ref{results}, the SEDs of BD systems with
+typical accretion rates and associated discs, are changed significantly
+from the assumed underlying photospheric model flux, and therefore
+become difficult to classify. We have shown that derivation of an
+\emph{isochronal} (or photometric) age from our simulated photometry
+of a coeval BD sample, with typical accretion rates and associated
+circumstellar discs, would be inaccurate and exceedingly difficult. As
+discussed in Section \ref{results} this does not include any effects
+due to past accretion on the evolution of the central star, which acts
+to accelerate the gravitational contraction and make the star appear
+older \citep{1999MNRAS.310..360T,1999A&A...342..480S}, further
+scattering the apparent age of a coeval population.
+
+\textit{Mass, therefore IMF.}
+
+Concordantly, \emph{isochronal} derivations of mass and therefore
+IMFs, for our simulated photometry, of a coeval population of
+accreting BDs with associated discs, would be inaccurate and
+problematic. Again caused by the changes in the SEDs as a result of
+the accretion flux and increased occultation by the larger degree of
+flaring seen in BD discs \citep[for the latter, as found
+by][]{2004MNRAS.351..607W}
+
+\textit{Disc fraction-Spitzer best.}
+
+We have also qualitatively explored the effects of accretion and disc
+presence in our simulated dataset on disc fraction estimates.As is
+currently well known, longer wavelength bandpasses are much more
+reliable and suitable for disc identification. As shown in Section
+\ref{results} the naked and BDD disc loci were much more clearly
+separated in the CoCoD constructed using \textit{Spitzer} IRAC
+magnitudes than the shorter wavelength CIT \textit{JHK} passbands. In
+addition, we that the slope of the SED from 3.6 to 8.0$\mu$m, or
+$\alpha$ value, is an effective disc indicator. We have also
+tentatively shown that current observational cuts, when applied to our
+simulated photometry (with its associated photometric system), results
+in the reliable detection of disc candidates, for IRAC colours and
+$\alpha$ values, and therefore a robust lower limit disc fraction.
+
+\textbf{Effect of accretion and disc presence on emergent theories or
+  secondary parameters.}
+
+Secondly, the results of our simulated dataset have implications for
+secondary derived correlations and physical theories, which utilise
+the primary parameters discussed. It is clear that changes in derived
+ages and masses of a BD sample, due to typical accretion and disc
+presence, has serious implications in a range areas. Inaccuracies in
+age derivations for pre-MS populations are well known, especially for
+the BD mass regime. However, the combined effects of accretion and
+disc presence on BD SEDs, and therefore age and mass derivation, have
+not been previously explored. Therefore, some of the uncovered biases
+and problems in this paper may bring new light to a few areas of BD
+evolution.
+
+\textbf{`Imperfect' disc locking perhaps due to biases.}
+
+\textit{Disc timescales: Rotation rates affect disc detection as function of
+  wavelength.}
+
+Firstly, we have found a wavelength dependant bias of naked to BD disc
+loci separation within CoCoDs. As we have shown in Section
+\ref{results}, for shorter wavelength data (\textit{JHK}), objects
+with a longer period lie closer to the naked BD locus, with shorter
+period objects further removed. This bias is reversed for IRAC data,
+where shorter period objects lie closer to the naked locus (although
+still well separated) and longer period objects farther away, in
+colour-colour space. Whilst, for the longer wavelength
+\textit{Spitzer} data the clearer separation between the naked and BDD
+disc loci means that this bias may well be minimised (especially in
+regions without significant variable extinction), for shorter
+wavelength data these populations (naked and BDD disc) overlap. As
+disc excess cuts are usually placed empirically based on perceived
+paucity's in stellar density, within colour-colour space, this overlap
+and associated bias for \textit{JHK} data could lead to a significant
+bias in any sample of BD stars with an inferred discs. This wavelength
+dependant bias is essentially due to the change in inner radius of the
+circumstellar disc, as the wavelength of emitted flux is dependant on
+temperature and therefore radial position within the disc plane. For
+shorter periods the disc is truncated closer to the central star and
+the disc inner boundary intercepts more flux at all inclinations
+leading to a hotter inner wall and less incident flux on the outer
+flared edges of the disc. This means that for \textit{JHK} bandpasses,
+which are sensitive to flux from the inner boundary, shorter period
+objects appear more different to naked objects than longer, and
+therefore cooler inner boundary systems.
+
+The effect of this bias has not previously been accounted for in disc
+fraction, and therefore disc timescale derivation studies. Our model
+does not include angular momentum loss only changes in the disc inner
+radius through a disc locking mechanism (and subsequent dust
+sublimation). If disc-locking to a central star is true and slower
+rotators are therefore more likely to have associated discs, any
+correlation between disc presence and rotation rates will be weakened
+for \textit{JHK} data and strengthened for \textit{Spitzer} IRAC data
+due to the biases we observe, for BDs. These biases may well aid
+understanding of early claims for a weaker or `imperfect' disc locking
+mechanism for lower mass stars. The use of \textit{JHK} magnitudes
+would lead to a less clear correlation between slow rotators and disc
+presence for a BD sample.
+
+These biases may also apply to higher mass objects, as would be
+expected albeit at a weaker level due to the less significant flaring
+seen in the circumstellar disc of TTS. This, in turn, may explain
+early difficulties in finding any correlation between rotation rate
+and disc presence \citep[amongst other issues such as non-coevality,
+see][for discussion]{2007prpl.conf..297H}. Once data at longer
+wavelengths was used this correlation was found
+\citep{2007ApJ...671..605C}, which may have been enhanced by the
+revealed bias. It is important to note however, that this bias is not
+strong enough (given the clear separation of our simulated naked and
+BDD disc systems in IRAC colour-colour space) to cast any
+doubt over this result.  Finally, as we have stated inner holes in
+circumstellar disc may well be created by other period-independent
+mechanisms such as clearing from gas accretion onto a planet or due to
+photoevaporation from UV flux, the latter of which would be increased
+at high accretion rates, which we have not included.
+
+\textbf{Accretion rate to mass relationship in doubt for BD regime.}
+
+\textit{Mass to accretion rate relationship-high accretors of low mass
+  missed-literature high mass low accretors missed.}
+
+The second area which this study impacts on, and perhaps most
+significantly, is the recent evidence for a stellar mass to accretion
+rate correlation, of the form: $\dot{M_{acc}}\propto M_{*}^{~2}$
+\citep{2003ApJ...592..266M,2004A&A...424..603N,2006A&A...452..245N}.
+This relationship has been extended into the BD mass regime in
+\cite{2006A&A...452..245N}. However, arguments based on selection and
+detection thresholds have already cast this relation into doubt
+\citep{2006MNRAS.370L..10C}. As we have shown in Section \ref{results}
+a relationship of this kind is self-reinforcing as lower mass objects
+with higher accretion rates have little chance of being correctly
+identified as such due to both the accretion flux and flared
+associated disc. Essentially, at present it is unclear how many BD
+stars are not included in this relationship due to misidentification.
+As explained in \cite{2004MNRAS.351..607W}, BD systems with a disc,
+without including accretion effects, can have the characteristics of
+higher mass CTTS stars, due to increased disc flaring from a reduced
+surface gravity in the disc. The effects of accretion at typical or
+larger rates further exacerbate the situation both spectroscopically,
+as the photospheric flux essentially becomes swamped or completely
+veiled, and photometrically as the resulting colours and magnitudes
+are significantly shifted. Therefore, for our simulated dataset a
+relationship of this sort may well be derived, if typical methods are
+used to identify BD objects with discs and derive masses, ages and
+accretion rates, even though it is not present.
+
+\textbf{Link to deriving accretion rates-paper II}.
+
+This work has argued qualitatively, largely using positions within
+CMDs or CoCoDs, highlighting problems with the proposed stellar mass
+to accretion rate relationship. A further quantitative examination of
+methods used to derive accretion rates and their results when applied
+to our simulated dataset is certainly required, ***and this will be
+the subject of a future publication***, to confirm our conjectures.
+
+\textbf{SUMMARY}
+
+**WRITE AT THE VERY END**
+
+In summary, our simulated dataset shows that for typical parameter
+ranges for BD stars and BDD systems, disc presence and accretion flux
+lead to:
+
+Difficulty deriving the following stellar parameters for a coeval population:
+\begin{itemize}
+\item{Isochronal ages}
+\item{Isochronal masses}
+\item{IMFs}
+\end{itemize}
+
+And we have shown:
+\begin{itemize}
+\item{\textit{Spitzer} IRAC magnitudes are required for reliable disc
+    identification}
+\item{A correlation between naked to BDD disc system separation (in a
+    CoCoD, as a function of wavelength.}
+\item{Low mass, high accretion rate systems are likely to be
+    misidentified and therefore not included in any study relating
+    $M_*\propto\dot{M}$}
+\end{itemize}
