@@ -71,7 +71,7 @@ contains
     call writeBanner("Grid setup parameters","*",TRIVIAL)
 
     call getLogical("splitovermpi", splitOverMPI, cLine, nLines, &
-         "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .true.)
+         "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
     call getLogical("readgrid", readGrid, cLine, nLines, &
@@ -193,6 +193,9 @@ contains
     logical :: ok
 
     select case(geometry)
+       case("fogel")
+       call getString("asciifile", textFilename, cLine, nLines, &
+            "Ascii file for abundance data: ","(a,a,a)","none", ok, .true.)
        case("clumpyagb")
           call getReal("rinner", rinner, real(rsol/1.e10), cLine, nLines, &
                "Inner radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
@@ -232,10 +235,10 @@ contains
          "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("mindepthamr", minDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
-         & "(a,i3,a)",5,ok,.true.)
+         & "(a,i3,a)",5,ok,.false.)
 
     call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Maximum cell depth of AMR grid: ", &
-         & "(a,i3,a)",31,ok,.true.)
+         & "(a,i3,a)",31,ok,.false.)
 
     call getReal("amrgridsize", amrGridSize, 1., cLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
@@ -314,6 +317,7 @@ contains
                "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
           if (writeoutput) write(*,*)
        enddo
+       call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
 
   end subroutine readDustPhysicsParameters
 
@@ -406,15 +410,15 @@ contains
        call getLogical("quasi", quasi, cLine, nLines, &
                "Use Quasirandom numbers: ","(a,1l,a)", .false., ok, .false.)
        call getReal("tolerance", tolerance, 1., cLine, nLines, &
-            "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+            "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .false.)
        call getReal("vturb", vturb, real(kmstoc), cLine, nLines, &
-            "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .true.)
+            "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .false.)
        call getLogical("noturb", noturb, cLine, nLines, &
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, nLines, &
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
        call getReal("molAbundance", molAbundance, 1., cLine, nLines, &
-            "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .true.)
+            "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .false.)
        call getLogical("isinlte", isinlte, cLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, 1., cLine, nLines, &
@@ -428,7 +432,7 @@ contains
             "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)
 
        call getLogical("useDust", useDust, cLine, nLines, &
-            "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
+            "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .false.)
 
        if(doCOchemistry) then
 
@@ -545,11 +549,11 @@ contains
     call getInteger("nv", nv, cLine, nLines, &
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
     call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
-         "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .true.)
+         "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
     call getInteger("itrans", itrans, cLine, nLines, &
          "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
     call getReal("beamsize", beamsize, 1., cLine, nLines, &
-         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .true.)
+         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
     call getDouble("rotateviewaboutx", rotateViewAboutX, 1.d0, cLine, nLines, &
          "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
     call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, nLines, &

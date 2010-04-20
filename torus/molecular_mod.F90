@@ -2001,7 +2001,7 @@ end subroutine molecularLoop
 
 !!!!READ ROUTINES!!!!
 
- subroutine calculateMoleculeSpectrum(grid, thisMolecule)
+ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
    use input_variables, only : itrans, nSubpixels, observerpos
    use image_mod, only: deleteFitsFile
 
@@ -2014,6 +2014,7 @@ end subroutine molecularLoop
    type(VECTOR) :: unitvec, observerVec, centrevec, viewvec, imagebasis(2)
    type(DATACUBE) ::  cube
 
+   character(len=*), optional :: dataCubeFilename
    character (len=80) :: filename, message
    integer :: status
 
@@ -2131,6 +2132,9 @@ end subroutine molecularLoop
         endif
      else
         write(filename, *) 'MolRT.fits' ! can be changed to a variable name someday
+        if (PRESENT(dataCubeFilename)) then
+           filename = dataCubeFilename
+        endif
      endif
 
 
@@ -4819,7 +4823,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         end if
 
         dsvector = ds * direction
-
         do i = 2, nTau 
            
            thisPosition = thisPosition + dsvector
@@ -4833,6 +4836,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
            dv = (thisVel .dot. direction) - deltaV
          
            phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+
 
            if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid, thisoctal, subcell) / &
@@ -5795,9 +5799,9 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
         open(139,file="avgChange.dat",status="replace",form="formatted")
         open(140,file="avgRMSChange.dat",status="replace",form="formatted")
         open(141,file="tau.dat",status="replace",form="formatted")
-        open(142,file="criticaldensities.dat",status="replace",form="formatted")
-        open(999,file="tempcheck.dat",status="replace",form="formatted")
-        close(999)
+!        open(142,file="criticaldensities.dat",status="replace",form="formatted")
+!        open(999,file="tempcheck.dat",status="replace",form="formatted")
+!        close(999)
         close(139)
         close(140)
         close(141)

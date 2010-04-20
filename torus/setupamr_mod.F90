@@ -33,7 +33,7 @@ contains
     use input_variables, only : nDustType, nLambda, lambdaSmooth, variableDustSublimation
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax
+    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
 #ifdef MPI 
@@ -54,6 +54,8 @@ contains
     character(len=80) :: message
     integer :: j, ismoothLam
     integer :: nVoxels, nOctals
+
+    call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
     totalmass = 0.
     flatspec = .true.
@@ -86,7 +88,7 @@ contains
 
        case("fogel")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
-          call setupFogel(grid, "harries_e0p1.dat", "HCN")
+          call setupFogel(grid, textFilename, "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
@@ -279,6 +281,7 @@ contains
     logical :: gridConverged
 
     rinner = 5.*autocm/1.d10
+    grid%rinner = rinner
     router = 400.*autocm/1.d10
     allocate(r(maxR), nz(maxR), z(maxR, maxZ), rho(maxR, maxZ), &
          t(maxR,maxZ), abundance(maxR,maxZ))
@@ -363,7 +366,7 @@ contains
     call fillGridFogel(grid%octreeRoot, grid, r, z, nr, nz, rho, t, abundance)
 
     call writeVtkFile(grid, "fogel.vtk",  valueTypeString=(/"rho         ",&
-         "temperature ","molabundance"/))
+         "temperature ","molabundance","microturb   ","velocity    "/))
 
   end subroutine setupFogel
 
@@ -487,10 +490,13 @@ contains
                 end do
              else
 
+                Mcore = 0.5d0 * mSol
                 rVec = subcellCentre(thisOctal, subcell)
                 thisR = sqrt(rVec%x**2 + rVec%y**2)
                 thisZ = abs(rVec%z)
 
+                thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
+                CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
                 outsideGrid = .false.
 
                 if ((thisR < r(1)).or.(thisR > r(nr))) outsideGrid = .true.
@@ -501,8 +507,8 @@ contains
 
                 thisOctal%rho(subcell) = 1.d-25
                 thisOctal%temperature(subcell) = 3.d0
-                thisOctal%molAbundance(subcell) = 1.d-20
-                thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+                thisOctal%molAbundance(subcell) = 1.d-28
+                thisOctal%microTurb(subcell) = 1.d-8
                 if (.not.outsideGrid) then
                    call locate(z(j,1:nz(j)), nz(j), thisZ, k1)
                    call locate(z(j+1,1:nz(j+1)), nz(j+1), thisZ, k2)
@@ -530,15 +536,12 @@ contains
                    thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
                         / (28.0 * amu)) + 0.3**2) &
                         / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-                   mcore = 0.5d0 * mSol
-                   thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
                    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
 
                    thisOctal%molAbundance(subcell) = thisOctal%molAbundance(subcell) * 2.d0
-                   if (subcell == 1) CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
                 endif
-                thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
 
+                thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
              endif
           enddo
         end subroutine fillGridFogel

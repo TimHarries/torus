@@ -716,7 +716,7 @@ contains
     integer :: i
     character(len=100) :: message
 
-    dv = (vMax - vMin) / dble(cube%nv)
+    dv = (vMax - vMin) / dble(cube%nv-1)
 
     write(message, '(a,f9.4,a)') "Velocity pixel resolution: ", dv, " km/s"
     call writeinfo(message,TRIVIAL)

@@ -469,7 +469,6 @@ contains
                           real(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
                   endif
                case("velocity")
-                  if (thisOctal%threed) then
                      ! stop vectors from showing up in visit if too big
                      if(thisoctal%velocity(subcell)%x .ge. 1.d0) then
                         thisoctal%velocity(subcell)%x = 0.d0
@@ -479,10 +478,6 @@ contains
                      write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
                           real(thisOctal%velocity(subcell)%y*cspeed/1.e5), &
                           real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
-                  else
-                     write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
-                           real(thisOctal%velocity(subcell)%z*cspeed/1.e5), 0.
-                     endif
               case("cornervel")
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
@@ -536,6 +531,10 @@ contains
 
                case("chiline")
                   write(lunit, *) max( real(thisOctal%chiline(subcell)), min_single_prec )
+
+
+               case("microturb")
+                  write(lunit, *) max( real(thisOctal%microturb(subcell)), min_single_prec )
 
                case("etaline")
                   write(lunit, *) max ( real(thisOctal%etaline(subcell)), min_single_prec )

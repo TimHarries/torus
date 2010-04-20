@@ -16,13 +16,14 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization
+    use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization, molecular
     use molecular_mod
     use modelatom_mod
     use source_mod
     type(GRIDTYPE) :: grid
 
     if (molecularPhysics) then
+       molecular = .true.
        call readMolecule(globalMolecule, moleculefile)
     endif
 
@@ -100,7 +101,7 @@ contains
     use dust_mod
     use modelatom_mod, only : globalAtomArray
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
-    use input_variables, only : dustPhysics
+    use input_variables, only : dustPhysics, lowmemory
     use input_variables, only : statisticalEquilibrium, nAtom
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
@@ -118,9 +119,16 @@ contains
     integer, parameter :: nMuMie = 20
     type(GRIDTYPE) :: grid
 
-!    if (molecularPhysics) then
-!       call setupMolecule(thisMolecule)
-!    endif
+    if (molecularPhysics.and.statisticalEquilibrium) then
+       if (dustPhysics) then
+          call setupXarray(grid, xarray, nLambda)
+          call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+          usedust = .true.
+          realdust = .true.
+       endif
+       lowMemory = .false.
+       call molecularLoopV2(grid, globalMolecule)
+    endif
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
@@ -185,6 +193,19 @@ contains
      integer :: nCurrent, nt, i
      real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
      if (associated(xarray)) deallocate(xarray)
+     if (molecularPhysics) then
+        nLambda = 100
+        allocate(xarray(1:nLambda))
+        lamStart = 1200.d0
+        lamEnd = 1.d7
+        logLamStart = log10(lamStart)
+        logLamEnd = log10(lamEnd)
+        do i = 1, nlambda
+           fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+           fac = 10.**fac
+           xArray(i) = fac
+        enddo
+     endif
 
      if (dustPhysics) then
         nLambda = 1000
@@ -238,7 +259,7 @@ contains
      use input_variables, only : inputNsource
      type(GRIDTYPE) :: grid
 
-     call writeBanner("Source setup","-",TRIVIAL)
+     if (inputNsource > 0 ) call writeBanner("Source setup","-",TRIVIAL)
      if (inputNsource > 0) then
         globalnSource = inputNSource
         allocate(globalsourceArray(1:globalnSource))
