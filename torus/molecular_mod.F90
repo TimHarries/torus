@@ -1638,14 +1638,13 @@ end subroutine molecularLoop
 
         phids(1:nRay) = tempphi(1:nray) * tempds(1:nray)
         temptauArray(1:nRay) = alpha * hCgsOverFourPi * phids(1:nRay)
-        write(*,*) temptauarray(1:nray)
-        if (any(temptauarray < -1.d0)) then
-           write(*,*) tempTauArray(1:nray)
-           write(*,*) phids(1:nray)
-           write(*,*) "alpha ",alpha,alphanuBase
-           write(*,*) "nlower, nupper ",nlower, nupper
-           stop
-        endif
+!        if (any(temptauarray < -1.d0)) then
+!           write(*,*) tempTauArray(1:nray)
+!           write(*,*) phids(1:nray)
+!           write(*,*) "alpha ",alpha,alphanuBase
+!           write(*,*) "nlower, nupper ",nlower, nupper
+!           stop
+!        endif
         opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
 
         jBarExternalArray(1:nRay) = i0(1:nRay) * opticaldepthArray(1:nRay) * tempphi(1:nRay)
