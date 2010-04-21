@@ -6,7 +6,7 @@ readgrid F
 writegrid F
 mindepthamr 5
 maxdepthamr 31
-molecularPhysics T
+molecularphysics T
 
 ! molecular stuff
 molecular T
