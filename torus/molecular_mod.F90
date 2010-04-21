@@ -109,6 +109,11 @@ module molecular_mod
      logical :: preprocess2 = .true.
      integer :: maxnCollTrans, maxnCollTemps
 
+     if (trim(molFilename) == "hco_benchmark.mol") then
+        call readBenchmarkMolecule(thisMolecule, molFilename)
+        goto 666
+     endif
+
      thisMolecule%abundance = molAbundance ! fixed at benchmark value here
 
        do while(preprocess2)
@@ -236,6 +241,7 @@ module molecular_mod
      enddo
 
      call writeInfo("Done.", IMPORTANT)
+666 continue
    end subroutine readMolecule
 
    subroutine parseCollisionPartner(cstring, iPart, thisMolecule)
@@ -606,7 +612,8 @@ module molecular_mod
               thisoctal%newmolecularlevel(1:maxlevel,1:thisoctal%maxchildren) = temparray(1:maxlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%newmolecularlevel(maxlevel,1:thisoctal%maxchildren))
-              thisoctal%newmolecularlevel(1:maxlevel,1:thisOctal%maxChildren) = thisoctal%molecularlevel(1:maxlevel,1:thisOctal%maxChildren)
+              thisoctal%newmolecularlevel(1:maxlevel,1:thisOctal%maxChildren) = &
+                   thisoctal%molecularlevel(1:maxlevel,1:thisOctal%maxChildren)
            endif
 
            if(associated(thisOctal%oldmolecularlevel)) then
@@ -617,7 +624,8 @@ module molecular_mod
               thisoctal%oldmolecularlevel(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%oldmolecularlevel(minlevel,1:thisoctal%maxchildren))
-              thisoctal%oldmolecularlevel(1:minlevel,1:thisOctal%maxChildren) = thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
+              thisoctal%oldmolecularlevel(1:minlevel,1:thisOctal%maxChildren) = &
+                   thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
            endif
 
            if(associated(thisOctal%oldestmolecularlevel)) then
@@ -628,7 +636,8 @@ module molecular_mod
               thisoctal%oldestmolecularlevel(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%oldestmolecularlevel(minlevel,1:thisoctal%maxchildren))
-              thisoctal%oldestmolecularlevel(1:minlevel,1:thisOctal%maxChildren) = thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
+              thisoctal%oldestmolecularlevel(1:minlevel,1:thisOctal%maxChildren) = &
+                   thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
            endif
 
            if(associated(thisOctal%tau)) then

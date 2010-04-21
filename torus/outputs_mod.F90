@@ -14,15 +14,21 @@ contains
     use input_variables, only : useDust, realdust
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
-    use input_variables, only : imageFilename, calcImage, molecularPhysics
+    use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage
     use photoionAMR_mod, only : createImageSplitGrid
-    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename
+    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
     use phasematrix_mod
-
+    use phaseloop_mod, only : do_phaseloop
+    use surface_mod, only : surfacetype
+    use disc_class, only : alpha_disc
+    use blob_mod, only : blobtype
+    type(BLOBTYPE) :: tblob(1)
     real(double) :: totalFlux
+    type(SURFACETYPE) :: tsurface
+    type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
     type(VECTOR) :: viewVec, observerDirection
     real, pointer :: xArray(:)
@@ -30,7 +36,9 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     integer :: i
-    
+    character(len=80) :: tstring
+    type(VECTOR) :: tvec(1)
+
     call writeBanner("Creating outputs","-",TRIVIAL)
 
     viewVec = VECTOR(-1.d0, 0.d0, 0.d0)
@@ -69,6 +77,18 @@ contains
        endif
 !        call photoionChemistry(grid, grid%octreeRoot)
        call calculateMoleculeSpectrum(grid, globalMolecule, dataCubeFilename)
+    endif
+
+    if (dustPhysics.and.(calcspectrum.or.calcimage)) then
+       mie = .true.
+       call setupXarray(grid, xarray, nLambda)
+       call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       
+       call do_phaseloop(grid, .true., 0., 0., 0.,  &
+            0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+            tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+            0., 0, .false., 0., 100000, &
+            miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
     endif
 
   end subroutine doOutputs

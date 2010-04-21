@@ -65,7 +65,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
-    use input_variables, only : nlucy, taudiff, thisinclination !, smoothFactor
+    use input_variables, only : nlucy, taudiff
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use gridio_mod, only: readAmrGrid, writeAmrGrid
     use ion_mod, only: addXsectionArray
@@ -102,7 +102,7 @@ contains
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
-    type(VECTOR) :: octVec, observerdirection
+    type(VECTOR) :: octVec
     real(double) :: r
     integer :: ilam
     integer :: nInf
@@ -713,8 +713,6 @@ end if ! (my_rank /= 0)
     call writeAmrGrid(lucyfileout,.false.,grid)
  endif
 
- observerDirection = VECTOR(dble(sin(thisinclination)), 0.d0, dble(cos(thisinclination)))
- call writeMultiImages(grid, nSource, source, observerDirection)
 
 end subroutine photoIonizationloop
 

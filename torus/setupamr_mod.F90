@@ -197,7 +197,7 @@ contains
              do
                 gridConverged = .true.
                 ! The following is Tim's replacement for soomthAMRgrid.
-                call myScaleSmooth(smoothFactor, grid, &
+                call myScaleSmooth(3., grid, &
                      gridConverged,  inheritProps = .false., &
                      interpProps = .false.,  &
                      stellar_cluster=young_cluster, romData=romData)
@@ -267,6 +267,16 @@ contains
 
        call writeVTKfile(grid, "rho.vtk")
     endif
+#ifdef MPI
+        if (grid%splitOverMPI) then
+           call grid_info_mpi(grid, "info_grid.dat")
+        else
+           if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+        endif
+#else
+        if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+#endif
+
   end subroutine setupamrgrid
 
   subroutine setupFogel(grid, filename, speciesName)

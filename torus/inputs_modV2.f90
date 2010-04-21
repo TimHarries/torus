@@ -100,7 +100,7 @@ contains
          "Include atomic physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("molecularphysics", molecularPhysics, cLine, nLines, &
-         "Include atomic physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Include molecular physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("photoionphysics", photoionPhysics, cLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -211,6 +211,29 @@ contains
 
           call getReal("mdot", mdot, real(mSol) /( 365.25 * 24. * 3600.),  cLine, nLines, &
                "Mass-loss rate (solar masses per year): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+
+       case("benchmark")
+          call getReal("rcore", rCore, real(rsol/1.e10), cLine, nLines, &
+               "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, real(autocm/1.e10), cLine, nLines, &
+            "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, real(autocm/1.e10), cLine, nLines, &
+            "Outer Radius (AU): ","(a,f8.2,a)", 20., ok, .true.)
+
+       call getReal("height", height, real(autocm/1.e10), cLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("rho", rho, 1., cLine, nLines, &
+            "Density: ","(a,e12.5,a)", 1., ok, .true.)
+
+    case("molebench")
+          call getReal("rinner", rInner, 1., cLine, nLines, &
+               "Inner Radius for dumpresults (10^10cm): ","(a,f5.1,a)", 1e4, ok, .true.)
+
+          call getReal("router", rOuter, 1., cLine, nLines, &
+               "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
 
 
     end select
@@ -518,6 +541,16 @@ contains
   subroutine readRadiativeEquilibriumParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+    call getReal("taudiff", tauDiff, 1., cLine, nLines, &
+         "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
+
+    call getReal("tauforce", tauForce, 1., cLine, nLines, &
+         "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
+
+       call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
+            "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+
   end subroutine readRadiativeEquilibriumParameters
 
   subroutine readPhotoionEquilibriumParameters(cLine, nLines)

@@ -1,3 +1,4 @@
+debug T
 writeoutput T
 
 geometry molebench
@@ -7,6 +8,8 @@ writegrid F
 mindepthamr 5
 maxdepthamr 31
 molecularphysics T
+
+stateq T
 
 ! molecular stuff
 molecular T
