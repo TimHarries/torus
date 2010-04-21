@@ -509,7 +509,6 @@ module molecular_mod
                     thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
                  else
                     thisOctal%molecularLevel(:,subcell) = 1.d-20               
-                    endif
                  endif
               endif
                             
@@ -571,8 +570,8 @@ module molecular_mod
               thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
            
    
+           endif
         endif
-        
      enddo
      
    end subroutine allocateMolecularLevels
@@ -607,7 +606,7 @@ module molecular_mod
               thisoctal%newmolecularlevel(1:maxlevel,1:thisoctal%maxchildren) = temparray(1:maxlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%newmolecularlevel(maxlevel,1:thisoctal%maxchildren))
-              thisoctal%newmolecularlevel(1:maxlevel,subcell) = thisoctal%molecularlevel(1:maxlevel,subcell)
+              thisoctal%newmolecularlevel(1:maxlevel,1:thisOctal%maxChildren) = thisoctal%molecularlevel(1:maxlevel,1:thisOctal%maxChildren)
            endif
 
            if(associated(thisOctal%oldmolecularlevel)) then
@@ -618,7 +617,7 @@ module molecular_mod
               thisoctal%oldmolecularlevel(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%oldmolecularlevel(minlevel,1:thisoctal%maxchildren))
-              thisoctal%oldmolecularlevel(1:minlevel,subcell) = thisoctal%molecularlevel(1:minlevel,subcell)
+              thisoctal%oldmolecularlevel(1:minlevel,1:thisOctal%maxChildren) = thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
            endif
 
            if(associated(thisOctal%oldestmolecularlevel)) then
@@ -629,7 +628,7 @@ module molecular_mod
               thisoctal%oldestmolecularlevel(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%oldestmolecularlevel(minlevel,1:thisoctal%maxchildren))
-              thisoctal%oldestmolecularlevel(1:minlevel,subcell) = thisoctal%molecularlevel(1:minlevel,subcell)
+              thisoctal%oldestmolecularlevel(1:minlevel,1:thisOctal%maxChildren) = thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
            endif
 
            if(associated(thisOctal%tau)) then
@@ -1586,7 +1585,9 @@ end subroutine molecularLoop
 
      alphanuBase =(nLower * thisMolecule%einsteinBlu(iTrans) - &
                   nUpper * thisMolecule%einsteinBul(iTrans))
-
+!     write(*,*) "alpha ",alphanubase, nlower, nupper, nmol, thisOctal%molabundance(subcell), thisOctal%nh2(subcell), &
+!          thisOctal%temperature(subcell), thisOCtal%rho(subcell), npops(ilower),npops(iupper), thisOctal%molecularLevel(ilower,subcell), &
+!          thisOctal%molecularLevel(iupper,subcell)
      if(useDust) then
         call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
 
