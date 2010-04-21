@@ -346,7 +346,7 @@ module molecular_mod
      use sph_data_class, only: Clusterparameter
      use input_variables, only : vturb, restart, isinLTE, &
           addnewmoldata, plotlevels, setmaxlevel, doCOchemistry, x_d, &
-          molAbundance
+          molAbundance, constantAbundance
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -388,7 +388,7 @@ module molecular_mod
            end do
         else
 
-           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 
            if (.not.associated(thisOctal%nh2)) allocate(thisOctal%nh2(1:thisOctal%maxChildren))
            thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
@@ -487,105 +487,89 @@ module molecular_mod
                  firsttime2 = .false.
               endif
 
-              if (.not.associated(thisOctal%departcoeff)) then
+              if (.not.associated(thisOctal%departcoeff)) &
                  allocate(thisOctal%departcoeff(1:5,1:thisOctal%maxChildren))
                                  
-                 do isubcell = 1, thisoctal%maxchildren
+              call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), levelpops(1:5))
+              do i = 1, 5
+                 thisoctal%departcoeff(i,subcell) = max(levelpops(i),1d-30)
+              enddo
+              thisoctal%departcoeff(1:5,subcell) = 1.d0 / thisoctal%departcoeff(1:5,subcell)
 
-                    call LTEpops(thisMolecule, dble(thisOctal%temperature(isubcell)), levelpops(1:5))
-                    do i = 1, 5
-                       thisoctal%departcoeff(i,isubcell) = max(levelpops(i),1d-30)
-                    enddo
-                    thisoctal%departcoeff(1:5,isubcell) = 1.d0 / thisoctal%departcoeff(1:5,isubcell)
-                 enddo
-              endif
-
-              if (.not.associated(thisOctal%molecularLevel)) then
-
+              if (.not.associated(thisOctal%molecularLevel)) &
                  allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
-                 if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
-                    thisOctal%molecularLevel(1,:) = 1.0
-                    thisOctal%molecularLevel(2,:) = 0.0000
-                 else
-                    do isubcell = 1, thisoctal%maxchildren 
-                       if(inlte) then
-                          call LTEpops(thisMolecule, dble(thisOctal%temperature(isubcell)), &
-                                       levelpops(1:maxlevel))
-                          thisOctal%molecularLevel(1:maxlevel,isubcell) = levelpops(1:maxlevel)
-!                          write(39,*) dble(thisOctal%temperature(isubcell)), thisOctal%molecularLevel(1:2,isubcell)
-                       else
-                          thisOctal%molecularLevel(:,isubcell) = 1.d-20               
-                       endif
 
-                    enddo
+              if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
+                 thisOctal%molecularLevel(1,:) = 1.0
+                 thisOctal%molecularLevel(2,:) = 0.0000
+              else
+                 if(inlte) then
+                    call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
+                         levelpops(1:maxlevel))
+                    thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
+                 else
+                    thisOctal%molecularLevel(:,subcell) = 1.d-20               
+                    endif
                  endif
               endif
                             
-              if (.not.associated(thisOctal%bnu)) then
+              if (.not.associated(thisOctal%bnu)) &
                  allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
                  
-                 do isubcell = 1, thisoctal%maxchildren
-                    do i = 1, maxtrans
-                       thisOctal%bnu(i,isubcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(isubcell)))
-                    enddo
-                 enddo
-              endif
+              do i = 1, maxtrans
+                 thisOctal%bnu(i,subcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
+              enddo
 
-              if (.not.associated(thisOctal%jnu)) then
+              if (.not.associated(thisOctal%jnu)) &
                  allocate(thisOctal%jnu(1:maxtrans,1:thisOctal%maxChildren))
 
-                 if(inlte) then
-                    thisOctal%jnu(:,:) = thisoctal%bnu(:,:)
-                 else
-                    thisOctal%jnu(:,:) = 1.d-20 
-                 endif                 
+
+              if(inlte) then
+                 thisOctal%jnu(:,subcell) = thisoctal%bnu(:,subcell)
+              else
+                 thisOctal%jnu(:,subcell) = 1.d-20 
               endif
               
               if (.not.associated(thisOctal%molAbundance)) then
                  allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
-                 thisOctal%molAbundance = molAbundance
               endif
+              if (constantAbundance) thisOctal%molAbundance = molAbundance
 
               if(doCOchemistry) then
-                 do isubcell = 1, thisoctal%maxchildren
-                    if(thisOctal%nh2(isubcell) .gt. 3e4 .and. &
-                       thisOctal%temperature(isubcell) .lt. 30.) thisOctal%molAbundance(isubcell) = x_D ! drop fraction
-                 enddo
+                    if(thisOctal%nh2(subcell) .gt. 3e4 .and. &
+                       thisOctal%temperature(subcell) .lt. 30.) thisOctal%molAbundance(subcell) = x_D ! drop fraction
               else
-                 thisOctal%molAbundance(:) = thisMolecule%abundance
+                 if (constantAbundance) then
+                    thisOctal%molAbundance(:) = thisMolecule%abundance
+                 endif
               endif
 
               if (.not.associated(thisOctal%microturb)) then
                  allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-                 thisOctal%microturb = vturb
               endif
+              
+              thisOctal%microturb(subcell) = vturb
 
-              if(any(thisoctal%microturb(:) .le. 1d-20)) then
-                 do isubcell = 1,thisoctal%maxchildren
-                    if(.not. molebench) thisOctal%microturb(isubcell) = &
-                         max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(isubcell) / &
-                         (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
-              ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
-                 enddo
+              if(thisoctal%microturb(subcell) .le. 1d-20) then
+                 if(.not. molebench) thisOctal%microturb(subcell) = &
+                      max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+                      (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
+                 ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
               endif
-           endif
            
-           if(associated(thisoctal%temperaturedust) .and. associated(thisoctal%temperaturegas)) then
-              if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
-                 deallocate(thisoctal%temperaturedust)
-                 deallocate(thisoctal%temperaturegas)
+              if(associated(thisoctal%temperaturedust) .and. associated(thisoctal%temperaturegas)) then
+                 if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
+                    deallocate(thisoctal%temperaturedust)
+                    deallocate(thisoctal%temperaturegas)
+                 endif
               endif
-           endif
            
-           if (.not.associated(thisOctal%molmicroturb)) then
-              allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
-           endif
+              if (.not.associated(thisOctal%molmicroturb)) then
+                 allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
+              endif
            
-           thisOctal%molmicroturb(:) = 1.d0 / thisOctal%microturb(:)
+              thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
            
-           do isubcell=1,thisoctal%maxchildren
-              deptharray(thisoctal%ndepth + 1) = deptharray(thisoctal%ndepth + 1) + 1
-           enddo
    
         endif
         
@@ -614,7 +598,7 @@ module molecular_mod
            end do
         else
 
-           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 
            if(associated(thisOctal%newmolecularlevel)) then
               temparray(1:maxlevel,1:thisoctal%maxchildren) = thisoctal%newmolecularlevel(1:maxlevel,1:thisoctal%maxchildren)
@@ -726,7 +710,7 @@ module molecular_mod
            end do
         else
 
-           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 
            if(deallocateeverything) then
               if(.not. (densitysubsample .and. associated(thisoctal%cornerrho))) deallocate(thisoctal%cornerrho)
@@ -884,9 +868,6 @@ module molecular_mod
       call writeinfo("Allocating and initialising molecular levels", FORINFO)
       call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
-      do i = 1, 50
-         wrIte(1003,*) i, deptharray(i)
-      enddo
 
 
 !      if(plotlevels .and. molcluster .and. myrankiszero) then
@@ -1657,6 +1638,14 @@ end subroutine molecularLoop
 
         phids(1:nRay) = tempphi(1:nray) * tempds(1:nray)
         temptauArray(1:nRay) = alpha * hCgsOverFourPi * phids(1:nRay)
+        write(*,*) temptauarray(1:nray)
+        if (any(temptauarray < -1.d0)) then
+           write(*,*) tempTauArray(1:nray)
+           write(*,*) phids(1:nray)
+           write(*,*) "alpha ",alpha,alphanuBase
+           write(*,*) "nlower, nupper ",nlower, nupper
+           stop
+        endif
         opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
 
         jBarExternalArray(1:nRay) = i0(1:nRay) * opticaldepthArray(1:nRay) * tempphi(1:nRay)
@@ -3183,7 +3172,7 @@ end subroutine molecularLoop
            end do
         else
 
-           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
            
 !           if(grid%geometry .eq. "iras04158") then
               
@@ -3402,7 +3391,7 @@ end subroutine molecularLoop
      iter = grand_iter
 
      write(resultfile,'(a,I7.7)') "results.", nRay
-     write(resultfile2,'(a,I2)') "fracChangeGraph.", iter
+     write(resultfile2,'(a,I2.2)') "fracChangeGraph.", iter
 
      open(31,file=resultfile,status="unknown",form="formatted")
      open(310,file='results.dat',status="unknown",form="formatted")
@@ -3514,7 +3503,7 @@ end subroutine molecularLoop
      real(double) :: mollevels(nlevels)
      integer :: maxinterestinglevel, nVoxel
      integer, save :: icount = 0
-     real(double) :: maxtemp = 0.d0
+     real(double) :: maxtemp = 0.d0, minTemp = 1.d30
      character(len = 80) :: message
      logical :: lte
      logical, save :: done = .false.
@@ -3535,6 +3524,7 @@ end subroutine molecularLoop
 
            if (lte) then
               maxtemp = max(real(maxtemp), thisOctal%temperature(subcell))     
+              mintemp = min(real(mintemp), thisOctal%temperature(subcell))     
            else
               mollevels(:) = max(mollevels(:), thisoctal%molecularlevel(1:nlevels,subcell))
            endif
@@ -3546,6 +3536,8 @@ end subroutine molecularLoop
      if(icount .eq. nVoxel .and. .not. done) then
 
         write(message, *)  "Maximum Global Temperature", maxtemp
+        call writeinfo(message, FORINFO)
+        write(message, *)  "Minumum Global Temperature", mintemp
         call writeinfo(message, FORINFO)
 
         if (lte) call LTEpops(thisMolecule, maxtemp, mollevels(1:thisMolecule%nlevels))
@@ -4770,7 +4762,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
            etaline = nmol * etaline
         else
            if (.not.associated(thisOctal%molCellParam)) then
-              write(*,*) myrankGlobal," bug ", currentPosition, inOctal(thisOctal,currentPosition), thisOctal%mpiThread(subcell)
+              write(*,*) myrankGlobal," bug ", currentPosition, inOctal(thisOctal,currentPosition), thisOctal%mpiThread(subcell), &
+                   subcell
               stop
            endif
 
@@ -6208,7 +6201,7 @@ end subroutine molecularLoopV2
            end do
         else ! once octal has no more children, solve for current parameter set
 
-           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 
            thisOctal%molAbundance(subcell) = molAbundance
            if (thisOctal%temperature(subcell) > 100.d0) &

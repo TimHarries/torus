@@ -301,6 +301,7 @@ MODULE octal_mod
     real(double), pointer :: tempStorage(:,:) => null()
     type(vECTOR), pointer :: boundaryPartner(:) => null()
     type(vECTOR), pointer :: gravboundaryPartner(:) => null()
+    type(VECTOR), pointer :: radiationMomentum(:) => null()
     real(double), pointer :: phi_i(:) => null(), phi_i_plus_1(:) => null(), phi_i_minus_1(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
     integer, pointer :: boundaryCondition(:) => null()

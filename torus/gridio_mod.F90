@@ -535,6 +535,8 @@ contains
           
           call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
           call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
+          call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
+
           call writeAttributePointerFlexi(20, "gravboundaryPartner", thisOctal%GravboundaryPartner, fileFormatted)
           call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
           call writeAttributePointerFlexi(20, "rLimit", thisOctal%rLimit, fileFormatted)
@@ -3286,6 +3288,9 @@ contains
             call readPointerFlexi(20, thisOctal%boundaryCondition, fileFormatted)
          case("boundaryPartner")
             call readPointerFlexi(20, thisOctal%boundaryPartner, fileFormatted)
+
+         case("radiationMomentum")
+            call readPointerFlexi(20, thisOctal%radiationMomentum, fileFormatted)
          case("gravboundaryPartner")
             call readPointerFlexi(20, thisOctal%gravboundaryPartner, fileFormatted)
          case("changed")

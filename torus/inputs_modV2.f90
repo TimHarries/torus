@@ -73,6 +73,9 @@ contains
     call getLogical("splitovermpi", splitOverMPI, cLine, nLines, &
          "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("debug", debug, cLine, nLines, &
+         "Output debug information: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
     call getLogical("readgrid", readGrid, cLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)

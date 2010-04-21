@@ -606,6 +606,11 @@ contains
                    goto 777
                 endif
 
+                ! here a new photon has been received, and we add its momentum
+
+                call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
+                thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHat * (epsOverDeltaT/cSpeed)
+!                if (myrankGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
 
                 if (.not.endLoop) then
                    nScat = 0
@@ -613,7 +618,7 @@ contains
                    do while(.not.escaped)
                       currentSubcell = 1
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
-                           photonPacketWeight, nfreq, freq, tPhoton, tLimit, &
+                           photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
                            crossedMPIboundary, currentOctal, currentSubcell, newThread)
 
                       if (crossedMPIBoundary) then
@@ -637,6 +642,7 @@ contains
                          call random_number(r)
                          if (r < albedo) then
                             uHat = randomUnitVector() ! isotropic scattering
+!                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
                          else
                             spectrum = 1.d-30
                             
@@ -671,6 +677,8 @@ contains
                             endif
                             thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                             uHat = randomUnitVector() ! isotropic emission
+!                            if (myrank == 1) write(*,*) "new uhat emission ",uhat
+
                             nScat = nScat + 1
                             
                             
@@ -897,7 +905,7 @@ if (.false.) then
  write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
  call writeVtkFile(grid, vtkFilename, &
       valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-      "dust1        "/))
+      "dust1        ","radmom      "/))
  call writeAMRgrid("tmp.grid",.false.,grid)
 enddo
 
@@ -916,7 +924,7 @@ enddo
 end subroutine photoIonizationloopAMR
 
 
-SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, &
+SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, newThread)
   include 'mpif.h'
   integer :: myRank, ierr
@@ -925,7 +933,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(OCTAL), pointer :: thisOctal, tempOctal, currentOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
-   real(double) :: tPhoton, tLimit
+   real(double) :: tPhoton, tLimit, epsOverDeltaT
+   real(double) :: photonMomentum
    integer, intent(out) :: newThread
    integer :: endSubcell
    integer :: currentSubcell
@@ -959,7 +968,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     crossedMPIboundary = .false.
     outOfTime = .false.
 
-
+    photonMomentum = epsOverDeltaT / cSpeed
     thisLam = (cSpeed / thisFreq) * 1.e8
     call locate(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
@@ -1005,6 +1014,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        oldrVec = rVec
        rVec = rVec + (tVal+1.d-3*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
+
+! at this point the photon packet takes momentum from the cell
+
+       thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) - uHat * photonMomentum
+!       if (myrankGlobal == 1) write(*,*) "mom sub ",thisOctal%radiationMomentum(subcell)
        tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
        if (tPhoton > tLimit) then
           escaped = .true.
@@ -1051,6 +1065,12 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           
           thisOctal => nextOctal
           subcell = nextSubcell
+
+! here the photon has entered a new cell on the current thread and we can add the momentum
+
+          thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHat * photonMomentum
+!          if (myrankGlobal == 1) write(*,*) "mom add ",thisOctal%radiationMomentum(subcell)
+
           if (thisOctal%diffusionApprox(subcell)) then
              call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
              rVec = subcellCentre(endOctal,endSubcell)
@@ -1549,6 +1569,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           thisOctal%Heheating(subcell) = 0.d0
           thisOctal%photoIonCoeff(subcell,:) = 0.d0
           thisOctal%distanceGrid(subcell) = 0.d0
+          thisOctal%radiationMomentum(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        endif
     enddo
   end subroutine zeroDistanceGrid

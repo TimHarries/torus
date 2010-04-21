@@ -252,6 +252,7 @@ program torus
 
   lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
   co%molecule = " "
+  constantAbundance = .true.
   indexAtom = 0
   indexRBBTrans = 0; nRBBTrans = 0
   laccretion = 0.; meanDustParticlemass = 0.

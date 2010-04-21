@@ -29,6 +29,7 @@ program torus
   use inputs_mod
   use timing
   use grid_mod
+  use gridio_mod
   use setupamr_mod
   use physics_mod
   use outputs_mod
@@ -87,6 +88,8 @@ program torus
   call setupMicrophysics(grid)
 
   call  setupamrgrid(grid)
+
+  call checkAMRgrid(grid, .false.)
 
   call setupGlobalSources(grid)
 

@@ -234,7 +234,7 @@ contains
 
 
     select case (valueType)
-       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel")
+       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
           scalarvalue = .false.
           vectorvalue = .true.
        case DEFAULT
@@ -468,6 +468,11 @@ contains
                           real(thisOctal%rhow(subcell)/thisOctal%rho(subcell)), &
                           real(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
                   endif
+
+               case("radmom")
+                     write(lunit, *) real(thisOctal%radiationMomentum(subcell)%x/1.d20), &
+                          real(thisOctal%radiationMomentum(subcell)%y/1.d20), &
+                          real(thisOctal%radiationMomentum(subcell)%z/1.d20)
                case("velocity")
                      ! stop vectors from showing up in visit if too big
                      if(thisoctal%velocity(subcell)%x .ge. 1.d0) then

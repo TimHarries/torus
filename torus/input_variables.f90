@@ -683,6 +683,7 @@ module input_variables
   !--------------------------------------------------------------------
 
   real :: molAbundance
+  logical :: constantAbundance
 
 !hydro stuff
   logical :: hydrodynamics

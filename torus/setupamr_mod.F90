@@ -26,7 +26,7 @@ contains
     use lucy_mod
     use grid_mod
     use photoionAMR_mod, only : resizePhotoionCoeff
-    use input_variables, only : readgrid, gridinputfilename, geometry, mdot
+    use input_variables, only : readgrid, gridinputfilename, geometry, mdot, constantAbundance
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
     use input_variables, only : amrGridSize, doSmoothGrid, dustPhysics, dosmoothGridTau, photoionPhysics
@@ -55,6 +55,8 @@ contains
     integer :: j, ismoothLam
     integer :: nVoxels, nOctals
 
+    constantAbundance = .true.
+
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
     totalmass = 0.
@@ -68,6 +70,8 @@ contains
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 
     else
+
+       grid%splitOverMPI = splitOverMPI
 
        select case (geometry)
           case("cmfgen")
@@ -87,6 +91,7 @@ contains
        select case (geometry)
 
        case("fogel")
+          constantAbundance = .false.
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call setupFogel(grid, textFilename, "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -507,7 +512,7 @@ contains
 
                 thisOctal%rho(subcell) = 1.d-25
                 thisOctal%temperature(subcell) = 3.d0
-                thisOctal%molAbundance(subcell) = 1.d-28
+                thisOctal%molAbundance(subcell) = 1.d-20
                 thisOctal%microTurb(subcell) = 1.d-8
                 if (.not.outsideGrid) then
                    call locate(z(j,1:nz(j)), nz(j), thisZ, k1)
@@ -522,10 +527,10 @@ contains
                         (     fac1)*(     fac3)* rho(j+1,k2+1)  
 
 
-                   thisOctal%temperature(subcell) = (1.d0-fac1)*(1.d0-fac2)* t(j,k1) + &
+                   thisOctal%temperature(subcell) = max(3.d0,(1.d0-fac1)*(1.d0-fac2)* t(j,k1) + &
                         (     fac1)*(1.d0-fac3)* t(j+1,k2) + &
                         (1.d0-fac1)*(     fac2)* t(j,k1+1) + &
-                        (     fac1)*(     fac3)* t(j+1,k2+1)  
+                        (     fac1)*(     fac3)* t(j+1,k2+1) ) 
 
 
                    thisOctal%molAbundance(subcell) = (1.d0-fac1)*(1.d0-fac2)* abundance(j,k1) + &

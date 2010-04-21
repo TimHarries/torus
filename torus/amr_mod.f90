@@ -10387,6 +10387,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%photonEnergyDensity, source%photonEnergyDensity)
     call copyAttribute(dest%oldphotonEnergyDensity, source%oldphotonEnergyDensity)
 
+    call copyAttribute(dest%radiationMomentum, source%radiationMomentum)
+
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
       ALLOCATE(dest%mpiboundaryStorage( SIZE(source%mpiboundaryStorage,1),       &
@@ -12307,7 +12309,7 @@ end function readparameterfrom2dmap
     real, parameter :: sublimationTemp = 1500., subRange = 100.
 !    real :: tArray(1000)
     real(double) :: freq, dfreq, norm !,  bnutot
-    integer :: i,j,m
+    integer :: i,j,m,itemp
     real :: fac
     real :: e, h0, he0
     real(double) :: kappaH, kappaHe
@@ -12434,11 +12436,13 @@ end function readparameterfrom2dmap
           end if
        else
           kappaSca = 0.
+          itemp = ilambda
+          if (ilambda == grid%nLambda) itemp = itemp - 1
           do i = 1, nDustType
              kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
-                  logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
-                  grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell), &
-                  grid%oneKappaSca(i,iLambda+1)*thisOctal%rho(subcell))
+                  logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
+                  grid%oneKappaSca(i,itemp)*thisOctal%rho(subcell), &
+                  grid%oneKappaSca(i,itemp+1)*thisOctal%rho(subcell))
           enddo
        endif
        kappaSca = kappaSca * frac
@@ -12467,11 +12471,13 @@ end function readparameterfrom2dmap
           end if
        else
           kappaAbs = 0.
+          itemp = ilambda
+          if (ilambda == grid%nLambda) itemp = itemp - 1
           if (ndusttype .eq. 1) then
              kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
-                  logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
-                  oneKappaAbsT(ilambda,1)*thisoctal%rho(subcell), &
-                  oneKappaAbsT(ilambda+1,1)*thisoctal%rho(subcell))
+                  logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
+                  oneKappaAbsT(itemp,1)*thisoctal%rho(subcell), &
+                  oneKappaAbsT(itemp+1,1)*thisoctal%rho(subcell))
 
           else
           
@@ -16990,6 +16996,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
@@ -17075,6 +17082,9 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%iEquationOfState,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%gamma,thisOctal%maxChildren)
+
+
+       call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
 
     endif
   end  subroutine allocateOctalAttributes
@@ -17187,6 +17197,9 @@ end function readparameterfrom2dmap
 
        call deAllocateAttribute(thisOctal%boundaryCondition)
        call deAllocateAttribute(thisOctal%boundaryPartner)
+
+       call deAllocateAttribute(thisOctal%radiationMomentum)
+
        call deAllocateAttribute(thisOctal%gravboundaryPartner)
        call deAllocateAttribute(thisOctal%changed)
        call deAllocateAttribute(thisOctal%rLimit)
