@@ -43,7 +43,7 @@ program torus
   use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
   use discwind_class, only: discwind, new, add_discwind
   use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
-  use photoion_mod, only: photoIonizationloop, writeMultipleImages
+  use photoion_mod, only: photoIonizationloop, writeMultiImages
   use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image, &
        dumpIntensityContributions, readbenchmarkmolecule
   use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels

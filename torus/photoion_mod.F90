@@ -23,7 +23,7 @@ private
  private :: updateGridMPIphoto
 #endif
 public :: photoIonizationLoop, createImage, refineLambdaArray, addForbiddenEmissionLine, addForbiddenToEmission, &
-     addRecombinationEmissionLine
+     addRecombinationEmissionLine, writeMultiImages
 
 type SAHAMILNETABLE
    integer :: nFreq 
