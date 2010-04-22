@@ -24,6 +24,7 @@ gridtype octree
 gridusesamr T
 amr1d T
 amr2d F
+amr3d F
 amrgridsize 9.2d7
 amrgridcentrex 4.6d7
 amrgridcentrey 0d0
@@ -128,5 +129,6 @@ rotateviewaboutz 0.0
 quasi F
 dongstep T
 
-setmaxlevel 10
 initnray 16
+constantabundance T
+setmaxlevel 10
