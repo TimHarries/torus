@@ -3464,7 +3464,7 @@ end subroutine molecularLoop
               rminus = modulus(subcellcentre(thisoctal,subcell))
               molarray(:,1) = thisOctal%molecularLevel(1:minlevel,subcell)
 
-              rarray = (/rminus,rcen,rplus/)
+              rarray = (/rminus*0.9999d0,rcen,rplus*1.0001d0/)
 
               do itrans=1,minlevel
                  molout(itrans) = general_quadint(rarray,molarray(itrans,:),r)
