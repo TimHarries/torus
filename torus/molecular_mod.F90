@@ -36,26 +36,30 @@ module molecular_mod
       module procedure LTEpopsDouble
    end interface
 
-
-   integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels
+   integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels, ntrans
    integer :: grand_iter, ngcounter
    integer :: nray
    Logical :: molebench, molcluster, chrisdisc, ggtau
    real(double), allocatable :: lamarray(:), lambda(:)
    integer :: ilambda
 
-   integer, parameter :: maxray = 500000
+!   integer, parameter :: maxray = 524289
+   integer, parameter :: maxray = 262145
+!   integer, parameter :: maxray = 3050000
    integer, allocatable :: iseedpublic(:)
    real(double) :: r1(5) !! quasi random number generators
    integer :: accstep = 5
    integer :: accstepgrand = 6
-   real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
-   real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
    integer :: deptharray(50) = 0
+
+   integer :: iupper(200), iLower(200)
 
    character(len=20) :: molgridfilename, molgridltefilename
 
    logical :: allCellsConverged, gridConverged, gridConvergedTest
+
+   real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
+   real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
 
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
@@ -351,8 +355,12 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : vturb, restart, isinLTE, &
-          addnewmoldata, plotlevels, setmaxlevel, doCOchemistry, x_d, &
-          molAbundance, constantAbundance
+          addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, &
+          molAbundance, usedust, getdepartcoeffs, constantAbundance
+
+!         plotlevels
+!     type(VECTOR) :: pos
+!    REAL :: T1, T2, TSTART
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -364,28 +372,32 @@ module molecular_mod
      logical, save :: firsttime1 = .true.
      logical, save :: firsttime2 = .true.
      logical :: inlte
-     type(VECTOR) :: pos
-     real(double) :: levelpops(200)
-!    REAL :: T1, T2, TSTART
+
+     real(double) :: nupper(200), nlower(200)
+     real(double) :: levelpops(200), alphanubase(200), nmol
+
      
      inlte = isinlte
 
+!Code to handle a restart. Read in grid from file 
      if(firsttime1 .and. restart) then
         call writeinfo("Reading in previous grid", FORINFO)
         call freeGrid(grid)
         call readAMRgrid(molgridfilename,.false.,grid)
         call writeinfo("Done", FORINFO)
         firsttime1 = .false.
-     elseif(addnewmoldata .and. firsttime1) then
+     elseif(addnewmoldata .and. firsttime1) then ! read intermediate grid
         call readAMRgrid("notmolecular.grid",.false.,grid)
         restart = .false.
         firsttime1 = .false.
      endif
 
+! Recursively fill all the subcells with molecular level data
+! To save space when deailing with large numbers of octals determine maxlevels first.
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
            ! find the child
-           do ichild= 1, thisOctal%nChildren, 1
+           do ichild= 1, thisOctal%nChildren
               if (thisOctal%indexChild(ichild) == subcell) then
                  child => thisOctal%child(ichild)
                  call allocateMolecularLevels(grid, child, thisMolecule)
@@ -394,195 +406,236 @@ module molecular_mod
            end do
         else
 
+           ! MPI stuff
            if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
-
+! allocate space for n_H2
            if (.not.associated(thisOctal%nh2)) allocate(thisOctal%nh2(1:thisOctal%maxChildren))
            thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
-
-           if(plotlevels .and. molcluster) then
-              if(firsttime2 .and. molcluster) then
-                 pos = clusterparameter(VECTOR(0.d0,0.d0,0.d0), thisoctal, subcell, isdone = .true.)
+! Temporary graph making code for molcluster. V1 code should ultimately be removed 
+!           if(plotlevels .and. molcluster) then
+!              if(firsttime2 .and. molcluster) then
+!                 pos = clusterparameter(VECTOR(0.d0,0.d0,0.d0), thisoctal, subcell, isdone = .true.)
 !                 call new_read_sph_data(sphdatafilename)
 !                 call CPU_TIME(tstart)
-              endif
+!              endif
               
-              !timing code - decomment to reenable!
-
+!              if(debug) then
 !                 CALL CPU_TIME(T1)
 !                 pos = subcellcentre(thisoctal, subcell)
 !                 if(addnewmoldata) thisoctal%velocity(subcell) = molclustervelocity(pos, grid)
-!                 thisoctal%linearvelocity(subcell) = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, linearinterp = .true.)
-!                 thisoctal%quadvelocity(subcell) = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, linearinterp = .false.)
-
-!                 thisoctal%interprho(subcell) = density(pos, grid, linearinterp =.true.)
-
+!                 thisoctal%linearvelocity(subcell) = &
+!                      amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, &
+!                      actualSubcell = subcell, linearinterp = .true.)
+!                 thisoctal%quadvelocity(subcell) = &
+!                      amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, &
+!                      actualSubcell = subcell, linearinterp = .false.)
 !                 counter = counter + 1
 !                 CALL CPU_TIME(T2)
+
 !                 write(111, *) counter, t2 - t1, t2 - tstart
-
- !                vexact = modulus(thisoctal%velocity(subcell)) * cspeed/1d5
+!                 vexact = modulus(thisoctal%velocity(subcell)) * cspeed/1d5
+                
+!                 if(thisoctal%ndepth .gt. 3 .and. vexact .lt. 10.d0) then
+!                    vlin = modulus(thisoctal%linearvelocity(subcell)) * cspeed/1d5
+!                    vquad = modulus(thisoctal%quadvelocity(subcell)) * cspeed/1d5
+!                    vquaddiff = modulus(thisoctal%velocity(subcell) - &
+!                                        thisoctal%quadvelocity(subcell)) * cspeed/1d5
+!                    vlindiff = modulus(thisoctal%velocity(subcell) - &
+!                                       thisoctal%linearvelocity(subcell)) * cspeed/1d5
+!                    vquaddiffcounter = vquaddiffcounter + vquaddiff
+!                    vlindiffcounter = vlindiffcounter + vlindiff
+!                    vquaddiffnormcounter = vquaddiffnormcounter + vquaddiff / vexact
+!                    vlindiffnormcounter = vlindiffnormcounter + vlindiff / vexact
                  
- !                if(thisoctal%ndepth .gt. 3 .and. vexact .lt. 10.d0) then
-
-!                 vlin = modulus(thisoctal%linearvelocity(subcell)) * cspeed/1d5
-!                 vquad = modulus(thisoctal%quadvelocity(subcell)) * cspeed/1d5
-!                 vquaddiff = modulus(thisoctal%velocity(subcell) - thisoctal%quadvelocity(subcell)) * cspeed/1d5
-!                 vlindiff = modulus(thisoctal%velocity(subcell) - thisoctal%linearvelocity(subcell)) * cspeed/1d5
-
-!                 vquaddiffcounter = vquaddiffcounter + vquaddiff
-!                 vlindiffcounter = vlindiffcounter + vlindiff
-!                 vquaddiffnormcounter = vquaddiffnormcounter + vquaddiff / vexact
-!                 vlindiffnormcounter = vlindiffnormcounter + vlindiff / vexact
-                 
-!                 write(113,'(i2,tr2,3(f10.7,tr2),4(f10.3,tr2))') thisoctal%ndepth, vexact, vquaddiff, vlindiff, vquaddiffcounter, vlindiffcounter, vquaddiffnormcounter, vlindiffnormcounter 
+!                    write(113,'(i2,tr2,3(f10.7,tr2),4(f10.3,tr2))') &
+!                         thisoctal%ndepth, vexact, vquaddiff, vlindiff, &
+!                         vquaddiffcounter, vlindiffcounter, vquaddiffnormcounter, vlindiffnormcounter 
+!                 endif
 !              endif
-              endif
-           
-           if(restart) then
+!           endif
 
+! maxlevel - the greatest level that will be converged (but not necessarily counted for convergence)
+           if(restart) then
+! if restart then use previous maxlevel              
               if(firsttime2) then
                  if(setmaxlevel .eq. 0) then
                     maxlevel = size(thisOctal%molecularLevel(:,1))
                  else
                     maxlevel = setmaxlevel
                  endif
+! TODO V2:
+! maxtrans currently assumes linear molecule so maxlevel - 1 is J=maxlevel - maxlevel-1 (not nec the case)
                  maxtrans = maxlevel - 1
                  firsttime2 = .false.
               endif
-              
-              if (.not.associated(thisOctal%bnu)) then
-                 allocate(thisOctal%bnu(1:maxlevel, 1:thisOctal%maxChildren))
 
-                 do isubcell = 1, thisoctal%maxchildren
-                    do i = 1, maxtrans
-                       thisOctal%bnu(i,isubcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(isubcell)))
+              if(usedust) then
+                 if (.not.associated(thisOctal%bnu)) then
+                    allocate(thisOctal%bnu(1:maxlevel, 1:thisOctal%maxChildren))
+                    
+                    do isubcell = 1, thisoctal%maxchildren
+                       do i = 1, maxtrans
+                          thisOctal%bnu(i,isubcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(isubcell)))
+                       enddo
                     enddo
-                 enddo
-
+                    
+                 endif
               endif
-
-
-              if (.not.associated(thisOctal%departcoeff)) then
-                 allocate(thisOctal%departcoeff(1:5,1:thisOctal%maxChildren))
-
-                 do isubcell = 1, thisoctal%maxchildren
-                    call LTEpops(thisMolecule, dble(thisOctal%temperature(isubcell)), dble(thisOctal%departcoeff(1:5,isubcell)))
-                    thisoctal%departcoeff(1:5,isubcell) = 1.d0 / thisoctal%departcoeff(1:5,isubcell)
-                 enddo
-
-              endif           
-
+! First 5 LTE level populations stored in departcoeff to measure departure from LTE
+              if(getdepartcoeffs) then
+                 if (.not.associated(thisOctal%departcoeff)) then
+                    allocate(thisOctal%departcoeff(1:5,1:thisOctal%maxChildren))
+                    
+                    do isubcell = 1, thisoctal%maxchildren
+                       call LTEpops(thisMolecule, dble(thisOctal%temperature(isubcell)), dble(thisOctal%departcoeff(1:5,isubcell)))
+                       thisoctal%departcoeff(1:5,isubcell) = 1.d0 / thisoctal%departcoeff(1:5,isubcell)
+                    enddo
+                 endif
+              endif
+! Implement CO drop model - See drundle thesis for details
               if(doCOchemistry) then
                  do isubcell = 1, thisoctal%maxchildren
                     if(thisOctal%nh2(isubcell) .gt. 3e4 .and. &
-                       thisOctal%temperature(isubcell) .lt. 30.) thisOctal%molAbundance(isubcell) = x_D ! drop fraction
+                       thisOctal%temperature(isubcell) .lt. 30.) &
+                       thisOctal%molAbundance(isubcell) = x_D ! reduced fraction
                  enddo
               endif
  
            else ! from scratch, i.e. no restart part-converged grid
-
-              if(firsttime2) then ! autofind appropriate maxlevel
+! Find maxlevel - the greatest level that will be converged (but not necessarily counted for convergence)
+              if(firsttime2) then 
                  call countVoxels(grid%octreeRoot,nOctal,nVoxels)
                  if(setmaxlevel .eq. 0) then 
                     call findmaxlevel(grid, grid%octreeroot, thisMolecule, maxlevel, thismolecule%nlevels, nVoxels, lte = .true.)
                  else
                     maxlevel = setmaxlevel
                  endif
-                 
+! TODO V2:
+! maxtrans currently assumes linear molecule so maxlevel - 1 is J=maxlevel - maxlevel-1 (not nec the case)                
                  maxtrans = maxlevel - 1
                  firsttime2 = .false.
               endif
+! fill microturbulent velocity array with constant (in TORUS V1) 
+! this should change to some function at some point
+! set up microturbulence - this shouldn't be done here but is at the moment. It can easily be moved into a function.
+! this just catches stuff if it's been allocated and not set.
 
-              if (.not.associated(thisOctal%departcoeff)) &
-                 allocate(thisOctal%departcoeff(1:5,1:thisOctal%maxChildren))
-                                 
-              call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), levelpops(1:5))
-              do i = 1, 5
-                 thisoctal%departcoeff(i,subcell) = max(levelpops(i),1d-30)
-              enddo
-              thisoctal%departcoeff(1:5,subcell) = 1.d0 / thisoctal%departcoeff(1:5,subcell)
+              if (.not.associated(thisOctal%microturb)) &
+                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
 
-              if (.not.associated(thisOctal%molecularLevel)) &
-                 allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+              if(thisoctal%microturb(subcell) .le. 1d-20) then
+!                 if(.not. molebench) 
+                 thisOctal%microturb(subcell) = max(1d-7, &
+                      sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+                      (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
+! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
+! *2 because using 1/e definition of thermal line width
+! molebench has vturb already
+              endif
 
-              if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
-                 thisOctal%molecularLevel(1,:) = 1.0
-                 thisOctal%molecularLevel(2,:) = 0.0000
-              else
-                 if(inlte) then
-                    call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
-                         levelpops(1:maxlevel))
-                    thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
+! Fill cells with molecular abundance data
+              if (.not.associated(thisOctal%molAbundance)) &
+                 allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
+
+              if (constantAbundance) then
+                 thisOctal%molAbundance(subcell) = molAbundance
+              elseif(doCOchemistry) then
+                 if(thisOctal%nh2(subcell) .gt. 3e4 .and. thisOctal%temperature(subcell) .lt. 30.) then
+                    thisOctal%molAbundance(subcell) = x_D ! depleted abundance
                  else
-                    thisOctal%molecularLevel(:,subcell) = 1.d-20               
+                    thisOctal%molAbundance(subcell) = x_0 ! normal abundance
+                 endif
+              else
+                 call writeinfo("constantAbundance off and doCOchemistry off")
+                 call writeinfo("Implement a new molecular abundance elsewhere")
+                 call writeinfo("because molabundance hasn't been changed here at all")
+                 call writeinfo("... which might of course be what you wanted :)")
+              endif
+
+! Fill cells with LTE data to determine departure coefficents if required
+              if(getdepartcoeffs) then
+                 if (.not.associated(thisOctal%departcoeff)) &
+                      allocate(thisOctal%departcoeff(1:5,1:thisOctal%maxChildren))
+                                 
+                 call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), levelpops(1:5))
+                 do i = 1, 5
+                    thisoctal%departcoeff(i,subcell) = max(levelpops(i),1d-30)
+                 enddo
+                 thisoctal%departcoeff(1:5,subcell) = 1.d0 / thisoctal%departcoeff(1:5,subcell)
+              endif
+! Fill cells with molecular level populations - LTE or small
+              if (.not. associated(thisOctal%molecularLevel)) then
+                 allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+                 if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
+                    thisOctal%molecularLevel(1,1:thisoctal%maxchildren) = 1.d0
+                    thisOctal%molecularLevel(2,1:thisoctal%maxchildren) = 0.d0
+                 else
+                    if(inlte) then
+                       call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
+                            levelpops(1:maxlevel))
+                       thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
+                    elseif(maxlevel .gt. 3) then
+                       thisOctal%molecularLevel(1:2,subcell) = 0.5d0               
+                       thisOctal%molecularLevel(3:maxlevel,subcell) = 1.d-10
+                    else
+                       thisOctal%molecularLevel(1:maxlevel,subcell) = 1.d-10
+                    endif
                  endif
               endif
-                            
+
               if (.not.associated(thisOctal%bnu)) &
                  allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
-                 
               do i = 1, maxtrans
                  thisOctal%bnu(i,subcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
               enddo
 
+! Get jnu from this cell
               if (.not.associated(thisOctal%jnu)) &
                  allocate(thisOctal%jnu(1:maxtrans,1:thisOctal%maxChildren))
-
-
-              if(inlte) then
-                 thisOctal%jnu(:,subcell) = thisoctal%bnu(:,subcell)
-              else
-                 thisOctal%jnu(:,subcell) = 1.d-20 
-              endif
               
-              if (.not.associated(thisOctal%molAbundance)) then
-                 allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
-              endif
-              if (constantAbundance) thisOctal%molAbundance = molAbundance
+              nmol = thisoctal%nh2(subcell) * thisoctal%molabundance(subcell)
 
-              if(doCOchemistry) then
-                    if(thisOctal%nh2(subcell) .gt. 3e4 .and. &
-                       thisOctal%temperature(subcell) .lt. 30.) thisOctal%molAbundance(subcell) = x_D ! drop fraction
-              else
-                 if (constantAbundance) then
-                    thisOctal%molAbundance(:) = thisMolecule%abundance
-                 endif
-              endif
+              nlower(1:maxtrans) = thisOctal%molecularLevel(iLower(1:maxtrans),subcell) * nMol
+              nupper(1:maxtrans) = thisOctal%molecularLevel(iUpper(1:maxtrans),subcell) * nMol
+              alphanuBase(1:maxtrans) = nLower(1:maxtrans) * thisMolecule%einsteinBlu(1:maxtrans) - &
+                   nUpper(1:maxtrans) * thisMolecule%einsteinBul(1:maxtrans)
 
-              if (.not.associated(thisOctal%microturb)) then
-                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-              endif
+              thisOctal%jnu(1:maxtrans, subcell) = &
+                   thisoctal%bnu(1:maxtrans,subcell) * alphanuBase(1:maxtrans)
               
-              thisOctal%microturb(subcell) = vturb
+! deallocate bnu if not using dust. It takes up a lot of space.
+              if(.not. usedust) deallocate(thisoctal%bnu)
+              
+           endif ! if(restart) - these things are common to all allocations
 
-              if(thisoctal%microturb(subcell) .le. 1d-20) then
-                 if(.not. molebench) thisOctal%microturb(subcell) = &
-                      max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                      (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
-                 ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
+! If gas and dust temperature are different then deallocate dust and gas temperature and use common temp
+           if(associated(thisoctal%temperaturedust) .and. associated(thisoctal%temperaturegas)) then
+              if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
+                 deallocate(thisoctal%temperaturedust)
+                 deallocate(thisoctal%temperaturegas)
               endif
-           
-              if(associated(thisoctal%temperaturedust) .and. associated(thisoctal%temperaturegas)) then
-                 if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
-                    deallocate(thisoctal%temperaturedust)
-                    deallocate(thisoctal%temperaturegas)
-                 endif
-              endif
-           
-              if (.not.associated(thisOctal%molmicroturb)) then
-                 allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
-              endif
-           
-              thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
-           
-   
            endif
-        endif
-     enddo
+
+! molmicroturb = 1/microturb which is used far more commonly. For speed
+           if (.not.associated(thisOctal%molmicroturb)) then
+              allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
+           endif
+           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+
+! Record depth statistics           
+!           do isubcell=1, thisoctal%maxchildren
+           deptharray(thisoctal%ndepth + 1) = deptharray(thisoctal%ndepth + 1) + 1
+!           enddo
+        endif ! if haschild
+        
+     enddo ! do over all children
+
      
    end subroutine allocateMolecularLevels
 
    recursive subroutine  allocateOther(grid, thisOctal)
+
+     use input_variables, only : gettau
 
      type(GRIDTYPE) :: grid
      type(octal), pointer   :: thisOctal
@@ -602,6 +655,10 @@ module molecular_mod
               end if
            end do
         else
+
+
+
+! new/old/oldest are all needed for ng acceleration
 
            if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 
@@ -640,16 +697,6 @@ module molecular_mod
                    thisoctal%molecularlevel(1:minlevel,1:thisOctal%maxChildren)
            endif
 
-           if(associated(thisOctal%tau)) then
-              h = size(thisoctal%tau(:,1))
-              temparray(1:h,1:thisoctal%maxchildren) = thisoctal%tau(1:h,1:thisoctal%maxchildren)
-              deallocate(thisoctal%tau)
-              allocate(thisoctal%tau(minlevel,1:thisoctal%maxchildren))
-              thisoctal%tau(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
-           else
-              allocate(thisoctal%tau(minlevel,1:thisoctal%maxchildren))
-           endif
-
            if(associated(thisOctal%levelconvergence)) then
               h = size(thisoctal%levelconvergence(:,1))
               temparray(1:h,1:thisoctal%maxchildren) = thisoctal%levelconvergence(1:h,1:thisoctal%maxchildren)
@@ -658,6 +705,18 @@ module molecular_mod
               thisoctal%levelconvergence(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
            else
               allocate(thisoctal%levelconvergence(minlevel,1:thisoctal%maxchildren))
+           endif
+
+           if(gettau) then
+              if(associated(thisOctal%tau)) then
+                 h = size(thisoctal%tau(:,1))
+                 temparray(1:h,1:thisoctal%maxchildren) = thisoctal%tau(1:h,1:thisoctal%maxchildren)
+                 deallocate(thisoctal%tau)
+                 allocate(thisoctal%tau(minlevel,1:thisoctal%maxchildren))
+                 thisoctal%tau(1:minlevel,1:thisoctal%maxchildren) = temparray(1:minlevel,1:thisoctal%maxchildren)
+              else
+                 allocate(thisoctal%tau(minlevel,1:thisoctal%maxchildren))
+              endif
            endif
 
            if(associated(thisOctal%nsplit)) then
@@ -752,7 +811,8 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep, initnray
+          usedust, amr2d, amr1d, amr3d, plotlevels, gettau, &
+          debug, restart, isinlte, quasi, dongstep, initnray
      use messages_mod, only : myRankIsZero
      use parallel_mod
 
@@ -764,17 +824,18 @@ module molecular_mod
      type(MOLECULETYPE) :: thisMolecule
      type(VECTOR) :: position, direction
      integer :: nOctal, iOctal, subcell
-     real(double), allocatable :: ds(:), phi(:), i0(:,:)
 
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
-     integer, parameter :: maxIter = 100
+     integer, parameter :: maxIter = 50
      logical :: popsConverged
      character(len=200) :: message
-     integer :: iRay, iTrans, iter, i 
+     integer :: iRay, iter, i 
      integer :: iStage
      real(double), allocatable :: oldpops1(:), oldpops2(:), oldpops3(:), oldpops4(:)
      real(double) :: fac
+     real(double), allocatable :: ds(:), phi(:), i0(:,:), i0temp(:)
+
 #ifdef MPI
      ! For MPI implementations
      integer       ::   my_rank        ! my processor rank
@@ -786,49 +847,56 @@ module molecular_mod
      integer, dimension(:), allocatable :: octalsBelongRank
      real(double), allocatable :: tArrayd(:,:),tempArrayd(:,:) 
 #endif
-      integer :: nVoxels
-      integer :: ioctal_beg, ioctal_end
-      logical :: fixedRays
-      integer :: isize
-      integer, allocatable :: iseed(:)
-      real(double) :: maxRMSfracChange
 
-      character(len=30) :: filename
-            
-      real(double) :: tauarray(60) = -1.d0    
-      logical :: warn = .true.
-      integer :: warncount, warncount_all
-      real(double) :: error(50)
-      integer :: maxerrorloc, maxlocerror(1)
-      integer :: mintransold
+     integer :: nVoxels
+     integer :: ioctal_beg, ioctal_end
+     logical :: fixedRays
+     integer :: isize
+     integer, allocatable :: iseed(:)
+     real(double) :: maxRMSfracChange
+     
+     character(len=30) :: filename
+     
+     real(double) :: tauarray(60) = -1.d0    
+     logical :: warn = .true.
+     integer :: warncount, warncount_all
+     real(double) :: error(50)
+     real(double) :: diffmax
+     integer :: maxerrorloc, maxlocerror(1)
+     integer :: mintransold
+     
+     real(double) :: nh, nHe, ne, nProtons
+     integer :: dummy, ijunk
+     logical :: ljunk
+     logical :: juststarted = .true.
 
-      real(double) :: nh, nHe, ne, nProtons
-      integer :: dummy, ijunk
-      logical :: ljunk
-      logical :: juststarted = .true.
+     logical :: ng
+     integer :: status
 
-      logical :: ng
-      integer :: status
+     real(double) :: collmatrix(50,50), ctot(50)
+     
+! logicals are quicker to access than strings 
+     if(grid%geometry .eq. 'molebench') molebench = .true.
+     if(grid%geometry .eq. 'molcluster') molcluster = .true.
+     if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
+     if(grid%geometry .eq. 'ggtau') ggtau = .true.
 
-      call writeinfo("molecular_mod 20100308.1608",TRIVIAL)
+! get pairs of radiative transitions stored in thismolecule. Re-assign for readability     
+     iUpper(1:thismolecule%ntrans) = thisMolecule%iTransUpper(1:thismolecule%ntrans)
+     iLower(1:thismolecule%ntrans) = thisMolecule%iTransLower(1:thismolecule%ntrans)
 
-      position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
- ! blockhandout must be off for fixed ray case, otherwise setting the
- ! seed is not enough to ensure the same directions are done for
- ! each cell every iteration
+     nlevels = thisMolecule%nlevels     
 
-      nlevels = thisMolecule%nlevels
+! Let user know that Ng acceleration is turned on. inputs_mod doesn't say because it's optional
+     ng = dongstep
+     write(message,*) "Use Ng Acceleration: " , ng
+     call writeinfo(message,TRIVIAL)
 
-      if(grid%geometry .eq. 'molebench') molebench = .true.
-      if(grid%geometry .eq. 'molcluster') molcluster = .true.
-      if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
-      if(grid%geometry .eq. 'ggtau') ggtau = .true.
-
-      ng = dongstep
-      write(message,*) "Use Ng Acceleration: " , ng
-      call writeinfo(message,TRIVIAL)
+! blockhandout must be off for fixed ray case, otherwise setting the
+! seed is not enough to ensure the same directions are done for
+! each cell every iteration
       
-      blockHandout = .false. 
+     blockHandout = .false. 
 
 #ifdef MPI
      ! FOR MPI IMPLEMENTATION=======================================================
@@ -839,13 +907,13 @@ module molecular_mod
      call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
- ! Write Column headings for file containing level populations and convergence data
+! Write Column headings for file containing level populations and convergence data
      grand_iter = 0
-
+     
      if(writeoutput) then
-18      format(a,tr3,8(a,tr6),a,6(tr1,a))
+18      format(a,tr3,8(a,tr8),a,6(tr2,a))
         open(138,file="fracChanges.dat",status="unknown",form="formatted")
-        write(138,18) "nRays","J=0","J=1","J=2","J=3","J=4","J=5","J=6","J=7","Fixed","1% Conv","2.5% Conv","5% Conv","Max","Avg"
+        write(138,18) "nRays","J=0","J=1","J=2","J=3","J=4","J=5","J=6","J=7","Fixed","5* Conv","2* Conv","1* Conv","Max","Avg"
         close(138)
 
         open(139,file="avgChange.dat",status="replace",form="formatted")
@@ -859,53 +927,51 @@ module molecular_mod
         close(141)
      endif
 
-      if(openlucy) then
+! TORUS V1 code - if interfacing with lucy_mod, read in lucy temp file and start from here.
+! This will ultimately be removed     
+     if(openlucy) then
+        if(writeoutput) then
+           write(message,*) "Reading in lucy temp files: ",lucyfilenamein
+           call writeinfo(message,FORINFO)
+        endif
+        
+        call freeGrid(grid)
+        call readAmrGrid(lucyfilenamein,.false.,grid)
+        
+        call writeinfo("Successfully read in Lucy Grid file", FORINFO)
+        call writeinfo("Plotting Temperatures...",TRIVIAL)
+     endif
 
-         if(writeoutput) then
-            write(message,*) "Reading in lucy temp files: ",lucyfilenamein
-            call writeinfo(message,FORINFO)
-         endif
+! IMPORTANT - Here's where molecular levels and other critical data get allocated.     
+     call writeinfo("Allocating and initialising molecular levels", FORINFO)
+     call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
+! Useful temporary file containing the depth of each array - filled in allocate molecularlevels
+     do i = 1, 50
+        write(1003,*) i, deptharray(i)
+     enddo
 
-         call freeGrid(grid)
-         call readAmrGrid(lucyfilenamein,.false.,grid)
+! Count number of subcells. Fill octalarray with pointers to all octals
+     allocate(octalArray(grid%nOctals))
+     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     dummy = 0
+     call getOctalArray(grid%octreeRoot,octalArray, dummy)
 
-         call writeinfo("Successfully read in Lucy Grid file", FORINFO)
-         call writeinfo("Plotting Temperatures...",TRIVIAL)
-      endif
+! Write grid  with LTE populations if initialised to LTE     
+     if(isinlte .and. .not. restart) then
+        write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
+        if(myrankiszero) call writeAMRgrid(molgridltefilename,.false.,grid)
+     endif
 
-      call writeinfo("Allocating and initialising molecular levels", FORINFO)
-      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
-
-
-
-!      if(plotlevels .and. molcluster .and. myrankiszero) then
-!         direction = clusterparameter(VECTOR(0.d0,0.d0,0.d0), grid%octreeroot, subcell = 1, isdone = .true.)
-!         call writeinfo('Writing debug VTK file', TRIVIAL)
-!         write(filename, '(a,i3.3,a)') "velocity.vtk"
-!         write(message, *) "Wrote VTK file to ", filename
-!         call writeinfo(message, TRIVIAL)
-!         call writeVtkFile(grid, filename, "vcheck.txt")
-!      endif
-!      call writeinfo("Done!", TRIVIAL)
-      dummy = 0
-
-      allocate(octalArray(grid%nOctals))
-      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-      call getOctalArray(grid%octreeRoot,octalArray, dummy)
-    
-      if(isinlte .and. .not. restart) then
-         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
-         if(myrankiszero) call writeAMRgrid(molgridltefilename,.false.,grid)
-      endif
-     
-      write(message, *) "Maximum Interesting Level", maxlevel
-      call writeinfo(message, TRIVIAL)
-
+! Write maximum interesting level as determined by molecularlevel
+     write(message, *) "Maximum Interesting Level", maxlevel
+     call writeinfo(message, TRIVIAL)
+! minlevel used for determining convergence and allocating less important variables (allocateother)
       minlevel = min(10, maxlevel-2)
       mintrans = minlevel - 1
-
+! allocateother allocates new/old/oldest molecular levels for ng acceleration
+! also tau and levelconvergence and convergence etc.
       call allocateother(grid, grid%octreeroot)
-
+! set up lambda array if using dust
       if(usedust) then
          allocate(lamarray(size(grid%lamarray)))
          allocate(lambda(maxtrans))
@@ -914,27 +980,26 @@ module molecular_mod
          call locate(lamArray, size(lamArray), lambda(maxtrans/2), ilambda)
       endif
 
-      nRay = 1 ! number of rays used to establish estimate of jnu and pops
-
+! dumpresults if in LTE
+      nRay = 1
       if(((amr1d .or. amr2d) .or. molebench) .and. writeoutput .and. (.not. restart) .and. isinlte) then
          call writeinfo("Writing LTE levels", TRIVIAL)
          call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
       endif
-
-      nRay = initnray ! number of rays used to establish estimate of jnu and pops
-
+! set number of rays used to estimate jnu and determine level pops 
+      nRay = initnray
+! set-up temporary arrays for ngstep
       allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
-
+! initialise random seed for AMC method
+! this line could be altered to give a fixed seed if re-producibility were required.
       call init_random_seed()
-
       call random_seed(size=iSize)
-      allocate(iSeed(1:iSize))
-      
+      allocate(iSeed(1:iSize))      
       if(.not. restart) then 
          call random_seed(get=iSeed)
          allocate(iseedpublic(1:isize))
          iseedpublic = iseed
-      else
+      else ! get previous random seed if restarting
          open(95, file="restart.dat",status="unknown",form="formatted")
          read(95,*) ljunk, ijunk, ijunk
          do i = 1, isize
@@ -944,22 +1009,28 @@ module molecular_mod
          allocate(iseedpublic(1:isize))
          iseedpublic = iseed
       endif
+
+! broadcast seed to other threads
 #ifdef MPI
       call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
       call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 #endif
-      
-      do iStage = 1, 2 ! fixed rays to reduce variance between cells or 2)  random rays to ensure sufficient spatial sampling
+
+! This is the loop that controls everything
+! 1) istage = 1, fixed rays to reduce variance between cells or 
+! 2) istage = 2, random rays to ensure sufficient spatial/frequency sampling
+      do iStage = 1, 2
          
-         if (iStage == 1) then
+         if (iStage .eq. 1) then
             fixedRays = .true.
             nRay = initnray
          else
             fixedRays = .false.
             nRay = max(initnray, nray)
+! blockhandout will allow better load balancing if octals are divided unevenly
             blockhandout = .true.
          endif
-
+! If restarting, get fixedrays, number of rays and iteration from previous run
          if(restart .and. juststarted) then 
             open(95, file="restart.dat",status="unknown",form="formatted")
             read(95, *) fixedrays, nray, grand_iter
@@ -972,36 +1043,48 @@ module molecular_mod
          gridConvergedTest = .false.
          gridConverged = .false.
 
-         do while (.not.gridConverged)
+! Allocate the main working arrays for i0, ds and phi
+            allocate(ds(1:maxray))
+            allocate(phi(1:maxray))
+            allocate(i0temp(1:maxtrans))
+            allocate(i0(1:maxray,1:maxtrans))
 
+! while grid not converged iteratively find level populations
+         do while (.not. gridConverged)
+! new iteration
             grand_iter = grand_iter + 1
-            if(ng) ngcounter = ngcounter + 1 ! controls Ng Acceleration, pronounced do-ng-step, not dongstep
+! controls Ng Acceleration, pronounced do-ng-step, not dongstep
+            if(ng) ngcounter = ngcounter + 1
             mintransold = mintrans
-
+! determine minlevel/mintrans
             if(.not. amr3d) then
                call taualongray(VECTOR(10.d0,10.d0,10.d0), VECTOR(0.577350269, 0.577350269, 0.577350269), &
                     grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
                do i = size(tauarray), 1, -1
-                  mintrans = i + 2
-                  minlevel = mintrans + 1
+                  minlevel = min(i + 2,maxlevel - 2)
+                  mintrans = minlevel - 1
+
                   if(writeoutput) write(99,*) i, mintrans, tauarray(i)
                   if(tauarray(i) .gt. 0.01) exit
                enddo
-            else
+
+            else !minlevel = maxlevel-2 (upto maxlevel = 16)then  = maxlevel/2 
                minlevel = min(max(7,Maxlevel / 2),maxlevel - 2)
                mintrans = minlevel - 1
             endif
 
-            if(grid%geometry .eq. 'agbstar') then
+            if(grid%geometry .eq. 'agbstar' .or. &
+                 grid%geometry .eq. 'h2obench1' .or. &
+                 grid%geometry .eq. 'h2obench2') then
                minlevel = maxlevel
                mintrans = maxtrans
             endif
-
+! if mintrans has to change then need to change allocations for grid
             if((mintransold .ne. mintrans) .or. (grand_iter .eq. 0)) then
                call writeinfo("Reallocating memory", TRIVIAL)
                call allocateother(grid, grid%octreeroot)
-!              ngcounter = 0
+               ngcounter = 0
             endif
             
             write(message,'(a,i3)') "Iteration ",grand_iter
@@ -1009,16 +1092,14 @@ module molecular_mod
 
             write(message, '(a,i2)') "Minimum important level ", minlevel
             call writeinfo(message, TRIVIAL)
-
+! Time from now until all cells level pops recalculated
             if(writeoutput) then
                write(message,*) "Done ",nray," rays"
                call tune(6, message)  ! start a stopwatch
             endif
 
-            allocate(ds(1:nRay))
-            allocate(phi(1:nRay))
-            allocate(i0(1:nRay, 1:maxtrans))
-
+! Use random seed determined earlier to generate random numbers or
+! Initialise quasi-random number generator
             if (fixedRays) then
                call random_seed(put=iseed)   ! same seed for fixed rays
                if(quasi) call sobseq(r1, -1)
@@ -1026,7 +1107,7 @@ module molecular_mod
                call init_random_seed()
             endif
             
-            ! default loop indicies
+! default loop indicies for single processor otherwise do MPI stuff
             ioctal_beg = 1
             ioctal_end = SIZE(octalArray)         
 
@@ -1035,8 +1116,9 @@ module molecular_mod
 
 #ifdef MPI
 
-     ! we will use an array to store the rank of the process
-     !   which will calculate each octal's variables
+! we will use an array to store the rank of the process
+! which will calculate each octal's variables
+            
             allocate(octalsBelongRank(size(octalArray)))
 
             if (my_rank == 0) then
@@ -1055,102 +1137,118 @@ module molecular_mod
                   if (rankComplete) exit blockLoop 
 #endif
 
- ! iterate over all octals, all rays, solving the system self-consistently
- 
+! iterate over all octals, all rays, solving the system self-consistently
     do iOctal = ioctal_beg, ioctal_end
 
        if (debug .and. writeoutput) then
           write(message,*) iOctal,ioctal_beg,ioctal_end
           call writeInfo(message,TRIVIAL)
        endif
-
+! point thisoctal at the corresponding grid octal
        thisOctal => octalArray(ioctal)%content
-
+! over all subcells in this octal
        do subcell = 1, thisOctal%maxChildren
-
+! at the tip of the branch find the level populations in all subcells...
           if (.not.thisOctal%hasChild(subcell)) then
+! Actually, first thing is to get collision matrix because this doesn't require knowing npops
+             nh = 0.d0
+             nHe = 0.d0
+             ne = 0.d0
+             nProtons = 0.d0
 
+             call getCollMatrix(thisOctal%nh2(subcell), dble(thisOctal%temperature(subcell)), &
+                  thismolecule, nh, nHe, ne, nprotons, collmatrix(1:maxlevel,1:maxlevel), &
+                  ctot(1:maxlevel))
+
+! First populate ds, phi and i0 so that they can be passed on to calculatejbar             
              do iRay = 1, nRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
-                     ds(iRay), phi(iRay), i0(iRay,1:maxtrans), &
+                     ds(iRay), phi(iRay), i0temp(1:maxtrans), &
                      thisMolecule,fixedrays) ! does the hard work - populates i0 etc
+                i0(iray,1:maxtrans) = i0temp(1:maxtrans)
              enddo
 
              if(debug) where(isnan(i0)) i0 = 0.d0
-
+! set iteration within subcell to 0
              iter = 0
              popsConverged = .false.
-
+! Iterate between calculate jbar and solvelevels until converged
              do while (.not. popsConverged)
                 iter = iter + 1
-
+! update levels so that current become old, old -> older etc.
+! If not using ng then just store current levels for comparison
                 if(ng) then
-                   oldpops1(1:minlevel-2) = oldpops2(1:minlevel-2)
-                   oldpops2(1:minlevel-2) = oldpops3(1:minlevel-2)
-                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
+                   oldpops1(1:minlevel) = oldpops2(1:minlevel)
+                   oldpops2(1:minlevel) = oldpops3(1:minlevel)
+                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
                 else
-                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
+                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
                 endif
-
-                do iTrans = 1, maxtrans
-                   
-                   call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
-                        phi(1:nRay), i0(1:nRay,itrans), iTrans, thisOctal%jnu(iTrans,subcell), &
-                        thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
-                enddo
-                nh = 0.d0
-                nHe = 0.d0
-                ne = 0.d0
-                nProtons = 0.d0
+! calculate the average radiation field, jnu in this cell given ds, phi and i0.
+! This feeds into and affects solvelevels which in turns affect calculatejbar
+                call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
+                     phi(1:nRay), i0(1:nray,1:maxtrans), thisOctal%newMolecularLevel(1:maxlevel,subcell), &
+                     thisOctal%jnu(1:maxtrans,subcell)) ! calculate updated Jbar
                 
                 if(debug) where(isnan(thisOctal%jnu(1:maxtrans,subcell))) thisOctal%jnu(1:maxtrans,subcell) = 0.d0
-
+! use updated jnu and collision matrix to determine updated level populations
                 call solveLevels(thisOctal%newMolecularLevel(1:maxlevel,subcell), &
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
-                     thisMolecule, thisOctal%nh2(subcell), nh, nHe, ne, nprotons)
-
+                     thisMolecule, thisOctal%nh2(subcell), collmatrix(1:maxlevel,1:maxlevel), &
+                     ctot(1:maxlevel))
+! accelerate convergence using Ng acceleration on the previous 3 iterations and current.
+! Oldpops3 is the previous set
+! Because the uppermost levels have the potential to be noisy, we don't use them in the process (length = minlevel -2) &
+! but they do get modified by the acceleration (1:minlevel)
                 if(ng) then
                    if(mod(iter, accstep) .eq. 0) then
-                      oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
-                      thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-!                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2),&
-!                                 (abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel-2,subcell))))))
-                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2)))
+                      oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
+                      thisOctal%newmolecularLevel(1:minlevel,subcell) = &
+                      abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                                 oldpops3(1:minlevel), oldpops4(1:minlevel), &
+                                 abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+                                 length = minlevel-2))
+!                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2)))
 !                      thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell)! / &
 !                      sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
 !                      oldpops3(1:minlevel-2) = oldpops4(1:minlevel-2)
                    endif
                 endif
+! Quantify the error - nb. April 2010 - this is recently changed. It will be important that higher levels are converged even if they
+! are responsible for only a small fraction of the input to lower levels.
+! Oldpops3 is the previous set
+                error(1:minlevel) = abs((thisOctal%newMolecularLevel(1:minlevel,subcell) - oldpops3(1:minlevel)) &
+                                       / thisOctal%newMolecularLevel(1:minlevel,subcell))
+! Old style error
+!                error(1:minlevel) = abs((thisOctal%newMolecularLevel(1:minlevel,subcell) - oldpops3(1:minlevel)))
 
-!                error(1:minlevel-1) = (thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops(1:minlevel-1)) &
-!                                      / oldpops(1:minlevel-1)
-!                error(1:minlevel-1) = abs((thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops3(1:minlevel-1)) &
-!                                       / thisOctal%newMolecularLevel(subcell,1:minlevel-1))
-                error(1:minlevel-1) = abs((thisOctal%newMolecularLevel(1:minlevel-1,subcell) - oldpops3(1:minlevel-1)))
-
-                maxlocerror = maxloc(error(1:minlevel-1))
+                maxlocerror = maxloc(error(1:minlevel))
                 maxerrorloc = maxlocerror(1)
+! 3 parameters shoehorned into 1 variable (for space).
                 thisoctal%convergence(subcell) = 100.0 * iter + &
                                                  real(maxerrorloc-1) + &
-                                                 min(0.99_db,maxval(error(1:minlevel-1))) 
+                                                 min(0.99_db,maxval(error(1:minlevel))) 
 
-!                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
+
+! (R)MeanSquare error over minlevel-1 levels. RMS must be less than 1e-10 (MS < 1e-20) 
                 fac = sum(error(1:minlevel-1)**2) ! convergence criterion
-
+!Old style error - absoutle max value.
+!                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
                if (fac < 1.d-10 .or. (iter .eq. maxiter)) then
+
 !                if (fac < 1.d-20 .or. (iter .eq. maxiter)) then
                    popsConverged = .true.
                    if(iter .eq. maxiter) then
                       warncount = warncount + 1
                    endif
-
-                   thisOctal%tau(1:mintrans,subcell) = &
+! Not entirely sure why you would want to do this. Probably diagnostic. Hence it's commented out.
+                   if(gettau) thisOctal%tau(1:mintrans,subcell) = &
                         calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay))
                 endif
-             enddo
-          endif
-       enddo
-    end do
+             enddo ! while not converged
+          endif ! if no child
+       enddo ! all subcells
+    enddo ! all octals
            
 #ifdef MPI
            if (.not.blockHandout) exit blockloop
@@ -1198,7 +1296,7 @@ module molecular_mod
       call writeinfo("", FORINFO)
 
       call writeinfo(message, FORINFO)
-      call calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
+      call updateLevels(grid, nvoxels, fixedrays, maxRMSFracChange)
 
  ! If you think it's converged then test with the same number of rays to make sure
 
@@ -1243,15 +1341,21 @@ module molecular_mod
 
         if(molebench) then
            call torus_mpi_barrier
-           call compare_molbench
+           call compare_molbench(diffmax)
+           write(message,*) "Maximum difference is ", diffmax
+
            open(96, file="status.dat")
            read(96,*) status
            close(96)
            
-           if(status .eq. 1) then 
+           if(status .eq. 1 .and. status .eq. 2) then 
               call writeinfo("Convergence triggered early!",TRIVIAL)
+              call writeinfo(message,TRIVIAL)
               gridConverged = .true.
               gridConvergedTest = .true.
+           else
+              call writeinfo("Convergence test not passed",TRIVIAL)
+              call writeinfo(message,TRIVIAL)
            endif
         endif
 
@@ -1279,8 +1383,8 @@ module molecular_mod
 #ifdef MPI
         deallocate(octalsBelongRank)
 #endif
-        deallocate(ds, phi, i0)
      enddo
+     deallocate(ds, phi, i0, i0temp)
   enddo
   
   close(33)
@@ -1289,6 +1393,7 @@ end subroutine molecularLoop
 
 !!! find the radiation incident at a point in a cell from a pencil beam along a particular direction
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
+!   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, thisMolecule, fixedrays)
 
      use input_variables, only : useDust, realdust, quasi
 
@@ -1318,7 +1423,6 @@ end subroutine molecularLoop
 
      integer :: nTau     
      integer :: ilambda, iTrans, iTau	
-     integer :: iLower(maxtrans), iUpper(maxtrans)
 
      real(double) :: alphanu(maxtrans,2), alpha(maxtrans),  snu(maxtrans), jnu(maxtrans)
      real(double) :: tau(maxtrans), dTau(maxtrans), localradiationfield(maxtrans), attenuation(maxtrans), kappaAbs
@@ -1436,8 +1540,6 @@ end subroutine molecularLoop
      ds = ds * 1.d10 ! convert from torus units to cm for use in calculatejbar
      i0 = 0.d0
      tau = 0.d0
-     iUpper(:) = thisMolecule%iTransUpper(1:maxtrans)
-     iLower(:) = thisMolecule%iTransLower(1:maxtrans)
 
 ! Follow long characteristic of ray until edge of grid
      do while(inOctal(grid%octreeRoot, currentPosition))
@@ -1449,7 +1551,7 @@ end subroutine molecularLoop
 ! Determine how many velocity samples should be taken per grid cell.
 ! If fixedrays then always check.
 ! If ever greater than 2 then always calculate in this cell for rest of calculation.
-        if(fixedrays .or. thisOctal%nsplit(subcell) .eq. -1) then
+        if(fixedrays .or. thisOctal%nsplit(subcell) .gt. 2) then
            startVel = velocity(currentposition, grid) 
            endPosition = currentPosition + tval * direction
            
@@ -1465,10 +1567,11 @@ end subroutine molecularLoop
            nTau = min(max(2, nint(dvAcrossCell * 5.d0)), maxSamplePoints) 
            ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
 
-           if(ntau .gt. 2) thisOctal%nsplit(subcell) = -1
+           if(ntau .gt. 2) thisOctal%nsplit(subcell) = ntau
         else
            ntau = 2
         endif
+
         CellEdgeInterval = OneOverNtauArray(ntau) ! if ntau = 2 then the segment is taken in one chunk
         dds = tval * cellEdgeInterval ! determine line segment length
         halfstep = dds * 0.5 * direction ! find point halfway between start and end to take representative velocity
@@ -1497,25 +1600,25 @@ end subroutine molecularLoop
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
 ! Absorption by gas per length
         balance(1:maxtrans) = (hcgsOverFourPi * nmol) * &
-	    (thisOctal%molecularLevel(ilower(:),subcell) * thisMolecule%einsteinBlu(1:maxtrans) - &
-         thisOctal%molecularLevel(iupper(:),subcell) * thisMolecule%einsteinBul(1:maxtrans))
+             (thisOctal%molecularLevel(ilower(1:maxtrans),subcell) * thisMolecule%einsteinBlu(1:maxtrans) - &
+             thisOctal%molecularLevel(iupper(1:maxtrans),subcell) * thisMolecule%einsteinBul(1:maxtrans))
 ! Emission by gas per length        
-       spontaneous(1:maxtrans) = (hCgsOverfourPi * nmol) * &
-	   thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
+        spontaneous(1:maxtrans) = (hCgsOverfourPi * nmol) * &
+             thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
 ! Source function 
-       where (balance /= 0.d0)
-          snu(1:maxtrans) = spontaneous(1:maxtrans) / balance(1:maxtrans)
-       end where
+        where (balance /= 0.d0)
+           snu(1:maxtrans) = spontaneous(1:maxtrans) / balance(1:maxtrans)
+        end where
 ! Calculate total emission and absorption over entire cell (sum over all line segments)
-	   do itau = 2, nTau
+        do itau = 2, nTau
 ! Get next position	
-		   dist = dist + dds
-		   thisPosition = currentPosition + dist * direction
+           dist = dist + dds
+           thisPosition = currentPosition + dist * direction
 ! Get velocity at midpoint   
-		   thisVel = velocity(thisPosition-halfstep, grid)
+           thisVel = velocity(thisPosition-halfstep, grid)
 ! Get velocity difference and weighting
-		   dv = deltaV - (thisVel .dot. direction)
-		   PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
+           dv = deltaV - (thisVel .dot. direction)
+           PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
 ! Get weighted gas absorption (+dust if req). If usedust then update jnu and snu            
            if(usedust) then
               alphanu(1:maxtrans,1) = phiprofval * balance(1:maxtrans) 
@@ -1555,206 +1658,161 @@ end subroutine molecularLoop
 
    end subroutine getRay
 
-   subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, iTrans, jbar, nPops)
+! This subroutine calculates the average local radiation field in a cell, Jbar. So the SE can be worked out
+   subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar)
 
-     use input_variables, only : useDust, realdust
+     use input_variables, only : useDust, realdust, debug
+
      type(GRIDTYPE) :: grid
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      type(MOLECULETYPE) :: thisMolecule
-     real(double) :: tempds(maxray), tempphi(maxray), i0(maxray), nPops(maxray)
-     real(double) :: phids(maxray), temptauArray(maxray), opticaldepthArray(maxray), jbarinternalArray(maxray), &
-          jbarExternalArray(maxray)
+
+     real(double), intent(in) :: tempds(:), tempphi(:), i0(:,:), nPops(:)
+     real(double), intent(out) :: jbar(maxtrans)
+
+     real(double) :: phids(maxray), temptauArray(maxray), opticaldepthArray(maxray), otp(maxray), &
+          jbarinternalArray(maxray), jbarExternalArray(maxray)
      integer :: iTrans
-     real(double) :: jbar
-     integer :: iRay
-     real(double) :: nLower, nUpper, nMol
-     real(double) :: jBarInternal, jBarExternal
-     real(double) :: alphanu(2), jnu, jnuDust, etaline, etalineBase, alphanuBase, kappaAbs, alpha
-     integer :: iUpper, iLower
-     real(double) :: tau, opticaldepth, snu, sumPhi
-     
-     jBarExternal = 1.d-60
-     jBarInternal = 1.d-60
 
-     jnu = 1.d-60
+     real(double) :: nLower(maxtrans), nUpper(maxtrans), nMol
+     real(double) :: alphanuBase(maxtrans), alphanu(maxray,2),  alpha(maxray), &
+          etaline(maxtrans), jnu(maxray), jnuDust(maxtrans), snu(maxray), snugas(maxtrans), &
+          kappaAbs
 
-     iUpper = thisMolecule%iTransUpper(iTrans)
-     iLower = thisMolecule%iTransLower(iTrans)
-     ! commented elsewhere in the code
-     sumPhi = 0.d0
+     real(double) :: sumPhi
 
+! Get total number density of molecules in each level
      nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-     etaLineBase = thisMolecule%einsteinA(iTrans)
+     nLower(1:maxtrans) = nPops(iLower(1:maxtrans)) * nMol
+     nUpper(1:maxtrans) = nPops(iUpper(1:maxtrans)) * nMol
 
-     nLower = nPops(iLower) * nMol
-     nUpper = nPops(iUpper) * nMol
+! Determine gas emission and absorption and source function
+     etaLine(1:maxtrans) = thisMolecule%einsteinA(1:maxtrans) * nUpper(1:maxtrans)
+     alphanuBase(1:maxtrans) =(nLower(1:maxtrans) * thisMolecule%einsteinBlu(1:maxtrans) - &
+                  nUpper(1:maxtrans) * thisMolecule%einsteinBul(1:maxtrans))
+     where(alphanubase .ne. 0) 
+        snugas(1:maxtrans) = etaline(1:maxtrans) / alphanuBase(1:maxtrans)
+     endwhere
 
-     etaLine = etaLineBase * nUpper
+! Calculate phids and sum(phi) as required by Jbar equation (for integral)
+     phids(1:nRay) = tempphi(1:nray) * tempds(1:nray)
+     sumPhi = sum(tempphi(1:nray))
 
-     alphanuBase =(nLower * thisMolecule%einsteinBlu(iTrans) - &
-                  nUpper * thisMolecule%einsteinBul(iTrans))
-!     write(*,*) "alpha ",alphanubase, nlower, nupper, nmol, thisOctal%molabundance(subcell), thisOctal%nh2(subcell), &
-!          thisOctal%temperature(subcell), thisOCtal%rho(subcell), npops(ilower),npops(iupper), thisOctal%molecularLevel(ilower,subcell), &
-!          thisOctal%molecularLevel(iupper,subcell)
+     alphanu(:,2) = 0.d0
+     jnudust(:) = 0.d0
+
      if(useDust) then
-        call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
+        do itrans = 1, maxtrans
+           call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
 
-        if(realdust) then
-           call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), kappaAbs = kappaAbs)
-        else
-           kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10 !multiplied by density !cm -> torus
-        endif
+           if(realdust) then
+              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), kappaAbs = kappaAbs)
+           elseif(grid%geometry .eq. 'agbstar') then
+              kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10 !multiplied by density !cm -> torus
+           endif
 
-        alphanu(2) = kappaAbs * 1.d-10 !* thisOctal%rho(subcell) - already done
-        if(associated(thisoctal%temperaturedust)) then
-           jnuDust = alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperaturedust(subcell)))
-        else
-           jnuDust = alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
-        endif
+           alphanu(itrans,2) = kappaAbs * 1.d-10
 
-        do iRay = 1, nRay
-           
-           alphanu(1) = alphanuBase * tempphi(iray) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
-           alpha = alphanu(1) + alphanu(2)
+           if(associated(thisoctal%temperaturedust)) then
+              jnuDust(itrans) = alphanu(itrans,2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperaturedust(subcell)))
+           else
+              jnuDust(itrans) = alphanu(itrans,2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
+           endif
 
-           jnu = (etaLine) * tempphi(iRay) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
-           jnu = jnu + jnuDust
-           
-           if (alpha /= 0.d0) then
-              snu = jnu/alpha
+           alphanu(1:nray,1) = alphanuBase(itrans) * tempphi(1:nray) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)      
+           jnu(1:nray) = etaLine(itrans) * tempphi(1:nRay) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
+
+           alpha(1:nray) = alphanu(1:nray,1) + alphanu(itrans,2)
+
+           if(alpha(itrans) .ne. 0) then
+              snu(1:nray) = (jnu(1:nray) + jnudust(itrans)) / alpha(1:nray)
            else
               snu = tiny(snu)
            endif
-
-           tau = alpha * tempds(iray)
-           opticaldepth = exp(-tau)
-
-           jBarExternal = jBarExternal + i0(iray) * opticaldepth * tempphi(iRay)
-           jBarInternal = jBarInternal + snu * (1.d0 - opticaldepth) * tempphi(iRay)
-
-           sumPhi = sumPhi + tempphi(iRay)
         enddo
-     else
+     endif
 
-        alpha = alphanuBase
-        jnu = etaLine
-
-        if (alpha /= 0.d0) then
-           snu = jnu/alpha
-        else
-           snu = tiny(snu)
-        endif
-
-        phids(1:nRay) = tempphi(1:nray) * tempds(1:nray)
-        temptauArray(1:nRay) = alpha * hCgsOverFourPi * phids(1:nRay)
-!        if (any(temptauarray < -1.d0)) then
-!           write(*,*) tempTauArray(1:nray)
-!           write(*,*) phids(1:nray)
-!           write(*,*) "alpha ",alpha,alphanuBase
-!           write(*,*) "nlower, nupper ",nlower, nupper
-!           stop
-!        endif
+! vecorised jbar calculation
+     do itrans = 1, maxtrans
+        if(.not. usedust) &
+             alpha(1:nray) = alphanuBase(itrans) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)      
+! calculate optical depth within cell based on average over all rays       
+        temptauArray(1:nRay) = alpha(1:nray) * phids(1:nRay)
         opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
+        otp(1:nray) = opticaldepthArray(1:nRay) * tempphi(1:nRay) ! intermediate stage (weighted opt depth)
+! external jbar due to getray (i0)        
+!        jBarExternalArray(1:nRay) = i0(itrans,1:nray) * otp(1:nray) 
+        jBarExternalArray(1:nRay) = i0(1:nray,itrans) * otp(1:nray) 
+! internal jbar inside cell
+        if(usedust) then 
+           jBarInternalArray(1:nRay) = snu(1:nray) * (tempphi(1:nray) - otp(1:nray))
+        else
+           jBarInternalArray(1:nRay) = snugas(itrans) * (tempphi(1:nray) - otp(1:nray))
+        endif
+! jbar weighted average of int + ext        
+        jbar(itrans) = (sum(jBarExternalArray(1:nRay)+jBarInternalArray(1:nRay))) / sumPhi
+     enddo
 
-        jBarExternalArray(1:nRay) = i0(1:nRay) * opticaldepthArray(1:nRay) * tempphi(1:nRay)
-        jBarInternalArray(1:nRay) = snu * (1.d0 - opticaldepthArray(1:nRay)) * tempphi(1:nRay)
-
-        sumPhi = SUM(tempphi(1:nray))
-        jbar = (sum(jBarExternalArray(1:nRay)) + sum(jBarInternalArray(1:nRay)))/sumPhi
-
-     endif
-     
-     if(usedust)then
-        sumPhi = SUM(tempphi(1:nray))
-        jbar = (jBarExternal + jBarInternal)/sumPhi
-     endif
+     if(debug) where(isnan(jbar)) jbar = 0.d0
    
-   end subroutine calculateJbar ! solves rate equation in matrix format - equation 10
+   end subroutine calculateJbar
 
-   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2, nH, nHe, ne, nprotons)
-     real(double) :: nPops(:)
-     real(double) :: temperature
-     real(double) :: jnu(:)
-     real(double) :: nh2, nH, nHe, ne, nProtons
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1,1), collMatrix(50,50), cTot(maxlevel)! collmatrix fixed at 50 must be changed
-     real(double) :: matrixAsave(maxlevel+1,maxlevel+1), matrixBsave(maxlevel+1,1), matrixArad(maxlevel+1,maxlevel+1)
-     integer :: i, j
-     integer :: itrans, l, k, iPart
-     real(double) :: collEx, colldeEx,boltzFac
+ ! solves rate equation in matrix format
+!   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2, nH, nHe, ne, nprotons)
+   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2, collmatrix, ctot)
+     real(double), intent(inout) :: nPops(:)
+     real(double), intent(in) :: temperature
+     real(double), intent(in) :: jnu(:)
+     type(MOLECULETYPE), intent(in) :: thisMolecule
+
+     real(double) :: nh2
+     real(double) :: blujnu(maxtrans), buljnu(maxtrans)
+     real(double) :: matrixA(maxlevel+1,maxlevel+1), matrixB(maxlevel+1,1)
+     real(double) :: matrixAsave(maxlevel+1,maxlevel+1), matrixBsave(maxlevel+1,1)
+     real(double) :: matrixArad(maxlevel+1,maxlevel+1)
+     real(double), intent(in) :: collMatrix(:,:), ctot(:)
+
+     integer :: l, k, itrans
 
      character(len=80) :: message
      
-     matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero ! used to be 1d-10
-     matrixB = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
+     matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero
+     matrixB = 1.d-60 ! Solution vector - all components (except last) => equilibrium
 
-     matrixB(maxLevel+1,1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
+! Sum over all levels = 1 - Conservation constraint
+     matrixB(maxLevel+1,1) = 1.d0 
 
-!     if(any(isnan(jnu))) then
-!        write(66,*) "jnu error"
-!        where(isnan(jnu))
-!           jnu = 0.d0
-!        elsewhere
-!           jnu = jnu
-!        endwhere
-!     endif
+! intermediate step
+     Buljnu(1:maxtrans) = thisMolecule%einsteinBul(1:maxtrans) * jnu(1:maxtrans)
+     Blujnu(1:maxtrans) = thisMolecule%einsteinBlu(1:maxtrans) * jnu(1:maxtrans)
 
- ! This do loop calculates the contribution to transition rates of each level from every other level. NB emission is +ve here
+ ! This do loop calculates the contribution to transition rates of each level from every other level. 
+ ! NB emission is +ve here
+
      do iTrans = 1, maxtrans
+        k = iUpper(itrans)
+        l = iLower(itrans)
 
-        k = thisMolecule%iTransUpper(iTrans)
-        l = thisMolecule%iTransLower(iTrans)
+! total emission (+) from upper level into (-) all lower levels (stored on-diagonal) 
+        matrixA(k,k) = matrixA(k,k) + buljnu(itrans) + thisMolecule%einsteinA(iTrans)
 
-        matrixA(k,k) = matrixA(k,k) + thisMolecule%einsteinBul(iTrans) * jnu(iTrans) + thisMolecule%einsteinA(iTrans)
-        matrixA(l,l) = matrixA(l,l) + thisMolecule%einsteinBlu(iTrans) * jnu(iTrans)
-        matrixA(k,l) = matrixA(k,l) - thisMolecule%einsteinBlu(iTrans) * jnu(iTrans)
-        matrixA(l,k) = matrixA(l,k) - thisMolecule%einsteinBul(iTrans) * jnu(iTrans) - thisMolecule%einsteinA(iTrans)
+! total emission (+) from upper level, k into (-) lower level, l (stored off-diagonal)
+!(-ve emission stored in l,k)
+        matrixA(l,k) = matrixA(l,k) - buljnu(itrans) - thisMolecule%einsteinA(iTrans)
 
+! stimulated emission (+) from lower level, l into all upper levels
+        matrixA(l,l) = matrixA(l,l) + blujnu(itrans)
+
+! stimulated emission (+) from lower level, l into upper level, k
+!(-ve emission stored in k,l)
+        matrixA(k,l) = matrixA(k,l) - blujnu(itrans)
      enddo
 
      matrixArad = matrixA
 
-     collMatrix = 1.d-60 ! used to be 1.d-10
-
- ! Calculate contribution from collisions - loop over all collision partners and all molecular levels
-
-     do iPart = 1, thisMolecule%nCollPart
-        do iTrans = 1, thisMolecule%nCollTrans(iPart) ! never maxtrans
-
-           k = thisMolecule%iCollUpper(iPart, iTrans)
-           l = thisMolecule%iCollLower(iPart, iTrans)
-
-           if(l .gt. maxlevel) cycle
-           
-           boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
-
-
-           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * &
-                collPartnerDensity(thisMolecule, ipart, itrans, nh2, nH, nHe, ne, nProtons)
-           collEx = colldeEx * boltzFac * thisMolecule%g(k) / thisMolecule%g(l)
-           collMatrix(l, k) = collMatrix(l, k) + collEx
-           collMatrix(k, l) = collMatrix(k, l) + colldeEx
-
-        enddo
-     enddo
-
-     cTot = 1d-60
-
-     do k = 1, maxlevel
-        do l = 1, maxlevel
-           cTot(k) = cTot(k) + collMatrix(k,l) ! sum over all collisional rates out of each level
-        enddo
-     enddo
-
-     do i = 1, maxlevel
-        matrixA(i,i) = matrixA(i,i) + cTot(i)
-        do j = 1, maxlevel
-           if (i .ne. j) then
-              matrixA(i,j) = matrixA(i,j) - collMatrix(j, i)
-           endif
-        enddo
-     enddo
+! Add contributions from getcollmatrix
+     matrixA(1:maxlevel,1:maxlevel) = matrixA(1:maxlevel,1:maxlevel) - collmatrix(1:maxlevel,1:maxlevel)
 
      matrixA(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
      matrixA(1:maxlevel+1,maxlevel+1) = 1.d-60 ! fix highest population to small non-zero value
@@ -1766,72 +1824,84 @@ end subroutine molecularLoop
      matrixAsave = matrixA
      matrixBsave = matrixB
 
- ! finished creating equation 10, now solve it to find new level populations
+! finished creating equation 10, now solve it to find new level populations using lu solver
 #ifdef USEMKL
      call gesv(matrixA, matrixB)
 #else
      call luSlv(matrixA, matrixB(:,1))
 #endif
-     
-   if(.not. any(isnan(matrixB))) then
-      matrixB = abs(matrixB) ! stops negative level populations causing problems
-      nPops(1:maxlevel) = matrixB(1:maxLevel,1)
-   else
-      matrixAsave(minlevel+1,1:minlevel+1) = 1.d0 ! sum of all level populations
-      matrixAsave(1:minlevel+1,minlevel+1) = 1.d-60 ! fix highest population to small non-zero value
-      matrixBsave = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
-      matrixBsave(minLevel+1,1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
+
+! final step - if level population candidates have a problem then fix by 
+! 1st) repeating solution over minlevels 
+!     -these are the important levels to get right - remaining levels are set equal to 1-npops
+! 2nd) setting npops = LTEpops if collisionally dominated
+! 3rd) setting npops = radiative solution if radiatively dominated
+
+     if(any(isnan(matrixB))) then
+        matrixAsave(minlevel+1,1:minlevel+1) = 1.d0 ! sum of all level populations
+        matrixAsave(1:minlevel+1,minlevel+1) = 1.d-60 ! fix highest population to small non-zero value
+        matrixBsave = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
+        matrixBsave(minLevel+1,1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
 
 #ifdef USEMKL
-      call gesv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1))
+        call gesv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1))
 #else
-      call luSlv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1))
+        call luSlv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1))
 #endif
 
-      if(.not. any(isnan(matrixBsave))) then
-         nPops(1:minlevel) = matrixBsave(1:minlevel,1)
-         npops(minlevel+1:maxlevel) = abs(1.d0 - sum(matrixBsave(1:minlevel,1)))
-         npops = abs(npops / sum(npops))
-         write(66,*) "error fixed 1 ", npops(minlevel), npops(maxlevel)
-      else
-         if(nh2 * 2.d0 * mhydrogen .gt. maxval(thismolecule%einsteinA(1:maxlevel) / ctot(1:maxlevel))) then
-            call LTEpops(thisMolecule, temperature, npops)
-            write(66,*) "error fixed 2 ", npops(minlevel), npops(maxlevel)
-         else
-            matrixA = matrixArad
-            matrixArad(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
-            matrixArad(1:maxlevel+1,maxlevel+1) = 1.d-60 ! fix highest population to small non-zero value
-
-            matrixB = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
-            matrixB(maxLevel+1,1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
+        if(.not. any(isnan(matrixBsave))) then
+           nPops(1:minlevel) = matrixBsave(1:minlevel,1)
+           npops(minlevel+1:maxlevel) = abs(1.d0 - sum(matrixBsave(1:minlevel,1)))
+           npops = abs(npops / sum(npops))
+           write(66,*) "error fixed 1 ", npops(minlevel), npops(maxlevel)
+        else
+           if(nh2 * 2.d0 * mhydrogen .gt. maxval(thismolecule%einsteinA(1:maxlevel) / ctot(1:maxlevel))) then
+              call LTEpops(thisMolecule, temperature, npops)
+              write(66,*) "error fixed 2 ", npops(minlevel), npops(maxlevel)
+           else
+              matrixA = matrixArad
+              matrixArad(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
+              matrixArad(1:maxlevel+1,maxlevel+1) = 1.d-60 ! fix highest population to small non-zero value
+              
+              matrixB = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
+              matrixB(maxLevel+1,1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
 
 #ifdef USEMKL
-            call gesv(matrixArad, matrixB)
+              call gesv(matrixArad, matrixB)
 #else
-            call luSlv(matrixArad, matrixB(:,1))
+              call luSlv(matrixArad, matrixB(:,1))
 #endif        
-            if(.not. any(isnan(matrixB))) then
-               matrixB = abs(matrixB) ! stops negative level populations causing problems
-               nPops = matrixB(1:maxlevel,1)
-               write(66,*) "error fixed 3 ", npops(minlevel), npops(maxlevel), maxval(thismolecule%einsteinA(1:maxlevel) &
-                    / ctot(1:maxlevel)), nh2 * 2.d0 * mhydrogen
-            else
-               write(66,*) "error still 4 ", npops(minlevel), npops(maxlevel)
-            endif
-            
-         endif
+              if(.not. any(isnan(matrixB))) then
+                 matrixB = abs(matrixB) ! stops negative level populations causing problems
+                 write(66,*) "error fixed 3 ", npops(minlevel), npops(maxlevel), maxval(thismolecule%einsteinA(1:maxlevel) &
+                      / ctot(1:maxlevel)), nh2 * 2.d0 * mhydrogen
+              else
+                 write(66,*) "error still 4 ", npops(minlevel), npops(maxlevel)
+              endif
+! level populations out
+              nPops(1:maxlevel) = matrixB(1:maxLevel,1)
+           endif
 
-         call writeinfo(message, IMPORTANT)
-      endif
-   endif
- end subroutine solveLevels
+           call writeinfo(message, IMPORTANT)
+        endif
+     else ! standard case
+        matrixB = abs(matrixB) ! stops negative level populations causing problems
+! level populations out
+        nPops(1:maxlevel) = matrixB(1:maxLevel,1)
+     endif
+
+   end subroutine solveLevels
 
  ! Calculate collision rates between partners for given temperature
    real(double) function collRate(thisMolecule, temperature, iPart, iTrans)
      type(MOLECULETYPE) :: thisMolecule
-     real(double) :: temperature, r
-     integer :: iTrans, k, iPart
+     real(double), intent(in) :: temperature
+     integer, intent(in) :: iTrans, iPart
 
+     real(double) :: r
+     integer :: k
+
+! linearly interpolate or extrapolate (downwards)
      if(temperature .ge. thisMolecule%collTemps(iPart,1)) then
         
         call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), &
@@ -1854,11 +1924,9 @@ end subroutine molecularLoop
              r * ( thisMolecule%collRates(iPart, iTrans, 2) - thisMolecule%collRates(iPart, iTrans, 1))
 
         if(collrate .lt. 0.d0) collrate = thisMolecule%collRates(iPart, iTrans, 1)
-
      endif
 
    end function collRate
-
 
    function collPartnerDensity(thisMolecule, ipart, itrans, nh2, nH, nHe, ne, nProtons) result(nx)
      type(MOLECULETYPE) :: thisMolecule
@@ -1894,27 +1962,100 @@ end subroutine molecularLoop
 
    end function collPartnerDensity
 
- ! this subroutine calculates the maximum fractional change in the first 6 energy levels
+   subroutine getCollMatrix(nh2, temperature, thismolecule, nh, nhe, ne, nprotons, collT, ctot)
+
+     type(moleculetype) :: thismolecule
+
+     integer :: iPart, iTrans
+     integer :: i,l,k
+     
+     real(double) :: colldeEx, collEx, boltzFac
+     real(double) :: nh2, temperature, nh, nhe, ne, nprotons
+     real(double) :: OneOverkT
+! collT is what goes out and gets subtracted from matrixA
+     real(double) :: collMatrix(maxlevel, maxlevel), collT(maxlevel, maxlevel), ctot(maxlevel)
+
+     collMatrix = 1.d-60
+     cTot = 1d-60
+
+     oneOverkT = 1.d0 / (kev * temperature)
+
+     do iPart = 1, thisMolecule%nCollPart
+        do iTrans = 1, thisMolecule%nCollTrans(iPart)
+
+! no need to calculate contributions from/to levels gt maxlevel
+           l = thisMolecule%iCollLower(iPart, iTrans)
+           k = thisMolecule%iCollUpper(iPart, iTrans)
+           if(l .gt. maxlevel .or. k .gt. maxlevel) cycle
+!           if(l .gt. maxlevel) cycle
+
+! boltzman factor connects collisional excitation and deexcitation (along with stat weighting)          
+           boltzFac = exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) * OneOverKT)
+! deexcition rate calculated from rates and coll partner density
+           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * &
+                collPartnerDensity(thisMolecule, ipart, itrans, nh2, nH, nHe, ne, nProtons)
+           collEx = colldeEx * boltzFac * thisMolecule%g(k) / thisMolecule%g(l)
+
+! emission from lower levels to upper levels 
+           collMatrix(l, k) = collMatrix(l, k) + collEx
+! emission from upper to lower
+           collMatrix(k, l) = collMatrix(k, l) + colldeEx
+        enddo
+     enddo
+
+! sum over all collisional rates out of each level (ctot). Add to radiative
+     collT = transpose(collmatrix)
+     cTot(:) = cTot(:) + sum(collT(:,:), dim = 1)
+!the minus can be used to compensate for double counting - old code below.
+     forall(i=1:maxlevel) 
+        collT(i,i) = collT(i,i) - ctot(i)
+     end forall
+
+!     ctot = 0.d0
+! this code used to be in solvelevels hence the matrixA
+!    do k = 1, maxlevel
+!       do l = 1, maxlevel
+!          cTot(k) = cTot(k) + collMatrix(k,l)
+!       enddo
+!    enddo
+
+!     do k = 1, maxlevel
+!        do l = 1, maxlevel
+!           if (k .ne. l) then
+!! subtract deexcitations from upper to lower
+!              matrixA(k, l) = matrixA(k, l) - collMatrix(l, k)
+!           endif
+!        enddo
+!        matrixA(k,k) = matrixA(k,k) + cTot(k)
+!     enddo
+
+   end subroutine getCollMatrix
+
+! This subroutine calculates the maximum fractional change in the first 6 energy levels
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
                           iter, nVoxels,fixedrays)
 
      use input_variables, only : tolerance, dongstep, initnray
 
      type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     integer :: subcell, i
-     real(double) :: maxFracChangePerLevel(:), maxFracChange, avgFracChange(:,:)
-     real(double) :: newFracChangePerLevel(minlevel), temp(minlevel)
-     real(double) :: oldpops1(minlevel+2), oldpops2(minlevel+2), oldpops3(minlevel+2), oldpops4(minlevel+2)
-     integer :: counter(:,:),j
-
+     real(double) :: maxFracChangePerLevel(:),  avgFracChange(:,:)
+     integer :: counter(:,:)
      integer :: iter
      integer :: nVoxels
 
      logical :: fixedrays
+
+     type(octal), pointer  :: child 
+     integer :: subcell, i, j
+
+     real(double) :: oldpops1(maxlevel), oldpops2(maxlevel), oldpops3(maxlevel), oldpops4(maxlevel)
+   
+     real(double) :: newFracChangePerLevel(minlevel), temp(minlevel), maxFracChange
+
      logical :: ng
      ng = dongstep
 
+! traverse the grid
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
            ! find the child
@@ -1927,69 +2068,77 @@ end subroutine molecularLoop
               end if
            end do
         else
-           ! do the ng Acceleration step here
+
+! if doing ng Acceleration step the do it here
            if(ng) then
+! If fixedrays then only do every accstepgrand steps
               if((fixedrays .and. mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) &
-                   .or. nray .eq. 2048*initnray .or. nray .eq. 128*initnray .or. nray .eq. 8*initnray) then
-
-                 oldpops1(1:minlevel-2) = thisOctal%oldestmolecularLevel(1:minlevel-2,subcell)
-                 oldpops2(1:minlevel-2) = thisOctal%oldmolecularLevel(1:minlevel-2,subcell)
-                 oldpops3(1:minlevel-2) = thisOctal%molecularLevel(1:minlevel-2,subcell)
-                 oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
-
-                 if(fixedrays) then
-                       thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                            abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), &
-                            oldpops4(1:minlevel-2), doubleweight = .false.))
-                 else
-                    thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-                    abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2), &
-                    doubleweight = .false.))
-
-                 endif
-!              thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell) / &
-!                                                       sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
+                   .or. nray .eq. 2048*initnray & 
+                   .or. nray .eq. 128 *initnray &
+                   .or. nray .eq. 8   *initnray) then
+! Put old levels into temporary arrays
+                 oldpops1(1:minlevel) = thisOctal%oldestmolecularLevel(1:minlevel,subcell)
+                 oldpops2(1:minlevel) = thisOctal%oldmolecularLevel(1:minlevel,subcell)
+                 oldpops3(1:minlevel) = thisOctal%molecularLevel(1:minlevel,subcell)
+                 oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
+! Calculate ng accelerated levels upto minlevel - 2 (avoids numerics noise)
+                 thisOctal%newmolecularLevel(1:minlevel,subcell) = &
+                      abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                                oldpops3(1:minlevel), oldpops4(1:minlevel), &
+                                abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+                                length = minlevel-2))
               endif
            endif
 
-           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel-1,subcell) - &
-                thisOctal%molecularLevel(1:minlevel-1,subcell)) / &
-                (thisOctal%newmolecularLevel(1:minlevel-1,subcell) + 1d-60)))
+! determine updated fractional change in each level upto minlevels.
+           newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel,subcell) - &
+                thisOctal%molecularLevel(1:minlevel,subcell)) / &
+                (thisOctal%newmolecularLevel(1:minlevel,subcell) + 1d-60)))
 
-           where ( newFracChangePerLevel <= 0.0 ) newFracChangePerLevel = 1.0e-60_db
-           thisoctal%levelconvergence(1:minlevel-1,subcell) = &
-                int((max(min(log10(newFracChangePerLevel),1.0_db),-9.0_db) + 4.0) * 6553.6)
-
-           maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel-1))
-
+           where ( newFracChangePerLevel(1:minlevel) <= 0.0 ) newFracChangePerLevel = 1.0e-60_db
+! Cleverly store convergence in an integer array to reduce the size. Get 65536 log-spaced
+! levels between 10^-9 and 10^1 which is enough.
+! See why below!
+           thisoctal%levelconvergence(1:minlevel,subcell) = &
+                int((max(min(log10(newFracChangePerLevel),1.d0),-9.d0) + 4.0) * 6553.6)
+! Maximum change in any level in this subcell
+           maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel))
+! For display purposes output all levels to see how things are converging at different levels
            temp = newFracChangePerLevel(1:minlevel-1)
-
+! Here we count whether a level is converged at a particular tolerance in this cell so that the level
+! of convergence over the entire grid can be ascertained
            do j=1, minlevel-1
-                 if(newFracChangePerLevel(j) < 0.5 * tolerance) counter(4,j) = counter(4,j) + 1 ! used for itransdone
-                 if(newFracChangePerLevel(j) < 1.0 * tolerance) counter(1,j) = counter(1,j) + 1
+                 if(newFracChangePerLevel(j) < 5.0 * tolerance) counter(1,j) = counter(1,j) + 1
                  if(newFracChangePerLevel(j) < 2.0 * tolerance) counter(2,j) = counter(2,j) + 1
-                 if(newFracChangePerLevel(j) < 5.0 * tolerance) counter(3,j) = counter(3,j) + 1
+                 if(newFracChangePerLevel(j) < 1.0 * tolerance) counter(3,j) = counter(3,j) + 1
+                 if(newFracChangePerLevel(j) < 0.5 * tolerance) counter(4,j) = counter(4,j) + 1
            enddo
-
+! This counts whether a cell can be called converged in its entirety (all levels)
            if(maxval(temp) .lt. 5. * tolerance) then
-              counter(3,minlevel) = counter(3,minlevel) + 1
+              counter(1,minlevel) = counter(1,minlevel) + 1
               if(maxval(temp) .lt. 2. * tolerance) then
                  counter(2,minlevel) = counter(2,minlevel) + 1
                  if(maxval(temp) .lt. tolerance) then
-                    counter(1,minlevel) = counter(1,minlevel) + 1
+                    counter(3,minlevel) = counter(3,minlevel) + 1
+! Last case is special. If ?? cells satisfy this criterion then the grid may also be considered
+! to be converged even if the RMS is too high. This condition stops badly behaved cells from stopping the
+! grid from being called converged
                  endif
               endif
            endif
-
-           avgFracChange(:,1) = avgFracChange(:,1) + temp
-           avgFracChange(:,2) = avgFracChange(:,2) + temp**2
-
+! avgFracChange stores the mean average (1)/RMS average change in the grid from the previous iteration.
+! It stores it as a running total which is later divded by nvoxels for the average over the grid.
+           avgFracChange(1:minlevel-1,1) = avgFracChange(1:minlevel-1,1) + temp
+           avgFracChange(1:minlevel-1,2) = avgFracChange(1:minlevel-1,2) + temp**2
+! update maxFracChange if fractional change is great => not converged yet
            If (maxval(temp) > maxFracChange) then
-              maxFracChangePerLevel = newFracChangePerLevel ! update maxFracChange if fractional change is great => not converged yet
+              maxFracChangePerLevel(1:minlevel-1) = newFracChangePerLevel(1:minlevel-1) 
            endif
 
-           thisOctal%oldestMolecularLevel(1:minlevel-2,subcell) = thisOctal%oldmolecularLevel(1:minlevel-2,subcell) ! Store previous level so can use updated one in future
-           thisOctal%oldmolecularLevel(1:minlevel-2,subcell) = thisOctal%molecularLevel(1:minlevel-2,subcell) 
+! Store previous levels so can use updated one in future for NgStep
+           thisOctal%oldestMolecularLevel(1:minlevel,subcell) = thisOctal%oldmolecularLevel(1:minlevel,subcell)
+           thisOctal%oldmolecularLevel(1:minlevel,subcell) = thisOctal%molecularLevel(1:minlevel,subcell) 
+! Update working level populations 
            thisOctal%molecularLevel(1:maxlevel,subcell) = thisOctal%newmolecularLevel(1:maxlevel,subcell)
 
         endif
@@ -1997,9 +2146,10 @@ end subroutine molecularLoop
 
    end subroutine swapPops
 
-!!!!READ ROUTINES!!!!
+!!! READ ROUTINES !!!
 
- subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
+subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
+
    use input_variables, only : itrans, nSubpixels, observerpos
    use image_mod, only: deleteFitsFile
 
@@ -2031,9 +2181,7 @@ end subroutine molecularLoop
 
      ! Find the total # of precessor being used in this run
      call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-#endif
 
-#ifdef MPI
      if (grid%splitOverMPI) then
         if (myrankGlobal == 0) then
            writeoutput = .true.
@@ -2041,24 +2189,16 @@ end subroutine molecularLoop
            writeoutput = .false.
         endif
      endif
+
+     if (grid%SplitOverMPI) then
+        if (myrankGlobal /= 0) then
+           call deallocateUnused(grid,grid%octreeroot,everything = .true.)
+           call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
+           call intensityAlongRayServer(grid, thisMolecule)
+           goto 666
+        endif
+     endif
 #endif
-
-#ifdef MPI
-   if (grid%SplitOverMPI) then
-      if (myrankGlobal /= 0) then
-         call deallocateUnused(grid,grid%octreeroot,everything = .true.)
-         call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
-         call intensityAlongRayServer(grid, thisMolecule)
-         goto 666
-      endif
-   endif
-#endif
-
-
-     if(grid%geometry .eq. 'molebench') molebench = .true.
-     if(grid%geometry .eq. 'molcluster') molcluster = .true.
-     if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
-     if(grid%geometry .eq. 'ggtau') ggtau = .true.
 
      unitVec = VECTOR(0.d0, 0.d0, 0.d0)
      observerVec = VECTOR(0.d0, 0.d0, 0.d0)
@@ -2066,6 +2206,7 @@ end subroutine molecularLoop
      centreVec = VECTOR(0.d0, 0.d0, 0.d0)
      cube%label = " "
 
+!Date of last major change (ISO)
      call writeinfo("molecular_mod 20091210.1608",IMPORTANT)
 
      call writeinfo('Setting observer parameters', TRIVIAL)
@@ -2171,6 +2312,8 @@ end subroutine molecularLoop
 #endif
 
     end subroutine calculateMoleculeSpectrum
+
+!!!!READ ROUTINES!!!!
 
     subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, ObserverVec, viewvec, imagebasis, imagegrid, ix1, ix2)
 
@@ -3246,7 +3389,7 @@ end subroutine molecularLoop
                  
                  if(.not. lowmemory) then
                     if(noturb) then
-                       thisOctal%microturb(isubcell) = max(1d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(isubcell) / &
+                       thisOctal%microturb(isubcell) = max(2d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(isubcell) / &
                          (thisMolecule%molecularWeight * amu))) / (cspeed * 1d-5))
                     endif
 
@@ -3375,7 +3518,7 @@ end subroutine molecularLoop
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule)!, convtestarray)
 
-     use input_variables, only : rinner, router, amr1d
+     use input_variables, only : rinner, router, amr1d, getdepartcoeffs
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
@@ -3405,7 +3548,7 @@ end subroutine molecularLoop
      open(31,file=resultfile,status="unknown",form="formatted")
      open(310,file='results.dat',status="unknown",form="formatted")
      open(32,file=resultfile2,status="unknown",form="formatted")
-     open(34,file='departcoeffs.dat',status="unknown",form="formatted")
+     if(getdepartcoeffs) open(34,file='departcoeffs.dat',status="unknown",form="formatted")
 
      call taualongray(VECTOR(1.d-10,1.d-10,1.d-10), VECTOR(1.d0, -1.d-20, -1.d-20),&
           grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
@@ -3473,7 +3616,8 @@ end subroutine molecularLoop
 !              pops(1:minlevel) = pops(1:minlevel) + thisOctal%molecularLevel(1:minlevel,subcell)
               pops(1:minlevel) = pops(1:minlevel) + molout(1:minlevel)
 
-              dc = dc + (thisOctal%molecularLevel(1:5,subcell) * thisOctal%departcoeff(1:5,subcell))
+              if(getdepartcoeffs) &
+                   dc = dc + (thisOctal%molecularLevel(1:5,subcell) * thisOctal%departcoeff(1:5,subcell))
               fracChange(1:minlevel) = fracChange(1:minlevel) + abs(((thisOctal%molecularLevel(1:minlevel,subcell) - &
                    thisOctal%oldmolecularLevel(1:minlevel,subcell)) / thisOctal%molecularlevel(1:minlevel,subcell)))
            else
@@ -3489,7 +3633,7 @@ end subroutine molecularLoop
         write(39,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
         write(310,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
         write(32,'(es11.5e2,4x,14(f7.5,tr2))') r*1.e10, fracChange(1:min(14,minlevel))
-        write(34,'(es11.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)
+        if(getdepartcoeffs) write(34,'(es11.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)
 
      enddo
 
@@ -3498,10 +3642,11 @@ end subroutine molecularLoop
      close(31)
      close(310)
      close(32)
-     close(34)
+     if(getdepartcoeffs) close(34)
 
    end subroutine dumpResults
-
+!  Simply find 1st level populated at greater than 10^-8 in LTE
+! Also only works for linear molecules
    recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel, lte)
 
      type(GRIDTYPE) :: grid
@@ -3989,14 +4134,14 @@ end subroutine plotdiscValues
     real(double) :: kappaabs
     integer :: iupper, ilower, itrans
     
-    real(double) :: tauavg(maxtrans)
+    real(double) :: tauavg(mintrans)
 
     npops => thisOctal%newmolecularlevel(1:maxlevel,subcell)
  
     alphadust = 0.d0
     nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
         
-    do itrans = 1, maxtrans
+    do itrans = 1, mintrans
 
        if(useDust) then       ! assume change in lambda is small... if this isn't true then perhaps molecular_mod isn't for you?!
           if(realdust) then
@@ -4026,7 +4171,7 @@ end subroutine plotdiscValues
 
   end function calculatetau ! solves rate equation in matrix format - equation 10
   
-  subroutine calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
+  subroutine updateLevels(grid, nvoxels, fixedrays, maxRMSFracChange)
     
     use input_variables, only : tolerance, dongstep, initnray
 
@@ -4038,69 +4183,81 @@ end subroutine plotdiscValues
     integer :: ConvergenceCounter(4, minlevel) ! 3 different levels of convergence
     real(double) :: avgFracChange(minlevel-1, 2) ! don't want the uppermost level to count for convergence
     real(double) :: maxavgFracChange, maxRMSFracChange, maxFracChange
-    integer :: maxavgtrans(1), maxRMStrans(1)
-    integer :: i
+    integer :: maxavglevel(1), maxRMSlevel(1)
 
     character(len=160) :: message
 
     logical :: ng
     
-10006 format(i6,tr3,6(f8.5,1x), 27x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10007 format(i6,tr3,7(f8.5,1x), 18x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10008 format(i6,tr3,8(f8.5,1x),  9x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10009 format(i6,tr3,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10010 format(i6,tr3,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10011 format(i6,tr3,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10012 format(i6,tr3,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10006 format(i6,tr2,6(f8.5,1x), 27x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10007 format(i6,tr2,7(f8.5,1x), 18x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10008 format(i6,tr2,8(f8.5,1x),  9x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10009 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10010 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10011 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10012 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
     
+! initialise to big negative
     maxFracChangePerLevel = -1.d30
     ConvergenceCounter    = 0
-    avgFracChange = 0.d0
+    avgFracChange         = 0.d0
 
+! Compares level populations between this and previous iterations
+! This actually swaps the level populations as well as returning convergence data
+    call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
+         convergenceCounter, grand_iter, nVoxels, fixedrays) 
+
+! Advise that ng acceleration has occured during this iteration
+! Ng acceleration occurs after 4 iterations when using random rays by which time initray has grown by 2^4 times
     ng = dongstep
     if(ng .and.  &
       ((fixedrays .and. (mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0)) &
       .or. nray .eq. 2048*initnray &
       .or. nray .eq. 128*initnray &
       .or. nray .eq. 8*initnray)) call writeinfo("Ng step", TRIVIAL)
-
-    call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
-         convergenceCounter, grand_iter, nVoxels, fixedrays) ! compares level populations between this and previous levels 
-
+! maximum of change in each level averaged over entire grid
     maxavgFracChange = maxval(avgFracChange(1:minlevel-2,1))
     maxRMSFracChange = maxval(avgFracChange(1:minlevel-2,2))
+! level that it happened in
+    maxavglevel = maxloc(avgFracChange(1:minlevel-2,1)) - 1 ! array index -> level
+    maxRMSlevel = maxloc(avgFracChange(1:minlevel-2,2)) - 1
+! Largest change of any level in any subcell
+    maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel-2)) 
 
-    maxavgtrans = maxloc(avgFracChange(1:minlevel-2,1)) - 1 ! array index -> level
-    maxRMStrans = maxloc(avgFracChange(1:minlevel-2,2)) - 1
-
-    maxFracChange = MAXVAL(maxFracChangePerLevel(1:minlevel-2)) ! Largest change of any level < 6 in any voxel
-  
+! Output text to std out re convergence  
     write(message,'(a,1x,f11.7,1x,a,1x,f5.3,1x,a,2x,l1,1x,a,1x,i6,1x,a,1x,i6)') &
          "Maximum fractional change this iteration ", maxFracChange, "tolerance", tolerance, "fixed rays", fixedrays, &
          "nray", nray
     call writeInfo(message,FORINFO)
 
     write(message,'(a,f11.7,a,i1)') "Average fractional change this iteration  ", &
-         maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
+         maxavgFracChange/real(nVoxels)," in level ",maxavglevel
     call writeInfo(message,FORINFO)
     write(message,'(a,f11.7,a,i1)') "RMS fractional change this iteration      ", &
-         sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
+         sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSlevel
         call writeInfo(message,FORINFO)
     write(message,'(a,f11.7)') "Std Dev                                   ", &
          sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
     call writeInfo(message,FORINFO)
     call writeinfo("",FORINFO)  
 
-    do i=3,1,-1
-       if(i .lt. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * i," | ",&
-            real(convergenceCounter(i,1:min(14,minlevel-1)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
-       if(i .eq. 3) write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * (i+2)," | ", &
-            real(convergenceCounter(i,1:min(14,minlevel-1)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+! Fraction of first minlevel-1 levels converged at 5,2,1,0.5 * tolerance respectively
+    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 5," | ",&
+            real(convergenceCounter(1,1:min(14,minlevel-1)))/real(nVoxels) 
        call writeInfo(message,FORINFO)         
-    enddo
+    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 2," | ",&
+            real(convergenceCounter(2,1:min(14,minlevel-1)))/real(nVoxels) 
+       call writeInfo(message,FORINFO)         
+    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 1," | ",&
+            real(convergenceCounter(3,1:min(14,minlevel-1)))/real(nVoxels) 
+       call writeInfo(message,FORINFO)         
+    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 0.5," | ",&
+            real(convergenceCounter(4,1:min(14,minlevel-1)))/real(nVoxels) 
+       call writeInfo(message,FORINFO)         
+       call writeinfo("",FORINFO)
     
+!99.9% of all cells are converged at 0.5 * tolerance. - this is fine
     allCellsConverged = .false.
-
     if(all(convergenceCounter(1,1:minlevel) > (1.-1e-3) * real(nvoxels))) then 
        allCellsConverged = .true.
        write(message,'(a,6(tr1,f7.5),tr1,i7)') "Cells converged to tolerence",real(convergenceCounter(1,1:min(6,minlevel))) &
@@ -4108,11 +4265,7 @@ end subroutine plotdiscValues
        call writeinfo(message, FORINFO)
     endif
 
-    write(message,'(a,f6.4,a,14(f6.4,2x))') "Individual levels converged @ ",tolerance * 0.5," | ", &
-         real(convergenceCounter(4,1:min(14,minlevel-1)))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
-    call writeInfo(message,FORINFO)
-    call writeinfo("",FORINFO)  
-
+! Write fracChanges.dat which contains data for each level
     if (writeoutput) then
        open(138,file="fracChanges.dat",position="append",status="unknown")
   
@@ -4140,7 +4293,6 @@ end subroutine plotdiscValues
             maxFracChange, maxavgFracChange/real(nVoxels)
     case default
     end select
-
     if(minlevel .gt. 12) then
        write(138,10012) nray, maxFracChangePerLevel(1:9), fixedrays, & 
             real(convergenceCounter(1:3,minlevel))/real(nVoxels), maxFracChange, maxavgFracChange/real(nVoxels)
@@ -4160,93 +4312,61 @@ end subroutine plotdiscValues
     close(140)
  endif
 
-end subroutine calculateConvergenceData
+end subroutine updateLevels
 
-      SUBROUTINE sobseq(x,init)
-        USE nrtype; USE nrutil, ONLY : nrerror
-        IMPLICIT NONE
-        REAL(double), DIMENSION(:), INTENT(OUT) :: x
-        INTEGER(I4B), OPTIONAL, INTENT(IN) :: init
-        INTEGER(I4B), PARAMETER :: MAXBIT=30,MAXDIM=6
-        REAL(SP), SAVE :: fac
-        INTEGER(I4B) :: i,im,ipp,j,k,l
-        INTEGER(I4B), DIMENSION(:,:), ALLOCATABLE:: iu
-        INTEGER(I4B), SAVE :: in
-        INTEGER(I4B), DIMENSION(MAXDIM), SAVE :: ip,ix,mdeg
-        INTEGER(I4B), DIMENSION(MAXDIM*MAXBIT), SAVE :: iv
-        DATA ip /0,1,1,2,1,4/, mdeg /1,2,3,3,4,4/, ix /6*0/
-        DATA iv /6*1,3,1,3,3,1,1,5,7,7,3,3,5,15,11,5,15,13,9,156*0/
-        if (present(init)) then
-           ix=0
-           in=0
-           if (iv(1) /= 1) RETURN
-           fac=1.0_sp/2.0_sp**MAXBIT
-           allocate(iu(MAXDIM,MAXBIT))
-           iu=reshape(iv,shape(iu))
-           do k=1,MAXDIM
-              do j=1,mdeg(k)
-                 iu(k,j)=iu(k,j)*2**(MAXBIT-j)
-              end do
-              do j=mdeg(k)+1,MAXBIT
-                 ipp=ip(k)
-                 i=iu(k,j-mdeg(k))
-                 i=ieor(i,i/2**mdeg(k))
-                 do l=mdeg(k)-1,1,-1
-                    if (btest(ipp,0)) i=ieor(i,iu(k,j-l))
-                    ipp=ipp/2
-                 end do
-                 iu(k,j)=i
-              end do
+SUBROUTINE sobseq(x,init)
+  USE nrtype; USE nrutil, ONLY : nrerror
+  IMPLICIT NONE
+  REAL(double), DIMENSION(:), INTENT(OUT) :: x
+  INTEGER(I4B), OPTIONAL, INTENT(IN) :: init
+  INTEGER(I4B), PARAMETER :: MAXBIT=30,MAXDIM=6
+  REAL(SP), SAVE :: fac
+  INTEGER(I4B) :: i,im,ipp,j,k,l
+  INTEGER(I4B), DIMENSION(:,:), ALLOCATABLE:: iu
+  INTEGER(I4B), SAVE :: in
+  INTEGER(I4B), DIMENSION(MAXDIM), SAVE :: ip,ix,mdeg
+  INTEGER(I4B), DIMENSION(MAXDIM*MAXBIT), SAVE :: iv
+  DATA ip /0,1,1,2,1,4/, mdeg /1,2,3,3,4,4/, ix /6*0/
+  DATA iv /6*1,3,1,3,3,1,1,5,7,7,3,3,5,15,11,5,15,13,9,156*0/
+  if (present(init)) then
+     ix=0
+     in=0
+     if (iv(1) /= 1) RETURN
+     fac=1.0_sp/2.0_sp**MAXBIT
+     allocate(iu(MAXDIM,MAXBIT))
+     iu=reshape(iv,shape(iu))
+     do k=1,MAXDIM
+        do j=1,mdeg(k)
+           iu(k,j)=iu(k,j)*2**(MAXBIT-j)
+        end do
+        do j=mdeg(k)+1,MAXBIT
+           ipp=ip(k)
+           i=iu(k,j-mdeg(k))
+           i=ieor(i,i/2**mdeg(k))
+           do l=mdeg(k)-1,1,-1
+              if (btest(ipp,0)) i=ieor(i,iu(k,j-l))
+              ipp=ipp/2
            end do
-           iv=reshape(iu,shape(iv))
-           deallocate(iu)
-        else
-           im=in
-           do j=1,MAXBIT 
-              if (.not. btest(im,0)) exit
-              im=im/2
-           end do
-           if (j > MAXBIT) call nrerror('MAXBIT too small in sobseq')
-           im=(j-1)*MAXDIM
-           j=min(size(x),MAXDIM)
-           ix(1:j)=ieor(ix(1:j),iv(1+im:j+im))
-           x(1:j)=ix(1:j)*fac
-           in=in+1
-        end if
-      END SUBROUTINE sobseq
-     
-   recursive subroutine  solveAllPops(grid, thisOctal, thisMolecule)
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     type(octal), pointer   :: thisOctal
-     type(octal), pointer  :: child 
-     integer :: subcell, i
-     real(double) :: nh, nHe, ne, nProtons
-
-     do subcell = 1, thisOctal%maxChildren
-        if (thisOctal%hasChild(subcell)) then
-           ! find the child
-           do i = 1, thisOctal%nChildren ! What's this?
-              if (thisOctal%indexChild(i) .eq. subcell) then
-                 child => thisOctal%child(i)
-                 call solveAllpops(grid, child, thisMolecule)
-                 exit
-              end if
-           end do
-        else ! once octal has no more children, solve for current parameter set
-
-           nh = 0.d0
-           nHe = 0.d0
-           ne = 0.d0
-           nProtons = 0.d0
-
-           call solveLevels(thisOctal%molecularLevel(1:maxlevel,subcell), &
-                thisOctal%jnu(1:maxtrans,subcell),  &
-                dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell), nh, nHe, ne, nprotons)
-        endif
-     enddo
-   end subroutine solveAllPops
-
+           iu(k,j)=i
+        end do
+     end do
+     iv=reshape(iu,shape(iv))
+     deallocate(iu)
+  else
+     im=in
+     do j=1,MAXBIT 
+        if (.not. btest(im,0)) exit
+        im=im/2
+     end do
+     if (j > MAXBIT) call nrerror('MAXBIT too small in sobseq')
+     im=(j-1)*MAXDIM
+     j=min(size(x),MAXDIM)
+     ix(1:j)=ieor(ix(1:j),iv(1+im:j+im))
+     x(1:j)=ix(1:j)*fac
+     in=in+1
+  end if
+END SUBROUTINE sobseq
+      
  subroutine LTEpopsReal(thisMolecule, temperature, levelpops)
 
    type(MOLECULETYPE) :: thisMolecule
@@ -4289,6 +4409,7 @@ end subroutine calculateConvergenceData
 
  end subroutine LTEpopsDouble
 
+! 21cm line stuff by Dave Acreman
 !-----------------------------------------------------------------------------------------------------------
 
  subroutine make_h21cm_image(grid)
@@ -4332,7 +4453,7 @@ end subroutine calculateConvergenceData
 
  end subroutine make_h21cm_image
 
-subroutine compare_molbench
+subroutine compare_molbench(diffmax)
 
   use input_variables, only : tolerance
 
@@ -4346,7 +4467,7 @@ subroutine compare_molbench
   character(len=*), parameter :: diff_file="diff.dat"
 
 ! Maximum allowable fractional difference 
-  real :: max_diff,diffmax
+  real(double) :: max_diff,diffmax
 
 ! Total number of J columns
   integer, parameter :: ncols=8
@@ -4354,14 +4475,14 @@ subroutine compare_molbench
 ! No. of columns to check
   integer, parameter :: ncheck=6
 
-  real :: model_R, model_J(ncols), model_Rarray(100)
-  real :: bench_R, bench_J(ncols)
-  real :: diff(ncols,200)
+  real(double) :: model_R, model_J(ncols), model_Rarray(100)
+  real(double) :: bench_R, bench_J(ncols)
+  real(double) :: diff(ncols,200)
 
   integer :: diffmaxloc(2)!, diffmaxr(1)
   integer :: nlines, status
 
-  max_diff = tolerance * sqrt(275.d0) ! sqrt(Nvoxels)
+  max_diff = 2.d0 * tolerance * sqrt(89.d0) ! sqrt(Nvoxels)
 
   diff = -999.
   diffmax = -1.
@@ -4378,53 +4499,45 @@ subroutine compare_molbench
      nlines = nlines + 1
 
      read(60, *, iostat=status) bench_R, bench_J(:)
-     if (status /= 0 ) then
-!        write(*,*) "Reached end of ", bench_file
-        exit
-     end if
-
      read(61, *, iostat=status) model_R, model_J(:)
-     model_Rarray(nlines) = model_R
+
+
      if (status /= 0 ) then
 !        write(*,*) "Reached end of ", model_file, "before end of ", bench_file
 !        write(*,*) "TORUS: Test failed"
         status = -1
-        exit
+        nlines = nlines - 1
      end if
 
-     diff(:,nlines) = abs(model_J(:) - bench_J(:)) / bench_J(:) 
-     diffmax = maxval(diff(:,:))
-     diffmaxloc = maxloc(diff(:,:))
+     model_Rarray(nlines) = model_R
 
-     write(65,'(6(tr2,es12.5))') diff(1:ncheck,nlines)
+     diff(1:ncheck,nlines) = abs(model_J(1:ncheck) - bench_J(1:ncheck)) / bench_J(1:ncheck) 
+     write(65,'(7(tr2,es12.5))') model_R, diff(1:ncheck,nlines)
 
+     if(status .eq. -1) exit
+     
   end do
+
+  diffmax = maxval(diff(1:ncheck,:))
+  diffmaxloc = maxloc(diff(1:ncheck,:))
 
 !  write(*,*) "Maximum difference = ",diffmax
 !  write(*,*) "Radius = ", model_Rarray(diffmaxloc(2))
 !  write(*,*) "Level ", diffmaxloc(1) - 1
 
-  if(status .ne. -1) then
-     if ( any(diff(1:ncheck,:) > max_diff) .and. model_R .lt. 4e17) then 
-!       write(*,*) "Difference of more than ", max_diff, "found."
-!       write(*,*) "TORUS: Test failed"
-        status = 0
-     else
-!       write(*,*) "Difference of more than ", max_diff, "not found."
-!       write(*,*) "TORUS: Test successful"
-        status = 1
-     endif
+  if (any(diff(1:ncheck,:) .gt. max_diff)) then 
+     status = 0
+  else
+     status = 1
   endif
-  
-!  write(*,*) "Read ", nlines-1, "lines"
 
   if(status .ne. 1) then
      write(62,*) diffmax, model_Rarray(diffmaxloc(2)), diffmaxloc(1) - 1
-     write(64,'(i2)') status
   else
      write(63,*) diffmax, model_Rarray(diffmaxloc(2)), diffmaxloc(1) - 1
-     write(64,'(i2)') status
   endif
+
+  write(64,'(i2)') status
 
   close(60)
   close(61)
@@ -4434,7 +4547,6 @@ subroutine compare_molbench
   close(65)
 
 end subroutine compare_molbench
-
 !-----------------------------------------------------------------------------------------------------------
  recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
    use input_variables, only : rinner, router
@@ -5722,7 +5834,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
      integer, parameter :: maxIter = 100
      logical :: popsConverged
      character(len=200) :: message
-     integer :: iRay, iTrans, iter, i 
+     integer :: iRay, iter, i 
      integer :: iStage
      real(double), allocatable :: oldpops1(:), oldpops2(:), oldpops3(:), oldpops4(:)
      real(double) :: fac
@@ -5759,6 +5871,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
       logical :: ng
       integer :: status
+
+      real(double) :: diffmax
+
+      real(double) :: collmatrix(50,50), ctot(50)
 
       call writeinfo("molecular_mod 20100308.1608",TRIVIAL)
 
@@ -5839,7 +5955,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       nRay = initnray ! number of rays used to establish estimate of jnu and pops
 
       allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel) )
-
+      
       call init_random_seed()
 
       call random_seed(size=iSize)
@@ -5989,37 +6105,41 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                 iter = iter + 1
 
                 if(ng) then
-                   oldpops1(1:minlevel-2) = oldpops2(1:minlevel-2)
-                   oldpops2(1:minlevel-2) = oldpops3(1:minlevel-2)
+                   oldpops1(1:minlevel) = oldpops2(1:minlevel)
+                   oldpops2(1:minlevel) = oldpops3(1:minlevel)
                    oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
                 else
                    oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
                 endif
-
-                do iTrans = 1, maxtrans
                    
-                   call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
-                        phi(1:nRay), i0(1:nRay,itrans), iTrans, thisOctal%jnu(iTrans,subcell), &
-                        thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
-                enddo
+                call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
+                     phi(1:nRay), i0(1:nRay,1:maxtrans), thisOctal%jnu(1:maxtrans,subcell), &
+                     thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
+
                 nh = 0.d0
                 nHe = 0.d0
                 ne = 0.d0
                 nProtons = 0.d0
-                
-                if(debug) where(isnan(thisOctal%jnu(1:maxtrans,subcell))) thisOctal%jnu(1:maxtrans,subcell) = 0.d0
+
+                call getCollMatrix(thisOctal%nh2(subcell), dble(thisOctal%temperature(subcell)), &
+                     thismolecule, nh, nHe, ne, nprotons, collmatrix(1:maxlevel,1:maxlevel), &
+                     ctot(1:maxlevel))
 
                 call solveLevels(thisOctal%newMolecularLevel(1:maxlevel,subcell), &
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
-                     thisMolecule, thisOctal%nh2(subcell), nh, nHe, ne, nprotons)
+                     thisMolecule, thisOctal%nh2(subcell), collmatrix(1:maxlevel,1:maxlevel), &
+                     ctot(1:maxlevel))
 
                 if(ng) then
                    if(mod(iter, accstep) .eq. 0) then
-                      oldpops4(1:minlevel-2) = thisOctal%newmolecularLevel(1:minlevel-2,subcell)
-                      thisOctal%newmolecularLevel(1:minlevel-2,subcell) = &
-!                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2),&
-!                                 (abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel-2,subcell))))))
-                      abs(ngStep(oldpops1(1:minlevel-2), oldpops2(1:minlevel-2), oldpops3(1:minlevel-2), oldpops4(1:minlevel-2)))
+                      oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
+                      thisOctal%newmolecularLevel(1:minlevel,subcell) = &
+                           abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                                      oldpops3(1:minlevel), oldpops4(1:minlevel), &
+                                      abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+                                      length = minlevel-2))
+!                      abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), oldpops3(1:minlevel), oldpops4(1:minlevel)))
+
 !                      thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell)! / &
 !                      sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
 !                      oldpops3(1:minlevel-2) = oldpops4(1:minlevel-2)
@@ -6102,7 +6222,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       call writeinfo("", FORINFO)
 
       call writeinfo(message, FORINFO)
-      call calculateConvergenceData(grid, nvoxels, fixedrays, maxRMSFracChange)
+      call updateLevels(grid, nvoxels, fixedrays, maxRMSFracChange)
 
  ! If you think it's converged then test with the same number of rays to make sure
 
@@ -6147,7 +6267,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
         if(molebench) then
            call torus_mpi_barrier
-           call compare_molbench
+           call compare_molbench(diffmax)
+           write(message,*) "Maximum difference is ", diffmax
            open(96, file="status.dat")
            read(96,*) status
            close(96)
@@ -6156,6 +6277,9 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
               call writeinfo("Convergence triggered early!",TRIVIAL)
               gridConverged = .true.
               gridConvergedTest = .true.
+           else
+              call writeinfo("Convergence test not passed",TRIVIAL)
+              call writeinfo(message,TRIVIAL)
            endif
         endif
 
@@ -6391,6 +6515,5 @@ end subroutine molecularLoopV2
   end subroutine shutdownServers
 
 #endif
-
 
   end module molecular_mod

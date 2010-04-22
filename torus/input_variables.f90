@@ -133,8 +133,9 @@ module input_variables
   logical :: useDust, realdust ! molecular_mod includes continuum emission
   logical :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
+  logical :: getdepartcoeffs, gettau
   real :: r0, rhoC ! Filamentry parameters
-  real :: x_D
+  real :: x_D, x_0
 
   real(double) :: minVel, maxVel
   real :: imageside ! molecular_mod image parameters

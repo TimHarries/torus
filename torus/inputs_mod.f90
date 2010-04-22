@@ -1237,23 +1237,25 @@ contains
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .true.)
        call getLogical("isinlte", isinlte, cLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("getdepartcoeffs", getdepartcoeffs, cLine, nLines, &
+            "Get departure coefficents : ", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("gettau", gettau, cLine, nLines, &
+            "Get tau in cell : ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, cLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
        call getLogical("plotlevels", plotlevels, cLine, nLines, &
             "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("realdust", realdust, cLine, nLines, &
             "Use realistic dust model: ", "(a,1l,1x,a)", .true., ok, .false.)
-
        call getLogical("doCOchemistry", doCOchemistry, cLine, nLines, &
             "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)
 
        if(doCOchemistry) then
-
           call getReal("fracCOdepletion", x_D, cLine, nLines, &
-               "Fraction of CO depletion", "(a,1l,1x,a)", 0.1, ok, .true.)
-          
+               "Depleted CO abundance", "(a,e12.5,1x,a)", 0.1, ok, .true.)
+          call getReal("fracCOdepletion", x_0, cLine, nLines, &
+               "Undepleted CO abundance", "(a,e12.5,1x,a)", 1.0, ok, .true.)          
        endif
-
 
        if(geometry .eq. 'molcluster') then
           call getString("sphdatafilename", sphdatafilename, cLine, nLines, &

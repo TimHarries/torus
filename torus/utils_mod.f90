@@ -4460,87 +4460,6 @@ END SUBROUTINE GAUSSJ
 
  end subroutine bonnorEbertRun
       
-!!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974 and OAB JQSRT (35) 431, 1986
-!!! coded by DAR Feb 09
-  function ngStep(q, r, s, t, weight, doubleweight) result(out)
-
-    real(double) :: q(:), r(:), s(:), t(:)
-    real(double), allocatable :: diff1(:), diff2(:)
-    real(double), allocatable :: diff01(:), diff02(:), diff(:)
-    real(double) :: a,b,d,e,f ! matrix coefficients - matrix is symmetric (at least)
-    real(double) :: c1, c2
-    real(double), allocatable :: out(:)
-    real(double), allocatable :: rorig(:), sorig(:), torig(:)
-    real(double) :: det
-    real(double), optional :: weight(:)
-    real(double), allocatable :: OABweight(:)
-   
-    integer :: vectorsize
-    logical, optional :: doubleweight
-    logical :: dodoubleweight
-
-    if(present(doubleweight)) then
-       dodoubleweight = doubleweight
-    else
-       dodoubleweight = .false.
-    endif
-
-    vectorsize = size(q)
-    
-    allocate(diff1(vectorsize), diff2(vectorsize), &
-         diff01(vectorsize), diff02(vectorsize), diff(vectorsize), out(vectorsize), &
-         rorig(vectorsize), sorig(vectorsize), torig(vectorsize), OABweight(vectorsize))
-
-    if(present(weight)) then
-       OABweight = weight
-    else
-       OABweight = 1.
-    endif
-
-      rorig = r
-      sorig = s
-      torig = t
-
-      q = q / t
-      r = r / t
-      s = s / t
-      t = t / t
-
-      if(dodoubleweight) then
-         q = q * 0.125d0
-         r = r * 0.25d0
-         s = s * 0.5d0
-         t = t
-      endif
-
-      diff  = (t - s)
-      diff1 = (s - r)
-      diff2 = (r - q)
-      
-      diff01 = (diff - diff1)
-      diff02 = (diff - diff2)
-      
-      a = sum(diff01**2 * OABweight)
-      b = sum(diff01 * diff02 * OABweight)
-      d = sum(diff02**2 * OABweight)
-      e = sum(diff * diff01 * OABweight)
-      f = sum(diff * diff02 * OABweight)
-      
-      det = a*d - b*b
-      
-      if(det .eq. 0.d0) then
-         out = torig
-         return
-      endif
-
-      c1 = (e*d-b*f) / det
-      c2 = (a*f-e*b) / det
-
-      out = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
-
-      deallocate(diff1, diff2, diff01, diff02, diff, rorig, sorig, torig, OABweight)
-    end function ngStep   
-
   subroutine regular_tri_quadint(t1,t2,t3,weights)
 
     real(double) :: t1, t2, t3
@@ -4702,6 +4621,94 @@ END SUBROUTINE GAUSSJ
       R = (SUM*SUMXY-SUMX*SUMY)/SQRT(DELTA*(SUM*SUMY2-SUMY*SUMY))
     END SUBROUTINE LINFIT
 
+!!! Vector sequence accleration routine by Ng J. Chem. Phys. (61) 7, 1974 and OAB JQSRT (35) 431, 1986
+!!! coded by DAR Feb 09
+!!! final version? April 2010 - got rid of all of the allocating and deallocating.
+!!! Added capability to refine on just part of the vector
+function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result(out)
+
+    integer :: length
+
+    real(double) :: q(length), r(length), s(length), t(length)
+    real(double), optional :: weight(:)
+    real(double) :: diff1(length), diff2(length)
+    real(double) :: diff01(length), diff02(length), diff(length)
+    real(double) :: a,b,d,e,f ! matrix coefficients - matrix is symmetric (at least)
+    real(double) :: c1, c2
+    real(double), pointer :: out(:)
+    real(double), target :: outarray(200)
+    real(double) :: qorig(:), rorig(:), sorig(:), torig(:)
+    real(double) :: det
+    real(double) :: OABweight(length)
+
+    integer :: vectorsize
+    logical, optional :: doubleweight
+    logical :: dodoubleweight
+
+    if(present(doubleweight)) then
+       dodoubleweight = doubleweight
+    else
+       dodoubleweight = .false.
+    endif
+  
+    if(present(weight)) then
+       OABweight(1:length) = weight(1:length)
+    else
+       OABweight(1:length) = 1.d0
+    endif
+
+    r = rorig(1:length)
+    s = sorig(1:length)
+    t = torig(1:length)
+
+    vectorsize = size(qorig)
+
+    q(1:length) = q(1:length) / t(1:length)
+    r(1:length) = r(1:length) / t(1:length)
+    s(1:length) = s(1:length) / t(1:length)
+    t(1:length) = 1.d0
+
+      if(dodoubleweight) then
+         q = q * 0.125d0
+         r = r * 0.25d0
+         s = s * 0.5d0
+         t = t
+      endif
+
+      diff  = (t - s)
+      diff1 = (s - r)
+      diff2 = (r - q)
+      
+      diff01 = (diff - diff1)
+      diff02 = (diff - diff2)
+      
+      a = sum(diff01**2 * OABweight)
+      b = sum(diff01 * diff02 * OABweight)
+      d = sum(diff02**2 * OABweight)
+      e = sum(diff * diff01 * OABweight)
+      f = sum(diff * diff02 * OABweight)
+      
+      det = a*d - b*b
+      
+      if(det .eq. 0.d0) then
+         outarray(1:vectorsize) = torig(1:vectorsize)
+         out => outarray(1:vectorsize)
+         return
+      endif
+
+      c1 = (e*d-b*f) / det
+      c2 = (a*f-e*b) / det
+
+      outarray(1:vectorsize) = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
+
+      out => outarray(1:vectorsize)
+      
+      if(any(isnan(out))) then
+         outarray(1:vectorsize) = torig(1:vectorsize)
+         out => outarray(1:vectorsize)
+      endif
+
+    end function ngStep
 
 end module utils_mod
 
