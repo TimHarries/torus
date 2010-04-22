@@ -405,8 +405,7 @@ module molecular_mod
               end if
            end do
         else
-
-           ! MPI stuff
+! MPI stuff
            if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 ! allocate space for n_H2
            if (.not.associated(thisOctal%nh2)) allocate(thisOctal%nh2(1:thisOctal%maxChildren))
@@ -521,7 +520,7 @@ module molecular_mod
 ! this just catches stuff if it's been allocated and not set.
 
               if (.not.associated(thisOctal%microturb)) &
-                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
+                   allocate(thisOctal%microturb(1:thisOctal%maxChildren))
 
               if(thisoctal%microturb(subcell) .le. 1d-20) then
 !                 if(.not. molebench) 
@@ -535,7 +534,7 @@ module molecular_mod
 
 ! Fill cells with molecular abundance data
               if (.not.associated(thisOctal%molAbundance)) &
-                 allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
+                   allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
 
               if (constantAbundance) then
                  thisOctal%molAbundance(subcell) = molAbundance
@@ -564,8 +563,9 @@ module molecular_mod
                  thisoctal%departcoeff(1:5,subcell) = 1.d0 / thisoctal%departcoeff(1:5,subcell)
               endif
 ! Fill cells with molecular level populations - LTE or small
-              if (.not. associated(thisOctal%molecularLevel)) then
-                 allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+              if (.not. associated(thisOctal%molecularLevel)) &
+                   allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+
                  if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
                     thisOctal%molecularLevel(1,1:thisoctal%maxchildren) = 1.d0
                     thisOctal%molecularLevel(2,1:thisoctal%maxchildren) = 0.d0
@@ -581,7 +581,6 @@ module molecular_mod
                        thisOctal%molecularLevel(1:maxlevel,subcell) = 1.d-10
                     endif
                  endif
-              endif
 
               if (.not.associated(thisOctal%bnu)) &
                  allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
@@ -874,6 +873,8 @@ module molecular_mod
      integer :: status
 
      real(double) :: collmatrix(50,50), ctot(50)
+
+     call writeinfo("molecular_mod 20100422.1729",TRIVIAL)
      
 ! logicals are quicker to access than strings 
      if(grid%geometry .eq. 'molebench') molebench = .true.
@@ -945,6 +946,7 @@ module molecular_mod
 ! IMPORTANT - Here's where molecular levels and other critical data get allocated.     
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
+
 ! Useful temporary file containing the depth of each array - filled in allocate molecularlevels
      do i = 1, 50
         write(1003,*) i, deptharray(i)
@@ -5876,7 +5878,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
       real(double) :: collmatrix(50,50), ctot(50)
 
-      call writeinfo("molecular_mod 20100308.1608",TRIVIAL)
+      call writeinfo("molecular_mod 20100422.1729",TRIVIAL)
 
       position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
  ! blockhandout must be off for fixed ray case, otherwise setting the
