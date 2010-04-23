@@ -49,7 +49,7 @@ height 125.
 rho 8.16136e-18
 
 ! dust params
-mie F                    
+mie T
 iso_scatter T
 forceFirstScat F
 probdust 0.1
@@ -58,7 +58,7 @@ amin1 0.12
 amax1 0.1201
 qdist1 0.01
 useDust F %molecular_mod includes continuum emission
-dusttogas 1.
+dusttogas 0.01
 
 ! lucy calculation
 lucyrad F
@@ -132,3 +132,4 @@ dongstep T
 initnray 16
 constantabundance T
 setmaxlevel 10
+outputconvergence T

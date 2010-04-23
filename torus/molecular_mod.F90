@@ -810,8 +810,8 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
-          usedust, amr2d, amr1d, amr3d, plotlevels, gettau, &
-          debug, restart, isinlte, quasi, dongstep, initnray
+          usedust, amr1d, amr3d, plotlevels, gettau, &
+          debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence
      use messages_mod, only : myRankIsZero
      use parallel_mod
 
@@ -874,7 +874,7 @@ module molecular_mod
 
      real(double) :: collmatrix(50,50), ctot(50)
 
-     call writeinfo("molecular_mod 20100422.1729",TRIVIAL)
+     call writeinfo("molecular_mod 20100423.1130",TRIVIAL)
      
 ! logicals are quicker to access than strings 
      if(grid%geometry .eq. 'molebench') molebench = .true.
@@ -984,7 +984,7 @@ module molecular_mod
 
 ! dumpresults if in LTE
       nRay = 1
-      if(((amr1d .or. amr2d) .or. molebench) .and. writeoutput .and. (.not. restart) .and. isinlte) then
+      if(writeoutput .and. (.not. restart) .and. isinlte .and. outputconvergence) then
          call writeinfo("Writing LTE levels", TRIVIAL)
          call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
       endif
@@ -1084,7 +1084,7 @@ module molecular_mod
             endif
 ! if mintrans has to change then need to change allocations for grid
             if((mintransold .ne. mintrans) .or. (grand_iter .eq. 0)) then
-               call writeinfo("Reallocating memory", TRIVIAL)
+               call writeinfo("(Re)allocating memory", TRIVIAL)
                call allocateother(grid, grid%octreeroot)
                ngcounter = 0
             endif
@@ -1310,47 +1310,46 @@ module molecular_mod
            gridConverged = .false.
         endif
 
-           call writeAmrGrid(molgridfilename,.false.,grid)
-           write(message,*) "Written Molecular Grid to", molgridfilename
-           call writeinfo(message, TRIVIAL)
-           call writeinfo("",FORINFO)  
-           if(writeoutput) then
-              open(95, file="restart.dat",status="unknown",form="formatted")
-              write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
-              do i = 1,size(iseedpublic)
-                 write(95, *) iseedpublic(i)
-              enddo
-              close(95)
-           endif
-
-           call writeinfo("Dumping results", FORINFO)
-           if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
+        call writeAmrGrid(molgridfilename,.false.,grid)
+        write(message,*) "Written Molecular Grid to", molgridfilename
+        call writeinfo(message, TRIVIAL)
+        call writeinfo("",FORINFO)  
+        if(writeoutput) then
+           open(95, file="restart.dat",status="unknown",form="formatted")
+           write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
+           do i = 1,size(iseedpublic)
+              write(95, *) iseedpublic(i)
+           enddo
+           close(95)
+        endif
+        
+        call writeinfo("Dumping results", FORINFO)
+        if(writeoutput .and. outputconvergence) call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
         if(myrankiszero .and. plotlevels .and. .not.(amr1d)) then
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
            write(message, *) "Wrote VTK file to", filename
            call writeinfo(message, TRIVIAL)
            call writeVtkFile(grid, filename, "vtk.txt")
         endif
-
+        
         if(writeoutput) then
            write(message,*) "Done ",nray," rays"
            call tune(6, message)  ! stop a stopwatch
-
         endif
-
+        
         call writeinfo("",FORINFO)  
         call writeinfo("",FORINFO)  
-
+        
         if(molebench) then
            call torus_mpi_barrier
            call compare_molbench(diffmax)
            write(message,*) "Maximum difference is ", diffmax
-
+           
            open(96, file="status.dat")
            read(96,*) status
            close(96)
            
-           if(status .eq. 1 .and. status .eq. 2) then 
+           if(status .eq. 1) then
               call writeinfo("Convergence triggered early!",TRIVIAL)
               call writeinfo(message,TRIVIAL)
               gridConverged = .true.
@@ -1360,7 +1359,7 @@ module molecular_mod
               call writeinfo(message,TRIVIAL)
            endif
         endif
-
+        
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
               if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
@@ -1368,10 +1367,10 @@ module molecular_mod
               call writeInfo(message,FORINFO)
               call writeinfo("", FORINFO)
               if (molebench .and. (nray .gt. maxray)) then 
-                call writeinfo("Molebench Test Ended, Exiting...", TRIVIAL)
-                gridconverged = .true.
+                 call writeinfo("Molebench Test Ended, Exiting...", TRIVIAL)
+                 gridconverged = .true.
               endif
- 
+              
            endif
         else
            if(.not. gridconverged) call writeinfo("Doing all rays again", FORINFO)
@@ -1722,9 +1721,10 @@ end subroutine molecularLoop
               jnuDust(itrans) = alphanu(itrans,2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
            endif
 
-           alphanu(1:nray,1) = alphanuBase(itrans) * tempphi(1:nray) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)      
+
            jnu(1:nray) = etaLine(itrans) * tempphi(1:nRay) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
 
+           alphanu(1:nray,1) = alphanuBase(itrans) * tempphi(1:nray) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)      
            alpha(1:nray) = alphanu(1:nray,1) + alphanu(itrans,2)
 
            if(alpha(itrans) .ne. 0) then
@@ -1732,30 +1732,33 @@ end subroutine molecularLoop
            else
               snu = tiny(snu)
            endif
+
+           temptauArray(1:nRay) = alpha(1:nray) * tempds(1:nRay)
+           opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
+           otp(1:nray) = opticaldepthArray(1:nRay) * tempphi(1:nRay) ! intermediate stage (weighted opt depth)
+! external jbar due to getray (i0)        
+           jBarExternalArray(1:nRay) = i0(1:nray,itrans) * otp(1:nray)
+! internal jbar inside cell
+           jBarInternalArray(1:nRay) = snu(1:nray) * (tempphi(1:nray) - otp(1:nray))
+! jbar weighted average of int + ext        
+           jbar(itrans) = (sum(jBarExternalArray(1:nRay)+jBarInternalArray(1:nRay))) / sumPhi
+        enddo
+     else
+! vecorised jbar calculation
+        do itrans = 1, maxtrans
+           alpha(1:nray) = alphanuBase(itrans) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
+! calculate optical depth within cell based on average over all rays       
+           temptauArray(1:nRay) = alpha(1:nray) * phids(1:nRay)
+           opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
+           otp(1:nray) = opticaldepthArray(1:nRay) * tempphi(1:nRay) ! intermediate stage (weighted opt depth)
+! external jbar due to getray (i0)        
+           jBarExternalArray(1:nRay) = i0(1:nray,itrans) * otp(1:nray) 
+! internal jbar inside cell
+           jBarInternalArray(1:nRay) = snugas(itrans) * (tempphi(1:nray) - otp(1:nray))
+! jbar weighted average of int + ext        
+           jbar(itrans) = (sum(jBarExternalArray(1:nRay)+jBarInternalArray(1:nRay))) / sumPhi
         enddo
      endif
-
-! vecorised jbar calculation
-     do itrans = 1, maxtrans
-        if(.not. usedust) &
-             alpha(1:nray) = alphanuBase(itrans) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)      
-! calculate optical depth within cell based on average over all rays       
-        temptauArray(1:nRay) = alpha(1:nray) * phids(1:nRay)
-        opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
-        otp(1:nray) = opticaldepthArray(1:nRay) * tempphi(1:nRay) ! intermediate stage (weighted opt depth)
-! external jbar due to getray (i0)        
-!        jBarExternalArray(1:nRay) = i0(itrans,1:nray) * otp(1:nray) 
-        jBarExternalArray(1:nRay) = i0(1:nray,itrans) * otp(1:nray) 
-! internal jbar inside cell
-        if(usedust) then 
-           jBarInternalArray(1:nRay) = snu(1:nray) * (tempphi(1:nray) - otp(1:nray))
-        else
-           jBarInternalArray(1:nRay) = snugas(itrans) * (tempphi(1:nray) - otp(1:nray))
-        endif
-! jbar weighted average of int + ext        
-        jbar(itrans) = (sum(jBarExternalArray(1:nRay)+jBarInternalArray(1:nRay))) / sumPhi
-     enddo
-
      if(debug) where(isnan(jbar)) jbar = 0.d0
    
    end subroutine calculateJbar
@@ -2084,14 +2087,22 @@ end subroutine molecularLoop
                  oldpops3(1:minlevel) = thisOctal%molecularLevel(1:minlevel,subcell)
                  oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
 ! Calculate ng accelerated levels upto minlevel - 2 (avoids numerics noise)
-                 thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                      abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
-                                oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                                abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                                length = minlevel-2))
+                 if(fixedrays) then
+                    thisOctal%newmolecularLevel(1:minlevel,subcell) = &
+                         abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                         oldpops3(1:minlevel), oldpops4(1:minlevel), &
+                         abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+                         length = minlevel-2, doubleweight = .false.))
+                 else
+                    thisOctal%newmolecularLevel(1:minlevel,subcell) = &
+                         abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                         oldpops3(1:minlevel), oldpops4(1:minlevel), &
+                         abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+                         length = minlevel-2, doubleweight = .true.))
+                 endif
               endif
            endif
-
+           
 ! determine updated fractional change in each level upto minlevels.
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel,subcell) - &
                 thisOctal%molecularLevel(1:minlevel,subcell)) / &
@@ -2844,7 +2855,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
            PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
            
            alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
-           alpha(1:maxtrans) = alphanu(1:maxtrans,1) !+ alphanu(1:maxtrans,2)              
+           alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)              
            dTau(:) = alpha(:) * dds * 1.d10 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
               
            tau(:) = tau(:) + dtau(:) ! contribution to optical depth from this line integral
@@ -3609,13 +3620,13 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
               rminus = modulus(subcellcentre(thisoctal,subcell))
               molarray(:,1) = thisOctal%molecularLevel(1:minlevel,subcell)
 
-              rarray = (/rminus*0.9999d0,rcen,rplus*1.0001d0/)
+!              rarray = (/rminus*0.9999d0,rcen,rplus*1.0001d0/)
+              rarray = (/rminus,rcen,rplus/)
 
               do itrans=1,minlevel
                  molout(itrans) = general_quadint(rarray,molarray(itrans,:),r)
               enddo
 
-!              pops(1:minlevel) = pops(1:minlevel) + thisOctal%molecularLevel(1:minlevel,subcell)
               pops(1:minlevel) = pops(1:minlevel) + molout(1:minlevel)
 
               if(getdepartcoeffs) &
@@ -3647,6 +3658,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
      if(getdepartcoeffs) close(34)
 
    end subroutine dumpResults
+
 !  Simply find 1st level populated at greater than 10^-8 in LTE
 ! Also only works for linear molecules
    recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel, lte)
@@ -5817,7 +5829,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, &
-          dustPhysics, amr2d,amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep, initnray
+          dustPhysics, amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence
      use messages_mod, only : myRankIsZero
      use parallel_mod
 
@@ -5936,7 +5948,6 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
       call getOctalArray(grid%octreeRoot,octalArray, dummy)
     
-     
       write(message, *) "Maximum Interesting Level", maxlevel
       call writeinfo(message, TRIVIAL)
 
@@ -6005,8 +6016,9 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                     grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
 
                do i = size(tauarray), 1, -1
-                  mintrans = i + 2
-                  minlevel = mintrans + 1
+                  minlevel = i + 2
+                  mintrans = minlevel - 1
+
                   if(writeoutput) write(99,*) i, mintrans, tauarray(i)
                   if(tauarray(i) .gt. 0.01) exit
                enddo
@@ -6023,7 +6035,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
             if((mintransold .ne. mintrans) .or. (grand_iter .eq. 0)) then
                call writeinfo("Reallocating memory", TRIVIAL)
                call allocateother(grid, grid%octreeroot)
-!              ngcounter = 0
+               ngcounter = 0
             endif
             
             write(message,'(a,i3)') "Iteration ",grand_iter
@@ -6250,7 +6262,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            endif
 
            call writeinfo("Dumping results", FORINFO)
-           if((amr1d .or. amr2d) .and. writeoutput) call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
+           if(writeoutput .and. outputconvergence) call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
         if(myrankiszero .and. plotlevels .and. .not.(amr1d)) then
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
            write(message, *) "Wrote VTK file to", filename

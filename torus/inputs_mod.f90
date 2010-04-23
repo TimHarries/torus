@@ -1241,6 +1241,8 @@ contains
             "Get departure coefficents : ", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("gettau", gettau, cLine, nLines, &
             "Get tau in cell : ", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("outputconvergence", outputconvergence, cLine, nLines, &
+            "Write out convergence data : ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, cLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
        call getLogical("plotlevels", plotlevels, cLine, nLines, &

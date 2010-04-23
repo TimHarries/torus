@@ -4627,6 +4627,12 @@ END SUBROUTINE GAUSSJ
 !!! Added capability to refine on just part of the vector
 function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result(out)
 
+  implicit none
+
+!#ifdef USEIEEEISNAN
+!  use ieee_arithmetic, isnan=> ieee_is_nan
+!#endif
+
     integer :: length
 
     real(double) :: q(length), r(length), s(length), t(length)
@@ -4644,6 +4650,14 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
     integer :: vectorsize
     logical, optional :: doubleweight
     logical :: dodoubleweight
+    
+    vectorsize = size(torig)
+! Catch any nasty 0s
+    if(any(torig(1:length)) .eq. 0.d0) then
+       outarray(1:vectorize) = torig(1:vectorsize)
+       out => outarray(1:vectorsize)
+       return
+    endif
 
     if(present(doubleweight)) then
        dodoubleweight = doubleweight
@@ -4660,12 +4674,12 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
     r = rorig(1:length)
     s = sorig(1:length)
     t = torig(1:length)
-
-    vectorsize = size(qorig)
-
-    q(1:length) = q(1:length) / t(1:length)
-    r(1:length) = r(1:length) / t(1:length)
-    s(1:length) = s(1:length) / t(1:length)
+    
+    OneOverT(1:length) = 1.d0 / t(1:length)
+    
+    q(1:length) = q(1:length) * OneOverT(1:length) 
+    r(1:length) = r(1:length) * OneOverT(1:length) 
+    s(1:length) = s(1:length) * OneOverT(1:length) 
     t(1:length) = 1.d0
 
       if(dodoubleweight) then
@@ -4702,11 +4716,12 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
       outarray(1:vectorsize) = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
 
       out => outarray(1:vectorsize)
-      
-      if(any(isnan(out))) then
-         outarray(1:vectorsize) = torig(1:vectorsize)
-         out => outarray(1:vectorsize)
-      endif
+
+! Uncomment this code if you find yourself trapping NaNs      
+!      if(any(isnan(out))) then
+!         outarray(1:vectorsize) = torig(1:vectorsize)
+!         out => outarray(1:vectorsize)
+!      endif
 
     end function ngStep
 

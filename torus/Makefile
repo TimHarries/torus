@@ -54,10 +54,12 @@ ifeq ($(SYSTEM), davesmac)
     F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
 #   DEBUGFLAG = -warn -g -no-ipo  # 
-    DEBUGFLAG=-O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps #-assume nounderscore
+    DEBUGFLAG=-O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps -shared-intel #-assume nounderscore
 #    DEBUGFLAG=-g -save-temps -assume nounderscore
 #    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
-    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt #-g -save-temps -traceback #-ipo #-g
+#    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -shared-intel -prof-genx#-g -save-temps -traceback -mmacosx-version-min=10.4 -intel-static#-ipo #-g
+#    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -shared-intel -prof-use #-g -save-temps -traceback -mmacosx-version-min=10.4 -intel-static#-ipo #-g
+    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -shared-intel -ip -pad#-g -save-temps -traceback -mmacosx-version-min=10.4 -intel-static#-ipo #-g-ip
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
 #    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
@@ -73,7 +75,7 @@ ifeq ($(SYSTEM), g95)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
+    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 #-Werror
 #    FASTFLAG = -O3 -mcpu=G5
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	

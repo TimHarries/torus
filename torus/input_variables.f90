@@ -134,6 +134,7 @@ module input_variables
   logical :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
   logical :: getdepartcoeffs, gettau
+  logical :: outputconvergence
   real :: r0, rhoC ! Filamentry parameters
   real :: x_D, x_0
 
