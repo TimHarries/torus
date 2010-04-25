@@ -4635,7 +4635,7 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
 
     integer :: length
 
-    real(double) :: q(length), r(length), s(length), t(length)
+    real(double) :: q(length), r(length), s(length), t(length), oneoverT(length)
     real(double), optional :: weight(:)
     real(double) :: diff1(length), diff2(length)
     real(double) :: diff01(length), diff02(length), diff(length)
@@ -4653,8 +4653,8 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
     
     vectorsize = size(torig)
 ! Catch any nasty 0s
-    if(any(torig(1:length)) .eq. 0.d0) then
-       outarray(1:vectorize) = torig(1:vectorsize)
+    if(any(torig(1:length) .eq. 0.d0)) then
+       outarray(1:vectorsize) = torig(1:vectorsize)
        out => outarray(1:vectorsize)
        return
     endif
@@ -4671,6 +4671,7 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
        OABweight(1:length) = 1.d0
     endif
 
+    q = qorig(1:length)
     r = rorig(1:length)
     s = sorig(1:length)
     t = torig(1:length)
