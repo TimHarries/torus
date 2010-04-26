@@ -905,7 +905,7 @@ if (.false.) then
  write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
  call writeVtkFile(grid, vtkFilename, &
       valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-      "dust1        ","radmom      "/))
+      "dust1        ","radmom       "/))
  call writeAMRgrid("tmp.grid",.false.,grid)
 enddo
 
