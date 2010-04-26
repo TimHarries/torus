@@ -3536,7 +3536,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule)!, convtestarray)
 
-     use input_variables, only : rinner, router, amr1d, getdepartcoeffs, gettau
+     use input_variables, only : rinner, router, amr1d, getdepartcoeffs
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
@@ -4780,11 +4780,11 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      integer :: iupper, ilower
      real(double) :: nlower, nupper
      
-     real(double) :: dpos
+!     real(double) :: dpos
 
      real(double) :: rayLength, maxLengthofRay
 
-     type(VECTOR) :: curpos
+!     type(VECTOR) :: curpos
 
      if(present(tautest)) then
         dotautest = tautest
@@ -5283,8 +5283,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
      integer :: iupper, ilower
      real(double) :: nlower, nupper
      
-     real(double) :: dpos
-     type(VECTOR) :: curpos
+!     real(double) :: dpos
+!     type(VECTOR) :: curpos
 
 !     real(double) :: dscounter, tvalcounter
 !     real(double) :: lowtau, midtau, hitau,vhitau,xhitau

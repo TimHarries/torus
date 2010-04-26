@@ -75,7 +75,7 @@ ifeq ($(SYSTEM), g95)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 #-Werror
+    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
 #    FASTFLAG = -O3 -mcpu=G5
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	

@@ -818,7 +818,7 @@ program torus
   
   ! initialize the blobs if required
 
-  if (nBlobs > 0) call initialize_blobs
+  call initialize_blobs
 
 
   if (nPhase /= 1) then
@@ -2920,6 +2920,13 @@ subroutine initialize_blobs
 
   character(len=80) :: filename, specFile
   real, parameter   :: blobTime = 1000.
+
+! If blobs are not required then allocate to size 1 to avoid passing unallocated type
+! to phaseloop
+  if ( nBlobs <= 0 ) then 
+      allocate(blobs(1))
+      return
+   end if
 
   allocate(blobs(1:maxBlobs))
   if (freshBlobs) then

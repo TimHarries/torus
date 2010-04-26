@@ -31,25 +31,6 @@ module blob_mod
 
 contains
 
-  ! Start up by initializing blobs
-
-  subroutine initializeBlobs(nBlobs, blobs, grid, blobContrast)
-
-
-    integer :: nBLobs                 ! Number of blobs to initialize
-    type(BLOBTYPE) :: blobs(*)        ! The array of blobs
-    type(GRIDTYPE) :: grid            ! The grid of opacities
-    integer :: i                      ! counter
-    real :: blobContrast
-
-    ! loop over all blobs and initialize them
-
-    do i = 1, nBlobs
-       call initBlob(blobs, grid, i, .false., blobContrast)
-    enddo
-
-  end subroutine initializeBlobs
-
   ! subroutine to initialize an individual blob
 
   subroutine initBlob(blobs, grid, iBlob, atBase, blobContrast)
