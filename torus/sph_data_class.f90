@@ -412,7 +412,8 @@ contains
 
     do ipart=1, nlines
 
-       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, vx, vy, vz, u, junk, junk, junk, itype
+       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, junk, junk, junk, vx, vy, vz, u, junk, junk, junk, junk, junk, junk, junk, &
+            junk, junk, junk,itype
        icount = icount + 1
 
        if(itype .ne. 2) then ! .or. itype .eq. 4) then
@@ -1282,7 +1283,7 @@ contains
        call dquicksort(array)
     endif
 
-    critval = array(nint(percentile*npart))
+    critval = array(max(1,nint(percentile*npart)))
 
   end subroutine FindCriticalValue
 

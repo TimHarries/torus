@@ -539,7 +539,7 @@ contains
 
 
                case("microturb")
-                  write(lunit, *) max( real(thisOctal%microturb(subcell)), min_single_prec )
+                  write(lunit, *) max( real(thisOctal%microturb(subcell)*cspeed/1.e5), min_single_prec )
 
                case("etaline")
                   write(lunit, *) max ( real(thisOctal%etaline(subcell)), min_single_prec )

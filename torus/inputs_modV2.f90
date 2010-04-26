@@ -236,6 +236,23 @@ contains
                "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
 
 
+       case("molcluster")
+          call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
+               "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+
+       call getReal("hcritPercentile", hcritPercentile, 1., cLine, nLines, &
+            "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
+
+       call getReal("hmaxPercentile", hmaxPercentile, 1., cLine, nLines, &
+            "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+
+       call getReal("sphNormLimit", sph_norm_limit, 1., cLine, nLines, &
+            "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.3, ok, .false.)
+
+       call getInteger("kerneltype", kerneltype, cLine, nLines, &
+            "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+
+
     end select
   end subroutine readGeometrySpecificParameters
          
@@ -437,7 +454,7 @@ contains
                "Use Quasirandom numbers: ","(a,1l,a)", .false., ok, .false.)
        call getReal("tolerance", tolerance, 1., cLine, nLines, &
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .false.)
-       call getReal("vturb", vturb, real(kmstoc), cLine, nLines, &
+       call getReal("vturb", vturb, 1., cLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .false.)
        call getLogical("noturb", noturb, cLine, nLines, &
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
@@ -468,10 +485,6 @@ contains
        endif
 
 
-       if(geometry .eq. 'molcluster') then
-          call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
-               "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
-       endif
 
 
   end subroutine readMolecularPhysicsParameters
@@ -532,7 +545,7 @@ contains
 
     call getLogical("lte", lte, cLine, nLines, &
          "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-    call getReal("vturb", vturb, real(kmsToC), cLine, nLines, &
+    call getReal("vturb", vturb, real(kmstoc), cLine, nLines, &
          "Turbulent velocity (km/s):","(a,f4.1,1x,a)", 50., ok, .true.)
 
 

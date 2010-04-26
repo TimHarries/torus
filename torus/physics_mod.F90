@@ -107,7 +107,7 @@ contains
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop
     use source_mod, only : globalNsource, globalSourceArray
-    use molecular_mod, only : molecularLoopV2, globalMolecule
+    use molecular_mod, only : molecularLoop, globalMolecule
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
@@ -118,17 +118,6 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     type(GRIDTYPE) :: grid
-
-    if (molecularPhysics.and.statisticalEquilibrium) then
-       if (dustPhysics) then
-          call setupXarray(grid, xarray, nLambda)
-          call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-          usedust = .true.
-          realdust = .true.
-       endif
-       lowMemory = .false.
-       call molecularLoopV2(grid, globalMolecule)
-    endif
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
@@ -149,7 +138,14 @@ contains
            endif
         endif
 #endif
-        call molecularLoopV2(grid, globalMolecule)
+        if (dustPhysics) then
+           call setupXarray(grid, xarray, nLambda)
+           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+           usedust = .true.
+           realdust = .true.
+        endif
+        lowMemory = .false.
+        call molecularLoop(grid, globalMolecule)
      endif
      
      if (atomicPhysics.and.statisticalEquilibrium) then

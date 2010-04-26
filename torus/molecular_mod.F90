@@ -372,6 +372,7 @@ module molecular_mod
      logical, save :: firsttime1 = .true.
      logical, save :: firsttime2 = .true.
      logical :: inlte
+     logical, save :: firstAbundanceWarning = .true.
 
      real(double) :: nupper(200), nlower(200)
      real(double) :: levelpops(200), alphanubase(200), nmol
@@ -519,9 +520,10 @@ module molecular_mod
 ! set up microturbulence - this shouldn't be done here but is at the moment. It can easily be moved into a function.
 ! this just catches stuff if it's been allocated and not set.
 
-              if (.not.associated(thisOctal%microturb)) &
+              if (.not.associated(thisOctal%microturb)) then
                    allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-
+                   thisOctal%microTurb = 0.d0
+                endif
               if(thisoctal%microturb(subcell) .le. 1d-20) then
 !                 if(.not. molebench) 
                  thisOctal%microturb(subcell) = max(1d-7, &
@@ -545,10 +547,13 @@ module molecular_mod
                     thisOctal%molAbundance(subcell) = x_0 ! normal abundance
                  endif
               else
-                 call writeinfo("constantAbundance off and doCOchemistry off")
-                 call writeinfo("Implement a new molecular abundance elsewhere")
-                 call writeinfo("because molabundance hasn't been changed here at all")
-                 call writeinfo("... which might of course be what you wanted :)")
+                 if (firstAbundanceWarning) then
+                    call writeinfo("constantAbundance off and doCOchemistry off")
+                    call writeinfo("Implement a new molecular abundance elsewhere")
+                    call writeinfo("because molabundance hasn't been changed here at all")
+                    call writeinfo("... which might of course be what you wanted :)")
+                    firstAbundanceWarning = .false.
+                 endif
               endif
 
 ! Fill cells with LTE data to determine departure coefficents if required
@@ -603,7 +608,7 @@ module molecular_mod
                    thisoctal%bnu(1:maxtrans,subcell) * alphanuBase(1:maxtrans)
               
 ! deallocate bnu if not using dust. It takes up a lot of space.
-              if(.not. usedust) deallocate(thisoctal%bnu)
+              if((.not. usedust).and.(.not.isinLTE)) deallocate(thisoctal%bnu)
               
            endif ! if(restart) - these things are common to all allocations
 
@@ -629,7 +634,6 @@ module molecular_mod
         
      enddo ! do over all children
 
-     
    end subroutine allocateMolecularLevels
 
    recursive subroutine  allocateOther(grid, thisOctal)
@@ -962,6 +966,7 @@ module molecular_mod
      if(isinlte .and. .not. restart) then
         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
         if(myrankiszero) call writeAMRgrid(molgridltefilename,.false.,grid)
+        goto 666
      endif
 
 ! Write maximum interesting level as determined by molecularlevel
@@ -1389,7 +1394,7 @@ module molecular_mod
   enddo
   
   close(33)
-
+  666 continue
 end subroutine molecularLoop
 
 !!! find the radiation incident at a point in a cell from a pencil beam along a particular direction
@@ -3531,7 +3536,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule)!, convtestarray)
 
-     use input_variables, only : rinner, router, amr1d, getdepartcoeffs
+     use input_variables, only : rinner, router, amr1d, getdepartcoeffs, gettau
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
@@ -3736,7 +3741,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
 
 #ifdef MPI 
        subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
-     include 'mpif.h'
+         use input_variables,only : gettau
+         include 'mpif.h'
          type(OCTALWRAPPER) :: octalArray(:)
          integer :: octalsBelongRank(:)
          integer :: nTemps
@@ -3761,7 +3767,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
 
                     tArray(1,nTemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
 
-                    if(iLevel .le. mintrans) then
+                    if(gettau.and.(iLevel .le. mintrans)) then
                        tArray(2,nTemps) = thisOctal%tau(ilevel,isubcell)
                     else
                        tArray(2,nTemps) = 0.d0
@@ -3781,6 +3787,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
       end subroutine packMoleLevel
 
       subroutine unpackMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
+        use input_variables, only : gettau
         include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: octalsBelongRank(:)
@@ -3803,7 +3810,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  thisOctal%newMolecularLevel(iLevel,isubcell) = tArray(1,nTemps) 
-                 if(iLevel .le. mintrans) then
+                 if(gettau.and.(iLevel .le. mintrans)) then
                     thisOctal%tau(ilevel, isubcell) = tArray(2,nTemps)
                  endif
                  if(iLevel .eq. maxlevel) then
@@ -4274,8 +4281,8 @@ end subroutine plotdiscValues
     allCellsConverged = .false.
     if(all(convergenceCounter(1,1:minlevel) > (1.-1e-3) * real(nvoxels))) then 
        allCellsConverged = .true.
-       write(message,'(a,6(tr1,f7.5),tr1,i7)') "Cells converged to tolerence",real(convergenceCounter(1,1:min(6,minlevel))) &
-            / real(nvoxels), nvoxels
+       write(message,'(a,6(tr1,f7.5))') "Cells converged to tolerence",real(convergenceCounter(1,1:min(6,minlevel))) &
+            / real(nvoxels)
        call writeinfo(message, FORINFO)
     endif
 
@@ -4814,7 +4821,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         goto 666
      endif
      
-     deps = 5.d-4 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     deps = 1.d-2 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
      origdeps = deps
 
      currentPosition = position + (distToGrid + deps) * direction
@@ -4965,7 +4972,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
          
            phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
 
-
            if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid, thisoctal, subcell) / &
                      (2.d0 * mhydrogen))
@@ -5013,29 +5019,33 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
            rayLength = rayLength + tVal + origDeps
 
-        if((inoctal(thisoctal,currentposition)) .and. (whichsubcell(thisoctal, currentposition) .eq. subcell)) then
-           write(99,*) "fail"
+!        if(writeoutput.and.(inoctal(thisoctal,currentposition)) &
+!             .and. (whichsubcell(thisoctal, currentposition) .eq. subcell)) then
+!           write(99,*) "fail ",grid%halfSmallestSubcell,tval,origdeps,sqrt(currentposition%x**2+currentPosition%y**2),currentposition%z
+!           call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal, sSubcell = subcell)
+!           write(99,*) "tval ",tval
+!
+!           curpos = currentposition
+!!           dpos = min(thisoctal%subcellsize * 0.1, 8. * grid%halfsmallestsubcell)
+!           dpos = 16.d0 * grid%halfsmallestsubcell
+!
+!           do while(dpos .gt. 1e-1 * grid%halfsmallestsubcell)
+!              dpos = dpos * 0.5d0
+!              if((inoctal(thisoctal,curpos)) .and. (whichsubcell(thisoctal, curpos) .eq. subcell)) then
+!                 curpos = curpos + dpos * direction
+!              else
+!                 curpos = curpos - dpos * direction
+!              endif
+!           enddo
+!
+!           if(inoctal(thisoctal,curpos) .and. whichsubcell(thisoctal, curpos) .eq. subcell) then
+!              curpos = curpos + 2.d0 * dpos * direction
+!           endif
+!           currentposition = curpos
+!
+!        endif
 
-           curpos = currentposition
-!           dpos = min(thisoctal%subcellsize * 0.1, 8. * grid%halfsmallestsubcell)
-           dpos = 16.d0 * grid%halfsmallestsubcell
-
-           do while(dpos .gt. 1e-1 * grid%halfsmallestsubcell)
-              dpos = dpos * 0.5d0
-              if((inoctal(thisoctal,curpos)) .and. (whichsubcell(thisoctal, curpos) .eq. subcell)) then
-                 curpos = curpos + dpos * direction
-              else
-                 curpos = curpos - dpos * direction
-              endif
-           enddo
-
-           if(inoctal(thisoctal,curpos) .and. whichsubcell(thisoctal, curpos) .eq. subcell) then
-              curpos = curpos + 2.d0 * dpos * direction
-           endif
-           currentposition = curpos
-
-        endif
-     enddo
+        enddo
          
 666  continue
 
@@ -5315,7 +5325,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
         goto 666
      endif
      
-     deps = 5.d-4 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     deps = 1.d-2 * grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
      origdeps = deps
 
      currentPosition = position + (distToGrid + deps) * direction
@@ -5591,33 +5601,34 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            currentPosition = currentPosition + (tval + origdeps) * direction
 !        currentPosition = currentPosition + tval * direction
 
-        if((inoctal(thisoctal,currentposition)) .and. (whichsubcell(thisoctal, currentposition) .eq. subcell)) then
-           write(99,*) "fail"
-
-           curpos = currentposition
-!           dpos = min(thisoctal%subcellsize * 0.1, 8. * grid%halfsmallestsubcell)
-           dpos = 16.d0 * grid%halfsmallestsubcell
-
-           do while(dpos .gt. 1e-1 * grid%halfsmallestsubcell)
-              dpos = dpos * 0.5d0
-              if((inoctal(thisoctal,curpos)) .and. (whichsubcell(thisoctal, curpos) .eq. subcell)) then
-                 curpos = curpos + dpos * direction
-              else
-                 curpos = curpos - dpos * direction
-              endif
-           enddo
-
-           if(inoctal(thisoctal,curpos) .and. whichsubcell(thisoctal, curpos) .eq. subcell) then
-              curpos = curpos + 2.d0 * dpos * direction
-!              write(*,*) "got broke?"
-           endif
-           currentposition = curpos
-
-!           if(.not.((inoctal(thisoctal,currentposition)) .and. (whichsubcell(thisoctal, currentposition) .eq. subcell))) then
-!              write(*,*) "fixed"
+!        if(writeoutput.and.(inoctal(thisoctal,currentposition)) &
+!             .and. (whichsubcell(thisoctal, currentposition) .eq. subcell)) then
+!           write(99,*) "fail"
+!
+!           curpos = currentposition
+!!           dpos = min(thisoctal%subcellsize * 0.1, 8. * grid%halfsmallestsubcell)
+!           dpos = 16.d0 * grid%halfsmallestsubcell
+!
+!           do while(dpos .gt. 1e-1 * grid%halfsmallestsubcell)
+!              dpos = dpos * 0.5d0
+!              if((inoctal(thisoctal,curpos)) .and. (whichsubcell(thisoctal, curpos) .eq. subcell)) then
+!                 curpos = curpos + dpos * direction
+!              else
+!                 curpos = curpos - dpos * direction
+!              endif
+!           enddo
+!
+!           if(inoctal(thisoctal,curpos) .and. whichsubcell(thisoctal, curpos) .eq. subcell) then
+!              curpos = curpos + 2.d0 * dpos * direction
+!!              write(*,*) "got broke?"
 !           endif
-
-        endif
+!           currentposition = curpos
+!
+!!           if(.not.((inoctal(thisoctal,currentposition)) .and. (whichsubcell(thisoctal, currentposition) .eq. subcell))) then
+!!              write(*,*) "fixed"
+!!           endif
+!
+!        endif
 
 !           curpos = currentposition
 !           dpos = min(thisoctal%subcellsize * 0.1, 8. * grid%halfsmallestsubcell)
@@ -5823,511 +5834,6 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
  end subroutine writeContributions
 
 
- ! Does a lot of work - do more rays whilst problem not converged -            
-   subroutine molecularLoopV2(grid, thisMolecule)
-
-     use grid_mod, only: freeGrid
-     use sph_data_class, only: Clusterparameter
-     use input_variables, only : blockhandout, tolerance, &
-          dustPhysics, amr1d, plotlevels, amr3d, debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence
-     use messages_mod, only : myRankIsZero
-     use parallel_mod
-
-#ifdef MPI
-     include 'mpif.h'
-#endif
-
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     type(VECTOR) :: position, direction
-     integer :: nOctal, iOctal, subcell
-     real(double), allocatable :: ds(:), phi(:), i0(:,:)
-
-     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
-     type(OCTAL), pointer :: thisOctal
-     integer, parameter :: maxIter = 100
-     logical :: popsConverged
-     character(len=200) :: message
-     integer :: iRay, iter, i 
-     integer :: iStage
-     real(double), allocatable :: oldpops1(:), oldpops2(:), oldpops3(:), oldpops4(:)
-     real(double) :: fac
-#ifdef MPI
-     ! For MPI implementations
-     integer       ::   my_rank        ! my processor rank
-     integer       ::   np             ! The number of processes
-     integer       ::   ierr           ! error flag
-     integer       ::   j
-     integer       ::   tag = 0 
-     logical       ::   rankComplete
-     integer, dimension(:), allocatable :: octalsBelongRank
-     real(double), allocatable :: tArrayd(:,:),tempArrayd(:,:) 
-#endif
-      integer :: nVoxels
-      integer :: ioctal_beg, ioctal_end
-      logical :: fixedRays
-      integer :: isize
-      integer, allocatable :: iseed(:)
-      real(double) :: maxRMSfracChange
-
-      character(len=30) :: filename
-            
-      real(double) :: tauarray(60) = -1.d0    
-      logical :: warn = .true.
-      integer :: warncount, warncount_all
-      real(double) :: error(50)
-      integer :: maxerrorloc, maxlocerror(1)
-      integer :: mintransold
-
-      real(double) :: nh, nHe, ne, nProtons
-      integer :: dummy
-      logical :: juststarted = .true.
-
-      logical :: ng
-      integer :: status
-
-      real(double) :: diffmax
-
-      real(double) :: collmatrix(50,50), ctot(50)
-
-      call writeinfo("molecular_mod 20100422.1729",TRIVIAL)
-
-      position =VECTOR(0.d0, 0.d0, 0.d0); direction = VECTOR(0.d0, 0.d0, 0.d0)
- ! blockhandout must be off for fixed ray case, otherwise setting the
- ! seed is not enough to ensure the same directions are done for
- ! each cell every iteration
-
-      nlevels = thisMolecule%nlevels
-
-      if(grid%geometry .eq. 'molebench') molebench = .true.
-      if(grid%geometry .eq. 'molcluster') molcluster = .true.
-      if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
-      if(grid%geometry .eq. 'ggtau') ggtau = .true.
-
-      ng = dongstep
-      write(message,*) "Use Ng Acceleration: " , ng
-      call writeinfo(message,TRIVIAL)
-      
-      blockHandout = .false. 
-
-#ifdef MPI
-     ! FOR MPI IMPLEMENTATION=======================================================
-     !  Get my process rank # 
-     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-
-     ! Find the total # of precessor being used in this run
-     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-#endif
-
- ! Write Column headings for file containing level populations and convergence data
-     grand_iter = 0
-
-     if(writeoutput) then
-18      format(a,tr3,8(a,tr6),a,6(tr1,a))
-        open(138,file="fracChanges.dat",status="unknown",form="formatted")
-        write(138,18) "nRays","J=0","J=1","J=2","J=3","J=4","J=5","J=6","J=7","Fixed","1% Conv","2.5% Conv","5% Conv","Max","Avg"
-        close(138)
-
-        open(139,file="avgChange.dat",status="replace",form="formatted")
-        open(140,file="avgRMSChange.dat",status="replace",form="formatted")
-        open(141,file="tau.dat",status="replace",form="formatted")
-!        open(142,file="criticaldensities.dat",status="replace",form="formatted")
-!        open(999,file="tempcheck.dat",status="replace",form="formatted")
-!        close(999)
-        close(139)
-        close(140)
-        close(141)
-     endif
-
-      call writeinfo("Allocating and initialising molecular levels", FORINFO)
-      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
-
-      dummy = 0
-
-      allocate(octalArray(grid%nOctals))
-      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-      call getOctalArray(grid%octreeRoot,octalArray, dummy)
-    
-      write(message, *) "Maximum Interesting Level", maxlevel
-      call writeinfo(message, TRIVIAL)
-
-      minlevel = min(10, maxlevel-2)
-      mintrans = minlevel - 1
-
-      call allocateother(grid, grid%octreeroot)
-
-      if(dustPhysics) then
-         allocate(lamarray(size(grid%lamarray)))
-         allocate(lambda(maxtrans))
-         lamarray(:) = grid%lamarray
-         lambda(1:maxtrans) = cspeed / thisMolecule%transfreq(1:maxtrans) * 1d8
-         call locate(lamArray, size(lamArray), lambda(maxtrans/2), ilambda)
-      endif
-      if (isinLTE) goto 666
-
-      nRay = initnray ! number of rays used to establish estimate of jnu and pops
-
-      allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel) )
-      
-      call init_random_seed()
-
-      call random_seed(size=iSize)
-      allocate(iSeed(1:iSize))
-      
-      call random_seed(get=iSeed)
-      allocate(iseedpublic(1:isize))
-      iseedpublic = iseed
-
-#ifdef MPI
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-      call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-#endif
-      
-      do iStage = 1, 2 ! fixed rays to reduce variance between cells or 2)  random rays to ensure sufficient spatial sampling
-         
-         if (iStage == 1) then
-            fixedRays = .true.
-            nRay = initnray
-         else
-            fixedRays = .false.
-            nRay = max(initnray, nray)
-         endif
-
-         if(restart .and. juststarted) then 
-            open(95, file="restart.dat",status="unknown",form="formatted")
-            read(95, *) fixedrays, nray, grand_iter
-            close(95)
-            ngcounter = 0
-            juststarted = .false.
-            if(fixedrays) cycle
-         endif
-
-         gridConvergedTest = .false.
-         gridConverged = .false.
-
-         do while (.not.gridConverged)
-
-            grand_iter = grand_iter + 1
-            if(ng) ngcounter = ngcounter + 1 ! controls Ng Acceleration, pronounced do-ng-step, not dongstep
-            mintransold = mintrans
-
-            if(.not. amr3d) then
-               call taualongray(VECTOR(10.d0,10.d0,10.d0), VECTOR(0.577350269, 0.577350269, 0.577350269), &
-                    grid, thisMolecule, 0.d0, tauarray(1:maxtrans))
-
-               do i = size(tauarray), 1, -1
-                  minlevel = i + 2
-                  mintrans = minlevel - 1
-
-                  if(writeoutput) write(99,*) i, mintrans, tauarray(i)
-                  if(tauarray(i) .gt. 0.01) exit
-               enddo
-            else
-               minlevel = min(max(7,Maxlevel / 2),maxlevel - 2)
-               mintrans = minlevel - 1
-            endif
-
-            if(grid%geometry .eq. 'agbstar') then
-               minlevel = maxlevel
-               mintrans = maxtrans
-            endif
-
-            if((mintransold .ne. mintrans) .or. (grand_iter .eq. 0)) then
-               call writeinfo("Reallocating memory", TRIVIAL)
-               call allocateother(grid, grid%octreeroot)
-               ngcounter = 0
-            endif
-            
-            write(message,'(a,i3)') "Iteration ",grand_iter
-            call writeinfo(message, FORINFO)
-
-            write(message, '(a,i2)') "Minimum important level ", minlevel
-            call writeinfo(message, TRIVIAL)
-
-            if(writeoutput) then
-               write(message,*) "Done ",nray," rays"
-               call tune(6, message)  ! start a stopwatch
-            endif
-
-            allocate(ds(1:nRay))
-            allocate(phi(1:nRay))
-            allocate(i0(1:nRay, 1:maxtrans))
-
-            if (fixedRays) then
-               call random_seed(put=iseed)   ! same seed for fixed rays
-               if(quasi) call sobseq(r1, -1)
-            else
-               call init_random_seed()
-            endif
-            
-            ! default loop indicies
-            ioctal_beg = 1
-            ioctal_end = SIZE(octalArray)         
-
-            warn = .true.
-            warncount = 0
-
-#ifdef MPI
-
-     ! we will use an array to store the rank of the process
-     !   which will calculate each octal's variables
-            allocate(octalsBelongRank(size(octalArray)))
-
-            if (my_rank == 0) then
-               print *, ' '
-               print *, 'molecular  computed by ', np-1, ' processors.'
-               print *, ' '
-               call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-                    maxBlockSize=10,setDebug=.false.)
-
-            endif
-     ! ============================================================================
-
-            if (my_rank /= 0) then
-               blockLoop: do     
-                  call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-                  if (rankComplete) exit blockLoop 
-#endif
-
- ! iterate over all octals, all rays, solving the system self-consistently
- 
-    do iOctal = ioctal_beg, ioctal_end
-
-       if (debug .and. writeoutput) then
-          write(message,*) iOctal,ioctal_beg,ioctal_end
-          call writeInfo(message,TRIVIAL)
-       endif
-
-       thisOctal => octalArray(ioctal)%content
-
-       do subcell = 1, thisOctal%maxChildren
-
-          if (.not.thisOctal%hasChild(subcell)) then
-
-             do iRay = 1, nRay
-                call getRay(grid, thisOctal, subcell, position, direction, &
-                     ds(iRay), phi(iRay), i0(iRay,1:maxtrans), &
-                     thisMolecule,fixedrays) ! does the hard work - populates i0 etc
-             enddo
-
-             if(debug) where(isnan(i0)) i0 = 0.d0
-
-             iter = 0
-             popsConverged = .false.
-
-             do while (.not. popsConverged)
-                iter = iter + 1
-
-                if(ng) then
-                   oldpops1(1:minlevel) = oldpops2(1:minlevel)
-                   oldpops2(1:minlevel) = oldpops3(1:minlevel)
-                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
-                else
-                   oldpops3(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell) ! retain old pops before calculating new one
-                endif
-                   
-                call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
-                     phi(1:nRay), i0(1:nRay,1:maxtrans), thisOctal%jnu(1:maxtrans,subcell), &
-                     thisOctal%newMolecularLevel(1:maxlevel,subcell)) ! calculate updated Jbar
-
-                nh = 0.d0
-                nHe = 0.d0
-                ne = 0.d0
-                nProtons = 0.d0
-
-                call getCollMatrix(thisOctal%nh2(subcell), dble(thisOctal%temperature(subcell)), &
-                     thismolecule, nh, nHe, ne, nprotons, collmatrix(1:maxlevel,1:maxlevel), &
-                     ctot(1:maxlevel))
-
-                call solveLevels(thisOctal%newMolecularLevel(1:maxlevel,subcell), &
-                     thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
-                     thisMolecule, thisOctal%nh2(subcell), collmatrix(1:maxlevel,1:maxlevel), &
-                     ctot(1:maxlevel))
-
-                if(ng) then
-                   if(mod(iter, accstep) .eq. 0) then
-                      oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
-                      thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                           abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
-                                      oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                                      abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                                      length = minlevel-2))
-!                      abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), oldpops3(1:minlevel), oldpops4(1:minlevel)))
-
-!                      thisoctal%newmolecularlevel(:,subcell) = thisoctal%newmolecularlevel(:,subcell)! / &
-!                      sum(thisoctal%newmolecularlevel(1:minlevel-2,subcell))
-!                      oldpops3(1:minlevel-2) = oldpops4(1:minlevel-2)
-                   endif
-                endif
-
-!                error(1:minlevel-1) = (thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops(1:minlevel-1)) &
-!                                      / oldpops(1:minlevel-1)
-!                error(1:minlevel-1) = abs((thisOctal%newMolecularLevel(subcell,1:minlevel-1) - oldpops3(1:minlevel-1)) &
-!                                       / thisOctal%newMolecularLevel(subcell,1:minlevel-1))
-                error(1:minlevel-1) = abs((thisOctal%newMolecularLevel(1:minlevel-1,subcell) - oldpops3(1:minlevel-1)))
-
-                maxlocerror = maxloc(error(1:minlevel-1))
-                maxerrorloc = maxlocerror(1)
-                thisoctal%convergence(subcell) = 100.0 * iter + &
-                                                 real(maxerrorloc-1) + &
-                                                 min(0.99_db,maxval(error(1:minlevel-1))) 
-
-!                fac = abs(maxval(error(1:minlevel-1))) ! convergence criterion
-                fac = sum(error(1:minlevel-1)**2) ! convergence criterion
-
-               if (fac < 1.d-10 .or. (iter .eq. maxiter)) then
-!                if (fac < 1.d-20 .or. (iter .eq. maxiter)) then
-                   popsConverged = .true.
-                   if(iter .eq. maxiter) then
-                      warncount = warncount + 1
-                   endif
-
-                   thisOctal%tau(1:mintrans,subcell) = &
-                        calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay))
-                endif
-             enddo
-          endif
-       enddo
-    end do
-           
-#ifdef MPI
-           if (.not.blockHandout) exit blockloop
-        end do blockLoop
-     end if ! (my_rank /= 0)
-
-
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-        if(my_rank == 0) write(*,*) "Updating MPI grids"
-
-      ! have to send out the 'octalsBelongRank' array
-      call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-                     MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
-      call MPI_ALLREDUCE(warncount,warncount_all,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
-
-      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-      allocate(tArrayd(3,1:nVoxels))
-      allocate(tempArrayd(3,1:nVoxels))
-      tArrayd = 0.d0
-      tempArrayd = 0.d0
-      do i = 1, maxlevel
-        tArrayd = 0.d0
-        call packMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
-        do j = 1, 3
-           call MPI_ALLREDUCE(tArrayd(j,1:nVoxels),tempArrayd(j,1:nVoxels),nVoxels,MPI_DOUBLE_PRECISION,&
-                MPI_SUM,MPI_COMM_WORLD,ierr)
-        enddo
-        tArrayd = tempArrayd
-        call unpackMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
-     enddo
-      deallocate(tArrayd, tempArrayd)
-
-      if(my_rank == 0) write(*,*) "Done updating"
-#else
-      warncount_all = warncount
-#endif
-
-      ! Calculate convergence towards solution (per level)
-
-      maxRMSFracChange = -1.d30
-
-      write(message,'(a,i6)') "Number of unconverged cells ", warncount_all
-      call writeinfo("", FORINFO)
-
-      call writeinfo(message, FORINFO)
-      call updateLevels(grid, nvoxels, fixedrays, maxRMSFracChange)
-
- ! If you think it's converged then test with the same number of rays to make sure
-
-        if(maxRMSFracChange < (tolerance ** 2) * real(nvoxels) .or. allCellsConverged) then
-           if (gridConvergedTest) gridConverged = .true.
-           gridConvergedTest = .true.
-        else
-           gridConvergedTest = .false.
-           gridConverged = .false.
-        endif
-
-           call writeAmrGrid(molgridfilename,.false.,grid)
-           write(message,*) "Written Molecular Grid to", molgridfilename
-           call writeinfo(message, TRIVIAL)
-           call writeinfo("",FORINFO)  
-           if(writeoutput) then
-              open(95, file="restart.dat",status="unknown",form="formatted")
-              write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
-              do i = 1,size(iseedpublic)
-                 write(95, *) iseedpublic(i)
-              enddo
-              close(95)
-           endif
-
-           call writeinfo("Dumping results", FORINFO)
-           if(writeoutput .and. outputconvergence) call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
-        if(myrankiszero .and. plotlevels .and. .not.(amr1d)) then
-           write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
-           write(message, *) "Wrote VTK file to", filename
-           call writeinfo(message, TRIVIAL)
-           call writeVtkFile(grid, filename, "vtk.txt")
-        endif
-
-        if(writeoutput) then
-           write(message,*) "Done ",nray," rays"
-           call tune(6, message)  ! stop a stopwatch
-
-        endif
-
-        call writeinfo("",FORINFO)  
-        call writeinfo("",FORINFO)  
-
-        if(molebench) then
-           call torus_mpi_barrier
-           call compare_molbench(diffmax)
-           write(message,*) "Maximum difference is ", diffmax
-           open(96, file="status.dat")
-           read(96,*) status
-           close(96)
-           
-           if(status .eq. 1) then 
-              call writeinfo("Convergence triggered early!",TRIVIAL)
-              gridConverged = .true.
-              gridConvergedTest = .true.
-           else
-              call writeinfo("Convergence test not passed",TRIVIAL)
-              call writeinfo(message,TRIVIAL)
-           endif
-        endif
-
-        if (.not.gridConvergedTest) then
-           if (.not.gridConverged) then               
-              if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
-              write(message,'(a,i7,a)') "Now trying ",nRay," Rays"
-              call writeInfo(message,FORINFO)
-              call writeinfo("", FORINFO)
-              if (molebench .and. (nray .gt. maxray)) then 
-                call writeinfo("Molebench Test Ended, Exiting...", TRIVIAL)
-                gridconverged = .true.
-              endif
- 
-           endif
-        else
-           if(.not. gridconverged) call writeinfo("Doing all rays again", FORINFO)
-        endif
-        
-        if (nRay > maxRay) then
-           nRay = maxRay  ! stop when it's not practical to do more rays
-           call writeWarning("Maximum number of rays exceeded - capping")
-        endif
-
-#ifdef MPI
-        deallocate(octalsBelongRank)
-#endif
-        deallocate(ds, phi, i0)
-     enddo
-  enddo
-  
-  close(33)
-666 continue
-end subroutine molecularLoopV2
 
    recursive subroutine  photoionChemistry(grid, thisOctal)
      use input_variables, only : molAbundance

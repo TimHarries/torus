@@ -33,9 +33,10 @@ contains
     use input_variables, only : nDustType, nLambda, lambdaSmooth, variableDustSublimation
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename
+    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
+    use sph_data_class, only: new_read_sph_data
 #ifdef MPI 
     use photoionAMR_mod, only : ionizeGrid, resetNh
 #endif
@@ -51,6 +52,7 @@ contains
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass
+    real(double) :: minRho, maxRho, totalmasstrap
     character(len=80) :: message
     integer :: j, ismoothLam
     integer :: nVoxels, nOctals
@@ -104,11 +106,12 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("molcluster")
-             call writeInfo("Initialising adaptive grid...", TRIVIAL)
-             call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
-             call writeInfo("Done. Splitting grid...", TRIVIAL)
-             call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
-             call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          call new_read_sph_data(sphdatafilename)
+          call writeInfo("Initialising adaptive grid...", TRIVIAL)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call writeInfo("Done. Splitting grid...", TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("wr104")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
@@ -253,6 +256,18 @@ contains
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
+
+          if(geometry .eq. 'molcluster') then
+             call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
+             write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Maximum Density: ",maxrho, " g/cm^3"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Minimum Density: ",minrho, " g/cm^3"
+             call writeInfo(message, TRIVIAL)
+          endif
 
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
@@ -482,7 +497,7 @@ contains
 
 
         recursive subroutine fillGridFogel(thisOctal, grid, r, z, nr, nz, rho, t, abundance)
-          use input_variables, only : mcore
+          use input_variables, only : mcore, vturb
           type(GRIDTYPE) :: grid
           type(octal), pointer   :: thisOctal
           type(octal), pointer  :: child 
@@ -523,7 +538,7 @@ contains
                 thisOctal%rho(subcell) = 1.d-25
                 thisOctal%temperature(subcell) = 3.d0
                 thisOctal%molAbundance(subcell) = 1.d-20
-                thisOctal%microTurb(subcell) = 1.d-8
+                thisOctal%microTurb(subcell) = 0.d0
                 if (.not.outsideGrid) then
                    call locate(z(j,1:nz(j)), nz(j), thisZ, k1)
                    call locate(z(j+1,1:nz(j+1)), nz(j+1), thisZ, k2)
@@ -548,13 +563,13 @@ contains
                         (1.d0-fac1)*(     fac2)* abundance(j,k1+1) + &
                         (     fac1)*(     fac3)* abundance(j+1,k2+1)  
 
-                   thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
-                        / (28.0 * amu)) + 0.3**2) &
-                        / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
                    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
 
                    thisOctal%molAbundance(subcell) = thisOctal%molAbundance(subcell) * 2.d0
                 endif
+                thisOctal%microturb(subcell) = max(vturb/(1.d-5*cspeed),sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
+                        / (28.0 * amu)) + vturb**2) &
+                        / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
 
                 thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
              endif
