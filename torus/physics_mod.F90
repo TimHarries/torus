@@ -4,7 +4,6 @@ module physics_mod
   use messages_mod
   use mpi_global_mod
   use utils_mod
-  use inputs_mod
   use timing
   use grid_mod
   use setupamr_mod
@@ -17,6 +16,7 @@ contains
 
   subroutine setupMicrophysics(grid)
     use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization, molecular
+    use input_variables, only : molecularPhysics, moleculeFile
     use molecular_mod
     use modelatom_mod
     use source_mod
@@ -101,8 +101,11 @@ contains
     use dust_mod
     use modelatom_mod, only : globalAtomArray
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
-    use input_variables, only : dustPhysics, lowmemory
-    use input_variables, only : statisticalEquilibrium, nAtom
+    use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
+    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
+         lucy_undersampled, molecularPhysics
+    use input_variables, only : useDust, realDust, readlucy, writelucy
+    use input_variables, only : lucyfilenameOut, lucyFilenamein
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop
@@ -118,6 +121,7 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     type(GRIDTYPE) :: grid
+    real :: massEnvelope
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
@@ -181,7 +185,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda)
-     use input_variables, only : photoionPhysics, dustPhysics
+     use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -278,7 +282,7 @@ contains
 end subroutine setupGlobalSources
 
 subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
-  use input_variables, only : mie
+  use input_variables, only : mie, nDustType
   use phasematrix_mod
   use dust_mod
   type(GRIDTYPE) :: grid

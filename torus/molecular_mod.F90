@@ -3326,7 +3326,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
      type(MOLECULETYPE) :: thisMolecule
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
-     integer :: subcell, i, isubcell
+     integer :: subcell, i
      integer :: iupper, ilower
      real(double) :: nmol, nlower, nupper, etaline
 
