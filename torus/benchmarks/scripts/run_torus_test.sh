@@ -188,7 +188,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Build code
     make_build
-    make_lib
+#    make_lib
     make_comparespec
 
 # Run hydro benchmark
@@ -248,7 +248,7 @@ for sys in ${BUILD_ONLY}; do
     cd    ${WORKING_DIR} 
 
     make_build
-    make_lib
+#    make_lib
 
 done
 }
