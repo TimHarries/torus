@@ -965,7 +965,7 @@ module molecular_mod
 ! Write grid  with LTE populations if initialised to LTE     
      if(isinlte .and. .not. restart) then
         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
-        if(myrankiszero) call writeAMRgrid(molgridltefilename,.false.,grid)
+        call writeAMRgrid(molgridltefilename,.false.,grid)
         goto 666
      endif
 
@@ -3387,19 +3387,14 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
                  endif
               endif
 
-              do isubcell = 1,thisoctal%maxchildren
-!                 rvec = subcellcentre(thisoctal, subcell)
-!                 thisoctal%rho(subcell) = somedisc(rvec)
-!                 thisoctal%rho(subcell) = 0.d0
-!                 thisoctal%nh2(subcell) = thisoctal%rho(subcell) / (2.d0 *amu)
 
                  ! POST-PROCESS MOLCLUSTER
                  if(molcluster) then
 !                    if(.not. thisoctal%inflow(isubcell)) then
-                    if(thisoctal%rho(isubcell) .le. 1e-36) then
+                    if(thisoctal%rho(subcell) .le. 1e-36) then
                     
-                       thisoctal%rho(isubcell) = 0.d0
-                       thisoctal%nh2(isubcell) = 0.d0
+                       thisoctal%rho(subcell) = 0.d0
+                       thisoctal%nh2(subcell) = 0.d0
                        thisoctal%cornervelocity(:) = VECTOR(0.d0,0.d0,0.d0)
                        if(associated(thisoctal%cornerrho)) thisoctal%cornerrho(:) = 0.d0
                     endif
@@ -3407,40 +3402,39 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
                  
                  if(.not. lowmemory) then
                     if(noturb) then
-                       thisOctal%microturb(isubcell) = max(2d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(isubcell) / &
+                       thisOctal%microturb(subcell) = max(2d-7,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
                          (thisMolecule%molecularWeight * amu))) / (cspeed * 1d-5))
                     endif
 
-                    thisOctal%molmicroturb(isubcell) = 1.d0 / thisOctal%microturb(isubcell)
+                    thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
                     
-                    thisOctal%molcellparam(1,isubcell) = thisOctal%molAbundance(isubcell) * thisOctal%nh2(isubcell)            
-                    nMol = thisOctal%molcellparam(1,isubcell)
+                    thisOctal%molcellparam(1,subcell) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)            
+                    nMol = thisOctal%molcellparam(1,subcell)
                     
                     iUpper = thisMolecule%iTransUpper(iTrans)
                     iLower = thisMolecule%iTransLower(iTrans)
                     
-                    thisOctal%molcellparam(2,isubcell) = thisOctal%molecularLevel(iLower,isubcell)! * nMol
-                    thisOctal%molcellparam(3,isubcell) = thisOctal%molecularLevel(iUpper,isubcell)! * nMol
+                    thisOctal%molcellparam(2,subcell) = thisOctal%molecularLevel(iLower,subcell)! * nMol
+                    thisOctal%molcellparam(3,subcell) = thisOctal%molecularLevel(iUpper,subcell)! * nMol
                     
-                    nLower = thisOctal%molcellparam(2,isubcell)
-                    nUpper = thisOctal%molcellparam(3,isubcell)
-                    thisOctal%molcellparam(4,isubcell) = nLower * thisMolecule%einsteinBlu(iTrans) &
+                    nLower = thisOctal%molcellparam(2,subcell)
+                    nUpper = thisOctal%molcellparam(3,subcell)
+                    thisOctal%molcellparam(4,subcell) = nLower * thisMolecule%einsteinBlu(iTrans) &
                          - nUpper * thisMolecule%einsteinBul(iTrans)
                     
                     etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
                     
-                    thisOctal%molcellparam(5,isubcell) = etaLine * nUpper
-                    thisOctal%molcellparam(6,isubcell) = hCgsOverFourPi * thisOctal%molcellparam(4,isubcell)! balance
+                    thisOctal%molcellparam(5,subcell) = etaLine * nUpper
+                    thisOctal%molcellparam(6,subcell) = hCgsOverFourPi * thisOctal%molcellparam(4,subcell)! balance
 
                     if(doCOchemistry) then
-                       if(thisOctal%nh2(isubcell) .gt. 3e4 .and. &
-                  thisOctal%temperature(isubcell) .lt. 30.) thisOctal%molAbundance(isubcell) = x_D ! drop fraction
+                       if(thisOctal%nh2(subcell) .gt. 3e4 .and. &
+                  thisOctal%temperature(subcell) .lt. 30.) thisOctal%molAbundance(subcell) = x_D ! drop fraction
                     endif
 
                  endif
-              enddo
+              endif
            endif
-        endif
         
         if( .not. associated(thisOctal%newmolecularlevel) ) then
            allocate(thisoctal%newmolecularlevel(5, thisoctal%maxchildren))

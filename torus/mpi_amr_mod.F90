@@ -4,7 +4,6 @@ module mpi_amr_mod
   use kind_mod
   use amr_mod
   use mpi_global_mod
-
   implicit none
 
 contains
@@ -2659,6 +2658,62 @@ contains
     enddo
     meanVel  = meanVel / 8.d0
   end function velocityCornerFixedGrid
+
+    subroutine distributeSphDataOverMPI()
+      use sph_data_class, only : sphData, npart, init_sph_data
+      include 'mpif.h'
+      integer :: ierr
+
+
+      call MPI_BCAST(sphData%inUse, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%uDist, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%uMass, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%uTime, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%uVel , 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%uTemp, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%totalGasMass, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%codeVelocitytoTorus, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%codeEnergytoTemperature, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%npart, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%time, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%nptmass, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+      if (myrankGlobal /= 0) then
+         npart = sphData%nPart
+         call init_sph_data(sphdata%udist, sphdata%umass, sphdata%utime, sphdata%time, &
+              sphdata%nptmass, sphdata%uvel, sphdata%utemp)
+      endif
+
+      call MPI_BCAST(sphData%gasMass, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%xn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%yn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%zn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%vxn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%vyn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%vzn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%hn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%rhon, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+!      call MPI_BCAST(sphData%rhoh2, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%temperature, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%hpt, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%x, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%y, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%z, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%vx, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%vy, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%vz, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+      call MPI_BCAST(sphData%ptmass, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+         
+    end subroutine distributeSphDataOverMPI
+
     
 
 #else
@@ -2684,10 +2739,6 @@ contains
 !      STOP
 
     end function octalOnThread
-
-
-
-
 
 #endif
   end module mpi_amr_mod

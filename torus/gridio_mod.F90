@@ -144,8 +144,6 @@ contains
     integer :: iThread
 #endif
 
-
-
     writeFile = .true.
 
 #ifdef MPI
@@ -665,6 +663,7 @@ contains
        allocate(grid%octreeRoot)
        grid%octreeRoot%nDepth = 1
        nOctal = 0
+       mynull => grid%octreeRoot
        call readOctreePrivateFlexi(grid%octreeRoot,mynull,fileFormatted, nOctal, grid)
     
     close(unit=20)

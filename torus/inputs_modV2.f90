@@ -599,6 +599,9 @@ contains
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
     call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
          "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
+    call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
+         "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
+
     call getInteger("itrans", itrans, cLine, nLines, &
          "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
     call getReal("beamsize", beamsize, 1., cLine, nLines, &

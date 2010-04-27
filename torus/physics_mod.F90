@@ -130,13 +130,13 @@ contains
 
      if (molecularPhysics.and.statisticalEquilibrium) then
 #ifdef MPI
-        if (grid%splitOverMPI) then
-           call setallUnchanged(grid%octreeRoot)
-           call hydroVelocityConvert(grid%octreeRoot)
-           if (myrankGlobal /= 0) then
-              call fillVelocityCornersFromHydro(grid)
-           endif
-        endif
+!        if (grid%splitOverMPI) then
+!           call setallUnchanged(grid%octreeRoot)
+!           call hydroVelocityConvert(grid%octreeRoot)
+!           if (myrankGlobal /= 0) then
+!              call fillVelocityCornersFromHydro(grid)
+!           endif
+!        endif
 #endif
         if (dustPhysics) then
            call setupXarray(grid, xarray, nLambda)

@@ -383,7 +383,7 @@ contains
     read(LUIN,*)
     read(LUIN,*) junkchar, npart, n1, nptmass, n2
     read(LUIN,*)
-    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, uvel, junk, junk, utemp
+    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, junk, junk, junk, uvel, junk, junk, utemp
 !    read(LUIN,*) junkchar, udist, junk, junk, umass
     read(LUIN,*)
     read(LUIN,*)

@@ -38,6 +38,7 @@ contains
     use discwind_class, only: discwind, new, add_discwind
     use sph_data_class, only: new_read_sph_data
 #ifdef MPI 
+    use mpi_amr_mod
     use photoionAMR_mod, only : ionizeGrid, resetNh
 #endif
     use vh1_mod, only: read_vh1
@@ -106,7 +107,16 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("molcluster")
-          call new_read_sph_data(sphdatafilename)
+          if (.not.grid%splitOverMPI) then
+             call new_read_sph_data(sphdatafilename)
+          else
+#ifdef MPI
+             if (myrankGlobal == 0) then
+                call new_read_sph_data(sphdatafilename)
+             endif
+             call distributeSphDataOverMPI()
+#endif
+          endif
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call writeInfo("Done. Splitting grid...", TRIVIAL)
