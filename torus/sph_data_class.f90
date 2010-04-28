@@ -1,5 +1,6 @@
 module sph_data_class
 
+
   use kind_mod
   use vector_mod
   use messages_mod
@@ -372,7 +373,6 @@ contains
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
 
-
     open(unit=LUIN, file=TRIM(filename), form="formatted")
 
     read(LUIN,*) 
@@ -413,7 +413,8 @@ contains
     do ipart=1, nlines
 
        read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, junk, junk, junk, vx, vy, vz, u, junk, junk, junk, junk, junk, junk, junk, &
-            junk, junk, junk,itype
+            junk, junk, junk,junk, junk,junk,junk,junk,itype
+
        icount = icount + 1
 
        if(itype .ne. 2) then ! .or. itype .eq. 4) then

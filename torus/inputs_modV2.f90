@@ -602,6 +602,8 @@ contains
     call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
          "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("rgbcube", rgbCube, cLine, nLines, &
+         "Create an RGB data cube (reverses velocity axis): ","(a,1l,a)", .false., ok, .false.)
     call getInteger("itrans", itrans, cLine, nLines, &
          "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
     call getReal("beamsize", beamsize, 1., cLine, nLines, &

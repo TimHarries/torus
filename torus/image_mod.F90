@@ -640,7 +640,7 @@ module image_mod
       
 
        allocate(array(1:image%nx, 1:image%ny))
-       call writeInfo("Writing fits image",TRIVIAL)
+       call writeInfo("Writing fits image to: "//trim(filename),TRIVIAL)
        status=0
        !
        !  Delete the file if it already exists, so we can then recreate it.

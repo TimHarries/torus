@@ -23,6 +23,7 @@ module input_variables
     logical :: photoionEquilibrium
 
     logical :: calcDataCube
+    logical :: rgbCube
     logical :: calcImage
     logical :: calcSpectrum
 

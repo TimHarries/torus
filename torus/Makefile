@@ -512,14 +512,15 @@ ifeq ($(SYSTEM), omp)
 endif
 
 ifeq ($(SYSTEM), ceres)
-    F95COMP  = xlf95
-    F77COMP  = xlf
-    F95FLAG  = -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
-    F77FLAG  = -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
-    DEBUGFLAG  = -g
-    UNIXMOD  = unix_mod.f90.aix
-    KINDMOD  = kind_mod.f90.aix
-    EXE = torus.aix
+    F95COMP  = mpiifort
+    F77COMP= mpiifort
+    FASTFLAG  = -O3 -xhost
+    DEBUGFLAG=-g -O0 -traceback -fpe0 
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    MPIFLAG = -DMPI
+    EXE = torus.ceres
     KNOWN_SYSTEM = yes
 endif
 

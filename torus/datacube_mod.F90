@@ -155,7 +155,6 @@ contains
     
     !  Get an unused Logical Unit Number to use to open the FITS file.
     call ftgiou ( unit, status )
-    
     !  Create the new empty FITS file.
     blocksize=1
     call ftinit(unit,trim(filename),blocksize,status)
@@ -191,7 +190,6 @@ contains
 
        !  Write the array to the FITS file.
        call ftppre(unit,group,fpixel,nelements,thisCube%intensity,status)
-              
     endif
 
     if( do_write_Tau ) then

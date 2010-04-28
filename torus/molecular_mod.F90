@@ -2168,7 +2168,7 @@ end subroutine molecularLoop
 
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
 
-   use input_variables, only : itrans, nSubpixels, observerpos
+   use input_variables, only : itrans, nSubpixels, observerpos, rgbCube
    use image_mod, only: deleteFitsFile
 
 #ifdef MPI
@@ -2267,8 +2267,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
      call deallocateUnused(grid,grid%octreeroot,thismolecule%itransupper(itrans)+1)
 
      if(writeoutput) call writeinfo('Creating Image', TRIVIAL)
-     Call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis) ! create an image using the supplied parameters (also calculate spectra)
-
+     if (.not.rgbCube) then
+        call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis) ! create an image using the supplied parameters (also calculate spectra)
+     else
+        call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis,revVel=.true.) ! create an image using the supplied parameters (also calculate spectra)
+     endif
 !     if(writeoutput) call writeinfo('Converting Intensity to Flux', TRIVIAL)
      
 !     call cubeIntensityToFlux(cube, thismolecule, itrans) ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)
@@ -2300,23 +2303,26 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
          call shutdownServers()
    endif
 #endif
+   
+   call torus_mpi_barrier
+   if (writeoutput) then
+      status = 0
+      call writeinfo('Deleting previous Fits file', TRIVIAL)
+      call deleteFitsFile (filename, status)
+      call writeinfo('Writing Cube to Fits file: '//trim(filename), TRIVIAL)
+      call writedatacube(cube, filename)
+   endif
+   call torus_mpi_barrier
 
-     status = 0
-     if(writeoutput) call writeinfo('Deleting previous Fits file', TRIVIAL)
-     call deleteFitsFile (filename, status)
-!     call torus_mpi_barrier	
-     if(writeoutput) call writeinfo('Writing Cube to Fits file', TRIVIAL)
-     if(writeoutput) call writedatacube(cube, filename)
-
-!     call torus_mpi_barrier
+     call torus_mpi_barrier
 !     call createFluxSpectra(cube, thismolecule, itrans)
 
+!#ifdef MPI
 !     call torus_mpi_barrier
-#ifdef MPI
-     if(molcluster) then
-        call MPI_FINALIZE(ierr)
-     endif
-#endif
+!     if(molcluster) then
+!        call MPI_FINALIZE(ierr)
+!     endif
+!#endif
 
 #ifdef MPI
 666  continue
