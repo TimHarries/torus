@@ -4470,7 +4470,7 @@ END SUBROUTINE GAUSSJ
     real(double) :: weights(27)
     real(double), save :: oldweights(27)
 ! OpenMP has problems with saved variables so set reuse=.false. 
-    logical, parameter :: reuse=.true. 
+    logical, parameter :: reuse=.false. 
 
     if(reuse .and. t1 .eq. t1old) then
        if(t2 .eq. t2old) then

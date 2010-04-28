@@ -393,7 +393,7 @@ module angularImage
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
-     use molecular_mod, only: densite, velocity, phiprof
+     use molecular_mod, only: interpolated_Density, velocity, phiprof
      use h21cm_mod, only: h21cm_lambda
      use utils_mod, only: gauss
 
@@ -508,9 +508,9 @@ module angularImage
 
         if(densitysubsample) then
            if ( h21cm) then
-              nmol = densite(currentposition, grid) / (thisOctal%rho(subcell))
+              nmol = interpolated_Density(currentposition, grid) / (thisOctal%rho(subcell))
            else
-              nmol = thisoctal%molabundance(subcell) * (densite(currentposition, grid) / &
+              nmol = thisoctal%molabundance(subcell) * (interpolated_Density(currentposition, grid) / &
                    (2.d0 * mhydrogen))
            end if
         else
@@ -591,7 +591,7 @@ module angularImage
 
            
            if(densitysubsample .and. .not. h21cm ) then
-              nmol = thisoctal%molabundance(subcell) * (Densite(thisposition, grid) / &
+              nmol = thisoctal%molabundance(subcell) * (interpolated_Density(thisposition, grid) / &
                      (2.d0 * mhydrogen))
 
               if(usedust) then
@@ -605,7 +605,7 @@ module angularImage
               alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
 
            else if (densitysubsample .and. h21cm) then
-              nmol     = Densite(thisposition, grid) / (thisOctal%rho(subcell))
+              nmol     = interpolated_Density(thisposition, grid) / (thisOctal%rho(subcell))
               etaline  = nmol * thisOctal%molcellparam(5,subcell)
               alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
 
