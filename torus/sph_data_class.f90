@@ -363,16 +363,19 @@ contains
     implicit none
 
     character(LEN=*), intent(in)  :: filename
+    character(len=20) :: word(40), unit(40)
+    integer :: nword, nunit
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
     real(double) :: udist, umass, utime,  time, uvel, utemp
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h
     integer :: itype, ipart, icount, iptmass, igas, idead
     integer :: nptmass, n1, n2, nlines
-    real(double) junk
+    real(double) :: junk, junkArray(50)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
-
+    character(len=500) :: namestring, unitString
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, i
     open(unit=LUIN, file=TRIM(filename), form="formatted")
 
     read(LUIN,*) 
@@ -383,11 +386,49 @@ contains
     read(LUIN,*)
     read(LUIN,*) junkchar, npart, n1, nptmass, n2
     read(LUIN,*)
-    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, junk, junk, junk, uvel, junk, junk, utemp
+!    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, junk, junk, junk, uvel, junk, junk, utemp
+    read(LUIN,'(a)') unitString
+    unitString = unitstring(3:)
 !    read(LUIN,*) junkchar, udist, junk, junk, umass
     read(LUIN,*)
     read(LUIN,*)
-    read(LUIN,*)
+    read(LUIN,'(a)') nameString
+    nameString = nameString(2:)
+    call splitintoWords(unitString, unit, nunit)
+    call splitIntoWords(nameString, word, nWord)
+
+    if (nUnit /= nWord-1) then
+       call writeFatal("Error reading splash file")
+       write(*,*) nUnit, nWord
+       stop
+    endif
+    
+
+    ix = indexWord("x",word,nWord)
+    iy = indexWord("y",word,nWord)
+    iz = indexWord("z",word,nWord)
+
+    read(unit(ix),*) uDist
+
+    ivx = indexWord("v\dx",word,nWord)
+    ivy = indexWord("v\dy",word,nWord)
+    ivz = indexWord("v\dz",word,nWord)
+
+    read(unit(ivx),*) uvel
+
+    imass = indexWord("particle mass",word,nWord)
+
+    read(unit(imass),*) umass
+
+    iu = indexWord("u",word,nWord)
+
+    read(unit(iu),*) utemp
+    
+    ih = indexWord("h",word,nWord)
+    irho = indexWord("density",word,nWord)
+    ih = indexWord("h",word,nWord)
+    iitype = indexWord("itype",word,nWord)
+
 
     npart = npart + nptmass
 
@@ -412,8 +453,23 @@ contains
 
     do ipart=1, nlines
 
-       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, junk, junk, junk, vx, vy, vz, u, junk, junk, junk, junk, junk, junk, junk, &
-            junk, junk, junk,junk, junk,junk,junk,junk,itype
+!       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, junk, junk, junk, vx, vy, vz, u, junk, junk, junk, junk, junk, junk, junk, &
+!            junk, junk, junk,junk, junk,junk,junk,junk,itype
+       read(LUIN,*) junkArray(1:nWord)
+
+       xn = junkArray(ix)
+       yn = junkArray(iy)
+       zn = junkArray(iz)
+
+       vx = junkArray(ivx)
+       vy = junkArray(ivy)
+       vz = junkArray(ivz)
+
+       u = junkArray(iu)
+       rhon = junkArray(irho)
+       h = junkArray(ih)
+       itype = junkArray(iitype)
+       gaspartmass = junkArray(imass)
 
        icount = icount + 1
 
@@ -1861,5 +1917,36 @@ contains
     
   end function SmoothingKernel3d
   
+ subroutine splitIntoWords(longString, word, nWord)
+   character(len=20) :: word(:)
+   integer :: nWord
+   character(len=*) :: longString
+   character(len=500) :: tempString
+   logical :: stillSplitting
+   integer :: i
+   tempString = ADJUSTL(longString)
+   nWord = 0
+   stillSplitting = .true.
+   do while(stillSplitting)
+      nWord = nWord + 1
+      word(nWord) = tempString(1:16)
+      tempString = tempString(17:)
+      if (len(trim(tempString)) == 0) stillSplitting = .false.
+   end do
+ end subroutine splitIntoWords
+
+ integer function indexWord(inputword, wordarray, nword) 
+   character(len=*) :: inputWord
+   character(len=20) :: wordArray(:)
+   integer :: nWord, i
+   
+   indexWord = 0 
+   do i = 1, nWord
+      if (inputWord == wordArray(i)) then
+         indexWord = i
+         exit
+      endif
+   enddo
+ end function indexWord
 end module sph_data_class
     

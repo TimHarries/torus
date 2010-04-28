@@ -28,7 +28,8 @@ contains
     character(len=80) :: paramFile
 
     integer :: error
-
+    character(len=20) :: word(20)
+    integer :: nword,i
 
     datadirectory = " "
     done = .false.
@@ -1102,6 +1103,9 @@ end subroutine getVector
   call writeInfo(output, TRIVIAL)
   rVal = rVal * unitConversion
  end subroutine getRealArray
+
+         
+      
 
 end module inputs_mod
 
