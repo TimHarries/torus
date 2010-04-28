@@ -49,8 +49,8 @@ height 125.
 rho 8.16136e-18
 
 ! dust params
-mie T
-iso_scatter T
+mie F
+iso_scatter F
 forceFirstScat F
 probdust 0.1
 graintype1 sil_dl
@@ -133,3 +133,4 @@ initnray 16
 constantabundance T
 setmaxlevel 10
 outputconvergence T
+dotune T
