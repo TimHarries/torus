@@ -377,7 +377,6 @@ contains
     character(len=500) :: namestring, unitString
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, i
     open(unit=LUIN, file=TRIM(filename), form="formatted")
-    writeoutput = .true.
     read(LUIN,*) 
     read(LUIN,*)
     read(LUIN,*)

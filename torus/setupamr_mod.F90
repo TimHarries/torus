@@ -69,7 +69,8 @@ contains
     if (readgrid) then
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
-
+       grid%splitOverMPI = splitOverMPI
+          call checkAMRgrid(grid,.false.)
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 
     else
@@ -297,6 +298,7 @@ contains
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif
+        call torus_mpi_barrier
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif

@@ -4150,9 +4150,9 @@ end subroutine plotdiscValues
     integer, save :: savecounter = 0
     logical, save :: firsttime = .true.
 ! whilst all my code is commented out, stop the warnings    
-    subcell = subcell
+!    subcell = subcell
     firsttime = .false.
-    startoctal => null()
+!    startoctal => null()
     savecounter = 0
 
 !    if(oldposition .eq. position) then
@@ -4943,7 +4943,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
               nmol = interpolated_Density(currentposition, grid) / (thisOctal%rho(subcell))
            else
               nmol = thisoctal%molabundance(subcell) * &
-                   (interpolated_Density(currentposition, grid, thisoctal, subcell) / (2.d0 * mhydrogen))
+                   (interpolated_Density(currentposition, grid) / (2.d0 * mhydrogen))
            end if
         else
            if ( h21cm ) then
