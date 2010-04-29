@@ -377,7 +377,7 @@ contains
     character(len=500) :: namestring, unitString
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, i
     open(unit=LUIN, file=TRIM(filename), form="formatted")
-
+    writeoutput = .true.
     read(LUIN,*) 
     read(LUIN,*)
     read(LUIN,*)
@@ -388,7 +388,7 @@ contains
     read(LUIN,*)
 !    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, junk, junk, junk, uvel, junk, junk, utemp
     read(LUIN,'(a)') unitString
-    unitString = unitstring(3:)
+    unitString = unitstring(2:)
 !    read(LUIN,*) junkchar, udist, junk, junk, umass
     read(LUIN,*)
     read(LUIN,*)
@@ -424,7 +424,6 @@ contains
 
     read(unit(iu),*) utemp
     
-    ih = indexWord("h",word,nWord)
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
     iitype = indexWord("itype",word,nWord)
@@ -460,7 +459,6 @@ contains
        xn = junkArray(ix)
        yn = junkArray(iy)
        zn = junkArray(iz)
-
        vx = junkArray(ivx)
        vy = junkArray(ivy)
        vz = junkArray(ivz)

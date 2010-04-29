@@ -17708,6 +17708,7 @@ end function readparameterfrom2dmap
     implicit none
     character(len = 100) :: message    
 
+    write(*,*) myrankGlobal, " had ",mass_split, " splits by mass "
     if(mass_split .ne. 0) then
        write(message, *) "There were ", mass_split, " splits by mass"
        call writeinfo(message, TRIVIAL)

@@ -10,7 +10,7 @@ module cluster_class
   use source_mod, only: SOURCETYPE
   use octal_mod, only: octal, subcellCentre, cellVolume, within_subcell
   use vector_mod
-  
+  use mpi_global_mod
   implicit none
 
   public :: new,  &
