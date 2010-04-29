@@ -370,7 +370,7 @@ contains
     real(double) :: udist, umass, utime,  time, uvel, utemp
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h
     integer :: itype, ipart, icount, iptmass, igas, idead
-    integer :: nptmass, n1, n2, nlines
+    integer :: nptmass, nghost, nstar, nunknown, nlines
     real(double) :: junk, junkArray(50)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
@@ -383,7 +383,7 @@ contains
     read(LUIN,*) junkchar, time, utime
     read(LUIN,*)
     read(LUIN,*)
-    read(LUIN,*) junkchar, npart, n1, nptmass, n2
+    read(LUIN,*) junkchar, npart, nghost, nptmass, nstar, nunknown
     read(LUIN,*)
 !    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, junk, junk, junk, uvel, junk, junk, utemp
     read(LUIN,'(a)') unitString
@@ -428,7 +428,6 @@ contains
     iitype = indexWord("itype",word,nWord)
 
 
-    npart = npart + nptmass
 
     write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
     call writeinfo(message, TRIVIAL)
@@ -439,7 +438,7 @@ contains
     sphData%useSphTem = .true.
     sphdata%totalgasmass = 0.d0
 
-    nlines = npart + n2 + n1 ! npart now equal to no. lines - 12 = sum of particles dead or alive
+    nlines = npart + nghost + nptmass + nstar + nunknown ! npart now equal to no. lines - 12 = sum of particles dead or alive
 
     write(message,*) "Reading SPH data from ASCII...."
     call writeinfo(message, TRIVIAL)
@@ -470,12 +469,13 @@ contains
 
        icount = icount + 1
 
-       if(itype .ne. 2) then ! .or. itype .eq. 4) then
+       if (itype == 1) then 
           igas = igas + 1
 
           sphdata%xn(igas) = xn
           sphdata%yn(igas) = yn
           sphdata%zn(igas) = zn
+
 
           sphdata%gasmass(igas) = gaspartmass
 
@@ -495,7 +495,7 @@ contains
 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
           
-       if(itype .eq. 4) then
+       else if(itype .eq. 4) then
 
           iptmass = iptmass + 1
 
@@ -515,12 +515,11 @@ contains
           write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas
           call writeinfo(message, TRIVIAL)
           write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10, gaspartmass
-       endif
-    else
+       else
 
-       idead = idead + 1
+          idead = idead + 1
        
-    endif
+       endif
 
  enddo
 

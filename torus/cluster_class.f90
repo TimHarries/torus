@@ -624,6 +624,7 @@ contains
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
           ! quick check to see if this gas particle is
           ! belongs to this cell.
+
           if ( within_subcell(node, subcell, x, y, z) ) then
            
              counter = counter + 1
