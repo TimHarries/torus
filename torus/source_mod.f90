@@ -23,6 +23,7 @@ module source_mod
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
      type(SURFACETYPE) :: surface
      logical :: outsideGrid
+     logical :: onEdge
      real(double) :: distance
   end type SOURCETYPE
 
@@ -30,19 +31,6 @@ module source_mod
   integer :: globalnSource
 
   contains
-
-    function newSource(position, luminosity, radius, teff, spectrum)
-      type(SOURCETYPE) :: newSource
-      type(VECTOR), intent(in) :: position
-      real(double), intent(in) :: luminosity, radius, teff
-      type(SPECTRUMTYPE) :: spectrum
-      newSource%position = position
-      newSource%radius = radius
-      newSource%luminosity = luminosity
-      newSource%teff = teff
-      newSource%spectrum = spectrum
-    end function newSource
-
 
     function ionizingFlux(source, grid) result(flux)
       type(sourcetype) :: source
@@ -257,6 +245,7 @@ module source_mod
             ! for general case here.....
             direction = fromPhotoSphereVector(rHat)
          endif
+         if ( source%onEdge ) direction%z = abs(direction%z)
       else
          position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
          call random_number(r)

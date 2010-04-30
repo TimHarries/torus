@@ -63,6 +63,7 @@ contains
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
     logical :: ok
+    real(double) :: distToEdge
     
     do iSource = 1, nSource
        
@@ -74,11 +75,17 @@ contains
             (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
 
        source(isource)%outsideGrid = .false.
+       source(isource)%onEdge      = .false. 
+       distToEdge = source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize)
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
           source(isource)%outsideGrid = .true.
           source(isource)%distance = modulus(source(isource)%position)*1.d10
           source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
                (fourPi*source(isource)%distance**2)
+       else if ( distToEdge < grid%halfSmallestSubcell) then
+          source%onEdge = .true.
+          ! only half the photons will end up on the grid
+          source(isource)%luminosity = source(isource)%luminosity / 2.0
        endif
 
        if (inputcontfluxfile(isource) /= "blackbody") then

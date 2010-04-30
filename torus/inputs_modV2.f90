@@ -213,6 +213,10 @@ contains
           call getReal("mdot", mdot, real(mSol) /( 365.25 * 24. * 3600.),  cLine, nLines, &
                "Mass-loss rate (solar masses per year): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
 
+       case("lexington")
+          call getReal("rinner", rInner, 1.e7, cLine, nLines, &
+               "Inner Radius (10^17cm): ","(a,1pe8.1,1x,a)", 30., ok, .true.)
+
        case("benchmark")
           call getReal("rcore", rCore, real(rsol/1.e10), cLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
