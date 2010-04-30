@@ -116,7 +116,7 @@ contains
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
 #endif
     use amr_mod, only : hydroVelocityConvert
-    real, pointer :: xArray(:)
+    real, pointer :: xArray(:) => null()
     integer :: nLambda 
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20

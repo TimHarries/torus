@@ -565,6 +565,9 @@ contains
        call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
             "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, nLines, &
+         "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)
+
   end subroutine readRadiativeEquilibriumParameters
 
   subroutine readPhotoionEquilibriumParameters(cLine, nLines)
