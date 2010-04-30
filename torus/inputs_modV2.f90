@@ -28,8 +28,6 @@ contains
     character(len=80) :: paramFile
 
     integer :: error
-    character(len=20) :: word(20)
-    integer :: nword,i
 
     datadirectory = " "
     done = .false.

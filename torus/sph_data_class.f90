@@ -371,11 +371,11 @@ contains
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h
     integer :: itype, ipart, icount, iptmass, igas, idead
     integer :: nptmass, nghost, nstar, nunknown, nlines
-    real(double) :: junk, junkArray(50)
+    real(double) :: junkArray(50) !, junk
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=500) :: namestring, unitString
-    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, i
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
     read(LUIN,*)
@@ -1919,7 +1919,7 @@ contains
    character(len=*) :: longString
    character(len=500) :: tempString
    logical :: stillSplitting
-   integer :: i
+
    tempString = ADJUSTL(longString)
    nWord = 0
    stillSplitting = .true.
