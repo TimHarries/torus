@@ -7,7 +7,6 @@ module utils_mod
   use vector_mod          ! vector maths
   use constants_mod, only: angstromToCm, cSpeed, kErg, hCgs, ergtoEv, mHydrogen, twoPi, pi
   use messages_mod
-  use nrutil, only: arth
   use nrtype
 
   implicit none
@@ -2443,6 +2442,7 @@ contains
 !  END FUNCTION arth 
   
   SUBROUTINE trapzd(func,a,b,s,n) 
+    use nrutil, only: arth
     IMPLICIT NONE 
     REAL, INTENT(IN) :: a,b 
     REAL, INTENT(INOUT) :: s 

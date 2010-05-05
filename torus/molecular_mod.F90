@@ -14,8 +14,6 @@ module molecular_mod
    use octal_mod
    use math_mod
    use datacube_mod
-   use nrutil
-   use nrtype
    use parallel_mod, only : torus_mpi_barrier
    use gridio_mod, only: readamrgrid, writeamrgrid
    use atom_mod, only: bnu
@@ -4391,7 +4389,6 @@ end subroutine plotdiscValues
 end subroutine updateLevels
 
 SUBROUTINE sobseq(x,init)
-  USE nrtype; USE nrutil, ONLY : nrerror
   IMPLICIT NONE
   REAL(double), DIMENSION(:), INTENT(OUT) :: x
   INTEGER(I4B), OPTIONAL, INTENT(IN) :: init
@@ -4434,7 +4431,7 @@ SUBROUTINE sobseq(x,init)
         if (.not. btest(im,0)) exit
         im=im/2
      end do
-     if (j > MAXBIT) call nrerror('MAXBIT too small in sobseq')
+     if (j > MAXBIT) call torus_abort('MAXBIT too small in sobseq')
      im=(j-1)*MAXDIM
      j=min(size(x),MAXDIM)
      ix(1:j)=ieor(ix(1:j),iv(1+im:j+im))
