@@ -45,12 +45,19 @@ contains
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
 !   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
 
-    if (writeoutput) write(*,*) absolutePath
-    paramFile = trim(absolutePath)//"parameters.dat"
+
+    if (command_argument_count() == 1) then
+       call get_command_argument(1, paramFile)
+    else
+       paramFile = trim(absolutePath)//"parameters.dat"
+    endif
+    if (writeoutput) then
+       call writeInfo("Parameters file is: "//trim(paramFile),TRIVIAL)
+    endif
 
     open(unit=32, file=paramfile, status='old', iostat=error)
     if (error /=0) then
-       print *, 'Panic: parameter file open error, file:',trim(paramFile) ; stop
+       print *, 'Panic: parameter file open error, file: ',trim(paramFile) ; stop
     end if
 
     do

@@ -60,6 +60,7 @@ contains
 
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
 
+
     if (writeoutput) write(*,*) absolutePath
     paramFile = trim(absolutePath)//"parameters.dat"
 
