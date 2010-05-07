@@ -70,7 +70,9 @@ contains
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
-          call checkAMRgrid(grid,.false.)
+!          call checkAMRgrid(grid,.false.)
+          call writeVtkFile(grid, "test.vtk")
+
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 
     else

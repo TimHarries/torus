@@ -308,6 +308,7 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+  call allocateMemoryForDust(grid%octreeRoot)
 end subroutine setupDust
 
 end module physics_mod

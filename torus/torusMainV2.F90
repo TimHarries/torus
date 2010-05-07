@@ -89,7 +89,7 @@ program torus
 
   call  setupamrgrid(grid)
 
-  call checkAMRgrid(grid, .false.)
+!  call checkAMRgrid(grid, .false.)
 
   call setupGlobalSources(grid)
 

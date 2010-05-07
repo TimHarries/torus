@@ -599,7 +599,7 @@ contains
              call readAmrGridSingle(filename, fileFormatted, grid)
              call updateMaxDepth(grid)
              call setSmallestSubcell(grid)
-             call checkAMRgrid(grid, .false.)
+!             call checkAMRgrid(grid, .false.)
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
              grid%nOctals = nOctals
 !             CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
@@ -2750,7 +2750,7 @@ contains
          call setSmallestSubcell(grid)
          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
          grid%nOctals = nOctals
-         call checkAMRgrid(grid, .false.)
+!         call checkAMRgrid(grid, .false.)
          close(20)
          call torus_mpi_barrier
          if (myrankGlobal == 1) then

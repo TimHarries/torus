@@ -10,7 +10,7 @@ contains
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
     use source_mod, only : globalNSource, globalSourceArray
-    use input_variables, only : gridOutputFilename, writegrid, lineimage
+    use input_variables, only : gridOutputFilename, writegrid
     use input_variables, only : useDust, realdust
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
@@ -68,7 +68,6 @@ contains
     endif
 
     if (molecularPhysics.and.calcDataCube) then
-       lineimage =  .true.
        if (dustPhysics) then
           call setupXarray(grid, xarray, nLambda)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -83,7 +82,6 @@ contains
        mie = .true.
        call setupXarray(grid, xarray, nLambda)
        call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       
        call do_phaseloop(grid, .true., 0., 0., 0.,  &
             0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
             tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &

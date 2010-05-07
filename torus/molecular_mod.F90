@@ -511,6 +511,8 @@ module molecular_mod
                  else
                     maxlevel = setmaxlevel
                  endif
+		 write(*,*) "MAXLEVEL: ",maxlevel
+		 maxlevel = 9
 ! TODO V2:
 ! maxtrans currently assumes linear molecule so maxlevel - 1 is J=maxlevel - maxlevel-1 (not nec the case)
                  maxtrans = maxlevel - 1
@@ -827,6 +829,7 @@ module molecular_mod
           usedust, amr1d, amr3d, plotlevels, gettau, &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
      use messages_mod, only : myRankIsZero
+     use dust_mod
      use parallel_mod
 
 #ifdef MPI
@@ -993,6 +996,7 @@ module molecular_mod
       call allocateother(grid, grid%octreeroot)
 ! set up lambda array if using dust
       if(usedust) then
+         call allocateMemoryForDust(grid%octreeRoot)
          allocate(lamarray(size(grid%lamarray)))
          allocate(lambda(maxtrans))
          lamarray = grid%lamarray
@@ -3328,7 +3332,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
         alpha = thisOctal%molcellparam(7,subcell)
         jnu = thisOctal%molcellparam(8,subcell)
 
-        snu = jnu/alpha
+        if (alpha /= 0.d0) then
+           snu = jnu/alpha
+        else
+           snu = 0.
+        endif
 
         ds = tval
            
@@ -3476,7 +3484,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
 
    recursive subroutine addDustToOctalParams(grid, thisOctal, thisMolecule)
 
-     use input_variables, only : iTrans, lineimage, lamline, nlambda, lamstart, lamend
+     use input_variables, only : iTrans, lineimage, lamline
      use dust_mod, only: createDustCrossSectionPhaseMatrix
      use phasematrix_mod, only: PHASEMATRIX
 
@@ -3488,12 +3496,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
      integer, save :: ilambda = 1
      real(double) :: kappaAbs
      real :: lambda
-     logical,save :: onetime = .true.
-
-     real, allocatable :: xArray(:)
-     integer, parameter :: nMuMie = 1800
-     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-     real(double) :: loglamstart, loglamend
 
      kappaAbs = 0.d0
 
@@ -3515,25 +3517,23 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
               lambda = lamline
            endif
 
-           if(onetime) then
-              allocate(xArray(1:nLambda))
-              logLamStart = log10(lamstart)
-              logLamEnd   = log10(lamend)
-              do i = 1, nLambda
-                 xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-                 xArray(i) = 10.**xArray(i)
-              enddo
-
-              call createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
-              deallocate(miephase)
-              deallocate(xarray)
-              call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-              onetime = .false.
-           endif
-
+!           if(onetime) then
+!              allocate(xArray(1:nLambda))
+!              logLamStart = log10(lamstart)
+!              logLamEnd   = log10(lamend)
+!              do i = 1, nLambda
+!                 xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+!                 xArray(i) = 10.**xArray(i)
+!              enddo
+!
+!              call createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, SIZE(miePhaseGlobal, 3))
+!              deallocate(miephase)
+!              deallocate(xarray)
+!              onetime = .false.
+!           endif
+           call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
            call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
            thisOctal%molcellparam(7,subcell) = kappaAbs * 1.d-10
-
            if(associated(thisoctal%temperaturedust)) then
               thisOctal%molcellparam(8,subcell) = thisOctal%molcellparam(7,subcell) * bnu(cspeed/(lambda * 1d-8), &
                                                   dble(thisOctal%temperaturedust(subcell)))

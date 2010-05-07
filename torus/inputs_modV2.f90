@@ -614,6 +614,12 @@ contains
          "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
     call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
          "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
+    call getLogical("lineimage", lineImage, cLine, nLines, &
+         "Line emission: ","(a,1l,a)", .true., ok, .true.)
+    if(.not. lineimage) then
+       call getReal("lamline", lamLine, 1.e4,cLine, nLines, &
+            "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
+    endif
 
     call getLogical("rgbcube", rgbCube, cLine, nLines, &
          "Create an RGB data cube (reverses velocity axis): ","(a,1l,a)", .false., ok, .false.)

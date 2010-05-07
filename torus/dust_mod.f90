@@ -1622,9 +1622,8 @@ contains
        else
           call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
-          ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
-          thisOctal%dustTypeFraction(thisOctal%maxchildren,1:nDustType) = 0.d0
-          thisOctal%dustTypeFraction(thisOctal%maxchildren,1) = 1.d0
+          call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
+          thisOctal%dustTypeFraction(subcell,1) = 1.d0
        endif
     enddo
   end subroutine allocateMemoryForDust
