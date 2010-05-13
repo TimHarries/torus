@@ -354,7 +354,7 @@ module molecular_mod
      use sph_data_class, only: Clusterparameter
      use input_variables, only : vturb, restart, isinLTE, &
           addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, &
-          molAbundance, usedust, getdepartcoeffs, constantAbundance
+          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics
 
 !         plotlevels
 !     type(VECTOR) :: pos
@@ -511,8 +511,6 @@ module molecular_mod
                  else
                     maxlevel = setmaxlevel
                  endif
-		 write(*,*) "MAXLEVEL: ",maxlevel
-		 maxlevel = 9
 ! TODO V2:
 ! maxtrans currently assumes linear molecule so maxlevel - 1 is J=maxlevel - maxlevel-1 (not nec the case)
                  maxtrans = maxlevel - 1
@@ -557,6 +555,9 @@ module molecular_mod
                     call writeinfo("... which might of course be what you wanted :)")
                     firstAbundanceWarning = .false.
                  endif
+              endif
+              if (photoionPhysics) then
+                 call photoionChemistry(grid, thisOctal, subcell)
               endif
 
 ! Fill cells with LTE data to determine departure coefficents if required
@@ -981,7 +982,7 @@ module molecular_mod
 ! Write grid  with LTE populations if initialised to LTE     
      if(isinlte .and. .not. restart) then
         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
-        call writeAMRgrid(molgridltefilename,.false.,grid)
+!        call writeAMRgrid(molgridltefilename,.false.,grid)
         goto 666
      endif
 
@@ -2195,9 +2196,10 @@ end subroutine molecularLoop
 
 !!! READ ROUTINES !!!
 
-subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
+subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
-   use input_variables, only : itrans, nSubpixels, observerpos, rgbCube
+   use input_variables, only : itrans, nSubpixels, observerpos, rgbCube, &
+        gridDistance, imageside, npixels
    use image_mod, only: deleteFitsFile
 
 #ifdef MPI
@@ -2208,10 +2210,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
    type(MOLECULETYPE) :: thisMolecule
    type(VECTOR) :: unitvec, observerVec, centrevec, viewvec, imagebasis(2)
    type(DATACUBE) ::  cube
-
+   type(VECTOR), optional :: inputViewVec
    character(len=*), optional :: dataCubeFilename
    character (len=80) :: filename, message
    integer :: status
+   real(double) :: pixelWidth
 
    type(OCTAL), pointer :: thisoctal
    integer :: subcell
@@ -2257,8 +2260,19 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
      call writeinfo("molecular_mod 20091210.1608",IMPORTANT)
 
      call writeinfo('Setting observer parameters', TRIVIAL)
-     call setObserverVectors(viewvec, observerVec, imagebasis)
-
+     if (.not.PRESENT(inputViewVec)) then
+        call setObserverVectors(viewvec, observerVec, imagebasis)
+     else
+        viewVec = inputViewVec
+        observerVec = dble(-griddistance*1e-10) * viewVec ! This is the EXACT position of the observer in space
+        imagebasis(1) = viewvec .cross. VECTOR(0.d0, 0.d0, 1.d0)
+        imagebasis(2) = imagebasis(1) .cross. viewvec
+        call normalize(imagebasis(1))
+        call normalize(imagebasis(2))
+        pixelwidth = imageside / dble(npixels)
+        imagebasis(1) = imagebasis(1) * pixelwidth ! rescale basis vectors so that natural stepsize is 1 pixelwidth 
+        imagebasis(2) = imagebasis(2) * pixelwidth
+     endif
      write(message,'(a,3(2x,es10.3))') "Observer Position : ", observervec
      call writeinfo(message, FORINFO)
 
@@ -2335,7 +2349,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
    endif
 #endif
    
-   call torus_mpi_barrier
    if (writeoutput) then
       status = 0
       call writeinfo('Deleting previous Fits file', TRIVIAL)
@@ -2343,9 +2356,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename)
       call writeinfo('Writing Cube to Fits file: '//trim(filename), TRIVIAL)
       call writedatacube(cube, filename)
    endif
-   call torus_mpi_barrier
-
-     call torus_mpi_barrier
 !     call createFluxSpectra(cube, thismolecule, itrans)
 
 !#ifdef MPI
@@ -5907,33 +5917,20 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
    
  end subroutine writeContributions
 
- recursive subroutine  photoionChemistry(grid, thisOctal)
+ subroutine  photoionChemistry(grid, thisOctal, subcell)
    use input_variables, only : molAbundance
    type(GRIDTYPE) :: grid
    type(octal), pointer   :: thisOctal
-   type(octal), pointer  :: child
    integer :: subcell, i
    
-   do subcell = 1, thisOctal%maxChildren
-      if (thisOctal%hasChild(subcell)) then
-         ! find the child
-         do i = 1, thisOctal%nChildren ! What's this?
-            if (thisOctal%indexChild(i) .eq. subcell) then
-               child => thisOctal%child(i)
-               call photoionChemistry(grid, child)
-               exit
-            end if
-         end do
-      else ! once octal has no more children, solve for current parameter set
+   if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) goto 666
          
-         if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
-         
-         thisOctal%molAbundance(subcell) = molAbundance
-         if (thisOctal%temperature(subcell) > 100.d0) &
-              thisOctal%molAbundance(subcell) = tiny(thisOctal%molAbundance)
-      endif
-   enddo
- end subroutine photoionChemistry
+   thisOctal%molAbundance(subcell) = molAbundance
+   if (thisOctal%temperature(subcell) > 100.d0) then
+      thisOctal%molAbundance(subcell) = tiny(thisOctal%molAbundance)
+   endif
+666  continue
+   end subroutine photoionChemistry
  
 #ifdef MPI
 

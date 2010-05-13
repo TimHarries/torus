@@ -113,6 +113,7 @@ contains
          lucy_undersampled, molecularPhysics
     use input_variables, only : useDust, realDust, readlucy, writelucy
     use input_variables, only : lucyfilenameOut, lucyFilenamein
+    use input_variables, only : hydrovelocityconv
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop
@@ -141,13 +142,13 @@ contains
 
      if (molecularPhysics.and.statisticalEquilibrium) then
 #ifdef MPI
-!        if (grid%splitOverMPI) then
-!           call setallUnchanged(grid%octreeRoot)
-!           call hydroVelocityConvert(grid%octreeRoot)
-!           if (myrankGlobal /= 0) then
-!              call fillVelocityCornersFromHydro(grid)
-!           endif
-!        endif
+        if (grid%splitOverMPI.and.hydrovelocityconv) then
+           call setallUnchanged(grid%octreeRoot)
+           call hydroVelocityConvert(grid%octreeRoot)
+           if (myrankGlobal /= 0) then
+              call fillVelocityCornersFromHydro(grid)
+           endif
+        endif
 #endif
         if (dustPhysics) then
            call setupXarray(grid, xarray, nLambda)

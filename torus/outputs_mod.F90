@@ -17,7 +17,8 @@ contains
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage
     use photoionAMR_mod, only : createImageSplitGrid
-    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie
+    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance
+    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
     use phasematrix_mod
@@ -36,6 +37,9 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     integer :: i
+    integer :: nAng
+    type(VECTOR) :: thisVec,  axis
+    real(double) :: ang
     character(len=80) :: tstring
     type(VECTOR) :: tvec(1)
 
@@ -76,6 +80,20 @@ contains
        endif
 !        call photoionChemistry(grid, grid%octreeRoot)
        call calculateMoleculeSpectrum(grid, globalMolecule, dataCubeFilename)
+!       viewVec = VECTOR(-0.5d0, 0.5d0, 1.d0/sqrt(2.d0))
+!       nAng = 240
+!       axis = VECTOR(0.d0, 0.d0, 1.d0)
+!!       axis = rotateX(axis, -rotateViewAboutX * degtorad) 
+!!       axis = rotateY(axis, -rotateViewAboutY * degtorad) 
+!       axis = rotateZ(axis, -rotateViewAboutZ * degtorad) 
+!
+!       do i = 187, nAng
+!          ang = fourPi * dble(i-1)/dble(nAng-1)
+!          thisVec = arbitraryRotate(viewVec, ang, axis)
+!          write(dataCubeFilename,'(a,i4.4,a)') "CLU",i+2000,".fits"
+!          call calculateMoleculeSpectrum(grid, globalMolecule, dataCubeFilename, inputViewVec=thisVec)
+!       enddo
+
     endif
 
     if (dustPhysics.and.(calcspectrum.or.calcimage)) then

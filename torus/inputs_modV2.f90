@@ -546,6 +546,11 @@ contains
   subroutine readMolecularLoopParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getLogical("hydrovelconv", hydroVelocityConv, cLine, nLines, &
+         "Take velocity data from hydrodynamics: ","(a,1l,1x,a)", .false., ok, .false.)
+
   end subroutine readMolecularLoopParameters
 
   subroutine readAtomicLoopParameters(cLine, nLines)
@@ -615,7 +620,7 @@ contains
     call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
          "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
     call getLogical("lineimage", lineImage, cLine, nLines, &
-         "Line emission: ","(a,1l,a)", .true., ok, .true.)
+         "Line emission: ","(a,1l,a)", .true., ok, .false.)
     if(.not. lineimage) then
        call getReal("lamline", lamLine, 1.e4,cLine, nLines, &
             "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)

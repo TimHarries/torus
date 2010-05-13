@@ -690,6 +690,7 @@ module input_variables
 
 !hydro stuff
   logical :: hydrodynamics
+  logical :: hydrovelocityConv
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
   real :: x1, x2
