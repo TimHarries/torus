@@ -113,7 +113,6 @@ contains
          lucy_undersampled, molecularPhysics
     use input_variables, only : useDust, realDust, readlucy, writelucy
     use input_variables, only : lucyfilenameOut, lucyFilenamein
-    use input_variables, only : hydrovelocityconv
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop
@@ -121,6 +120,7 @@ contains
     use molecular_mod, only : molecularLoop, globalMolecule
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
+    use input_variables, only : hydrovelocityconv
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
 #endif
     use amr_mod, only : hydroVelocityConvert

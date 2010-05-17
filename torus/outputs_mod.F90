@@ -18,7 +18,7 @@ contains
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage
     use photoionAMR_mod, only : createImageSplitGrid
     use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance
-    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+!    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
     use phasematrix_mod
@@ -37,9 +37,9 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     integer :: i
-    integer :: nAng
-    type(VECTOR) :: thisVec,  axis
-    real(double) :: ang
+!    integer :: nAng
+!    type(VECTOR) :: thisVec,  axis
+!    real(double) :: ang
     character(len=80) :: tstring
     type(VECTOR) :: tvec(1)
 

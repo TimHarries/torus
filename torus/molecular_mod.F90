@@ -5921,7 +5921,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
    use input_variables, only : molAbundance
    type(GRIDTYPE) :: grid
    type(octal), pointer   :: thisOctal
-   integer :: subcell, i
+   integer :: subcell
    
    if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) goto 666
          
