@@ -421,26 +421,42 @@ the vertical dashed line showing 10\,$\mu$m.
 \subsubsection{Dust sublimation and the inner disc edge}
 \label{dust_edge}
 
-We have also applied dust sublimation during our simulations. This
-treatment is similar to that detailed in \cite{2007ApJ...661..374T},
-but with some enhancements to ensure convergence of the sublimated
-rim. 
 
-The dust sublimation proceeds as follows: An initial temperature
-distribution is found for the optically-thin limit by setting the
-global dust-to-gas ratio to a tiny value. Subsequent radiative
-equilibrium iterations are performed using the adopted dust-to-gas
-ratio of 0.01, but limiting the maximum optical depth across a given
-cell to $\tau_{\rm max}$. Cells whose temperature exceeds the local
-dust sublimation temperature have their dust-to-gas ratio set to
-zero. Radiative equilibrium iterations and sublimation sweeps are
-performed at $\tau_{\max} = $0.1, 1, and 10, with a final iteration of
-$\tau_{\max} = \infty$. Adequately solving the radiative-equilibrium
-necessiates resolving the disc's effective photosphere, and adaptive
-mesh refinement is used to split the grid at the
-optically-thin/optically-thick boundary in order that the maximum cell
-size at this boundary is $<1$ at a wavelength of 5500\,\AA. Once a
-self-consistent sublimated rim has been determined the equation of
+As our models assume magnetic-truncation at the co-rotation radius, we
+have implicitly generated an inner hole. This also means that the disc
+will have an inner wall at this radius. Evidence for inner walls in
+circumstellar discs is apparent from the SEDs of disc systems, where a
+peak in emission is found between 2 and 3\,$\mu$m. The temperatures
+reached by such inner walls are expected to generate thermal flux
+contributions within this wavelength range
+\citep{2001ApJ...560..957D}.
+
+For low-luminosity systems the dust sublimation radius ($R_{\rm sub}$)
+will be coincident with the co-rotation radius. However should
+the combined photospheric and accretion luminosities be sufficient the
+inner disc will be heated sufficiently that the dust close to the
+co-rotation radius will be sublimated, and we must account for this
+in our models. Furthermore, since the dust sublimation temperature has
+a density dependence \citep{1994ApJ...421..615P}, it is both the location and {\em
+  shape} of the inner wall that can change (Isella ref; Tannirkulam ref).
+
+Our treatment of dust sublimation is similar to that detailed in
+\cite{2007ApJ...661..374T}, but with some enhancements to ensure a
+swift convergence of the sublimated rim. The dust sublimation proceeds
+as follows: An initial temperature distribution is found for the
+optically-thin limit by setting the global dust-to-gas ratio to a tiny
+value. Subsequent radiative equilibrium iterations are performed using
+the adopted dust-to-gas ratio of 0.01, but limiting the maximum
+optical depth across a given cell to $\tau_{\rm max}$. Cells whose
+temperature exceeds the local dust sublimation temperature have their
+dust-to-gas ratio set to zero. Radiative equilibrium iterations and
+sublimation sweeps are performed at $\tau_{\max} = $0.1, 1, and 10,
+with a final iteration of $\tau_{\max} = \infty$. Adequately solving
+the radiative-equilibrium necessiates resolving the disc's effective
+photosphere, and adaptive mesh refinement is used to split the grid at
+the optically-thin/optically-thick boundary in order that the maximum
+cell size at this boundary is $<1$ at a wavelength of 5500\,\AA. Once
+a self-consistent sublimated rim has been determined the equation of
 hydrostatic equilibrium is solved throughout the disc, and the
 sublimation iterations are restarted (the change in the density
 structure from the hydrostatical equilibrium step naturally feeds back
@@ -448,86 +464,10 @@ into the shape of the inner rim). Five hydrostatic equilibrium steps
 are performed to ensure convergence, although a stable disc structure
 is normally found after three such iterations.
 
-As our models are magnetically truncated at the co-rotation radius, we
-have implicitly generated an inner hole. This also means that the disc
-will have an inner wall at this radius. Evidence for inner walls in
-circumstellar discs is apparent from the SEDs of disc systems, where a
-peak in emission is found between 2 and 3\,$\mu$m. The temperatures
-reached by such inner walls are expected to generate thermal flux
-contributions within this wavelength range
-\citep{2001ApJ...560..957D}. In fact the structure, radius and
-generation mechanism of the inner wall will lead to markedly different
-contributions to the SED. As discussed in Section \ref{intro} several
-mechanisms can act to clear the inner disc.
-
-Binarity and Giant planet formation would be expected to clear an
-inner disc and shut down accretion from within the inner wall due to
-gravitational perturbations. In addition, photoevaporation from UV and
-FUV flux is expected to halt accretion from radii within the inner
-disc due to the removal of this material via a stellar/disc wind
-\citep{2006MNRAS.369..229A}. These two clearing mechanisms could be
-differentiated by the resulting masses of the discs
-\citep{2007MNRAS.378..369N}. However, for our model systems we have
-neglected both of these effects.
-
-For our models we have initially cleared the inner disc by invoking a
-magnetic truncation radius, however, further disc clearing will be
-caused by the dust destruction/sublimation mechanism we have included.
-In some cases where the radius in the disc at which the dust
-sublimation temperature and densities are reached, ($R_{\rm sub}$)
-will be less than the co-rotation radius ($R_{\rm co}$). For these
-cases, $R_{\rm sub}<R_{\rm co}$, the inner wall radius and shape will
-be controlled by sublimation. Effectively meaning the final inner disc
-radius, after the radiative transfer simulation, will not equal the
-initial inner disc radius. The differences in the starting and
-resulting inner wall radii and the shapes of the inner edges are
-discussed in Section \ref{inner_edge}. If the inner disc is cleared
-via dust sublimation one would expect a residual hot gas disc interior
-to the inner wall. This is as the gas component will not be destroyed
-and is free to extend to the co-rotation radius.  Evidence for a hot
-gas inner disc component has been found through SED fitting by
-\cite{2005ApJ...623..952E} and \cite{2008ApJ...689..513T}.  In
-particular, \cite{2008ApJ...689..513T}, found that emission apparent
-from within the inner wall radius could not be well fit by a modeled
-spherical halo, or optically thin disc, dust component.
-
-Furthermore, as the dust sublimation limit is temperature and density
-dependent \citep{1994ApJ...421..615P}, dust sublimation can lead to
-changes in shape of the inner wall. As the density of the
-circumstellar disc will vary with scale height one would expect the
-dust sublimation radius to vary concurrently with scale height. This
-results in a curved inner wall \citep{2001A&A...371..186N}. As
-explained by \cite{2007ApJ...661..374T}, the fact that near-IR
-excesses of disc systems do not appear strongly dependent on
-inclination indicates that the inner walls are not
-vertical. \cite{2007ApJ...661..374T} also showed that grain growth and
-midplane settling will lead to a curved inner wall (and a hot inner
-gas disc). The curvature is caused by changes in the vertical dust
-density distributions as a function of dust size, or midplane
-settling. Essentially, larger grains will sink more efficiently
-towards the midplane of the disc, and due to their larger surface
-areas cool more efficiently. Therefore, as the scaleheight increases
-the relative proportion of larger to smaller grains will reduce and
-the cooling become less efficient. This will result in higher
-temperatures being reached for larger scale heights at a fixed radius,
-thereby curving the inner wall as the upper layers of the disc reach
-the sublimation temperature at closer radii.
-\cite{2007ApJ...661..374T}, modeled this effect by using two dust
-distributions, a small and a large, with different vertical
-distributions indicative of increased midplane settling for the larger
-grains. For this study we have adopted a size distribution for one
-population of dust grains, with one characteristic vertical
-distribution. As such curvature of the inner wall in our simulations
-will be dominated simply by the dust sublimation temperature, and
-density. The resulting shapes and radial positions of the inner walls
-after the radiative transfer simulations are complete are discussed in
-detail in Section \ref{inner_edge}.
 
 For our model grid we have adopted a gas-to-dust ratio, $\epsilon$, of
 100, and the gas population is assumed essentially static with a zero
-optical depth. Therefore, it does not contribute to the resulting SED,
-and we have not included a hot inner gas disc as found by
-\cite{2008ApJ...689..513T}.
+optical depth. 
 
 \subsubsection{SEDs}
 \label{seds}
@@ -875,41 +815,6 @@ Inclination ($^{\circ}$)&0, 27, 39, 48, 56, 64, 71, 77, 84 \& 90
 \section{Result and Analysis}
 \label{results}
 
-Uncertainty remains over the formation mechanisms, resulting IMFs and
-subsequent interaction mechanisms with associated circumstellar disc,
-for BDs. Furthermore, no current theoretical explanation can be
-demonstrated for the suspected stellar mass-accretion rate
-relationship \citep[$\dot{M}\propto
-M_*^2$,][]{2003ApJ...592..266M,2004A&A...424..603N,2006A&A...452..245N}
-derived from observations. In addition doubt remains over the
-existence of a disc-locking mechanism in BDD systems, with predictions
-of a correlation of rotation rate with infrared excess possibly
-providing an intrinsic bias \citep{1997AJ....114..288M}. Theoretical
-models are built upon constraints, such as ages, masses and disc
-fractions, and correlations, such as the accretion rate to stellar
-mass relation and rotation rate to period relation (disc-locking),
-derived from the data. Critically, these resulting constraints and
-relationships involve both the application of existing models, such as
-isochrones to derive ages, and the selection of bias-minimised
-samples, for instance removal of foreground or background contaminant
-stars. Clearly, if one is to adopt a new theoretical model or use an
-observed correlation as a constraint one must explore the suspected
-intrinsic biases and the reliability of the selection criteria.
-
-For our model grid we have selected a range of input parameters
-covering expected, from observations, ranges. We have input the
-fundamental parameters of age and mass by adoption of a set of
-theoretical isochrones. We have intrinsically included a correlation
-of rotation rate with initial inner edge position by setting this at
-the co-rotation radius, which is expected to result in a correlation
-of rotation rate with IR excess \citep{1997AJ....114..288M} (the
-reverse of that expected due to angular momentum loss through
-disc-locking). We have not assumed a relationship between accretion
-rate and stellar mass for our model grid. Therefore, analysis of our
-model grid in an attempt to recover the fundamental parameters of age
-and mass, and show accretion rate to stellar mass or rotation rate to
-infrared excess relationships, will allow us to assess the reliability
-of these current theoretical models or relationships.
 
 In this Section we first discuss the physical structure, both density
 and temperature, of the BDD disc systems (Section \ref{disc_struct})
@@ -929,20 +834,19 @@ derived.
 \subsection{Disc Structure}
 \label{disc_struct}
 
-The initial density structure in our BDD systems is setup as described
-in \cite{2004MNRAS.351..607W} with the the disc surface density
+The initial density structure has the the disc surface density
 conserved, $\Sigma ^{\beta - \alpha}$. The initial scaleheight,
 $h\propto r^{\beta}$, where r is the radial distance from the star,
 and the density, $\rho \propto r^{-\alpha}$. The initial values of
 $\alpha$ and $\beta$ were 2.1 and 1.1 respectively \citep[see][for
-full discussion of disc structure]{2004MNRAS.351..607W}. The values
+  full discussion of disc structure]{2004MNRAS.351..607W}. The values
 for $\alpha$ and $\beta$ were chosen to optimise resolution of the
 vertically evolving disc, but minor variations are largely
 inconsequential as the systems evolves from this state. In our models
 we have, however, placed at the inner disc edge at the co-rotation
 radius, as opposed to the dust destruction radius used in
-\cite{2004MNRAS.351..607W}. The initial disc scaleheight at 100 AU,
-$h(100)$, was set to 25 AU. As the simulation used vertical
+\cite{2004MNRAS.351..607W}. The initial disc scaleheight at 100\,AU,
+$h(100)$, was set to 25\,AU. As the simulation used vertical
 hydrostatic equilibrium and dust sublimation, both the disc
 scaleheight and inner edge location then evolved in the systems
 dependent on the input parameters. In this section we discuss the
@@ -959,7 +863,7 @@ respectively). Our models adopt the same formalism for solving
 hydrostatic equilibrium and therefore, at negligible accretion rates,
 our disc scaleheights are comparable. As the accretion rate increases
 the flux levels of the central star increase and lead to heating of
-the disc. This in turn leads to vertical expansion in the disc. For
+the disc which in turn leads to vertical expansion. For
 our models we found that levels of vertical flaring increased
 marginally with accretion rate. Significant differences, more than
 $>$5 AU increase in $h(50)$, in the vertical structure were not
@@ -1028,7 +932,7 @@ and the increase in flaring for very high accretion levels on SEDs and
 photometric magnitudes are discussed in Sections \ref{sed_analysis}
 and \ref{photometry}, respectively.
 
-\subsubsection{Inner Edge}
+\subsubsection{Inner edge}
 \label{inner_edge}
 
 Our models include a sophisticated treatment of dust sublimation
@@ -1553,7 +1457,7 @@ the dust sublimation temperature is density dependent, which is in
 turn dependent on radial position (see Figures \ref{delta_radius} and
 \ref{inner_temp}).
 
-\subsubsection{Accretion Dominance}
+\subsubsection{Accretion dominance}
 \label{acc_dominance}
 
 Figure \ref{acc_dom} shows the affect of increasing the accretion
@@ -1624,7 +1528,7 @@ stellar input parameters (mass and age) and the accretion input
 parameters (accretion rate and areal coverage, and to a lesser extent
 rotation rate).
 
-\subsubsection{Flaring and Obscuration}
+\subsubsection{Flaring and obscuration}
 \label{flare_obscure}
 
 As shown in Figures \ref{flare_-12_183} and \ref{flare_-7_193} and

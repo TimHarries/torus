@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2006.10.12)  18 MAY 2010 11:01
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2006.10.12)  18 MAY 2010 15:21
 entering extended mode
 **paper
 (./paper.tex
@@ -128,39 +128,33 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5> on input line 88.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <9> on input line 100.
+(Font)              <9> on input line 145.
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 166.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 160.
 
 
 (/sw/share/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 1999/05/25 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <8> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 166.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 160.
  [1
 
 
 ]
-Underfull \vbox (badness 10000) has occurred while \output is active []
 
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 286.
+LaTeX Warning: Command \r invalid in math mode on input line 217.
 
 [2] [3] [4]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [5]
+[6] [7] [8] [9]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [6]
-[7] [8] [9] [10]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [11]
+ [10]
 File: ./Fig/no_sub_183_density.ps Graphic file (type eps)
 
 <./Fig/no_sub_183_density.ps>
@@ -187,42 +181,45 @@ File: ./Fig/sub_181_temp.ps Graphic file (type eps)
  <./Fig/sub_181_temp.ps>
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+ [11]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
  [12]
 Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 1458.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 1458.
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [13]
-
-LaTeX Warning: Command \r invalid in math mode on input line 1574.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 1574.
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [14]
-Underfull \vbox (badness 10000) has occurred while \output is active []
+
+LaTeX Warning: Command \r invalid in math mode on input line 1553.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 1553.
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [15]
-
-LaTeX Warning: Command \r invalid in math mode on input line 1669.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 1669.
-
-
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [16]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [17]
@@ -246,21 +243,32 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [20]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
  [21]
-[22]
-Underfull \hbox (badness 2726) in paragraph at lines 2242--2259
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \hbox (badness 2726) in paragraph at lines 2126--2143
 \OT1/cmr/m/n/9 Accretion flux was shown to dom-i-nate the un-der-ly-
  []
 
 
-Underfull \hbox (badness 1048) in paragraph at lines 2242--2259
+Underfull \hbox (badness 1048) in paragraph at lines 2126--2143
 \OT1/cmr/m/n/9 ing, in-trin-sic, pho-to-spheric SED for ac-cre-tion rates of
  []
+
+[22]
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [23]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [24]
@@ -270,31 +278,31 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [26]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
-Underfull \hbox (badness 2213) in paragraph at lines 2566--2585
+Underfull \hbox (badness 2213) in paragraph at lines 2450--2469
 \OT1/cmr/m/n/9 cir-cum-stel-lar discs we have sub-di-vided the grid into
  []
 
 
-Underfull \hbox (badness 3343) in paragraph at lines 2566--2585
+Underfull \hbox (badness 3343) in paragraph at lines 2450--2469
 \OT1/cmr/m/n/9 two groups (as dis-cussed in Sec-tions 4.1[] and 4.2[]),
  []
 
 
-Underfull \hbox (badness 1603) in paragraph at lines 2566--2585
+Underfull \hbox (badness 1603) in paragraph at lines 2450--2469
 \OT1/cmr/m/n/9 ob-jects, de-fined as $[] =$10$[]\OML/cmm/m/it/9 M[]yr[]$ \OT1/c
 mr/m/n/9 (neg-li-gi-ble) to
  []
+
+[26]
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [27]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [28]
@@ -312,9 +320,6 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [30]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
  [31]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
@@ -325,9 +330,9 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [33]
-[34
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
-]
+ [34]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [35]
@@ -336,18 +341,18 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [36]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [37]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [38
+ [37
 
 ]
 Underfull \vbox (badness 4981) has occurred while \output is active []
 
 
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [38]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [39]
@@ -357,6 +362,9 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [41]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [42]
@@ -369,58 +377,52 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [44]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
 (./paper.bbl
 Underfull \vbox (badness 6396) has occurred while \output is active []
 
- [45]
+ [44]
 Underfull \vbox (badness 3323) has occurred while \output is active []
 
 
 Underfull \vbox (badness 3428) has occurred while \output is active []
 
- [46]
+ [45]
 Underfull \vbox (badness 5231) has occurred while \output is active []
 
 
 Underfull \vbox (badness 7451) has occurred while \output is active []
 
- [47]
-[48]
+ [46]
+[47]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [49]
+ [48]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-) [50]
-[51]
+) [49]
+[50]
 
-LaTeX Warning: Command \r invalid in math mode on input line 3749.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 3754.
+LaTeX Warning: Command \r invalid in math mode on input line 3633.
 
 
-LaTeX Warning: Command \r invalid in math mode on input line 3757.
+LaTeX Warning: Command \r invalid in math mode on input line 3638.
 
-[52
+
+LaTeX Warning: Command \r invalid in math mode on input line 3641.
+
+[51
 
 ] (./paper.aux) ) 
 Here is how much of TeX's memory you used:
  1533 strings out of 94501
  18973 string characters out of 1176136
- 97289 words of memory out of 1000000
+ 98965 words of memory out of 1000000
  4691 multiletter control sequences out of 10000+50000
  17047 words of font info for 59 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
- 31i,14n,34p,1571b,443s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 31i,14n,34p,1571b,445s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on paper.dvi (52 pages, 290176 bytes).
+Output written on paper.dvi (51 pages, 279700 bytes).
