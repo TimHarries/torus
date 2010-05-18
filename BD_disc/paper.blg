@@ -1,45 +1,51 @@
-This is BibTeX, Version 0.99c (Web2C 7.5.7)
+This is BibTeX, Version 0.99c (Web2C 7.5.6)
 The top-level auxiliary file: paper.aux
 The style file: mn2e.bst
 Database file #1: references.bib
-You've used 102 entries,
+Repeated entry---line 1091 of file references.bib
+ : @article{luhman_2005
+ :                     ,
+I'm skipping whatever remains of this entry
+Warning--I didn't find a database entry for "2007prpl.conf..297H"
+You've used 83 entries,
             2601 wiz_defined-function locations,
-            1166 strings with 24567 characters,
-and the built_in function-call counts, 49619 in all, are:
-= -- 4684
-> -- 3978
-< -- 40
-+ -- 1374
-- -- 1374
-* -- 4897
-:= -- 9143
+            978 strings with 18603 characters,
+and the built_in function-call counts, 40397 in all, are:
+= -- 3822
+> -- 3238
+< -- 34
++ -- 1119
+- -- 1119
+* -- 3991
+:= -- 7445
 add.period$ -- 0
-call.type$ -- 102
-change.case$ -- 869
-chr.to.int$ -- 102
-cite$ -- 102
-duplicate$ -- 1217
-empty$ -- 1813
-format.name$ -- 1508
-if$ -- 9026
+call.type$ -- 83
+change.case$ -- 707
+chr.to.int$ -- 83
+cite$ -- 83
+duplicate$ -- 986
+empty$ -- 1469
+format.name$ -- 1232
+if$ -- 7345
 int.to.chr$ -- 1
 int.to.str$ -- 0
-missing$ -- 103
-newline$ -- 318
-num.names$ -- 424
-pop$ -- 690
+missing$ -- 84
+newline$ -- 259
+num.names$ -- 344
+pop$ -- 554
 preamble$ -- 1
-purify$ -- 963
+purify$ -- 784
 quote$ -- 0
-skip$ -- 1599
+skip$ -- 1298
 stack$ -- 0
-substring$ -- 2290
-swap$ -- 180
-text.length$ -- 14
-text.prefix$ -- 453
+substring$ -- 1879
+swap$ -- 141
+text.length$ -- 10
+text.prefix$ -- 369
 top$ -- 0
-type$ -- 915
+type$ -- 744
 warning$ -- 0
-while$ -- 413
+while$ -- 337
 width$ -- 0
-write$ -- 1026
+write$ -- 836
+(There was 1 error message)
