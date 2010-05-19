@@ -169,21 +169,21 @@ There are also risks of observational biases at the low-mass end of
 the correlation. Radiative-transfer modelling of H$\alpha$ emission
 from accreting BDs requires high temperatures ($>$\, 10\,kK) in the
 accretion funnels in order to recover the level of emission that is
-observed. (Cooling rate arguments can be invoked to explain the
-presence of such high temperatures). Recently some continuum
-measurements of accreting BDs have been conducted, and these broadly
-support the H$\alpha$ rates
-\citep{muzerolle_2003,natta_2004,natta_2006}. Nonetheless
-it is worth considering the observed effect that mass accretion at
-typical CTTS rates onto a BD might have. Parity between the BD
-photospheric luminosity and the accretion luminosity occurs at
-relatively low accretion rates \citep{clarke_2006}. Such
-objects may not be detected as BDs at all in photometric surveys. Even
-before such an extreme case is reached, the additional luminosity
-provided by the accretion should have measurable effect on the BD
-colours. Furthermore the additional flux will be reprocessed by the
-disc, altering its scaleheight and possibly the shape of its inner
-edge.
+observed \citep{muzerolle_2003,natta_2004,natta_2006}. (Cooling rate
+arguments can be invoked to explain the presence of such high
+temperatures). Recently some continuum measurements of accreting BDs
+have been conducted \cite{herczeg_2009}, and these broadly support the H$\alpha$
+rates.
+
+Nonetheless it is worth considering the observed effect that mass
+accretion at typical CTTS rates onto a BD might have. Parity between
+the BD photospheric luminosity and the accretion luminosity occurs at
+relatively low accretion rates \citep{clarke_2006}: Such objects may
+not be detected as BDs at all in photometric surveys. Even before such
+an extreme case is reached, the additional luminosity provided by the
+accretion should have measurable effect on the BD colours. Furthermore
+the additional flux will be reprocessed by the disc, altering its
+scaleheight and possibly the shape of its inner edge.
 
 Here we present a grid of models of BDD systems, including a
 self-consistent treatment of the photospheric and accretion luminosity
@@ -665,51 +665,27 @@ coverages of 1 and 10\%.
 \subsection{Accretion Rate}
 \label{par_accn}
 
-
-XXXX TJH check this now
-
 Accretion rates derived for pre-MS stars are of order \logmdot = $-6$
-to $-11$ \citep{natta_2006}.  With the largest accretion
-rates found in so-called FU Orionis type objects (after the object
-where they were first observed). For the more typical accretion rates
-\citep[$\dot{M}=$10$^{-11}$ to 10$^{-8.9} M_{\odot}yr^{-1}$, for
-  TTS,][]{dahm_2009}, several studies have now suggested
-that the accretion rate is strongly correlated with the mass of the
-central star. This relationship was perhaps first suggested by
+to $-11$ \citep{natta_2006}, with the largest accretion rates found in
+so-called FU Orionis type objects. For the more typical accretion
+rates \citep[$\dot{M}=$10$^{-11}$ to 10$^{-8.9} M_{\odot}yr^{-1}$, for
+  TTS,][]{dahm_2009}, several studies have now suggested that the
+accretion rate is strongly correlated with the mass of the central
+star. This relationship was perhaps first suggested by
 \cite{muzerolle_2003} using various accretion diagnostics. Later,
 \citep{muzerolle_2005} derived a relationship of approximately
 $\dot{M}\propto M_*^{~2}$. Further evidence was put forward by
 \cite{natta_2004}, where accretion rates as low as 5$\times$
 10$^{-12}M_{\odot} yr^{-1}$ were found for BD stars. More recently,
 even lower accretion rates of $\approx$10$^{-13}M_{\odot} yr^{-1}$,
-have been derived for BDs by \cite{herczeg_2009}.  Further
-support for a dependence of accretion rate on stellar mass was
-apparent in the significantly more homogeneous dataset of
-\cite{natta_2006}. \cite{natta_2006} analysed a set
-of accretion rates and masses derived for pre-MS stars in $\rho$
-Ophiuchi and compared these results to stars in Taurus. They found
-that the accretion rate scales with central object mass, into the BD
-regime.
-
-For any $\dot{M}\propto M_*$ relationship to be ratified, clearly, the
-associated mass derivations must be shown to be accurate. For the BD
-mass regime it has been demonstrated that classification, either
-spectroscopic or photometric, and therefore accurate mass derivation
-is exceedingly difficult for BDD systems
-\citep{walker_2004}. The inclusion of significant levels of
-accretion flux will act to exacerbate this problem. Essentially, as BD
-mass objects have relatively cool photospheres, compared to the
-temperature of the accretion hotspots, meaning that for lower
-accretion rates, than for their CTTS counterparsts, the accretion flux
-dominates the small wavelength regime of the SED.
-
-Therefore, to strengthen, or reject, any stellar mass to accretion
-rate relationship, the limits of observational classification (and
-mass derivation) of accreting BDD systems must be understood. To
-provide a benchmark model grid of such systems, with which to aid
-interpretation of the observational data, we must select a range of
-accretion rates including and exceeding those detected for systems
-previously classified as BDs. 
+have been derived for BDs by \cite{herczeg_2009}.  Further support for
+a dependence of accretion rate on stellar mass was apparent in the
+significantly more homogeneous dataset of
+\cite{natta_2006}. \cite{natta_2006} analysed a set of accretion rates
+and masses derived for pre-MS stars in $\rho$ Ophiuchi and compared
+these results to stars in Taurus. They found that the accretion rate
+scales with central object mass into the BD regime, although with
+significant scatter.
 
 As the relationship $\dot{M}\propto M_*^{~2}$ predicts lower accretion
 rates for BD mass objects it is essential that we model systems at
@@ -767,6 +743,7 @@ Areal coverage (of $\dot{M}$, \%)&1 \& 10 (2)\\
 Accretion rate (log$(\frac{\dot{M}}{M_{\odot}} yr^{-1})$)&$-6$, $-7$, $-8$, $-9$, $-10$,
 $-11$ \& $-12$ (7)\\
 Disc mass ($M_*$)&0.01 (1)\\
+Surface density profile & $r^{-1}$ (1) \\
 Inclination ($^{\circ}$)&0, 27, 39, 48, 56, 64, 71, 77, 84 \& 90
 (10)\\
 \end{tabular}
@@ -799,6 +776,8 @@ derived.
 \subsection{Disc Structure}
 \label{disc_struct}
 
+XXXX Nathan - add disc structure equation here and remove walker references.
+
 The initial density structure has the the disc surface density
 conserved, $\Sigma ^{\beta - \alpha}$. The initial scaleheight,
 $h\propto r^{\beta}$, where r is the radial distance from the star,
@@ -820,59 +799,51 @@ characteristics, i.e the disc scaleheight and inner edge location.
 \subsubsection{Disc Flaring}
 \label{disc_flaring}
 
-As discussed in \cite{walker_2004} discs around CTTS stars
-have scaleheights at 100 AU of between $h$(100)$=$7 to 20 AU, whereas
-for BDD systems, $h$(100)=20 to 60 AU (for 0.08 and 0.01 $M_{\odot}$
-respectively). Our models adopt the same formalism for solving
-hydrostatic equilibrium and therefore, at negligible accretion rates,
-our disc scaleheights are comparable. As the accretion rate increases
-the flux levels of the central star increase and lead to heating of
-the disc which in turn leads to vertical expansion. For
-our models we found that levels of vertical flaring increased
-marginally with accretion rate. Significant differences, more than
-$>$5 AU increase in $h(50)$, in the vertical structure were not
-apparent until the high accretion rates of \logmdot = $-7$ and
-$-6$. Figures \ref{flare_-12_183} and \ref{flare_-7_193} show the
-density structure ($log({\rho})$) in the disc from radial distances of
-0 to 50 AU for example systems ($M_*=0.04M_{\odot}$, Age=1 Myrs,
-$\tau$=5 and areal coverage=10\%), with accretion rates of \logmdot =
-$-12$ and $-7$, respectively.
 
-\begin{figure}
-  \vspace*{174pt}
-  \special{psfile="Fig/flare_-12_183.ps"
-   hoffset=10 voffset=-40 hscale=33 vscale=33 angle=0}
- \caption{Figure showing the density structure ($log({\rho}$)) of the
+We have previously tested the {\sc torus} code against that used by
+Walker and co-workers, using a CTTS disc model and simultaneously
+solving for radiative and hydrostatic equilibrium (but not employing
+dust sublimation). These tests showed excellent agreement in density
+and temperature structure (as well as in the resultant SEDs). The
+results of these tests were presented by \cite{walker_2006}. It is
+therefore unsurprising that at negligible mass-accretion rates our
+disc structures are very similar to those present in
+\cite{walker_2004}. Typical discs around CTTS stars have scaleheights
+at 100\,AU of between $h$(100)$=$10 to 20\,AU, whereas for BDD
+systems, $h$(100)=20 to 60\,AU (for 0.08 and 0.01 $M_{\odot}$
+respectively). As the accretion rate increases the flux levels of the
+central star increase and lead to heating of the disc which in turn
+leads to vertical expansion. We found that levels of vertical flaring
+increased only marginally with accretion rate. Significant
+differences, more than $>$5\,AU increase in $h(50)$, in the vertical
+structure were not apparent until the high accretion rates of \logmdot
+= $-7$ and $-6$. Figures \ref{flare_-12_183} and \ref{flare_-7_193}
+show the density structure ($\log \rho$) in the disc from radial
+distances of 0 to 50\,AU for example systems ($M_*=0.04M_{\odot}$,
+Age=1\,Myrs, $\tau$=5\,d and areal coverage=10\%), with accretion
+rates of \logmdot = $-12$ and $-7$, respectively.
+
+\begin{figure*}
+\begin{center}
+  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/flare_-12_183.ps}\label{flare_-12_183}}
+  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/flare_-7_193.ps}\label{flare_-7_193}}
+\end{center}
+ \caption{Figure showing the density structure ($\log \rho$) of the
    BDD system with $M_*=0.04M_{\odot}$, Age=1 Myrs, $\tau$=5, areal
-   coverage=10\% and accretion rate of \logmdot=$-12$.
-   \label{flare_-12_183}}
-\end{figure}
+   coverage=10\% and accretion rate of (a) \logmdot=$-12$ and (b) \logmdot = $-7$.}
+\end{figure*}
 
-\begin{figure}
-  \vspace*{174pt}
-  \special{psfile="Fig/flare_-7_193.ps"
-  hoffset=10 voffset=-40 hscale=33 vscale=33 angle=0}
-\caption{Figure showing the density structure ($log({\rho}$)) of the
-  BDD system with $M_*=0.04M_{\odot}$, Age=1 Myrs, $\tau$=5, areal
-  coverage=10\% and accretion rate of \logmdot=$-7$.
-   \label{flare_-7_193}}
-\end{figure}
-
-Figure \ref{flare_-12_183} shows that for a typical BDD system the
-resulting disc is highly flared and therefore, the opening angle for
-stellar radiation is small. As discussed the flaring for BDD systems
-was found to be larger than CTTS systems by
-\cite{walker_2004}. \cite{walker_2004}, state that the
-degree of disc flaring depends on the disc temperature structure and
-the mass of the central star, with the disc scaleheight $h\propto
-\frac{T_{\rm disc}}{M_*}^{1/2}$ \citep{shakura_1973}. Recently,
-\cite{ercolano_2009} suggest the inverse relation of flaring
-with stellar mass, i.e. $h\propto M_*$. This suggestion was based on
-evidence from \cite{allers_2006}, where SEDs for 17 systems in
-the mass range 6$M_{\rm Jup}<M_*<$350$M_{\rm Jup}$ were fit with
-flared or flat disc models. In general, \cite{allers_2006}
-find that lower mass objects achieve better fits with the flat disc
-models and higher mass objects with the flared discs.
+\cite{walker_2004} state that the degree of disc flaring depends on
+the disc temperature structure and the mass of the central star, with
+the disc scaleheight $h\propto \frac{T_{\rm disc}}{M_*}^{1/2}$
+\citep{shakura_1973}. Recently however \cite{ercolano_2009} proposed
+the inverse relation of flaring with stellar mass, i.e. $h\propto
+M_*$. This suggestion was based on evidence from \cite{allers_2006},
+where SEDs for 17 systems in the mass range 6$M_{\rm
+  Jup}<M_*<$350$M_{\rm Jup}$ were fit with flared or flat disc
+models. In general, \cite{allers_2006} find that lower mass objects
+achieve better fits with the flat disc models and higher mass objects
+with the flared discs.
 
 The results of \cite{allers_2006} show that above a mass of
 50$M_{\rm Jup}$ all objects (6/17) are better fit with flared
@@ -885,40 +856,50 @@ distributions. Therefore, for our study we continue to assume that our
 flared BDD systems will have larger characteristic scaleheights than
 typical CTTS systems.
 
-A quick comparison of Figures \ref{flare_-12_183} and
-\ref{flare_-7_193} show an increase in the scaleheight at 50 AU of
+A  comparison of Figures \ref{flare_-12_183} and
+\ref{flare_-7_193} shows an increase in the scaleheight at 50\,AU of
 $>$5 AU, as the accretion rate moves from \logmdot =$-12$ to
 $-7$. However, despite this small change with high levels of accretion
 our grid shows scaleheights comparable to the work of
-\cite{walker_2004} and as such result in similar consequences
-for the SEDs and photometric magnitudes. The effects of this flaring
-and the increase in flaring for very high accretion levels on SEDs and
+\cite{walker_2004} and as such result in similar consequences for the
+SEDs and photometric magnitudes. The effects of this flaring and the
+increase in flaring for very high accretion levels on SEDs and
 photometric magnitudes are discussed in Sections \ref{sed_analysis}
 and \ref{photometry}, respectively.
 
-\subsubsection{Inner edge}
+\subsubsection{Inner edge of the dust disc}
 \label{inner_edge}
 
+The inner edge of the gas disc is fixed at the co-rotation radius, at
+which point the gas threads onto the magnetic field and follows the
+field lines in a funnel flow towards the protostellar surface. We make
+the assumption that the dust (should it exist at the co-rotation
+radius) is destroyed in the funnel flows. This is a reasonable
+assumption from both theoretical and observational perspectives:
+Radiative-transfer models indicate the temperature in the funnel flows
+may be very much greater than the dust sublimation temperature
+($>10$\,kK, \citep{muzerolle_2003}), while dusty funnel flows are
+likely to be optically thick in the visible, which would lead to
+substantial photometric variability as the funnels transit the
+photosphere--an effect that is unobserved.
+
 Our models include a sophisticated treatment of dust sublimation
-(described in Section \ref{dust_edge}). In contrast to the models of
-\cite{walker_2004}, who apply a dust destruction radius, we
-set the initial inner radius of the disc at the co-rotation radius of
-the system. However, as our models then sublimate dust during the
-temperature convergence routine this inner edge location may change.
-As the flux levels of the central star increase with increasing
-accretion rates the flux incident on the inner edge increases and
-leads to increasing erosion of the inner edge of the dust disc.
+(described in Section \ref{dust_edge}).  As the flux levels of the
+central protostar increase with increasing accretion rates the flux
+incident on the inner edge increases and leads to increasing erosion
+of the inner edge of the dust disc.
 
 As the inner edge moves its temperature is expected to change, this
 has been predicted to lead to a correlation of inner edge position and
-IR excess \citep{meyer_1997}. This may act to bias surveys
-correlating rotation rates with IR excess to search for evidence of
+IR excess \citep{meyer_1997}. This may act to bias surveys correlating
+rotation rates with IR excess to search for evidence of
 disc-locking. However, the flux from the inner edge will usually peak
 between 2 and 3\,$\mu$m \citep{dullemond_2001}, given that the dust
 sublimation temperature peaks at $\approx$1400\,K for canonical
-densities. This means that for models where dust is sublimated the
-inner edge will have maximum temperatures of $\approx$1400\,K and this
-correlation of disc position and temperature will be lost.
+densities. This means that for models where dust is significantly
+sublimated the inner edge will {\em always} have a temperature of
+$\approx$1400\,K and this correlation of disc position and temperature
+will be lost.
 
 Equation \ref{inner_eq} shows that as the rotation period, of the
 star, increases the co-rotation radius decreases. This will result in,
@@ -937,86 +918,6 @@ in units of AU (\textit{top panel}) and $R_*$ \textit{bottom panel}.
 This change in inner edge location is from the initially set
 co-rotation radius to the final radius after dust sublimation, if
 applicable.
-
-\begin{figure}
-  \vspace*{174pt}
-  \special{psfile="Fig/lum_sub.ps"
-   hoffset=235 voffset=0 hscale=30 vscale=30 angle=90}
- \caption{Figure showing the combined stellar luminosity (accretion
-   plus intrinsic stellar luminosity) in units of
-   log($L_*/L_{\odot}$) against the change in inner edge location
-   shown in units of AU (\textit{top panel}) and $R_*$ (\textit{bottom
-     panel}).
-   \label{lum_sub}}
-\end{figure}
-
-The \textit{top panel} of Figure \ref{lum_sub} shows that as the
-luminosity increases the total change in the inner radius increases as
-more of the disc is sublimated. The total change for lower
-luminosities at lower than $~$0.2 log($L_*/L_{\odot}$) is small (less
-than $~$0.02 AU). As the luminosities increases to larger, and extreme
-values, due to increasing accretion, the dust sublimation
-increases. In the \textit{bottom panel} the change in inner radius
-tends towards around $~$120 $R_*$. Increases in accretion rate, for
-extreme accretors, dominates the increase in stellar luminosity. As
-pre-MS stars age they contract. Therefore, for lower accretion rates,
-younger, and therefore larger stars will have greater luminosities
-than the equivalent older stars. Therefore, the major contributors to
-the X-axis of Figure \ref{lum_sub} are controlled by the input
-parameters of accretion rate and age. The initial inner wall radius
-was set as the magnetic co-rotation radius (see Section
-\ref{physics}). This distance is a strong function of rotational
-period, with $R_{\rm inner}\propto \tau^{2/3}$ (see Equation
-\ref{inner_eq}) which is in turn a function of stellar radius. The
-stellar radius itself is then a function of the stellar
-age. Therefore, the initial inner wall edge position will change as a
-function of the input variables of rotational period and age. The
-initial position of the inner edge will control the amount of the
-stellar flux intercepted by the inner edge wall. Therefore the amount
-that the disc will be sublimated will also be a function of the
-initial position of the inner edge.
-
-Figure \ref{delta_radius} shows the initial inner edge position, or
-the co-rotation radius ($R_*$) against the change in inner edge
-location ( $R_{\rm inner}-R_{\rm co}$, $R_*$). The \textit{panels} of
-Figure \ref{delta_radius} then shows these data for two accretion
-levels and at the two ages and rotation periods. These input variables
-for our model grid are the underlying variables controlling, as
-discussed, the dust sublimation process. The \textit{top panels} are
-for models with accretion rates of -9, -10, -11 and -12
-log$(\frac{\dot{M}}{M_{\odot}}yr{-1})$, classed as typical accretors
-here and throughout the rest of this work. The typical accretors are
-then separated further into three groups in the \textit{top left
-  panel} specifically, -9, -10 and -11 \& -12
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ (blue, red and black dots
-respectively). The \textit{bottom panels} show the data for models
-with accretion rates of \logmdot = $-6$, $-7$ and $-8$ (blue, red and
-black dots respectively), which we have classed as extreme
-accretors. The \textit{right panels} show the data separated by age,
-with 1 and 10 Myrs (as crosses and triangles respectively), and
-rotation period, with 0.5 and 5 days (as red and blue symbols
-respectively).
-
-\begin{figure}
-  \vspace*{174pt}
-  \special{psfile="Fig/delta_radius.ps"
-   hoffset=235 voffset=0 hscale=30 vscale=30 angle=90}
- \caption{Figure showing data for the co-rotation radius ($R_{\rm
-     co}$) against the change in inner edge location ( $R_{\rm
-     inner}-R_{\rm co}$) both in units of $R_*$. The typical accretors
-   are shown in the \textit{top panels} and the extreme accretors in
-   the \textit{bottom panels} (see text for explanation). The
-   accretion rates are then further subdivided. The \textit{top left
-     panel} shows accretion rates of \logmdot = $-9$, $-10$, $-11$
-   \& $-12$ as blue, red and black dots
-   respectively. In the \textit{bottom left panel} accretion rates of
-   \logmdot = $-6$, $-7$ and $-8$ are shown as
-   blue, red, and black dots. In addition the \textit{left panels}
-   separates the systems by age and period. The systems with ages of 1
-   and 10 Myrs are shown as crosses and triangles respectively. The
-   systems with rotation rates of 0.5 and 5 days are then shown as red
-   or blue symbols respectively. \label{delta_radius}}
-\end{figure}
 
 The classification of models into typical and extreme accretors is
 based on observations (see discussion in \ref{par_accn}) and also
@@ -1185,66 +1086,22 @@ the effects of sublimation.
 
 \begin{figure*}
   \centering
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/no_sub_183_density.ps}\label{no_sub_183_a}}
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/no_sub_183_temp.ps}\label{no_sub_183_b}}
-  \caption{Figure showing final density (log($\rho$)) where dust is
-    present (colour scale) as the \textit{left panel} and temperature,
-    \textit{right panel}, for a system with no dust
-    sublimation. System parameters are: $M_*$=0.04$M_{\odot}$, Age=1
-    Myrs and areal coverage=10\%, $\tau$=5 days and accretion rate \logmdot$=-12$.}
-  \label{no_sub_183}
-\end{figure*}
+  \subfigure[]{\includegraphics[scale=0.33,angle=0]{./Fig/no_sub_183_density.ps}\label{no_sub_183_a}}
+  \subfigure[]{\includegraphics[scale=0.33,angle=0]{./Fig/no_sub_183_temp.ps}\label{no_sub_183_b}}
+  \subfigure[]{\includegraphics[scale=0.33,angle=0]{./Fig/sub_179_density.ps}\label{sub_179_a}}
+  \subfigure[]{\includegraphics[scale=0.33,angle=0]{./Fig/sub_179_temp.ps}\label{sub_179_b}}
+  \subfigure[]{\includegraphics[scale=0.33,angle=0]{./Fig/sub_181_density.ps}\label{sub_181_a}}
+  \subfigure[]{\includegraphics[scale=0.33,angle=0]{./Fig/sub_181_temp.ps}\label{sub_181_b}}
 
-\begin{figure*}
-  \centering
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_169_density.ps}\label{sub_169_a}}
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_169_temp.ps}\label{sub_169_b}}
-  \caption{Figure showing both the initial (grey scale) and final
-    density (log($\rho$)) where dust is present (colour scale) as the
-    \textit{left panel} and temperature, \textit{right panel}, for a
-    system with no dust sublimation. System parameters are:
-    $M_*$=0.04$M_{\odot}$, Age=1 Myrs and areal coverage=10\%,
-    $\tau$=0.5 days and accretion rate \logmdot=$-12$.}
-  \label{sub_169}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_175_density.ps}\label{sub_175_a}}
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_175_temp.ps}\label{sub_175_b}}
-  \caption{Figure showing both the initial (grey scale) and final
-    density (log($\rho$)) where dust is present (colour scale) as the
-    \textit{left panel} and temperature, \textit{right panel}, for a
-    system with no dust sublimation. System parameters are:
-    $M_*$=0.04$M_{\odot}$, Age=1 Myrs and areal coverage=10\%,
-    $\tau$=0.5 days and accretion rate \logmdot$=-9$.}
-  \label{sub_175}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_179_density.ps}\label{sub_179_a}}
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_179_temp.ps}\label{sub_179_b}}
-  \caption{Figure showing both the initial (grey scale) and final
-    density (log($\rho$)) where dust is present (colour scale) as the
-    \textit{left panel} and temperature, \textit{right panel}, for a
-    system with no dust sublimation. System parameters are:
-    $M_*$=0.04$M_{\odot}$, Age=1 Myrs and areal coverage=10\%,
-    $\tau$=0.5 days and accretion rate \logmdot$=-7$.}
-  \label{sub_179}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_181_density.ps}\label{sub_181_a}}
-  \subfigure[]{\includegraphics[scale=0.4,angle=0]{./Fig/sub_181_temp.ps}\label{sub_181_b}}
-  \caption{Figure showing both the initial (grey scale) and final
-    density (log($\rho$)) where dust is present (colour scale) as the
-    \textit{left panel} and temperature, \textit{right panel}, for a
-    system with no dust sublimation. System parameters are:
-    $M_*$=0.04$M_{\odot}$, Age=1 Myrs and areal coverage=10\%,
-    $\tau$=0.5 days and accretion rate \logmdot$=-6$.}
-  \label{sub_181}
+  \caption{Figure showing both the initial (grey scale) final density
+    ($\log \rho$) where dust is present (colour scale, left-hand
+    panels) and temperature (right-hand panels). System parameters
+    are: $M_*$=0.04$\,M_{\odot}$, Age=1\,Myrs and areal coverage=10\%,
+    $\tau$=5\,days and accretion rate \logmdot$=-12$ (a, b);
+    $M_*$=0.04$M_{\odot}$, Age=1\,Myrs and areal coverage=10\%,
+    $\tau$=0.5\,days and accretion rate \logmdot$=-7$ (c, d);
+    $M_*$=0.04$M_{\odot}$, Age=1\,Myrs and areal coverage=10\%,
+    $\tau$=0.5\,days and accretion rate \logmdot$=-6$ (e, f).}
 \end{figure*}
 
 Figure \ref{no_sub_183} shows the inner disc edge as a vertical wall
