@@ -734,6 +734,7 @@ in Table \ref{par_space_table}.
 
 \begin{table*}
 \begin{tabular}{|l|l|}
+\hline
 Input parameter&Values (\# values)\\
 \hline
 Mass ($M_{\odot}$)&0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07 \& 0.08 (8)\\
@@ -746,6 +747,7 @@ Disc mass ($M_*$)&0.01 (1)\\
 Surface density profile & $r^{-1}$ (1) \\
 Inclination ($^{\circ}$)&0, 27, 39, 48, 56, 64, 71, 77, 84 \& 90
 (10)\\
+\hline
 \end{tabular}
 \caption{List of all varied input parameters. Resulting in a total
   number of models of 448 (plus 40 models without radiative transfer
@@ -798,7 +800,6 @@ characteristics, i.e the disc scaleheight and inner edge location.
 
 \subsubsection{Disc Flaring}
 \label{disc_flaring}
-
 
 We have previously tested the {\sc torus} code against that used by
 Walker and co-workers, using a CTTS disc model and simultaneously
@@ -867,7 +868,7 @@ increase in flaring for very high accretion levels on SEDs and
 photometric magnitudes are discussed in Sections \ref{sed_analysis}
 and \ref{photometry}, respectively.
 
-\subsubsection{Inner edge of the dust disc}
+\subsubsection{Inner edge of the dust disc: location}
 \label{inner_edge}
 
 The inner edge of the gas disc is fixed at the co-rotation radius, at
@@ -897,55 +898,33 @@ disc-locking. However, the flux from the inner edge will usually peak
 between 2 and 3\,$\mu$m \citep{dullemond_2001}, given that the dust
 sublimation temperature peaks at $\approx$1400\,K for canonical
 densities. This means that for models where dust is significantly
-sublimated the inner edge will {\em always} have a temperature of
+sublimated the inner edge will {\em usually} have a temperature of
 $\approx$1400\,K and this correlation of disc position and temperature
-will be lost.
+will be lost (although see below).
 
-Equation \ref{inner_eq} shows that as the rotation period, of the
-star, increases the co-rotation radius decreases. This will result in,
-initially, shorter period systems having closer and hotter inner edges
-than their longer period counterparts. In addition, if the accretion
-rate is increased in these systems the incident flux on the inner wall
-will increase leading to a rise in the temperature of the inner edge.
-At some point, in both cases the dust sublimation temperature may be
+Equation \ref{inner_eq} shows that as the rotation period of the
+protostar increases the co-rotation radius decreases. This will result
+in, initially, shorter period systems having closer and hotter inner
+edges than their longer period counterparts. In addition, if the
+accretion rate is increased in these systems the incident flux on the
+inner wall will increase leading to a rise in the temperature of the
+inner edge.  At some point the dust sublimation temperature may be
 reached, leading to a change in radial position of the wall. In
-addition, the temperature of the inner edge will then tend to a
-maximum temperature, of the dust sublimation temperature. Figure
-\ref{lum_sub} shows the total stellar luminosity (accretion luminosity
-plus the intrinsic stellar luminosity), in log($L_*/L_{\odot}$)
-against the change in inner disc location, $R_{\rm co}-R_{\rm inner}$
-in units of AU (\textit{top panel}) and $R_*$ \textit{bottom panel}.
-This change in inner edge location is from the initially set
-co-rotation radius to the final radius after dust sublimation, if
-applicable.
+addition, the temperature of the inner edge will then tend to the dust
+sublimation temperature.
 
-The classification of models into typical and extreme accretors is
-based on observations (see discussion in \ref{par_accn}) and also
-evidence from the simulations themselves. Figure \ref{delta_radius},
-\textit{left panels}, shows that dust sublimation does not become
-significant until accretion rates of around \logmdot=$-9$ and
-increases dramatically with increasing accretion rate thereafter.
-This accretion rate is also, unsurprisingly the accretion rate at
-which the underlying photospheric emission is overwhelmed by the
-accretion flux, and the photospheric features are lost (see Section
-\ref{sed_analysis}). The \textit{right panels} of Figure
-\ref{delta_radius} show that dust sublimation occurs only for rotation
-periods of 0.5 days for typical accretors. For the extreme accretors
-the systems with both rotation periods undergo sublimation but the
-effect is more significant in the systems with shorter rotation
-periods.  The \textit{right panels} also show that for extreme
-accretors the older systems undergo more dust sublimation, whereas for
-the typical accretors the older systems undergo little or no dust
-sublimation.
+A further complexity arises when one considers that the density of
+material in the disc falls with increasing radius from the star
+($\rho(r) \propto r^{\alpha}$), and that the dust sublimation
+temperature is density dependent \citep{pollack_1994}.  Therefore, for
+systems where the inner edge has been eroded significantly from the
+co-rotation radius the temperature of the inner edge will fall
+systematically as the inner dust disc radius increases. 
 
-The density of material in the disc falls with increasing radius from
-the star ($\rho\propto R_*^{\alpha}$).  The dust sublimation
-temperature is also density dependent \citep{pollack_1994}.
-Therefore, for systems where the inner edge has been eroded
-significantly from the co-rotation radius the temperature of the inner
-edge will fall as the final radius increases.  In this case a
-correlation of inner edge temperature and inner edge radius is
-expected with a resulting slope determined, at least in part, by the
+In order to examine the effect of dust sublimation on our models we
+have measured the radius of the inner edge of the dust disc by
+integrating from the centre along the midplane until an optical depth
+of 2/3 (at 5500\AA) is reached. Figure \ref{inner_temp} shows the
 radial density distribution of the disc.  In this case the the final
 inner edge radius and therefore temperature is no longer strongly
 correlated with the rotation rate. Figure \ref{inner_temp} shows the
@@ -954,14 +933,9 @@ temperature of the inner wall ($T_{\rm inner}$, K). The \textit{left
   panel} shows the systems designated as typical accretors and the
 \textit{right panel} those with extreme accretion rates.  For
 \textit{both panels} the systems with rotation periods of 0.5 and 5
-days are plotted in red and blue respectively. Systems where $\Delta
-R_{\rm inner} < 1R_*$ are plotted ia crosses and $\Delta R_{\rm inner}
-> 1R_*$ as filled circles, with the latter denoting systems with
-significant sublimation. Significant sublimation is only found for the
-extreme accretors, as shown in Figure \ref{delta_radius}.
-Furthermore, for the typical accretors Figure \ref{delta_radius} shows
-that only the shorter period objects, in general, experience any disc
-erosion at the inner edge.
+days are plotted in red and blue respectively. Those systems where the
+change in inner radius was greater than 1$R_*$, and therefore classes
+as significantly sublimated, are plotted as crosses. 
 
 \begin{figure*}
   \vspace*{348pt}
@@ -979,6 +953,24 @@ erosion at the inner edge.
      extreme accretors).\label{inner_temp}}
 \end{figure*}
 
+
+The \textit{left panel} of Figure \ref{inner_temp} shows that, taken
+as a whole, our models with typical accretion rates show a clear
+correlation between the temperature at the inner edge and the radius
+to this boundary. This agrees with the work of \cite{meyer_1997} where
+this correlation is found for there $R_{\rm inner}=$1$-$12$R_*$ and
+\logmdot = $-9$ to $-5$, for flat disc models.  \cite{meyer_1997} use
+this correlation, and the derivation of IR magnitudes, to predict a
+relationship between IR excess and radius to the inner wall. Our data
+indicate that this correlation, for typically accreting systems will
+translate into a correlation between rotation rate and IR excess. This
+could have important implications for studies of disc-locking where
+disc presence is examined as a function of rotation rates, provide an
+intrinsic bias. In practice however, this correlation is weak (in fact
+unobservable) in our data due to the combined effects of the inner
+disc wall shape, inclination and flaring effects. This is discussed in
+more detail in Section \ref{photometry}.
+
 Figure \ref{inner_temp} shows that for those systems where significant
 disc erosion ($\Delta R_{\rm inner} > 1.0 R_*$) has occurred the
 resulting temperature of the inner edge is weakly correlated with the
@@ -990,100 +982,23 @@ periods, Figure \ref{inner_temp} shows there is again a weak
 correlation between the radius to, and the temperature of the inner
 edge. For the shorter period models with typical accretion rates there
 is no clear correlation between the temperature at the inner edge and
-radius to this edge. The \textit{left panel} of Figure
-\ref{inner_temp} shows that, taken as a whole, our models with typical
-accretion rates show a clear correlation between the temperature at
-the inner edge and the radius to this boundary. This agrees with the
-work of \cite{meyer_1997} where this correlation is found for
-there $R_{\rm inner}=$1$-$12$R_*$ and $\dot{M_{\rm acc}}=$10$^{-9}$to
-10$^{-5} M_{\odot}yr^{-1}$, for flat disc models.
-\cite{meyer_1997} use this correlation, and the derivation of
-IR magnitudes, to predict a relationship between IR excess and radius
-to the inner wall. Our data indicate that this correlation, for
-typically accreting systems will translate into a correlation between
-rotation rate and IR excess. This could have important implications
-for studies of disc-locking where disc presence is examined as a
-function of rotation rates, provide an intrinsic bias. In practice
-however, this correlation is weak, an unobservable, in our data due to
-inner disc wall shape, inclination and flaring effects. This is
-discussed in more detail in Section \ref{photometry}.
+radius to this edge. 
 
-For simulations without dust sublimation, and analytic density
-distributions, the inner disc edge is characterised solely by the
-initial disc density prescription. If one includes vertical
-hydrostatic equilibrium the scaleheight of the disc inner edge can
-change but the radial distribution of dust will not. Dust sublimation
-physics will alter the vertical structure, but crucially will also
-alter the radial distribution of dust. This means that dust
-sublimation effects will control the shape of the inner disc wall and
-possibly change this from a vertical wall. Evidence that real inner
-disc boundaries (for CTTS) are not vertical walls comes from a lack of
-dependence of the derived IR excess on system inclination
-\citep{tannirkulam_2007}. As discussed in Section \ref{dust_edge}
-the disc inner hole can be created by several mechanisms, however, for
-this study we have only included a treatment of magnetic truncation
-(initially) and subsequent dust sublimation. The effects of dust
-sublimation have been shown to produce curved inner walls due to the
-temperature and density dependence of the dust sublimation temperature
-\citep{isella_2005}. The curved boundary in this case is
-convex, as density increases towards the midplane of the disc, the
-dust sublimation temperature increases, meaning the destruction radius
-moves closer to the star. A curved inner boundary is also found to
-result from dust sublimation in \cite{tannirkulam_2007}. In
-\cite{tannirkulam_2007} two populations of dust grains where
-included with different scaleheight distributions. This is essentially
-a simple model of grain growth and subsequent midplane settling.
-\cite{tannirkulam_2007}, found a concave inner disc boundary, this
-is due to the larger grains cooling more efficiently. These larger
-grains dominate the dust towards smaller vertical distances from the
-midplane, and therefore the increased cooling means that the dust
-sublimation temperature is reached at closer radii. The implications
-of the inner edge shape for the simulated SEDs and photometry are
-discussed in Section \ref{sed_analysis} and \ref{photometry}.
+\subsubsection{Inner edge of the dust disc: shape}
+\label{inner_edge_shape}
 
-For systems where dust sublimation does not occur, or is minimal the
-inner edge of the system will remain as a vertical wall, as prescribed
-by our initial density distribution. However, as one increases the
-flux levels of a given system, by increasing the accretion rates (or
-moving to younger ages) the inner edge will increase in
-temperature. As the flux levels increase, in a given model, the dust
-at the inner edge will sublimate. The dust in the regions of lowest
-density or maximum flux interception will be preferentially
-destroyed. This will lead to a reduction in the scaleheight and a
-slight concave cavity at the inner wall. The inner edge will then move
-towards a convex boundary as the inner edge is forced radially outward
-towards regions of lower density with increasing flux levels. This
-outward movement will result in the outer, vertical, regions of the
-dust disc eroding. Increasing the flux still further will lead to
-significant dust sublimation and an outward migration. This subsequent
-migration will move the inner edge into regions of lower density and
-greater scaleheight.
+The initial shape of the inner edge of the dust disc is a vertical
+wall coincident with the co-rotation radius. In the previous section
+we have shown that models with a negligible accretion rate do not
+significantly sublimate the dust, and hence the edge remains
+vertical. This inner edge is heated by direct radiation from the
+protostar, and its scaleheight increases. Disc material behind the
+inner rim is shielded from direct radiation and has a smaller
+scaleheight, leading to the `puffed up' inner rim predicted by
+\cite{dullenmond_2001}. This effect is illustrated in
+Figure~\ref{no_sub_183}, a model in which there is negligible dust
+sublimation.
 
-The transition in shape and position of the inner edge for a given
-model as the accretion rate, and therefore flux levels, are increased
-is shown in Figures \ref{no_sub_183} to \ref{sub_181}. The model
-chosen for illustrative purposes has the following parameters,
-$M_*$=0.04$M_{\odot}$, Age=1 Myrs and areal coverage=10\%. The model
-shown in Figure \ref{no_sub_183} has $\tau$=5 days and accretion
-rate \logmdot$=-12$ (model shown in Figure
-\ref{flare_-12_183}), with Figures \ref{sub_169} to \ref{sub_181}
-showing models with $\tau$=0.5 days and accretion rates \logmdot=$-12$, $-9$, $-7$
-and $-6$. The \textit{right
-  panels} of Figures \ref{no_sub_183} to \ref{sub_181} show the
-temperature structure of the final converged disc structure. The
-\textit{left panels} of Figures \ref{no_sub_183} to \ref{sub_181} show
-the final log($\rho$) distribution for regions where dust is present,
-scaled to a different minimum density (log($\rho_{\rm
-  min}$)$=1^{-13}$) compared to Figures \ref{flare_-12_183} and
-\ref{flare_-7_193}. The lower (log) density threshold is used in this
-case to better trace the inner edge and denser regions of the disc,
-whereas Figure \ref{flare_-12_183} and \ref{flare_-7_193} show the
-outer diffuse regions of the disc, or disc limits. Additionally, for
-Figures \ref{sub_169} to \ref{sub_181} (the sublimated systems), the
-\textit{left panels} also show the initial density, in the same units
-as the final density, this is shown as a background grey scale (with
-the same maximum and minimum as for the final density) to illustrate
-the effects of sublimation.
 
 \begin{figure*}
   \centering
@@ -1105,70 +1020,25 @@ the effects of sublimation.
     $\tau$=0.5\,days and accretion rate \logmdot$=-6$ (e, f).}
 \end{figure*}
 
-Figure \ref{no_sub_183} shows the inner disc edge as a vertical wall
-with no dust sublimation, the inner wall has not changed location from
-the initial disc description. The \textit{right panel} of Figure
-\ref{no_sub_183} shows that the corresponding temperature structure is
-smooth and interpolation at the inner edge yields a temperature of
-$~$900\,K. For the shorter period model the inner edge has undergone
-some dust sublimation. The \textit{left panel} of Figure \ref{sub_169}
-shows that the inner edge has lost dust slightly, preferentially,
-along the midplane. Again for Figure \ref{sub_169} the change in inner
-edge location is small, $~0.45R_*$ ($~1.0\times 10^{-3}$AU), at the
-sublimation (and inner wall) temperature is $~$1450\,K, for a density
-of $~2.5\times 10^{-8}$ ($g/cm^3$) (\textit{right panel} of Figure
-\ref{sub_169}).The \textit{left panel} of Figure \ref{sub_169} shows
-that for even for a negligible accretion rate of \logmdot=$-12$,
-sublimation has begun to erode the inner edge, for the younger and
-faster rotating systems.  Here the final density distribution has
-moved radially outward as can be seen by comparing the grey and colour
-scales in the \textit{left panel} of Figure
-\ref{sub_169}. Additionally, the inner edge has become slightly
-concave. As the flux levels of the central star increase the
-temperature of the inner edge surpasses the sublimation temperature at
-an increasing radius, destroying more of the disc and pushing the
-inner edge radially outwards. The \textit{left panel} of Figure
-\ref{sub_175} shows that for an accretion rate of \logmdot$=-9$,
-increased sublimation has pushed the inner wall slightly farther from
-the star (when compared to Figure \ref{sub_169}), here, $\Delta
-R~0.52R_*$ ($~1.1\times 10^{-3}$AU), and $T_{\rm inner}~1450$. Again
-the final density distribution has moved radially outward as can be
-seen by comparing the grey and colour scales in the \textit{left
-  panel} of Figure \ref{sub_175}. The \textit{right panel} of Figure
-\ref{sub_175} shows that the gas interior to the inner edge extending
-down to the co-rotation radius, which is not sublimated, will reach
-temperatures in excess, or equal to, the inner edge, which in this
-model is $~$1400\,K. Such hot gas inner discs interior to the dust
-disc have been postulated through SED fitting
-\citep{eisner_2005,tannirkulam_2008}. Again, the shape of
-the inner wall has changed in Figure \ref{sub_175}, the top and bottom
-sections of the disc have eroded and the inner wall is convex. The
-model in Figure \ref{sub_175} has an accretion rate of \logmdot=$-9$,
-which is the transition point between our two groups of accretors,
-typical and extreme. Figure \ref{sub_175} shows that for typical
-accretion rates, and faster rotation periods (and younger ages)
-significant dust sublimation is expected to occur at the inner edge,
-resulting in a curved inner wall at around $~$1400\,K. Increasing the
-accretion rate, and therefore flux levels still further leads to
-significant erosion of the inner disc.  For the extreme accretors the
-dust sublimation at the inner edge now changes the inner wall position
-by many multiples of the stellar radius. Figures \ref{sub_179} and
-\ref{sub_181} are for systems with accretion rates typical in outburst
-or episodic accretion systems, \logmdot$=-7$ and $-6$
-respectively. The inner edges for these systems are eroded radially by
-7.1 and 36.1 ($R_*$) respectively (0.016 and 0.080 AU, respectively),
-visible by comparing the grey and colour scales of Figure
-\ref{sub_179} and \ref{sub_181}.  As this occurs the disc inner edge
-moves far enough that the density drop (with radius) occurring in the
-disc causing the sublimation temperature to fall. Consequently the
-disc inner edge becomes cooler as it can not sustain temperatures
-above the sublimation temperature.  This is shown in the \textit{right
-  panels} of Figures \ref{sub_179} and \ref{sub_181}, with approximate
-temperatures at the inner edge of 1370 and 1260\,K. In addition, the
-inner edge has become concave and, again due to changes in the
-underlying disc density distribution, much larger in scaleheight.
+As the flux of the central object increases significant dust
+sublimation occurs, leading to a change in the radial position of the
+dusty inner edge, but also shaping it: The density drops rapidly away
+from the midplane, and since the dust sublimation temperature also
+falls the edges of the inner dust disc become curved--this the
+mechanism described analytically by \cite{isella_2005}. We illustrate
+this effect in Figure~\ref{sub_179_a}, which also shows a scaleheight
+decrease behind the curved inner rim, over a significantly larger
+radial scale than the previous model.
 
-A similar sequence is apparent across the grid for set
+Finally the most extreme accretor (Figure~\ref{sub_181_a}) shows dust
+being destroyed to very large radii ($\sim 0.1$\, AU). A curved rim is
+present, without any obvious decrease in scaleheight behind the inner
+rim. The distance from the central object is such that the vertical
+component of gravity is much diminished, and the disc has a
+substantial scaleheight at the inner edge, meaning that it reprocesses
+significant protostellar radiation leading to a high near-IR excess.
+
+We note that a similar sequence is apparent across the grid for set
 masses. However, the balance of the rotation period, and therefore
 inner edge location, and age and areal coverage, therefore flux
 levels, leads to changes in the accretion rate at which the dust
@@ -1206,22 +1076,24 @@ accretion and stellar photospheroc flux becomes difficult as $T_{\rm
 occurs at a fractional coverages of 20 and 10\%, for rotation periods
 of 5 and 0.5 days (with $M_*=0.04M_{\odot}$ and an age of 1 Myr). As
 discussed in Section \ref{seds} the {\sc torus} radiative transfer
-code tags the photons before they reach the simulated observer in one
-of four ways, stellar and thermal, either direct or scattered. These
-components allow us to analyse the contributions from the main flux
-contributors discussed, i.e. $L_{\rm acc}$ and $L_*$ equals stellar
-scattered or direct, with thermal emission comprising $L_{\rm wall}$
-and $L_{\rm disc}$. Figure \ref{disc_eg_173} shows a typically
-accreting BDD system with the component photon contributions
-highlighted, with $M_*=0.04M_{\odot}$ at 1 Myr with an areal coverage
-of 10\%, accretion rate of \logmdot=$-10$ and rotation period of 0.5
-days. The solid black line is the total simulated SED, with the
-stellar photons shown as blue lines and the thermal as red. The
-scattered and direct contributions are then shown as dashed and solid
-lines respectively. The horizontal and vertical dotted lines then show
-the approximate ranges of the flux contributions from the (from left
-to right), $L_{\rm acc}$ (blue), $L_*$ (black), $L_{\rm wall}$ (red)
-and $L_{\rm disc}$ (black). The vertical dashed lines at the bottom of
+code tags the photon packets before they reach the simulated observer
+in one of four ways, stellar and thermal, either direct or
+scattered. These components allow us to analyse the contributions from
+the main flux contributors discussed, i.e. $L_{\rm acc}$ and $L_*$
+equals stellar scattered or direct, with thermal emission comprising
+$L_{\rm wall}$ and $L_{\rm disc}$. 
+
+Figure \ref{disc_eg_173} shows a typically accreting BDD system with
+the component photon contributions highlighted, with
+$M_*=0.04M_{\odot}$ at 1 Myr with an areal coverage of 10\%, accretion
+rate of \logmdot=$-10$ and rotation period of 0.5 days. The solid
+black line is the total simulated SED, with the stellar photons shown
+as blue lines and the thermal as red. The scattered and direct
+contributions are then shown as dashed and solid lines
+respectively. The horizontal and vertical dotted lines then show the
+approximate ranges of the flux contributions from the (from left to
+right), $L_{\rm acc}$ (blue), $L_*$ (black), $L_{\rm wall}$ (red) and
+$L_{\rm disc}$ (black). The vertical dashed lines at the bottom of
 Figure \ref{disc_eg_173} show the approximate ranges of the $V$, $I$,
 $J$, and $K$ photometric bands we have adopted.
 
@@ -1258,30 +1130,14 @@ luminosities overlap, in terms of peak wavelength of emission. This
 overlap essentially means that the combined stellar flux ($L_*+L_{\rm
   acc}$) will eventually become dominated by the accretion flux, as
 one increases the accretion rate. With the features of the intrinsic
-stellar photosphere or atmosphere eventually lost or swamped by the
+stellar photosphere or atmosphere eventually become veiled by the
 accretion flux. This will lead to difficulties in using spectral
 features to identify BDD systems for wavelengths shorter than $~$1
 $\mu$m, and, of course, for wavelengths longer than this the SED
 becomes dominated by disc emission. Therefore, once the SED of a BDD
 system, at shorter wavelengths, becomes dominated by accretion
 luminosity spectral classification of these systems (or at least their
-central stars) will become unreliable. As discussed in Section
-\ref{inner_edge} observations of the inner edge location separate the
-BDD systems into two groups, the typical accretors ($\dot{M}\leq$-9
-log$(\frac{\dot{M}}{M_{\odot}} yr^{-1})$) and extreme accretors
-($\dot{M}>-9$). This division
-between typical and extreme accretors is based on observational
-results (see Section \ref{par_accn}) as well as consequence of
-sublimation. The typical accretors show limited sublimation at the
-disc inner edge leading to a weak correlation in inner edge
-temperature with edge radius. Whereas, for the extreme accretors the
-inner edge is significantly eroded and the dust sublimation
-temperature reached, which can not be exceeded. This effectively means
-that the inner edge temperature is weakly correlated with temperature
-(with a different characteristic slope to the typical accretors), as
-the dust sublimation temperature is density dependent, which is in
-turn dependent on radial position (see Figures \ref{delta_radius} and
-\ref{inner_temp}).
+central stars) will become unreliable. 
 
 \subsubsection{Accretion dominance}
 \label{acc_dominance}
@@ -1303,28 +1159,10 @@ occurs from the co-rotation radius, decreasing the rotational period
 moves this accretion radius closer to the star, $R_{\rm inner}\propto
 \tau^{2/3}$ (see Equation \ref{inner_eq}). As the accretion radius
 moves father from the star the potential energy released by the
-accreted material is reduced. This effect can be seen when comparing
-the \textit{top} and \textit{bottom panels}, although the effect is
-marginal for all but the highest displayed accretion rates. The
-\textit{left panels} show accretion streams with an areal coverage of
-10\% and the \textit{left panels} 1\%. As the areal coverage reduces
-the effective temperature of the accretion hot spot increases,
-resulting in an increase in accretion flux, and resulting shift to
-bluer wavelengths of the peak flux. This can be seen clearly by
-comparing the \textit{left} and \textit{right panels} of Figure
-\ref{acc_dom}. Perhaps the most important, albeit qualitative, result
-shown is Figure \ref{acc_dom} is an insight into the accretion rate at
-which the accretion blackbody flux dominates over the photospheric
-flux. Figure \ref{acc_dom} shows that as the accretion rate raises
-above \logmdot = $-9$ for systems with 1 or 10\% areal coverage, the
-accretion flux dominates the emergent SED at both periods. Therefore
-for reasonable coverages (1-10\%) and rotational periods (0.5-5 days)
-the photospheric flux is effectively swamped by accretion flux for
-accretion rates \logmdot$>-9$. This suggests that accreting BD systems
-with accretion rates as low as \logmdot$=-9$ could be difficult to
-identify from SEDs as BD stars, and may well be classified as higher
-mass stars.
-
+accreted material is reduced (XXXX WHAT?). This effect can be seen
+when comparing the \textit{top} and \textit{bottom panels}, although
+the effect is marginal for all but the highest displayed accretion
+rates.
 \begin{figure*}
   \vspace*{348pt}
   \special{psfile="Fig/acc_dom.ps"
@@ -1342,6 +1180,23 @@ mass stars.
    approximate sensitivity ranges of our chosen $V$, $I$, $J$ and $K$
    filters.\label{acc_dom}}
 \end{figure*}
+
+The \textit{left panels} show accretion streams with an areal coverage
+of 10\% and the \textit{left panels} 1\%. As the areal coverage
+reduces the effective temperature of the accretion hot spot increases,
+resulting in an increase in accretion flux, and resulting shift to
+bluer wavelengths of the peak flux. This can be seen clearly by
+comparing the \textit{left} and \textit{right panels} of Figure
+\ref{acc_dom}. Perhaps the most important, albeit qualitative, result
+shown is Figure \ref{acc_dom} is an insight into the accretion rate at
+which the accretion blackbody flux dominates over the photospheric
+flux. Figure \ref{acc_dom} shows that as the accretion rate raises
+above \logmdot = $-9$ for systems with 1 or 10\% areal coverage, the
+accretion flux dominates the emergent SED at both periods. Therefore
+for reasonable coverages (1--10\%) and rotational periods (0.5--5 days)
+the photospheric flux is effectively swamped by accretion flux for
+accretion rates \logmdot$>-9$. 
+
 
 As is well known the shorter wavelength component of the SED for
 extreme accretors is dominated by the accretion luminosity. For the
@@ -1361,7 +1216,7 @@ As shown in Figures \ref{flare_-12_183} and \ref{flare_-7_193} and
 discussed in Section \ref{disc_flaring} BDD systems under vertical
 hydrostatic equilibrium have highly flared discs. As discussed in
 \cite{walker_2004} this increased flaring (when compared to
-CTTS stars) leads to occulltation at the star at lower inclination
+CTTS stars) leads to occultation at the star at lower inclination
 angles and, therefore, significant changes to the SED. Increases in
 the inclination angle, for these systems, quickly lead a significant
 proportion of the stellar flux being intercepted, and reprocessed, by
@@ -1465,363 +1320,6 @@ accretion rates of -12 and -7 (or \textit{left} and \textit{right
 enhanced for such extreme accretion rates it is illustrative of the
 general trend, notwithstanding complications from inner edge shape.
 
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/flare_inc.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure of total SED flux reaching the observer for viewing
-   angles of 0, 27, 39, 48, 56, 64, 71, 77, 84 \& 90$^{\circ}$. SEDs
-   shown are for systems shown in Figures \ref{flare_-12_183} and
-   \ref{flare_-7_193}, as the \textit{left} and \textit{right panels}
-   respectively. In both panels the dashed line highlights the angle
-   at which a significant fall in flux reaching the observer occurs.
-   The values of inclination at which the fall in flux occurs are
-   71$^{\circ}$ and 56$^{\circ}$ for the accretion rates of -12 and -7
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, \textit{left} and
-   \textit{right panels} respectively. The vertical and horizontal
-   dashed lines denote the approximate sensitivity ranges of our chosen
-   $V$, $I$, $J$ and $K$ filters. \label{flare_inc}}
-\end{figure*}
-
-\subsubsection{Inner Edge Shape}
-\label{inner_shape}
-
-As discussed in Section \ref{disc_struct} the addition of dust
-sublimation leads to a change in the shape of the inner edge, where
-the temperature is sufficient. Figures \ref{no_sub_183} to
-\ref{sub_181} show a range in inner edge shapes, from flat walls
-through concave to convex curves, caused by the radial density profile
-of the disc and the dependence of the sublimation temperature on
-density. This change in shape, as noted by \cite{tannirkulam_2007},
-will lead to changes in the characteristics of the SED, or derived IR
-excess, with inclination angle \citep{tannirkulam_2007}. For
-concave and vertical walls the inner edge is visible over a smaller
-range of viewing angles than for a convex inner edge.
-
-Figures \ref{typ_curve} and \ref{ext_curve} show the thermal direct
-radiation, originating from the disc, as a function of inclination for
-the two groups of accretors, typical and extreme respectively. The
-models included in Figure \ref{typ_curve} as the \textit{left} and
-\textit{right panels} are those shown in Figures \ref{sub_169} and
-\ref{sub_175} respectively. Whereas, the models included in Figure
-\ref{ext_curve} as the \textit{left} and \textit{right panels} are
-those shown in Figures \ref{sub_179} and \ref{sub_181}
-respectively. For each \textit{panel} of Figures \ref{typ_curve} and
-\ref{ext_curve} the thermal direct flux is plotted as a solid black
-line at each modeled inclination, namely, 0, 27, 39, 48, 56, 64, 71,
-77, 84 \& 90$^{\circ}$. The dashed line in each case shows where a
-significant fall in the flux reaching the observer from direct thermal
-emission from the disc is apparent.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/typ_curve.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing thermal direct flux reaching the observer at
-   inclination angles of 0, 27, 39, 48, 56, 64, 71, 77, 84 \&
-   90$^{\circ}$, for typical accretors. The \textit{left panel} shows
-   the flux from the model shown in Section \ref{disc_struct}, Figure
-   \ref{sub_169}. The \textit{right panel} shows the flux from the
-   model shown as Figure \ref{sub_175} in Section
-   \ref{disc_struct}. In both panels the dashed line highlights the
-   angle at which a significant fall in flux from direct thermal
-   emission is observed.  The values of inclination at which the fall
-   in flux occurs are 77$^{\circ}$ for \textit{both panels} and
-   therefore accretion rates. The vertical and horizontal dashed lines
-   denote the approximate sensitivity ranges of our chosen $V$, $I$,
-   $J$ and $K$ filters. \label{typ_curve}}
-\end{figure*}
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/ext_curve.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing thermal direct flux reaching the observer at
-   inclination angles of 0, 27, 39, 48, 56, 64, 71, 77, 84 \&
-   90$^{\circ}$, for extreme accretors. The \textit{left panel} shows
-   the flux from the model shown in Section \ref{disc_struct}, Figure
-   \ref{sub_179}. The \textit{right panel} shows the flux from
-   the model shown as Figure \ref{sub_181} in Section
-   \ref{disc_struct}. In both panels the dashed line highlights the
-   angle at which a significant fall in flux from direct thermal
-   emission is observed.  The values of inclination at which the fall
-   in flux occurs are 71$^{\circ}$ and 64$^{\circ}$ for the
-   \textit{left} and \textit{right panels}
-   respectively.  The vertical and horizontal dashed lines (in the
-   \textit{lower panels}) denote the approximate sensitivity ranges of
-   our chosen $V$, $I$, $J$ and $K$ filters.\label{ext_curve}}
-\end{figure*}
-
-For typically accreting systems, where little or no dust sublimation
-has occurred the inner edge remains either a vertical or slightly
-concave wall, as shown in Figures \ref{sub_169} and \ref{sub_175}. For
-these systems flux reaching an observer from direct thermal emission,
-i.e. from, in the main, the disc inner edge, falls rapidly with
-increasing viewing angle, after the maximum opening angle is achieved.
-This is shown in Figure \ref{typ_curve} where at the viewing angle of
-77$^{\circ}$ the flux shown falls significantly, for both accretion
-rates. This opening angle is larger than found for the slower
-rotating, counter parts, as shown by Figure \ref{flare_inc}, where a
-transition in occultation occurs at 71$^{\circ}$. For the case shown
-in Figure \ref{typ_curve} the system has the shorter rotation period,
-leading to a larger opening angle, as the flux from the central star
-does not reach the outer disc, and subsequently flare it. Figure
-\ref{typ_curve} shows that after an angle of 77$^{\circ}$ the flux
-from the inner edge falls to zero. The systems displayed in Figure
-\ref{typ_curve} have inner edge temperatures of $~$1400\,K, meaning
-their flux emission peaks at a wavelength of $~$2\,$\mu$m. The flux
-observed at the expected peak wavelength falls to zero at inclinations
-of 77$^{\circ}$, indicative of a vertical wall being obscured by the
-outer disc, before the limit of the opening angle is reached.
-
-Figure \ref{inner_inc_sed} shows the full SEDs and the components (as
-tagged by {\sc torus}), for the models displayed in Figures
-\ref{sub_169} and \ref{sub_179} and the \textit{left panels} of
-Figures \ref{typ_curve} and \ref{ext_curve}. The \textit{top panels}
-show the SEDs for an accretion rate of -12
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ (model from Figure
-\ref{sub_169}) for inclinations of 64, 71 and 77$^{\circ}$, moving
-from the \textit{leftmost} to \textit{far right panel}. The same
-inclinations are shown in the \textit{bottom panels}, which show the
-SEDs, and components, for the model with an accretion rate of -7
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, displayed in Figure
-\ref{sub_179}. As discussed in Section \ref{disc_struct}, the model
-with the higher accretion rate has a a much larger, in scaleheight,
-and convex inner boundary. The lower accretion rate model has a
-vertical inner wall, close to the star. The analysis of Figures
-\ref{typ_curve} and \ref{ext_curve} show that the flux from the inner
-wall should fall dramatically at different limiting inclinations for
-either accretion rate.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/inner_inc_sed.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing SEDs of a system with a central stellar mass
-   of $0.04M_{\odot}$, an age of 1Myr, a rotation period of 0.5 days
-   and an areal coverage of the accretion stream of 10\%. The
-   \textit{panels}, both \textit{top} and \textit{bottom}, (from left
-   to right) show the constituent fluxes for SEDs at inclination
-   angles of 64$^{\circ}$, 71$^{\circ}$ and 77$^{\circ}$. The total
-   flux is shown as a black line, with the component fluxes presented
-   as explained Figure \ref{disc_eg_173}. The \textit{top panels} are
-   for systems with an accretion rate of -12
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ and the \textit{lower
-     panels} are for an accretion rate of -7
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$. The SEDs from the
-   \textit{top} and \textit{bottom panels} are derived from the models
-   presented in Figures \ref{sub_169} and \ref{sub_179}, respectively.
-   The vertical and horizontal dashed lines (in the \textit{second
-     panels} across) denote the approximate sensitivity ranges of our
-   chosen $V$, $I$, $J$ and $K$ filters.\label{inner_inc_sed}}
-\end{figure*}
-
-Figure \ref{inner_inc_sed} shows that for negligible accretion rates
-(\textit{top panels}), where the inner edge is a vertical wall, the
-total flux falls rapidly after exceeding a viewing angle of
-71$^{\circ}$. After an inclination of 71$^{\circ}$, the negligibly
-accreting system is dominated by scattered light from the central
-star. The system accreting at -7
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, however, maintains high flux
-levels, and thermal contributions to the SED, for inclination angles
-above 71$^{\circ}$, particularly between 1 and 3\,$\mu$m. Essentially,
-as shown by comparing Figures \ref{sub_169} and \ref{sub_179}, with
-increasing flux and subsequent dust sublimation the inner edge has
-grown vertically and become convex. As shown previously by
-\cite{tannirkulam_2007}, a vertical (or concave) inner edge will
-have strong dependence on inclination angel as the inner edge is
-obscured at lower inclinations. For the larger convex wall, the SEDs
-shown in \ref{inner_inc_sed} show that the resulting flux is less
-dependent on inclination angle.
-
-Once accretion rates reach extreme levels the inner edge is sublimated
-far from the central star. For these systems the resulting inner edge
-is both larger, in terms of scaleheight, and convex. Figure
-\ref{ext_curve} shows that the flux falls dramatically at an
-occultation angle of 71 and 64$^{\circ}$ for accretion rates of -7 and
--6 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, respectively
-(\textit{left} and \textit{right panels}, respectively). For the
-accretion rate of -7 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ this is
-indicative of a larger opening angle (71$^{\circ}$) for the shorter
-period object, when compared to the more slowly rotating equivalent
-(56$^{\circ}$, from Figure \ref{flare_inc}, \textit{right
-  panel}). Additionally, Figure \ref{inner_inc_sed} shows that the
-total SED, has a strong thermal component and is only weakly dependent
-on inclination angle, between 1 and 3\,$\mu$m . This increase in
-opening angle with increase in rotation rate is again due to more flux
-being intercepted by a larger and closer inner wall. This interception
-of flux by the inner edge leads to a cooler and less vertically
-extended outer disc in the shorter period objects when compared to the
-slower rotating systems. Figures \ref{ext_curve} and
-\ref{inner_inc_sed} also show that, contrary to the typical accretors,
-the flux from the inner edge does not fall off as quickly with
-inclination angle after occultation. The inner edge temperatures are
-$~$1300 and $~$1200\,K for the accretion rates of -7 (\textit{left
-  panel}) and -6 (\textit{right panel})
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ respectively. This leads to
-peak emission at $~$2.2 to 2.4\,$\mu$m. Figures \ref{ext_curve} and
-\ref{inner_inc_sed} shows that even for inclinations above the
-occulation or opening angle of the disc flux from the inner edge
-persists. This is indicative of a large and convex inner edge, as is
-observed in Figures \ref{sub_179} and \ref{sub_181}. Once again these
-extreme accretion rates probably over accentuate the result but help
-illuminate the consequences of changes in the disc structure.
-
-Therefore, the longer (in wavelength) component of the final SED is
-dominated by the disc inner edge ($L_{\rm wall}$), temperature and
-shape and the outer disc scaleheight ($L_{\rm disc}$). The shape and
-location of the inner disc walls are controlled, primarily, by the
-stellar rotation rate (and stellar radius) and accretion rate (and
-stellar flux). Given that the stellar flux and radius decrease as the
-pre-MS star ages (or decreases in mass) the flux levels and the
-position of the inner edge are also weakly affected by the age of the
-central star. 
-
-As shown in Figure \ref{inner_temp} the location of the inner edge and
-the corresponding temperature are correlated (differently) for typical
-and extreme accretors. This correlation is dominated by the dust
-sublimation temperature for the extreme accretors, and therefore the
-radial density profile. However, for the typical accretors the
-correlation between temperature and inner radius retains some
-dependence on the co-rotation radius (temperature is correlated with
-rotation period). This is as the sublimation temperature is not
-reached for the longer period models. Therefore, one might expect the
-resulting SEDs for typical accretors to show a correlation in shape,
-between 2 and 3\,$\mu$m, caused by the inner wall temperature changes,
-in turn caused by changes in the rotation period. Figures
-\ref{rot_-12_1Myr} and \ref{rot_-9_1Myr} show the SEDs (and
-constituent parts as explained in Figures \ref{disc_eg_173}) for a BDD
-model at the two rotation periods. The model has a mass of
-0.04$M_{\odot}$ and an age of 1 Myr, with accretion rates of -12 and
--9 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ in Figures \ref{rot_-12_1Myr}
-and \ref{rot_-9_1Myr} respectively, both at an areal coverage of
-10\%. The \textit{top panels} show the SEDs for a rotation period of
-0.5 days, and the \textit{bottom panels} the SEDs for a rotation
-period of 5 days. The \textit{first}, \textit{second}, \textit{third}
-and \textit{fourth panels} then show inclination angles of 0, 56, 64
-and 90$^{\circ}$ respectively.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/rot_-12_1Myr.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing SEDs of a
-   system with a central stellar mass of $0.04M_{\odot}$, an age of
-   1Myr an accretion rate of -12
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ with an an areal coverage
-   of 10\%. The \textit{panels}, both \textit{top} and
-   \textit{bottom}, (from left to right) show the SEDs and constituent
-   fluxes at inclination angles of 0$^{\circ}$, 56$^{\circ}$,
-   64$^{\circ}$ and 90$^{\circ}$. The component fluxes are presented
-   as explained Figure \ref{disc_eg_173}. The \textit{top panels} are
-   for systems with a rotation period of 0.5 days and the
-   \textit{lower panels} are for a rotation period of 5 days. The
-   vertical and horizontal dashed lines (in the \textit{third panels}
-     across) denote the approximate sensitivity ranges of our chosen
-   $V$, $I$, $J$ and $K$ filters. \label{rot_-12_1Myr}}
-\end{figure*}
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/rot_-9_1Myr.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing SEDs of a system with a central stellar mass
-   of $0.04M_{\odot}$, an age of 1Myr an accretion rate of -9
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ with an an areal coverage
-   of 10\%. The \textit{panels}, both \textit{top} and
-   \textit{bottom}, (from left to right) show the SEDs and constituent
-   fluxes at inclination angles of 0$^{\circ}$, 56$^{\circ}$,
-   64$^{\circ}$ and 90$^{\circ}$. The component fluxes are presented
-   as explained Figure \ref{disc_eg_173}. The \textit{top panels} are
-   for systems with a rotation period of 0.5 days and the
-   \textit{lower panels} are for a rotation period of 5
-   days.  The vertical and horizontal dashed lines (in the
-   \textit{third panels across}) denote the approximate sensitivity
-   ranges of our chosen $V$, $I$, $J$ and $K$ filters.
-   \label{rot_-9_1Myr}}
-\end{figure*}
-
-Figures \ref{rot_-12_1Myr} and \ref{rot_-9_1Myr} show that for these
-BDD systems with typical accretion rates, the changes in SED with
-rotation period are small, apart from perhaps the face-on
-configuration. The systems in the \textit{top} and \textit{bottom
-  panels} of Figures \ref{rot_-12_1Myr} and \ref{rot_-9_1Myr} have
-inner edge temperatures of $~$1470 \& $~$900\,K, and $~$1460 \& $~$940\,K
-respectively. This leads to different peak emissions for the slower
-and faster rotating stars, of approximately 2 and 3\,$\mu$m. However,
-as is shown by Figures \ref{rot_-12_1Myr} and \ref{rot_-9_1Myr} very
-little resulting change is apparent in any of the SEDs apart from the
-face-on configuration. Essentially, any change in the SED shape caused
-by changing emission at the inner disc edge is smoothed out by the
-resulting interactions with the rest of the disc structure. As pre-MS
-stars age they contract and reduce in luminosity, this will lead to
-changes in the co-rotation radius and inner edge temperature. The
-models in Figures \ref{rot_-12_1Myr} and \ref{rot_-9_1Myr} are for an
-age of 1 Myr. Therefore, changes in the SED could also be more
-apparent for older systems, with lower stellar luminosities. Figures
-\ref{comp_rot_-12} and \ref{comp_rot_-9} show the same system as
-Figures \ref{rot_-12_1Myr} and \ref{rot_-9_1Myr}, i.e. with accretion
-rates of -12 and -9 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$
-respectively, but for ages of 1 and 10 Myrs. In Figures
-\ref{comp_rot_-12} and \ref{comp_rot_-9} only the total SED are shown
-for the shorter period, a solid black line, and the longer period, as
-a dashed blue line. The \textit{top panels} show the SEDs for 1 Myr
-systems and the \textit{bottom panels} the 10 Myr systems. The
-\textit{first}, \textit{second}, \textit{third} and \textit{fourth
-  panels} again show the viewing angles of 0, 56, 64 and 90$^{\circ}$
-respectively.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/comp_rot_-12.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing SEDs of a system with a central stellar mass
-   of $0.04M_{\odot}$ and accretion rate of -12
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ with an an areal coverage
-   of 10\%. The SEDs are shown in \textit{each panel} for a rotation
-   period of 0.5 (solid black line) and 5 (dashed blue line) days. The
-   \textit{panels}, both \textit{top} and \textit{bottom}, (from left
-   to right) show the total SEDs inclination angles of 0$^{\circ}$,
-   56$^{\circ}$, 64$^{\circ}$ and 90$^{\circ}$. The \textit{top
-     panels} are for systems with an age of 1 Myr and the
-   \textit{lower panels} are for an age of 10
-   Myrs. The vertical and horizontal dashed lines (in the
-   \textit{third panels across}) denote the approximate sensitivity
-   ranges of our chosen $V$, $I$, $J$ and $K$
-   filters\label{comp_rot_-12}}
- \end{figure*}
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/comp_rot_-9.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing SEDs of a system with a central stellar mass
-   of $0.04M_{\odot}$ and accretion rate of -9
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ with an an areal coverage
-   of 10\%. The SEDs are shown in \textit{each panel} for a rotation
-   period of 0.5 (solid black line) and 5 (dashed blue line) days. The
-   \textit{panels}, both \textit{top} and \textit{bottom}, (from left
-   to right) show the total SEDs inclination angles of 0$^{\circ}$,
-   56$^{\circ}$, 64$^{\circ}$ and 90$^{\circ}$. The \textit{top
-     panels} are for systems with an age of 1 Myr and the
-   \textit{lower panels} are for an age of 10
-   Myrs. The vertical and horizontal dashed lines (in the
-   \textit{third panels across}) denote the approximate sensitivity
-   ranges of our chosen $V$, $I$, $J$ and $K$ filters
-   \label{comp_rot_-9}}
-\end{figure*}
-
-Figures \ref{comp_rot_-12} and \ref{comp_rot_-9} show that for typical
-accretors the resulting SEDs do not, in general, change significantly
-with changing rotation rate. For the face-on configuration
-(\textit{far left panels}) the SED slope over 2 to 3\,$\mu$m is
-marginally different only. Essentially, flux redistribution from the
-highly flared outer regions of the disc and inner edge shape changes
-lead to a loss of correlations of SED shape (from 2 to 3\,$\mu$m)with
-inner edge temperature. This leads to a loss of any correlation
-between IR excess and inner edge location as predicted for the, flat,
-discs of \cite{meyer_1997}.
-
 \subsubsection{SED summary}
 \label{sed_summary}
 
@@ -1909,353 +1407,6 @@ derivation of single star parameters is completely unreliable
 \citep[see discussion in][]{mayne_2008}. However, exploring
 the changes in the CMDs of single objects will elucidate the causes of
 scatters from the expected locii in CMDs of populations of BDs.
-
-\subsubsection{Accretion Dominance-Photometry}
-\label{acc_dom_phot}
-
-Accretion flux was shown to dominate the underlying, intrinsic,
-photospheric SED for accretion rates of
-$\dot{M}>$10$^{-9}M_{\odot}yr^{-1}$ (see Figure \ref{acc_dom} in
-Section \ref{acc_dominance}). As one would expect this leads to
-significant changes in the derived photometric magnitudes for bands
-blueward of a few microns, where the accretion and photospheric flux
-dominate. This is shown in Figure \ref{naked_acc}. Figure
-\ref{naked_acc} shows CMDs in $M_V$, $(V-I)_0$ (\textit{left panels})
-and $M_J$, $(J-K)_0$ (\textit{right panels}) of naked stars with
-accretion rates of -12, -9 and -8
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, shown as black, red and blue
-lines respectively (in \textit{all panels}). The \textit{top panels},
-then show the two rotational periods of 5 and 0.5 days, as dashed and
-solid lines respectively, for a coverage of 10\%. The \textit{bottom
-  panels}, then show the two areal spot coverages of 1 and 10\%, as
-dashed and solid lines respectively, for a rotational period of 5
-days.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/naked_acc.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing the naked systems for accretion rates of -8,
-   -9 and -12 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, shown in
-   \textit{all panels} as blue, red and black lines respectively. The
-   model shown for \textit{all panel} has a mass of 0.04$M_{\odot}$
-   and an age of 1Myr. The \textit{top panels} are models with areal
-   spot coverages of 10\%, and the \textit{lower panels} are for
-   models with rotational periods of 5 days. The dashed and solid
-   lines then delineate the rotation periods for the \textit{top
-     panels} and coverages for the \textit{bottom panels}. The dashed
-   lines show the rotational periods of 5 days (\textit{top panels})
-   and coverages of 1\% (\textit{bottom panels}). The solid lines
-   denotes periods of 0.5 days (\textit{top panels}) and coverages of
-   10\% (\textit{bottom panels}). For accretion rates of -12
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ (black line, \textit{all
-     panels}), are representative of all models at this rate, as the
-   models are coincident within the CMD.\label{naked_acc}}
-\end{figure*}
-
-
-As the rotation rate increases the co-rotation radius also increases,
-as shown in Equation \ref{inner_eq}, $R_{\rm inner}\propto
-\tau^{\frac{2}{3}}$. Therefore, as Equations \ref{Lacc} and
-\ref{Tacc}, show, $L_{\rm acc}\propto 1- \frac{R_*}{R_{\rm inner}}$
-and $T_{\rm acc}\propto (\frac{L_{\rm
-    acc}}{A})^{\frac{1}{4}}$. Therefore, the temperature of the
-accretion hot spot increases as the coverage lowers and the rotational
-period increases (the latter is due to the increase in potential
-energy lost by the mass accreted). This can be seen in Figure
-\ref{acc_dom} with lower areal coverages and longer rotational periods
-leading to accretion fluxes at peaking at shorter wavelengths. The
-\textit{left panels} of Figure \ref{naked_acc} show that as the
-accretion rate increases the stars move blueward and to brighter
-magnitudes in the $M_V$, $(V-I)_0$ CMD. Furthermore, as the accretion
-spot temperature is maximised i.e. moving to longer periods of
-rotation or smaller areal coverages (solid to dashed lines), the stars
-also move blueward. For the \textit{right panels}, or $M_J$, $(J-K)_0$
-CMDs the behaviour is less intuitive. Increases in accretion rate lead
-to a slight brightening and an initial move redward, followed by a
-move blueward. This is as the lower accretion rates have lower hot
-spot temperatures, with peak wavelengths between 1 and 3\,$\mu$m
-(corresponding to temperatures of $~$2800\,K to $~$900\,K, the range of
-the BD photosphere). This leads to increases in the red flux and
-changes in the slope from $J$ to $K$. At the higher accretion rates
-the accretion flux dominates and cause the blueward shift as the slope
-becomes larger. For the highest accretion rate, in the \textit{bottom
-  right panel}, a change to a hotter spot (reduction in coverage, from
-solid to dashed lines) results in a move redward in the CMD. This can
-be understood by observing the solid blue lines in the \textit{top
-  panels} of Figure \ref{acc_dom}. Essentially, the reduction in spot
-temperature moves the accretion flux to much shorter wavelengths,
-$~$0.5 to $~$0.3\,$\mu$m, meaning that the flux in the $J$ and $K$
-bands becomes more like the photosphere, and less dominated by
-accretion. The \textit{top right panel} of Figure \ref{naked_acc} then
-shows that increases in the rotation period (from solid to dashed
-lines) shows a move blueward in the CMD, resulting in changes of the
-peak accretion flux emission from $~$0.58 to $~$0.5\,$\mu$m, meaning
-significant flux from the accretion hot spot will still fall in the
-$J$ and $K$ bands, and the slope will be increased.
-
-\subsubsection{Effect of Flaring and Obscuration on Photometry}
-\label{flare_obscure_phot}
-
-As described by \cite{walker_2004} the increased flaring, in
-BDD systems when compared to CTTS, leads to more significant changes
-in the photometric characteristics of the BDD stars with inclination
-changes. The increased flaring shown in Figures \ref{flare_-12_183}
-and \ref{flare_-7_193} results in increased obscuration of the central
-star (and inner edge) at earlier inclinations. This obscuration is
-shown to occur at lower inclination angles for objects accreting at
-higher levels, as shown in Figure \ref{flare_inc}. Figure
-\ref{flare_inc} shows that significant obscuration occurs at
-inclinations of 71 and 56$^{\circ}$ for accretion rates of -12 and -7
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, respectively. The changes in
-flux with inclination will clearly lead to a change in the observed
-magnitude with inclination. Figure \ref{flare_mag} shows the $M_V$ and
-$M_J$ magnitude, in the \textit{top} and \textit{bottom panels}
-respectively, as a function of inclination with the individual points
-marked as crosses. The \textit{top} and \textit{bottom panels} show
-accretion rates of -12, -9 and -7
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ as black, red and blue lines.
-The solid lines are for objects with rotational periods of 0.5 days
-and the dashed lines are for periods of 5 days. The \textit{inset
-  panel} within the \textit{bottom panels} shows an enlargement of the
-section of inclinations from 40 to 80$^{\circ}$. For \textit{all
-  panels} the vertical dotted lines show the inclinations for which
-significant drops in flux are observed (see Figure \ref{flare_inc})
-for -12 and -7 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ in black and
-blue respectively.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/flare_mag.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing magnitude change with inclination for $M_V$
-   (\textit{top panel}) and $M_J$ (\textit{bottom panel}) for the
-   models shown in Section \ref{disc_struct}, Figures \ref{no_sub_183}
-   to \ref{sub_181}. The accretion rates of -7, -9 and -12
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ are shown as blue, red and
-   black lines respectively. The individual points are shown as
-   crosses for all data. The dashed lines show the systems with
-   rotational periods of 5 days and the solid lines 0.5 days, in
-   \textit{all panels}. A section of the \textit{bottom panel} has
-   been enlarged and is shown as the \textit{inset panel}. Note the
-   models for -12 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ are coincident
-   in this Figure. \textit{All panels} show the inclinations are which
-   obscuration occurs for -12 and -7
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ as dashed black and blue
-   lines respectively. \label{flare_mag}}
-\end{figure*}
-
-Figure \ref{flare_mag} shows that the occultation starts earlier for
-the higher accretion rates, shown by the increase in both magnitudes
-(\textit{top} and \textit{bottom panels}) with inclination angle at
-around 56 and 71$^{\circ}$, as also shown in Figure
-\ref{flare_inc}. The slower rotation rates, for the highest accretion
-rates, show a generally fainter magnitude, than the faster rotating
-systems, caused by a larger disc scaleheight. For $M_J$ the fall in
-magnitude is again earlier and more significant for the larger
-accretion rates. However, at higher inclinations the systems become
-brighter again, show in the \textit{inset panel}. This brightening is
-due to the curved inner wall, as shown in Figures \ref{inner_inc_sed}
-(discussed in more detail in Section \ref{inner_edge_phot}.
-
-The change in magnitude, will also lead to a change in colour. As
-described $V$, $V-I$ and $J$, $J-K$ CMDs are ubiquitously used for
-derivation of ages and masses. The use of isochrones to derive ages
-and masses of individual stars is not reliable. However, it is
-informative to explore the changes in the CMD position of our BDD
-systems. Figure \ref{flare_VVI} shows $M_V$, $(V-I)_o$ CMDs for the
-accretion rates of -12 and -7 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$,
-as the \textit{left} and \textit{right panels} respectively. The
-systems are those shown in Figure \ref{flare_-12_183} and
-\ref{flare_-7_193}, at all modeled inclinations. For \textit{both
-  panels} the red dashed line, with the data points marked as crosses,
-shows the changes in CMD position with inclination of the BDD system
-at different inclinations for a 1 Myr system (with an areal coverage
-of 10\% and a $\tau$ of 5 days). The solid blue line is the matching
-isochrone for naked systems, with the naked $M_*=0.04M_{\odot}$ marked
-as a triangle. Again, for \textit{both panels} the inclinations at
-which significant drops in flux were found in Figure \ref{flare_inc}
-are noted in red text.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/flare_VVI.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing the positions within a $M_V$, $(V-I)_0$ of
-   the models in Figures \ref{flare_-12_183} and \ref{flare_-7_193}
-   (Section \ref{disc_struct}) as the \textit{left} and \textit{right
-     panels} respectively. The solid blue line are the 1Myr naked
-   isochrones at the accretion rates of -12 and -7
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ for the \textit{left} and
-   \textit{right panels} respectively (with an areal coverage of 10\%
-   and a $\tau$ of 5 days). The dashed red line is the BDD system with
-   $M_*=0.04M_{\odot}$ at all simulated inclinations. The triangles,
-   in both panels are the 0.04$M_{\odot}$ stars on the naked
-   isochrones and the crosses show this mass over the range of
-   inclinations with an associated disc. Figure \ref{flare_inc}
-   predicts an occultation angle of 71 and 56$^{\circ}$ for the -12
-   and -7 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ models respectively,
-   and these are denoted by the text within the
-   figure.\label{flare_VVI}}
-\end{figure*}
-
-Figure \ref{flare_VVI} shows that as the system changes in inclination
-it leads to a significant dimming in both cases. The inclinations from
-Figure \ref{flare_inc} where significant flux is lost are shown and it
-can be seen that a significant drop in magnitude is apparent just
-before this inclination (as also shown in Figure \ref{flare_mag}). The
-models in \textit{both panels} get slightly redder as we increase to
-the obscuration angle, caused by scattered light from the disc this
-can be observed for the accretion rate of -12
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ in Figures \ref{rot_-12_1Myr}
-and \ref{comp_rot_-12}.
-
-Figure \ref{flare_JJK} shows the same data as Figure \ref{flare_VVI}
-with the same notation and symbol meanings.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/flare_JJK.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing the positions within a $M_J$, $(J-K)_0$ of
-   the models in Figures \ref{flare_-12_183} and \ref{flare_-7_193}
-   (Section \ref{disc_struct}) as the \textit{left} and \textit{right
-     panels} respectively. The solid blue line are the 1Myr naked
-   isochrones at the accretion rates of -12 and -7
-   log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ for the \textit{left} and
-   \textit{right panels} respectively (with an areal coverage of 10\%
-   and a $\tau$ of 5 days). The dashed red line is the BDD system with
-   $M_*=0.04M_{\odot}$ at all simulated inclinations. The triangles,
-   in both panels are the 0.04$M_{\odot}$ stars on the naked
-   isochrones and the crosses show this mass over the range of
-   inclinations with an associated disc. Figure \ref{flare_inc}
-   predicts an occultation angle of 71 and 56$^{\circ}$ for the -12
-   and -7 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ models respectively,
-   and these are denoted by the text within the
-   figure.\label{flare_JJK}}
-\end{figure*}
-
-Figure \ref{flare_JJK} again, as in Figure \ref{flare_VVI}, shows the
-BDD systems dimming with increasing inclination, with some move
-towards redder colours. There is an offset between the naked and BDD
-systems at face on inclinations, caused by the inner disc wall. This
-is particularly large for the higher accretion rate (\textit{right
-  panel}). This increase in reddening for the higher accretion rates
-is due to the much larger and curved inner disc edge as shown in
-Figure \ref{sub_179}. This curved inner edge also leads to less
-dependence of $(J-K)_0$ on inclination angle, as compared to the lower
-accretion rate.
-
-\subsubsection{Inner Edge and Photometry}
-\label{inner_edge_phot}
-
-It is clear that the scatter within a CMD, in particular for the
-$M_J$, $(J-K)_0$ CMD, is strongly affected by the emission from the
-inner edge (as shown in Figure \ref{flare_JJK}).
-
-Figure \ref{inner_VVI} shows the position in a CMD of the models from
-Figures \ref{sub_169}, \ref{sub_175}, \ref{sub_179} and
-\ref{sub_181}. The accretion rates shown are -12, -7, -9 and -6
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$, as the \textit{top left},
-\textit{bottom left}, \textit{top right} and \textit{bottom right
-  panels}. The solid blue line in \textit{all panels} of Figure
-\ref{inner_VVI} show the naked isochrone at 1 Myr (with an areal
-coverage of 10\% and $\tau$ of 0.5 days), at the shown accretion rate.
-The dashed red line shows the BDD system matching the naked isochrone,
-except with $M_*=0.04M_{\odot}$, at all inclination rates, with the
-datapoints marked as crosses. The blue triangles are then the naked
-stars at $M_*=0.04M_{\odot}$. The points at which the thermal direct
-flux reaching the observer drops significantly are marked in red text
-for each system, as shown in Figures \ref{typ_curve} and
-\ref{ext_curve}.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/inner_VVI.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing the positions within a $M_V$, $(V-I)_0$ of
-   the models in Figures \ref{sub_169}, \ref{sub_175}, \ref{sub_179}
-   and \ref{sub_181} as the \textit{top left}, \textit{bottom left},
-   \textit{top right} and \textit{bottom right panels}
-   respectively. As for Figure \ref{flare_VVI}, the solid blue line is
-   the naked isochrone at 1 Myr for the corresponding accretion rate
-   (-12, -9, -7 or -6 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$). The
-   dashed red line is the BDD isochrone at the same age and accretion
-   rate. The inclination of each model at which obscuration is
-   expected to occur, from Figures \ref{typ_curve} and
-   \ref{ext_curve}, is denoted in text.\label{inner_VVI}}
-\end{figure*}
-
-Figure \ref{inner_VVI} shows for the $M_V$, $(V-I)_0$, the inclination
-increase again dims the star for these models and moves it initially
-redward, until it exceeds the expected obscuration angle, found from
-Figures \ref{typ_curve} and \ref{ext_curve}. However, as we move
-through the accretion rates from -12
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ (\textit{top left panel}) to -6
-log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$ (\textit{bottom right panel})
-the transition from edge-on to face-on system tends to a sharper
-feature, with the reddest point at the obscuration angle. As would be
-expected from the SEDs shown in Figure \ref{inner_inc_sed}. This is
-caused by maximising the amount of the inner edge which is visible,
-whilst the stellar photosphere is still visible (which also
-contributes in these passbands).
-
-Figure \ref{inner_JJK} shows the same information as Figure
-\ref{inner_VVI} but for a $M_J$, $(J-K)_0$ CMD. Here, the BDD
-isochrones are initially much redder than their naked counterparts, as
-expected due to IR excesses caused by the disc inner edges. As the
-inclination increase for the lower accretion rates (\textit{top left}
-and \textit{bottom left panels}) the system moves first redward and
-then sharply blueward as the SED becomes dominated by scattered light
-only. As can be seen in Figure \ref{inner_inc_sed}. For the extreme
-accretion rates the wall is no longer vertical and the change in
-infrared colours is smoother up until the obscuration angle.
-
-\begin{figure*}
-  \vspace*{348pt}
-  \special{psfile="Fig/inner_JJK.ps"
-   hoffset=470 voffset=0 hscale=60 vscale=60 angle=90}
- \caption{Figure showing the positions within a $M_J$, $(J-K)_0$ of
-   the models in Figures \ref{sub_169}, \ref{sub_175}, \ref{sub_179}
-   and \ref{sub_181} as the \textit{top left}, \textit{bottom left},
-   \textit{top right} and \textit{bottom right panels}
-   respectively. As for Figure \ref{flare_VVI}, the solid blue line is
-   the naked isochrone at 1 Myr for the corresponding accretion rate
-   (-12, -9, -7 or -6 log$(\frac{\dot{M}}{M_{\odot}}yr^{-1})$). The
-   dashed red line is the BDD isochrone at the same age and accretion
-   rate. The inclination of each model at which obscuration is
-   expected to occur, from Figures \ref{typ_curve} and
-   \ref{ext_curve}, is denoted in text.\label{inner_JJK}}
-\end{figure*}
-
-\subsection{Populations}
-\label{populations}
-
-Practically, the derivation of parameters for pre-MS populations uses
-CMDs and isochrones applied to clusters or populations of stars. In
-this section we explore the scatters of our BDD systems across our
-grid of input values within typical or commonly used CMDs and CoCoDs
-for deriving ages, masses and disc fractions.
-
-To delineate the effects of the accretion rate and circumstellar discs
-we have subdivided the grid into two groups (as discussed in Sections
-\ref{disc_struct} and \ref{sed_analysis}), those with accretion rates
-typical for higher mass CTTS objects, defined as
-$\dot{M}=$10$^{-12}M_{\odot}yr^{-1}$ (negligible) to
-$\dot{M}=$10$^{-9}M_{\odot}yr^{-1}$ and those with elevated accretion
-rates, where $\dot{M}>$10$^{-9}M_{\odot}yr^{-1}$. For several of the
-plots in this section the magnitude and colours for the
-$M_*=0.01M_{\odot}$ systems at high inclinations become extremely
-faint and red. In some cases these objects appear slightly without the
-scale of the diagram the axes were limited in this way to be able to
-show the changes in colour and magnitude for the majority of stars
-better. The colours and magnitudes for these lowest mass stars are not
-necessarily unreliable but simply hinder the aesthetics of the plots,
-and as they are at the limits of our grid we have decided to omit them
-from some Figures by trimming the axes. Additionally, stars at the
-highest inclinations, i.e edge on disc systems, are often omitted from
-the Figures due to their extremely faint magnitudes, meaning they
-would not be practically observable.
 
 \subsubsection{Age and Mass Derivations}
 \label{age_mass_pop}
@@ -2617,7 +1768,6 @@ and \ref{disc_frac_JHJK_ext} show the systems with inclinations of
 $\theta \leq 48^{\circ}$ as blue dots, $\theta> 56$ \& $64^{\circ}$ as
 black dots and $\theta \geq 71^{\circ}$ as red dots.
 
-\clearpage
 
 \begin{figure*}
   \vspace*{348pt}
