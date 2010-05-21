@@ -1,15 +1,65 @@
+LaTeX Warning: Label `par_space_table' multiply defined.
 LaTeX Warning: Command \r invalid in math mode on input line 227.
-LaTeX Warning: Reference `no_sub_183' on page 8 undefined on input line 999.
-LaTeX Warning: Command \r invalid in math mode on input line 1120.
-LaTeX Warning: Command \r invalid in math mode on input line 1120.
-LaTeX Warning: Command \r invalid in math mode on input line 1181.
-LaTeX Warning: Command \r invalid in math mode on input line 1181.
-LaTeX Warning: Reference `flare_inc' on page 13 undefined on input line 1309.
-LaTeX Warning: Reference `flare_inc' on page 13 undefined on input line 1313.
-LaTeX Warning: Reference `populations' on page 13 undefined on input line 1379.
-LaTeX Warning: Reference `inner_shape' on page 14 undefined on input line 1403.
-LaTeX Warning: Reference `flare_inc' on page 15 undefined on input line 1536.
-LaTeX Warning: Command \r invalid in math mode on input line 2573.
-LaTeX Warning: Command \r invalid in math mode on input line 2578.
-LaTeX Warning: Command \r invalid in math mode on input line 2581.
+LaTeX Warning: Reference `disc_eg_173' on page 4 undefined on input line 491.
+LaTeX Warning: Reference `photometry' on page 6 undefined on input line 769.
+LaTeX Warning: Reference `no_sub_183' on page 8 undefined on input line 1000.
+LaTeX Warning: Command \r invalid in math mode on input line 1107.
+LaTeX Warning: Command \r invalid in math mode on input line 1107.
+LaTeX Warning: Reference `no_sub_183' on page 11 undefined on input line 1148.
+LaTeX Warning: Reference `sub_179' on page 11 undefined on input line 1148.
+LaTeX Warning: Reference `sub_181' on page 11 undefined on input line 1148.
+LaTeX Warning: Reference `flare_inc' on page 11 undefined on input line 1213.
+LaTeX Warning: Reference `sed_analysis' on page 12 undefined on input line 1251
+LaTeX Warning: Reference `flare_obscure' on page 12 undefined on input line 125
+LaTeX Warning: Reference `inner_shape' on page 12 undefined on input line 1262.
+LaTeX Warning: Reference `age_mass_JHK' on page 13 undefined on input line 1275
+LaTeX Warning: Reference `spread_opt_VVI_typ' on page 13 undefined on input lin
+LaTeX Warning: Reference `flare_inc' on page 13 undefined on input line 1315.
+LaTeX Warning: Reference `spread_opt_VVI_ext' on page 14 undefined on input lin
+LaTeX Warning: Reference `spread_opt_VVI_ext' on page 14 undefined on input lin
+LaTeX Warning: Reference `sed_analysis' on page 14 undefined on input line 1353
+LaTeX Warning: Reference `spread_ir_JJK_typ' on page 14 undefined on input line
+LaTeX Warning: Reference `spread_ir_JJK_typ' on page 14 undefined on input line
+LaTeX Warning: Reference `spread_ir_JJK_ext' on page 14 undefined on input line
+LaTeX Warning: Reference `spread_ir_JJK_ext' on page 14 undefined on input line
+LaTeX Warning: Reference `spread_ir_JJK_typ' on page 16 undefined on input line
+LaTeX Warning: Reference `age_mass_pop' on page 16 undefined on input line 1477
+LaTeX Warning: Reference `spread_ir_JJK_typ' on page 16 undefined on input line
+LaTeX Warning: Reference `spread_ir_JJK_ext' on page 16 undefined on input line
+LaTeX Warning: Reference `disc_frac_irac_typ' on page 17 undefined on input lin
+LaTeX Warning: Reference `disc_frac_irac_ext' on page 17 undefined on input lin
+LaTeX Warning: Reference `disc_frac_irac_typ' on page 17 undefined on input lin
+LaTeX Warning: Reference `disc_frac_irac_ext' on page 17 undefined on input lin
+LaTeX Warning: Reference `disc_frac_irac_mips_typ' on page 17 undefined on inpu
+LaTeX Warning: Reference `disc_frac_irac_mips_ext' on page 17 undefined on inpu
+LaTeX Warning: Reference `disc_frac_irac_typ' on page 17 undefined on input lin
+LaTeX Warning: Reference `disc_frac_irac_ext' on page 17 undefined on input lin
+LaTeX Warning: Reference `disc_frac_irac_mips_typ' on page 17 undefined on inpu
+LaTeX Warning: Reference `disc_frac_irac_mips_ext' on page 17 undefined on inpu
+LaTeX Warning: Reference `disc_frac_alpha' on page 17 undefined on input line 1
+LaTeX Warning: Reference `disc_frac_alpha' on page 17 undefined on input line 1
+LaTeX Warning: Reference `disc_frac_alpha' on page 17 undefined on input line 1
+LaTeX Warning: Reference `disc_frac_alpha' on page 17 undefined on input line 1
+LaTeX Warning: Reference `irac_cut' on page 18 undefined on input line 1588.
+LaTeX Warning: Reference `irac_cut_2' on page 18 undefined on input line 1589.
+LaTeX Warning: Reference `irac_cut_3' on page 18 undefined on input line 1589.
+LaTeX Warning: Reference `irac_cut' on page 18 undefined on input line 1593.
+LaTeX Warning: Reference `irac_cut_2' on page 18 undefined on input line 1594.
+LaTeX Warning: Reference `irac_cut_3' on page 18 undefined on input line 1596.
+LaTeX Warning: Reference `disc_frac_alpha' on page 18 undefined on input line 1
+LaTeX Warning: Reference `disc_frac_alpha' on page 18 undefined on input line 1
+LaTeX Warning: Reference `irac_cut' on page 18 undefined on input line 1622.
+LaTeX Warning: Reference `irac_cut_2' on page 18 undefined on input line 1622.
+LaTeX Warning: Reference `irac_cut_3' on page 18 undefined on input line 1623.
+LaTeX Warning: Reference `irac_cut' on page 18 undefined on input line 1628.
+LaTeX Warning: Reference `irac_cut_2' on page 18 undefined on input line 1631.
+LaTeX Warning: Reference `irac_cut_3' on page 18 undefined on input line 1633.
+LaTeX Warning: Reference `irac_cut_2' on page 18 undefined on input line 1635.
+LaTeX Warning: Reference `irac_cut_3' on page 18 undefined on input line 1635.
+LaTeX Warning: Reference `irac_cut' on page 18 undefined on input line 1636.
+LaTeX Warning: Reference `irac_cut_2' on page 18 undefined on input line 1638.
+LaTeX Warning: Reference `disc_frac_irac_typ' on page 18 undefined on input lin
+LaTeX Warning: Reference `photometry' on page 21 undefined on input line 1757.
+LaTeX Warning: Reference `disc_eg_173' on page 23 undefined on input line 1913.
 LaTeX Warning: There were undefined references.
+LaTeX Warning: There were multiply-defined labels.
