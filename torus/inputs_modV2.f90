@@ -6,6 +6,7 @@ module inputs_mod
   use kind_mod
   use input_variables
   use constants_mod
+  use utils_mod, only: file_line_count
 
   implicit none
 
@@ -16,9 +17,9 @@ contains
     implicit none
 
     integer :: nLines
-    integer :: errNo
     logical :: ok
-    character(len=80) :: cLine(200) 
+    character(len=80), allocatable :: cLine(:) 
+    character(len=80) :: message, thisLine
     logical :: done
 
     ! character vars for unix environ
@@ -55,6 +56,10 @@ contains
        call writeInfo("Parameters file is: "//trim(paramFile),TRIVIAL)
     endif
 
+    nLines = file_line_count(paramfile)
+    allocate ( cLine(nLines) )
+    nLines = 0 
+
     open(unit=32, file=paramfile, status='old', iostat=error)
     if (error /=0) then
        print *, 'Panic: parameter file open error, file: ',trim(paramFile) ; stop
@@ -63,11 +68,13 @@ contains
     do
        nLines = nLines + 1
        read(32,'(a80)',end=10) cLine(nLines)
-       if (trim(cLine(nLines)(1:1)) == "%") nLines = nLines - 1   ! % is a comment
+       thisLine = trim(adjustl(cLine(nLines)))
+       if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) nLines = nLines - 1   ! % or ! is a comment
     end do
 10  continue
     nLines = nLines - 1
-    errno = 0
+    write(message,'(a,i4,a)') "Read in ", nLines, " parameters"
+    call writeInfo(message,TRIVIAL)
 
     call getInteger("verbosity", verbosityLevel, cLine, nLines, &
          "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
@@ -192,6 +199,8 @@ contains
 
     ! Close input file
     close(32)
+
+    deallocate (cLine)
 
   end subroutine inputs
 

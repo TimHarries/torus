@@ -2787,6 +2787,25 @@ contains
 
   end subroutine write_message_char
 
+! Count the number of lines in a file. 
+! Should return the same answer as wc -l i.e. includes blank lines in the total
+! D. Acreman, June 2010
+  integer function file_line_count(filename)
+
+    character(len=*) :: filename
+    character(len=1) :: dummy
+    integer :: status 
+
+    file_line_count = 0
+    open(unit=30, status="old", file=filename)
+    do
+       read(30,'(a1)',iostat=status) dummy
+       if ( status /= 0 ) exit
+       file_line_count = file_line_count + 1 
+    end do
+    close(30)
+
+  end function file_line_count
 
 !
 !     ******************************************************************

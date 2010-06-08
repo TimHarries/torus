@@ -18,7 +18,7 @@ contains
     use constants_mod
     use unix_mod, only:  unixGetEnv
     use jets_mod, only:  set_jets_parameters
-    use utils_mod, only: replaceDots
+    use utils_mod, only: replaceDots, file_line_count
 
 
     implicit none
@@ -26,7 +26,8 @@ contains
     integer :: nLines
     integer :: errNo, i
     logical :: ok
-    character(len=80) :: cLine(200) 
+    character(len=80), allocatable :: cLine(:) 
+    character(len=80) :: thisLine
 
     character(len=20) :: grainTypeLabel, aminLabel, aMaxLabel, a0label
     character(len=20) :: qdistlabel, pdistlabel, grainFracLabel
@@ -64,6 +65,10 @@ contains
     if (writeoutput) write(*,*) absolutePath
     paramFile = trim(absolutePath)//"parameters.dat"
 
+    nLines = file_line_count(paramfile)
+    allocate ( cLine(nLines) )
+    nLines = 0 
+
     open(unit=32, file=paramfile, status='old', iostat=error)
     if (error /=0) then
        print *, 'Panic: parameter file open error, file:',trim(paramFile) ; stop
@@ -72,7 +77,8 @@ contains
     do
        nLines = nLines + 1
        read(32,'(a80)',end=10) cLine(nLines)
-       if (trim(cLine(nLines)(1:1)) == "%") nLines = nLines - 1   ! % is a comment
+       thisLine = trim(adjustl(cLine(nLines)))
+       if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) nLines = nLines - 1   ! % or ! is a comment
     end do
 10  continue
     nLines = nLines - 1
