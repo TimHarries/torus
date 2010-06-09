@@ -57,7 +57,8 @@ contains
     endif
 
     nLines = file_line_count(paramfile)
-    allocate ( cLine(nLines) )
+    ! nLines+1 element of cline is used in loop which reads parameter file
+    allocate ( cLine(nLines+1) )
     nLines = 0 
 
     open(unit=32, file=paramfile, status='old', iostat=error)
