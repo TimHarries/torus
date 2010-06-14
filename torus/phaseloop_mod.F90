@@ -9,7 +9,7 @@ CONTAINS
 subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel,  &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
-     infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
+     infallParticleMass, maxBlobs, flatspec, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename)
 
   use kind_mod
@@ -2970,7 +2970,9 @@ CONTAINS
     normToRotation = rotationAxis .cross. yAxis
     call normalize(normToRotation)
 
-    tempVec  = arbitraryRotate(rotationAxis, dble(inclination), normToRotation)
+! Second argument was inclination parameter in version 1. Removed in version 2 as 
+! I don't think it is required. DMA, June 2010. 
+    tempVec  = arbitraryRotate(rotationAxis, 0.0_db, normToRotation)
     originalViewVec =  (-1.d0)*tempVec
 
   end subroutine define_rotation_axis

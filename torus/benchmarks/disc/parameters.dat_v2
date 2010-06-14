@@ -16,10 +16,9 @@ amrgridcentrez 0.0000
 amrgridsize 4.0e6
 amr2d T
 
-! source
-
+! Source parameters
 nsource 1
-radius1 2.
+radius1 1.
 teff1 5800.
 contflux1 blackbody
 mass1 1.
@@ -35,14 +34,6 @@ rho 8.16136e-18
 teff 5800.
 dosmoothgrid T
 
-! SED parameters
-ninc 2
-firstinc 12.5
-lastinc 77.5
-
-! SED output filename 
-filename test
-
 ! use isotropic mie scattering
 mie T    
 iso_scatter T
@@ -53,8 +44,26 @@ amin1 0.12
 amax1 0.1201
 qdist1 0.01
 
-! probability of contiuum photon
+! probability of continuum photon
 probcont 1.0   
 ! Probability of photon from dusty envelope
 probdust 0.1
+
+! Output SEDs
+spectrum T
+
+! SED parameters
+ninc 2
+firstinc 12.5
+lastinc 77.5
+nphotons 500000
+filename test
+sised T              ! Write spectrum as lambda vs F lambda in SI units
+distance 2.25558e-8  ! Distance to observer
+
+! Specify wavelength array properties
+wavlin F
+lamstart 1200.
+lamend  2.e7
+nlambda 200
 

@@ -144,9 +144,6 @@ contains
     call getLogical("sed", sed, cLine, nLines, &
          "Write spectrum as lambda vs lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getLogical("dustysed", dustysed, cLine, nLines, &
-         "Write spectrum as normalized lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
-
     call getLogical("sised", sised, cLine, nLines, &
          "Write spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2):","(a,1l,1x,a)", .false., ok, .false.)
 

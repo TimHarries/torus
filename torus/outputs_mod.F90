@@ -103,7 +103,7 @@ contains
        call do_phaseloop(grid, .true., 0., 0., 0.,  &
             0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
             tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
-            0., 0, .false., 0., 100000, &
+            0., 0, .false., 100000, &
             miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
     endif
 

@@ -422,7 +422,7 @@ contains
      call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
           theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
           starsurface, newContFluxFile, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
-          0.0, 10000, flatspec, inclination, maxTau,                                         &
+          0.0, 10000, flatspec,maxTau,                                         &
           miePhase, nsource, source, blobs, nmumie, dTime)
 
   else

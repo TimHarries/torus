@@ -852,7 +852,7 @@ program torus
      call do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel, &
           theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
           starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
-          infallParticleMass, maxBlobs, flatspec, inclination, maxTau, &
+          infallParticleMass, maxBlobs, flatspec, maxTau, &
           miePhase, nsource, source, blobs, nmumie, dTime)
   end if
 

@@ -706,6 +706,63 @@ contains
   subroutine readSpectrumParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getBigInteger("nphotons", nPhotons, cLine, nLines, &
+         "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
+
+    call getInteger("ninc", nInclination, cLine, nLines, &
+         "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    allocate(inclinations(nInclination))
+    call findRealArray("inclinations", inclinations, cLine, nLines, ok)
+    if (ok) then
+       call getRealArray("inclinations", inclinations, 1.0, cLine, nLines, &
+            "Inclinations (deg): ",90., ok, .false.)
+       inclinations(:) = inclinations(:) * degToRad
+    else
+       deallocate(inclinations)
+       call getReal("firstinc", firstInclination, 1.0, cLine, nLines, &
+            "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
+       firstInclination = firstInclination * degToRad
+       if (nInclination > 1) &
+            call getReal("lastinc", lastInclination, 1.0, cLine, nLines, &
+            "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
+       lastInclination = lastInclination * degToRad
+    end if
+
+    call getReal("probdust", probDust, 1.0, cLine, nLines, &
+         "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
+
+    call getReal("distance", gridDistance, 1.0, cLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+
+    call getInteger("nphase", nPhase, cLine, nLines, &
+         "Number of phases: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    call getInteger("nstart", nStartPhase, cLine, nLines, &
+         "Start at phase: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    call getInteger("nend", nEndPhase, cLine, nLines, &
+         "End at phase: ", "(a,i3,1x,a)", nPhase, ok, .false.)
+
+    ! Used for optical depth tests in phaseloop
+    call getReal("lambdatau", lambdatau, 1.0, cLine, nLines, &
+         "Lambda for tau test: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+
+    ! Parameters of output file
+    call getString("filename", outFile, cLine, nLines, &
+         "Output spectrum filename: ","(a,a,1x,a)","spectrum.dat", ok, .false.)
+
+    call getLogical("sed", sed, cLine, nLines, &
+         "Write spectrum as lambda vs lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("sised", sised, cLine, nLines, &
+         "Write spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2):","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("jansky", jansky, cLine, nLines, &
+         "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
+
   end subroutine readSpectrumParameters
 
 
