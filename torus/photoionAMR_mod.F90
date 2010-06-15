@@ -435,7 +435,7 @@ contains
     logical :: photonsStillProcessing
     integer, allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
-    character(len=80) :: vtkFilename
+!    character(len=80) :: vtkFilename
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
 
