@@ -510,7 +510,6 @@ contains
                          !                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                          sOctal => thisOctal
 
-                         write(*,*) "depth, subcell",  thisOctal%nDepth, subcell
                          if (thisOctal%diffusionApprox(subcell)) then
                             write(*,*) "photon in diffusion zone",photonindiffusionzone
                          endif
