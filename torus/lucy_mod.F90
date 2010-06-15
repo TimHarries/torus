@@ -459,7 +459,6 @@ contains
                    call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
                    thermalphoton = .true.
                    directPhoton = .true.
-
                    call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
                         foundSubcell=tempsubcell)
                    thisOctal => tempOctal

@@ -264,8 +264,10 @@ contains
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
-     use input_variables, only : inputNsource
+     use input_variables, only : inputNsource, teff, ttauriRstar, contfluxfile
      type(GRIDTYPE) :: grid
+     real(double) :: coreContinuumFlux, lAccretion
+     real :: fAccretion
 
      if (inputNsource > 0 ) call writeBanner("Source setup","-",TRIVIAL)
      if (inputNsource > 0) then
@@ -285,6 +287,24 @@ contains
         call init_random_seed()
     endif
     
+
+    if (grid%geometry == "ttauri") then
+       coreContinuumFlux = 0.d0
+       globalnSource = 1	 
+       allocate(globalsourcearray(1:1))
+       globalsourcearray(:)%outsideGrid = .false.
+       globalsourcearray(1)%luminosity = fourPi * stefanBoltz * ttauriRstar**2 * teff**4
+       globalsourcearray(1)%radius = ttaurirStar/1.e10
+       globalsourcearray(1)%teff = teff
+       globalsourcearray(1)%position = VECTOR(0.,0.,0.)
+       call fillSpectrumBB(globalsourcearray(1)%spectrum, globalsourcearray(1)%teff,  dble(100.), dble(2.e8), 200)
+       call normalizedSpectrum(globalsourcearray(1)%spectrum)
+       call buildSphere(grid%starPos1, dble(grid%rCore), globalsourcearray(1)%surface, 1000, contFluxFile, &
+            globalsourcearray(1)%teff)
+       call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
+       globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
+    endif
+
 
 
 end subroutine setupGlobalSources

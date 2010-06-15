@@ -169,6 +169,33 @@ contains
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+       case("ttauri")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call writeInfo("First octal initialized.", TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call fixParentPointers(grid%octreeRoot)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+           ! This section is getting rather long. Maybe this should be done in 
+           ! wrapper subroutine in amr_mod.f90.
+          mdot = 2.d-8 * msol * secstoyears
+          call zeroDensity(grid%octreeRoot)
+          astar = accretingAreaMahdavi(grid)
+          ttauriwind = .true.
+          ttauridisc = .true.
+          if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
+          call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
+          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+          if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+          if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
+          ! Finding the total mass in the accretion flow
+          mass_accretion_old = 0.0d0
+          call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
+          write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
+          call writeInfo(message,FORINFO)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          
+
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)

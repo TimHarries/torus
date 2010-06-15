@@ -4688,10 +4688,12 @@ IF ( .NOT. gridConverged ) RETURN
         r = sqrt(cellcentre%x**2 + cellcentre%y**2)
         hr = height * (r / (100.d0*autocm/1.d10))**betadisc
         
-        if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
-        if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-        if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
-             (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+        if ((r+cellsize/2.d0) > rSublimation) then
+           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+           if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
+                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+        endif
      endif
    case("lexington")
       if (thisOctal%nDepth < mindepthamr) then
@@ -16945,7 +16947,6 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaAbs, thisOctal%maxChildren,1)
        call allocateAttribute(thisOctal%kappaSca, thisOctal%maxChildren,1)
-       write(*,*) "SIZE ",size(thisOctal%kappaAbs,1),size(thisOctal%kappaAbs,2)
     endif
 
     if (molecular) then

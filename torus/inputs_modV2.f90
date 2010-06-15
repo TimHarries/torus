@@ -212,6 +212,227 @@ contains
     logical :: ok
 
     select case(geometry)
+
+       case("ttauri")
+       call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, nLines, &
+            "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
+       rcore = TTauriRstar/1.0e10       ! [10^10cm]
+       call getReal("ttaurimstar", TTauriMstar, real(msol), cLine, nLines, &
+            "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
+       call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, nLines, &
+            "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
+       call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, nLines, &
+            "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
+
+       call getLogical("ttauridisc", ttauriDisc, cLine, nLines, &
+            "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (ttauriDisc) then
+          call getReal("rinner", rInner, ttauriRstar/1.e10, cLine, nLines, &
+               "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+          call getReal("router", rOuter, real(autocm/1.e10), cLine, nLines, &
+               "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+          
+          call getReal("rsub", rSublimation, ttauriRstar/1.e10, cLine, nLines, &
+               "Sublimation radius (rstar): ","(a,f5.1,a)", 20., ok, .true.)
+
+          call getReal("height", height, real(autocm/1e10), cLine, nLines, &
+               "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+          call getReal("mdisc", mDisc, real(msol), cLine, nLines, &
+               "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+
+          call getReal("alphadisc", alphaDisc, 1., cLine, nLines, &
+               "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+          call getReal("betadisc", betaDisc, 1., cLine, nLines, &
+               "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+       endif
+
+       call getReal("curtainsphi1s", curtainsPhi1s, 1., cLine, nLines, &
+            "Curtains 1: Phi start: (degrees): ","(a,f7.1,1x,a)", 30.0, ok, .false.)
+       call getReal("curtainsphi1e", curtainsPhi1e, 1., cLine, nLines, &
+            "Curtains 1: Phi end: (degrees): ","(a,f7.1,1x,a)", 150.0, ok, .false.)
+       call getReal("curtainsphi2s", curtainsPhi2s, 1., cLine, nLines, &
+            "Curtains 2: Phi start: (degrees): ","(a,f7.1,1x,a)", 210.0, ok, .false.)
+       call getReal("curtainsphi2e", curtainsPhi2e, 1., cLine, nLines, &
+            "Curtains 2: Phi end: (degrees): ","(a,f7.1,1x,a)", 330.0, ok, .false.)
+
+       !  converting the angles in radians  (RK) 
+       curtainsPhi1s =    curtainsPhi1s * (pi/180.0) 
+       curtainsPhi1e =    curtainsPhi1e * (pi/180.0) 
+       curtainsPhi2s =    curtainsPhi2s * (pi/180.0) 
+       curtainsPhi2e =    curtainsPhi2e * (pi/180.0) 
+
+
+       ! The following two are used for "constantcurtans" geometry  (RK)
+       call getInteger("curtain_number", curtain_number, cLine, nLines, &
+            "Number of curtains : ","(a,i8,a)", 2, ok, .false.)
+       call getReal("curtain_width", curtain_width, 1., cLine, nLines, &
+            "Width of each curtain (degree) : ","(a,f7.1,1x,a)", 120.0, ok, .false.)
+       ! converting the curtain width from degrees to radians.
+       curtain_width =  curtain_width*Pi/180.0
+
+
+       call getString("mdottype", mDotType, cLine, nLines, &
+            "T Tauri accretion rate model: ","(a,a,1x,a)","constant", ok, .true.)
+       call getReal("mdotpar1", MdotParameter1, 1., cLine, nLines, &
+            "1st parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .true.)
+       call getReal("mdotpar2", MdotParameter2, 1., cLine, nLines, &
+            "2nd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar3", MdotParameter3, 1., cLine, nLines, &
+            "3rd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar4", MdotParameter4, 1., cLine, nLines, &
+            "4th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar5", MdotParameter5, 1., cLine, nLines, &
+            "5th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar6", MdotParameter6, 1., cLine, nLines, &
+            "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+
+       call getLogical("ttauriwarp", ttauriwarp, cLine, nLines, &
+            "Include warped disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("hoverr", hoverr, 1.d0, cLine, nLines, &
+            "Warped disc H/R: ","(a,f7.4,1x,a)", 0.3d0, ok, .false.)
+
+       call getLogical("lte", lte, cLine, nLines, &
+            "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("lycontthick", LyContThick, cLine, nLines, &
+            "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+       call getString("popfile", popFilename, cLine, nLines, &
+            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+       call getLogical("writepops", writePops, cLine, nLines, &
+            "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+       call getLogical("readpops", readPops, cLine, nLines, &
+            "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+       call getLogical("writephasepops", writePhasePops, cLine, nLines, &
+            "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readphasepops", readPhasePops, cLine, nLines, &
+            "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
+       !call getLogical("curtains", curtains, cLine, nLines, &
+       !         "Curtains of accretion: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("dipoleoffset", dipoleOffset, real(degtorad), cLine, nLines, &
+            "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
+       call getLogical("enhance", enhance, cLine, nLines, &
+            "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
+       call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
+       call getLogical("usehartmanntemp", useHartmannTemp, cLine, nLines, &
+            "Use temperatures from Hartmann paper:","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("isotherm", isoTherm, cLine, nLines, &
+            "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("isothermtemp", isoThermTemp, 1., cLine, nLines, &
+            "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
+
+       call getLogical("ttauriwind", ttauriWind, cLine, nLines, &
+            "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (ttauriwind) then
+          call getDouble("DW_Rmin", DW_Rmin, 1.d0, cLine, nLines, &
+               "Disc wind:: Inner radius of the disc wind [magnetospheric radii]: ", &
+               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Rmax", DW_Rmax, 1.d0, cLine, nLines, &
+               "Disc wind:: Outer radius of the disc [disc wind inner radii]: ", &
+               "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
+          call getDouble("DW_Mdot", DW_Mdot, 1.d0,  cLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [mass accretion rate]: ", &
+               "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
+          call getDouble("DW_theta", DW_theta, 1.d0, cLine, nLines, &
+               "Disc wind:: Disc wind angle [degrees]: ", &
+               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("DW_Twind", DW_temperature, 1.d0, cLine, nLines, &
+               "Disc wind:: Isotherma temperature of disc wind [K]: ", &
+               "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
+          DW_rMin = DW_rmin * ttauriRouter/1.d10
+          DW_rMax = DW_rmax * DW_rMin
+          DW_theta = 60.d0 * degtoRad
+          DW_mdot = DW_mdot * mDotparameter1
+       endif
+
+
+       if (useHartmannTemp .and. isoTherm) then 
+          if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
+          stop
+       end if
+       if (useHartmannTemp) &
+            call getReal("maxharttemp", maxHartTemp, 1., cLine, nLines, &
+            "Maximum of Hartmann temperature: ","(a,f7.1,1x,a)", 7436., ok, .false.)
+       ! sub options for ttauri geometry
+       if (ttau_discwind_on) then   ! commnted out here to make ttaur_turn_off_discwind to work
+          ! --- parameters for ttauri wind
+          call getDouble("DW_d", DW_d, 1.d0, cLine, nLines, &
+               "Disc wind:: Wind soudce displacement [10^10cm]: ", &
+               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Rmin", DW_Rmin,  1.d0, cLine, nLines, &
+               "Disc wind:: Inner radius of the disc [10^10cm]: ", &
+               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Rmax", DW_Rmax,  1.d0, cLine, nLines, &
+               "Disc wind:: Outer radius of the disc [10^10cm]: ", &
+               "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
+          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, nLines, &
+               "Disc wind:: Temperature of disc at inner radius [K]: ", &
+               "(a,es9.3,1x,a)", 2000.0d0, ok, .true.) 
+          call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, nLines, &
+               "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+               "(a,es9.3,1x,a)", -0.5d0, ok, .true.) 
+          call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+               "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
+          call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, nLines, &
+               "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("DW_beta", DW_beta,  1.d0, cLine, nLines, &
+               "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("DW_Rs", DW_Rs,  1.d0, cLine, nLines, &
+               "Disc wind:: Effective accerelation length [10^10cm]: ", &
+               "(a,es9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.) 
+          call getDouble("DW_f", DW_f,  1.d0, cLine, nLines, &
+               "Disc wind:: Scaling on the terminal velocity [-]: ", &
+               "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+          call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, nLines, &
+               "Disc wind:: Isotherma temperature of disc wind [K]: ", &
+               "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
+       endif
+       if (ttau_jet_on) then  ! commented out here to make ttaur_turn_off_jet to work
+          ! --- parameters for ttauri wind
+          call getDouble("JET_Rmin", JET_Rmin,  1.d0, cLine, nLines, &
+               "Minmium radius of Jet [10^10 cm]: ", &
+               "(a,es9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
+          call getDouble("JET_theta_j", JET_theta_j,  1.d0, cLine, nLines, &
+               "TTauri jets:: [deg]  jet opening angle: ", &
+               "(a,es9.3,1x,a)", 80.0d0, ok, .true.) 
+          JET_theta_j = JET_theta_j * (Pi/180.0)  ! converting [deg] to [radians]
+
+          call getDouble("JET_Mdot", JET_Mdot,  1.d0, cLine, nLines, &
+               "TTauri jets:: [Msun/yr] mass loss rate in the jets: ", &
+               "(a,es9.3,1x,a)", 1.0d-9, ok, .true.) 
+          call getDouble("JET_a_param", JET_a_param,  1.d0, cLine, nLines, &
+               "TTauri jets:: [-] a parameter in density function: ", &
+               "(a,es9.3,1x,a)", 0.8d0, ok, .true.) 
+          call getDouble("JET_b_param", JET_b_param,  1.d0, cLine, nLines, &
+               "TTauri jets:: [-] b parameter in density function: ", &
+               "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+          call getDouble("JET_Vbase", JET_Vbase,  1.d0, cLine, nLines, &
+               "TTauri jets:: [km/s] Base velocity of jets: ", &
+               "(a,es9.3,1x,a)", 20.0d0, ok, .true.) 
+          call getDouble("JET_Vinf", JET_Vinf,  1.d0, cLine, nLines, &
+               "TTauri jets:: [km/s] Terminal velocity of jets: ", &
+               "(a,es9.3,1x,a)", 200.0d0, ok, .true.) 
+          call getDouble("JET_beta", JET_beta,  1.d0, cLine, nLines, &
+               "TTauri jets:: [-] a parameter in velocity function: ", &
+               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("JET_gamma", JET_gamma,  1.d0, cLine, nLines, &
+               "TTauri jets:: [-] a parameter in velocity function: ", &
+               "(a,es9.3,1x,a)", 0.05d0, ok, .true.) 
+          call getDouble("JET_T", JET_T,  1.d0, cLine, nLines, &
+               "TTauri jets:: [K]  Isothermal temperature of jets: ", &
+               "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
+       endif
+
+
        case("fogel")
        call getString("asciifile", textFilename, cLine, nLines, &
             "Ascii file for abundance data: ","(a,a,a)","none", ok, .true.)
