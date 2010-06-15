@@ -801,6 +801,8 @@ contains
     character(len=80) :: cLine(:)
     integer :: nLines
     logical :: ok
+    call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",0,ok,.false.)
+
     call getReal("taudiff", tauDiff, 1., cLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
