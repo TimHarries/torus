@@ -1,31 +1,45 @@
 program comparespec
   implicit none
 
-! Number of lines in Torus SED
-  integer, parameter :: n1 = 200
-! Number of lines in reference SED
-  integer, parameter :: n2 = 61
-
-  double precision :: x1(n1), x2(n2), y1(n1), y2(n2)
+  integer :: n1, n2
+  character(len=*), parameter :: torus_file = "speca.dat"
+  character(len=*), parameter :: ref_file   = "specb.dat"
+  double precision, allocatable :: x1(:), x2(:), y1(:), y2(:)
   double precision :: thisVal
   double precision :: loginterp, fac, mean
-  integer :: i, nzero
+  integer :: i, nzero, nGoodPoints, status
+  integer :: file_line_count
   character(len=100) :: header
 
-  open(20,file="speca.dat", form="formatted", status="old",err=666)
-  read(20,*) header
+! Read Torus file discarding 1 header line
+  n1 = file_line_count(torus_file, 1)
+  if ( n1 < 1 ) call file_read_error(torus_file) 
+  write(*,*) "Reading", n1, " lines from "//torus_file
+  allocate (x1(n1), y1(n1))
+  open(20,file=torus_file, form="formatted", status="old",iostat=status)
+  if ( status /= 0 ) call file_read_error(torus_file)
+  read(20,*,iostat=status) header
+  if ( status /= 0 ) call file_read_error(torus_file)
   do i = 1, n1
-     read(20,*) x1(i), y1(i)
+     read(20,*,iostat=status) x1(i), y1(i)
+     if ( status /= 0 ) call file_read_error(torus_file)
   enddo
   close(20)
 
-  open(20,file="specb.dat", form="formatted", status="old", err=666)
+! Read reference SED
+  n2 = file_line_count(ref_file, 0)
+  if ( n2 < 1 ) call file_read_error(ref_file)
+  write(*,*) "Reading", n2, " lines from "//ref_file
+  allocate (x2(n2), y2(n2))
+  open(20,file=ref_file, form="formatted", status="old", iostat=status)
+  if ( status /= 0 ) call file_read_error(ref_file)
   do i = 1, n2
-     read(20,*) x2(i), y2(i)
+     read(20,*,iostat=status) x2(i), y2(i)
+     if ( status /= 0 ) call file_read_error(ref_file)
   enddo
   close(20)
 
-
+! Check Torus SED against reference SED
   nZero = 0
   mean = 0.
   do i = 1, n1
@@ -38,27 +52,42 @@ program comparespec
      endif
   enddo
 
+  nGoodPoints = n1-nZero
+  mean        = mean / dble(nGoodPoints)
+
+! Write out the results
+  write(*,*) "Number of comparision points = ", nGoodPoints
+  write(*,'(a,f10.2)') "Minimum wavelength for comparison = ", MINVAL(x1(:))
+  write(*,'(a,f10.2)') "Maximum wavelength for comparison = ", MAXVAL(x1(:))
+
   if (nZero == n1) then
      write(*,*) "Spectrum full of zeros..."
-     goto 666
-  endif
+     write(*,*) "TORUS: Test failed"
+  elseif (mean > 0.1) then
+     write(*,*) "Mean relative difference > 10%", mean*100.
+     write(*,*) "TORUS: Test failed"
+  else
+     write(*,*) "TORUS: Test successful"
+     write(*,*) "Mean relative difference= ", mean*100, "%"
+  end if
 
-  mean = mean / dble(n1-nZero)
-  if (mean > 0.1) then
-     write(*,*) "Mean relative difference > 10%",mean*100.
-     goto 666
-  endif
+  deallocate (x1, x2, y1, y2)
 
-  write(*,*) "TORUS: Test successful"
-  write(*,*) "Mean relative difference= ", mean*100, "%"
-  goto 999
+  contains 
 
+    subroutine file_read_error(filename)
 
-666 continue
-  write(*,*) "TORUS: Test failed"
+      character(len=*), intent(in) :: filename
 
-999 continue
+      write(*,*) "Error reading from "//trim(filename)
+      write(*,*) "TORUS: Test failed"
+      STOP
+
+    end subroutine file_read_error
+
 end program comparespec
+
+!-------------------------------------------------------------------------------
 
   PURE SUBROUTINE LOCATE(XX,N,X,J)
     double precision, intent(in)    :: XX(*)
@@ -91,6 +120,8 @@ end program comparespec
 
     END SUBROUTINE LOCATE
 
+!-------------------------------------------------------------------------------
+
   double precision function logInterp(y, ny, x, xi)
     double precision, intent(in)    :: y(*), x(*), xi
     integer, intent(in) :: ny
@@ -104,3 +135,35 @@ end program comparespec
     logInterp = 10.e0**(log10(y(i)) + t * (log10(y(i+1))-log10(y(i))))
 
   end function logInterp
+
+!-------------------------------------------------------------------------------
+
+! Count the number of real pairs which can be read in from the specified file
+
+  integer function file_line_count(filename, nheader)
+
+    character(len=*), intent(in) :: filename
+    integer, intent(in) :: nheader
+    real :: dummy1, dummy2
+    integer :: status, i
+    character(len=100) :: header
+
+    open(unit=30, status="old", file=filename)
+
+! Ignore any header lines
+    do i=1, nheader
+       read(30,*) header
+    end do
+
+    file_line_count = 0
+    do
+       read(30,*,iostat=status) dummy1, dummy2
+       if ( status /= 0 ) exit
+       file_line_count = file_line_count + 1 
+    end do
+
+    close(30)
+
+  end function file_line_count
+
+!-------------------------------------------------------------------------------
