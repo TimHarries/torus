@@ -1,21 +1,25 @@
 program comparespec
   implicit none
-  real :: x1(1000), x2(1000), y1(1000), y2(1000)
-  real :: thisVal
-  real :: loginterp,fac,mean
-  integer :: n1, n2,i,nzero
+
+! Number of lines in Torus SED
+  integer, parameter :: n1 = 200
+! Number of lines in reference SED
+  integer, parameter :: n2 = 61
+
+  double precision :: x1(n1), x2(n2), y1(n1), y2(n2)
+  double precision :: thisVal
+  double precision :: loginterp, fac, mean
+  integer :: i, nzero
   character(len=100) :: header
 
   open(20,file="speca.dat", form="formatted", status="old",err=666)
   read(20,*) header
-  n1 = 200
   do i = 1, n1
      read(20,*) x1(i), y1(i)
   enddo
   close(20)
 
   open(20,file="specb.dat", form="formatted", status="old", err=666)
-  n2 = 61
   do i = 1, n2
      read(20,*) x2(i), y2(i)
   enddo
@@ -39,7 +43,7 @@ program comparespec
      goto 666
   endif
 
-  mean = mean / real(n1-nZero)
+  mean = mean / dble(n1-nZero)
   if (mean > 0.1) then
      write(*,*) "Mean relative difference > 10%",mean*100.
      goto 666
@@ -57,9 +61,9 @@ program comparespec
 end program comparespec
 
   PURE SUBROUTINE LOCATE(XX,N,X,J)
-    real, intent(in)    :: XX(*)
+    double precision, intent(in)    :: XX(*)
     integer,intent(in)  :: n
-    real,intent(in)     :: x
+    double precision,intent(in)     :: x
     integer,intent(out) :: j
     integer :: jl, ju,jm
       JL=0
@@ -87,11 +91,11 @@ end program comparespec
 
     END SUBROUTINE LOCATE
 
-  real function logInterp(y, ny, x, xi)
-    real, intent(in)    :: y(*), x(*), xi
+  double precision function logInterp(y, ny, x, xi)
+    double precision, intent(in)    :: y(*), x(*), xi
     integer, intent(in) :: ny
     integer, save       :: i
-    real                :: t
+    double precision    :: t
 
     call locate(x, ny, xi, i)
     
