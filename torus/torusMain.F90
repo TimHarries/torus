@@ -2356,7 +2356,7 @@ subroutine set_up_sources
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
 
-       source(1)%distance = 7. * pctocm
+       source(1)%distance = 22. * pctocm
        source(1)%luminosity = source(1)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
             (fourPi*source(1)%distance**2)
        if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37

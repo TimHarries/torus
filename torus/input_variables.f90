@@ -51,6 +51,7 @@ module input_variables
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
   logical :: photoionization
+  logical :: noDiffuseField
   logical :: usemetals 
   logical :: quickThermal
   integer :: inputNMonte

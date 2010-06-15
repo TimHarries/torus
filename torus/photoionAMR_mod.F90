@@ -180,8 +180,8 @@ contains
     call ionizeGrid(grid%octreeRoot)
 
 
-    call writeVtkFile(grid, "start.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+!    call writeVtkFile(grid, "start.vtk", &
+!         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
     loopLimitTime = 1.e30
     if (startFromNeutral) loopLimitTime = grid%currentTime
@@ -365,7 +365,7 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein, maxIter, tLimit, sublimate)
-    use input_variables, only : quickThermal, inputnMonte
+    use input_variables, only : quickThermal, inputnMonte, noDiffuseField
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
@@ -497,12 +497,12 @@ contains
        write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
     endif
 
-    call writeVtkFile(grid, "start.vtk", &
-         valueTypeString=(/"rho        ", "HI         ","temperature", "dust1      " /))
+!    call writeVtkFile(grid, "start.vtk", &
+!         valueTypeString=(/"rho        ", "HI         ","temperature", "dust1      " /))
 
 
     if (inputnMonte == 0) then
-       nMonte = 10000000
+       nMonte = 100000000
     else
        nMonte = inputnMonte
     endif
@@ -626,7 +626,9 @@ contains
                          goto 777
                       endif
 
+                      if (noDiffuseField) escaped = .true.
                       if (escaped) nEscaped = nEscaped + 1
+
 
                       if (.not. escaped) then
                          
@@ -815,8 +817,8 @@ contains
 
 !       call tune(6, "Gauss-Seidel sweeps")
 
-    call writeVtkFile(grid, "current.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+!    call writeVtkFile(grid, "current.vtk", &
+!         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
 !    if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
 if (.false.) then
@@ -902,11 +904,11 @@ if (.false.) then
 
     call torus_mpi_barrier
 
- write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
- call writeVtkFile(grid, vtkFilename, &
-      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-      "dust1        ","radmom       "/))
- call writeAMRgrid("tmp.grid",.false.,grid)
+! write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+! call writeVtkFile(grid, vtkFilename, &
+!      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+!      "dust1        ","radmom       "/))
+! call writeAMRgrid("tmp.grid",.false.,grid)
 enddo
 
 

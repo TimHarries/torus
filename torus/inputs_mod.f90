@@ -1442,6 +1442,10 @@ contains
          "Do quick thermal balance calculation: ","(a,1l,a)", .false., ok, .true.)
 
 
+    call getLogical("nodiffusefield", noDiffuseField, cLine, nLines, &
+         "Do not consider diffuse radiation field: ","(a,1l,a)", .false., ok, .true.)
+
+
        call getReal("inclination", thisinclination, cLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
 
