@@ -230,7 +230,6 @@ contains
              write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
              call writeInfo(message,FORINFO)
 
-
           end if  ! gemoetry == "ttaruri"
 
           ! 

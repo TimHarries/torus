@@ -1620,10 +1620,12 @@ contains
              end if
           end do
        else
-          call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
-          call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
-          call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
-          thisOctal%dustTypeFraction(subcell,1) = 1.d0
+          if (.not.associated(thisOctal%dustTypeFraction)) then
+             call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+             call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
+             call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
+             thisOctal%dustTypeFraction(subcell,1) = 1.d0
+          endif
        endif
     enddo
   end subroutine allocateMemoryForDust

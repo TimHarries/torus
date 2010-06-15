@@ -135,7 +135,7 @@ contains
      if (dustPhysics.and.radiativeEquilibrium) then
         call setupXarray(grid, xarray, nLambda)
         call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-        call fillDustUniform(grid, grid%octreeRoot)
+!        call fillDustUniform(grid, grid%octreeRoot)
         call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
              globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
      endif

@@ -153,11 +153,13 @@ contains
 
     x = r0/DW_rMin
     
-    vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - r0/r) ! Kwan Edwards & Fischer
-
-    velocityBlandfordPayne = (vel/cSpeed) * rVec 
-
-    velocityBlandfordPayne = rotateZ(velocityBlandfordPayne, -phi)
+    if ((r /= 0.d0).and.(x >= 0.d0)) then
+       if (r0/r < 1.d0) then
+          vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - r0/r) ! Kwan Edwards & Fischer
+          velocityBlandfordPayne = (vel/cSpeed) * rVec 
+          velocityBlandfordPayne = rotateZ(velocityBlandfordPayne, -phi)
+       endif
+    endif
 
 
 666 continue

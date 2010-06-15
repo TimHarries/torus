@@ -447,6 +447,8 @@ contains
 
 
                 !$OMP DO SCHEDULE(runtime)
+
+
                 photonloop: do iMonte = imonte_beg, imonte_end
 
                    ! if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
@@ -508,6 +510,7 @@ contains
                          !                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                          sOctal => thisOctal
 
+                         write(*,*) "depth, subcell",  thisOctal%nDepth, subcell
                          if (thisOctal%diffusionApprox(subcell)) then
                             write(*,*) "photon in diffusion zone",photonindiffusionzone
                          endif
