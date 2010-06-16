@@ -60,10 +60,7 @@ nphotons 500000
 filename test
 sised T              ! Write spectrum as lambda vs F lambda in SI units
 distance 2.25558e-8  ! Distance to observer
-
-! Specify wavelength array properties
-wavlin F
-lamstart 1200.
-lamend  2.e7
-nlambda 200
+sedlammin 0.12       ! minimum wavelength in SED file
+sedlammax 2000       ! maximum wavelength in SED file
+sedwavlin F          ! Linear spacing in SED file? 
 
