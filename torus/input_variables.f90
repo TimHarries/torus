@@ -95,7 +95,11 @@ module input_variables
   logical :: fastIntegrate
   real(double) :: etaViscosity
   logical :: opticallyThickContinuum, onTheSpot
+
+! SED variables
   logical :: sed, jansky, SIsed, inArcsec
+  real :: SEDlamMin, SEDlamMax
+  logical :: SEDwavLin
 
   ! Data cube parameters
   real(double) :: galaxyInclination, galaxyPositionAngle 

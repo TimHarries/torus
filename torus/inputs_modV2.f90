@@ -986,6 +986,15 @@ contains
     call getLogical("jansky", jansky, cLine, nLines, &
          "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getReal("sedlammin", SEDlamMin, 1.0e4, cLine, nLines, &
+         "Minimum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 0.1, ok, .false.)
+
+    call getReal("sedlammax", SEDlamMax, 1.0e4, cLine, nLines, &
+         "Maximum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
+
+    call getLogical("sedwavlin", SEDwavLin, cLine, nLines, &
+         "Linear wavelength spacing in SED: ","(a,1l,1x,a)", .false., ok, .false.)
+
   end subroutine readSpectrumParameters
 
 

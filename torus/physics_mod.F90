@@ -192,12 +192,14 @@ contains
 
    end subroutine doPhysics
 
-   subroutine setupXarray(grid, xArray, nLambda)
+   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
      integer :: nLambda
+     real, optional, intent(in) :: lamMin, lamMax
+     logical, optional, intent(in) :: wavLin
      integer :: nCurrent, nt, i
      real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
      if (associated(xarray)) deallocate(xarray)
@@ -216,17 +218,30 @@ contains
      endif
 
      if (dustPhysics) then
+
         nLambda = 1000
         allocate(xarray(1:nLambda))
-        lamStart = 10.d0
-        lamEnd = 1.d7
-        logLamStart = log10(lamStart)
-        logLamEnd = log10(lamEnd)
-        do i = 1, nlambda
-           fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           xArray(i) = fac
-        enddo
+
+        if ( present(lamMin) ) then 
+           lamStart = lamMin
+        else
+           lamStart = 10.d0
+        end if
+        if ( present(lamMax) ) then 
+           lamEnd = lamMax
+        else
+           lamEnd = 1.d7
+        end if
+
+        if ( present(wavLin) ) then 
+           if (wavLin) then 
+              call setupLinSpacing
+           else
+              call setupLogSpacing
+           endif
+        else
+           call setupLogSpacing
+        end if
      endif
 
      if (photoionPhysics) then
@@ -257,6 +272,28 @@ contains
      if (associated(grid%lamArray)) deallocate(grid%lamArray)
      allocate(grid%lamArray(1:nLambda))
      grid%lamArray = xarray
+
+     contains
+
+       subroutine setupLogSpacing
+
+         logLamStart = log10(lamStart)
+         logLamEnd = log10(lamEnd)
+         do i = 1, nlambda
+            fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+            fac = 10.**fac
+            xArray(i) = fac
+        enddo
+        
+       end subroutine setupLogSpacing
+
+       subroutine setupLinSpacing
+
+         do i = 1, nlambda
+            xArray(i) = LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart)
+        enddo
+        
+       end subroutine setupLinSpacing
 
    end subroutine setupXarray
 
