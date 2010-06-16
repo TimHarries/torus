@@ -2925,7 +2925,8 @@ enddo
      end if
 
 #ifdef MPI
- if (myRankGlobal /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
+! No need to free the grid if there is only one trip on phaseloop
+ if (myRankGlobal /= 0 .and. .not.noPhaseUpdate .and. nStartPhase /= nEndPhase ) call freeGrid(grid)
 #endif
   call torus_mpi_barrier !('waiting inside end of phase loop...')
   enddo phaseLoop
