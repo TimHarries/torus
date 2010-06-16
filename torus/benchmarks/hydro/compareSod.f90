@@ -1,18 +1,34 @@
 program compareSod
   implicit none
+
+  character(len=*), parameter :: torus_file="sod.dat"
+  character(len=*), parameter :: ref_file  ="sod_analytical.dat"
   integer, parameter :: nSodA = 19
   real :: xA(nSodA), rhoA(nSodA), testrho,fac
   integer :: nTorus
   real :: tot, percent
-  integer :: i,j 
+  integer :: i,j, status 
   integer :: nTorusMax = 100000
   real, allocatable :: xTorus(:), rhoTorus(:)
-  open(20,file="sod_analytical.dat", status="old", form="formatted")
+  logical :: found
+
+  open(20,file=ref_file, status="old", form="formatted",iostat=status)
+  if ( status /= 0) call file_read_error(ref_file)
   do i = 1, nSodA
      read(20,*) xA(i), rhoA(i)
   enddo
   close(20)
-  open(20,file="sod.dat", status="old", form="formatted")
+
+  inquire(file=torus_file, exist=found )
+  if ( found ) then 
+     open(20,file=torus_file, status="old", form="formatted")
+     if ( status /= 0) call file_read_error(torus_file) 
+  else
+     write(*,*) torus_file//" not found"
+     write(*,*) "TORUS: Test failed"
+     STOP
+  end if
+
   allocate(xTorus(1:nTorusMax), rhoTorus(1:nTorusMax))
   nTorus = 1
 10 continue
@@ -57,3 +73,16 @@ SUBROUTINE LOCATE(XX,N,X,J)
   ENDIF
   J=JL
 END SUBROUTINE LOCATE
+
+subroutine file_read_error(filename)
+
+  implicit none
+
+  character(len=*), intent(in) :: filename
+
+  write(*,*) "Error reading from "//trim(filename)
+  write(*,*) "TORUS: Test failed"
+  STOP
+
+end subroutine file_read_error
+
