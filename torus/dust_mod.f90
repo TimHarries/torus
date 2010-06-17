@@ -1504,6 +1504,7 @@ contains
        call writeInfo("Computing Mie phase grid...",TRIVIAL)
 
        if (isotropicScattering) then
+          call writeInfo("Using isotropic scattering",FORINFO)
           miePhase = fillIsotropic()
           call writeInfo("Completed.",TRIVIAL)
           return

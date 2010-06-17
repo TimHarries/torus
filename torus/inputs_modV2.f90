@@ -601,7 +601,10 @@ contains
                "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
           if (writeoutput) write(*,*)
        enddo
-       call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
+
+       call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
+         "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
   end subroutine readDustPhysicsParameters
 

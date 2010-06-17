@@ -99,12 +99,12 @@ contains
 
     if (dustPhysics.and.(calcspectrum.or.calcimage)) then
        mie = .true.
-       if ( calcspectrum ) then 
-          call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
-               wavLin=SEDwavLin)
-       else
+!       if ( calcspectrum ) then 
+!          call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
+!               wavLin=SEDwavLin)
+!       else
           call setupXarray(grid, xarray, nLambda)
-       end if
+!       end if
        call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        call do_phaseloop(grid, .true., 0., 0., 0.,  &
             0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
