@@ -16,7 +16,7 @@ contains
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage
-    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin
+!    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin
     use photoionAMR_mod, only : createImageSplitGrid
     use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
