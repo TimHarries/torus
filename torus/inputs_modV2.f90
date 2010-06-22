@@ -214,6 +214,8 @@ contains
     select case(geometry)
 
        case("ttauri")
+       call getReal("teff", teff, 1., cLine, nLines, &
+            "Source temperature (K) : ","(a,f8.0,a)", 0.0, ok, .true.)
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, nLines, &
             "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
        rcore = TTauriRstar/1.0e10       ! [10^10cm]
@@ -348,7 +350,6 @@ contains
           DW_rMin = DW_rmin * ttauriRouter/1.d10
           DW_rMax = DW_rmax * DW_rMin
           DW_theta = 60.d0 * degtoRad
-          DW_mdot = DW_mdot * mDotparameter1
        endif
 
 
@@ -806,11 +807,33 @@ contains
     logical :: ok
     call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",0,ok,.false.)
 
+    call getInteger("iterLucy", iterLucy, cline, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",3,ok,.false.)
+
+    call getLogical("forceLucyConv", forceLucyConv, cLine, nLines, &
+         "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getReal("lucy_undersampled", lucy_undersampled, 1., cLine, nLines, &
+         "Minimum percentage of undersampled cell in lucy iteration: ", &
+         "(a,f4.2,a)",0.0,ok,.false.)
+
+    call getReal("diffdepth", diffDepth, 1., cLine, nLines, &
+         "Depth of diffusion zone (in Rosseland optical depths): ", &
+         "(a,f5.1,a)",10.0,ok,.false.)
+
+    call getInteger("mincrossings", minCrossings, cLine, nLines, &
+         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
+
+    call getReal("tminglobal", TMinGlobal, 1., cLine, nLines, &
+         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
+
     call getReal("taudiff", tauDiff, 1., cLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
     call getReal("tauforce", tauForce, 1., cLine, nLines, &
          "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
+
+    call getReal("edenstol", eDensTol, 1., cLine, nLines, &
+         "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
 
        call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
             "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -843,6 +866,10 @@ contains
     integer :: nLines
     logical :: ok
 
+    call getReal("inclination", thisinclination, real(degtorad), cLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+    call getReal("positionangle", positionAngle, real(degtorad), cLine, nLines, &
+         "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getString("datacubefile", datacubeFilename, cLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("imageside", imageside, 1., cLine, nLines, &
@@ -851,39 +878,40 @@ contains
          "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
     call getInteger("nv", nv, cLine, nLines, &
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
-    call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
-         "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
-    call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
-         "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
-    call getLogical("lineimage", lineImage, cLine, nLines, &
-         "Line emission: ","(a,1l,a)", .true., ok, .false.)
-    if(.not. lineimage) then
-       call getReal("lamline", lamLine, 1.e4,cLine, nLines, &
-            "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
-    endif
-
-    call getLogical("rgbcube", rgbCube, cLine, nLines, &
-         "Create an RGB data cube (reverses velocity axis): ","(a,1l,a)", .false., ok, .false.)
-    call getInteger("itrans", itrans, cLine, nLines, &
-         "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
-    call getReal("beamsize", beamsize, 1., cLine, nLines, &
-         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
-    call getDouble("rotateviewaboutx", rotateViewAboutX, 1.d0, cLine, nLines, &
-         "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
-    call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, nLines, &
-         "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
     call getDouble("maxVel", maxVel, 1.d0, cLine, nLines, &
-         "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
-    call getDouble("centrevecx", centrevecx, 1.d0, cLine, nLines, &
-         "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
-    call getDouble("centrevecy", centrevecy, 1.d0, cLine, nLines, &
-         "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
-    call getDouble("centrevecz", centrevecz, 1.d0, cLine, nLines, &
-         "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
-    call getLogical("wanttau", wanttau, cLine, nLines, &
-         "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
-
-
+         "Maximum Velocity Channel (km/s): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+    if (molecularPhysics) then
+       call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
+            "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
+       call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
+            "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
+       call getLogical("lineimage", lineImage, cLine, nLines, &
+            "Line emission: ","(a,1l,a)", .true., ok, .false.)
+       if(.not. lineimage) then
+          call getReal("lamline", lamLine, 1.e4,cLine, nLines, &
+               "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
+       endif
+       
+       call getLogical("rgbcube", rgbCube, cLine, nLines, &
+         "Create an RGB data cube (reverses velocity axis): ","(a,1l,a)", .false., ok, .false.)
+       call getInteger("itrans", itrans, cLine, nLines, &
+            "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
+       call getReal("beamsize", beamsize, 1., cLine, nLines, &
+            "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
+       call getDouble("rotateviewaboutx", rotateViewAboutX, 1.d0, cLine, nLines, &
+            "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+       call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, nLines, &
+            "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+       call getDouble("centrevecx", centrevecx, 1.d0, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("centrevecy", centrevecy, 1.d0, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("centrevecz", centrevecz, 1.d0, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       call getLogical("wanttau", wanttau, cLine, nLines, &
+            "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
+    endif
+       
   end subroutine readDataCubeParameters
 
   subroutine readImageParameters(cLine, nLines)

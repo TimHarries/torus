@@ -15,7 +15,7 @@ contains
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
-    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage
+    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
 !    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin
     use photoionAMR_mod, only : createImageSplitGrid
     use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance
@@ -46,7 +46,7 @@ contains
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
-    viewVec = VECTOR(-1.d0, 0.d0, 0.d0)
+    viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
     if (writegrid) then
        call writeAMRgrid(gridOutputFilename,.false.,grid)
     endif
@@ -60,7 +60,7 @@ contains
        gridDistance = 140.d0* pctocm/1.d10
        call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
             viewVec, dble(gridDistance), &
-            globalSourceArray, globalnsource, 1, totalflux)
+            globalSourceArray, globalnsource, 1, totalflux, occultingDisc=.true.)
     endif
 
     if (photoionPhysics.and.splitoverMPI.and.calcImage) then

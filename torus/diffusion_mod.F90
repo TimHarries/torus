@@ -34,13 +34,36 @@ contains
              end if
           end do
        else
-          if (thisOctal%diffusionApprox(subcell)) then
-             thisOctal%oldtemperature(subcell) = thisOctal%temperature(subcell)
+          thisOctal%oldtemperature(subcell) = thisOctal%temperature(subcell)
+          if (thisOctal%diffusionApprox(subcell).and.(.not.thisOctal%fixedTemperature(subcell))) then
              thisOctal%temperature(subcell) = max(thisOctal%chiline(subcell),3.d0)
           endif
        endif
     enddo
   end subroutine copychilinetoTemperature
+
+  recursive subroutine countDiffusionCells(thisOctal, ndiff)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i, ndiff
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call countDiffusionCells(child, ndiff)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%diffusionApprox(subcell).and.(.not.thisOctal%fixedTemperature(subcell))) then
+             ndiff = ndiff + 1
+          endif
+       endif
+    enddo
+  end subroutine countDiffusionCells
 
   recursive subroutine copyTemperaturetochiline(thisOctal)
   type(octal), pointer   :: thisOctal
@@ -89,7 +112,6 @@ contains
           end do
        else
           thisOctal%temperature(subcell) = (thisOctal%eDens(subcell)/arad)**0.25d0
-
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
           thisOctal%kappaRoss(subcell) = kRos
           thisOctal%diffusionCoeff(subcell) =  cSpeed / max(1.d-20,(kRos * thisOctal%rho(subcell)))
@@ -248,7 +270,7 @@ contains
              eDens = 0.d0
              dCoeff = 0.d0
 
-             if (thisOctal%diffusionApprox(subcell)) then
+             if (thisOctal%diffusionApprox(subcell).and.(.not.thisOctal%fixedtemperature(subcell))) then
 
                 if (thisOctal%twoD) then
                    r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
@@ -668,7 +690,7 @@ contains
  !    print *,'Process ',my_rank,' finished updating values in Gauss-Seidel sweep...' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 #endif
-    
+!    if (writeoutput) write(*,*) "Demax ",demax
     if (deMax > tol) converged = .false.
     deallocate(octalArray)
 #ifdef MPI
@@ -684,8 +706,9 @@ end subroutine gaussSeidelSweep
     character(len=80) :: message
     logical :: gridConverged
     real(double) :: deMax
-    integer :: niter
+    integer :: niter, i
     integer, parameter :: maxIter = 10000
+    
 !    logical, save :: firstTime = .true.
 
     call seteDens(grid, grid%octreeRoot)
@@ -707,6 +730,11 @@ end subroutine gaussSeidelSweep
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)
 !    call resetDiffusionTemp(grid%octreeRoot, 100.)
+
+    i  = 0
+    call countDiffusionCells(grid%octreeRoot, i)
+    write(message,*) "Number of cells in diffusion zone: ",i
+    call writeInfo(message, TRIVIAL)
 
     gridconverged = .false.
     nIter = 0

@@ -649,7 +649,11 @@ contains
           u0 = getUT(treal, uCoeff(1,:))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-          N1overN0 = (10.d0**N1overN0)/pe
+          if ((t > 3.).and.(pe /= 0.d0)) then
+             N1overN0 = (10.d0**N1overN0)/pe
+          else
+             N1overN0 = 0.d0
+          endif
           
           !          n1overn0 = (2.d0*u1)/(ne*u0) * ((twoPi * melectron * kerg * t)/(hCgs**2))**1.5d0 * exp(-thisAtom%iPot/(kev*t))
           

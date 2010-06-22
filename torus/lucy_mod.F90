@@ -970,7 +970,7 @@ contains
        if ( .not. suppressLucySmooth ) call putTau(grid, 6.e4)
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     ", "etaline    "/))
+            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
 
        !    !
        !    ! Write grid structure to a tmp file.

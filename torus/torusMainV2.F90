@@ -95,6 +95,8 @@ program torus
 
   call writeBanner("Run-time messages","+",TRIVIAL)
 
+  call init_random_seed()
+
   call doPhysics(grid)
 
   call doOutputs(grid)

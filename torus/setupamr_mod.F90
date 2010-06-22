@@ -38,6 +38,7 @@ contains
     use discwind_class, only: discwind, new, add_discwind
     use sph_data_class, only: new_read_sph_data
 #ifdef MPI 
+    use parallel_mod, only : sync_random_seed
     use mpi_amr_mod
     use photoionAMR_mod, only : ionizeGrid, resetNh
 #endif
@@ -59,6 +60,10 @@ contains
     integer :: nVoxels, nOctals
 
     constantAbundance = .true.
+
+#ifdef MPI
+    call sync_random_seed()
+#endif
 
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
@@ -173,6 +178,15 @@ contains
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+          do
+             gridConverged = .true.
+             call myScaleSmooth(3., grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .false.)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+          
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
@@ -194,7 +208,6 @@ contains
           write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
           call writeInfo(message,FORINFO)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-          
 
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 

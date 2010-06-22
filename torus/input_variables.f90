@@ -103,6 +103,7 @@ module input_variables
 
   ! Data cube parameters
   real(double) :: galaxyInclination, galaxyPositionAngle 
+  real :: positionAngle
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
   logical :: splitOverMPI

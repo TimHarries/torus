@@ -480,9 +480,15 @@ contains
                         thisoctal%velocity(subcell)%y = 0.d0
                         thisoctal%velocity(subcell)%z = 0.d0
                      endif
-                     write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
-                          real(thisOctal%velocity(subcell)%y*cspeed/1.e5), &
-                          real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
+                     if (thisOctal%threed) then
+                        write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
+                             real(thisOctal%velocity(subcell)%y*cspeed/1.e5), &
+                             real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
+                     else
+                        write(lunit, *) real(thisOctal%velocity(subcell)%x*cspeed/1.e5), &
+                             real(thisOctal%velocity(subcell)%z*cspeed/1.e5), &
+                             real(thisOctal%velocity(subcell)%y*Cspeed/1.e5)
+                     endif
               case("cornervel")
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
@@ -506,6 +512,13 @@ contains
 
                case("inflow")
                   if (thisOctal%inflow(subcell)) then
+                     write(lunit, *) 1.
+                  else
+                     write(lunit, *) 0.
+                  endif
+
+               case("fixedtemp")
+                  if (thisOctal%fixedTemperature(subcell)) then
                      write(lunit, *) 1.
                   else
                      write(lunit, *) 0.

@@ -363,7 +363,7 @@ contains
     do iAtom = 1, nAtom
        nPops(iAtom,1:thisAtom(iAtom)%nLevels) = matrixB(1+nOffset(iAtom):thisAtom(iatom)%nLevels+nOffset(iAtom))
        if (continuumGround(iatom)) npops(iAtom,thisAtom(iatom)%nlevels) = matrixB(1+nOffset(iatom+1))
-       write(*,*) "iatom ",iatom, continuumGround(iatom)
+!       write(*,*) "iatom ",iatom, continuumGround(iatom)
     enddo
     deallocate(matrixA, matrixB)
 
@@ -850,6 +850,7 @@ contains
 
        sumWeight = 0.d0
        tauAv = 0.d0
+       inuAv = 0.d0
        do iRay = 1, nRay
           nLower = nPops(iLower)
           nUpper = nPops(iUpper)
@@ -859,13 +860,6 @@ contains
           etaLine = hCgs * a * thisAtom%transFreq(iTrans)
           etaLine = etaLine *  nPops(iUpper)
 
-          if (alphanu < 0.d0) then
-             alphanu = 0.d0
-             if (first) then
-                write(*,*) "negative opacity warning in calcjbar",iUpper,iLower,nLower,nUpper,thisAtom%name
-                first = .false.
-             endif
-          endif
           thisPosition = position(iray)
           startVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell) 
 
@@ -979,7 +973,7 @@ contains
           nStar(iAtom,j) = BoltzSahaGeneral(thisAtom(iAtom), 1, j, ne, &
                dble(thisOctal%temperature(subcell))) * &
                Thisoctal%atomlevel(subcell, iAtom,thisAtom(iatom)%nLevels)
-          write(*,*) "iatom ", iatom, " j ",nstar(iatom,j), thisOctal%atomlevel(subcell, iatom,thisAtom(iatom)%nLevels)
+!          write(*,*) "iatom ", iatom, " j ",nstar(iatom,j), thisOctal%atomlevel(subcell, iatom,thisAtom(iatom)%nLevels)
 
        enddo
        if (any(nstar(iatom,1:thisAtom(iatom)%nlevels-1) < 0.d0)) then
@@ -1075,7 +1069,7 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 5, maxRay = 200000
+    integer, parameter :: maxIter = 500, maxRay = 200000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
@@ -1110,7 +1104,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-4, neTolerance = 1.d-4
+    real(double), parameter :: convergeTol = 1.d-3, neTolerance = 1.d-3
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename, tfilename
@@ -1405,7 +1399,7 @@ contains
                    thisOctal%inFlow(subcell) = &
                         thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
 
-                   if (thisOctal%inflow(subcell)) then !.and.(.not.thisOctal%fixedTemperature(subcell))) then
+                   if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then !.and.(.not.thisOctal%fixedTemperature(subcell))) then
                       nHit = 0
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position(iray), direction(iray), rayDeltaV(iray),&
@@ -1417,6 +1411,7 @@ contains
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       iter = 0
+                      neiter = 0
                       popsConverged = .false.
                       thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
                       ne = thisOctal%ne(subcell)
@@ -1503,11 +1498,14 @@ contains
                            ntot = 0.d0
                            ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,1, &
                                 1:thisAtom(1)%nLevels))
-                           ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,2, &
-                                1:thisAtom(2)%nLevels-1))
-                           
-                           ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,3, &
-                                1:thisAtom(3)%nLevels))
+                           if (natom > 1) then
+                              ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,2, &
+                                   1:thisAtom(2)%nLevels-1))
+                           endif
+                           if (natom  > 2) then
+                              ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,3, &
+                                   1:thisAtom(3)%nLevels))
+                           endif
 
                             if (debug) then
                                write(*,*) "Iteration: ",iter
@@ -1605,8 +1603,8 @@ contains
 
                    endif
 
-                   write(*,*) "IMMEDIATELY replaceing populations...."
-                   thisOctal%atomLevel(subcell,:,:) = thisOctal%newatomLevel(subcell,:,:)
+!                   write(*,*) "IMMEDIATELY replaceing populations...."
+!                   thisOctal%atomLevel(subcell,:,:) = thisOctal%newatomLevel(subcell,:,:)
 
 
                 endif
@@ -1889,9 +1887,9 @@ contains
     do subcell = 1, thisOctal%maxChildren
        t = thisOctal%temperature(subcell)
        rVec = subcellCentre(thisOctal, subcell)
-       write(*,*) " t ",t , " r ",modulus(rVec)/grid%rcore
+!       write(*,*) " t ",t , " r ",modulus(rVec)/grid%rcore
+       N_H = thisOctal%rho(subcell)/mHydrogen  ! number density of HI plus number density of HII
        if (real(hydE0eV,kind=double)/(kev*T) < 60.d0) then 
-         N_H = thisOctal%rho(subcell)/mHydrogen  ! number density of HI plus number density of HII
           phiT = CI*Z_HI(10,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
 
           ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
@@ -2062,7 +2060,7 @@ contains
     call locate(freqArray, nFreq, transitionFreq, iFreq)
 
     transitionLambda = (cSpeed/transitionFreq) /angstromTocm
-    iLambda = findIlambda(real(transitionLambda), grid%lamArray, nLambda, ok)
+    iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
 
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
@@ -2073,7 +2071,7 @@ contains
        if (direction%z /= 0.d0) then
           distToDisc = abs(currentPosition%z/direction%z)
           oldPosition = currentPosition + distToDisc * direction
-          if (sqrt(oldPosition%x**2 + oldPosition%y**2)*1.d10 < ttauriRinner) then
+          if (sqrt(oldPosition%x**2 + oldPosition%y**2) < (2.d0*grid%octreeRoot%subcellSize)) then
              distToDisc = 1.d30
           endif
        else
@@ -2334,7 +2332,7 @@ contains
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
                 if ((oldPosition%z >= 0.d0).and.(currentPosition%z < 0.d0)) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2)*1.d10 > ttauriRinner) then
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > (2.d0*grid%octreeRoot%subcellSize)) then
                       goto 666
                    endif
                 endif
@@ -2356,7 +2354,7 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda, occultingDisc)
-    use input_variables, only : vturb, lineoff
+    use input_variables, only : vturb, lineoff, nv, calcDataCube, dataCubeFilename
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube, writeCollapseddatacube
 #ifdef MPI
@@ -2380,7 +2378,6 @@ contains
     type(VECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
-    integer :: nLambda
     real(double) :: i0
     real(double), allocatable :: vArray(:), spec(:)
     integer :: iv1, iv2, i
@@ -2415,10 +2412,9 @@ contains
     call setMicroturb(grid%octreeRoot, dble(vTurb))
     call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline"/))
 
-    nlambda = 100
 
-    doCube = .false.
-    doSpec = .true.
+    doCube = calcDataCube
+    doSpec = .false.
 
     broadBandFreq = 1.d15
     if (PRESENT(forceLambda)) then
@@ -2426,7 +2422,7 @@ contains
        write(message,'(a,f7.1)') "Calculating flux at ",forceLambda
        call writeInfo(message)
        lineoff = .true.
-       nLambda = 1
+       nv = 1
     endif
 
     if (lineoff) call writeWarning("Line transfer switched off")
@@ -2447,10 +2443,9 @@ contains
        write(*,*) "Process ",my_rank, " create data cube done"
 #endif
        if (myrankiszero) then
-          write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
-          call writeDataCube(cube,plotfile)
-          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
-          call writeCollapsedDataCube(cube,plotfile)
+          call writeDataCube(cube,datacubefilename)
+!          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
+!          call writeCollapsedDataCube(cube,plotfile)
        endif
        call torus_mpi_barrier
        call freeDataCube(cube)
@@ -2466,19 +2461,19 @@ contains
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
     iv1 = 1
-    iv2 = nlambda
+    iv2 = nv
  
 
-    allocate(spec(1:nLambda), vArray(1:nLambda))
+    allocate(spec(1:nv), vArray(1:nv))
     spec = 0.d0
     if (PRESENT(forceLambda)) then
        varray(1) = 0.d0
     else
-       if (iv == 1) then
+       if (nv == 1) then
           varray(1) = 0.d0
        else
-          do iv = 1, nLambda
-             vArray(iv) = 2100.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+          do iv = 1, nv
+             vArray(iv) = 2100.e5/cspeed * (2.d0*dble(iv-1)/dble(nv-1)-1.d0)
           enddo
        endif
     endif
@@ -2511,10 +2506,10 @@ contains
     enddo
 #ifdef MPI
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-     allocate(tempArray(1:nLambda))
-     call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
+     allocate(tempArray(1:nv))
+     call MPI_ALLREDUCE(spec,tempArray,nv,MPI_DOUBLE_PRECISION,&
           MPI_SUM,MPI_COMM_WORLD,ierr)
-     spec(1:nLambda) = tempArray(1:nLambda)
+     spec(1:nv) = tempArray(1:nv)
      deallocate(tempArray)
 
      allocate(tempArray(1:1))
@@ -2532,7 +2527,7 @@ contains
     if (myRankIsZero) then
        write(plotfile,'(a,i3.3,a)') "spec",nfile,".dat"
        open(42, file=plotfile,status="unknown",form="formatted")
-       do i = 1, nLambda
+       do i = 1, nv
           transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
           write(42, *) vArray(i)*cspeed/1.d5, toPerAngstrom(spec(i), transitionFreq)
        enddo
@@ -2625,7 +2620,8 @@ contains
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
-    use input_variables, only : cylindrical, ttauriRouter, rSublimation !, ttauriRstar
+    use input_variables, only : cylindrical, ttauriRouter, rSublimation, npixels, nv, imageSide, maxVel, &
+         positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2640,13 +2636,13 @@ contains
     integer :: nAtom
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
-    type(VECTOR) :: viewvec, rayPos, xProj, yProj
+    type(VECTOR) :: viewvec, rayPos, xProj, yProj, northVec
     real(double) :: deltaV
     integer :: iTrans
     integer :: ix, iy, iv
     real(double) :: r, xval, yval, vstart,vend
     real(double), allocatable :: vArray(:)
-    integer :: nv, i
+    integer ::  i
     integer :: nMonte, imonte
     integer :: iv1, iv2, nx, ny
 
@@ -2679,11 +2675,10 @@ contains
 
     nMonte = 1
 
-    vStart = -500.d0
-    vEnd = 500.d0
-    nv = 100
-    nx = 1000
-    ny = 1000
+    vStart = -maxVel
+    vEnd = maxVel
+    nx = npixels
+    ny = npixels
 
 
 
@@ -2712,46 +2707,9 @@ contains
     endif
 
 
-    !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
-    !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
+    call addSpatialAxes(cube, -dble(imageSide), dble(imageSide), &
+         -dble(imageSide), dble(imageSide))
 
-    !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
-    !         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-
-    if (grid%octreeRoot%threed) then
-       if (.not.cylindrical) then
-          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
-               -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
-       else
-          !          call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
-          !               -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
-!          call addSpatialAxes(cube, -DW_Rmax*1.1d0, DW_Rmax*1.1d0, &
-!               -DW_Rmax*1.1d0, DW_Rmax*1.1d0)
-
-
-          call addSpatialAxes(cube, -(ttauriRouter/1.d10)*1.1d0, (ttauriRouter/1.d10)*1.1d0, &
-               -(ttauriRouter/1.d10)*1.1d0, (ttauriRouter/1.d10)*1.1d0)
-
-          !          call addSpatialAxes(cube, -2.d0*rsol/1.d10, 2.d0*rsol/1.d10, -2.d0*rsol/1.d10,  2.d0*rsol/1.d10)
-          !       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
-          !            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
-
-       endif
-    endif
-    if (grid%octreeRoot%twod) then
-       !       call addSpatialAxes(cube, -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10, &
-       !            -ttauriRouter*1.5d0/1.d10, ttauriRouter*1.5d0/1.d10)
-
-!       call addSpatialAxes(cube, -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10, &
-!            -ttauriRstar*2.5d0/1.d10, ttauriRstar*2.5d0/1.d10)
-
-       call addSpatialAxes(cube, -1.2d0*rSublimation,1.2d0*rSublimation, &
-            -1.2d0*rSublimation, 1.2d0*rSublimation)
-    endif
-    !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
-    !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
-    !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
-    !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
     if (myRankGlobal == 0) then
        call addVelocityAxis(cube, vStart, vEnd)
@@ -2759,14 +2717,17 @@ contains
        call addvelocityAxis(cube, vArray(iv1), vArray(iv2))
     endif
 
-    xProj =   viewVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
+    northVec = VECTOR(0.d0, 0.d0, 1.d0)
+    northVec = rotateY(northVec, dble(positionAngle))
+
+    xProj =   viewVec .cross. northVec
     call normalize(xProj)
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
 
 
     do iv = iv1, iv2
-       write(*,*) "rank ",myrankGlobal, " iv ",iv,iv1,iv2
+       deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        do ix = 1, cube%nx
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
@@ -2781,7 +2742,6 @@ contains
                 endif
                 rayPos =  (xval * xProj) + (yval * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
-                deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
  
                 if (PRESENT(occultingDisc)) then
                    cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &

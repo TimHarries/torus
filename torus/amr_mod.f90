@@ -4366,7 +4366,8 @@ IF ( .NOT. gridConverged ) RETURN
          maxdepthamr, vturbmultiplier
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
-    use input_variables, only: DW_rMin, rSublimation, ttauriwind, ttauridisc, ttauriwarp, smoothInnerEdge
+    use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
+         smoothInnerEdge, ttauriRinner
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4632,7 +4633,7 @@ IF ( .NOT. gridConverged ) RETURN
      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
 
      if (inFlow) then
-        if (cellSize/(ttauriRstar/1.d10) > 0.01d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
+        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
         if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
            split = .true.
            splitinazimuth = .true.
@@ -4665,7 +4666,7 @@ IF ( .NOT. gridConverged ) RETURN
         enddo
         
         if (inflow) then
-           if ((cellSize/DW_rMin) > 0.01) split = .true.
+           if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
         endif
      endif
 
@@ -4688,7 +4689,7 @@ IF ( .NOT. gridConverged ) RETURN
         r = sqrt(cellcentre%x**2 + cellcentre%y**2)
         hr = height * (r / (100.d0*autocm/1.d10))**betadisc
         
-        if ((r+cellsize/2.d0) > rSublimation) then
+        if ((r+cellsize/2.d0) > (ttauririnner/1.d10)) then
            if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
            if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
            if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
@@ -13335,6 +13336,7 @@ end function readparameterfrom2dmap
           if ((r > rSublimation).and.(thisRho > thisOctal%rho(subcell))) then
              thisOctal%dustTypeFraction(subcell,1) = 1.d0
              thisOctal%fixedTemperature(subcell) = .false.
+             thisOctal%inflow(subcell) = .true.
              thisOctal%temperature(subcell) = 10.
              if (r < rSublimation*1.01d0) then
                 fac = ((rSublimation*1.01 - r)/(0.001*rSublimation))
@@ -16851,7 +16853,6 @@ end function readparameterfrom2dmap
        write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
        write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
             (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
-       write(*,*) "sanity check on area: ",totalArea/(fourPi*ttauriRstar**2)
        
        t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
        write(*,*) "Approx accretion temperature is ",t, " kelvin"

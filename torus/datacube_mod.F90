@@ -724,7 +724,7 @@ contains
           cube%vAxis(i) = vmin + dv * real(i-1)
        enddo
     else
-       cube%vAxis(1) = 0.
+       cube%vAxis(1) = vmin
     endif
   end subroutine addVelocityAxis
 
