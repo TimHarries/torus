@@ -3,7 +3,7 @@ module gas_opacity_mod
 use constants_mod
 use utils_mod, only: locate
 use unix_mod, only: unixGetenv
-
+use gridtype_mod, only : GRIDTYPE
 implicit none
 
 type molecularKappaGrid
@@ -308,56 +308,66 @@ subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
   endif
 end subroutine returnKappaArray
 
-subroutine returnGasKappaValue(temperature, rho, lambda, kappaAbs, kappaSca, kappaAbsArray, kappaScaArray)
-  type(molecularKappaGrid) :: LookupTable
+subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSca, kappaAbsArray, kappaScaArray)
+  type(GRIDTYPE) :: grid
   real :: temperature
   real, optional :: lambda
   real(double) :: rho
-  real, optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
-  real :: t1, t2
-  real :: pressure, mu
-  integer :: i, j
+  logical, save :: firstTime = .false.
+  real, allocatable,save :: rayScatter(:)
+  real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
+  integer :: i
 
-  lookuptable = tioLookuptable
+!  lookuptable = tioLookuptable
+!
+!  mu = 2.46
+!
+!  pressure = rho * kErg * temperature / (mu * mHydrogen)
+!
+!  if ((temperature < LookupTable%tempArray(1)).or.(temperature > LookupTable%tempArray(LookupTable%nTemps))) then
+!     write(*,*) "! temperature is outside opacity array bounds"
+!     write(*,*) "temperature",temperature,LookupTable%temparray(1),LookupTable%temparray(LookupTable%nTemps)
+!     stop
+!  endif
+!  
+!  call locate(LookupTable%tempArray, LookupTable%nTemps, temperature, i)
+!  t1 = (temperature-LookupTable%tempArray(i))/(LookupTable%tempArray(i+1)-LookupTable%tempArray(i))
+!
+!  if (present(lambda)) then
+!     call locate(LookupTable%lamArray, LookupTable%nLam, lambda, j)
+!     t2 = (lambda-LookupTable%lamArray(j))/(LookupTable%lamArray(j+1)-LookupTable%lamArray(j))
+!  endif
 
-  mu = 2.46
+!  if (PRESENT(kappaAbsArray)) then
+!     call returnKappaArray(temperature, LookupTable, kappaAbs=kappaAbsArray)
+!  endif
+!  if (PRESENT(kappaScaArray)) then
+!     call returnKappaArray(temperature, LookupTable, kappaSca=kappaScaArray)
+!  endif
 
-  pressure = rho * kErg * temperature / (mu * mHydrogen)
-
-  if ((temperature < LookupTable%tempArray(1)).or.(temperature > LookupTable%tempArray(LookupTable%nTemps))) then
-     write(*,*) "! temperature is outside opacity array bounds"
-     write(*,*) "temperature",temperature,LookupTable%temparray(1),LookupTable%temparray(LookupTable%nTemps)
-     stop
-  endif
-  
-  call locate(LookupTable%tempArray, LookupTable%nTemps, temperature, i)
-  t1 = (temperature-LookupTable%tempArray(i))/(LookupTable%tempArray(i+1)-LookupTable%tempArray(i))
-
-  if (present(lambda)) then
-     call locate(LookupTable%lamArray, LookupTable%nLam, lambda, j)
-     t2 = (lambda-LookupTable%lamArray(j))/(LookupTable%lamArray(j+1)-LookupTable%lamArray(j))
-  endif
-
-  if (PRESENT(kappaAbsArray)) then
-     call returnKappaArray(temperature, LookupTable, kappaAbs=kappaAbsArray)
-  endif
-  if (PRESENT(kappaScaArray)) then
-     call returnKappaArray(temperature, LookupTable, kappaSca=kappaScaArray)
-  endif
-
-  if (PRESENT(kappaAbs)) then
-     kappaAbs = (1.-t1) * (1.-t2) * lookupTable%kapArray(i  , j  ) + &
-                (   t1) * (1.-t2) * lookupTable%kapArray(i+1, j  ) + &
-                (1.-t1) * (   t2) * lookupTable%kapArray(i  , j+1) + &
-                (   t1) * (   t2) * lookupTable%kapArray(i+1, j+1) 
-     kappaAbs = kappaAbs * fracMolecule(temperature, pressure, 12)
-!     write(*,*) fracMolecule(temperature, pressure, 12)
-  endif
+!  if (PRESENT(kappaAbs)) then
+!     kappaAbs = (1.-t1) * (1.-t2) * lookupTable%kapArray(i  , j  ) + &
+!                (   t1) * (1.-t2) * lookupTable%kapArray(i+1, j  ) + &
+!                (1.-t1) * (   t2) * lookupTable%kapArray(i  , j+1) + &
+!                (   t1) * (   t2) * lookupTable%kapArray(i+1, j+1) 
+!     kappaAbs = kappaAbs * fracMolecule(temperature, pressure, 12)
+!!     write(*,*) fracMolecule(temperature, pressure, 12)
+!  endif
 
   if (PRESENT(kappaSca)) then
-     kappaSca = 0.
-!     kappaSca = kappaSca + (hydrogenRayXsection(lambda)/mHydrogen)*1.e10
+     kappaSca = (hydrogenRayXsection(lambda)/mHydrogen)*1.e10
   endif
+  if (PRESENT(kappaScaArray)) then
+     if (firstTime) then
+        allocate(rayScatter(1:grid%nLambda))
+        do i = 1, grid%nLambda
+           rayScatter(i) = hydrogenRayXsection(grid%lamArray(i))/mHydrogen*1.d10
+        enddo
+        firstTime = .false.
+     endif
+     kappaScaArray = rayScatter
+  endif
+
 
 end subroutine returnGasKappaValue
   

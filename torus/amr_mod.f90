@@ -16,6 +16,7 @@ module amr_mod
   USE cluster_class, only:  cluster
   USE parallel_mod, ONLY:   torus_abort
   use mpi_global_mod, only: myRankGlobal
+  use gas_opacity_mod
 
   IMPLICIT NONE
 
@@ -12291,7 +12292,7 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug)
-    use input_variables, only: nDustType, photoionization, mie!, includeGasOpacity
+    use input_variables, only: nDustType, photoionization, mie, includeGasOpacity
     use atom_mod, only: bnu
     implicit none
     type(GRIDTYPE) :: grid
@@ -12308,7 +12309,7 @@ end function readparameterfrom2dmap
     real, optional :: atthistemperature
     real :: temperature
     real :: frac
-!    real :: tlambda
+    real :: tlambda
     real, parameter :: sublimationTemp = 1500., subRange = 100.
 !    real :: tArray(1000)
     real(double) :: freq, dfreq, norm !,  bnutot
@@ -12316,12 +12317,13 @@ end function readparameterfrom2dmap
     real :: fac
     real :: e, h0, he0
     real(double) :: kappaH, kappaHe
-
+    real(double), allocatable, save :: tgasArray(:)
     real(double), allocatable, save :: oneKappaAbsT(:,:)
     real(double), allocatable, save :: oneKappaScaT(:,:)
 
     logical,save :: firsttime = .true. 
     integer(double),save :: nlambda
+    real(double) :: tgas
     
 
     !! Commented out by DAR 14/10/08 as I don't think this is doing anything here. Moved to
@@ -12353,7 +12355,7 @@ end function readparameterfrom2dmap
 
        allocate(oneKappaAbsT(grid%nlambda, ndusttype))
        allocate(oneKappaScaT(grid%nlambda, ndusttype))
-
+       allocate(tGasArray(grid%nLambda))
        do i = 1, ndusttype
           do m = 1, grid%nLambda
              oneKappaAbsT(m, i) = grid%oneKappaAbs(i,m)
@@ -12509,23 +12511,33 @@ end function readparameterfrom2dmap
    if (PRESENT(kappaAbsDust)) kappaAbsDust = kappaAbs
 
 
-!   if (includeGasOpacity) then
-!      if (.not.PRESENT(lambda)) then
-!         tlambda = grid%lamArray(iLambda)
-!      else
-!         tlambda = lambda
-!      endif
-!
+   if (includeGasOpacity.and.(.not.PRESENT(rosselandkappa))) then
+
 !      if (PRESENT(kappaAbs)) then
-!         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
-!         kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
+!         if (.not.PRESENT(lambda)) then
+!            tlambda = grid%lamArray(iLambda)
+!         else
+!            tlambda = lambda
+!         endif
+!         call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, kappaAbs=tGas)
+!         kappaAbs = kappaAbs + tGas*thisOctal%rho(subcell)
 !      endif
-!      
-!      if (PRESENT(kappaSca)) then
-!         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaSca=kappaScaGas)
-!         kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
-!      endif
-!   endif
+      
+      if (PRESENT(kappaSca)) then
+         if (.not.PRESENT(lambda)) then
+            tlambda = grid%lamArray(iLambda)
+         else
+            tlambda = lambda
+         endif
+         call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, kappaSca=tGas)
+         kappaSca = kappaSca + tGas*thisOctal%rho(subcell)
+      endif
+
+      if (PRESENT(kappaScaArray)) then
+         call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, kappaScaArray=tGasArray)
+         kappaScaArray = kappaScaArray + tGasArray*thisOctal%rho(subcell)
+      endif
+   endif
 
    if (PRESENT(rosselandKappa)) then
       temperature = thisOctal%temperature(subcell)
@@ -16792,7 +16804,6 @@ end function readparameterfrom2dmap
   subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use input_variables, only : ttauriRstar
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal

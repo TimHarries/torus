@@ -469,16 +469,16 @@ program torus
 
   endif
 
-  if (includeGasOpacity) then
-
-     ! This routine may cause trouble with MPI routine! 
-     ! Propably multiple nodes are trying to write to a same file at a same time.
-
-     call readTsujiPPTable()
-     call readTsujiKPTable()
-     call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, xArray)
-
-  end if
+!  if (includeGasOpacity) then
+!
+!     ! This routine may cause trouble with MPI routine! 
+!     ! Propably multiple nodes are trying to write to a same file at a same time.
+!
+!     call readTsujiPPTable()
+!     call readTsujiKPTable()
+!     call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, xArray)
+!
+!  end if
 
   ! if the grid uses an adaptive mesh, create it
      

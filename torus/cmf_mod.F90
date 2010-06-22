@@ -1985,7 +1985,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : ttauriRinner, lineOff, nlambda, mie
+    use input_variables, only : lineOff,  mie
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -2620,7 +2620,7 @@ contains
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
-    use input_variables, only : cylindrical, ttauriRouter, rSublimation, npixels, nv, imageSide, maxVel, &
+    use input_variables, only : npixels, nv, imageSide, maxVel, &
          positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI

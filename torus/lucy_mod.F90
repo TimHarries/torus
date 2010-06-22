@@ -261,6 +261,7 @@ contains
     write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
     call writeInfo(message,IMPORTANT)
 
+    call getTauinMidPlane(grid)
 
     iIter_grand = 0
     converged = .false.
@@ -451,7 +452,7 @@ contains
 
                 photonloop: do iMonte = imonte_beg, imonte_end
 
-                   ! if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
+                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
@@ -1065,6 +1066,20 @@ contains
     endif
     deallocate(tauArray, xArray)
   end subroutine getSublimationRadius
+
+  subroutine getTauinMidPlane(grid)
+    use amr_mod, only: tauAlongPath
+    type(GRIDTYPE) :: grid
+    real(double) :: tau
+    integer :: i
+
+
+    do i = 1, grid%nLambda
+       call tauAlongPath(i, grid, VECTOR(0.d0, 0.d0, 1.d-3*grid%halfSmallestSubcell), VECTOR(1.d0, 0.d0, 0.d0), &
+            tau)
+       if (writeoutput) write(*,*) "Midplane tau at ",grid%lamArray(i),": ",tau
+    enddo
+  end subroutine getTauinMidPlane
 
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
     use source_mod, only: random_direction_from_sphere

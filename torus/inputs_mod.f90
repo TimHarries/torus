@@ -240,9 +240,9 @@ contains
             "Split on SPH velocities: ","(a,1l,1x,a)", .true., ok, .false.)
        call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &
             "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("lambdasmooth", lambdasmooth, cLine, nLines, &
+            "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .true.)
        if (dosmoothgridtau) then
-          call getReal("lambdasmooth", lambdasmooth, cLine, nLines, &
-               "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .true.)
           call getReal("taumax", tauSmoothMax, cLine, nLines, &
                "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 1.0, ok, .true.)
           call getReal("taumin", tauSmoothMin, cLine, nLines, &

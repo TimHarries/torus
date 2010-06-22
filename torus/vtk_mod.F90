@@ -569,7 +569,7 @@ contains
                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
                        kappaSca=ksca, kappaAbs=kabs)
                   value = thisOctal%subcellSize * (ksca + kabs)
-
+!                  write(*,*) "sca ",thisOctal%subcellSize * ksca,ilambda,lambdasmooth
                   write(lunit, *) real(value)
 
                case("ross")

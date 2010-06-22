@@ -841,6 +841,9 @@ contains
     call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, nLines, &
          "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)
 
+    call getLogical("gasopacity", includeGasOpacity, cLine, nLines, &
+         "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
+
   end subroutine readRadiativeEquilibriumParameters
 
   subroutine readPhotoionEquilibriumParameters(cLine, nLines)

@@ -301,7 +301,7 @@ contains
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
-     use input_variables, only : inputNsource, teff, ttauriRstar, contfluxfile
+     use input_variables, only : inputNsource
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion
      real :: fAccretion
@@ -332,7 +332,8 @@ contains
 
     if (grid%geometry(1:6) == "ttauri") then
        coreContinuumFlux = 0.d0
-       call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, globalsourcearray(1)%surface, 1000, "blackbody", &
+       call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
+            globalsourcearray(1)%surface, 1000, "blackbody", &
             globalsourcearray(1)%teff)
        call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
