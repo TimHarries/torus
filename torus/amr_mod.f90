@@ -13184,7 +13184,7 @@ end function readparameterfrom2dmap
 
 
 
-  recursive subroutine myScaleSmooth(factor, grid, converged, &
+  subroutine myScaleSmooth(factor, grid, converged, &
        inheritProps, interpProps, stellar_cluster, romData)
     type(gridtype) :: grid
     real :: factor
@@ -13196,6 +13196,10 @@ end function readparameterfrom2dmap
     !
     logical :: converged
 
+    if ( factor <= 0 ) then 
+       call writewarning ("Splitting factor in myScaleSmooth is <= 0")
+       return
+    end if
     call zeroChiLineLocal(grid%octreeRoot)
     nTagged = 0
     call tagScaleSmooth(nTagged, factor, grid%octreeRoot, grid,  converged, &

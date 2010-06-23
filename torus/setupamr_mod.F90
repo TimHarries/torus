@@ -29,8 +29,7 @@ contains
     use input_variables, only : readgrid, gridinputfilename, geometry, mdot, constantAbundance
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
-    use input_variables, only : amrGridSize, doSmoothGrid, dustPhysics, dosmoothGridTau, photoionPhysics
-    use input_variables, only : nDustType, nLambda, lambdaSmooth, variableDustSublimation
+    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, nDustType
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename
@@ -44,6 +43,8 @@ contains
 #endif
     use vh1_mod, only: read_vh1
 
+    implicit none
+
     ! For romanova geometry case
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(cluster)   :: young_cluster
@@ -56,7 +57,6 @@ contains
     real(double) :: astar, mass_accretion_old, totalMass
     real(double) :: minRho, maxRho, totalmasstrap
     character(len=80) :: message
-    integer :: j, ismoothLam
     integer :: nVoxels, nOctals
 
     constantAbundance = .true.
@@ -260,44 +260,6 @@ contains
              call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
 
-          call writeVtkFile(grid, "beforesmooth.vtk")
-
-          ! Smooth the grid with respect to optical depth, if requested
-          if (doSmoothGridTau.and.dustPhysics) then
-             call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-             call locate(grid%lamArray, nLambda,lambdaSmooth,ismoothlam)
-             do j = iSmoothLam,  nLambda, 2
-                write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-                call writeInfo(message, TRIVIAL)
-                do
-                   gridConverged = .true.
-                   call putTau(grid, grid%lamArray(j))
-                   call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                        inheritProps = .false., interpProps = .false., &
-                        photosphereSplit = ((.not.variableDustSublimation).and.(.not.photoionPhysics)))
-                   if (gridConverged) exit
-                end do
-             enddo
-             call writeInfo("...grid smoothing complete", TRIVIAL)
-
-             call writeVtkFile(grid, "aftersmooth.vtk")
-             ! The tau smoothing may result in large differences in the size
-             ! of neighbouring octals, so we smooth the grid again.
-
-             if (doSmoothgrid) then
-                call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-                do
-                   gridConverged = .true.
-                   ! The following is Tim's replacement for soomthAMRgrid.
-                   call myScaleSmooth(smoothFactor, grid, &
-                        gridConverged,  inheritProps = .false., interpProps = .false., &
-                        stellar_cluster=young_cluster, romData=romData)
-                   if (gridConverged) exit
-                end do
-                call writeInfo("...grid smoothing complete", TRIVIAL)
-             endif
-          end if
-
        end select
 
 
@@ -347,6 +309,72 @@ contains
 #endif
 
   end subroutine setupamrgrid
+
+  subroutine doSmoothOnTau(grid)
+
+    use inputs_mod, only: doSmoothGridTau, dustPhysics, nLambda, lambdaSmooth
+    use inputs_mod, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
+    use utils_mod, only: locate
+    use lucy_mod, only: putTau
+    use grid_mod, only: grid_info
+
+    implicit none
+
+    type(GRIDTYPE) :: grid
+    integer :: j, ismoothlam
+    logical :: gridConverged, doPhotoSphereSplit
+    character(len=80) :: message
+
+
+    ! Smooth the grid with respect to optical depth, if requested
+    if (doSmoothGridTau.and.dustPhysics) then
+
+       call writeVtkFile(grid, "beforesmooth.vtk")
+
+       doPhotoSphereSplit =  ((.not.variableDustSublimation).and.(.not.photoionPhysics))
+       if ( doPhotoSphereSplit ) then
+          call writeInfo("Doing photsphere split", TRIVIAL)
+       else
+          call writeInfo("Not doing photsphere split", TRIVIAL)
+       end if
+
+       call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+       call locate(grid%lamArray, nLambda,lambdaSmooth,ismoothlam)
+       do j = iSmoothLam,  nLambda, 2
+          write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+          call writeInfo(message, TRIVIAL)
+          do
+             gridConverged = .true.
+             call putTau(grid, grid%lamArray(j))
+             call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                  inheritProps = .false., interpProps = .false., &
+                  photosphereSplit = doPhotoSphereSplit )
+             if (gridConverged) exit
+          end do
+       enddo
+       call writeInfo("...grid smoothing complete", TRIVIAL)
+
+       call writeVtkFile(grid, "aftersmooth.vtk")
+       ! The tau smoothing may result in large differences in the size
+       ! of neighbouring octals, so we smooth the grid again.
+
+       if (doSmoothgrid) then
+          call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+          do
+             gridConverged = .true.
+             ! The following is Tim's replacement for soomthAMRgrid.
+             call myScaleSmooth(smoothFactor, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .false.)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+       endif
+             
+       if ( myRankIsZero ) call grid_info(grid, "info_grid_aftersmooth.dat")
+
+    end if
+
+  end subroutine doSmoothOnTau
 
   subroutine setupFogel(grid, filename, speciesName)
     use input_variables, only : rinner, rOuter

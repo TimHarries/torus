@@ -124,6 +124,7 @@ contains
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
 #endif
     use amr_mod, only : hydroVelocityConvert
+    use setupamr_mod, only: doSmoothOnTau
     real, pointer :: xArray(:) => null()
     integer :: nLambda 
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
@@ -136,6 +137,7 @@ contains
         call setupXarray(grid, xarray, nLambda)
         call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 !        call fillDustUniform(grid, grid%octreeRoot)
+        call doSmoothOnTau(grid)
         call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
              globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
      endif

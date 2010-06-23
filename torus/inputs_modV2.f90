@@ -832,11 +832,33 @@ contains
     call getReal("tauforce", tauForce, 1., cLine, nLines, &
          "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
 
+    call getInteger("mincrossings", minCrossings, cLine, nLines, &
+         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
+
+    call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
+         "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (doSmoothGrid) then
+       call getReal("smoothfactor", smoothFactor, 1.0, cLine, nLines, &
+            "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .true.)
+    else
+       smoothFactor = 0.0      
+    end if
+
+    call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &
+         "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (dosmoothgridtau) then
+       call getReal("lambdasmooth", lambdasmooth, 1.0, cLine, nLines, &
+            "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+       call getReal("taumax", tauSmoothMax, 1.0, cLine, nLines, &
+            "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 0.5, ok, .false.)
+       call getReal("taumin", tauSmoothMin, 1.0, cLine, nLines, &
+            "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 0.001, ok, .false.)
+    endif
+
     call getReal("edenstol", eDensTol, 1., cLine, nLines, &
          "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
-
-       call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
-            "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, nLines, &
          "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)

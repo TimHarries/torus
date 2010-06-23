@@ -16,6 +16,9 @@ amrgridcentrez 0.0000
 amrgridsize 4.0e6
 amr2d T
 
+smoothgridtau T
+smoothfactor 2.0
+
 ! Source parameters
 nsource 1
 radius1 1.
