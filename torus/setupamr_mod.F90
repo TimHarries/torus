@@ -29,7 +29,7 @@ contains
     use input_variables, only : readgrid, gridinputfilename, geometry, mdot, constantAbundance
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
-    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, nDustType
+    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, dustPhysics, nDustType
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename
@@ -68,7 +68,11 @@ contains
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
     totalmass = 0.
-    flatspec = .true.
+    if ( dustPhysics ) then 
+       flatspec = .false.
+    else
+       flatspec = .true.
+    end if
      call new(young_cluster, dble(amrGridSize), .false.)
 
     if (readgrid) then
