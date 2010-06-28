@@ -987,6 +987,10 @@ contains
     integer :: nLines
     logical :: ok
 
+
+    call getReal("probcont", probContPhoton, 1.0, cLine, nLines, &
+         "ProbContPhoton: ", "(a,f4.2,a)", 0.2, ok, .true.)
+
     call getBigInteger("nphotons", nPhotons, cLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
 
