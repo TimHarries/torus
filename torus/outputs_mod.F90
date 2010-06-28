@@ -16,7 +16,7 @@ contains
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
-!    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin
+    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin
     use photoionAMR_mod, only : createImageSplitGrid
     use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
@@ -99,12 +99,12 @@ contains
 
     if (dustPhysics.and.(calcspectrum.or.calcimage)) then
        mie = .true.
-!       if ( calcspectrum ) then 
-!          call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
-!               wavLin=SEDwavLin)
-!       else
+       if ( calcspectrum ) then 
+          call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
+               wavLin=SEDwavLin)
+       else
           call setupXarray(grid, xarray, nLambda)
-!       end if
+       end if
        call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        call do_phaseloop(grid, .true., 0., 0., 0.,  &
             0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
