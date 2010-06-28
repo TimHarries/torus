@@ -2061,16 +2061,6 @@ contains
     call getLogical("interp", useInterp, cLine, nLines, &
          "Use opacity interpolation: ","(a,1l,a)", .true., ok, .false.)
 
-    call getInteger("maxscat", maxScat, cLine, nLines, &
-         "Max no of scatters: ","(a,i8,1x,a)", 1, ok, .false.)
-
-    if (maxscat == 1) then
-       if (writeoutput) write(*,*) "maxscat: USEAGE CHANGED, now limits maximum no of scatterings"
-       if (writeoutput) write(*,*) "maxscat: You don't want to set this to 1."
-    endif
-
-
-
 ! Used by phaseloop_mod
     call getString("filename", outFile, cLine, nLines, &
          "Output spectrum filename: ","(a,a,1x,a)","spectrum.dat", ok, .false.)

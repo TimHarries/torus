@@ -89,6 +89,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer, intent(in) :: nmumie
   real :: dtime
 
+! local parameters
+  integer, parameter :: maxscat = 1e6  ! Maximum number of scatterings for individual photon
+
 ! local variables 
   real(double) :: objectDistance
   real :: problinephoton
@@ -628,6 +631,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (noScattering) then
         if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
         grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
+     else if ( maxScat <= 0 ) then 
+        call writeFatal ("maxScat <= 0")
+        STOP
      endif
 
 

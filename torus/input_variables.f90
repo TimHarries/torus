@@ -575,7 +575,6 @@ module input_variables
                              ! then later values are mapped to other octants.
 
   integer(kind=bigInt) :: nPhotons
-  integer :: maxScat
   logical :: noScattering
   
 
