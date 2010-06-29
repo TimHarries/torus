@@ -12305,7 +12305,7 @@ end function readparameterfrom2dmap
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
-       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug)
+       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
     use input_variables, only: nDustType, photoionization, mie, includeGasOpacity
     use atom_mod, only: bnu
     implicit none
@@ -12321,6 +12321,7 @@ end function readparameterfrom2dmap
     logical, optional :: debug
     real, optional, intent(out) :: kappap
     real, optional :: atthistemperature
+    logical, optional, intent(in) :: reset_kappa
     real :: temperature
     real :: frac
     real :: tlambda
@@ -12340,6 +12341,16 @@ end function readparameterfrom2dmap
     real(double) :: tgas
     
 
+    if ( present(reset_kappa) ) then 
+       if ( reset_kappa ) then 
+          if ( allocated(tgasArray)    ) deallocate ( tgasArray    )
+          if ( allocated(oneKappaAbsT) ) deallocate ( oneKappaAbsT )
+          if ( allocated(oneKappaScaT) ) deallocate ( oneKappaScaT )
+          firsttime = .true.
+          return
+       end if
+    end if
+
     !! Commented out by DAR 14/10/08 as I don't think this is doing anything here. Moved to
     !! a more relevant place - rosselandkappa and others
 !    temperature = thisOctal%temperature(subcell)
@@ -12357,10 +12368,11 @@ end function readparameterfrom2dmap
     frac = 1.
 
     if (allocated(oneKappaAbsT)) then
-       if ((SIZE(oneKappaAbsT,1) /= SIZE(grid%oneKappaAbs,2)).or. &
+       if  ((SIZE(oneKappaAbsT,1) /= SIZE(grid%oneKappaAbs,2)).or. &
             (SIZE(oneKappaAbsT,2) /= SIZE(grid%oneKappaAbs,1))) then
           deallocate(oneKappaAbsT)
           deallocate(oneKappaScaT)
+          if (allocated(tGasArray)) deallocate(tGasArray)
           firstTime = .true.
        endif
     endif

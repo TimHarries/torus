@@ -16,9 +16,9 @@ contains
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
-    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin
+    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use photoionAMR_mod, only : createImageSplitGrid
-    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance
+    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
@@ -34,7 +34,6 @@ contains
     type(GRIDTYPE) :: grid
     type(VECTOR) :: viewVec, observerDirection
     real, pointer :: xArray(:)
-    integer :: nLambda
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     integer :: i
@@ -101,7 +100,7 @@ contains
        mie = .true.
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
-               wavLin=SEDwavLin)
+               wavLin=SEDwavLin, numLam=SEDnumLam)
        else
           call setupXarray(grid, xarray, nLambda)
        end if

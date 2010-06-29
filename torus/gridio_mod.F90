@@ -574,6 +574,7 @@ contains
 
 
   subroutine readAMRgrid(filename,fileFormatted,grid)
+    use input_variables, only: gridUsesAMR
     character(len=*) :: filename
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
@@ -584,7 +585,7 @@ contains
 #endif
 
     readFile = .true.
-
+    gridUsesAMR = .true. 
 
     if (associated(grid%octreeRoot)) then
        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)

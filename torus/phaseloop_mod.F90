@@ -343,7 +343,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
   ! Choose whether to rotate the view
-  call choose_view( geometry,   nPhase,          distortionType, doRaman, & ! Intent in
+  call choose_view( grid%geometry,   nPhase,          distortionType, doRaman, & ! Intent in
                     rotateview, rotateDirection, tiltView)                  ! Intent out
 
   zeroVec = VECTOR(0.,0.,0.)
@@ -362,8 +362,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   end if
 
 
-  if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. &
-       geometry == "cmfgen" .or. geometry == "romanova") then
+  if (grid%geometry(1:6) == "ttauri" .or. grid%geometry(1:9) == "luc_cir3d" .or. &
+       grid%geometry == "cmfgen" .or. grid%geometry == "romanova") then
      call emptySurface(starSurface)
   end if
 
@@ -412,7 +412,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!              
      if (.not.plezModelOn .and. .not. gridUsesAMR) then
-        select case(geometry)
+        select case(grid%geometry)
         case("torus")
 !           call fillGridTorus(grid, rho, rTorus, rOuter)
         case("sphere")
@@ -481,22 +481,22 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            continue
            
         case DEFAULT
-           if (writeoutput) write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
+           if (writeoutput) write(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
            return
         end select
      endif
 
 
-     if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. &
-         geometry == "romanova") then      
+     if (grid%geometry(1:6) == "ttauri" .or. grid%geometry(1:9) == "luc_cir3d" .or. &
+         grid%geometry == "romanova") then      
         ! Nu must be set again here since it is not assigned when the population/grid 
         ! file is read from a file!  (RK changed here.)
         nu = cSpeed / (lamLine * angstromtocm)
         call contread(contFluxFile, nu, coreContinuumFlux)
         call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile, dble(teff))
-        if (geometry == "ttauri") then
+        if (grid%geometry == "ttauri") then
            call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-        elseif (geometry == "romanova") then
+        elseif (grid%geometry == "romanova") then
            call createTTauriSurface2(starSurface,  romData, nu, coreContinuumFlux,fAccretion) 
         else
            call createSurface(starSurface, nu, coreContinuumFlux,fAccretion)            
@@ -615,7 +615,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      
 
-     if (geometry .eq. "rolf") then
+     if (grid%geometry .eq. "rolf") then
         if (gridUsesAMR) then
            !      is this correct vvvvvvvvvvvvvvvvvvvvvv ?
            secondSourcePosition = grid%octreeRoot%centre
@@ -649,7 +649,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 !
 
-     if (geometry == "wr104") then
+     if (grid%geometry == "wr104") then
         write(*,*) "stripping dust!!!!!!!!!!!"
         call stripDustAway(grid%octreeRoot, 1.d-20, 4.d4)
      endif
@@ -665,7 +665,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
      ! DONE SO.
-     if (geometry /= "cmfgen") then	
+     if (grid%geometry /= "cmfgen") then	
         grid%rStar1 = rcore/1.e10
      end if
      !
@@ -721,7 +721,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
 
-     if (geometry == "hourglass") then
+     if (grid%geometry == "hourglass") then
         call computeProbDist(grid, totLineEmission, &
              totWindContinuumEmission,lamline, .false.)
         weightLinePhoton = 1.
@@ -774,9 +774,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
 
-        if (geometry == "donati") totWindContinuumEmission = 0.
+        if (grid%geometry == "donati") totWindContinuumEmission = 0.
 
-        if (geometry == "binary") totWindContinuumEmission = 0.
+        if (grid%geometry == "binary") totWindContinuumEmission = 0.
 
         if (grid%resonanceLine) totWindContinuumEmission = 0.
 
@@ -835,8 +835,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !                 albedo = linePhotonAlbedo(j)
 !              endif
 
-        !if (geometry == "ttauri" .or. geometry == "windtest") then
-        if (geometry == "windtest") then
+        !if (grid%geometry == "ttauri" .or. grid%geometry == "windtest") then
+        if (grid%geometry == "windtest") then
            totWindContinuumEmission = 0.
            if (writeoutput) write(*,'(a)') "! Wind continuum emission switched off."
         endif
@@ -847,7 +847,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         nu = cSpeed / (lamLine * angstromtocm)
         if (writeoutput) write(*,'(a,e12.3)') "Line emission: ",totLineEmission
-        select case(geometry)
+        select case(grid%geometry)
            case("binary")
               call contread(contFluxFile, nu, totCoreContinuumEmission1)
               call contread(contFluxFile2, nu, totCoreContinuumEmission2)
@@ -878,7 +878,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            deallocate(splineArray)
         endif
 
-        if (geometry == "binary") then
+        if (grid%geometry == "binary") then
            call rdIntPro(intProFilename2, intPro, lamIntPro, nIntPro)
            allocate(splineArray(1:nIntPro))
            call spline(lamIntPro, intPro, nIntPro, 0., 0., splineArray)
@@ -912,7 +912,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 ! factor of four pi taken out from below - input continuum files are expected
 ! to be in fluxes (erg/s/cm^2/hz) not Hnu's
 
-        if (geometry /= "binary") then
+        if (grid%geometry /= "binary") then
            totCoreContinuumEmission = (totCoreContinuumEmission * &
                 (nuStart - nuEnd))*fourPi*grid%rCore**2
         else
@@ -924,7 +924,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            if (writeoutput) write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
         endif
            
-        if (geometry == "ttauri") then
+        if (grid%geometry == "ttauri") then
            write (*,'(a,e12.3)') 'T Tauri star: continuum emission: ',totCoreContinuumEmission
            fAccretion = fAccretion * (nuStart-nuEnd)
            write (*,'(a,e12.3)') 'T Tauri accretion: continuum emission: ',fAccretion
@@ -934,7 +934,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            ! chanceHotRing = fAccretion/totCoreContinuumEmission ! no longer used
         endif
 
-        if (geometry == "luc_cir3d".or. geometry == "romanova") then
+        if (grid%geometry == "luc_cir3d".or. grid%geometry == "romanova") then
            write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
            fAccretion = fAccretion * (nuStart-nuEnd)
            write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
@@ -947,7 +947,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         
         chanceSpot = 0.
-        if ((geometry == "disk").and.(nSpot > 0)) then
+        if ((grid%geometry == "disk").and.(nSpot > 0)) then
            chanceSpot = fSpot * blackBody(tSpot, 6562.8) / &
                 ((1.-fSpot)*blackBody(tEff, 6562.8) + &
                 (fSpot * blackBody(tSpot, 6562.8)))
@@ -1203,7 +1203,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            else if (grid%adaptive) then
               obsImageSet(i) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
            else   
-              select case (geometry)
+              select case (grid%geometry)
               case("disk")
                  obsImageSet(i) = initImage(npix, npix, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),vMin, vMax)
               case("flared")
@@ -1261,7 +1261,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      !====================================================================================
      ! Perform formal integration
      !===================================================================================
-     if ((geometry == "ttauri" .or. geometry == "romanova") &
+     if ((grid%geometry == "ttauri" .or. grid%geometry == "romanova") &
           .and. formalsol) then
         if (doTuning) call tune(6, "One Formal Sol") ! start a stopwatch  
         write(*,*) "Started formal integration of flux...."
@@ -2954,7 +2954,7 @@ CONTAINS
     !
     ! Redefining the rotation axis here.
     !
-    select case (geometry)
+    select case (grid%geometry)
     case ("ttauri")
        rotationAxis = grid%diskNormal
        if (writeoutput) write(*,*) "rotation axis",rotationAxis

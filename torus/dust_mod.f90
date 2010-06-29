@@ -1425,7 +1425,7 @@ contains
   subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
     use mieDistPhaseMatrix_mod
-    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX
+    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie
     use input_variables, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
@@ -1597,6 +1597,9 @@ contains
 
 
        call fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
+
+       call resetNewDirectionMie
+       call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
        call writeInfo("Completed.",TRIVIAL)
     endif

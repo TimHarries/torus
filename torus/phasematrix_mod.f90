@@ -67,6 +67,10 @@ module phasematrix_mod
   end interface
 
 
+! Private variables
+  real, allocatable, private, save :: prob(:,:), probtemp(:), cosArray(:)
+  logical, save, private :: setupMieDir = .true.
+
 contains
 
   ! this function applies a phase matrix to a stokes vector
@@ -297,6 +301,14 @@ contains
     write(*,*) "mean scattering angle ",meanscat
   end subroutine testMiePhase
 
+  subroutine resetNewDirectionMie
+
+    if ( allocated(cosArray) ) deallocate ( cosArray )
+    if ( allocated(prob)     ) deallocate ( prob     )
+    if ( allocated(probtemp) ) deallocate ( probtemp )
+    setupMieDir = .true.
+
+  end subroutine resetNewDirectionMie
 
   type(VECTOR) function newDirectionMie(oldDirection, wavelength, &
        lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
@@ -311,17 +323,15 @@ contains
     real(double) :: theta, phi
     real :: r
     real, intent(in) :: lamArray(:)
-    real, allocatable, save :: prob(:,:), probtemp(:)
-    real, allocatable, save :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
-    logical,save ::firsttime = .true.
     type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     
+
     call locate(lamArray, nLambda, wavelength, ilam)
     if (ilam < 1) ilam = 1
     if (ilam > nLambda) ilam = nLambda
 
-    if (firstTime) then
+    if (setupMieDir) then
        allocate(cosArray(1:nMuMie))
        allocate(prob(1:nMuMie,1:nlambda))
        allocate(probtemp(1:nMuMie))
@@ -340,7 +350,7 @@ contains
           enddo
           prob(1:nMuMie,m) = prob(1:nMuMie,m)/prob(nMuMie,m)
        enddo
-       firstTime = .false.
+       setupMieDir = .false.
     endif
 
     call random_number(r)

@@ -1063,6 +1063,9 @@ contains
     call getLogical("sedwavlin", SEDwavLin, cLine, nLines, &
          "Linear wavelength spacing in SED: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getInteger("sednumlam", SEDnumLam, cLine, nLines, &
+         "Number of SED points: ", "(a,i3,1x,a)", 200, ok, .false.)
+
   end subroutine readSpectrumParameters
 
 

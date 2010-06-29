@@ -100,6 +100,7 @@ module input_variables
   logical :: sed, jansky, SIsed, inArcsec
   real :: SEDlamMin, SEDlamMax
   logical :: SEDwavLin
+  integer :: SEDnumLam
 
   ! Data cube parameters
   real(double) :: galaxyInclination, galaxyPositionAngle 

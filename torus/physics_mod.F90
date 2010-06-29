@@ -202,7 +202,7 @@ contains
 
    end subroutine doPhysics
 
-   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin)
+   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
@@ -210,6 +210,7 @@ contains
      integer :: nLambda
      real, optional, intent(in) :: lamMin, lamMax
      logical, optional, intent(in) :: wavLin
+     integer, optional, intent(in) :: numLam
      integer :: nCurrent, nt, i
      real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
      if (associated(xarray)) deallocate(xarray)
@@ -229,7 +230,11 @@ contains
 
      if (dustPhysics) then
 
-        nLambda = 1000
+        if ( present(numLam) ) then 
+           nLambda = numLam
+        else
+           nLambda = 1000
+        end if
         allocate(xarray(1:nLambda))
 
         if ( present(lamMin) ) then 
