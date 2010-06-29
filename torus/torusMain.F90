@@ -737,35 +737,35 @@ program torus
         goto 666
   end if
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-  call writeVtkFile(grid, "before.vtk", &
-       valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-       "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
-
-                call writeInfo("Test: Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, nLambda, 10
-                   write(message,*) "Test: Smoothing at lam = ",grid%lamArray(j), " angs"
-                   call writeInfo(message, TRIVIAL)
-                   do
-                      gridConverged = .true.
-                      call putTau(grid, grid%lamArray(j))
-                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
-                      if (gridConverged) exit
-                   end do
-                enddo
-                do
-                   gridConverged = .true.
-                   call myScaleSmooth(smoothFactor, grid, &
-                        gridConverged,  inheritProps = .false., interpProps = .true.)
-                   if (gridConverged) exit
-                end do
-                call writeInfo("...grid smoothing complete", TRIVIAL)
-
-                call writeInfo("Test: ...grid smoothing complete", TRIVIAL)
-  call writeVtkFile(grid, "after.vtk", &
-       valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-       "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
-
+!  call writeVtkFile(grid, "before.vtk", &
+!       valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+!       "dust1      "/))
+!
+!                call writeInfo("Test: Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+!                do j = iSmoothLam, nLambda, 10
+!                   write(message,*) "Test: Smoothing at lam = ",grid%lamArray(j), " angs"
+!                   call writeInfo(message, TRIVIAL)
+!                   do
+!                      gridConverged = .true.
+!                      call putTau(grid, grid%lamArray(j))
+!                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+!                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+!                      if (gridConverged) exit
+!                   end do
+!                enddo
+!                do
+!                   gridConverged = .true.
+!                   call myScaleSmooth(smoothFactor, grid, &
+!                        gridConverged,  inheritProps = .false., interpProps = .true.)
+!                   if (gridConverged) exit
+!                end do
+!                call writeInfo("...grid smoothing complete", TRIVIAL)
+!
+!                call writeInfo("Test: ...grid smoothing complete", TRIVIAL)
+!  call writeVtkFile(grid, "after.vtk", &
+!       valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+!       "dust1      "/))
+!
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
