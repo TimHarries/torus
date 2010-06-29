@@ -1165,10 +1165,10 @@ module molecular_mod
 ! iterate over all octals, all rays, solving the system self-consistently
     do iOctal = ioctal_beg, ioctal_end
 
-       if (debug .and. writeoutput) then
-          write(message,*) iOctal,ioctal_beg,ioctal_end
-          call writeInfo(message,TRIVIAL)
-       endif
+!       if (debug .and. writeoutput) then
+!          write(message,*) iOctal,ioctal_beg,ioctal_end
+!          call writeInfo(message,TRIVIAL)
+!       endif
 ! point thisoctal at the corresponding grid octal
        thisOctal => octalArray(ioctal)%content
 ! over all subcells in this octal
