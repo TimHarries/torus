@@ -4,6 +4,7 @@ use constants_mod
 use utils_mod, only: locate
 use unix_mod, only: unixGetenv
 use gridtype_mod, only : GRIDTYPE
+use messages_mod
 implicit none
 
 type molecularKappaGrid
@@ -313,7 +314,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   real :: temperature
   real, optional :: lambda
   real(double) :: rho
-  logical, save :: firstTime = .false.
+  logical, save :: firstTime = .true.
   real, allocatable,save :: rayScatter(:)
   real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
   integer :: i
@@ -355,14 +356,15 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 !  endif
 
   if (PRESENT(kappaSca)) then
-     kappaSca = (hydrogenRayXsection(lambda)/mHydrogen)*1.e10
+     kappaSca = (atomhydrogenRayXsection(dble(lambda))/mHydrogen)*1.e10
   endif
   if (PRESENT(kappaScaArray)) then
      if (firstTime) then
         allocate(rayScatter(1:grid%nLambda))
         do i = 1, grid%nLambda
-           rayScatter(i) = hydrogenRayXsection(grid%lamArray(i))/mHydrogen*1.d10
+           rayScatter(i) = atomhydrogenRayXsection(dble(grid%lamArray(i)))/mHydrogen*1.d10
         enddo
+        
         firstTime = .false.
      endif
      kappaScaArray = rayScatter
@@ -371,31 +373,59 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 
 end subroutine returnGasKappaValue
   
-real function hydrogenRayXsection(lambda)
+real(double) function atomhydrogenRayXsection(lambda) result(tot)
+
 
   implicit none
-  real :: lambda ! in angstrom
-  real(double) :: freq, fac, freq0, gamma0
-  real :: einsteinA(1:6), lambdaTrans(1:6)
+
+! Lee and Kim, 2004, MNRAS, 347, 802
+  real(double) :: lambda
+  real(double), parameter :: omega_l = twoPi * nuHydrogen
+  real(double), parameter :: omega_21 = 0.75d0 * omega_l
+  real(double) :: omega,deltaOmega
   integer :: i
+  real(double) :: cp(0:9), fac
 
-  data einsteinA  / 0.000D0 , 4.699D8 , 5.575D7 , 1.278D7 , 4.125D6 , 1.644D6 /
-  data lambdaTrans / 0.00000D-8 , 1215.67D-8 , 1025.72D-8 , 992.537D-8 , 949.743D-8 , 937.803D-8 /
+  data cp / 1.26537d0, 3.73766d0, 8.8127d0, 19.1515d0, 39.919d0, 81.1018d0, 161.896d0, 319.001d0, &
+       622.229d0, 1203.82d0 /
 
-  hydrogenRayXsection = 0.
-  do i = 2, 6
+  omega = cspeed / (lambda * angstromtocm)
+  omega = twoPi * omega
 
-     freq = dble(cSpeed) / dble(lambda*angstromtoCm)
-     freq0 = dble(cSpeed) / dble(lambdaTrans(i))
-     gamma0 =  dble(einsteinA(i)/fourPi)
+  fac = omega/omega_l
 
-     fac = freq**4 / ((freq0**2 - freq**2)**2 + (gamma0*freq)**2)
+  if (fac < 0.647d0) then
 
-     hydrogenRayXsection = hydrogenRayXsection + sigmaE * fac
+     tot = 0.d0
+     do i = 0, 9
+        tot = tot + cp(i)*fac**(2*i)
+     enddo
+     tot = tot * sigmaE * fac**4
+  else
+     deltaOmega = omega - omega_21
+     fac = deltaOmega / omega_21
+     tot = (0.0433056/fac**2) * (1.d0 - 1.792*fac - 23.637d0*fac**2 - &
+          83.1393*fac**3 - 244.1453d0*fac**4 - 699.473d0*fac**5)
+     tot = tot * sigmaE
+  endif
+end function atomhydrogenRayXsection
 
-  enddo
+real(double) function molhydrogenRayXsection(lambda) result(tot)
 
-end function hydrogenRayXsection
+
+  implicit none
+
+! Dalgarno and Williams, 1962, ApJ, 136, 690
+
+  real(double) :: lambda
+
+
+  tot = 8.14d-13/lambda**4 + 1.28e-6/lambda**6 + 1.61d0/lambda**8
+
+end function molhydrogenRayXsection
+
+
+
 
 subroutine readTsujiPPTable()
   implicit none

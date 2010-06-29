@@ -4396,7 +4396,9 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
     REAL                  :: x, y, z
-    REAL(double) :: hr, rd, fac, warpHeight, phi
+    REAL(double) :: hr, rd, fac, warpHeight, phi1, phi2, phi
+    real(double) :: warpheight1, warpheight2
+    real(double) :: warpradius1, warpradius2
     INTEGER               :: i
     real(double)      :: total_mass, massPerCell, n_bin_az
     real(double), save :: rgrid(1000)
@@ -4421,7 +4423,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     type(VECTOR) :: minV, maxV
     real(double) :: vgradx, vgrady, vgradz, vgrad
-    real(double) :: T, vturb
+    real(double) :: T, vturb, b
 
     splitInAzimuth = .false.
     split = .false.
@@ -5332,17 +5334,17 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
       if (.not.smoothInnerEdge) then
          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-      else
-         fac = grid%rinner * 1.01d0
-         if (((r-cellsize/2.d0) < fac).and. ((r+cellsize/2.d0) > fac) .and. &
-              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+!      else
+!         fac = grid%rinner * 1.01d0
+!         if (((r-cellsize/2.d0) < fac).and. ((r+cellsize/2.d0) > fac) .and. &
+!              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
       endif
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
@@ -5603,8 +5605,19 @@ IF ( .NOT. gridConverged ) RETURN
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      phi = atan2(cellcentre%y,cellcentre%x)
-      warpheight  = cos(phi+warpAngle) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+      phi1 = atan2(cellcentre%y,cellcentre%x)
+      phi2 = phi1 - pi
+      if (phi1 < 0.d0) phi1 = phi1 + twoPi
+      if (phi2 < 0.d0) phi2 = phi2 + twoPi
+      b = (1.d0/twoPi)*log(20.d0)
+      warpRadius1 = rInner * exp(b * phi1)
+      warpRadius2 = rInner * exp(b * phi2)
+
+      warpheight1  = sin(0.5d0*phi1+warpAngle) * warpFracHeight * warpradius1 * exp(-0.5d0*((r - warpRadius1)/warpSigma)**2)
+      warpheight2  = -sin(0.5d0*phi2+warpAngle) * warpFracHeight * warpradius2 * exp(-0.5d0*((r - warpRadius2)/warpSigma)**2)
+      warpheight = warpheight1 + warpheight2
+
+      hr = height * (r / rOuter)**betaDisc
 
 
       if ((r+cellsize/2.d0) > rInner*0.8) then
@@ -5640,11 +5653,12 @@ IF ( .NOT. gridConverged ) RETURN
          end if
       endif
 
+
       if ((abs(r-rinner) < 0.9*rinner).and.(cellSize > 0.02*rInner).and.(abs(cellCentre%z) < 2.*hr)) then
          split = .true.
       endif
 
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.)) then
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
          split = .true.
          splitInAzimuth = .true.
       endif
@@ -12355,7 +12369,14 @@ end function readparameterfrom2dmap
 
        allocate(oneKappaAbsT(grid%nlambda, ndusttype))
        allocate(oneKappaScaT(grid%nlambda, ndusttype))
-       allocate(tGasArray(grid%nLambda))
+       if (allocated(tGasArray)) then
+          if (size(tGasArray) /= grid%nLambda) then
+             deallocate(tGasArray)
+             allocate(tGasArray(grid%nLambda))
+          else
+             allocate(tGasArray(grid%nLambda))
+          endif
+       endif
        do i = 1, ndusttype
           do m = 1, grid%nLambda
              oneKappaAbsT(m, i) = grid%oneKappaAbs(i,m)
@@ -12485,7 +12506,8 @@ end function readparameterfrom2dmap
                   oneKappaAbsT(itemp+1,1)*thisoctal%rho(subcell))
 
           else
-          
+             itemp = ilambda
+             if (ilambda == grid%nLambda) itemp = itemp - 1          
              do i = 1, nDustType
              !write(*,*) grid%oneKappaAbs(i,iLambda),grid%oneKappaAbs(i,iLambda+1),thisOctal%rho(subcell), &
              !     dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), ilambda, dble(lambda)
@@ -12495,10 +12517,10 @@ end function readparameterfrom2dmap
              !write(*,*) i, subcell
              !write(*,*) nDusttype,kappaAbs 
              !write(*,*) thisOctal%dustTypeFraction(subcell, i)
-                kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
-                     logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
-                     grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
-                     grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
+                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
+                        logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
+                        grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell), &
+                        grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell))
 
              enddo
           endif
@@ -12982,9 +13004,13 @@ end function readparameterfrom2dmap
              octVec = centre + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
                 startOctal => thisOctal
-                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
-                     foundOctal=neighbourOctal, foundsubcell=neighbourSubcell, kappaSca=ksca, kappaAbs=kabs, ilambda=ilambda)
-                neighbourTau = neighbourOctal%subcellSize * (ksca + kabs)
+                neighbourOctal => thisOctal
+                neighbourSubcell = subcell
+                call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+                call returnKappa(grid, neighbourOctal, neighboursubcell, ilambda=ilambda,&
+                     kappaSca=ksca, kappaAbs=kabs, kappaScaDust=kscaDust, kappaAbsDust=kabsDust)
+
+                neighbourTau = neighbourOctal%subcellSize * (kscaDust + kabsDust)
 
                 if ((grid%geometry.eq."whitney").and.&
                      (modulus(subcellCentre(thisOctal,subcell)) > 0.9*erouter/1.e10)) split = .false.
@@ -13034,7 +13060,7 @@ end function readparameterfrom2dmap
                 fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &
                      thisOctal%temperature(subcell)
 
-                if (split.and.(thisTau > neighbourTau).and.(fac > 0.05d0).and. &
+                if (split.and.(thisTau > neighbourTau).and.(fac > 0.5d0).and. &
                      (thisOctal%temperature(subcell)>100.d0).and.(thisTau > 1.d-4)) then
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                         inherit=inheritProps, interp=interpProps)
@@ -13050,7 +13076,7 @@ end function readparameterfrom2dmap
                             if (split.and.(fac > 0.2d0).and.(thisOctal%etaLine(subcell) > 0.1d0).and. & 
                                  (thisOctal%etaLine(subcell) < 1.d0).and. &
                                  (thisOctal%etaLine(subcell)>neighbourOctal%etaLine(neighbourSubcell))) then
-                               !                               write(*,*) " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
+!                               if (myrankGlobal == 1) write(*,*) " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
                                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                                     inherit=inheritProps, interp=interpProps)
                                converged = .false.

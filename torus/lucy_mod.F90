@@ -24,7 +24,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
-    use input_variables, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength
+    use input_variables, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
     use input_variables, only : suppressLucySmooth, object !, storeScattered
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
@@ -167,6 +167,14 @@ contains
     thisIsFinalPass = .false.
     if (PRESENT(finalPass)) thisIsFinalPass = finalPass
 
+
+    do i = 1, 1000
+       lognu1 = log10(1200.d0) + real(i-1)*(log10(1e7)-log10(1200.))/999.
+       lognu1 = 10.d0**lognu1
+       logt = atomhydrogenRayXsection(lognu1)
+       if (myrankglobal == 1) write(105,*) lognu1, logt/sigmaE
+    enddo
+
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
     oldTotalEmission = 1.d30
@@ -261,7 +269,7 @@ contains
     write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
     call writeInfo(message,IMPORTANT)
 
-    call getTauinMidPlane(grid)
+!    call getTauinMidPlane(grid)
 
     iIter_grand = 0
     converged = .false.
@@ -841,8 +849,8 @@ contains
 
              if (iIter_grand == 2) tauMax = 0.1
              if (iIter_grand == 4) tauMax = 1.d0
-             if (iIter_grand == 6) tauMax = 10.d0
-             if (iIter_grand == 8) tauMax = 1.e30
+             if (iIter_grand == 6) tauMax = 1.d0
+             if (iIter_grand == 8) tauMax = 1.d30
 
              ! Sublimate the dust and smooth at the photosphere on the last pass
              if (iIter_Grand <= 8) &
@@ -868,18 +876,25 @@ contains
              !                endif
              !             endif
 
-             if (iiter_grand == 8) then
+             if (iiter_grand >= 6) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, nLambda, 2
+                do j = iSmoothLam, nLambda, 20
                    write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
                    call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
+!                      call writeInfo("putting tau")
                       call putTau(grid, grid%lamArray(j))
-                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                           inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+!                      call writeInfo("done")
+                      if (solveVerticalHydro) then
+                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                              inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+                      else
+                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                              inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+                      endif
 
                       if (gridConverged) exit
                    end do
@@ -3553,9 +3568,10 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: nx
     real(double), allocatable :: xAxis(:)
     integer :: iLambda, i
-
+    integer :: nOctals,nVoxels
+    call countVoxels(grid%octreeRoot, nOctals, nVoxels)
     call locate(grid%lamArray, grid%nLambda, wavelength, ilambda)
-    allocate(xAxis(1:1000000))
+    allocate(xAxis(1:nVoxels))
     nx = 0
     call getxValues(grid%octreeRoot,nx,xAxis)
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
@@ -3578,6 +3594,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: subcell
     real(double) :: currentDistance, tVal
     real(double) :: kappaAbs, kappaSca
+    real(double) :: kappaAbsDust, kappaScaDust
     viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 
     position = VECTOR(x, 0.d0, grid%octreeRoot%subcellSize-0.01d0*grid%halfSmallestSubcell)
@@ -3589,8 +3606,9 @@ subroutine setBiasOnTau(grid, iLambda)
     do while(inOctal(grid%octreeRoot, position).and.(position%z > 0.))
        call findSubcelllocal(position, thisOctal, subcell)
        call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
-       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
-       dTau = (kappaAbs + kappaSca) * tVal
+       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
+            kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
+       dTau = (kappaAbsDust + kappaScaDust) * tVal
        
        jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
        
@@ -3618,6 +3636,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: subcell
     real(double) :: currentDistance, tVal
     real(double) :: kappaAbs, kappaSca
+    real(double) :: kappaAbsDust, kappaScaDust
     viewVec = VECTOR(0.d0, 0.d0, 1.d0)
 
     position = VECTOR(x, 0.d0, -grid%octreeRoot%subcellSize+0.01d0*grid%halfSmallestSubcell)
@@ -3629,8 +3648,9 @@ subroutine setBiasOnTau(grid, iLambda)
     do while(inOctal(grid%octreeRoot, position).and.(position%z < 0.))
        call findSubcelllocal(position, thisOctal, subcell)
        call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
-       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca)
-       dTau = (kappaAbs + kappaSca) * tVal
+       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
+            kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
+       dTau = (kappaAbsDust + kappaScaDust) * tVal
        
        jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
        

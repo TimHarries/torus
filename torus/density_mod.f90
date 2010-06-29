@@ -1001,22 +1001,36 @@ contains
     use input_variables
     TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
-    real(double) :: r, h, rhoOut, warpHeight
-    real(double) :: fac
-    real(double) :: phi
+    real(double) :: r, h, rhoOut, warpHeight, warpheight1, warpheight2
+    real(double) :: fac, b, warpradius1, warpradius2
+    real(double) :: phi, phi1, phi2
     logical :: withgrid
 
     if (PRESENT(grid)) withGrid = .true.
     rhoOut = 1.d-30
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
-!    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
-    warpheight  = cos(phi+warpAngle) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+    if (phi < 0.d0) phi = phi + twoPi
+    !    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+
+    b = (1.d0/twoPi)*log(20.d0)
+    warpRadius = rInner * exp(b * phi)
 
     rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
          * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
          ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
 
+    phi1 = phi
+    phi2 = phi1 - pi
+    if (phi1 < 0.d0) phi1 = phi1 + twoPi
+    if (phi2 < 0.d0) phi2 = phi2 + twoPi
+    b = (1.d0/twoPi)*log(20.d0)
+    warpRadius1 = rInner * exp(b * phi1)
+    warpRadius2 = rInner * exp(b * phi2)
+
+    warpheight1  = sin(0.5d0*phi1+warpAngle) * warpFracHeight * warpradius1 * exp(-0.5d0*((r - warpRadius1)/warpSigma)**2)
+    warpheight2  = -sin(0.5d0*phi2+warpAngle) * warpFracHeight * warpradius2 * exp(-0.5d0*((r - warpRadius2)/warpSigma)**2)
+    warpheight = warpheight1 + warpheight2
     if ((r > rinner).and.(r < rOuter)) then
        h = height * (r / rOuter)**betaDisc
        rhoOut = dble(rho0) * (dble(rOuter)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)

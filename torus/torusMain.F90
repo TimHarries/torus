@@ -61,7 +61,7 @@ program torus
   use angularImage, only: make_angular_image, map_dI_to_particles
   use timedep_mod, only : runTimeDependentRT, timeDependentRTtest
   use magnetic_mod, only : accretingAreaMahdavi
-  use lucy_mod, only : getSublimationRadius
+  use lucy_mod, only : getSublimationRadius, puttau
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
@@ -174,6 +174,7 @@ program torus
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   real :: infallParticleMass         ! for T Tauri infall models
   logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
+  logical :: gridConverged
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
   type(discwind)    :: ttauri_discwind   ! parameters for ttauri disc wind
   type(jet)         :: ttauri_jet        ! parameters for ttauri jets
@@ -735,6 +736,36 @@ program torus
 
         goto 666
   end if
+!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  call writeVtkFile(grid, "before.vtk", &
+       valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+       "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
+
+                call writeInfo("Test: Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+                do j = iSmoothLam, nLambda, 10
+                   write(message,*) "Test: Smoothing at lam = ",grid%lamArray(j), " angs"
+                   call writeInfo(message, TRIVIAL)
+                   do
+                      gridConverged = .true.
+                      call putTau(grid, grid%lamArray(j))
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                      if (gridConverged) exit
+                   end do
+                enddo
+                do
+                   gridConverged = .true.
+                   call myScaleSmooth(smoothFactor, grid, &
+                        gridConverged,  inheritProps = .false., interpProps = .true.)
+                   if (gridConverged) exit
+                end do
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+
+                call writeInfo("Test: ...grid smoothing complete", TRIVIAL)
+  call writeVtkFile(grid, "after.vtk", &
+       valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+       "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
+
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
@@ -2432,8 +2463,10 @@ subroutine set_up_sources
           accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
           tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
           frac = 5.d-2
-          call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
-          source(1)%luminosity = source(1)%luminosity + accretionLuminosity
+          if (tacc > 3.) then
+             call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
+             source(1)%luminosity = source(1)%luminosity + accretionLuminosity
+          endif
 
           call normalizedSpectrum(source(1)%spectrum)
        else
@@ -2632,6 +2665,8 @@ subroutine post_initAMRgrid
 
   if (associated(grid%octreeRoot)) then
      totalMass =0.d0
+     minRho = 1.e30
+     maxRho = 1.e-30
      if (.not.grid%splitOverMpi) then
         if(geometry .eq. 'molcluster') then 
            call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, minrho = minrho, maxrho = maxrho)
