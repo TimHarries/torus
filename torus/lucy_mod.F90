@@ -149,7 +149,7 @@ contains
        writeoutput = .true.
 
        print *, ' '
-       print *, 'Lucy radiative equilibrium rotuine computed by ', nThreadsGlobal, ' processors.'
+       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
        print *, ' '
     endif
 
