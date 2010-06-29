@@ -174,7 +174,7 @@ program torus
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   real :: infallParticleMass         ! for T Tauri infall models
   logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
-  logical :: gridConverged
+!  logical :: gridConverged
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
   type(discwind)    :: ttauri_discwind   ! parameters for ttauri disc wind
   type(jet)         :: ttauri_jet        ! parameters for ttauri jets
