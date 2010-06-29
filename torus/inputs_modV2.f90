@@ -119,9 +119,9 @@ contains
     call getLogical("photoionphysics", photoionPhysics, cLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if (.not.(dustPhysics.or.atomicPhysics.or.molecularPhysics.or.photoionPhysics)) then
-       call writeFatal("Must include one of: dustPhysics, atomicPhysics, molecularPhysics, photoionPhysics")
-    endif
+!    if (.not.(dustPhysics.or.atomicPhysics.or.molecularPhysics.or.photoionPhysics)) then
+!       call writeFatal("Must include one of: dustPhysics, atomicPhysics, molecularPhysics, photoionPhysics")
+!    endif
 
 
     if (dustPhysics) call readDustPhysicsParameters(cLine, nLines)
@@ -884,6 +884,14 @@ contains
   subroutine readHydrodynamicsParameters(cLine, nLines)
     character(len=80) :: cLine(:)
     integer :: nLines
+    logical :: ok
+
+    call getReal("cfl", cflNumber, 1., cLine, nLines, &
+         "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
+
+    call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, nLines, &
+         "Distance grid scale:","(a,e12.3,1x,a)", 1.d10, ok, .false.)
+
   end subroutine readHydrodynamicsParameters
 
   subroutine readDataCubeParameters(cLine, nLines)

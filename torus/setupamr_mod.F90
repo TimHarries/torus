@@ -316,8 +316,8 @@ contains
 
   subroutine doSmoothOnTau(grid)
 
-    use inputs_mod, only: doSmoothGridTau, dustPhysics, nLambda, lambdaSmooth
-    use inputs_mod, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
+    use input_variables, only: doSmoothGridTau, dustPhysics, nLambda, lambdaSmooth
+    use input_variables, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
     use utils_mod, only: locate
     use lucy_mod, only: putTau
     use grid_mod, only: grid_info

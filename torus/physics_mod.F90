@@ -110,12 +110,15 @@ contains
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics
+         lucy_undersampled, molecularPhysics, hydrodynamics
     use input_variables, only : useDust, realDust, readlucy, writelucy
     use input_variables, only : lucyfilenameOut, lucyFilenamein
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop
+#ifdef MPI
+    use hydrodynamics_mod, only : doHydrodynamics
+#endif
     use source_mod, only : globalNsource, globalSourceArray
     use molecular_mod, only : molecularLoop, globalMolecule
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
@@ -182,9 +185,14 @@ contains
 
      end if
 
-!     if (hydrodynamics) then
-!        call hydrodynamics(grid)
-!     endif
+     if (hydrodynamics) then
+#ifdef MPI 
+        call dohydrodynamics(grid)
+#else
+        call writeFatal("hydrodynamics not available in single processor version")
+        stop
+#endif
+     endif
 
 !     if (radiationHydrodynamics) then
 !        call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
@@ -195,7 +203,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin)
-     use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics
+     use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -270,10 +278,12 @@ contains
 
 
 
-     grid%nLambda = nLambda
-     if (associated(grid%lamArray)) deallocate(grid%lamArray)
-     allocate(grid%lamArray(1:nLambda))
-     grid%lamArray = xarray
+     if (dustPhysics.or.photoIonPhysics.or.atomicPhysics.or.molecularPhysics) then
+        grid%nLambda = nLambda
+        if (associated(grid%lamArray)) deallocate(grid%lamArray)
+        allocate(grid%lamArray(1:nLambda))
+        grid%lamArray = xarray
+     endif
 
      contains
 

@@ -34,7 +34,7 @@ module amr_mod
 
   integer :: somecounter
 
-  type(STREAMTYPE),save :: globalStream(2000)
+  type(STREAMTYPE),save :: globalStream(5000)
   integer,save :: globalnStream
 
   type curtaintype
@@ -7970,7 +7970,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real(double) :: gd, xmid, x, z, r , zprime
-
+    
 
     rVec = subcellCentre(thisOctal, subcell)
     xmid = (x1 + x2)/2.d0
@@ -15956,6 +15956,7 @@ end function readparameterfrom2dmap
           octalStream%temperature(octalStream%nSamples) = thisStream%temperature(i)
        endif
     end do
+    write(*,*) "Octal stream created with ",octalStream%nSamples, " samples"
   end subroutine createOctalStream
 
   subroutine createSubcellStream(thisOctal,  subcell, thisStream, octalStream)
@@ -15978,7 +15979,7 @@ end function readparameterfrom2dmap
 
 
   subroutine readStreams(thisStream, nStream, filename)
-    use input_variables, only : scaleFlowRho, flowrhoScale
+    use input_variables, only : scaleFlowRho, flowrhoScale, rcore
     type(STREAMTYPE) :: thisStream(:)
     character(len=*) :: filename
     integer :: nstream
@@ -16006,8 +16007,8 @@ end function readparameterfrom2dmap
 
           theta = theta !* degtorad
           phi = phi ! * degtorad
-          rho = rho * 1.d-3
-          r = r * 2.d0 * rsol / 1.d10
+          rho = rho * 1.d-27
+          r = r * rcore
           rVec = r * VECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
           
           thisStream(nStream)%nSamples = thisStream(nStream)%nSamples + 1
@@ -16644,7 +16645,7 @@ end function readparameterfrom2dmap
        thisOctal%rho(subcell) = rho / dble(n)
        thisOctal%temperature(subcell) = temperature/real(n)
        thisOctal%velocity(subcell) = vel / dble(n)
-       thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
+       if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
 
        if (subcell == thisOctal%maxchildren) then
           call fillVelocityCorners(thisOctal, grid, magstreamvelocity, .true.)

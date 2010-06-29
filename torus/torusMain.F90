@@ -1476,7 +1476,7 @@ end subroutine pre_initAMRGrid
                                    !   been finalised
     character(len=80) :: phasePopFilename
 
-    type(STREAMTYPE)  :: thisStream(2000), bigStream
+    type(STREAMTYPE)  :: thisStream(5000), bigStream
     integer           :: nStreams
 
   ! adaptive grid stuff
@@ -1682,7 +1682,7 @@ end subroutine pre_initAMRGrid
           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile, source(1)%teff)
           nu =1.d15
 !           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-!           call testSurface(source(1)%surface)
+!           call testSurface(source(1)%surface
 
           call readStreams(thisStream,nStreams,"stream.dat")
 
