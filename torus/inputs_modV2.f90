@@ -472,10 +472,10 @@ contains
 
     case("molebench")
           call getReal("rinner", rInner, 1., cLine, nLines, &
-               "Inner Radius for dumpresults (10^10cm): ","(a,f5.1,a)", 1e4, ok, .true.)
+               "Inner Radius for dumpresults (10^10cm): ","(a,1pe8.2,a)", 1e4, ok, .true.)
 
           call getReal("router", rOuter, 1., cLine, nLines, &
-               "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
+               "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
 
        case("molcluster")
@@ -715,6 +715,15 @@ contains
             "Plot Molecular Levels ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("realdust", realdust, cLine, nLines, &
             "Use realistic dust model: ", "(a,1l,1x,a)", .true., ok, .false.)
+
+       call getLogical("outputconvergence", outputconvergence, cLine, nLines, &
+            "Write out convergence data : ", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("dotune", dotune, cLine, nLines, &
+            "Write out convergence data : ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("blockhandout", blockHandout, cLine, nLines, &
+            "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
+
 
        call getLogical("doCOchemistry", doCOchemistry, cLine, nLines, &
             "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)

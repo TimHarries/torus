@@ -43,6 +43,12 @@ contains
     character(len=80) :: tstring
     type(VECTOR) :: tvec(1)
 
+    if ( (.not.calcImage).and. &
+         (.not.calcSpectrum).and. &
+         (.not.calcDataCube) ) then
+       goto 666
+    endif
+
     call writeBanner("Creating outputs","-",TRIVIAL)
 
     viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
@@ -111,7 +117,7 @@ contains
             0., 0, .false., 100000, &
             miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
     endif
-
+666 continue
   end subroutine doOutputs
 
 end module outputs_mod

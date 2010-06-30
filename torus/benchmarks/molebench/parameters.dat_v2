@@ -22,6 +22,15 @@ vturb 0.3
 tolerance 0.005
 distance 250.0
 moleculefile hco_benchmark.mol
+quasi F
+dongstep T
+initnray 16
+constantabundance T
+setmaxlevel 10
+outputconvergence T
+dotune T
+
+
 
 amr1d T
 amr2d F
@@ -29,6 +38,4 @@ amrgridsize 9.2d7
 amrgridcentrex 4.6d7
 amrgridcentrey 0d0
 amrgridcentrez 0d0
-initnray 16
-setmaxlevel 10
 

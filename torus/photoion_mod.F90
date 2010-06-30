@@ -234,7 +234,7 @@ contains
 
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
     if (nLucy == 0) then
-       nMonte = nVoxels * 100
+       nMonte = nVoxels * 1000
     else
        nMonte = nlucy
     endif

@@ -1090,7 +1090,7 @@ module molecular_mod
                   minlevel = min(i + 2,maxlevel - 2)
                   mintrans = minlevel - 1
 
-                  if(writeoutput .and. debug) write(99,*) i, mintrans, tauarray(i)
+!                  if(writeoutput .and. debug) write(99,*) i, mintrans, tauarray(i)
                   if(tauarray(i) .gt. 0.01) exit
                enddo
 
