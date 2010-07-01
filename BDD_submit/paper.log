@@ -1,4 +1,4 @@
-This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2008.7.28)  1 JUL 2010 10:11
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2008.7.28)  1 JUL 2010 11:10
 entering extended mode
  %&-line parsing enabled.
 **paper
@@ -284,20 +284,24 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [21]
-Underfull \hbox (badness 1019) in paragraph at lines 1889--1893
+Underfull \hbox (badness 1019) in paragraph at lines 1891--1895
 \OT1/cmr/m/n/9 8200. NJM and TJH were sup-ported by STFC grant
  []
 
-(./paper.bbl [22]) [23] [24] [25
+(./paper.bbl [22])
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [23]
+[24] [25
 
 ] (./paper.aux) ) 
 Here is how much of TeX's memory you used:
- 1512 strings out of 94074
- 18383 string characters out of 1163007
- 90940 words of memory out of 1500000
- 4777 multiletter control sequences out of 10000+50000
+ 1513 strings out of 94074
+ 18395 string characters out of 1163007
+ 90166 words of memory out of 1500000
+ 4778 multiletter control sequences out of 10000+50000
  17047 words of font info for 59 fonts, out of 1200000 for 2000
  645 hyphenation exceptions out of 8191
  31i,14n,34p,1618b,352s stack positions out of 5000i,500n,6000p,200000b,5000s
 
-Output written on paper.dvi (25 pages, 163320 bytes).
+Output written on paper.dvi (25 pages, 163908 bytes).
