@@ -1,4 +1,4 @@
-This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2008.7.28)  25 JUN 2010 12:20
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2008.7.28)  1 JUL 2010 10:11
 entering extended mode
  %&-line parsing enabled.
 **paper
@@ -268,10 +268,7 @@ File: ./Fig/disc_frac_mips.ps Graphic file (type eps)
  <./Fig/disc_frac_mips.ps>
 [17]
 File: ./Fig/disc_cuts.ps Graphic file (type eps)
- <./Fig/disc_cuts.ps>
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [18]
+ <./Fig/disc_cuts.ps> [18]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [19]
@@ -287,7 +284,7 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [21]
-Underfull \hbox (badness 1019) in paragraph at lines 1887--1891
+Underfull \hbox (badness 1019) in paragraph at lines 1889--1893
 \OT1/cmr/m/n/9 8200. NJM and TJH were sup-ported by STFC grant
  []
 
@@ -297,10 +294,10 @@ Underfull \hbox (badness 1019) in paragraph at lines 1887--1891
 Here is how much of TeX's memory you used:
  1512 strings out of 94074
  18383 string characters out of 1163007
- 90740 words of memory out of 1500000
+ 90940 words of memory out of 1500000
  4777 multiletter control sequences out of 10000+50000
  17047 words of font info for 59 fonts, out of 1200000 for 2000
  645 hyphenation exceptions out of 8191
  31i,14n,34p,1618b,352s stack positions out of 5000i,500n,6000p,200000b,5000s
 
-Output written on paper.dvi (25 pages, 163200 bytes).
+Output written on paper.dvi (25 pages, 163320 bytes).
