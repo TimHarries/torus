@@ -517,6 +517,9 @@ contains
                      write(lunit, *) 0.
                   endif
 
+               case("NH2")
+                  write(lunit, *) real( thisOctal%NH2(subcell) )
+
                case("fixedtemp")
                   if (thisOctal%fixedTemperature(subcell)) then
                      write(lunit, *) 1.
@@ -524,10 +527,8 @@ contains
                      write(lunit, *) 0.
                   endif
 
-
                case("HI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
-
 
                case("HeI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon)))

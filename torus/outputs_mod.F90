@@ -17,6 +17,7 @@ contains
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
     use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
+    use input_variables, only : h21cm, internalView
     use photoionAMR_mod, only : createImageSplitGrid
     use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
@@ -27,6 +28,7 @@ contains
     use surface_mod, only : surfacetype
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
+    use angularImage, only: make_angular_image, map_dI_to_particles
     type(BLOBTYPE) :: tblob(1)
     real(double) :: totalFlux
     type(SURFACETYPE) :: tsurface
@@ -101,6 +103,15 @@ contains
 !       enddo
 
     endif
+
+    if (h21cm .and. calcDataCube) then
+       if ( internalView ) then 
+          call make_angular_image(grid)
+          call map_dI_to_particles(grid)
+       else
+          call make_h21cm_image(grid)
+       end if
+    end if
 
     if (dustPhysics.and.(calcspectrum.or.calcimage)) then
        mie = .true.

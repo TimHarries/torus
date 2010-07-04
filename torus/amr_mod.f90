@@ -16934,6 +16934,7 @@ end function readparameterfrom2dmap
     if ( h21cm ) then 
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%NH2, thisOctal%maxChildren)
        return
     end if
 

@@ -369,15 +369,20 @@ contains
     else
        thisOctal%temperature(subcell) =  max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
     end if
-    
+
+! Set H2 number density from SPH particles if present
     if ( associated(thisOctal%nh2) ) then
-       thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
-       if(doCOchemistry) then
-!       thisOctal%molAbundance(subcell) = 4e-10
-          if(thisOctal%nh2(subcell) .lt. 3e4) thisOctal%molAbundance(subcell) = x_D ! drop fraction
-!       if(thisOctal%rho(subcell) .gt. 1.55885d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
-          if(thisOctal%temperature(subcell) .gt. 30.) thisOctal%molAbundance(subcell) = x_D ! drop fraction
-       endif
+       if (associated(sphData%rhoH2) ) then 
+          thisOctal%NH2(subcell) = clusterparam%z / (2.0_db * mhydrogen)
+       else
+          thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+          if(doCOchemistry) then
+             !       thisOctal%molAbundance(subcell) = 4e-10
+             if(thisOctal%nh2(subcell) .lt. 3e4) thisOctal%molAbundance(subcell) = x_D ! drop fraction
+             !       if(thisOctal%rho(subcell) .gt. 1.55885d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
+             if(thisOctal%temperature(subcell) .gt. 30.) thisOctal%molAbundance(subcell) = x_D ! drop fraction
+          endif
+       end if
     endif
     
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)

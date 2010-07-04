@@ -210,6 +210,8 @@ contains
     character(len=80) :: cLine(:)
     integer :: nLines
     logical :: ok
+    TYPE(VECTOR) :: gridCentre
+    character(len=100) :: message
 
     select case(geometry)
 
@@ -458,22 +460,22 @@ contains
           call getReal("rcore", rCore, real(rsol/1.e10), cLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
-       call getReal("rinner", rInner, real(autocm/1.e10), cLine, nLines, &
-            "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
+          call getReal("rinner", rInner, real(autocm/1.e10), cLine, nLines, &
+               "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
 
-       call getReal("router", rOuter, real(autocm/1.e10), cLine, nLines, &
-            "Outer Radius (AU): ","(a,f8.2,a)", 20., ok, .true.)
+          call getReal("router", rOuter, real(autocm/1.e10), cLine, nLines, &
+               "Outer Radius (AU): ","(a,f8.2,a)", 20., ok, .true.)
 
-       call getReal("height", height, real(autocm/1.e10), cLine, nLines, &
-            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+          call getReal("height", height, real(autocm/1.e10), cLine, nLines, &
+               "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
-       call getReal("rho", rho, 1., cLine, nLines, &
-            "Density: ","(a,e12.5,a)", 1., ok, .true.)
+          call getReal("rho", rho, 1., cLine, nLines, &
+               "Density: ","(a,e12.5,a)", 1., ok, .true.)
 
-    case("molebench")
+       case("molebench")
           call getReal("rinner", rInner, 1., cLine, nLines, &
                "Inner Radius for dumpresults (10^10cm): ","(a,1pe8.2,a)", 1e4, ok, .true.)
-
+          
           call getReal("router", rOuter, 1., cLine, nLines, &
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
@@ -482,18 +484,77 @@ contains
           call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
-       call getReal("hcritPercentile", hcritPercentile, 1., cLine, nLines, &
-            "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
+          call getReal("hcritPercentile", hcritPercentile, 1., cLine, nLines, &
+               "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
 
-       call getReal("hmaxPercentile", hmaxPercentile, 1., cLine, nLines, &
-            "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+          call getReal("hmaxPercentile", hmaxPercentile, 1., cLine, nLines, &
+               "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
 
-       call getReal("sphNormLimit", sph_norm_limit, 1., cLine, nLines, &
-            "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.3, ok, .false.)
+          call getReal("sphNormLimit", sph_norm_limit, 1., cLine, nLines, &
+               "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.3, ok, .false.)
 
-       call getInteger("kerneltype", kerneltype, cLine, nLines, &
-            "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+          call getInteger("kerneltype", kerneltype, cLine, nLines, &
+               "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
 
+       case("theGalaxy")
+          call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
+               "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+          
+          call getReal("hcritPercentile", hcritPercentile, 1., cLine, nLines, &
+               "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
+
+          call getReal("hmaxPercentile", hmaxPercentile, 1., cLine, nLines, &
+               "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+          
+          call getReal("sphNormLimit", sph_norm_limit, 1., cLine, nLines, &
+               "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.3, ok, .false.)
+
+          call getInteger("kerneltype", kerneltype, cLine, nLines, &
+               "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+
+          call getLogical("internalView", internalView, cLine, nLines, &
+               "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
+
+ ! Read parameters used by galactic plane survey 
+          if ( internalView ) then 
+             call getDouble("intPosX", intPosX,  1.0_db, cLine, nLines, "Observer x position (x10^10cm)", &
+                  "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+             call getDouble("intPosY", intPosY,  1.0_db, cLine, nLines, "Observer y position (x10^10cm)", &
+                  "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
+             call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, nLines, "Observer z position (x10^10cm)", &
+                  "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+
+             call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, nLines, "Observer x velocity boost (km/s)", &
+                  "(a,f8.2x,a)", 0.d0, ok, .false.)
+             call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, nLines, "Observer y velocity boost (km/s)", &
+                  "(a,f8.2x,a)", 0.d0, ok, .false.)
+             call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, nLines, "Observer z velocity boost (km/s)", &
+                  "(a,f8.2x,a)", 0.d0, ok, .false.)
+
+             ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
+             ! Rotation about y-axis
+             call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, nLines, &
+                  "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
+             ! Rotation about z-axis
+             call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, nLines, &
+                  "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+
+             ! Rotate the centre of the grid so it covers the required domain
+             gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+             write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
+             call writeInfo(message)
+             gridCentre     = rotateZ( gridCentre, galaxyPositionAngle*degToRad )
+             gridCentre     = rotateY( gridCentre, galaxyInclination*degToRad   )
+             write(message,'(a,3(ES12.3,2x),a)') "Modified grid centre is ", gridCentre
+             call writeInfo(message)
+             amrGridCentreX = gridCentre%x
+             amrGridCentreY = gridCentre%y
+             amrGridCentreZ = gridCentre%z
+
+          else
+             call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, 1.0_db, cLine, nLines, &
+                  "Data cube velocity offset:", "(a,f8.1,1x,a)", 0.d0, ok, .true.)
+          end if
 
     end select
   end subroutine readGeometrySpecificParameters
@@ -915,14 +976,40 @@ contains
     call getString("datacubefile", datacubeFilename, cLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("imageside", imageside, 1., cLine, nLines, &
-         "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
+         "Image size (x10^10cm):","(a,es9.3,1x,a)", 5e7, ok, .true.)
+    call getReal("distance", gridDistance, real(pcToCm), cLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, nLines, &
-         "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
+         "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)
     call getInteger("nv", nv, cLine, nLines, &
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
     call getDouble("maxVel", maxVel, 1.d0, cLine, nLines, &
          "Maximum Velocity Channel (km/s): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
-    if (molecularPhysics) then
+    call getDouble("minVel", minVel, 1.0_db, cLine, nLines, &
+         "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)
+    call getLogical("h21cm", h21cm, cLine, nLines, &
+         "Calculate data cube of 21cm emission: ","(a,1l,a)", .false., ok, .false.)
+    call getLogical("splitCubes", splitCubes, cLine, nLines, &
+         "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
+
+    if ( h21cm ) then 
+       call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
+            "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
+       call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, nLines, &
+            "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
+       call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, nLines, &
+            "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
+       call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
+            "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
+       call getDouble("centrevecx", centrevecx, 1.d0, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       call getDouble("centrevecy", centrevecy, 1.d0, cLine, nLines, &
+            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       call getLogical("wanttau", wanttau, cLine, nLines, &
+            "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
+    end if
+ 
+   if (molecularPhysics) then
        call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, nLines, &

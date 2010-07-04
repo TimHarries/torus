@@ -1032,7 +1032,7 @@ CONTAINS
      TTauriRouter = REAL(get_dble_parameter(romData, "Rmax")*1.0d10)           
 
   elseif (geometry == "theGalaxy" ) then
-     call read_galaxy_sph_data(sphdatafilename, set_H2=.false.)
+     call read_galaxy_sph_data(sphdatafilename)
 
   elseif (geometry == "runaway" ) then
      call read_vh1

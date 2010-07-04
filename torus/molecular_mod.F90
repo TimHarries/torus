@@ -2555,7 +2555,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
          iray = iray + 1
          exit
-      elseif(iray .gt. maxsubpixels) then
+      elseif(iray .ge. maxsubpixels) then
          out(1) = avgIntensityNew
 !         out(2) = varintensitynew ! not averaged, just last value
          out(2) = opticaldepth ! not averaged, just last value
@@ -2594,7 +2594,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, &
-          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, writetempfits, dotune
+          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, writetempfits, dotune, h21cm
     use image_mod, only : deleteFitsFile
 
 #ifdef MPI
@@ -2713,7 +2713,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
            if(iv .eq. 1) then
               call writeinfo("Filling Octal parameters for first time",TRIVIAL)
-              call deallocateUnused(grid,grid%octreeroot,everything = .true.)
+              if (.not. h21cm ) call deallocateUnused(grid,grid%octreeroot,everything = .true.)
               call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
               call writeinfo("Done.",TRIVIAL)
            endif
@@ -3868,7 +3868,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         use input_variables, only : observerpos ! line number of observer position in observerfile 
         use input_variables, only : centrevecX, centrevecY, centrevecZ
         use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
-!        use input_variables, only : galaxyPositionAngle, galaxyInclination
+        use input_variables, only : galaxyPositionAngle, galaxyInclination
 
         logical :: paraxial = .true.
         real(double) :: pixelwidth, theta
@@ -3909,14 +3909,14 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            imagebasis(1) = rotateZ(imagebasis(1), -rotateViewAboutZ * degtorad)
            imagebasis(2) = rotateZ(imagebasis(2), -rotateViewAboutZ * degtorad)
 
-!! Apply rotations to orientate a disc in the x-y plane with a given position angle and inclination. 
-!        viewvec       = rotateY(viewvec,       -1.0*(90.0 + galaxyPositionAngle) * degtorad)
-!        imagebasis(1) = rotateY(imagebasis(1), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
-!        imagebasis(2) = rotateY(imagebasis(2), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
+! Apply rotations to orientate a disc in the x-y plane with a given position angle and inclination. 
+        viewvec       = rotateY(viewvec,       -1.0*(90.0 + galaxyPositionAngle) * degtorad)
+        imagebasis(1) = rotateY(imagebasis(1), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
+        imagebasis(2) = rotateY(imagebasis(2), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
 
-!        viewvec       = rotateX(viewvec,       -1.0*(90.0 - galaxyInclination) * degtorad) 
-!        imagebasis(1) = rotateX(imagebasis(1), -1.0*(90.0 - galaxyInclination) * degtorad)
-!        imagebasis(2) = rotateX(imagebasis(2), -1.0*(90.0 - galaxyInclination) * degtorad)
+        viewvec       = rotateX(viewvec,       -1.0*(90.0 - galaxyInclination) * degtorad) 
+        imagebasis(1) = rotateX(imagebasis(1), -1.0*(90.0 - galaxyInclination) * degtorad)
+        imagebasis(2) = rotateX(imagebasis(2), -1.0*(90.0 - galaxyInclination) * degtorad)
 
         endif
 
@@ -4498,6 +4498,7 @@ END SUBROUTINE sobseq
  subroutine make_h21cm_image(grid)
    
    use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc, densitySubSample
+   use input_variables, only : useDust, isInLte, lowmemory, datacubeFilename
    use h21cm_mod, only : h21cm_lambda
 
    implicit none
@@ -4508,9 +4509,12 @@ END SUBROUTINE sobseq
    type(MOLECULETYPE) :: thisMolecule
    real, parameter :: thisWavelength=21.0
 
+   itrans           = 1
    lineImage        = .true.
    maxRhoCalc       = .false. 
-   densitySubSample = .false.
+   usedust          = .false. 
+   isInLte          = .false.
+   lowmemory        = .false.
 
 ! molecular weight is used for column density calculation
    thisMolecule%molecularWeight = mHydrogen / amu
@@ -4532,9 +4536,11 @@ END SUBROUTINE sobseq
 ! Output as brightness temperature
    cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
 
-   if(writeoutput) call writedatacube(cube, "h21cm.fits")
+   if(writeoutput) call writedatacube(cube, datacubeFilename)
 
  end subroutine make_h21cm_image
+
+!-----------------------------------------------------------------------------------------------------------
 
 subroutine compare_molbench(diffmax)
 
@@ -5463,13 +5469,12 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                    (interpolated_Density(currentposition, grid, thisoctal, subcell) / &
                    (2.d0 * mhydrogen))
            end if
-        else
-           if ( h21cm ) then
-              nMol = 1.0
-           endif
         end if
 
-        if(lowmemory) then
+        if ( h21cm ) then
+           nMol = 1.0
+           etaline = thisOctal%molcellparam(5,subcell)
+        else if(lowmemory) then
            nmol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
            etaline = nmol * etaline
         else

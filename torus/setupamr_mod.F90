@@ -35,7 +35,7 @@ contains
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
-    use sph_data_class, only: new_read_sph_data
+    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
     use parallel_mod, only : sync_random_seed
     use mpi_amr_mod
@@ -111,8 +111,15 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
-       case("cluster", "theGalaxy")
+       case("cluster")
 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+       case("theGalaxy")
+
+          call read_galaxy_sph_data(sphdatafilename)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -274,7 +281,7 @@ contains
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
 
-          if(geometry .eq. 'molcluster') then
+          if(geometry .eq. 'molcluster'.or. geometry == "theGalaxy" ) then
              call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
              write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
              call writeInfo(message, TRIVIAL)

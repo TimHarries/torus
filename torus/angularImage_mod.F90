@@ -20,6 +20,11 @@ module angularImage
   character(len=200) :: message
   type(VECTOR) :: rayposition
   real(double) :: this_gal_lat, this_gal_lon
+! Approximate latitude range of galactic plane
+  real(double), parameter :: plane_lat=1.0_db 
+  integer, parameter :: vr_file_lun=81
+  character(len=*), parameter :: vr_format="unformatted"
+  integer :: vel_chan_num
 
   contains
 
@@ -29,7 +34,7 @@ module angularImage
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
       use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
-           galaxyPositionAngle, galaxyInclination
+           galaxyPositionAngle, galaxyInclination, wanttau, splitCubes
 
       implicit none
 
@@ -82,18 +87,27 @@ module angularImage
       call writeinfo("Writing data cubes", TRIVIAL)
       if(writeoutput) then
 
+         call writeinfo("Writing intensity.fits",TRIVIAL)
          call writedatacube(cube, "intensity.fits", write_Intensity=.true., write_ipos=.false., &
               write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
-         call writedatacube(cube, "intensity_pos.fits", write_Intensity=.false., write_ipos=.true., &
-              write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+         if ( splitCubes ) then 
+            call writeinfo("Writing intensity_pos.fits",TRIVIAL)
+            call writedatacube(cube, "intensity_pos.fits", write_Intensity=.false., write_ipos=.true., &
+                 write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
-         call writedatacube(cube, "intensity_neg.fits", write_Intensity=.false., write_ipos=.false., &
-              write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+            call writeinfo("Writing intensity_neg.fits",TRIVIAL)
+            call writedatacube(cube, "intensity_neg.fits", write_Intensity=.false., write_ipos=.false., &
+                 write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+         end if
 
-         call writedatacube(cube, "tau.fits", write_Intensity=.false., write_ipos=.false., &
-              write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
+         if ( wanttau ) then 
+            call writeinfo("Writing tau.fits",TRIVIAL)
+            call writedatacube(cube, "tau.fits", write_Intensity=.false., write_ipos=.false., &
+                 write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
+         end if
 
+         call writeinfo("Writing nCol.fits",TRIVIAL)
          call writedatacube(cube, "nCol.fits", write_Intensity=.false., write_ipos=.false., &
               write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
 
@@ -156,7 +170,10 @@ module angularImage
 
      allocate(temp(npixels,npixels,temp_dim))
 
+     open (unit=vr_file_lun, file="ray_info.dat", status="replace", form=vr_format)
      do iv = 1,nv
+
+        vel_chan_num = iv
 
         deltaV = (cube%vAxis(iv)*1.e5/cSpeed_sgl) ! velocities in fraction of c
         
@@ -208,6 +225,7 @@ module angularImage
         call writeinfo(message,FORINFO)
 
      end do
+     close (vr_file_lun)
 
 #ifdef MPI
      deallocate(tempArray, tempArray2)
@@ -221,7 +239,8 @@ module angularImage
 
     subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid, ix1, ix2)
 
-      use input_variables, only : npixels, imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination 
+      use input_variables, only: npixels, imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination 
+      use input_variables, only: nv
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid
@@ -281,6 +300,17 @@ module angularImage
 
             this_gal_lon = cube%xAxis(ipixels)
             this_gal_lat = cube%yAxis(jpixels)
+
+! Write profile information in ASCII or binary as required. 
+            if ( vel_chan_num == nv .and. abs(this_gal_lat) < plane_lat ) then 
+               if ( vr_format == "unformatted" ) then 
+                  write(vr_file_lun) real(ipixels,db), real(jpixels,db), -1.0e30_db, -1.0e30_db , -1.0e30_db , -1.0e30_db
+               else
+                  write(vr_file_lun,*) 
+                  write(vr_file_lun,*) "#  ", ipixels, jpixels
+                  write(vr_file_lun,*) 
+               end if
+            end if
 
             viewvec_x = sin( theta_axis(jpixels) ) * cos( phi_axis(ipixels) ) 
             viewvec_y = sin( theta_axis(jpixels) ) * sin( phi_axis(ipixels) ) 
@@ -389,7 +419,7 @@ module angularImage
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
         rhomax, i0max, nCol, observerVelocity)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize
+     use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize, nv
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
@@ -664,12 +694,48 @@ module angularImage
 
         thisoctal%newmolecularlevel(4,subcell) = thisoctal%newmolecularlevel(4,subcell) + 1.d0
 
+        call write_los_info
+
         currentPosition = currentPosition + (tval + origdeps) * otherDirection
         distToObs = (currentPosition - position) .dot. direction
         
      enddo ingrid_loop
          
 666  continue
+
+     contains
+
+       subroutine write_los_info
+
+         implicit none
+
+         real(double) :: this_pos, this_vel, rhoH2, H2frac
+
+        ! Write out los profile information before update to currentPosition
+         if ( vel_chan_num == nv .and. abs(this_gal_lat) < plane_lat ) then 
+
+            this_pos = ( modulus(currentPosition - rayposition) ) * (1.0e7/pcToCm) ! in kpc
+            this_vel = ( (startVel-observerVelocity) .dot. direction )  * ( cSpeed / 1.0d5) ! in km/s
+            ! H2 mass density
+            rhoH2    = 2.0_db * mHydrogen * thisOctal%NH2(subcell)
+            ! Mass fraction of H2 (consistent with Dobbs et al 2008, MNRAS, 389, 1097)
+            ! N.B. thisOctal%rho is HI mass density
+            H2frac   = rhoH2 / (rhoH2 + thisOctal%rho(subcell) )
+
+            ! Write out in ASCII or binary as required.  
+            if ( vr_format == "unformatted" ) then 
+               write (vr_file_lun) this_pos, this_vel, thisOctal%rho(subcell), &
+                    real(thisOctal%temperature(subcell),db), thisoctal%newmolecularlevel(1,subcell), &
+                    H2frac
+            else
+               write (vr_file_lun,'(6(ES15.6,2x))') this_pos, this_vel, thisOctal%rho(subcell), &
+                    thisOctal%temperature(subcell), thisoctal%newmolecularlevel(1,subcell), &
+                    H2frac
+            end if
+
+         end if
+
+       end subroutine write_los_info
 
    end subroutine intensityAlongRayRev
 
@@ -702,6 +768,7 @@ module angularImage
     use sph_data_class, only: sphdata, read_galaxy_sph_data
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD
+    use vtk_mod, only: writeVtkFile
 #ifdef MPI
     use mpi_global_mod, only: myRankGlobal
 #endif
@@ -723,7 +790,7 @@ module angularImage
     integer, parameter  :: LUIN = 10 ! unit number of output file
 
 ! Re-read particle data which has been deleted to save memory
-     call read_galaxy_sph_data(sphdatafilename, set_H2=.true.)
+     call read_galaxy_sph_data(sphdatafilename)
 
 #ifdef MPI
      write(char_my_rank, '(i3)') myRankGlobal
@@ -752,8 +819,9 @@ module angularImage
            dI       =  thisOctal%newmolecularlevel(1,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
            
-           ! Calculate mass fraction of molecular hydrogen (sphdata%rhon is the mass of HI)
-           H2_frac = sphdata%rhoH2(ipart) / ( sphdata%rhon(ipart) + sphdata%rhoH2(ipart) )
+           ! Calculate fraction of molecular hydrogen by number (not mass)
+           ! sphdata%rhon is the mass density of HI 
+           H2_frac = sphdata%rhoH2(ipart) / ( (2.0_db * sphdata%rhon(ipart)) + sphdata%rhoH2(ipart) )
 
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
            if ( n_sample > 0.99 ) write(LUIN,'(9(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
@@ -778,6 +846,8 @@ module angularImage
      write(LUIN,'(a)') "H2frac"
      write(LUIN,'(a)') "index"
      close (LUIN)
+
+     call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI      ", "galLon  ", "galLat  ", "crossing"/) )
 
    end subroutine map_dI_to_particles
 

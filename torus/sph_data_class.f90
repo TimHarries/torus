@@ -90,7 +90,7 @@ module sph_data_class
   end type sph_data
 
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
-                               RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:)
+                               RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:), RhoH2Array(:)
 
   logical, allocatable :: HullArray(:)
   type(sph_data), save :: sphdata
@@ -537,14 +537,12 @@ contains
   end subroutine new_read_sph_data
 
 ! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
-  subroutine read_galaxy_sph_data(filename, set_H2)
+  subroutine read_galaxy_sph_data(filename)
     use input_variables, only: internalView, galaxyPositionAngle, galaxyInclination
 
     implicit none
     
     character(len=*), intent(in) :: filename
-    logical, intent(in) :: set_H2
-
     character(LEN=150) :: message
 
     integer :: i, j, iiigas
@@ -603,7 +601,7 @@ contains
     time=0.0
 
     call init_sph_data(udist, umass, utime, time, nptmass)
-    if (set_H2) allocate(sphdata%rhoH2(npart)) 
+    allocate(sphdata%rhoH2(npart)) 
 
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
     sphdata%codeEnergytoTemperature = 1.0 ! no conversion required
@@ -670,8 +668,8 @@ contains
           iiigas=iiigas+1
           hI_mass = hI_mass + xyzmh(4,i) * (h1rho(i) / rho(i))
 
-          sphData%rhon(iiigas)        = h1rho(i)
-          if (set_H2) sphData%rhoH2(iiigas) = h2rho(i)
+          sphData%rhon(iiigas)  = h1rho(i)
+          sphData%rhoH2(iiigas) = h2rho(i)
 
           if ( internalView ) then 
 
@@ -1064,6 +1062,11 @@ contains
        NULLIFY(sphdata%vz)
     end if
 
+    if ( ASSOCIATED(sphdata%rhoH2) ) then 
+       DEALLOCATE(sphdata%rhoH2)
+       NULLIFY(sphdata%rhoH2)
+    end if
+
     sphdata%inUse = .false.
 
   end subroutine kill_sph_data
@@ -1417,6 +1420,7 @@ contains
        allocate(etaArray(npart)) ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
        allocate(RhoArray(npart))
        allocate(TemArray(npart))
+       allocate(RhoH2Array(npart))
        allocate(Harray(npart))
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
@@ -1500,6 +1504,13 @@ contains
        call writeinfo(message, TRIVIAL)
        write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))
        call writeinfo(message, TRIVIAL)
+       
+       ! Set to H2 density from particles if available or flag as missing data otherwise. 
+       if ( associated(sphData%rhoH2) ) then 
+          RhoH2Array(:) = sphdata%rhoH2(ind(:)) * codeDensitytoTORUS
+       else
+          RhoH2Array(:) = -1.0e-30_db
+       end if
 
        hcrit = hcrit * codeLengthtoTORUS
        OneOverHcrit = 1.d0 / hcrit
@@ -1546,9 +1557,8 @@ contains
  
     if(done) then
        if (allocated(PositionArray)) then
-
           deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, tempPosArray, &
-               q2Array, HullArray, etaarray, tempetaarray)
+               q2Array, HullArray, etaarray, tempetaarray, RhoH2Array)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
@@ -1669,9 +1679,10 @@ contains
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
+             paramValue(1) = paramValue(1) + partArray(i) * rhoH2Array(indexArray(i)) ! H2 density
           enddo
           
-          Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, 0.d0)  ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, paramValue(1)*fac)  ! density ! stays as vector for moment
           
        endif
     else
@@ -1683,7 +1694,7 @@ contains
              Clusterparameter = VECTOR(2.d0,2.d0,2.d0) ! 2c is not a real velocity and everything should be trying to handle this error
           endif
        elseif(param .eq. 2) then
-          Clusterparameter = VECTOR(1d-37, tcbr, 0.d0)  ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density, temperature and H2 density 
        endif
     endif
 
