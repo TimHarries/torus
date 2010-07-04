@@ -552,6 +552,13 @@ contains
              amrGridCentreZ = gridCentre%z
 
           else
+             call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, nLines, &
+                  "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
+             call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, nLines, &
+                  "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
+             rotateViewAboutX = 90.0 - galaxyPositionAngle 
+             rotateViewAboutY = 90.0 + galaxyPositionAngle
+             rotateViewAboutZ = 0.0
              call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, 1.0_db, cLine, nLines, &
                   "Data cube velocity offset:", "(a,f8.1,1x,a)", 0.d0, ok, .true.)
           end if
@@ -995,10 +1002,6 @@ contains
     if ( h21cm ) then 
        call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
-       call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, nLines, &
-            "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
-       call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, nLines, &
-            "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, nLines, &
             "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
        call getDouble("centrevecx", centrevecx, 1.d0, cLine, nLines, &

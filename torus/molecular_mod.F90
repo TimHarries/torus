@@ -3868,7 +3868,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         use input_variables, only : observerpos ! line number of observer position in observerfile 
         use input_variables, only : centrevecX, centrevecY, centrevecZ
         use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
-        use input_variables, only : galaxyPositionAngle, galaxyInclination
 
         logical :: paraxial = .true.
         real(double) :: pixelwidth, theta
@@ -3908,16 +3907,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 ! Image bases are necessarily orthonormal and linearly independent
            imagebasis(1) = rotateZ(imagebasis(1), -rotateViewAboutZ * degtorad)
            imagebasis(2) = rotateZ(imagebasis(2), -rotateViewAboutZ * degtorad)
-
-! Apply rotations to orientate a disc in the x-y plane with a given position angle and inclination. 
-        viewvec       = rotateY(viewvec,       -1.0*(90.0 + galaxyPositionAngle) * degtorad)
-        imagebasis(1) = rotateY(imagebasis(1), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
-        imagebasis(2) = rotateY(imagebasis(2), -1.0*(90.0 + galaxyPositionAngle) * degtorad)
-
-        viewvec       = rotateX(viewvec,       -1.0*(90.0 - galaxyInclination) * degtorad) 
-        imagebasis(1) = rotateX(imagebasis(1), -1.0*(90.0 - galaxyInclination) * degtorad)
-        imagebasis(2) = rotateX(imagebasis(2), -1.0*(90.0 - galaxyInclination) * degtorad)
-
         endif
 
         call normalize(viewvec) 
