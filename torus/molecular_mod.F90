@@ -4486,7 +4486,7 @@ END SUBROUTINE sobseq
 
  subroutine make_h21cm_image(grid)
    
-   use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc, densitySubSample
+   use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc
    use input_variables, only : useDust, isInLte, lowmemory, datacubeFilename
    use h21cm_mod, only : h21cm_lambda
 
