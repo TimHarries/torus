@@ -10,8 +10,8 @@ module utils_mod
   use nrtype
 
   implicit none
-
-  public
+ 
+ public
 
   interface stripSimilarValues
      module procedure stripSimilarValuesDouble
@@ -1625,7 +1625,8 @@ contains
       newFlux = newFlux * 1.e23 ! to janskies
     end function convertToJanskies
 
-    
+
+
     !
     ! -----Computes UNNORMALIZED voigtn function: (normalization = sqrt(pi))
     !

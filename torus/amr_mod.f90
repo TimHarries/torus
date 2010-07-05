@@ -5334,7 +5334,11 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+      if (r < 10.*grid%rinner) then
+         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
+      else
+         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+      endif
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -12477,10 +12481,15 @@ end function readparameterfrom2dmap
           itemp = ilambda
           if (ilambda == grid%nLambda) itemp = itemp - 1
           do i = 1, nDustType
-             kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
-                  logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
-                  grid%oneKappaSca(i,itemp)*thisOctal%rho(subcell), &
-                  grid%oneKappaSca(i,itemp+1)*thisOctal%rho(subcell))
+             if (grid%nLambda == 1) then
+                kappaSca = kappaSca +  thisOctal%dustTypeFraction(subcell, i) * &
+                     grid%oneKappaSca(i,1) * thisOctal%rho(subcell)
+             else
+                kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
+                     logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
+                     grid%oneKappaSca(i,itemp)*thisOctal%rho(subcell), &
+                     grid%oneKappaSca(i,itemp+1)*thisOctal%rho(subcell))
+             endif
           enddo
        endif
        kappaSca = kappaSca * frac
@@ -12512,10 +12521,15 @@ end function readparameterfrom2dmap
           itemp = ilambda
           if (ilambda == grid%nLambda) itemp = itemp - 1
           if (ndusttype .eq. 1) then
-             kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
+             if (grid%nLambda == 1) then
+                kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
+                     grid%oneKappaAbs(i,1) * thisOctal%rho(subcell)
+             else
+                kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
                   logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
                   oneKappaAbsT(itemp,1)*thisoctal%rho(subcell), &
                   oneKappaAbsT(itemp+1,1)*thisoctal%rho(subcell))
+             endif
 
           else
              itemp = ilambda
@@ -12529,11 +12543,16 @@ end function readparameterfrom2dmap
              !write(*,*) i, subcell
              !write(*,*) nDusttype,kappaAbs 
              !write(*,*) thisOctal%dustTypeFraction(subcell, i)
+                if (grid%nLambda == 1) then
+                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
+                        grid%oneKappaAbs(i,1)*thisOctal%rho(subcell)
+
+                else
                    kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
                         logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
                         grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell), &
                         grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell))
-
+                endif
              enddo
           endif
        endif
@@ -12980,7 +12999,7 @@ end function readparameterfrom2dmap
 
           thisTau  = thisOctal%subcellSize * (kscaDust + kabsDust)
 
-          r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.001d0
+          r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              if (.not.thisOctal%cylindrical) then
@@ -13061,7 +13080,7 @@ end function readparameterfrom2dmap
                 call returnKappa(grid, thisOctal, subcell, ilambda, rosselandKappa = kAbs)
                 tauross = thisOctal%subcellSize*kAbs*thisOctal%rho(subcell)*1.d10
                 if ((tauRoss > 500.d0).and.split) then
-                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
+!                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                         inherit=inheritProps, interp=interpProps)
                    converged = .false.

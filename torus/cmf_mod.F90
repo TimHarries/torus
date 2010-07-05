@@ -2718,7 +2718,7 @@ contains
     endif
 
     northVec = VECTOR(0.d0, 0.d0, 1.d0)
-    northVec = rotateY(northVec, dble(positionAngle))
+    northVec = rotateY(northVec, dble(positionAngle(1)))
 
     xProj =   viewVec .cross. northVec
     call normalize(xProj)

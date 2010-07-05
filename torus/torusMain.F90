@@ -35,7 +35,7 @@ program torus
   use inputs_mod, only: inputs
   use TTauri_mod, only: infallenhancment, initInfallEnhancement 
   use romanova_class, only: romanova
-  use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
+  use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection, sublimateDust
   use source_mod, only: sourceType, buildSphere, ionizingFlux
   use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter
   use cluster_class, only: cluster
@@ -742,14 +742,16 @@ program torus
 !       "dust1      "/))
 !
 !                call writeInfo("Test: Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+!                call sublimateDust(grid, grid%octreeRoot, r1, j, 1.e30)
+!
 !                do j = iSmoothLam, nLambda, 10
 !                   write(message,*) "Test: Smoothing at lam = ",grid%lamArray(j), " angs"
 !                   call writeInfo(message, TRIVIAL)
 !                   do
 !                      gridConverged = .true.
-!                      call putTau(grid, grid%lamArray(j))
+!!                      call putTau(grid, grid%lamArray(j))
 !                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-!                           inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+!                           inheritProps = .false., interpProps = .true., photosphereSplit = .false.)
 !                      if (gridConverged) exit
 !                   end do
 !                enddo
@@ -1144,42 +1146,44 @@ end subroutine pre_initAMRGrid
      else
         nLambda = nLambdaInput
         allocate(xArray(1:nLambda))
-        
-        if (lamLinear) then
-           deltaLambda = (lamEnd - lamStart) / real(nLambda)
-           
-           xArray(1) = lamStart + deltaLambda/2.
-           do i = 2, nLambda
-              xArray(i) = xArray(i-1) + deltaLambda
-           enddo
-           
+        if (nLambda == 1) then
+           xArray(1) = lamstart
         else
-
-           logLamStart = log10(lamStart)
-           logLamEnd   = log10(lamEnd)
-           
-           do i = 1, nLambda
-              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-              xArray(i) = 10.**xArray(i)
-           enddo
-           
-           if (photoionization) then
-              xArray(1) = lamStart
-              xArray(2) = lamEnd
-              nCurrent = 2
-              call refineLambdaArray(xArray, nCurrent, grid)
-              nt = nLambda - nCurrent
-              do i = 1, nt
-                 fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-                 fac = 10.**fac
-                 nCurrent=nCurrent + 1
-                 xArray(nCurrent) = fac
-                 call sort(nCurrent, xArray)
+           if (lamLinear) then
+              deltaLambda = (lamEnd - lamStart) / real(nLambda)
+              
+              xArray(1) = lamStart + deltaLambda/2.
+              do i = 2, nLambda
+                 xArray(i) = xArray(i-1) + deltaLambda
               enddo
+              
+           else
+              
+              logLamStart = log10(lamStart)
+              logLamEnd   = log10(lamEnd)
+              
+              do i = 1, nLambda
+                 xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+                 xArray(i) = 10.**xArray(i)
+              enddo
+           
+              if (photoionization) then
+                 xArray(1) = lamStart
+                 xArray(2) = lamEnd
+                 nCurrent = 2
+                 call refineLambdaArray(xArray, nCurrent, grid)
+                 nt = nLambda - nCurrent
+                 do i = 1, nt
+                    fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+                    fac = 10.**fac
+                    nCurrent=nCurrent + 1
+                    xArray(nCurrent) = fac
+                    call sort(nCurrent, xArray)
+                 enddo
+              endif
+              
            endif
-
         endif
-
 
 !       if (mie) then
 !          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
@@ -2779,8 +2783,9 @@ subroutine do_lucyRadiativeEq
            ! we are only redoing the inner edge
            if (solveVerticalHydro) then
 
-              call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope)
+              call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
+                   "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+              
               call writeVtkFile(grid, "lucy.vtk", &
                    valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
                    "dust1      ", "deltaT     ", "etaline    "/))

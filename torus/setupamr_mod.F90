@@ -305,7 +305,7 @@ contains
        end select
 
        call fixParentPointers(grid%octreeRoot)
-
+       call postSetupChecks(grid)
        call writeVTKfile(grid, "rho.vtk")
     endif
 #ifdef MPI
@@ -736,4 +736,32 @@ contains
   end subroutine splitGridFractal
 
 
-      end module setupamr_mod
+
+  subroutine postSetupChecks(grid)
+    use input_variables, only : mDisc, geometry
+    type(GRIDTYPE) :: grid
+
+    select case (geometry)
+    case ("shakara")
+       call testAMRmass(grid, dble(mdisc))
+    case DEFAULT
+    end select
+  end subroutine postSetupChecks
+
+
+  subroutine testAMRmass(grid, massWanted)
+    type(GRIDTYPE) :: grid
+    real(double) :: massWanted, actualMass, fac
+    character(len=80) :: message
+    
+    actualMass = 0.d0
+    call findTotalMass(grid%octreeRoot, actualMass)
+
+    fac = abs(actualMass-massWanted)/massWanted
+    if (fac > 0.01d0) then
+       write(message,'(a,f7.1,a)') "Grid mass differs from required mass by: ",100.d0*fac, " %"
+       call writeFatal(message)
+    endif
+  end subroutine testAMRmass
+
+end module setupamr_mod

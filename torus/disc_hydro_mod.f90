@@ -27,7 +27,7 @@ contains
        radius, mStar, sigma0,  converged, drho)
 
     use density_mod, only: fractgap, fractgap2 
-    use input_variables, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap
+    use input_variables, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap, rho0
     integer, intent(in) :: nz ! number of vertical grid points
     real(double),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -384,6 +384,7 @@ contains
     
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
+    sigma0 = rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi)
 
 
     converged = .false.
@@ -482,7 +483,7 @@ contains
           call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
           
           call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-          do j = iSmoothLam, nLambda, 2
+          do j = iSmoothLam, nLambda, 20
              write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
              call writeInfo(message, TRIVIAL)
              do

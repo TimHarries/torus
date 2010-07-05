@@ -13,6 +13,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename)
 
   use kind_mod
+  use torus_version_mod
   use input_variables 
   use phasematrix_mod
   use disc_class
@@ -1049,7 +1050,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   incLoop: do iInclination = 1, nInclination, 1 
        ! NB This loop is not indented in the code!
      
-     if (nInclination > 1) then  
+     if (nInclination >= 1) then  
         if (allocated(inclinations)) then
            inclination = max(inclinations(iInclination),1.e-4)
         else
@@ -1108,7 +1109,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
          outVec = (-1.d0) * viewVec
        endif
 
-     end if
+    end if
 
      write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Viewing vector: (",viewVec%x,",",viewVec%y,",", viewVec%z,")"
      call writeInfo(message, TRIVIAL)
@@ -1266,7 +1267,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (doTuning) call tune(6, "One Formal Sol") ! start a stopwatch  
         write(*,*) "Started formal integration of flux...."
         if (.not. ALLOCATED(flux)) ALLOCATE(flux(grid%nlambda))
-        if (nInclination > 1) then
+        if (nInclination >= 1) then
            write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
            obsfluxfile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
         else
@@ -1343,13 +1344,16 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            if (nSource > 0) then              
               if (.not.starOff) then
                  lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+                 if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
               else
                  lcore = tiny(lcore)
               endif
            endif
-           
+
            totEnvelopeEmission = totDustContinuumEmission
            chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
+
+
 !           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
 !           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
 !           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
@@ -2017,6 +2021,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                     albedo = thisSca / (thisSca + thisChi)
 
+                    if (noScattering) albedo = 0.
+
                     obs_weight = fac*oneOnFourPi*exp(-thisTaudble)
 
 
@@ -2089,6 +2095,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               else
                  albedo = linePhotonAlbedo(j)
               endif
+              if (noScattering) albedo = 0.
 
               if (grid%resonanceLine) albedo = 1.
 
@@ -2113,7 +2120,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                     endif
                  endif
               endif
-                 
+              if (noScattering) albedo = 0.
+
 
               call random_number(r)
               if (r > albedo) then
@@ -2815,20 +2823,21 @@ endif ! (doPvimage)
 enddo
  if (myRankIsZero) then 
     if (PRESENT(overrideFilename)) outfile = overrideFilename
-    if (nPhase == 1) then
-
-       call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, varianceArray,&
+    if (nLambda > 1) then
+       if (nPhase == 1) then
+          
+          call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, varianceArray,&
+               .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
+          specFile = trim(outfile)//"_stellar_direct"
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-
-       specFile = trim(outfile)//"_stellar_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, varianceArray,&
-            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-
-       specFile = trim(outfile)//"_stellar_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, varianceArray,&
-            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-
-       specFile = trim(outfile)//"_thermal_direct"
+          
+          specFile = trim(outfile)//"_stellar_scattered"
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, varianceArray,&
+               .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
+          specFile = trim(outfile)//"_thermal_direct"
        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect, varianceArray,&
             .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
 
@@ -2855,7 +2864,7 @@ enddo
            call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, varianceArray,&
                 .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
         endif
-        
+     endif
         
         if (doRaman) then
            write(tempChar,'(i3.3)') iPhase
@@ -2874,16 +2883,18 @@ enddo
            name_filter = get_filter_name(filters, i)
            bandwidth = 0.5*FWHM_filters(filters, i)  ! 1/2 of FWHM  [A]
            lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
-           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
-           call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
+!           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
+!           call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
+           if (torusVersion(2:2) == "2") specfile = originaloutfile
+
            call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
-           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
-           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
-           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"
-           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
-           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_u",iPhase,".fits"
-           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
+!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
+!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
+!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"
+!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
+!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_u",iPhase,".fits"
+!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase

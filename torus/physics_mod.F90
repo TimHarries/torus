@@ -111,8 +111,9 @@ contains
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
-    use input_variables, only : useDust, realDust, readlucy, writelucy
+    use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein
+    use input_variables, only : mCore, solveVerticalHydro, sigma0, rho0
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop
@@ -128,6 +129,8 @@ contains
 #endif
     use amr_mod, only : hydroVelocityConvert
     use setupamr_mod, only: doSmoothOnTau
+    use disc_hydro_mod, only: verticalHydrostatic
+
     real, pointer :: xArray(:) => null()
     integer :: nLambda 
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
@@ -140,9 +143,16 @@ contains
         call setupXarray(grid, xarray, nLambda)
         call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 !        call fillDustUniform(grid, grid%octreeRoot)
-        call doSmoothOnTau(grid)
-        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
-             globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
+        if (.not.variableDustSublimation) call doSmoothOnTau(grid)
+
+        if (solveVerticalHydro) then
+
+           call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                globalsourcearray, globalnSource, nLucy, massEnvelope)
+        else
+           call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
+        endif
      endif
 
      if (molecularPhysics.and.statisticalEquilibrium) then
@@ -306,10 +316,13 @@ contains
 
        subroutine setupLinSpacing
 
-         do i = 1, nlambda
-            xArray(i) = LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart)
-        enddo
-        
+         if (nLambda > 1) then
+            do i = 1, nlambda
+               xArray(i) = LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart)
+            enddo
+         else 
+            xArray(1) = lamStart
+         endif
        end subroutine setupLinSpacing
 
    end subroutine setupXarray

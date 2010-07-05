@@ -38,6 +38,11 @@ contains
     grainSize = 1.
     nDustType = 1
     freefreeImage = .false.
+    filter_set_name = "natural"
+    probDust = 0.1
+    probContPhoton = 1.
+    imagescale = 1.
+    noscattering = .false.
 
     nBlobs = 0
     nLines = 0
@@ -457,7 +462,7 @@ contains
                "Inner Radius (10^17cm): ","(a,1pe8.1,1x,a)", 30., ok, .true.)
 
        case("benchmark")
-          call getReal("rcore", rCore, real(rsol/1.e10), cLine, nLines, &
+          call getReal("radius1", rCore, real(rsol/1.e10), cLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
           call getReal("rinner", rInner, real(autocm/1.e10), cLine, nLines, &
@@ -495,6 +500,76 @@ contains
 
           call getInteger("kerneltype", kerneltype, cLine, nLines, &
                "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+
+    case("shakara")
+
+       oneKappa = .true.
+       fastIntegrate = .true.
+       call getLogical("gasopacity", includeGasOpacity, cLine, nLines, &
+            "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
+
+       call getReal("mdot", mdot,  real(msol * secstoyears), cLine, nLines, &
+            "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)
+
+       call getLogical("noscat", noScattering, cLine, nLines, &
+            "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("smoothinneredge", smoothInnerEdge, cLine, nLines, &
+            "Smooth density drop at inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getReal("radius1", rCore, real(rsol/1.e10), cLine, nLines, &
+            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, rCore, cLine, nLines, &
+            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, real(autocm/1.d10), cLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("height", height, real(autocm/1.d10), cLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("mass1", mCore, real(msol), cLine, nLines, &
+            "Core mass (solar masses): ","(a,f6.4,a)", 0.5, ok, .true.)
+
+       call getReal("mdisc", mDisc, real(msol), cLine, nLines, &
+            "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+
+       call getReal("alphadisc", alphaDisc, 1., cLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, 1., cLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+       call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
+            "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
+
+       call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
+            "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (solveVerticalHydro) then
+          call getInteger("nhydro", nhydro,  cline, nLines, &
+               "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
+       endif
+
+
+       call getReal("heightsplitfac", heightSplitFac, 1., cLine, nLines, &
+            "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
+
+!       rCore = rCore * rSol / 1.e10
+!       rinner = (rinner * (rCore * 1e10)) / autocm
+!
+!       rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
+!
+!       rInner = rInner * autocm / 1.e10
+!       rOuter = rOuter * autoCm / 1.e10
+!       height = height * autoCm / 1.e10
+!       mCore = mCore * mSol
+!       mDisc = mDisc * mSol
+
+       rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
+            * (rInner*1.d10)**alphaDisc * &
+            (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
 
        case("theGalaxy")
           call getString("sphdatafilename", sphdatafilename, cLine, nLines, &
@@ -587,6 +662,20 @@ contains
     call getLogical("amr3d", amr3d, cLine, nLines, &
          "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if (.not.(amr1d.or.amr2d.or.amr3d)) then
+       call writeFatal("AMR dimensionality must be specified")
+       stop
+    endif
+    if (amr1d.and.(amr2d.or.amr3d)) &
+       call writeFatal("Only one of amr1d, amr2d or amr3d should be set to true")
+
+    if (amr2d.and.(amr1d.or.amr3d)) &
+       call writeFatal("Only one of amr1d, amr2d or amr3d should be set to true")
+
+    if (amr3d.and.(amr1d.or.amr2d)) &
+       call writeFatal("Only one of amr1d, amr2d or amr3d should be set to true")
+
+
     call getInteger("mindepthamr", minDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
          & "(a,i3,a)",5,ok,.false.)
 
@@ -601,6 +690,9 @@ contains
          "Grid centre Y-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
     call getDouble("amrgridcentrez", amrGridCentreZ, 1.d0, cLine, nLines, &
          "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+
+    if (amr2d) amrGridCentrex = amrGridSize/2.d0
+
 
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, nLines, &
          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .false.) 
@@ -940,8 +1032,6 @@ contains
     call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, nLines, &
          "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)
 
-    call getLogical("gasopacity", includeGasOpacity, cLine, nLines, &
-         "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 
   end subroutine readRadiativeEquilibriumParameters
 
@@ -978,7 +1068,7 @@ contains
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-    call getReal("positionangle", positionAngle, real(degtorad), cLine, nLines, &
+    call getReal("positionangle", positionAngle(1), real(degtorad), cLine, nLines, &
          "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getString("datacubefile", datacubeFilename, cLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
@@ -1047,7 +1137,7 @@ contains
   end subroutine readDataCubeParameters
 
   subroutine readImageParameters(cLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=80) :: cLine(:), message
     integer :: nLines
     logical :: ok
     integer :: i
@@ -1057,20 +1147,45 @@ contains
     call getBigInteger("nphotons", nphotons, cLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
 
+    call getReal("distance", gridDistance, 1., cLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+
     call getInteger("nimage", nimage, cLine, nLines, &
          "Number of images to calculate: ","(a,i8,a)", 1, ok, .false.)
+
+    call getLogical("inarcsec", imageinArcsec, cLine, nLines, &
+         "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getReal("imagesize", setImageSize, real(autocm), cLine, nLines, &
+         "Image size (AU): ", "(a,1pe10.2,1x,a)", 0., ok, .false.)
+
+
     if (nimage == 1) then
 
        call getString("imagefile", imageFilename(1), cLine, nLines, &
             "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
+
        call getReal("lambdaimage", lambdaImage(1),1., cLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
-       call getString("imagetype", outputimageType(1), cLine, nLines, &
-            "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+       if (photoionPhysics) then
+          call getString("imagetype", outputimageType(1), cLine, nLines, &
+               "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+       endif
        call getInteger("npixels", npixelsArray(1), cLine, nLines, &
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+
+       call getReal("inclination", inclinations(1), real(degtorad), cLine, nLines, &
+            "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+    call getReal("positionangle", positionAngle(1), real(degtorad), cLine, nLines, &
+         "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
     else
        do i = 1, nImage
+
+          write(message,'(a,i1.1)') "Details for image: ",i
+          call writeInfo(message)
+          call writeInfo(" ")
 
           write(keyword,'(a,i1.1)') "imagefile",i
           call getString(keyword, imageFilename(i), cLine, nLines, &
@@ -1078,12 +1193,21 @@ contains
           write(keyword,'(a,i1.1)') "lambdaimage",i
           call getReal(keyword, lambdaImage(i),1., cLine, nLines, &
                "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
-          write(keyword,'(a,i1.1)') "imagetype",i
-          call getString(keyword, outputimageType(i), cLine, nLines, &
-               "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          if (photoionPhysics) then
+             write(keyword,'(a,i1.1)') "imagetype",i
+             call getString(keyword, outputimageType(i), cLine, nLines, &
+                  "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          endif
           write(keyword,'(a,i1.1)') "npixels",i
           call getInteger(keyword, npixelsArray(i), cLine, nLines, &
                "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+          write(keyword,'(a,i1.1)') "inclination",i
+          call getReal(keyword, inclinationArray(i), real(degtorad), cLine, nLines, &
+               "Inclination of image: ","(a,f4.1,1x,a)",0., ok, .true.)
+          write(keyword,'(a,i1.1)') "positionangle",i
+          call getReal(keyword, positionAngle(i), real(degtorad), cLine, nLines, &
+               "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
     enddo
  end if
        
@@ -1094,9 +1218,6 @@ contains
     integer :: nLines
     logical :: ok
 
-
-    call getReal("probcont", probContPhoton, 1.0, cLine, nLines, &
-         "ProbContPhoton: ", "(a,f4.2,a)", 0.2, ok, .true.)
 
     call getBigInteger("nphotons", nPhotons, cLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
@@ -1121,10 +1242,8 @@ contains
        lastInclination = lastInclination * degToRad
     end if
 
-    call getReal("probdust", probDust, 1.0, cLine, nLines, &
-         "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
 
-    call getReal("distance", gridDistance, 1.0, cLine, nLines, &
+    call getReal("distance", gridDistance, 1., cLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nphase", nPhase, cLine, nLines, &
@@ -1186,8 +1305,13 @@ subroutine findReal(name, value, cLine, nLines, ok)
   k = index(cline(i)," ")-1
   j = len_trim(name)
   if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:80),*) value
+     if (.not.ok) then
+        ok = .true.
+        read(cLine(i)(j+1:80),*) value
+     else
+        call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+        stop
+     endif
   endif
  end do
  end subroutine findReal
@@ -1205,10 +1329,16 @@ subroutine findReal(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:80),*) value
+  if (.not.ok) then
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+        ok = .true.
+        read(cLine(i)(j+1:80),*) value
+     endif
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
+
  end do
  end subroutine findDouble
 
@@ -1225,10 +1355,17 @@ subroutine findReal(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:80),*) value%x, value%y, value%z
+  if (.not.ok) then
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+        ok = .true.
+        read(cLine(i)(j+1:80),*) value%x, value%y, value%z
+     endif
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
+
+
  end do
 end subroutine findVECTOR
 
@@ -1245,9 +1382,13 @@ subroutine findInteger(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
+  if (.not.ok) then
   if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
+  endif
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
  end do
  end subroutine findInteger
@@ -1265,10 +1406,16 @@ subroutine findBigInteger(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:),*) value
+  if (.not.ok) then
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+        ok = .true.
+        read(cLine(i)(j+1:),*) value
+     endif
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
+
  end do
 end subroutine findBigInteger
 
@@ -1285,10 +1432,16 @@ subroutine findLogical(name, value, cLine, nLines, ok)
  do i = 1, nLines
   k = index(cline(i)," ")-1
   j = len_trim(name)
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:),*) value
+  if (.not.ok) then
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+        ok = .true.
+        read(cLine(i)(j+1:),*) value
+     endif
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
+
  end do
  end subroutine findLogical
 
@@ -1305,10 +1458,16 @@ subroutine findString(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:),*) value
+  if (.not.ok) then
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+        ok = .true.
+        read(cLine(i)(j+1:),*) value
+     endif
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
+
  end do
  value = trim(value)
  end subroutine findString
@@ -1326,10 +1485,16 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:),*) value
+  if (.not.ok) then
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+        ok = .true.
+        read(cLine(i)(j+1:),*) value
+     endif
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
   endif
+
  end do
  end subroutine findRealArray
 

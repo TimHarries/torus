@@ -561,12 +561,16 @@ contains
        call randomSource(source, nSource, thisSource)
     endif
 
-    do i = 2, nLambda-1
-       dlam(i) = 0.5*((lambda(i+1)+lambda(i))-(lambda(i)+lambda(i-1)))
-    enddo
-    dlam(1) = lambda(2)-lambda(1)
-    dlam(nLambda) = lambda(nlambda)-lambda(nLambda-1)
 
+    if (nLambda > 1) then
+       do i = 2, nLambda-1
+          dlam(i) = 0.5*((lambda(i+1)+lambda(i))-(lambda(i)+lambda(i-1)))
+       enddo
+       dlam(1) = lambda(2)-lambda(1)
+       dlam(nLambda) = lambda(nlambda)-lambda(nLambda-1)
+    else
+       dlam(1) = 1. ! computing monochromatic image
+    endif
 
     ! is this a raman photon
     if (grid%doRaman) thisphoton%redPhoton = .false.
@@ -1020,15 +1024,20 @@ contains
              thisPhoton%lambda = lambda(ilambda)
              thisPhoton%stokes = thisPhoton%stokes * weight ! * real(nLambda) tjh 21/3/07
              call random_number(r)
-             if (iLambda == 1) then
+             if (nlambda == 1) then
                 x1 = lambda(1)
-                x2 = 0.5*(lambda(1)+lambda(2))
-             else if (iLambda == nLambda) then
-                x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
-                x2 = lambda(nLambda)
+                x2 = lambda(1)
              else
-                x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
-                x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
+                if (iLambda == 1) then
+                   x1 = lambda(1)
+                   x2 = 0.5*(lambda(1)+lambda(2))
+                else if (iLambda == nLambda) then
+                   x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
+                   x2 = lambda(nLambda)
+                else
+                   x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
+                   x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
+                endif
              endif
 !             call random_number(r)
 !          thisPhoton%lambda = x1+r*(x2-x1)

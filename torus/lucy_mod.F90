@@ -850,10 +850,11 @@ contains
              if (iIter_grand == 2) tauMax = 0.1
              if (iIter_grand == 4) tauMax = 1.d0
              if (iIter_grand == 6) tauMax = 1.d0
-             if (iIter_grand == 8) tauMax = 1.d30
+             if (iIter_grand == 8) tauMax = 10.d0
+             if (iIter_grand == 10) tauMax = 1.d30
 
              ! Sublimate the dust and smooth at the photosphere on the last pass
-             if (iIter_Grand <= 8) &
+             if (iIter_Grand <= 10) &
                   call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              if ((nfrac /= 0).and.(writeoutput)) then
                 write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
@@ -876,7 +877,7 @@ contains
              !                endif
              !             endif
 
-             if (iiter_grand >= 6) then
+             if ((iiter_grand >= 6).and.(iiter_grand <= 10)) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -893,7 +894,7 @@ contains
                               inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
                       else
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                       endif
 
                       if (gridConverged) exit
@@ -971,6 +972,9 @@ contains
           converged = .true.
        endif
 
+       if (variableDustSublimation.and. &
+            solveVerticalHydro.and.(.not.thisisfinalPass).and.(iiter_grand == 12)) converged =.true.
+
        ! forceLucyConv is set in the parameters.dat file if required
        if ( forceLucyConv ) then
           converged = .true.
@@ -983,7 +987,7 @@ contains
           tfilename = "lucy.vtk"
        endif
 
-       if ( .not. suppressLucySmooth ) call putTau(grid, 6.e4)
+
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
             "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
@@ -3493,7 +3497,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
-    use input_variables, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR
+    use input_variables, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR, smoothinneredge
     use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -3530,24 +3534,51 @@ subroutine setBiasOnTau(grid, iLambda)
 
           split = .false.
           
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          if (r < 10.*grid%rinner) then
+             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
+          else
+             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          endif
           
-          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-
-
-          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
+          if (.not.split) then
+             if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          endif
+          
+          if (.not.split) then
+             if (.not.smoothInnerEdge) then
+                if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+                     (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+             endif
+          endif
+          if (.not.split) then
+             if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          endif
+          if (.not.split) then
+             if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          endif
+          if (.not.split) then
+             if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          endif
 
-          if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
-               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          if (.not.split) then
+             if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          endif
 
-          
-          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
-               (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
-          
-          if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
-          if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
-          
+          if (.not.split) then
+             if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
+                  (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
+          endif
+
+
+          if (.not.split) then
+             if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+          endif
+
+          if (.not.split) then
+             if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+          endif
        
           if ((.not.split).and.(thisOctal%nDepth > minDepthAMR)) then
              nUnrefine = nUnrefine + thisOctal%parent%nChildren
@@ -3669,7 +3700,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine integrateUpwards
 
   recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
-    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner
+    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner, smoothinneredge
     logical :: gridConverged
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -3701,6 +3732,18 @@ subroutine setBiasOnTau(grid, iLambda)
           hr = height * (r / (100.d0*autocm/1.d10))**beta
 
 
+          if (r < 10.*grid%rinner) then
+             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
+          else
+             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          endif
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          
+          if (.not.smoothInnerEdge) then
+             if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          endif
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.

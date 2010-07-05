@@ -6,7 +6,7 @@ module image_mod
   use phasematrix_mod, only: STOKESVECTOR
   use photon_mod, only: PHOTON
   use source_mod, only: SOURCETYPE, I_nu, getElement
-  use utils_mod, only: sort, locate
+  use utils_mod, only: sort, locate, convertToJanskies
 
   implicit none
 
@@ -604,19 +604,42 @@ module image_mod
        deallocate(values)
      end function imagePercentile
 
+     subroutine ConvertImageToMJanskiesPerStr(image, lambda, distance)
+       type(IMAGETYPE) :: image
+       real(double) :: lambda
+       real(double) :: distance, scale
+       real(double) :: angularScale, strad, fac
+       integer :: i, j
+
+       scale = 1.d20 / distance**2 ! to per cm^2
+       angularScale =  (image%xAxisCentre(2) - image%xAxisCentre(1))*1.d10/distance
+       strad = angularScale**2 ! str per pix
+
+       do i = 1, image%nx
+          do j = 1, image%ny 
+
+! factor 1.d-6 to convert janskies to MJanskies
+             image%pixel(i,j)%i = 1.d-6*convertToJanskies(dble(scale*image%pixel(i,j)%i),lambda)/strad
+             image%pixel(i,j)%q = 1.d-6*convertToJanskies(dble(scale*image%pixel(i,j)%q),lambda)/strad
+             image%pixel(i,j)%u = 1.d-6*convertToJanskies(dble(scale*image%pixel(i,j)%u),lambda)/strad
+             image%pixel(i,j)%v = 1.d-6*convertToJanskies(dble(scale*Image%pixel(i,j)%v),lambda)/strad
+          enddo
+       enddo
+     end subroutine ConvertImageToMJanskiesPerStr
 !
 !*******************************************************************************
 !
 !! WRITE_IMAGE creates a FITS primary array containing a 2-D image.
 !
 
-     subroutine writeFitsImage(image, filename, objectDistance, type)
+     subroutine writeFitsImage(image, filename, objectDistance, type, units)
 
 ! Arguments
 #ifdef USECFITSIO
        use input_variables, only: lamStart, lamEnd, ImageinArcSec
 #endif
        type(IMAGETYPE), intent(in)   :: image
+       character(len=*), optional :: units
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
 
@@ -633,11 +656,9 @@ module image_mod
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
 
 
-       if (imageinarcsec) then
-          dx = (dx * 1.d10)/objectDistance
-          dy = (dy * 1.d10)/objectDistance
-       endif
-      
+       call convertimagetoMJanskiesPerStr(image, dble(lamStart), objectDistance)
+       
+       
 
        allocate(array(1:image%nx, 1:image%ny))
        call writeInfo("Writing fits image to: "//trim(filename),TRIVIAL)
@@ -675,15 +696,6 @@ module image_mod
        fpixel=1
        nelements=naxes(1)*naxes(2)
 
-       scale = 1.d20
-       scale = scale / (objectDistance**2) 
-       scale = scale * 1.d4
-       scale = scale * 1.d-7
-       dlam = (lamEnd - lamStart) * 2.d0 * angstoMicrons
-       lamCen = (lamStart + lamEnd) / 2.d0 * angstoMicrons
-
-       scale = scale / dlam * lamCen
-
        scale = 1.
        array = 1.d-30
        select case(type)
@@ -712,6 +724,25 @@ module image_mod
        !  Write another optional keyword to the header.
        !
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
+
+
+
+       if (imageinarcsec) then
+          dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec
+          dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkys(unit,'CUNIT1', "arcsec", "x axis unit", status)
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkys(unit,'CUNIT2', "arcsec", "y axis unit", status)
+       else
+          dx = (dx * 1.d10)/autocm
+          dy = (dy * 1.d10)/autocm
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkys(unit,'CUNIT1', "AU", "x axis unit", status)
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkys(unit,'CUNIT2', "AU", "y axis unit", status)
+       endif
+
 
 
        call ftpkyd(unit,'CDELT1',dx,10,' ',status)

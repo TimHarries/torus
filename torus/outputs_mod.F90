@@ -11,7 +11,7 @@ contains
     use modelatom_mod, only : globalAtomArray
     use source_mod, only : globalNSource, globalSourceArray
     use input_variables, only : gridOutputFilename, writegrid
-    use input_variables, only : useDust, realdust
+    use input_variables, only : useDust, realdust, stokesimage
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
@@ -20,6 +20,8 @@ contains
     use input_variables, only : h21cm, internalView
     use photoionAMR_mod, only : createImageSplitGrid
     use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
+    use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
+    use input_variables, only : lamStart, lamEnd
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
@@ -61,9 +63,9 @@ contains
     call setupXarray(grid, xArray, nLambda)
 
 
-    if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
     if (atomicPhysics.and.calcDataCube) then
+       if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        gridDistance = 140.d0* pctocm/1.d10
        call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
             viewVec, dble(gridDistance), &
@@ -118,15 +120,36 @@ contains
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam)
-       else
-          call setupXarray(grid, xarray, nLambda)
+          call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+          call do_phaseloop(grid, .true., 0., 0., 0.,  &
+               0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+               tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+               0., 0, .false., 100000, &
+               miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
        end if
-       call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       call do_phaseloop(grid, .true., 0., 0., 0.,  &
-            0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-            tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
-            0., 0, .false., 100000, &
-            miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+       allocate(inclinations(1))
+       if (calcImage) then
+          do i = 1, nImage
+             nlambda = 1
+             stokesImage = .true.
+             outfile = imageFilename(i)
+             npix = nPixelsArray(i)
+             ninclination = 1
+             inclinations(1) = inclinationArray(i)
+             lamStart = lambdaImage(i)
+             lamEnd = lambdaImage(i)
+             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
+                  wavLin=.true., numLam=1)
+
+             call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+             call do_phaseloop(grid, .true., 0., 0., 0.,  &
+                  0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+                  tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+                  0., 0, .false., 100000, &
+                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+          enddo
+       endif
+
     endif
 666 continue
   end subroutine doOutputs
