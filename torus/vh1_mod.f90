@@ -6,11 +6,11 @@ module vh1_mod
 
   public :: read_vh1, assign_from_vh1, get_density_vh1
   
-  integer, parameter, private :: nx=800
-  integer, parameter, private :: ny=800
-  real(db), private, save :: rho(nx,ny)
-  real(db), private, save :: xaxis(nx)
-  real(db), private, save :: yaxis(ny)
+  integer, private :: nx
+  integer, private :: ny
+  real(db), private, save, allocatable :: rho(:,:)
+  real(db), private, save, allocatable :: xaxis(:)
+  real(db), private, save, allocatable :: yaxis(:)
 
 contains
 
@@ -20,18 +20,38 @@ contains
     ! Read data from VH-1 output file written by printold.f
     
     use messages_mod
+    use utils_mod, only: file_line_count
 
     implicit none
 
-    character(len=*), parameter :: infile="bowsc.1008"
+    character(len=*), parameter :: infile="vh1.dat"
     character :: head1*7, head2*6, head3*4
     integer :: vh1_cycle
     real :: time, dt
 
     real(db) :: pres, vx, vy
     integer :: i, j
+    integer :: nlines
 
     character(len=200) message
+
+! Work out the size of the grid and allocate storage. 
+! nlines includes one header line i.e.
+! nx = sqrt(l+1) - 1 
+! if l is lines of data only
+
+    nlines = file_line_count(infile)
+    nx = int(sqrt(real(nlines))) - 1
+    ny = int(sqrt(real(nlines))) - 1
+
+    write(message,*) "Found ", nlines, " lines in ", infile
+    call writeInfo(message, FORINFO)
+    write(message,*) "Assuming grid is square: nx, ny= ", nx, ny
+    call writeInfo(message, FORINFO)
+
+    allocate(rho(nx,ny))
+    allocate(xaxis(nx))
+    allocate(yaxis(ny))
 
     open(unit=10, status="old", file=infile)
     
@@ -68,6 +88,10 @@ contains
     close(10)
 
     call writeInfo("Finished reading VH-1 data", FORINFO)
+    write(message,*) "x-axis (min/max) =", xaxis(1), xaxis(nx)
+    call writeInfo(message, FORINFO)
+    write(message,*) "y-axis (min/max) =", yaxis(1), yaxis(nx)
+    call writeInfo(message, FORINFO)
 
   end subroutine read_vh1
 
