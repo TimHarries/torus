@@ -2783,8 +2783,8 @@ subroutine do_lucyRadiativeEq
            ! we are only redoing the inner edge
            if (solveVerticalHydro) then
 
-              call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
-                   "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+              call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
+                   source, nSource, nLucy, massEnvelope)
               
               call writeVtkFile(grid, "lucy.vtk", &
                    valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
