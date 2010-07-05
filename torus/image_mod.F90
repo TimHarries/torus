@@ -608,7 +608,7 @@ module image_mod
        type(IMAGETYPE) :: image
        real(double) :: lambda
        real(double) :: distance, scale
-       real(double) :: angularScale, strad, fac
+       real(double) :: angularScale, strad
        integer :: i, j
 
        scale = 1.d20 / distance**2 ! to per cm^2
@@ -636,7 +636,7 @@ module image_mod
 
 ! Arguments
 #ifdef USECFITSIO
-       use input_variables, only: lamStart, lamEnd, ImageinArcSec
+       use input_variables, only: lamStart, ImageinArcSec
 #endif
        type(IMAGETYPE), intent(in)   :: image
        character(len=*), optional :: units
@@ -648,7 +648,7 @@ module image_mod
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       real(double) :: scale, dlam, lamCen, dx, dy
+       real(double) :: scale,  dx, dy
 
        logical :: simple,extend
 

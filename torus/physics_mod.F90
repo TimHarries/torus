@@ -113,7 +113,7 @@ contains
          lucy_undersampled, molecularPhysics, hydrodynamics
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein
-    use input_variables, only : mCore, solveVerticalHydro, sigma0, rho0
+    use input_variables, only : mCore, solveVerticalHydro, sigma0
     use cmf_mod, only : atomloop
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
     use photoion_mod, only : refineLambdaArray, photoionizationLoop

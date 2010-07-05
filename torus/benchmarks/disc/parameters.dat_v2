@@ -9,6 +9,7 @@ radeq T  ! perform a radiative equilibrium calculation
 
 readgrid F   ! we aren't reading a grid, we will set one up from scratch
 writegrid F  ! we don't need to write out the AMR file - we just need SEDs
+amrgridsize 4.e6
 amrgridcentrex 2.e6 ! the linear size of the top-level AMR mesh in units of 10^10 cm
 amr2d T  ! this is a 2d (cylindical) model
 
@@ -26,7 +27,7 @@ radius1 1.  ! it has a radius of 1 solar radius
 teff1 5800.  ! the source effective temperature 
 contflux1 blackbody ! the continuum flux is assumed to be a blackbody
 mass1 1.   ! the source has a mass of one solar mass
-sourcepos1 0. 0. 0  ! it is located at the grid centre
+sourcepos1 0. 0. 0  ! it is located at the grid cntre
 
 ! Geometry specific parameters
 

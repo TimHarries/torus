@@ -1329,17 +1329,16 @@ subroutine findReal(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (.not.ok) then
-     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+     if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:80),*) value
-     endif
-  else
+     else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
      stop
   endif
-
- end do
+endif
+end do
  end subroutine findDouble
 
  subroutine findVECTOR(name, value, cLine, nLines, ok)
@@ -1355,15 +1354,15 @@ subroutine findReal(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (.not.ok) then
-     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+     if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:80),*) value%x, value%y, value%z
-     endif
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
      stop
   endif
+     endif
 
 
  end do
@@ -1382,42 +1381,43 @@ subroutine findInteger(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (.not.ok) then
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
-       ok = .true.
-       read(cLine(i)(j+1:),*) value
-  endif
-     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
-  endif
- end do
- end subroutine findInteger
-
-subroutine findBigInteger(name, value, cLine, nLines, ok)
- implicit none
- character(len=*) :: name
- integer(kind=bigInt) :: value
- character(len=80) :: cLine(*)
- integer :: nLines
- logical :: ok
- integer :: i, j, k
-
- ok = .false.
- do i = 1, nLines
-  j = len_trim(name)
-  k = index(cline(i)," ")-1
-  if (.not.ok) then
      if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:),*) value
-     endif
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
      stop
   endif
-
+     endif
  end do
-end subroutine findBigInteger
+ end subroutine findInteger
+
+ subroutine findBigInteger(name, value, cLine, nLines, ok)
+   implicit none
+   character(len=*) :: name
+   integer(kind=bigInt) :: value
+   character(len=80) :: cLine(*)
+   integer :: nLines
+   logical :: ok
+   integer :: i, j, k
+
+   ok = .false.
+   do i = 1, nLines
+      j = len_trim(name)
+      k = index(cline(i)," ")-1
+      if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+         if (.not.ok) then
+            ok = .true.
+            read(cLine(i)(j+1:),*) value
+         else
+            call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+            stop
+         endif
+      endif
+
+   end do
+ end subroutine findBigInteger
 
 subroutine findLogical(name, value, cLine, nLines, ok)
  implicit none
@@ -1432,17 +1432,16 @@ subroutine findLogical(name, value, cLine, nLines, ok)
  do i = 1, nLines
   k = index(cline(i)," ")-1
   j = len_trim(name)
-  if (.not.ok) then
-     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+     if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:),*) value
+     else
+        call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+        stop
      endif
-  else
-     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
   endif
-
- end do
+end do
  end subroutine findLogical
 
 subroutine findString(name, value, cLine, nLines, ok)
@@ -1458,16 +1457,15 @@ subroutine findString(name, value, cLine, nLines, ok)
  do i = 1, nLines
   j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (.not.ok) then
      if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:),*) value
-     endif
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
      stop
   endif
-
+endif
  end do
  value = trim(value)
  end subroutine findString
