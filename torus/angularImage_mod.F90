@@ -121,7 +121,7 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : npixels, nv, nsubpixels, splitCubes
+      use input_variables, only : npixels, nv, nsubpixels, splitCubes, wantTau
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
@@ -201,7 +201,7 @@ module angularImage
 
 ! Intensity as brightness temperature
         cube%intensity(:,:,iv) = real(temp(:,:,1)) * (h21cm_lambda**2) / (2.0 * kErg)
-        cube%tau(:,:,iv)       = real(temp(:,:,2))
+        if (wantTau ) cube%tau(:,:,iv)       = real(temp(:,:,2))
         cube%nCol(:,:)         = real(temp(:,:,3)) 
         if ( splitCubes ) then 
            cube%i0_pos(:,:,iv) = real(temp(:,:,4))
