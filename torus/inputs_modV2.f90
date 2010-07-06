@@ -241,8 +241,6 @@ contains
     integer :: nLines
     logical :: fLine(:)
     logical :: ok
-    TYPE(VECTOR) :: gridCentre
-    character(len=100) :: message
 
     select case(geometry)
 
@@ -511,7 +509,7 @@ contains
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
 
-       case("molcluster")
+       case("molcluster", "theGalaxy")
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
@@ -526,6 +524,9 @@ contains
 
           call getInteger("kerneltype", kerneltype, cLine, fLine, nLines, &
                "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
+
+          call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
+               "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
 
     case("shakara")
 
@@ -597,76 +598,7 @@ contains
             * (rInner*1.d10)**alphaDisc * &
             (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
 
-       case("theGalaxy")
-          call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
-               "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
-          
-          call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
-               "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
-          
-          call getReal("hcritPercentile", hcritPercentile, 1., cLine, fLine, nLines, &
-               "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
-
-          call getReal("hmaxPercentile", hmaxPercentile, 1., cLine, fLine, nLines, &
-               "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
-          
-          call getReal("sphNormLimit", sph_norm_limit, 1., cLine, fLine, nLines, &
-               "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.3, ok, .false.)
-
-          call getInteger("kerneltype", kerneltype, cLine, fLine, nLines, &
-               "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
-
-          call getLogical("internalView", internalView, cLine, fLine, nLines, &
-               "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
-
- ! Read parameters used by galactic plane survey 
-          if ( internalView ) then 
-             call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm)", &
-                  "(a,e10.4,1x,a)", 0.d0, ok, .false.)
-             call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm)", &
-                  "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
-             call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm)", &
-                  "(a,e10.4,1x,a)", 0.d0, ok, .false.)
-
-             call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s)", &
-                  "(a,f8.2x,a)", 0.d0, ok, .false.)
-             call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s)", &
-                  "(a,f8.2x,a)", 0.d0, ok, .false.)
-             call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
-                  "(a,f8.2x,a)", 0.d0, ok, .false.)
-
-             ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
-             ! Rotation about y-axis
-             call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, fLine, nLines, &
-                  "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
-             ! Rotation about z-axis
-             call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
-                  "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
-
-             ! Rotate the centre of the grid so it covers the required domain
-             gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
-             write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
-             call writeInfo(message)
-             gridCentre     = rotateZ( gridCentre, galaxyPositionAngle*degToRad )
-             gridCentre     = rotateY( gridCentre, galaxyInclination*degToRad   )
-             write(message,'(a,3(ES12.3,2x),a)') "Modified grid centre is ", gridCentre
-             call writeInfo(message)
-             amrGridCentreX = gridCentre%x
-             amrGridCentreY = gridCentre%y
-             amrGridCentreZ = gridCentre%z
-
-          else
-             call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
-                  "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
-             call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
-                  "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
-             rotateViewAboutX = 90.0 - galaxyPositionAngle 
-             rotateViewAboutY = 90.0 + galaxyPositionAngle
-             rotateViewAboutZ = 0.0
-             call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, 1.0_db, cLine, fLine, nLines, &
-                  "Data cube velocity offset:", "(a,f8.1,1x,a)", 0.d0, ok, .true.)
-          end if
-
+           
     end select
   end subroutine readGeometrySpecificParameters
          
@@ -1109,6 +1041,8 @@ contains
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
+    TYPE(VECTOR) :: gridCentre
+    character(len=100) :: message
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
@@ -1144,6 +1078,58 @@ contains
             "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("internalView", internalView, cLine, fLine, nLines, &
+            "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
+
+       ! Read parameters used by galactic plane survey 
+       if ( internalView ) then 
+          call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm)", &
+               "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+          call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm)", &
+               "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
+          call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm)", &
+               "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+          
+          call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s)", &
+               "(a,f8.2x,a)", 0.d0, ok, .false.)
+          call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s)", &
+               "(a,f8.2x,a)", 0.d0, ok, .false.)
+          call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
+               "(a,f8.2x,a)", 0.d0, ok, .false.)
+
+          ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
+          ! Rotation about y-axis
+          call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, fLine, nLines, &
+               "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
+          ! Rotation about z-axis
+          call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
+               "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+
+          ! Rotate the centre of the grid so it covers the required domain
+          gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+          write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
+          call writeInfo(message)
+          gridCentre     = rotateZ( gridCentre, galaxyPositionAngle*degToRad )
+          gridCentre     = rotateY( gridCentre, galaxyInclination*degToRad   )
+          write(message,'(a,3(ES12.3,2x),a)') "Modified grid centre is ", gridCentre
+          call writeInfo(message)
+          amrGridCentreX = gridCentre%x
+          amrGridCentreY = gridCentre%y
+          amrGridCentreZ = gridCentre%z
+          
+       else
+          call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
+               "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
+          call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
+               "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
+          rotateViewAboutX = 90.0 - galaxyPositionAngle 
+          rotateViewAboutY = 90.0 + galaxyPositionAngle
+          rotateViewAboutZ = 0.0
+          call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, 1.0_db, cLine, fLine, nLines, &
+               "Data cube velocity offset:", "(a,f8.1,1x,a)", 0.d0, ok, .true.)
+       end if
+       
     end if
  
    if (molecularPhysics) then
