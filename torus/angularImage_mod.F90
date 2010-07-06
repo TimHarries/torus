@@ -834,7 +834,11 @@ module angularImage
            
            ! Calculate fraction of molecular hydrogen by number (not mass)
            ! sphdata%rhon is the mass density of HI 
-           H2_frac = sphdata%rhoH2(ipart) / ( (2.0_db * sphdata%rhon(ipart)) + sphdata%rhoH2(ipart) )
+           if ( associated (sphdata%rhoH2) ) then 
+              H2_frac = sphdata%rhoH2(ipart) / ( (2.0_db * sphdata%rhon(ipart)) + sphdata%rhoH2(ipart) )
+           else
+              H2_frac = 0.0
+           end if
 
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
            if ( n_sample > 0.99 ) write(LUIN,'(9(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
