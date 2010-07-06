@@ -233,7 +233,6 @@ module input_variables
   character(len=80) :: opacityDataFile
   character(len=80) :: dustfilename(10)
   logical :: useNdf 
-  
 
   logical :: plot_maps
   logical :: plotlevels
@@ -370,6 +369,7 @@ module input_variables
 
 ! SPH parameters
   character(len=80) :: sphdataFilename
+  character(len=80) :: inputFileFormat 
   real :: hcritPercentile
   real :: hmaxPercentile
   real :: sph_norm_limit

@@ -601,6 +601,9 @@ contains
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
           
+          call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
+               "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
+          
           call getReal("hcritPercentile", hcritPercentile, 1., cLine, fLine, nLines, &
                "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
 
@@ -726,6 +729,9 @@ contains
 
     call getDouble("limittwo", limitScalar2, 1.d0, cLine, fLine, nLines, &
          "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
+
+    call getLogical("doVelocitySplit", doVelocitySplit, cLine, fLine, nLines, &
+         "Use velocity splitting condition for SPH to grid: ","(a,1l,1x,a)",.false., ok, .false.)
 
     call getString("geometry", geometry, cLine, fLine, nLines, &
          "Geometry: ","(a,a,a)","sphere",ok, .true.)

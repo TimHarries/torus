@@ -32,7 +32,7 @@ contains
     use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, dustPhysics, nDustType
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename
+    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
     use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
     use discwind_class, only: discwind, new, add_discwind
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
@@ -119,7 +119,18 @@ contains
 
        case("theGalaxy")
 
-          call read_galaxy_sph_data(sphdatafilename)
+          select case (inputFileFormat)
+          case("binary")
+             call read_galaxy_sph_data(sphdatafilename)
+
+          case("ascii")
+             call new_read_sph_data(sphdatafilename)
+
+          case default
+             call writeFatal("Unrecognised file format "//inputFileFormat)
+
+          end select
+
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)

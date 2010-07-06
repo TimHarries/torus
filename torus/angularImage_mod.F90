@@ -764,8 +764,9 @@ module angularImage
 
    subroutine map_dI_to_particles(grid)
 
-    use input_variables, only: sphdatafilename, galaxyPositionAngle, galaxyInclination
-    use sph_data_class, only: sphdata, read_galaxy_sph_data
+    use input_variables, only: sphdatafilename, galaxyPositionAngle, galaxyInclination, &
+         inputFileFormat
+    use sph_data_class, only: sphdata, read_galaxy_sph_data, new_read_sph_data
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD
     use vtk_mod, only: writeVtkFile
@@ -789,8 +790,20 @@ module angularImage
     character(len=30)   :: outfilename
     integer, parameter  :: LUIN = 10 ! unit number of output file
 
+    call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI      ", "galLon  ", "galLat  ", "crossing"/) )
+
 ! Re-read particle data which has been deleted to save memory
-     call read_galaxy_sph_data(sphdatafilename)
+    select case (inputFileFormat)
+    case("binary")
+       call read_galaxy_sph_data(sphdatafilename)
+
+    case("ascii")
+       call new_read_sph_data(sphdatafilename)
+
+    case default
+       call writeWarning("Unrecognised file format "//inputFileFormat)
+
+    end select
 
 #ifdef MPI
      write(char_my_rank, '(i3)') myRankGlobal
@@ -847,7 +860,6 @@ module angularImage
      write(LUIN,'(a)') "index"
      close (LUIN)
 
-     call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI      ", "galLon  ", "galLat  ", "crossing"/) )
 
    end subroutine map_dI_to_particles
 
