@@ -739,7 +739,23 @@ contains
 
   subroutine postSetupChecks(grid)
     use input_variables, only : mDisc, geometry
+    use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
+    integer(kind=bigInt) :: i
+    
+    call findTotalMemory(grid, i)
+    call reportMemory(i)
+    if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
+    allocate(grid%octreeRoot%molecularLevel(1:1000,1:1000))
+    if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
+    call findTotalMemory(grid, i)
+    call reportMemory(i)
+    deallocate(grid%octreeRoot%molecularLevel)
+    nullify(grid%octreeRoot%molecularLevel)
+    if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
+    call findTotalMemory(grid, i)
+    call reportMemory(i)
+
 
     select case (geometry)
     case ("shakara")

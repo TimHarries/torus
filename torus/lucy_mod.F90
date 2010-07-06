@@ -973,7 +973,7 @@ contains
        endif
 
        if (variableDustSublimation.and. &
-            solveVerticalHydro.and.(.not.thisisfinalPass).and.(iiter_grand == 6)) converged =.true.
+            solveVerticalHydro.and.(.not.thisisfinalPass).and.(iiter_grand == 12)) converged =.true.
 
        ! forceLucyConv is set in the parameters.dat file if required
        if ( forceLucyConv ) then
