@@ -34,7 +34,7 @@ module angularImage
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
       use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
-           galaxyPositionAngle, galaxyInclination, wanttau, splitCubes
+           galaxyPositionAngle, galaxyInclination, wanttau, splitCubes, dataCubeFileName, obsVelFromGrid
 
       implicit none
 
@@ -60,9 +60,13 @@ module angularImage
       call writeinfo(message, TRIVIAL)
 
 ! Get the observer's velocity from the grid. This is already rotated and tilted.
-      observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
-      write(message,*) "Observer's velocity from grid: ", observerVelocity * (cspeed / 1.0e5), "km/s"
-      call writeinfo(message, TRIVIAL)
+      if ( obsVelFromGrid ) then 
+         observerVelocity = amrGridVelocity(grid%octreeRoot, rayposition, linearinterp = .false.)
+         write(message,*) "Observer's velocity from grid: ", observerVelocity * (cspeed / 1.0e5), "km/s"
+         call writeinfo(message, TRIVIAL)
+      else
+         observerVelocity = VECTOR (0.0, 0.0, 0.0)
+      end if
 
 ! Add velocity offset, transformed to rotated and tilted grid 
       intVelMod = VECTOR(intDeltaVx, intDeltaVy, intDeltaVz)
@@ -70,7 +74,11 @@ module angularImage
       intVelMod = rotateZ( intVelMod, galaxyPositionAngle*degToRad )
       intVelMod = rotateY( intVelMod, galaxyInclination*degToRad   )
       observerVelocity = observerVelocity + intVelMod
-      write(message,*) "Modified observer velocity: ", observerVelocity * (cspeed / 1.0e5), "km/s"
+      if ( obsVelFromGrid ) then
+         write(message,*) "Modified observer velocity: ", observerVelocity * (cspeed / 1.0e5), "km/s"
+      else
+         write(message,*) "Observer's velocity set to: ", observerVelocity * (cspeed / 1.0e5), "km/s"
+      end if
       call writeinfo(message, TRIVIAL)
 
 
@@ -87,29 +95,29 @@ module angularImage
       call writeinfo("Writing data cubes", TRIVIAL)
       if(writeoutput) then
 
-         call writeinfo("Writing intensity.fits",TRIVIAL)
-         call writedatacube(cube, "intensity.fits", write_Intensity=.true., write_ipos=.false., &
-              write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+         call writeinfo("Writing intensity to intensity_"//trim(dataCubeFileName), TRIVIAL)
+         call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
+              write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
          if ( splitCubes ) then 
-            call writeinfo("Writing intensity_pos.fits",TRIVIAL)
-            call writedatacube(cube, "intensity_pos.fits", write_Intensity=.false., write_ipos=.true., &
-                 write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+            call writeinfo("Writing positive intensity to intensity_pos_"//trim(dataCubeFileName), TRIVIAL)
+            call writedatacube(cube, "intensity_pos_"//trim(dataCubeFileName), write_Intensity=.false., &
+                 write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
-            call writeinfo("Writing intensity_neg.fits",TRIVIAL)
-            call writedatacube(cube, "intensity_neg.fits", write_Intensity=.false., write_ipos=.false., &
-                 write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+            call writeinfo("Writing negative intensity to intensity_neg_"//trim(dataCubeFileName), TRIVIAL)
+            call writedatacube(cube, "intensity_neg_"//trim(dataCubeFileName), write_Intensity=.false., &
+                 write_ipos=.false., write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
          end if
 
          if ( wanttau ) then 
-            call writeinfo("Writing tau.fits",TRIVIAL)
-            call writedatacube(cube, "tau.fits", write_Intensity=.false., write_ipos=.false., &
-                 write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
+            call writeinfo("Writing optical depth to tau_"//trim(dataCubeFileName), TRIVIAL)
+            call writedatacube(cube, "tau_"//trim(dataCubeFileName), write_Intensity=.false., &
+                 write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
          end if
 
-         call writeinfo("Writing nCol.fits",TRIVIAL)
-         call writedatacube(cube, "nCol.fits", write_Intensity=.false., write_ipos=.false., &
-              write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
+         call writeinfo("Writing column density to nCol_"//trim(dataCubeFileName), TRIVIAL)
+         call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
+              write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
 
       end if
 
@@ -419,7 +427,7 @@ module angularImage
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
         rhomax, i0max, nCol, observerVelocity)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, amrgridsize, nv
+     use input_variables, only : useDust, h21cm, densitysubsample, nv
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
@@ -463,7 +471,7 @@ module angularImage
      real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, n
      real(double), optional, intent(out) :: rhomax
      real(double), optional, intent(in) :: i0max
-     real(double) :: distToObs
+     real(double) :: distToObs, gridSize
 
      BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
 
@@ -489,8 +497,9 @@ module angularImage
         goto 666
      endif
      
-     ! Find a position on the other side of the grid. 
-     otherSide      = position + (distToGrid * direction) + (2.0 * real(amrgridsize,db) * direction)
+     ! Find a position on the other side of the grid.
+     gridsize       = grid%octreeRoot%xMax - grid%octreeRoot%xMin
+     otherSide      = position + (distToGrid * direction) + (2.0 * gridsize * direction)
      otherDirection%x = -1.0 * direction%x
      otherDirection%y = -1.0 * direction%y
      otherDirection%z = -1.0 * direction%z

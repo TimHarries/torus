@@ -1084,6 +1084,10 @@ contains
 
        ! Read parameters used by galactic plane survey 
        if ( internalView ) then 
+
+          call getLogical("obsVelFromGrid", obsVelFromGrid, cLine, fLine, nLines, &
+               "Set observer velocity from grid:", "(a,1l,1x,a)", .false., ok, .true.)
+
           call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm)", &
                "(a,e10.4,1x,a)", 0.d0, ok, .false.)
           call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm)", &
@@ -1118,7 +1122,19 @@ contains
           amrGridCentreY = gridCentre%y
           amrGridCentreZ = gridCentre%z
           
+
+          ! When restarting particles are required for map_dI_to_particles
+          if ( readgrid ) then 
+             call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
+                  "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+
+             call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
+                  "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
+          end if
+
        else
+
+          ! Far field h21cm case
           call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
                "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
           call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
