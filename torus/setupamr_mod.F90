@@ -339,7 +339,6 @@ contains
 !    call findTotalMemory(grid, i)
 !    call reportMemory(i)
 !        if (myrankGlobal == 1) then 
-!           !           call myfreeGrid(grid%octreeroot)
 !           call freeGrid(grid)
 !           do;enddo
 !           else

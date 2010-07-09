@@ -562,8 +562,7 @@ CONTAINS
 
     IMPLICIT NONE
     
-!    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
-    type(octal), pointer :: parent ! TJH 9 JULY
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
     type(octal), pointer :: thisOctal
     INTEGER, INTENT(IN)  :: iChild     ! the label (1-8) of the subcell gaining the child 
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
@@ -856,8 +855,7 @@ CONTAINS
 
     IMPLICIT NONE
     
-!    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
-    type(octal), pointer :: parent, childPointer ! TJH 9 JULY
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
     INTEGER, INTENT(IN) :: nNewChildren ! number of children to add
     TYPE(GRIDTYPE), INTENT(INOUT) :: grid
     
@@ -912,15 +910,10 @@ CONTAINS
         END IF           
         tempChildStorage%wrappers(iChild)%inUse = .TRUE.
                
-        childPointer => parent%child(iChild) ! TJH 9 JULY
-        CALL deleteOctreeBranch(childPointer,                   &
+        CALL deleteOctreeBranch(parent%child(iChild),                   &
                onlyChildren=.FALSE.,                                    &
                deletedBranch=tempChildStorage%wrappers(iChild)%content, &
                adjustParent=.FALSE., grid=grid, adjustGridInfo=.FALSE. )
-!        CALL deleteOctreeBranch(parent%child(iChild),                   &
-!               onlyChildren=.FALSE.,                                    &
-!               deletedBranch=tempChildStorage%wrappers(iChild)%content, &
-!               adjustParent=.FALSE., grid=grid, adjustGridInfo=.FALSE. )
       END DO
 
       ! [3]
@@ -941,13 +934,9 @@ CONTAINS
       ! [4]
       DO iChild = 1, nChildren, 1
         
-         childPointer => parent%child(ichild) !TJH 9 JULY
-        CALL insertOctreeBranch(childPointer,               &
+        CALL insertOctreeBranch(parent%child(iChild),               &
                branch=tempChildStorage%wrappers(iChild)%content,    &
                onlyChildren=.FALSE.)
-!        CALL insertOctreeBranch(parent%child(iChild),               &
-!               branch=tempChildStorage%wrappers(iChild)%content,    &
-!               onlyChildren=.FALSE.)
 
         parent%child(iChild)%parent => parent       
                
@@ -984,8 +973,7 @@ CONTAINS
     IMPLICIT NONE
 
 
-!    TYPE(OCTAL), intent(inout) :: thisOctal
-    type(octal), pointer :: thisOctal ! TJH 9 JULY
+    TYPE(OCTAL), intent(inout) :: thisOctal
     
     TYPE(OCTAL), POINTER :: childPointer
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
@@ -1072,11 +1060,8 @@ CONTAINS
     
     DO iIndex = 1, thisOctal%nChildren
       
-       childpointer => thisOCtal%child(iIndex) !TJH 9 JULY
-      CALL splitGrid(childPointer,amrLimitScalar,amrLimitScalar2,grid,&
+      CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
                      stellar_cluster, setChanged, romData=romData)
-!      CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
-!                     stellar_cluster, setChanged, romData=romData)
       
    END DO
 
@@ -9194,11 +9179,9 @@ end function readparameterfrom2dmap
 
     IMPLICIT NONE
 
-!    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! top of branch to be deleted
-    TYPE(octal), pointer :: thisOctal ! TJH 9 JULY
+    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! top of branch to be deleted
     LOGICAL, INTENT(IN)            :: onlyChildren ! only delete this octal's *children*
-    type(octal), pointer, optional :: deletedBranch !TJH 9 JULY
-!    TYPE(octal), INTENT(INOUT), TARGET, OPTIONAL :: deletedBranch ! optional copy of deleted branch
+    TYPE(octal), INTENT(INOUT), TARGET, OPTIONAL :: deletedBranch ! optional copy of deleted branch
     LOGICAL, INTENT(IN) :: adjustParent 
       ! whether the physical parameters stored in the parent's subcells
       !   should be filled with data derived from the children being deleted.
@@ -9271,8 +9254,7 @@ end function readparameterfrom2dmap
     ! deallocates the variables in an octal.
     ! optionally deallocates the children of the octal.
     use memory_mod, only : octalMemory, globalMemoryFootprint
-!    TYPE(octal), INTENT(INOUT) :: thisOctal
-    type(octal), pointer :: thisOctal !TJH 9 JULY
+    TYPE(octal), INTENT(INOUT) :: thisOctal
     LOGICAL, INTENT(IN) :: deleteChildren 
     LOGICAL, INTENT(IN) :: adjustParent 
       ! whether the physical parameters stored in the parent's subcells
@@ -9329,9 +9311,7 @@ end function readparameterfrom2dmap
                                             adjustParent, adjustGridInfo, adjustMem,  &
                                             grid, maxDeletionDepth )
     
-      type(octal), pointer :: thisOctal !TJH 9 JULY
-      type(octal), pointer :: childPointer !TJH 9 JULY
-!      TYPE(octal), INTENT(INOUT), target :: thisOctal
+      TYPE(octal), INTENT(INOUT), target :: thisOctal
       type(octal), pointer :: pOctal
       LOGICAL, INTENT(IN) :: deleteChildren 
       LOGICAL, INTENT(IN) :: adjustParent 
@@ -9350,19 +9330,12 @@ end function readparameterfrom2dmap
 
         DO iChild = 1, thisOctal%nChildren, 1
 
-           childPointer => thisOctal%child(iChild)
-          CALL deleteOctalPrivate(childPointer,         &
+          CALL deleteOctalPrivate(thisOctal%child(iChild),         &
                            deleteChildren=deleteChildren,          &
                            adjustParent=adjustParent, grid=grid,   &
                            adjustGridInfo=adjustGridInfo,          &
                            adjustMem=adjustMem,                    &
                            maxDeletionDepth=maxDeletionDepth )
-!          CALL deleteOctalPrivate(thisOctal%child(iChild),         &
-!                           deleteChildren=deleteChildren,          &
-!                           adjustParent=adjustParent, grid=grid,   &
-!                           adjustGridInfo=adjustGridInfo,          &
-!                           adjustMem=adjustMem,                    &
-!                           maxDeletionDepth=maxDeletionDepth )
         END DO
         IF (ASSOCIATED(thisOctal%child)) DEALLOCATE(thisOctal%child)
         IF ( error /= 0 ) CALL deallocationError(error,location=1) 
@@ -9414,11 +9387,9 @@ end function readparameterfrom2dmap
 
     IMPLICIT NONE
 
-    type(octal), pointer :: thisOctal, branch ! TJH 9 JULY
-
-!    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! octal where branch is to
+    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! octal where branch is to
 !                                                    !   be inserted
-!    TYPE(octal), INTENT(INOUT) :: branch ! branch being inserted
+    TYPE(octal), INTENT(INOUT) :: branch ! branch being inserted
     LOGICAL, INTENT(IN) :: onlyChildren ! only insert the *children* on the
                                         !   branch, leaving the other variables
                                         !   of thisOctal unchanged
@@ -9455,9 +9426,8 @@ end function readparameterfrom2dmap
     ! WARNING: this does not change the parent and child variables - you
     !   must update those yourself elsewhere.
  
-    type(octal), pointer :: source, dest !TJH 9 JULY
-!    TYPE(octal), INTENT(IN) :: source
-!    TYPE(octal), INTENT(INOUT) :: dest
+    TYPE(octal), INTENT(IN) :: source
+    TYPE(octal), INTENT(INOUT) :: dest
 
     ! first make sure that 'dest' is empty
     IF ( ASSOCIATED(dest%child) ) THEN
@@ -10257,8 +10227,7 @@ end function readparameterfrom2dmap
     ! NB this subroutine doesn't update grid%nOctals etc.
 
     IMPLICIT NONE
-    type(octal), pointer :: parent ! TJH 9 JULY
-!    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
     LOGICAL, INTENT(IN), DIMENSION(parent%maxChildren) :: childrenToDelete
       ! mask defining which children to get rid of 
       ! NB childrenToDelete does not map to the index number in the 
@@ -10400,13 +10369,9 @@ end function readparameterfrom2dmap
 
       DO iChild = 1, nChildrenStay, 1
         
-         childPointer => parent%child(iChild) !TJH 9 JULY
-        CALL insertOctreeBranch(childPointer,               &
+        CALL insertOctreeBranch(parent%child(iChild),               &
                branch=tempChildStorage%wrappers(iChild)%content,    &
                onlyChildren=.FALSE.)                              
-!        CALL insertOctreeBranch(parent%child(iChild),               &
-!               branch=tempChildStorage%wrappers(iChild)%content,    &
-!               onlyChildren=.FALSE.)                              
                
         parent%child(iChild)%parent => parent
                
@@ -10439,8 +10404,7 @@ end function readparameterfrom2dmap
     ! this is a simpler wrapper for the shrinkChildArray subroutine
 
     IMPLICIT NONE
-    type(octal), pointer :: parent ! TJH 9 JULY
-!    TYPE(octal), INTENT(INOUT) :: parent ! the parent octal 
+    TYPE(octal), INTENT(INOUT) :: parent ! the parent octal 
     INTEGER :: childToDelete ! number of the child to delete
       ! NB childToDelete does not map to the index number in the 
       !   %child array, it is the "real" number of the child (the 
@@ -11432,8 +11396,7 @@ end function readparameterfrom2dmap
     RECURSIVE SUBROUTINE amrUpdateGridDelete(thisOctal)
       ! if a child should no longer exist, we delete it.
 
-      type(octal), pointer :: thisOCTAL ! TJH 9 JULY
-!      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
       logical :: splitInAzimuth
       INTEGER :: iChild, iSubcell
@@ -11466,8 +11429,7 @@ end function readparameterfrom2dmap
     RECURSIVE SUBROUTINE amrUpdateGridAdd(thisOctal)
       ! subdivide any octals that now exceed the threshold
 
-      type(octal), pointer :: thisOctal !TJH 9 JULY
-!      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
       INTEGER :: iSubcell, j
       logical :: splitInAzimuth
@@ -15747,7 +15709,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
     subroutine deallocateOctalDynamicAttributes(thisOctal)
-      type(OCTAL), pointer :: thisOctal
+      type(OCTAL) :: thisOctal
 
 
        call deallocateAttribute(thisOctal%HHeating)
