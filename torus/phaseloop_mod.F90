@@ -494,7 +494,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         ! file is read from a file!  (RK changed here.)
         nu = cSpeed / (lamLine * angstromtocm)
         call contread(contFluxFile, nu, coreContinuumFlux)
-        call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile, dble(teff))
+        call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile, dble(teff), &
+             source(1)%spectrum)
         if (grid%geometry == "ttauri") then
            call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
         elseif (grid%geometry == "romanova") then

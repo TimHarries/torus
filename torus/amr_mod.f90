@@ -17,6 +17,7 @@ module amr_mod
   USE parallel_mod, ONLY:   torus_abort
   use mpi_global_mod, only: myRankGlobal
   use gas_opacity_mod
+  use amr_utils_mod
 
   IMPLICIT NONE
 
@@ -373,7 +374,7 @@ CONTAINS
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
     use input_variables, only : cylindrical
-
+    use memory_mod, only : globalMemoryFootprint, octalMemory
     IMPLICIT NONE
     type(OCTAL), pointer :: thisOctal
     TYPE(gridtype), INTENT(INOUT)    :: grid 
@@ -457,6 +458,8 @@ CONTAINS
 
     thisOctal => grid%octreeRoot
     call allocateOctalAttributes(grid, thisOctal)
+
+    globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
 
     select case (grid%geometry)
        case("cluster","molcluster","theGalaxy")
@@ -550,15 +553,17 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : cylindrical
+    USE input_variables, ONLY : cylindrical, maxMemoryAvailable
     USE cluster_class, only: update_particle_list
     USE sph_data_class, only: isAlive
     use mpi_global_mod, only: nThreadsGlobal
     use octal_mod, only: subcellRadius
+    use memory_mod, only : octalMemory, globalMemoryFootprint, humanReadableMemory
 
     IMPLICIT NONE
     
-    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+!    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    type(octal), pointer :: parent ! TJH 9 JULY
     type(octal), pointer :: thisOctal
     INTEGER, INTENT(IN)  :: iChild     ! the label (1-8) of the subcell gaining the child 
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
@@ -583,12 +588,22 @@ CONTAINS
     logical :: inheritProps, interpolate
     logical, optional, intent(in) :: amrHydroInterp
     logical :: doAmrHydroInterp
+!   logical, save :: firstTimeMem = .true.
+    character(len=80) :: message
     type(VECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
 
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
+
+
+    if (globalMemoryFootprint > maxMemoryAvailable) then
+       write(message,'(a)') "Child added while memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
+       call writeWarning(message)
+    endif
+
+
     doAMRhydroInterp = .false.
     if (PRESENT(amrHydroInterp)) doAMRhydroInterp = amrHydroInterp
 
@@ -782,6 +797,7 @@ CONTAINS
     thisOctal => parent%child(newChildIndex)
     call allocateOctalAttributes(grid, thisOctal)
 
+    globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
 
     if (isAlive()) then
        ! updates the sph particle list.           
@@ -830,7 +846,7 @@ CONTAINS
     END IF
 
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
-
+666 continue
   END SUBROUTINE addNewChild
   
   SUBROUTINE growChildArray(parent, nNewChildren, grid)
@@ -841,7 +857,8 @@ CONTAINS
 
     IMPLICIT NONE
     
-    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+!    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    type(octal), pointer :: parent, childPointer ! TJH 9 JULY
     INTEGER, INTENT(IN) :: nNewChildren ! number of children to add
     TYPE(GRIDTYPE), INTENT(INOUT) :: grid
     
@@ -896,10 +913,15 @@ CONTAINS
         END IF           
         tempChildStorage%wrappers(iChild)%inUse = .TRUE.
                
-        CALL deleteOctreeBranch(parent%child(iChild),                   &
+        childPointer => parent%child(iChild) ! TJH 9 JULY
+        CALL deleteOctreeBranch(childPointer,                   &
                onlyChildren=.FALSE.,                                    &
                deletedBranch=tempChildStorage%wrappers(iChild)%content, &
                adjustParent=.FALSE., grid=grid, adjustGridInfo=.FALSE. )
+!        CALL deleteOctreeBranch(parent%child(iChild),                   &
+!               onlyChildren=.FALSE.,                                    &
+!               deletedBranch=tempChildStorage%wrappers(iChild)%content, &
+!               adjustParent=.FALSE., grid=grid, adjustGridInfo=.FALSE. )
       END DO
 
       ! [3]
@@ -920,9 +942,13 @@ CONTAINS
       ! [4]
       DO iChild = 1, nChildren, 1
         
-        CALL insertOctreeBranch(parent%child(iChild),               &
+         childPointer => parent%child(ichild) !TJH 9 JULY
+        CALL insertOctreeBranch(childPointer,               &
                branch=tempChildStorage%wrappers(iChild)%content,    &
                onlyChildren=.FALSE.)
+!        CALL insertOctreeBranch(parent%child(iChild),               &
+!               branch=tempChildStorage%wrappers(iChild)%content,    &
+!               onlyChildren=.FALSE.)
 
         parent%child(iChild)%parent => parent       
                
@@ -959,8 +985,10 @@ CONTAINS
     IMPLICIT NONE
 
 
-    TYPE(OCTAL), intent(inout) :: thisOctal
-!    TYPE(OCTAL), POINTER :: thisOctal
+!    TYPE(OCTAL), intent(inout) :: thisOctal
+    type(octal), pointer :: thisOctal ! TJH 9 JULY
+    
+    TYPE(OCTAL), POINTER :: childPointer
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
       ! 'limitScalar' is the value the decideSplit function uses to
       !   decide whether or not to split cell.
@@ -1045,8 +1073,11 @@ CONTAINS
     
     DO iIndex = 1, thisOctal%nChildren
       
-      CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
+       childpointer => thisOCtal%child(iIndex) !TJH 9 JULY
+      CALL splitGrid(childPointer,amrLimitScalar,amrLimitScalar2,grid,&
                      stellar_cluster, setChanged, romData=romData)
+!      CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
+!                     stellar_cluster, setChanged, romData=romData)
       
    END DO
 
@@ -3504,853 +3535,6 @@ CONTAINS
   END SUBROUTINE locateContProbAMR
 
 
-  FUNCTION whichSubcell(thisOctal,point) RESULT (subcell)
-    ! POINT --> MUST be pre-rotated for 2d case!!!!!!!!!!!!!!
-    !
-    ! returns the identification number (1-8) of the subcell of the 
-    ! current octal which contains a given point
-    ! NB this does NOT check that the point lies within the bounds of the octal!
-
-
-
-    IMPLICIT NONE
-
-    TYPE(octal), INTENT(IN)       :: thisOctal
-    TYPE(vector), INTENT(IN) :: point
-    INTEGER                       :: subcell
-    real(double) :: r, phi
-
-    if (thisOctal%oneD) then
-       if (point%x <= thisOctal%centre%x) then
-          subcell = 1
-       else
-          subcell = 2
-       endif
-       goto 666
-    endif
-
-
-    if (thisOctal%threed) then ! threed case 
-
-       if (.not.thisOctal%cylindrical) then ! cartesian case
-
-          IF ( point%x < thisOctal%centre%x ) THEN
-             IF ( point%y < thisOctal%centre%y ) THEN
-                IF ( point%z < thisOctal%centre%z ) THEN
-                   subcell = 1
-                ELSE 
-                   subcell = 5
-                   
-                ENDIF
-             ELSE 
-                IF (point%z < thisOctal%centre%z) THEN
-                   subcell = 3
-                ELSE 
-                   subcell = 7
-                ENDIF
-             END IF
-          ELSE
-             IF (point%y < thisOctal%centre%y) THEN
-                IF (point%z < thisOctal%centre%z) THEN
-                   subcell = 2
-                ELSE 
-                   subcell = 6
-                ENDIF
-             ELSE 
-                IF (point%z < thisOctal%centre%z) THEN
-                   subcell = 4
-                ELSE 
-                   subcell = 8
-                ENDIF
-             END IF
-          ENDIF ! cartesian case
-
-       else ! cylindrical case
-
-          r = sqrt(point%x**2+point%y**2)
-          phi = atan2(point%y, point%x)
-          if (phi < 0.d0) phi = phi + twoPi
-
-          if (thisOctal%splitAzimuthally) then ! azimuthal split case
-
-             if (phi <= thisOctal%phi) then
-                IF ( r <= thisOctal%r) THEN
-                   IF ( point%z <= thisOctal%centre%z ) THEN
-                      subcell = 1
-                   ELSE 
-                      subcell = 3
-                   ENDIF
-                ELSE
-                   IF (point%z <= thisOctal%centre%z) THEN
-                      subcell = 2
-                   ELSE 
-                      subcell = 4
-                   ENDIF
-                END IF
-             else
-                IF ( r <= thisOctal%r ) THEN
-                   IF ( point%z <= thisOctal%centre%z ) THEN
-                      subcell = 5
-                   ELSE 
-                      subcell = 7
-                   ENDIF
-                ELSE
-                   IF (point%z <= thisOctal%centre%z) THEN
-                      subcell = 6
-                   ELSE 
-                      subcell = 8
-                   ENDIF
-                END IF
-             endif
-          else
-
-             IF ( r <= thisOctal%r ) THEN
-                IF ( point%z <= thisOctal%centre%z ) THEN
-                   subcell = 1
-                ELSE 
-                   subcell = 3
-                ENDIF
-                ELSE
-                   IF (point%z <= thisOctal%centre%z) THEN
-                      subcell = 2
-                   ELSE 
-                      subcell = 4
-                   ENDIF
-                END IF
-             endif ! azi case
-          endif ! cylindrical
-
-    else ! twoD case
-       
-       IF ( point%x <= thisOctal%centre%x ) THEN
-          IF ( point%z <= thisOctal%centre%z ) THEN
-             subcell = 1
-          ELSE 
-             subcell = 3
-          ENDIF
-       ELSE
-          IF (point%z <= thisOctal%centre%z) THEN
-             subcell = 2
-          ELSE 
-             subcell = 4
-          ENDIF
-       END IF
-    endif
-
-666 continue
-
-  END FUNCTION whichSubcell    
-
-
-  FUNCTION inOctal(thisOctal,point,alreadyRotated) 
-    ! true if the point lies within the boundaries of the current octal
-  
-    use input_variables, only : hydrodynamics
-    IMPLICIT NONE
-    LOGICAL                       :: inOctal
-    TYPE(octal), INTENT(IN)       :: thisOctal
-    TYPE(vector), INTENT(IN) :: point
-    TYPE(vector)             :: octVec2D
-    real(double)                  :: r, phi, dphi, eps
-    logical, optional :: alreadyRotated
-    logical :: doRotate
-
-    doRotate = .true.
-    if (PRESENT(alreadyRotated)) doRotate = .not.alreadyRotated
-
-    if (thisOctal%threeD) then
-       if (.not.thisOctal%cylindrical) then
-          IF (point%x < thisOctal%xMin) THEN ; inOctal = .FALSE. ; goto 101
-          ELSEIF (point%x > thisOctal%xMax) THEN ; inOctal = .FALSE.; goto 101
-          ELSEIF (point%y < thisOctal%yMin) THEN ; inOctal = .FALSE.; goto 101
-          ELSEIF (point%y > thisOctal%yMax) THEN ; inOctal = .FALSE.; goto 101
-          ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.; goto 101
-          ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.; goto 101
-          ELSE  
-             inOctal = .TRUE.
-          ENDIF
-101       continue
-       else
-          phi = atan2(point%y,point%x)
-          if (phi < 0.d0) phi = phi + twoPi
-          dphi = abs(phi - thisOctal%phi)
-          r = sqrt(point%x**2 + point%y**2)
-          eps =  0.d0 ! sqrt(epsilon(thisOctal%subcellsize))
-          IF     (r < thisOctal%r - thisOctal%subcellSize - eps) THEN ; inOctal = .FALSE. 
-          ELSEIF (r > thisOctal%r + thisOctal%subcellSize + eps) THEN ; inOctal = .FALSE.
-          ELSEIF (dphi > thisOctal%dphi/2.d0) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
-          ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
-          ELSE  
-             inOctal = .TRUE.
-          ENDIF
-       endif
-    else ! twoD case
-       if (.not.hydrodynamics) then
-          if (doRotate) then
-             octVec2D = projectToXZ(point)
-          else
-             octVec2D = point   
-          endif
-       else
-          octVec2D = point
-       endif
-       IF (octVec2D%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
-       ELSEIF (octVec2D%x > thisOctal%xMax) THEN ; inOctal = .FALSE.
-       ELSEIF (octVec2D%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
-       ELSEIF (octVec2D%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
-       ELSE  
-          inOctal = .TRUE.
-       ENDIF
-    endif
-
-    if (thisOctal%oneD) then
-       if (.not.hydrodynamics) then
-          r = modulus(point)
-          if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
-          else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
-          else
-             inOctal = .true.
-          endif
-       else
-          if ( point%x < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
-          else if (point%x > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
-          else
-             inOctal = .true.
-          endif
-       endif
-       goto 666
-    endif
-
-
-666 continue
-  END FUNCTION inOctal
-
-  FUNCTION inSubcell(thisOctal,thisSubcell,point) 
-    ! true if the point lies within the boundaries of the current octal
-  
-    IMPLICIT NONE
- 
-    LOGICAL                       :: inSubcell
-    TYPE(octal), INTENT(IN)       :: thisOctal
-    INTEGER, INTENT(IN)           :: thisSubcell
-    TYPE(vector), INTENT(IN) :: point
-
-    IF (inOctal(thisOctal,point)) THEN
-      inSubcell = whichSubcell(thisOctal,point) == thisSubcell
-    ELSE
-      inSubcell = .FALSE.
-    END IF
-  
-  END FUNCTION inSubcell
-
-  FUNCTION looseInOctal(thisOctal,point) 
-    ! true if the point lies 'loosely' in the current octal
-    ! ( a 10% margin of error is allowed )
-    ! this is useful only for testing purposes!
-  
-    IMPLICIT NONE
- 
-    LOGICAL                       :: looseInOctal
-    TYPE(octal), INTENT(IN)       :: thisOctal
-    TYPE(vector), INTENT(IN) :: point
-
-    if (thisOctal%threeD) then
-       IF ((point%x <= thisOctal%centre%x - 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%x >= thisOctal%centre%x + 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%y <= thisOctal%centre%y - 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%y >= thisOctal%centre%y + 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%z <= thisOctal%centre%z - 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%z >= thisOctal%centre%z + 1.1_oc * thisOctal%subcellSize )) THEN
-          looseInOctal = .FALSE.
-       ELSE  
-          looseInOctal = .TRUE.
-       ENDIF
-    else
-       IF ((point%x <= thisOctal%centre%x - 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%x >= thisOctal%centre%x + 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%z <= thisOctal%centre%z - 1.1_oc * thisOctal%subcellSize ) .OR. &
-            (point%z >= thisOctal%centre%z + 1.1_oc * thisOctal%subcellSize )) THEN
-          looseInOctal = .FALSE.
-       ELSE  
-          looseInOctal = .TRUE.
-       ENDIF
-    endif
-  END FUNCTION looseInOctal
-
-  SUBROUTINE smoothAMRgrid(grid,factor, stellar_cluster, inheritProps, interpProps, &
-       romData)
-    ! checks whether each octal's neighbours are much bigger than it, 
-    !   if so, makes the neighbours smaller.
-
-    TYPE(gridtype), INTENT(INOUT) :: grid 
-    REAL, INTENT(IN)              :: factor
-    TYPE(cluster), optional, intent(in)  :: stellar_cluster
-    LOGICAL, INTENT(IN),optional  :: inheritProps
-    logical, intent(in), optional :: interpProps 
-    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
-    
-    LOGICAL :: gridConverged
-
-    CALL setAllUnchanged(grid%octreeRoot)
-
-    DO 
-      gridConverged = .TRUE.
-      CALL smoothAMRgridPrivate(grid%octreeRoot,grid,gridConverged,romData)
-      IF ( gridConverged ) EXIT 
-    END DO
-    
-  CONTAINS
-    
-    RECURSIVE SUBROUTINE smoothAMRgridPrivate(thisOctal,grid,gridConverged, &
-         romData)
-
-!      TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
-      TYPE(octal), INTENT(INOUT) :: thisOctal
-      TYPE(gridtype), INTENT(INOUT   ) :: grid 
-      LOGICAL, INTENT(INOUT)               :: gridConverged
-      TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
-
-      INTEGER              :: i
-      REAL(oct) :: halfSmallestSubcell
-      REAL(oct) :: offset
-      TYPE(octal), POINTER :: neighbour
-      TYPE(vector), ALLOCATABLE, DIMENSION(:) :: locator
-      TYPE(vector) :: aHat
-      INTEGER              :: subcell
-      INTEGER              :: nLocator ! number of locators (4 for twoD, 6 for threed)
-
-      ! we will find the coordinates of a point that lies outside the current
-      !   octal. we then compare the size of the cell that contains that point
-      !   with the size of the current cell, if it is bigger be more than a 
-      !   factor of 'factor', we subdivide the neighbouring cell.
-      ! we do this in each of six directions
-
-      ! we do not have to test the other subcells in the current octal because
-      !   they can be smaller than the any of the other subcells, but they
-      !   cannot be *bigger*. this saves some time.
-
-      if (thisOctal%threed) then
-         if (.not.thisOctal%cylindrical) then
-            nlocator = 6
-         else
-            nlocator = 4
-         endif
-      else
-        nlocator = 4
-      endif
-
-      ALLOCATE(locator(nlocator))
-
-      ! we find points which are outside the current octal by a distance
-      !   equivalent to half the size of the tree's smallest subcell.
-      halfSmallestSubcell = grid%halfSmallestSubcell
-
-      ! we also add a slight offset to our test positions to avoid testing 
-      !   at cell boundaries.
-      offset = halfSmallestSubcell / 2.0_oc
-
-      IF ( thisOctal%threed ) THEN
-        locator(:) = thisOctal%centre + ( offset * vector(1.0_oc,1.0_oc,1.0_oc) )
-      ELSE
-        locator(:) = thisOctal%centre + ( offset * vector(1.0_oc,0.0_oc,1.0_oc) )
-      END IF
-
-      IF ( thisOctal%threeD ) THEN
-         if (.not.thisOctal%cylindrical) then
-            locator(1)%x = thisOctal%centre%x + thisOctal%subcellSize + halfSmallestSubcell
-            locator(2)%y = thisOctal%centre%y + thisOctal%subcellSize + halfSmallestSubcell
-            locator(3)%z = thisOctal%centre%z + thisOctal%subcellSize + halfSmallestSubcell
-            locator(4)%x = thisOctal%centre%x - thisOctal%subcellSize - halfSmallestSubcell
-            locator(5)%y = thisOctal%centre%y - thisOctal%subcellSize - halfSmallestSubcell
-            locator(6)%z = thisOctal%centre%z - thisOctal%subcellSize - halfSmallestSubcell
-         else
-            locator(:) = thisOctal%centre
-            locator(1) = locator(1) + (thisOctal%subcellSize + halfSmallestSubcell) * zHat
-            locator(2) = locator(2) - (thisOctal%subcellSize + halfSmallestSubcell) * zHat
-            aHat = VECTOR(thisOctal%centre%x,thisOctal%centre%y,0.d0)
-            call normalize(aHat)
-            locator(3) = locator(3) + (thisOctal%subcellSize + halfSmallestSubcell) * aHat
-            locator(4) = locator(4) - (thisOctal%subcellSize + halfSmallestSubcell) * aHat
-         endif
-      ELSE
-        locator(1)%x = thisOctal%centre%x + thisOctal%subcellSize + halfSmallestSubcell
-        locator(2)%z = thisOctal%centre%z + thisOctal%subcellSize + halfSmallestSubcell
-        locator(3)%x = thisOctal%centre%x - thisOctal%subcellSize - halfSmallestSubcell
-        locator(4)%z = thisOctal%centre%z - thisOctal%subcellSize - halfSmallestSubcell
-      ENDIF
-      
-      DO i = 1, nLocator, 1
-        IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
-          CALL findSubcellTD(locator(i),grid%octreeRoot,neighbour,subcell)
-          !neighbour => thisOctal
-          !CALL findSubcellLocal(locator(i),neighbour,subcell)
-
-          IF ( neighbour%subcellSize > (factor * thisOctal%subcellSize) ) THEN
-            IF ( neighbour%hasChild(subcell) ) THEN 
-              PRINT *, "neighbour already has child. (B)"
-              !STOP
-              do ;end do
-            END IF
-              neighbour%changed(1:neighbour%maxChildren) = .TRUE.
-              call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
-                               stellar_cluster=stellar_cluster, &
-                               inherit=inheritProps, interp=interpProps, romData=romData)
-              gridConverged = .FALSE.
-          ENDIF
-        END IF
-          
-! force return until algorithm is fixed
-IF ( .NOT. gridConverged ) RETURN
-          
-      END DO
-
-      ! call this subroutine recursively on each of any children.
-      IF ( (.NOT. ANY(thisOctal%Changed)) .AND. thisOctal%nChildren > 0 ) THEN
-        DO i = 1, thisOctal%nChildren, 1 
-          CALL smoothAMRgridPrivate(thisOctal%child(i),grid,gridConverged,romData=romData)
-          !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)                                  
-        
-! force return until algorithm is fixed
-IF ( .NOT. gridConverged ) RETURN
-        END DO
-      END IF
-
-      DEALLOCATE(locator)
-          
-    END SUBROUTINE smoothAMRgridPrivate
-  
-  END SUBROUTINE smoothAMRgrid
-
-  SUBROUTINE findSubcellTD(point,currentOctal,resultOctal,subcell)
-  ! finds the octal (and that octal's subcell) containing a point.
-  !   only searches in downwards direction (TD = top-down) , so
-  !   probably best to start from root of tree
-
-    IMPLICIT NONE
-
-    TYPE(vector), INTENT(IN) :: point
-    type(vector) :: point_local
-    TYPE(octal), POINTER :: currentOctal
-    TYPE(octal), POINTER :: resultOctal
-    INTEGER, INTENT(OUT) :: subcell
-
-    if (currentoctal%threeD) then
-       point_local = point
-    elseif (currentoctal%twoD) then
-       point_local = projectToXZ(point)
-    else !oneD
-       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-    end if
-
-    CALL findSubcellTDprivate(point_local,currentOctal,resultOctal,subcell)
-
-
-  contains
-
-
-  RECURSIVE SUBROUTINE findSubcellTDPrivate(point,currentOctal,resultOctal,subcell)
-  ! finds the octal (and that octal's subcell) containing a point.
-  !   only searches in downwards direction (TD = top-down) , so
-  !   probably best to start from root of tree
-
-    IMPLICIT NONE
-
-    TYPE(vector), INTENT(IN) :: point
-    TYPE(octal), POINTER :: currentOctal
-    TYPE(octal), POINTER :: resultOctal
-    INTEGER, INTENT(OUT) :: subcell
-    TYPE(octal), POINTER :: child
-
-    INTEGER :: i
-
-    resultOctal => currentOctal
-    subcell = whichSubcell(currentOctal,point)
-
-    IF ( currentOctal%hasChild(subcell) ) THEN
-      ! search the index to see where it is stored
-      DO i = 1, currentOctal%maxChildren, 1
-        IF ( currentOctal%indexChild(i) == subcell ) THEN
-          child => currentOctal%child(i)
-          CALL findSubcellTDprivate(point,child,resultOctal,subcell)
-          EXIT
-        END IF
-      END DO
-    END IF
-
-  END SUBROUTINE findSubcellTDPrivate
-
-  END SUBROUTINE findSubcellTD
-
-  RECURSIVE SUBROUTINE findSubcellTDLevel(point,currentOctal,resultOctal,subcell,nDepth)
-  ! finds the octal (and that octal's subcell) containing a point.
-  !   only searches in downwards direction (TD = top-down) , so
-  !   probably best to start from root of tree
-
-    IMPLICIT NONE
-
-    TYPE(vector), INTENT(IN) :: point
-    TYPE(octal), POINTER :: currentOctal
-    TYPE(octal), POINTER :: resultOctal
-    INTEGER, INTENT(OUT) :: subcell
-    integer :: nDepth
-    TYPE(octal), POINTER :: child
-
-    INTEGER :: i
-
-    resultOctal => currentOctal
-    subcell = whichSubcell(currentOctal,point)
-
-    IF ( currentOctal%hasChild(subcell).and.(currentOctal%nDepth < nDepth) ) THEN
-      ! search the index to see where it is stored
-      DO i = 1, currentOctal%maxChildren, 1
-        IF ( currentOctal%indexChild(i) == subcell ) THEN
-          child => currentOctal%child(i)
-          CALL findSubcellTDLevel(point,child,resultOctal,subcell,ndepth)
-          EXIT
-        END IF
-      END DO
-    END IF
-
-  END SUBROUTINE findSubcellTDLevel
-
-
-  SUBROUTINE findSubcellLocal(point,thisOctal,subcell,  prob)
-    ! finds the octal (and that octal's subcell) containing a point.
-    !   starts searching from the current octal, and goes up and down the
-    !   tree as needed to find the correct octal.
-    use input_variables, only : hydrodynamics, suppresswarnings
-    IMPLICIT NONE
-    TYPE(vector), INTENT(IN) :: point
-    TYPE(vector) :: point_local
-    TYPE(octal),POINTER    :: thisOctal
-    INTEGER, INTENT(OUT)   :: subcell
-    LOGICAL, INTENT(OUT),optional   :: prob
-    
-    LOGICAL                :: haveDescended    ! see comments below
-    LOGICAL                :: boundaryProblem  ! see comments below
-    
-                             
-    haveDescended = .FALSE.   ! if the 'point' lies very close to an 
-    boundaryProblem = .FALSE. !   boundary, the program may go into 
-                              !   a loop going up and down the tree.
-                              ! we will keep track of the progress of
-                              !   the search using these flags.
-                             
-    if (thisOctal%twoD) then
-       if (.not.hydrodynamics) then
-          point_local = projectToXZ(point)
-       else
-          point_local = point
-       endif
-    else
-       point_local = point
-    endif
-    if (thisOctal%oneD) then
-       if (.not.hydrodynamics) then
-          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-       else
-          point_local = point
-       endif
-    endif
-
-
-    CALL findSubcellLocalPrivate(point_local,thisOctal,subcell,&
-                                 haveDescended,boundaryProblem)
-
-    if (present(prob)) then
-      prob = boundaryProblem
-    else
-      if (boundaryProblem .and. .not. suppresswarnings) then
-        call torus_abort("Torus aborting due to panic in findSubcellLocal")
-     else
-        CALL findSubcellTD(point_local,thisoctal,thisOctal,subcell)
-     endif
-    endif
-                                 
-  CONTAINS
-
-    RECURSIVE SUBROUTINE findSubcellLocalPrivate(point,thisOctal,subcell,&
-                                                 haveDescended,boundaryProblem)
-      use input_variables, only : suppressWarnings
-      TYPE(vector), INTENT(IN) :: point
-      TYPE(octal),POINTER    :: thisOctal
-      INTEGER, INTENT(OUT)   :: subcell
-      LOGICAL, INTENT(INOUT) :: haveDescended
-      LOGICAL, INTENT(INOUT) :: boundaryProblem
-!      type(vector) :: rVec
-      real(double) :: fac
-      INTEGER :: i
-      
-      IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
-
-        haveDescended = .TRUE. ! record that we have gone down the tree.
-      
-        ! if the point lies within the current octal, we identify the
-        !   subcell
-        subcell = whichSubcell(thisOctal,point)
-
-        ! if a problem has been detected, this is where we complete the search
-        IF (boundaryProblem) RETURN 
-      
-        ! if the subcell has a child, we look in the child for the point
-        IF ( thisOctal%hasChild(subcell) ) THEN
-                
-          ! search the index to see where it is stored
-          DO i = 1, thisOctal%nChildren, 1
-            IF ( thisOctal%indexChild(i) == subcell ) THEN
-                    
-              thisOctal => thisOctal%child(i)
-
-
-              CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
-              RETURN
-              
-            END IF
-          END DO
-          
-        ELSE 
-          RETURN
-        END IF
-
-      ELSE
-        ! if the point is outside the current octal, we look in its
-        !   parent octal
-
-        ! first check that we are not outside the grid
-        IF ( thisOctal%nDepth == 1 ) THEN
-           if(.not. suppresswarnings) then
-           write(*,*) "octal", thisOctal%ndepth
-           write(*,*) "inoctal min", thisOctal%xMin,thisOctal%yMin,thisOctal%zMin
-           write(*,*) "inoctal max", thisOctal%xMax,thisOctal%yMax,thisOctal%zMax
-
-          PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
-          write(*,*) point
-          write(*,*) sqrt(point%x**2+point%y**2)
-          write(*,*) atan2(point%y,point%x)*radtodeg
-          write(*,*) " "
-          write(*,*) thisOctal%centre
-          write(*,*) thisOctal%subcellSize
-!          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
-          write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-          fac = -2.d0
-          fac = sqrt(fac)
-          do;enddo
-       endif
-          if(.not. suppresswarnings) then
-                STOP
-          endif
-          boundaryProblem = .TRUE.
-          RETURN
-       END IF
-     
-        ! if we have previously gone down the tree, and are now going back up, there
-        !   must be a problem.
-        IF (haveDescended) then
-           boundaryProblem = .TRUE.
-           PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
-           write(*,*) "rank ",myrankglobal, thisOctal%mpithread(1:8)
-           write(*,*) "split az ",thisOctal%splitAzimuthally
-           write(*,*) point
-           write(*,*) atan2(point%y,point%x)*radtodeg
-           write(*,*) sqrt(point%x**2 + point%y**2)
-           write(*,*) " "
-           write(*,*) thisOctal%nDepth
-           write(*,*) thisOctal%centre
-           write(*,*) thisOctal%subcellSize
-           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
-           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-           write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
-           write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
-           write(*,*) " r min/max ",thisOctal%r-thisOctal%subcellsize,thisOctal%r+thisOctal%subcellsize
-           write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, &
-                thisOctal%parent%zMax
-           write(*,*) "cen ",thisOctal%centre
-           write(*,*) "size ",thisOctal%subcellsize
-            fac = -2.d0
-            write(*,*) sqrt(fac)
-!           rVec = subcellCentre(thisOctal,subcell)
-!           write(*,*) rVec%x+thisOctal%subcellSize/2.
-!           write(*,*) rVec%x-thisOctal%subcellSize/2.
-!           write(*,*) rVec%y+thisOctal%subcellSize/2.
-!           write(*,*) rVec%y-thisOctal%subcellSize/2.
-!           write(*,*) rVec%z+thisOctal%subcellSize/2.
-!           write(*,*) rVec%z-thisOctal%subcellSize/2.
-!           do ; enddo
-!           STOP
-           return
-        endif
-        
-        IF ( thisOctal%nDepth /= 1 ) THEN
-           thisOctal => thisOctal%parent
-        ENDIF
-
-        CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
-       
-     END IF
-    
-    END SUBROUTINE findSubcellLocalPrivate
-
-  END SUBROUTINE findSubcellLocal
-
-  SUBROUTINE findSubcellLocalLevel(point,thisOctal,subcell, nDepth, prob)
-    ! finds the octal (and that octal's subcell) containing a point.
-    !   starts searching from the current octal, and goes up and down the
-    !   tree as needed to find the correct octal.
-    use input_variables, only : hydrodynamics
-    IMPLICIT NONE
-    integer :: nDepth
-    TYPE(vector), INTENT(IN) :: point
-    TYPE(vector) :: point_local
-    TYPE(octal),POINTER    :: thisOctal
-    INTEGER, INTENT(OUT)   :: subcell
-    LOGICAL, INTENT(OUT),optional   :: prob
-    
-    LOGICAL                :: haveDescended    ! see comments below
-    LOGICAL                :: boundaryProblem  ! see comments below
-    
-                             
-    haveDescended = .FALSE.   ! if the 'point' lies very close to an 
-    boundaryProblem = .FALSE. !   boundary, the program may go into 
-                              !   a loop going up and down the tree.
-                              ! we will keep track of the progress of
-                              !   the search using these flags.
-                             
-    if (thisOctal%twoD) then
-       if (.not.hydrodynamics) then
-          point_local = projectToXZ(point)
-       else
-          point_local = point
-       endif
-    else
-       point_local = point
-    endif
-    if (thisOctal%oneD) then
-       if (.not.hydrodynamics) then
-          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-       else
-          point_local = point
-       endif
-    endif
-
-
-    CALL findSubcellLocalPrivateLevel(point_local,thisOctal,subcell,&
-                                 haveDescended,boundaryProblem, nDepth)
-    if (present(prob)) then
-      prob = boundaryProblem
-    else
-      if (boundaryProblem) then
-        stop 1
-      endif
-    endif
-                                 
-  CONTAINS
-
-    RECURSIVE SUBROUTINE findSubcellLocalPrivateLevel(point,thisOctal,subcell,&
-                                                 haveDescended,boundaryProblem, nDepth)
-      TYPE(vector), INTENT(IN) :: point
-      TYPE(octal),POINTER    :: thisOctal
-      INTEGER, INTENT(OUT)   :: subcell
-      integer :: nDepth
-      LOGICAL, INTENT(INOUT) :: haveDescended
-      LOGICAL, INTENT(INOUT) :: boundaryProblem
-!      type(vector) :: rVec
-      INTEGER :: i
-      
-      IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
-
-        haveDescended = .TRUE. ! record that we have gone down the tree.
-      
-        ! if the point lies within the current octal, we identify the
-        !   subcell
-        subcell = whichSubcell(thisOctal,point)
-
-        ! if a problem has been detected, this is where we complete the search
-        IF (boundaryProblem) RETURN 
-      
-        ! if the subcell has a child, we look in the child for the point
-        IF ( thisOctal%hasChild(subcell).and.(thisOctal%ndepth < nDepth) ) THEN
-                
-          ! search the index to see where it is stored
-          DO i = 1, thisOctal%nChildren, 1
-            IF ( thisOctal%indexChild(i) == subcell ) THEN
-                    
-              thisOctal => thisOctal%child(i)
-
-
-              CALL findSubcellLocalPrivateLevel(point,thisOctal,subcell,haveDescended,boundaryProblem,nDepth)
-              RETURN
-              
-            END IF
-          END DO
-          
-        ELSE 
-          RETURN
-        END IF
-
-      ELSE
-        ! if the point is outside the current octal, we look in its
-        !   parent octal
-
-        ! first check that we are not outside the grid
-        IF ( thisOctal%nDepth == 1 ) THEN
-          PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
-          write(*,*) point
-          write(*,*) sqrt(point%x**2+point%y**2)
-          write(*,*) atan2(point%y,point%x)*radtodeg
-          write(*,*) " "
-          write(*,*) thisOctal%centre
-          write(*,*) thisOctal%subcellSize
-          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
-          write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-           DO ; END DO
-          STOP
-          boundaryProblem = .TRUE.
-          RETURN
-        END IF
-     
-        ! if we have previously gone down the tree, and are now going back up, there
-        !   must be a problem.
-        IF (haveDescended) then
-           boundaryProblem = .TRUE.
-           PRINT *, 'Panic: In findSubcellLocal, have descended and are now going back up'
-           write(*,*) point
-           write(*,*) atan2(point%y,point%x)*radtodeg
-           write(*,*) sqrt(point%x**2 + point%y**2)
-           write(*,*) " "
-           write(*,*) thisOctal%nDepth
-           write(*,*) thisOctal%centre
-           write(*,*) thisOctal%subcellSize
-           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
-           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-           
-!           rVec = subcellCentre(thisOctal,subcell)
-!           write(*,*) rVec%x+thisOctal%subcellSize/2.
-!           write(*,*) rVec%x-thisOctal%subcellSize/2.
-!           write(*,*) rVec%y+thisOctal%subcellSize/2.
-!           write(*,*) rVec%y-thisOctal%subcellSize/2.
-!           write(*,*) rVec%z+thisOctal%subcellSize/2.
-!           write(*,*) rVec%z-thisOctal%subcellSize/2.
-!           do ; enddo
-!           STOP
-           return
-        endif
-        
-        IF ( thisOctal%nDepth /= 1 ) THEN
-           thisOctal => thisOctal%parent
-        ENDIF
-
-        CALL findSubcellLocalPrivateLevel(point,thisOctal,subcell,haveDescended,boundaryProblem,nDepth)
-       
-      END IF    
-    
-    END SUBROUTINE findSubcellLocalPrivateLevel
-
-  END SUBROUTINE findSubcellLocalLevel
-   
-
-
-
 
   FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, splitInAzimuth,&
        stellar_cluster,romData) RESULT(split)
@@ -5335,9 +4519,9 @@ IF ( .NOT. gridConverged ) RETURN
 !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
       if (r < 10.*grid%rinner) then
-         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
+         if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
       else
-         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+         if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
       endif
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
@@ -10011,9 +9195,11 @@ end function readparameterfrom2dmap
 
     IMPLICIT NONE
 
-    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! top of branch to be deleted
+!    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! top of branch to be deleted
+    TYPE(octal), pointer :: thisOctal ! TJH 9 JULY
     LOGICAL, INTENT(IN)            :: onlyChildren ! only delete this octal's *children*
-    TYPE(octal), INTENT(INOUT), TARGET, OPTIONAL :: deletedBranch ! optional copy of deleted branch
+    type(octal), pointer, optional :: deletedBranch !TJH 9 JULY
+!    TYPE(octal), INTENT(INOUT), TARGET, OPTIONAL :: deletedBranch ! optional copy of deleted branch
     LOGICAL, INTENT(IN) :: adjustParent 
       ! whether the physical parameters stored in the parent's subcells
       !   should be filled with data derived from the children being deleted.
@@ -10081,28 +9267,33 @@ end function readparameterfrom2dmap
   END SUBROUTINE deleteOctreeBranch
   
   SUBROUTINE deleteOctal(thisOctal, deleteChildren,          &
-                         adjustParent, grid, adjustGridInfo, &
+                         adjustParent, grid, adjustGridInfo, adjustMem, &
                          newMaxDepth )
     ! deallocates the variables in an octal.
     ! optionally deallocates the children of the octal.
-    
-    TYPE(octal), INTENT(INOUT) :: thisOctal
+    use memory_mod, only : octalMemory, globalMemoryFootprint
+!    TYPE(octal), INTENT(INOUT) :: thisOctal
+    type(octal), pointer :: thisOctal !TJH 9 JULY
     LOGICAL, INTENT(IN) :: deleteChildren 
     LOGICAL, INTENT(IN) :: adjustParent 
       ! whether the physical parameters stored in the parent's subcells
       !   should be filled with data derived from the children being deleted.
     TYPE(gridtype), INTENT(INOUT), OPTIONAL :: grid 
     LOGICAL, INTENT(IN), OPTIONAL :: adjustGridInfo
+    LOGICAL, INTENT(IN), OPTIONAL :: adjustMem
       ! whether these variables should be updated: 
       !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell
     LOGICAL, INTENT(OUT), OPTIONAL :: newMaxDepth ! true if grid depth has changed
       
     LOGICAL :: doAdjustGridInfo
+    LOGICAL :: doAdjustMem
+
     INTEGER :: maxDeletionDepth
       ! used for tracking the depth in the tree that has been altered   
     INTEGER, PARAMETER :: hugeInt = HUGE(hugeInt)
 
     doAdjustGridInfo = .FALSE.
+    doAdjustMem = .false.
     
     IF ( PRESENT(adjustGridInfo) ) THEN
       IF ( adjustGridInfo .AND. (.NOT. (PRESENT(grid))) ) THEN
@@ -10112,12 +9303,15 @@ end function readparameterfrom2dmap
       END IF
       doAdjustGridInfo = adjustGridInfo
     END IF
+
+    if ( present(adjustMem)) doAdjustMem = .true.
     
     maxDeletionDepth = -99
 
     CALL deleteOctalPrivate(thisOctal, deleteChildren,        &
                             adjustParent,                     &
                             adjustGridInfo=doAdjustGridInfo,  &
+                            adjustMem = doAdjustMem,          &
                             grid=grid, maxDeletionDepth=maxDeletionDepth )
 
     IF ( doAdjustGridInfo ) THEN
@@ -10133,19 +9327,23 @@ end function readparameterfrom2dmap
   CONTAINS
 
     RECURSIVE SUBROUTINE deleteOctalPrivate(thisOctal, deleteChildren,      &
-                                            adjustParent, adjustGridInfo,   &
+                                            adjustParent, adjustGridInfo, adjustMem,  &
                                             grid, maxDeletionDepth )
     
-      TYPE(octal), INTENT(INOUT) :: thisOctal
+      type(octal), pointer :: thisOctal !TJH 9 JULY
+      type(octal), pointer :: childPointer !TJH 9 JULY
+!      TYPE(octal), INTENT(INOUT), target :: thisOctal
+      type(octal), pointer :: pOctal
       LOGICAL, INTENT(IN) :: deleteChildren 
       LOGICAL, INTENT(IN) :: adjustParent 
       LOGICAL, INTENT(IN) :: adjustGridInfo
+      LOGICAL, INTENT(IN) :: adjustMem
       TYPE(gridtype), INTENT(INOUT), OPTIONAL :: grid 
       INTEGER, INTENT(INOUT), OPTIONAL :: maxDeletionDepth
 
       INTEGER :: iChild
       INTEGER :: error
-
+      real(double),pointer :: ptr(:)
       error = 0
 
       maxDeletionDepth = MAX( thisOctal%nDepth, maxDeletionDepth )
@@ -10153,11 +9351,20 @@ end function readparameterfrom2dmap
       IF (deleteChildren) THEN
 
         DO iChild = 1, thisOctal%nChildren, 1
-          CALL deleteOctalPrivate(thisOctal%child(iChild),         &
+
+           childPointer => thisOctal%child(iChild)
+          CALL deleteOctalPrivate(childPointer,         &
                            deleteChildren=deleteChildren,          &
                            adjustParent=adjustParent, grid=grid,   &
                            adjustGridInfo=adjustGridInfo,          &
+                           adjustMem=adjustMem,                    &
                            maxDeletionDepth=maxDeletionDepth )
+!          CALL deleteOctalPrivate(thisOctal%child(iChild),         &
+!                           deleteChildren=deleteChildren,          &
+!                           adjustParent=adjustParent, grid=grid,   &
+!                           adjustGridInfo=adjustGridInfo,          &
+!                           adjustMem=adjustMem,                    &
+!                           maxDeletionDepth=maxDeletionDepth )
         END DO
         IF (ASSOCIATED(thisOctal%child)) DEALLOCATE(thisOctal%child)
         IF ( error /= 0 ) CALL deallocationError(error,location=1) 
@@ -10169,6 +9376,10 @@ end function readparameterfrom2dmap
 
       IF ( adjustGridInfo ) grid%nOctals = grid%nOctals - 1
 
+      if (adjustMem .or. adjustGridinfo) then
+         pOctal => thisOctal
+         globalMemoryFootprint = globalMemoryFootprint - octalMemory(pOctal)
+      endif
 
       call deallocateOctalDynamicAttributes(thisOctal)
 
@@ -10205,9 +9416,11 @@ end function readparameterfrom2dmap
 
     IMPLICIT NONE
 
-    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! octal where branch is to
-                                                    !   be inserted
-    TYPE(octal), INTENT(INOUT) :: branch ! branch being inserted
+    type(octal), pointer :: thisOctal, branch ! TJH 9 JULY
+
+!    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! octal where branch is to
+!                                                    !   be inserted
+!    TYPE(octal), INTENT(INOUT) :: branch ! branch being inserted
     LOGICAL, INTENT(IN) :: onlyChildren ! only insert the *children* on the
                                         !   branch, leaving the other variables
                                         !   of thisOctal unchanged
@@ -10244,8 +9457,9 @@ end function readparameterfrom2dmap
     ! WARNING: this does not change the parent and child variables - you
     !   must update those yourself elsewhere.
  
-    TYPE(octal), INTENT(IN) :: source
-    TYPE(octal), INTENT(INOUT) :: dest
+    type(octal), pointer :: source, dest !TJH 9 JULY
+!    TYPE(octal), INTENT(IN) :: source
+!    TYPE(octal), INTENT(INOUT) :: dest
 
     ! first make sure that 'dest' is empty
     IF ( ASSOCIATED(dest%child) ) THEN
@@ -11045,8 +10259,8 @@ end function readparameterfrom2dmap
     ! NB this subroutine doesn't update grid%nOctals etc.
 
     IMPLICIT NONE
-    
-    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    type(octal), pointer :: parent ! TJH 9 JULY
+!    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
     LOGICAL, INTENT(IN), DIMENSION(parent%maxChildren) :: childrenToDelete
       ! mask defining which children to get rid of 
       ! NB childrenToDelete does not map to the index number in the 
@@ -11075,6 +10289,7 @@ end function readparameterfrom2dmap
     INTEGER :: error
     INTEGER :: nChildrenToDelete
     TYPE(octal), POINTER :: thisChild ! convenient alias to current child 
+    TYPE(octal), POINTER :: childPointer
     LOGICAL :: deleteALLchildren ! are we getting rid of ALL the children
     INTEGER :: nChildrenStay ! how many children will be left when done
     INTEGER :: insertLocation ! the next location to use in tempChildStorage
@@ -11144,7 +10359,7 @@ end function readparameterfrom2dmap
         ! we want to delete this octal from the %child array
 
         CALL deleteOctal(thisChild, deleteChildren=.TRUE.,     &
-                         adjustParent=adjustParent )
+                         adjustParent=adjustParent, adjustMem=.true. )
 
      ELSE 
         ! we do not want to delete this child. 
@@ -11187,9 +10402,13 @@ end function readparameterfrom2dmap
 
       DO iChild = 1, nChildrenStay, 1
         
-        CALL insertOctreeBranch(parent%child(iChild),               &
+         childPointer => parent%child(iChild) !TJH 9 JULY
+        CALL insertOctreeBranch(childPointer,               &
                branch=tempChildStorage%wrappers(iChild)%content,    &
                onlyChildren=.FALSE.)                              
+!        CALL insertOctreeBranch(parent%child(iChild),               &
+!               branch=tempChildStorage%wrappers(iChild)%content,    &
+!               onlyChildren=.FALSE.)                              
                
         parent%child(iChild)%parent => parent
                
@@ -11222,8 +10441,8 @@ end function readparameterfrom2dmap
     ! this is a simpler wrapper for the shrinkChildArray subroutine
 
     IMPLICIT NONE
-    
-    TYPE(octal), INTENT(INOUT) :: parent ! the parent octal 
+    type(octal), pointer :: parent ! TJH 9 JULY
+!    TYPE(octal), INTENT(INOUT) :: parent ! the parent octal 
     INTEGER :: childToDelete ! number of the child to delete
       ! NB childToDelete does not map to the index number in the 
       !   %child array, it is the "real" number of the child (the 
@@ -11267,7 +10486,7 @@ end function readparameterfrom2dmap
     END IF  
 
     ! only for debugging - comment out later:
-    CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+!    CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
         
       
   END SUBROUTINE deleteChild
@@ -12215,7 +11434,8 @@ end function readparameterfrom2dmap
     RECURSIVE SUBROUTINE amrUpdateGridDelete(thisOctal)
       ! if a child should no longer exist, we delete it.
 
-      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      type(octal), pointer :: thisOCTAL ! TJH 9 JULY
+!      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
       logical :: splitInAzimuth
       INTEGER :: iChild, iSubcell
@@ -12248,7 +11468,8 @@ end function readparameterfrom2dmap
     RECURSIVE SUBROUTINE amrUpdateGridAdd(thisOctal)
       ! subdivide any octals that now exceed the threshold
 
-      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      type(octal), pointer :: thisOctal !TJH 9 JULY
+!      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
       INTEGER :: iSubcell, j
       logical :: splitInAzimuth
@@ -12964,6 +12185,8 @@ end function readparameterfrom2dmap
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
     use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner
+    use input_variables, only : maxMemoryAvailable
+    use memory_mod, only : humanreadablememory, globalMemoryFootprint
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -12974,9 +12197,9 @@ end function readparameterfrom2dmap
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
-    logical :: split
-    logical, save :: firsttime = .true.
-    character(len=30) :: message
+    logical :: split, outofMemory
+    logical, save :: firsttime = .true., firstTimeMem = .true.
+    character(len=80) :: message
 
     kabs = 0.d0; ksca = 0.d0
 
@@ -13065,6 +12288,17 @@ end function readparameterfrom2dmap
                       firstTime = .false.
                    endif
                 endif
+
+                outofmemory = .false.
+                if (globalMemoryFootprint > maxMemoryAvailable) then
+                   split = .false.
+                   outofmemory = .true.
+                   if (firstTimeMem) then
+                      write(message,'(a)') "Maxmimum memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
+                      call writeWarning(message)
+                      firstTimeMem = .false.
+                   endif
+                endif
                    
                 
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
@@ -13100,7 +12334,7 @@ end function readparameterfrom2dmap
                 endif
 
                 if (PRESENT(photosphereSplit)) then
-                   if (photosphereSplit) then
+                   if (photosphereSplit.and.(.not.outofmemory)) then
                       if ((thisOctal%etaLine(subcell) /= 0.d0).and.(neighbourOctal%etaLine(neighbourSubcell)/=0.d0)) then
                          if ((j==3).or.(j==4)) then
                             fac = abs(neighbourOctal%etaLine(neighbourSubcell)-thisOctal%etaLine(subcell))
@@ -13531,11 +12765,16 @@ end function readparameterfrom2dmap
   end subroutine convertToDensity
 
   recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps, stellar_cluster, romData)
+    use memory_mod, only : globalMemoryFootprint, humanReadableMemory
+    use input_variables, only : maxMemoryAvailable
     type(GRIDTYPE) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
+  logical, save :: firstTimeMem
+  logical :: outOfMemory
   integer :: subcell, i
     logical, optional :: inheritProps, interpProps
+    character(len=80) :: message
     !
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
@@ -13551,8 +12790,16 @@ end function readparameterfrom2dmap
              end if
           end do
        else
-
-          if (thisOctal%chiline(subcell) > 0.d0) then
+          outofmemory = .false.
+          if (globalMemoryFootprint > maxMemoryAvailable) then
+             outofmemory = .true.
+             if (firstTimeMem) then
+                write(message,'(a)') "Maxmimum memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
+                call writeWarning(message)
+                firstTimeMem = .false.
+             endif
+          endif
+          if ((thisOctal%chiline(subcell) > 0.d0).and.(.not.outOfMemory)) then
              thisOctal%chiLine(subcell) = 0.d0
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=inheritProps, interp=interpProps)
@@ -13654,814 +12901,149 @@ end function readparameterfrom2dmap
 
   end subroutine tagScaleSmooth
 
-  subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal, sSubcell)
-    use octal_mod, only: returndPhi
-
-    implicit none
-    type(GRIDTYPE), intent(in)    :: grid
-    type(VECTOR), intent(in) :: posVec
-    type(VECTOR), intent(in) :: direction
-    type(OCTAL), pointer, optional :: sOctal
-    integer, optional :: sSubcell
-    real(oct), intent(out) :: tval
-    !
-    type(VECTOR), parameter :: norm(6) = (/ VECTOR( 1.0d0,  0.d0,   0.0d0),  &
-                                            VECTOR( 0.0d0,  1.0d0,  0.0d0),  &
-                                            VECTOR( 0.0d0,  0.0d0,  1.0d0),  &
-                                            VECTOR(-1.0d0,  0.0d0,  0.0d0),  &
-                                            VECTOR( 0.0d0, -1.0d0,  0.0d0),  &
-                                            VECTOR( 0.0d0,  0.0d0, -1.0d0) /)
-    type(VECTOR) :: rDirection
-    type(OCTAL),pointer :: thisOctal
-    real(double) :: distTor1, distTor2, theta, mu
-    real(double) :: distToRboundary, compz,currentZ
-    real(double) :: phi, distToZboundary, ang1, ang2
-    type(VECTOR) :: subcen, point, xHat, rVec, rplane, rnorm, xVec
-    integer :: subcell
-    real(double) :: distToSide1, distToSide2, distToSide
-    real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
-    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCellsize
-    real(double) :: a, b, c 
-    logical :: ok, thisOk(6)
-!    integer :: jarray(6)
-
-    type(VECTOR) :: normdiff
-
-    point = posVec
-
-    if (PRESENT(sOctal)) then
-       if (PRESENT(sSubcell)) then
-          subcell = sSubcell
-          thisOctal => sOctal
-       else
-          call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid, startOctal=sOctal)
-       endif
-    else
-       call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
-    endif
-    subcen =  subcellCentre(thisOctal,subcell)
-
-    if (thisOctal%oneD) then
-
-       distToR1 = 1.d30
-       distToR2 = 1.d30
-
-       rVec = posVec
-       call normalize(rVec)
-       cosmu = ((-1.d0)*direction).dot.rVec
-       d = modulus(posVec)
-
-       ! distance to outer radius
-
-       r2 = subcen%x + thisOctal%subcellSize/2.d0
-       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-       distToR2 = max(x1,x2)
-!             write(*,*) "r2",x1,x2,disttor2
-
-       !   inner radius
-
-       r1 = subcen%x - thisOctal%subcellSize/2.d0
-       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-       cosmu =((-1.d0)*rVec).dot.direction
-       mu = acos(max(-1.d0,min(1.d0,cosmu)))
-       distTor1 = 1.e30
-       if (mu  < theta ) then
-          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-          distTor1 = min(x1,x2)
-       endif
-!             write(*,*) "r1",x1,x2,disttor1,mu,theta
-
-       tval = min(distTor1, distTor2)
-       goto 666
-    endif
-
-    if (thisOctal%threed) then
-
-       if (.not.thisOctal%cylindrical) then
-          ok = .true.
-
-          halfSubCellsize = thisOctal%subcellsize * 0.5d0
-
-          if(direction%x .ne. 0.d0) then            
-             denom(1) = 1.d0 / direction%x
-          else
-             denom(1) = 0.d0
-          endif
-          denom(4) = -denom(1)
-
-          if(direction%y .ne. 0.d0) then            
-             denom(2) = 1.d0 / direction%y
-          else
-             denom(2) = 0.d0
-          endif
-          denom(5) = -denom(2)
-          
-          if(direction%z .ne. 0.d0) then            
-             denom(3) = 1.d0 / direction%z
-          else
-             denom(3) = 0.d0
-          endif
-          denom(6) = -denom(3)
-
-          normdiff = subcen - posvec
-          
-          thisOK = .false.
-          ok = .false.
-          t(1) =  (normdiff%x + halfsubcellsize) * denom(1)
-          if (t(1) > 0.d0) then
-             thisOK(1) = .true.
-             ok = .true.
-          endif
-          t(2) =  (normdiff%y + halfsubcellsize) * denom(2)
-          if (t(2) > 0.d0) then
-             thisOK(2) = .true.
-             ok = .true.
-          endif
-          t(3) =  (normdiff%z + halfsubcellsize) * denom(3)
-          if (t(3) > 0.d0) then
-             thisOK(3) = .true.
-             ok = .true.
-          endif
-          t(4) =  (normdiff%x - halfsubcellsize) * denom(1)
-          if (t(4) > 0.d0) then
-             thisOK(4) = .true.
-             ok = .true.
-          endif
-          t(5) =  (normdiff%y - halfsubcellsize) * denom(2)
-          if (t(5) > 0.d0) then
-             thisOK(5) = .true.
-             ok = .true.
-          endif
-          t(6) =  (normdiff%z - halfsubcellsize) * denom(3)
-          if (t(6) > 0.d0) then
-             thisOK(6) = .true.
-             ok = .true.
-          endif
-
-!          where(t > 0.d0)
-!             jarray = 1
-!             thisOk = .true.
-!          elsewhere
-!             jarray = 0
-!             thisOk = .false.
-!          end where
-!          
-!          j = sum(jarray)
-
-!          if (j .eq. 0) ok = .false.
- 
-          if (.not.ok) then
-             write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToCellBoundary. "
-             write(*,*) direction%x,direction%y,direction%z
-             write(*,*) t(1:6)
-             call torus_abort
-          endif
-          
-          tval = minval(t, mask=thisOk)
-          
-! Commented out by Dave Acreman, October 2008
-! tval == 0 is handled at the end of this subroutine    
-!          if (tval == 0.) then
-!             write(*,*) posVec
-!             write(*,*) direction%x,direction%y,direction%z
-!             write(*,*) t(1:6)
-!             call torus_abort("tval==0 in distanceToCellBoundary")
-!          endif
-
-          !if (tval > sqrt(3.)*thisOctal%subcellsize) then
-             !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
-             !     write(*,*) "direction",direction
-             !     write(*,*) t(1:6)
-             !     write(*,*) denom(1:6)
-          !endif
-
-       else
-
-          ! now look at the cylindrical case
-
-          halfCellSize = thisOctal%subcellSize/2.d0
-          rVec = subcellCentre(thisOctal,subcell)
-          r = sqrt(rVec%x**2 + rVec%y**2)
-          r1 = r - halfCellSize
-          r2 = r + halfCellSize
-
-          distToR1 = 1.d30
-          distToR2 = 1.d30
-          d = sqrt(point%x**2+point%y**2)
-          xHat = VECTOR(point%x, point%y,0.d0)
-          if (modulus(xhat)/=0.d0)    call normalize(xHat)
-          rDirection = VECTOR(direction%x, direction%y,0.d0)
-          compX = modulus(rDirection)
-          if (modulus(rDirection) /= 0.d0) call normalize(rDirection)
-          if (compX /= 0.d0) then
-             cosmu =((-1.d0)*xHat).dot.rdirection
-             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-             if (.not.ok) then
-                write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
-                write(*,*) "xhat",xhat
-                write(*,*) "dir",direction
-                write(*,*) "point",point
-                do;enddo
-                endif
-                if ((x1.lt.0.d0).and.(x2.lt.0.d0)) then
-                   write(*,*) "x1, x2 ",x1,x2
-                   write(*,*) "rdirection ",rdirection
-                   write(*,*) "xhat ",xhat
-                   write(*,*) "compx ",compx
-                   write(*,*) "cosmu ",cosmu
-                endif
-                distTor2 = max(x1,x2)/compX
-
-                if ((d .ne. 0.).and.(r1 > 0.1d0*grid%halfSmallestSubcell)) then
-                   theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-                   cosmu = ((-1.d0)*xHat).dot.rdirection
-                   mu = acos(max(-1.d0,min(1.d0,cosmu)))
-                   distTor1 = 1.e30
-                   if (mu  < theta ) then
-                      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-                      if (.not.ok) then
-                         write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
-                         write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
-                         write(*,*) "direction ",direction
-                         write(*,*) "mu ",mu*radtodeg, "theta ",theta*radtodeg
-                         x1 = thisoctal%subcellSize/2.d0
-                         x2 = 0.d0
-                      endif
-                      distTor1 = min(x1,x2)/compX
-                   endif
-                else
-                   distTor1 = 1.d30
-                end if
-             endif
-             distToRboundary = min(distTor1, distTor2)
-
-             ! now do the upper and lower (z axis) surfaces
-
-             compZ = zHat.dot.direction
-             currentZ = point%z
-
-             if (compZ /= 0.d0 ) then
-                if (compZ > 0.d0) then
-                   distToZboundary = (subcen%z + halfCellSize - currentZ ) / compZ
-                else
-                   distToZboundary = abs((subcen%z - halfCellSize - currentZ ) / compZ)
-                endif
-             else
-                disttoZboundary = 1.e30
-             endif
-
-             ! ok now we have to tackle the two angled sides...
-         thisOk = .true.
-         
-! Commented out by Dave Acreman, October 2008
-! tval == 0 is handled at the end of this subroutine         
-!         if (tval == 0.) then
-!            write(*,*) posVec
-!            write(*,*) direction%x,direction%y,direction%z
-!            write(*,*) t(1:6)
-!            call torus_abort("tval==0 in distanceToCellBoundary")
-!         endif
-         
-         !if (tval > sqrt(3.)*thisOctal%subcellsize) then
-            !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
-            !     write(*,*) "direction",direction
-            !     write(*,*) t(1:6)
-            !     write(*,*) denom(1:6)
-         !endif
-
-             rVec = subcellCentre(thisOctal, subcell)
-             phi = atan2(rVec%y, rVec%x)
-             if (phi < 0.d0) phi = phi + twoPi
-
-             ang1 = phi - returndPhi(thisOctal)
-             rPlane = VECTOR(cos(ang1),sin(ang1),0.d0)
-             rnorm = rplane .cross. VECTOR(0.d0, 0.d0, 1.d0)
-             call normalize(rnorm)
-             distToSide1 = 1.d30
-             if ((rnorm .dot. direction) /= 0.d0) then
-                distToSide1 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
-                if (distToSide1 < 0.d0) distToSide1 = 1.d30
-             endif
-
-             ang2 = phi + returndPhi(thisOctal)
-             rPlane = VECTOR(cos(ang2),sin(ang2),0.d0)
-             rnorm = rplane .cross.  VECTOR(0.d0, 0.d0, 1.d0)
-             call normalize(rnorm)
-             distToSide2 = 1.d30
-             if ((rnorm .dot. direction) /= 0.d0) then
-                distToSide2 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
-                if (distToSide2 < 0.d0) distToSide2 = 1.d30
-             endif
-
-             distToSide = min(distToSide1, distToSide2)
-
-
-             tVal = min(distToZboundary, distToRboundary, distToSide)
-             if (tVal > 1.e29) then
-                write(*,*) "Cylindrical ",tval
-                write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
-                write(*,*) "subcen",subcen
-                write(*,*) "z", currentZ
-             endif
-             if (tval < 0.) then
-                write(*,*) "Cylindrical ",tval
-                write(*,*) tVal,distToZboundary,disttorboundary, disttoside
-                write(*,*) "subcen",subcen
-                write(*,*) "z", currentZ
-                write(*,*) "disttor1, disttor2 ",disttor1,disttor2
-             endif
-
-          endif
-
-       else ! two-d grid case below
-
-          halfCellSize = thisOctal%subcellSize/2.d0
-          r1 = subcen%x - halfCellSize
-          r2 = subcen%x + halfCellSize
-
-          distToR1 = 1.d30
-          distToR2 = 1.d30
-          d2 = point%x**2+point%y**2
-          d = sqrt(d2)
-          xVec = VECTOR(point%x, point%y,0.d0)
-          xHat = xVec
-          call normalize(xHat)
-          rDirection = VECTOR(direction%x, direction%y,0.d0)
-          compX = modulus(rDirection)
-          call normalize(rDirection)
-
-          if (compX /= 0.d0) then
-             cosmu =((-1.d0)*xHat).dot.rdirection
-             call solveQuadDble(1.d0, -2.d0*d*cosmu, d2-r2**2, x1, x2, ok)
-             if (.not.ok) then
-                write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
-                write(*,*) "xhat",xhat
-                write(*,*) "dir",direction
-                write(*,*) "point",point
-                do
-                enddo
-                x1 = thisoctal%subcellSize/2.d0
-                x2 = 0.d0
-             endif
-             distTor2 = max(x1,x2)/compX
-
-             distTor1 = 1.e30
-
-             if (cosmu > 0.d0) then
-                a = 1.d0
-                b = -2.d0*d*cosmu
-                c = d2-r1**2
-                fac = b*b-4.d0*a*c
-                if (fac > 0.d0) then
-                   call solveQuadDble(a, b, c, x1, x2, ok)
-                   !               if(ok) then
-                   !                  write(*,*) "All good",d,cosmu,r1,x1,x2
-                   !                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
-                   !               endif
-                   
-                   if (.not.ok) then
-                      write(*,*) "mu", mu, "theta", theta
-                      write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
-                      write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
-                      write(*,*) "xhat",xhat
-                      write(*,*) "dir",direction
-                      write(*,*) "point",point
-                      
-                      x1 = thisoctal%subcellSize/2.d0
-                      x2 = 0.d0
-                   endif
-                   distTor1 = min(x1,x2)/compX
-                endif
-             endif
-          endif
-          distToXboundary = min(distTor1, distTor2)
-
-
-          compZ = zHat.dot.direction
-          currentZ = point%z
-
-          if (compZ /= 0.d0 ) then
-             if (compZ > 0.d0) then
-                distToZboundary = (subcen%z + halfCellSize - currentZ ) / compZ
-             else
-                distToZboundary = abs((subcen%z - halfCellSize - currentZ ) / compZ)
-             endif
-          else
-             disttoZboundary = 1.e30
-          endif
-
-          tVal = min(distToZboundary, distToXboundary)
-          if (tVal > 1.e29) then
-             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-             write(*,*) "subcen",subcen
-             write(*,*) "z", currentZ
-             write(*,*) "TVAL", tval
-             write(*,*) "direction", direction
-             call torus_abort
-          endif
-
-!          if (tval < 0.) then
-!             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-!             write(*,*) "subcen",subcen
-             !         write(*,*) "x,z",currentX,currentZ
-!          endif
-      
-   endif
-
-666    continue
-
-!       tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
-
-
-     end subroutine distanceToCellBoundary
-
-  subroutine distanceToGridEdge(grid, posVec, direction, tVal)
-
-   implicit none
-   type(GRIDTYPE), intent(in)    :: grid
-   type(VECTOR), intent(in) :: posVec
-   type(VECTOR), intent(in) :: direction
-   real(oct), intent(out) :: tval
-   !
-   real(double) :: distTor1, distTor2, theta, mu
-   real(double) :: distToRboundary, compz,currentZ
-   real(double) :: distToZboundary !, ang1, ang2 , phi
-   type(VECTOR) :: subcen, point, xHat, zHat !, rVec
-   real(double) :: distToSide  !, distToSide1, distToSide2
-   real(double) :: disttoxBoundary, subcellsize, halfsubcellsize
-   real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
-   integer :: i,j
-   logical :: ok, thisOk(6)
-
-   type(VECTOR) :: normdiff
-
-   point = posVec
-
-   subcen =  grid%octreeRoot%centre
-   subcellsize = grid%octreeRoot%subcellSize * 2.d0
-   halfsubcellsize = grid%octreeRoot%subcellSize
-
-   if (grid%octreeRoot%threed) then
-
-      if (.not.grid%octreeRoot%cylindrical) then
-         ok = .true.
-         
-         if(direction%x .ne. 0.d0) then            
-            denom(1) = 1.d0 / direction%x
-         else
-            denom(1) = 0.d0
-         endif
-         
-         if(direction%y .ne. 0.d0) then            
-            denom(2) = 1.d0 / direction%y
-         else
-            denom(2) = 0.d0
-         endif
-         
-         if(direction%z .ne. 0.d0) then            
-            denom(3) = 1.d0 / direction%z
-         else
-            denom(3) = 0.d0
-         endif
-                     
-         normdiff = subcen - posvec
-
-         t(1) =  (normdiff%x + halfsubcellsize) * denom(1)
-         t(2) =  (normdiff%y + halfsubcellsize) * denom(2)
-         t(3) =  (normdiff%z + halfsubcellsize) * denom(3)
-         t(4) =  (normdiff%x - halfsubcellsize) * denom(1)
-         t(5) =  (normdiff%y - halfsubcellsize) * denom(2)
-         t(6) =  (normdiff%z - halfsubcellsize) * denom(3)
-
-         thisOk = .true.
-         
-         do i = 1, 6
-            
-            if (denom(i) .eq. 0.0d0) then
-               thisOk(i) = .false.
-            endif
-
-            if (t(i) < 0.) thisOk(i) = .false.
-         enddo
-                  
-         j = 0
-         do i = 1, 6
-            if (thisOk(i)) j=j+1
-         enddo
-         
-         if (j == 0) ok = .false.
-         
-         if (.not.ok) then
-            write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToGridEdge. "
-            write(*,*) direction%x,direction%y,direction%z
-            write(*,*) t(1:6)
-            stop
-         endif
-         
-         tval = minval(t, mask=thisOk)
-
-         if (tval == 0.) then
-            write(*,*) posVec
-            write(*,*) direction%x,direction%y,direction%z
-            write(*,*) t(1:6)
-            stop
-         endif
-         
-         if (tval > sqrt(3.)*subcellsize) then
-            !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
-            !     write(*,*) "direction",direction
-            !     write(*,*) t(1:6)
-            !     write(*,*) denom(1:6)
-         endif
-
-      else
-
-! now look at the cylindrical case
-
-         ! first do the inside and outside curved surfaces
-         r = sqrt(subcen%x**2 + subcen%y**2)
-         r1 = r -subcellSize/2.d0
-         r2 = r +subcellSize/2.d0
-         d = sqrt(point%x**2+point%y**2)
-         xHat = VECTOR(point%x, point%y,0.d0)
-         call normalize(xHat)
-      
-         cosmu =((-1.d0)*xHat).dot.direction
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-         if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
-            x1 = subcellSize/2.d0
-            x2 = 0.d0
-         endif
-         distTor2 = max(x1,x2)
-         
-         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-         cosmu = xHat.dot.direction
-         mu = acos(max(-1.d0,min(1.d0,cosmu)))
-         distTor1 = 1.e30
-         if (mu  < theta ) then
-            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-            if (.not.ok) then
-               write(*,*) "Quad solver failed in intersectcubeamr2d"
-               x1 = subcellSize/2.d0
-               x2 = 0.d0
-            endif
-            distTor1 = max(x1,x2)
-         endif
-      
-         distToRboundary = min(distTor1, distTor2)
-
-         ! now do the upper and lower (z axis) surfaces
-      
-         zHat = VECTOR(0.d0, 0.d0, 1.d0)
-         compZ = zHat.dot.direction
-         currentZ = point%z
-      
-         if (compZ /= 0.d0 ) then
-            if (compZ > 0.d0) then
-               distToZboundary = (subcen%z + subcellsize/2.d0 - currentZ ) / compZ
-            else
-               distToZboundary = abs((subcen%z - subcellsize/2.d0 - currentZ ) / compZ)
-            endif
-         else
-            disttoZboundary = 1.e30
-         endif
-      
-        
-!         ! ok now we have to tackle the two angled sides...
-!
-!         ! find posvec to surface centre
-!
-!         phi = atan2(posVec%y,posVec%x)
-!         if (phi < 0.d0) phi = phi + twoPi
-!
-!         rVec = VECTOR(r, 0.d0, 0.d0)
-!         if (grid%octreeRoot%splitAzimuthally) then
-!            if (phi < grid%octreeRoot%phi) then
-!               ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
-!               ang2 = grid%octreeRoot%phi
-!            else
-!               ang1 = grid%octreeRoot%phi
-!               ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
-!            endif
-!         else
-!            ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
-!            ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
-!         endif
-!
-!         rVec = VECTOR(r, 0.d0, 0.d0)
-!         rVec = rotateZ(rVec, -ang1)
-!         thisnorm = rVec .cross. zHat
-!         call normalize(thisnorm)
-!         if ((thisnorm.dot.direction) /= 0.d0) then
-!            distToSide1 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
-!            if (distToSide1 < 0.d0) distToSide1 = 1.d30
-!         endif
-!
-!         rVec = VECTOR(r, 0.d0, 0.d0)
-!         rVec = rotateZ(rVec, -ang2)
-!         thisnorm = rVec .cross. zHat
-!         call normalize(thisnorm)
-!         if ((thisnorm.dot.direction) /= 0.d0) then
-!            distToSide2 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
-!            if (distToSide2 < 0.d0) distToSide2 = 1.d30
-!         endif
-!
-!         distToSide = min(distToSide1, distToside2)
-         distToSide = 1.d30
-
-         tVal = min(distToZboundary, distToRboundary, distToSide)
-
-         write(*,*) disttoside,disttoZboundary,disttoRboundary
-         if (tVal > 1.e29) then
-            write(*,*) "Cylindrical"
-            write(*,*) tVal,compZ, distToZboundary,disttorboundary, disttoside
-            write(*,*) "subcen",subcen
-            write(*,*) "z", currentZ
-         endif
-         if (tval < 0.) then
-            write(*,*) "Cylindrical"
-            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
-            write(*,*) "subcen",subcen
-            write(*,*) "z", currentZ
-         endif
-
-      endif
-
-   else ! two-d grid case below
-
-      r1 = subcen%x - subcellSize/2.d0
-      r2 = subcen%x + subcellSize/2.d0
-      d = sqrt(point%x**2+point%y**2)
-      xHat = VECTOR(point%x, point%y,0.d0)
-      call normalize(xHat)
-      
-      cosmu =((-1.d0)*xHat).dot.direction
-      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-      if (.not.ok) then
-         write(*,*) "Quad solver failed in intersectcubeamr2d"
-         x1 = subcellSize/2.d0
-         x2 = 0.d0
-      endif
-      distTor2 = max(x1,x2)
-      
-      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-      cosmu = xHat.dot.direction
-      mu = acos(max(-1.d0,min(1.d0,cosmu)))
-      distTor1 = 1.e30
-      if (mu  < theta ) then
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-         if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
-            x1 = subcellSize/2.d0
-            x2 = 0.d0
-         endif
-         distTor1 = max(x1,x2)
-      endif
-      
-      distToXboundary = min(distTor1, distTor2)
-      
-      
-      zHat = VECTOR(0.d0, 0.d0, 1.d0)
-      compZ = zHat.dot.direction
-      currentZ = point%z
-      
-      if (compZ /= 0.d0 ) then
-         if (compZ > 0.d0) then
-            distToZboundary = (subcen%z + subcellsize/2.d0 - currentZ ) / compZ
-         else
-            distToZboundary = abs((subcen%z - subcellsize/2.d0 - currentZ ) / compZ)
-         endif
-      else
-         disttoZboundary = 1.e30
-      endif
-      
-      tVal = min(distToZboundary, distToXboundary)
-      if (tVal > 1.e29) then
-         write(*,*) tVal,compZ, distToZboundary,disttoxboundary
-         write(*,*) "subcen",subcen
-         write(*,*) "z",currentZ
-      endif
-      if (tval < 0.) then
-         write(*,*) tVal,compZ, distToZboundary,disttoxboundary
-         write(*,*) "subcen",subcen
-         write(*,*) "z", currentZ
-      endif
-      
-   endif
-
-   tVal = max(tVal, 1.d-4*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
-
- end subroutine distanceToGridEdge
-
-
-  type(VECTOR) function randomPositionInCell(thisOctal, subcell)
-    use octal_mod, only: returndPhi
-
-    type(OCTAL) :: thisOctal
-    integer :: subcell
-    type(VECTOR) :: octalCentre
-    real(double) :: r1, r2, r3, r
-    real(double) :: xOctal, yOctal, zOctal
-    real(double) :: ang, ang1, ang2, phi
-
-
-    octalCentre = subcellCentre(thisOctal,subcell)
+  SUBROUTINE smoothAMRgrid(grid,factor, stellar_cluster, inheritProps, interpProps, &
+       romData)
+    ! checks whether each octal's neighbours are much bigger than it, 
+    !   if so, makes the neighbours smaller.
+
+    TYPE(gridtype), INTENT(INOUT) :: grid 
+    REAL, INTENT(IN)              :: factor
+    TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    LOGICAL, INTENT(IN),optional  :: inheritProps
+    logical, intent(in), optional :: interpProps 
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
-!!! we will just choose a random point within the subcell.
-!!! this *should* be done in a better way.
+    LOGICAL :: gridConverged
 
+    CALL setAllUnchanged(grid%octreeRoot)
 
-    if (thisOctal%oneD) then
-       call random_number(r1)
-       r1 = r1 - 0.5d0
-       r1 = r1 * 0.9999
-       r = r1 * thisOctal%subcellSize + octalCentre%x
-       randomPositionInCell = r * randomUnitVector()
-       goto 666
-    endif
+    DO 
+      gridConverged = .TRUE.
+      CALL smoothAMRgridPrivate(grid%octreeRoot,grid,gridConverged,romData)
+      IF ( gridConverged ) EXIT 
+    END DO
+    
+  CONTAINS
+    
+    RECURSIVE SUBROUTINE smoothAMRgridPrivate(thisOctal,grid,gridConverged, &
+         romData)
 
+!      TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
+      TYPE(octal), INTENT(INOUT) :: thisOctal
+      TYPE(gridtype), INTENT(INOUT   ) :: grid 
+      LOGICAL, INTENT(INOUT)               :: gridConverged
+      TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
-    if (thisOctal%threed) then
+      INTEGER              :: i
+      REAL(oct) :: halfSmallestSubcell
+      REAL(oct) :: offset
+      TYPE(octal), POINTER :: neighbour
+      TYPE(vector), ALLOCATABLE, DIMENSION(:) :: locator
+      TYPE(vector) :: aHat
+      INTEGER              :: subcell
+      INTEGER              :: nLocator ! number of locators (4 for twoD, 6 for threed)
 
-       if (.not.thisOctal%cylindrical) then
+      ! we will find the coordinates of a point that lies outside the current
+      !   octal. we then compare the size of the cell that contains that point
+      !   with the size of the current cell, if it is bigger be more than a 
+      !   factor of 'factor', we subdivide the neighbouring cell.
+      ! we do this in each of six directions
 
-          call random_number(r1)
-          r1 = r1 - 0.5  ! shift value mean value to zero
-          r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
-          xOctal = r1 * thisOctal%subcellSize + octalCentre%x
-       
-          call random_number(r2)
-          r2 = r2 - 0.5                                  
-          r2 = r2 * 0.9999                                          
-          yOctal = r2 * thisOctal%subcellSize + octalCentre%y
+      ! we do not have to test the other subcells in the current octal because
+      !   they can be smaller than the any of the other subcells, but they
+      !   cannot be *bigger*. this saves some time.
+
+      if (thisOctal%threed) then
+         if (.not.thisOctal%cylindrical) then
+            nlocator = 6
+         else
+            nlocator = 4
+         endif
+      else
+        nlocator = 4
+      endif
+
+      ALLOCATE(locator(nlocator))
+
+      ! we find points which are outside the current octal by a distance
+      !   equivalent to half the size of the tree's smallest subcell.
+      halfSmallestSubcell = grid%halfSmallestSubcell
+
+      ! we also add a slight offset to our test positions to avoid testing 
+      !   at cell boundaries.
+      offset = halfSmallestSubcell / 2.0_oc
+
+      IF ( thisOctal%threed ) THEN
+        locator(:) = thisOctal%centre + ( offset * vector(1.0_oc,1.0_oc,1.0_oc) )
+      ELSE
+        locator(:) = thisOctal%centre + ( offset * vector(1.0_oc,0.0_oc,1.0_oc) )
+      END IF
+
+      IF ( thisOctal%threeD ) THEN
+         if (.not.thisOctal%cylindrical) then
+            locator(1)%x = thisOctal%centre%x + thisOctal%subcellSize + halfSmallestSubcell
+            locator(2)%y = thisOctal%centre%y + thisOctal%subcellSize + halfSmallestSubcell
+            locator(3)%z = thisOctal%centre%z + thisOctal%subcellSize + halfSmallestSubcell
+            locator(4)%x = thisOctal%centre%x - thisOctal%subcellSize - halfSmallestSubcell
+            locator(5)%y = thisOctal%centre%y - thisOctal%subcellSize - halfSmallestSubcell
+            locator(6)%z = thisOctal%centre%z - thisOctal%subcellSize - halfSmallestSubcell
+         else
+            locator(:) = thisOctal%centre
+            locator(1) = locator(1) + (thisOctal%subcellSize + halfSmallestSubcell) * zHat
+            locator(2) = locator(2) - (thisOctal%subcellSize + halfSmallestSubcell) * zHat
+            aHat = VECTOR(thisOctal%centre%x,thisOctal%centre%y,0.d0)
+            call normalize(aHat)
+            locator(3) = locator(3) + (thisOctal%subcellSize + halfSmallestSubcell) * aHat
+            locator(4) = locator(4) - (thisOctal%subcellSize + halfSmallestSubcell) * aHat
+         endif
+      ELSE
+        locator(1)%x = thisOctal%centre%x + thisOctal%subcellSize + halfSmallestSubcell
+        locator(2)%z = thisOctal%centre%z + thisOctal%subcellSize + halfSmallestSubcell
+        locator(3)%x = thisOctal%centre%x - thisOctal%subcellSize - halfSmallestSubcell
+        locator(4)%z = thisOctal%centre%z - thisOctal%subcellSize - halfSmallestSubcell
+      ENDIF
+      
+      DO i = 1, nLocator, 1
+        IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
+          CALL findSubcellTD(locator(i),grid%octreeRoot,neighbour,subcell)
+          !neighbour => thisOctal
+          !CALL findSubcellLocal(locator(i),neighbour,subcell)
+
+          IF ( neighbour%subcellSize > (factor * thisOctal%subcellSize) ) THEN
+            IF ( neighbour%hasChild(subcell) ) THEN 
+              PRINT *, "neighbour already has child. (B)"
+              !STOP
+              do ;end do
+            END IF
+              neighbour%changed(1:neighbour%maxChildren) = .TRUE.
+              call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
+                               stellar_cluster=stellar_cluster, &
+                               inherit=inheritProps, interp=interpProps, romData=romData)
+              gridConverged = .FALSE.
+          ENDIF
+        END IF
           
+! force return until algorithm is fixed
+IF ( .NOT. gridConverged ) RETURN
           
-          call random_number(r3)
-          r3 = r3 - 0.5                                  
-          r3 = r3 * 0.9999                                          
-          zOctal = r3 * thisOctal%subcellSize + octalCentre%z
+      END DO
+
+      ! call this subroutine recursively on each of any children.
+      IF ( (.NOT. ANY(thisOctal%Changed)) .AND. thisOctal%nChildren > 0 ) THEN
+        DO i = 1, thisOctal%nChildren, 1 
+          CALL smoothAMRgridPrivate(thisOctal%child(i),grid,gridConverged,romData=romData)
+          !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)                                  
+        
+! force return until algorithm is fixed
+IF ( .NOT. gridConverged ) RETURN
+        END DO
+      END IF
+
+      DEALLOCATE(locator)
           
-          randomPositionInCell = VECTOR(xOctal,yOctal,zOctal)
-          
-       else
-
-
-          call random_number(r1)
-          r1 = r1 - 0.5  ! shift value mean value to zero
-          r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
-          xOctal = r1 * thisOctal%subcellSize + sqrt(octalCentre%x**2+octalCentre%y**2)
-
-
-          call random_number(r3)
-          r3 = r3 - 0.5                                  
-          r3 = r3 * 0.9999                                          
-          zOctal = r3 * thisOctal%subcellSize + octalCentre%z
-
-          randomPositionInCell = VECTOR(xOctal,0.,zOctal)
-          
-          call random_number(r2)
-          phi = atan2(octalCentre%y, octalCentre%x)
-          if (phi < 0.d0) phi = phi + twoPi
-
-          ang1 = phi - returndPhi(thisOctal)
-          ang2 = phi + returndPhi(thisOctal)
-          
-!          if (thisOctal%splitAzimuthally) then
-!             ang1 = thisOctal%phi - thisOctal%dphi/4.
-!             ang2 = thisOctal%phi + thisOctal%dphi/4.
-!          else
-!             ang1 = thisOctal%phi - thisOctal%dphi/2.
-!             ang2 = thisOctal%phi + thisOctal%dphi/2.
-!          endif
-          ang = ang1 + r2 * (ang2 - ang1)
-          randomPositionInCell = rotateZ(randomPositionInCell, -ang)
-
-       endif
-    else
-
-       call random_number(r1)
-       r1 = r1 - 0.5  ! shift value mean value to zero
-       r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
-       xOctal = r1 * thisOctal%subcellSize + octalCentre%x
-       
-          
-       call random_number(r3)
-       r3 = r3 - 0.5                                  
-       r3 = r3 * 0.9999                                          
-       zOctal = r3 * thisOctal%subcellSize + octalCentre%z
-       
-       randomPositionInCell = VECTOR(xOctal,0.d0,zOctal)
-
-       if (thisOctal%twod) then
-          call random_number(ang)
-          ang = ang * twoPi
-          randomPositionInCell = rotateZ(randomPositionInCell, ang)
-       endif
-    endif
-666 continue
-  end function randomPositionInCell
-
+    END SUBROUTINE smoothAMRgridPrivate
+  
+  END SUBROUTINE smoothAMRgrid
 
   !-----------------------------------------------------------------------------------
   ! Base on startReturnSample of NHS. Optimized for a solving formal solution.
@@ -17167,7 +15749,7 @@ end function readparameterfrom2dmap
 
 
     subroutine deallocateOctalDynamicAttributes(thisOctal)
-      type(OCTAL):: thisOctal
+      type(OCTAL), pointer :: thisOctal
 
 
        call deallocateAttribute(thisOctal%HHeating)

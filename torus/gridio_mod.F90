@@ -682,6 +682,7 @@ contains
       logical, intent(in)  :: fileFormatted
       integer :: nOctal
 
+      type(octal), pointer :: childPointer
       type(octal), pointer :: thisChild => null()
       type(octal), pointer :: topOctal => null()
       type(octal), pointer :: tempChildPointer => null()
@@ -867,7 +868,9 @@ contains
 !                     call skipOctalsToDepth(fileformatted, 2)
 
                   else
-                     call insertOctreeBranch(thisOctal%child(1), grid%tempBranch, onlyChildren = .false.)
+                     childPointer => thisOctal%child(1) ! TJH 9 JULY
+                     call insertOctreeBranch(childPointer , grid%tempBranch, onlyChildren = .false.)
+!                     call insertOctreeBranch(thisOctal%child(1), grid%tempBranch, onlyChildren = .false.)
 
 !                     call readOctreePrivateFlexi(thisOctal%child(1),thisOctal,fileFormatted, nOctal, grid)               
                      thisOctal%hasChild = .false.

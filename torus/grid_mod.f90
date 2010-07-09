@@ -21,7 +21,7 @@ module grid_mod
   use constants_mod                   ! physical constants
   use messages_mod
   use vector_mod                      ! vector math
-  use amr_mod, only: deleteOctreeBranch, deleteOctal
+  use amr_mod, only: deleteOctreeBranch, deleteOctal, deallocateOctalDynamicAttributes
   use octal_mod, only: OCTAL
   use gridtype_mod, only: GRIDTYPE    ! type definition for the 3-d grid
   use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
@@ -2018,7 +2018,8 @@ contains
     call writeInfo("Deallocating grid structure", TRIVIAL)
     
     if (associated(grid%octreeRoot)) then
-!      call deleteOctreeBranch(grid%octreeRoot,grid)   
+      call deleteOctal(grid%octreeRoot, deleteChildren=.true.,adjustparent=.false.)
+      call deallocateOctalDynamicAttributes(grid%octreeRoot)
       deallocate(grid%octreeRoot)
       nullify(grid%octreeRoot)
     end if
@@ -2110,6 +2111,7 @@ contains
     if (associated(grid%inUse)) deallocate(grid%inUse)
        nullify(grid%inUse)
 
+    call writeinfo("done.")
   end subroutine freeGrid
 
   logical function insideGrid(grid, rVec)

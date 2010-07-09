@@ -475,6 +475,7 @@ contains
           call unrefineBack(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, nUnrefine, gridconverged)
           if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
        end do
+
        if (writeoutput) then
           write(*,*) "done."
        endif

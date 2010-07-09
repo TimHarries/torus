@@ -170,7 +170,7 @@ contains
          write(*,*) "Number of OB stars (>15 msol): ",nOB
       endif
       do i = 1, nSource
-         call fillSpectrum(source(i), nKurucz, kLabel, kSpectrum)
+         call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
       enddo
       
 
@@ -315,149 +315,149 @@ contains
      end subroutine removeSource
 
 
-     subroutine fillSpectrum(source, nKurucz, kLabel, kSpectrum)
-       type(SOURCETYPE) :: source
-       real(double) :: logg
-       integer, parameter :: nFiles = 60
-       real,save :: teff(nFiles)
-       integer :: i, j
-       real(double) :: t
-       real :: loggArray(11)
-       logical, save :: firstTime = .true.
-       character(len=200) :: thisFile = " ", dataDirectory = " "
-       logical :: ok 
-       integer :: nKurucz
-       character(len=*) :: kLabel(:)
-       logical,save :: firstWarning = .true.
-       type(SPECTRUMTYPE) :: kSpectrum(:)
-
-       ok = .true.
-       call unixGetenv("TORUS_DATA", dataDirectory, i)
-
-
-       loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
-       if (firsttime) then
-          open(31, file=trim(dataDirectory)//"/Kurucz/filelist.dat", form="formatted", status="old")
-          do i = 1, nFiles
-             read(31, *) teff(i)
-          end do
-          close(31)
-          firstTime = .false.
-       endif
-
-
-
-
-       logg = (bigG*source%mass*mSol)/((source%radius*1.d10)**2)
-       logg = log10(logg)
-       call locate(teff, nFiles, real(source%teff), i)
-       call locate(loggArray, 11, real(logg*100.), j)
-
-       t = (source%teff - teff(i))/(teff(i+1)-teff(i))
-       if (t > 0.5) i = i + 1
-       t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
-       if (t > 0.5) j = j + 1
-       call createKuruczFilename(teff(i), loggArray(j), thisFile)
-!       call readSpectrum(source%spectrum, thisFile, ok)
-
-       call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
-       if (ok) then
-          call normalizedSpectrum(source%spectrum)
-       else
-
-          ! try a higher gravity
-
-          if (j < 11) then
-             j = j + 1
-             call createKuruczFilename(teff(i), loggArray(j), thisFile)
-             call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
-             if (ok) then
-                call normalizedSpectrum(source%spectrum)
-             endif
-          endif
-          if (.not. ok) then
-             do j = 1, 11
-                call createKuruczFilename(teff(i), loggArray(j), thisFile)
-                call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
-                if (ok) then
-                   call normalizedSpectrum(source%spectrum)
-                   exit
-                endif
-             enddo
-          endif
-          if (.not.ok) then
-             if (firstWarning) then
-                call writeInfo("Cannot find appropriate model atmosphere for source: "//trim(thisFile), IMPORTANT)
-                firstWarning  = .false.
-             endif
-             call fillSpectrumBB(source%spectrum,source%teff, 100.d0, 1.d7, 1000)
-             call normalizedSpectrum(source%spectrum)
-          endif
-       endif
-
-     end subroutine fillSpectrum
-
-
-     subroutine createKuruczFileName(teff, logg, thisfile)
-       real :: teff, logg
-       integer :: i
-       character(len=*) thisfile
-       character(len=80) :: fluxfile, dataDirectory
-
-       call unixGetenv("TORUS_DATA", dataDirectory, i)
-
-
-       if (teff < 10000.) then
-          write(fluxfile,'(a,i4,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"
-       else
-          write(fluxfile,'(a,i5,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"          
-       endif
-       thisFile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
-     end subroutine createKuruczFileName
-
-     subroutine readKuruczGrid(label, spectrum, nFiles)
-       character(len=*) :: label(:)
-       type(SPECTRUMTYPE) :: spectrum(:)
-       integer :: nFiles
-       character(len=200) :: tfile,fluxfile,dataDirectory = " "
-       logical :: ok
-       integer :: i
-       ok = .true.
-
-       call unixGetenv("TORUS_DATA", dataDirectory, i)
-       
-       call writeInfo("Reading Kurucz grid...",TRIVIAL)
-
-       tfile = trim(dataDirectory)//"/Kurucz/files.dat"
-       open(31, file = tfile, status = "old", form="formatted")
-       do i = 1, nFiles
-          read(31,*) fluxfile
-          label(i) = trim(fluxfile)
-          tfile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
-          call readSpectrum(spectrum(i), tfile, ok)
-       enddo
-       close(31)
-       call writeInfo("Done.",TRIVIAL)
-
-     end subroutine readKuruczGrid
-
-     subroutine readKuruczSpectrum(thisSpectrum,thisLabel, label, spectrum, nFiles, ok)
-       character(len=*) :: label(:), thisLabel
-       type(SPECTRUMTYPE) :: spectrum(:), thisSpectrum
-       integer :: nFiles
-       logical :: ok
-       integer :: i
-       
-       ok = .false.
-       do i = 1, nFiles
-          if (trim(label(i)).eq.trim(thisLabel)) then
-             call copySpectrum(thisSpectrum, spectrum(i))
-             write(*,*) "spectrum copied"
-             ok = .true.
-             exit
-          endif
-       enddo
-     end subroutine readKuruczSpectrum
+!     subroutine fillSpectrum(source, nKurucz, kLabel, kSpectrum)
+!       type(SOURCETYPE) :: source
+!       real(double) :: logg
+!       integer, parameter :: nFiles = 60
+!       real,save :: teff(nFiles)
+!       integer :: i, j
+!       real(double) :: t
+!       real :: loggArray(11)
+!       logical, save :: firstTime = .true.
+!       character(len=200) :: thisFile = " ", dataDirectory = " "
+!       logical :: ok 
+!       integer :: nKurucz
+!       character(len=*) :: kLabel(:)
+!       logical,save :: firstWarning = .true.
+!       type(SPECTRUMTYPE) :: kSpectrum(:)
+!
+!       ok = .true.
+!       call unixGetenv("TORUS_DATA", dataDirectory, i)
+!
+!
+!       loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
+!       if (firsttime) then
+!          open(31, file=trim(dataDirectory)//"/Kurucz/filelist.dat", form="formatted", status="old")
+!          do i = 1, nFiles
+!             read(31, *) teff(i)
+!          end do
+!          close(31)
+!          firstTime = .false.
+!       endif
+!
+!
+!
+!
+!       logg = (bigG*source%mass*mSol)/((source%radius*1.d10)**2)
+!       logg = log10(logg)
+!       call locate(teff, nFiles, real(source%teff), i)
+!       call locate(loggArray, 11, real(logg*100.), j)
+!
+!       t = (source%teff - teff(i))/(teff(i+1)-teff(i))
+!       if (t > 0.5) i = i + 1
+!       t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
+!       if (t > 0.5) j = j + 1
+!       call createKuruczFilename(teff(i), loggArray(j), thisFile)
+!!       call readSpectrum(source%spectrum, thisFile, ok)
+!
+!       call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
+!       if (ok) then
+!          call normalizedSpectrum(source%spectrum)
+!       else
+!
+!          ! try a higher gravity
+!
+!          if (j < 11) then
+!             j = j + 1
+!             call createKuruczFilename(teff(i), loggArray(j), thisFile)
+!             call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
+!             if (ok) then
+!                call normalizedSpectrum(source%spectrum)
+!             endif
+!          endif
+!          if (.not. ok) then
+!             do j = 1, 11
+!                call createKuruczFilename(teff(i), loggArray(j), thisFile)
+!                call readKuruczSpectrum(source%spectrum, thisFile, klabel, kspectrum, nKurucz, ok)
+!                if (ok) then
+!                   call normalizedSpectrum(source%spectrum)
+!                   exit
+!                endif
+!             enddo
+!          endif
+!          if (.not.ok) then
+!             if (firstWarning) then
+!                call writeInfo("Cannot find appropriate model atmosphere for source: "//trim(thisFile), IMPORTANT)
+!                firstWarning  = .false.
+!             endif
+!             call fillSpectrumBB(source%spectrum,source%teff, 100.d0, 1.d7, 1000)
+!             call normalizedSpectrum(source%spectrum)
+!          endif
+!       endif
+!
+!     end subroutine fillSpectrum
+!
+!
+!     subroutine createKuruczFileName(teff, logg, thisfile)
+!       real :: teff, logg
+!       integer :: i
+!       character(len=*) thisfile
+!       character(len=80) :: fluxfile, dataDirectory
+!
+!       call unixGetenv("TORUS_DATA", dataDirectory, i)
+!
+!
+!       if (teff < 10000.) then
+!          write(fluxfile,'(a,i4,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"
+!       else
+!          write(fluxfile,'(a,i5,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"          
+!       endif
+!       thisFile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
+!     end subroutine createKuruczFileName
+!
+!     subroutine readKuruczGrid(label, spectrum, nFiles)
+!       character(len=*) :: label(:)
+!       type(SPECTRUMTYPE) :: spectrum(:)
+!       integer :: nFiles
+!       character(len=200) :: tfile,fluxfile,dataDirectory = " "
+!       logical :: ok
+!       integer :: i
+!       ok = .true.
+!
+!       call unixGetenv("TORUS_DATA", dataDirectory, i)
+!       
+!       call writeInfo("Reading Kurucz grid...",TRIVIAL)
+!
+!       tfile = trim(dataDirectory)//"/Kurucz/files.dat"
+!       open(31, file = tfile, status = "old", form="formatted")
+!       do i = 1, nFiles
+!          read(31,*) fluxfile
+!          label(i) = trim(fluxfile)
+!          tfile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
+!          call readSpectrum(spectrum(i), tfile, ok)
+!       enddo
+!       close(31)
+!       call writeInfo("Done.",TRIVIAL)
+!
+!     end subroutine readKuruczGrid
+!
+!     subroutine readKuruczSpectrum(thisSpectrum,thisLabel, label, spectrum, nFiles, ok)
+!       character(len=*) :: label(:), thisLabel
+!       type(SPECTRUMTYPE) :: spectrum(:), thisSpectrum
+!       integer :: nFiles
+!       logical :: ok
+!       integer :: i
+!       
+!       ok = .false.
+!       do i = 1, nFiles
+!          if (trim(label(i)).eq.trim(thisLabel)) then
+!             call copySpectrum(thisSpectrum, spectrum(i))
+!             write(*,*) "spectrum copied"
+!             ok = .true.
+!             exit
+!          endif
+!       enddo
+!     end subroutine readKuruczSpectrum
 
 
 end module starburst_mod

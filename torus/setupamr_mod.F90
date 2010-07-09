@@ -42,6 +42,7 @@ contains
     use photoionAMR_mod, only : ionizeGrid, resetNh
 #endif
     use vh1_mod, only: read_vh1
+    use memory_mod
 
     implicit none
 
@@ -58,6 +59,7 @@ contains
     real(double) :: minRho, maxRho, totalmasstrap
     character(len=80) :: message
     integer :: nVoxels, nOctals
+    integer(bigint) :: i
 
     constantAbundance = .true.
 
@@ -79,13 +81,15 @@ contains
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
-!          call checkAMRgrid(grid,.false.)
-
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
+
+       call findTotalMemory(grid, globalMemoryFootprint)
 
     else
 
        grid%splitOverMPI = splitOverMPI
+
+       globalMemoryFootprint = 0
 
        select case (geometry)
           case("cmfgen")
@@ -330,6 +334,16 @@ contains
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif
 
+!        call bigarraytest(grid%octreeRoot)
+!    call findTotalMemory(grid, i)
+!    call reportMemory(i)
+!        if (myrankGlobal == 1) then 
+!           call myfreeGrid(grid%octreeroot)
+!           do;enddo
+!           else
+!              do; enddo
+!              endif
+
   end subroutine setupamrgrid
 
   subroutine doSmoothOnTau(grid)
@@ -507,7 +521,9 @@ contains
   recursive subroutine splitGridFogel(thisOctal, grid, r, z, nr, nz, rho, t, abundance)
     use input_variables, only : minDepthAMR, maxDepthAMR
     type(GRIDTYPE) :: grid
-    type(OCTAL) :: thisOctal
+    type(OCTAL),pointer :: thisOctal !TJH 9 JULY
+    type(OCTAL), pointer :: childPointer
+!    type(OCTAL) :: thisOctal
     integer :: iIndex
     real(double) :: r(:), z(:,:), rho(:,:), t(:,:), abundance(:,:)
     integer :: nr, nz(:)
@@ -591,8 +607,9 @@ contains
           endif
 
           DO iIndex = 1, thisOctal%nChildren
-
-             call  splitGridFogel(thisOctal%child(iIndex), grid, r, z, nr, nz, rho, t, abundance)
+             childPointer => thisOctal%child(iIndex) ! TJH 9 JULY
+             call  splitGridFogel(childPointer, grid, r, z, nr, nz, rho, t, abundance)
+!             call  splitGridFogel(thisOctal%child(iIndex), grid, r, z, nr, nz, rho, t, abundance)
 
           END DO
 
@@ -754,20 +771,8 @@ contains
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
     
-#ifdef MEMCHECK
     call findTotalMemory(grid, i)
     call reportMemory(i)
-    if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
-    allocate(grid%octreeRoot%molecularLevel(1:1000,1:1000))
-    if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
-    call findTotalMemory(grid, i)
-    call reportMemory(i)
-    deallocate(grid%octreeRoot%molecularLevel)
-    nullify(grid%octreeRoot%molecularLevel)
-    if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
-    call findTotalMemory(grid, i)
-    call reportMemory(i)
-#endif
 
 
     select case (geometry)
@@ -792,5 +797,37 @@ contains
        call writeFatal(message)
     endif
   end subroutine testAMRmass
+
+  recursive subroutine myFreeGrid(thisOctal)
+    type(octal), pointer :: thisOctal, child
+    integer :: i
+
+    call deallocateOctalDynamicAttributes(thisOctal)
+    if (thisOctal%nChildren > 0) then
+       do i = 1 , thisOctal%nChildren
+          child => thisOctal%child(i)
+          call myFreeGrid(child)
+       enddo
+       write(*,*) "deallocating at depth ",thisOctal%nDepth
+       deallocate(thisOctal%child)
+    endif
+
+       
+  end subroutine myFreeGrid
+
+  recursive subroutine bigArraytest(thisOctal)
+    type(octal), pointer :: thisOctal, child
+    integer :: i
+
+    deallocate(thisOctal%distanceGrid)
+    allocate(thisOctal%distanceGrid(1:100000))
+
+    if (thisOctal%nChildren > 0) then
+       do i = 1 , thisOctal%nChildren
+          child => thisOctal%child(i)
+          call bigarraytest(child)
+       enddo
+    endif
+  end subroutine bigarraytest
 
 end module setupamr_mod

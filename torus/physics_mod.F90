@@ -8,7 +8,7 @@ module physics_mod
   use grid_mod
   use setupamr_mod
   use vector_mod
-
+  use parallel_mod
   implicit none
 
 
@@ -63,7 +63,7 @@ contains
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
     logical :: ok
-    real(double) :: distToEdge
+    real(double) :: distToEdge, fac
     
     do iSource = 1, nSource
        
@@ -88,17 +88,26 @@ contains
           source(isource)%luminosity = source(isource)%luminosity / 2.0
        endif
 
-       if (inputcontfluxfile(isource) /= "blackbody") then
-          call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
-       else
-          call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
-       endif
+       select case(inputContFluxFile(isource))
+          case("blackbody")
+             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
+          case("kurucz")
+             call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
+                  source(isource)%radius*1.d10)
+          case DEFAULT
+             call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
+       end select
+
        call normalizedSpectrum(source(isource)%spectrum)
        lamStart = 10.d0
        lamEnd = 1000.d4
        nlambda = 1000
        call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-            source(isource)%surface, 100, inputcontFluxFile(isource), source(isource)%teff)
+            source(isource)%surface, 100, inputcontFluxFile(isource), source(isource)%teff, &
+            source(isource)%spectrum)
+       call sumSurface(source(isource)%surface, source(isource)%luminosity)
+       fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+      if (writeoutput) write(*,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
 
     end do
   end subroutine setupSources
@@ -364,7 +373,7 @@ contains
        coreContinuumFlux = 0.d0
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, 1000, "blackbody", &
-            globalsourcearray(1)%teff)
+            globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
        call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
     endif

@@ -1714,7 +1714,8 @@ end subroutine pre_initAMRGrid
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile, source(1)%teff)
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile, source(1)%teff, &
+               source(1)%spectrum)
           nu =1.d15
 !           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
 !           call testSurface(source(1)%surface
@@ -1954,7 +1955,8 @@ end subroutine pre_initAMRGrid
 	if (lineEmission.and.(geometry /= "cmfgen").and.(geometry /= "wind")) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile, dble(teff))
+           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile, dble(teff), &
+                source(1)%spectrum)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
               call genericAccretionSurface(starsurface, grid, nu,coreContinuumFlux,fAccretion, lAccretion)
@@ -2190,7 +2192,8 @@ subroutine set_up_sources
         if (.not.cmf) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(VECTOR(0.d0, 0.d0, 0.d0), dble(grid%rCore), starSurface, 1000, contFluxFile, dble(teff))
+           call buildSphere(VECTOR(0.d0, 0.d0, 0.d0), dble(grid%rCore), starSurface, 1000, contFluxFile, dble(teff), &
+                source(1)%spectrum)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
               call genericAccretionSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion,laccretion) 
@@ -2213,7 +2216,8 @@ subroutine set_up_sources
            source(1)%position = VECTOR(0.,0.,0.)
            call fillSpectrumBB(source(1)%spectrum, source(1)%teff,  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
-           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile, source(1)%teff)
+           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile, source(1)%teff, &
+                source(1)%spectrum)
 !           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
            call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion, lAccretion) 
            source(1)%luminosity = source(1)%luminosity + lAccretion
@@ -2234,7 +2238,7 @@ subroutine set_up_sources
            call normalizedSpectrum(source(1)%spectrum)
 	   write(*,*) "calling build sphere..."
            call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, contFluxFile,&
-                source(1)%teff)
+                source(1)%teff, source(1)%spectrum)
 
     case("wind")
 
@@ -2249,7 +2253,7 @@ subroutine set_up_sources
            call normalizedSpectrum(source(1)%spectrum)
 	   write(*,*) "calling build sphere..."
            call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, contFluxFile, &
-                source(1)%teff)
+                source(1)%teff, source(1)%spectrum)
 
         
     case("testamr","benchmark")
@@ -2263,7 +2267,7 @@ subroutine set_up_sources
        call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
        call normalizedSpectrum(source(1)%spectrum)
        call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, "blackbody", &
-            source(1)%teff)
+            source(1)%teff, source(1)%spectrum)
        call sumSurface(source(1)%surface)
        call testSurface(source(1)%surface)
 
@@ -2278,7 +2282,8 @@ subroutine set_up_sources
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile, 4000.d0)
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile, 4000.d0, &
+               source(1)%spectrum)
        endif
        nu =1.d15
        call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion, lAccretion)
@@ -2475,7 +2480,7 @@ subroutine set_up_sources
           call normalizedSpectrum(source(1)%spectrum)
        else
           call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, contFluxFile, &
-               source(1)%teff)
+               source(1)%teff, source(1)%spectrum)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
           call normalizedSpectrum(source(1)%spectrum)
           call sumSurface(source(1)%surface, source(1)%luminosity)
@@ -2509,9 +2514,9 @@ subroutine set_up_sources
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
-          call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1, &
-               source(1)%teff)
           call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
+          call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1, &
+               source(1)%teff, source(1)%spectrum)
        endif
        call normalizedSpectrum(source(1)%spectrum)
 
@@ -2524,9 +2529,9 @@ subroutine set_up_sources
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
-          call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2, &
-               source(2)%teff)
           call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
+          call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2, &
+               source(2)%teff, source(2)%spectrum)
        endif
        call normalizedSpectrum(source(2)%spectrum)
 
@@ -2548,9 +2553,6 @@ subroutine set_up_sources
        tmp = source(1)%radius * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
 
-       call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1, &
-            source(1)%teff)
-
 
        if (contFluxfile1 .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
@@ -2559,6 +2561,9 @@ subroutine set_up_sources
           call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
+       call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1, &
+            source(1)%teff, source(1)%spectrum)
+
 
 ! source 2 is the WR star
        source(2)%radius = rstar2
@@ -2567,9 +2572,6 @@ subroutine set_up_sources
        tmp = source(2)%radius * 1.e10  ! [cm]
        source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
 
-       call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2, &
-            source(2)%teff)
-
        if (contFluxfile2 .eq. "blackbody") then
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd), nLambda)
@@ -2577,6 +2579,9 @@ subroutine set_up_sources
           call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
        endif
        call normalizedSpectrum(source(2)%spectrum)
+       call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2, &
+            source(2)%teff, source(2)%spectrum)
+
 
     ! chris (26/05/04)
     case ("ppdisk")

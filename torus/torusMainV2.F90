@@ -69,6 +69,8 @@ program torus
 #endif
 
 
+  call writeTorusBanner()
+
   call setVersion("V2.0")
   grid%version = torusVersion
   verbosityLevel = 5

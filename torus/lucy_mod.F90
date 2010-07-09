@@ -13,6 +13,7 @@ module lucy_mod
   use vtk_mod, only: writeVtkFile
   use mpi_global_mod, only: myRankGlobal
   use gridio_mod
+  use memory_mod
   implicit none
 
 #ifdef USEMKL
@@ -26,7 +27,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use input_variables, only : object !, storeScattered
+    use input_variables, only : object, maxMemoryAvailable
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -127,6 +128,7 @@ contains
     real(double) :: subRadius
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
+    integer(bigInt) :: totMem
 #ifdef USEMKL
     integer :: oldmode
     real(oct) :: hrecip_ktarray(nlambda)
@@ -503,6 +505,7 @@ contains
 
                       if (photonInDiffusionZone) then
                          nDiffusion_sub = nDiffusion_sub + 1
+                         cycle photonloop
                       endif
 
                       if (.not. escaped) then
@@ -519,9 +522,9 @@ contains
                          !                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                          sOctal => thisOctal
 
-                         if (thisOctal%diffusionApprox(subcell)) then
-                            write(*,*) "photon in diffusion zone",photonindiffusionzone
-                         endif
+!                         if (thisOctal%diffusionApprox(subcell)) then
+!                            write(*,*) "photon in diffusion zone",photonindiffusionzone
+!                         endif
 
                          if (kappaScadb+kappaAbsdb /= 0.0d0) then
                             albedo = kappaScadb / (kappaScadb + kappaAbsdb)
@@ -913,6 +916,14 @@ contains
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
              endif
+
+
+             if (writeoutput) write(*,*) "Global Memory has ",humanReadableMemory(globalMemoryFootprint)
+             call findTotalMemory(grid, totMem)
+             if (writeoutput) write(*,*) "Full check  has ", humanReadableMemory(totMem)
+             if (writeoutput) write(*,*) "Max memory availables ", humanReadableMemory(maxMemoryAvailable)
+
+
              nCellsInDiffusion = 0
              call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
              write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
@@ -3535,9 +3546,9 @@ subroutine setBiasOnTau(grid, iLambda)
           split = .false.
           
           if (r < 10.*grid%rinner) then
-             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
+             if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
           else
-             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+             if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           endif
           
           if (.not.split) then
@@ -3546,24 +3557,17 @@ subroutine setBiasOnTau(grid, iLambda)
           
           if (.not.split) then
              if (.not.smoothInnerEdge) then
-                if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+                if (((r-cellsize/2.d0) < rinner).and. ((r+cellsize/2.d0) > rInner) .and. &
                      (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
              endif
           endif
-          if (.not.split) then
-             if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
-          endif
+
           if (.not.split) then
              if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
           endif
           if (.not.split) then
              if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-          endif
-
-          if (.not.split) then
-             if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
-                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
           endif
 
           if (.not.split) then
@@ -3700,7 +3704,8 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine integrateUpwards
 
   recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
-    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner, smoothinneredge
+    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner, smoothinneredge, maxMemoryAvailable
+    use memory_mod, only : globalMemoryFootprint
     logical :: gridConverged
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -3709,7 +3714,9 @@ subroutine setBiasOnTau(grid, iLambda)
     logical, optional :: inheritProps, interpProps
     integer :: subcell, i
     real(double) :: rSub, cellSize, hr, r, beta, height
+    logical, save :: firstTimeMem = .true.
     logical :: split
+    character(len=80) :: message
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3733,9 +3740,9 @@ subroutine setBiasOnTau(grid, iLambda)
 
 
           if (r < 10.*grid%rinner) then
-             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
+             if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
           else
-             if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+             if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           endif
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
@@ -3744,12 +3751,11 @@ subroutine setBiasOnTau(grid, iLambda)
              if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
                   (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
           endif
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
-               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+!          if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
+!               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
           if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
@@ -3761,6 +3767,14 @@ subroutine setBiasOnTau(grid, iLambda)
           if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
           if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
 
+          if (globalMemoryFootprint > maxMemoryAvailable) then
+             split = .false.
+             if (firstTimeMem) then
+                write(message,'(a)') "Maxmimum memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
+                call writeWarning(message)
+                firstTimeMem = .false.
+             endif
+          endif
 
 
           if (split) then

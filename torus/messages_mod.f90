@@ -92,6 +92,21 @@ contains
     endif
   end subroutine writeInfo
 
+
+  subroutine writeTorusBanner()
+    if (writeoutput) then
+       write(*,*) "_________ _______  _______           _______  "
+       write(*,*) "\__   __/(  ___  )(  ____ )|\     /|(  ____ \ "
+       write(*,*) "   ) (   | (   ) || (    )|| )   ( || (    \/ "
+       write(*,*) "   | |   | |   | || (____)|| |   | || (_____  "
+       write(*,*) "   | |   | |   | ||     __)| |   | |(_____  ) "
+       write(*,*) "   | |   | |   | || (\ (   | |   | |      ) | "
+       write(*,*) "   | |   | (___) || ) \ \__| (___) |/\____) | "
+       write(*,*) "   )_(   (_______)|/   \__/(_______)\_______) "
+    endif
+  end subroutine writeTorusBanner
+
+
   subroutine writeBanner(message, cLine, level)
     integer, optional :: level
     character(len=*) :: message

@@ -172,6 +172,11 @@ contains
        call writeFatal("Can only perform a photoionization calculation using photoionization physics")
     endif
 
+
+    call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
+         "Maximum memory available (Mb): ","(a,i12,a)", 1500, ok, .false.)
+    maxMemoryAvailable = maxMemoryAvailable * 1000000
+
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)
     if (statisticalEquilibrium.and.atomicPhysics) call readAtomicLoopParameters(cLine, fLine, nLines)
     if (radiativeEquilibrium) call readRadiativeEquilibriumParameters(cLine, fLine, nLines)
@@ -976,6 +981,9 @@ contains
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
+
+    call getLogical("resetdiffusion", resetDiffusion, cLine, fLine, nLines, &
+         "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
 
     call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
          "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)

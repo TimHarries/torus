@@ -71,6 +71,7 @@ module input_variables
   integer :: nAtom
   character(len=20) :: atomFilename(10)
   integer :: nClumps
+  integer(bigInt) :: maxMemoryAvailable
   character(len=80) :: distortionType
   integer :: nPhase
   integer :: nStartPhase, nEndPhase

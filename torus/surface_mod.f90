@@ -58,7 +58,7 @@ module surface_mod
 
 contains
 
-  subroutine buildSphere(centre, radius, surface, nTheta, contFile, teff)
+  subroutine buildSphere(centre, radius, surface, nTheta, contFile, teff, hotspec)
     use input_variables, only : lamstart, lamEnd, nLambda
     real(double) :: teff
     type(VECTOR),intent(in) :: centre
@@ -85,11 +85,6 @@ contains
     allocate(surface%angleArray(1:nTheta,1:nTheta))
     ! open the continuum flux file to get the number of points
 
-    if (contfile /= "blackbody") then
-       call readSpectrum(hotSpec, contfile, ok)
-    else
-       call fillSpectrumBB(hotSpec, teff,  dble(lamstart), dble(lamEnd), nLambda)
-    endif
 
 
     nNuHotFlux = hotSpec%nLambda

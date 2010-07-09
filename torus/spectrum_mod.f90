@@ -4,7 +4,7 @@ module spectrum_mod
   use atom_mod
   use utils_mod
   use messages_mod
-
+  use unix_mod
   implicit none
 
   public
@@ -21,6 +21,17 @@ module spectrum_mod
   
 
   contains
+
+    subroutine freeSpectrum(spectrum)
+      type(SPECTRUMTYPE) :: spectrum
+      if (associated(spectrum%flux)) deallocate(spectrum%flux)
+      if (associated(spectrum%lambda)) deallocate(spectrum%lambda)
+      if (associated(spectrum%dlambda)) deallocate(spectrum%dlambda)
+      if (associated(spectrum%prob)) deallocate(spectrum%prob)
+      if (associated(spectrum%normflux)) deallocate(spectrum%normflux)
+      if (associated(spectrum%normflux2)) deallocate(spectrum%normflux2)
+      spectrum%nlambda = 0
+    end subroutine freeSpectrum
 
     subroutine getWavelength(spectrum, wavelength)
 
@@ -290,6 +301,7 @@ module spectrum_mod
       allocate(a%lambda(1:nLambda))
       allocate(a%dlambda(1:nLambda))
       allocate(a%prob(1:nLambda))
+      a%nLambda = nLambda
       a%flux = b%flux
       a%lambda = b%lambda
       a%dlambda = b%dlambda
@@ -298,7 +310,7 @@ module spectrum_mod
 
     subroutine probSpectrum(spectrum, biasToLyman)
       type(SPECTRUMTYPE) :: spectrum
-      logical, optional :: biasToLyman
+      logical, optional :: biastolyman
       real(double) :: fac
       integer :: i
       spectrum%prob = 0.d0
@@ -356,4 +368,156 @@ module spectrum_mod
 
     end function returnNormValue2
          
+    subroutine fillSpectrumKurucz(spectrum, teff, mass, radius)
+      type(SPECTRUMTYPE) :: spectrum, spec1, spec2
+      real(double) :: teff, mass, radius
+      real(double) :: logg
+      logical :: ok
+      integer, parameter :: nFiles = 60
+      real,save :: teffArray(nFiles)
+      integer :: i, j
+      real(double) :: t
+      real :: loggArray(11)
+      logical, save :: firstTime = .true.
+      character(len=200) :: thisFile1 = " ", thisFile2 = " ", dataDirectory = " "
+      character(len=80) :: label1, label2
+      logical,save :: firstWarning = .true.
+      integer :: i1, i2
+      integer, parameter :: nKurucz = 410
+      type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
+      character(len=80) :: klabel(nKurucz)
+      character(len=200) :: message
+      kLabel = " "
+      call  readKuruczGrid(klabel, kspectrum, nKurucz)
+
+
+      logg = log10(bigG * mass / radius**2)
+
+      ok = .true.
+      call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+
+      loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
+      if (firsttime) then
+         open(31, file=trim(dataDirectory)//"/Kurucz/filelist.dat", form="formatted", status="old")
+         do i = 1, nFiles
+            read(31, *) teffArray(i)
+         end do
+         close(31)
+         firstTime = .false.
+      endif
+
+
+
+
+      call locate(teffArray, nFiles, real(teff), i)
+      call locate(loggArray, 11, real(logg*100.), j)
+
+      t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
+      if (t  > 0.5) j = j + 1
+      t = (teff - teffArray(i))/(teffArray(i+1)-teffArray(i))
+      i1 = i
+      i2 = i + 1
+      call createKuruczFilename(teffArray(i1), loggArray(j), thisFile1, label1)
+      call createKuruczFilename(teffArray(i2), loggArray(j), thisFile2, label2)
+
+      write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
+      call writeInfo(message, TRIVIAL)
+      write(message, '(a,a)') "                                        : ",trim(label2)
+      call writeInfo(message, TRIVIAL)
+
+      call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok)
+      if (.not.ok) then
+         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile1
+      endif
+      call readKuruczSpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok)
+      if (.not.ok) then
+         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile1
+      endif
+      call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+      do i = 1, nKurucz
+         call freeSpectrum(kspectrum(i))
+      enddo
+    end subroutine fillSpectrumKurucz
+
+     subroutine createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+       type(SPECTRUMTYPE) :: spectrum, spec1, spec2
+       real(double) :: t
+       integer :: i 
+       real(double) :: y1, y2
+       call copySpectrum(spectrum, spec1)
+
+       do i = 1, spectrum%nLambda
+          y1 = spec1%flux(i)
+
+          y2 = loginterp_dble(spec2%flux, spec2%nlambda, spec2%lambda, spec1%lambda(i))
+
+          spectrum%flux(i) = 10.d0**(log10(y1) + t * (log10(y2) - log10(y1)))
+       enddo
+     end subroutine createInterpolatedSpectrum
+
+
+     subroutine createKuruczFileName(teff, logg, thisfile, thislabel)
+       real :: teff, logg
+       integer :: i
+       character(len=*) thisfile, thisLabel
+       character(len=80) :: fluxfile, dataDirectory
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+
+       if (teff < 10000.) then
+          write(fluxfile,'(a,i4,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"
+       else
+          write(fluxfile,'(a,i5,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"          
+       endif
+       thisLabel = fluxfile
+       thisFile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
+     end subroutine createKuruczFileName
+
+     subroutine readKuruczGrid(label, spectrum, nFiles)
+       character(len=*) :: label(:)
+       type(SPECTRUMTYPE) :: spectrum(:)
+       integer :: nFiles
+       character(len=200) :: tfile,fluxfile,dataDirectory = " "
+       logical :: ok
+       integer :: i
+       ok = .true.
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       
+       call writeInfo("Reading Kurucz grid...",TRIVIAL)
+
+       tfile = trim(dataDirectory)//"/Kurucz/files.dat"
+       open(31, file = tfile, status = "old", form="formatted")
+       do i = 1, nFiles
+          read(31,*) fluxfile
+          label(i) = trim(fluxfile)
+          tfile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
+          call readSpectrum(spectrum(i), tfile, ok)
+          spectrum(i)%flux = spectrum(i)%flux * pi ! astrophysical to real fluxes
+       enddo
+       close(31)
+       call writeInfo("Done.",TRIVIAL)
+
+     end subroutine readKuruczGrid
+
+     subroutine readKuruczSpectrum(thisSpectrum,thisLabel, label, spectrum, nFiles, ok)
+       character(len=*) :: label(:), thisLabel
+       type(SPECTRUMTYPE) :: spectrum(:), thisSpectrum
+       integer :: nFiles
+       logical :: ok
+       integer :: i
+       
+       ok = .false.
+       do i = 1, nFiles
+          if (trim(label(i)).eq.trim(thisLabel)) then
+             call copySpectrum(thisSpectrum, spectrum(i))
+             ok = .true.
+             exit
+          endif
+       enddo
+     end subroutine readKuruczSpectrum
+
+
   end module spectrum_mod
