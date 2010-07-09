@@ -44,6 +44,7 @@ ifeq ($(SYSTEM), nagfor)
     CFITSIOLIBS = 
     EXE = torus.nag
     KNOWN_SYSTEM = yes
+    memcheck = no
 endif
 
 ifeq ($(SYSTEM), davesmac)

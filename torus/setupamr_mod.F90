@@ -754,6 +754,7 @@ contains
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
     
+#ifdef MEMCHECK
     call findTotalMemory(grid, i)
     call reportMemory(i)
     if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
@@ -766,6 +767,7 @@ contains
     if (writeoutput) write(*,*) "mol ",sizeof(grid%octreeRoot%molecularLevel)
     call findTotalMemory(grid, i)
     call reportMemory(i)
+#endif
 
 
     select case (geometry)
