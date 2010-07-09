@@ -59,8 +59,7 @@ contains
     real(double) :: minRho, maxRho, totalmasstrap
     character(len=80) :: message
     integer :: nVoxels, nOctals
-    integer(bigint) :: i
-
+!    integer(bigInt) :: i
     constantAbundance = .true.
 
 #ifdef MPI
@@ -334,16 +333,19 @@ contains
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif
 
+
+
 !        call bigarraytest(grid%octreeRoot)
 !    call findTotalMemory(grid, i)
 !    call reportMemory(i)
 !        if (myrankGlobal == 1) then 
-!           call myfreeGrid(grid%octreeroot)
+!           !           call myfreeGrid(grid%octreeroot)
+!           call freeGrid(grid)
 !           do;enddo
 !           else
 !              do; enddo
 !              endif
-
+        call kill_all(young_cluster)
   end subroutine setupamrgrid
 
   subroutine doSmoothOnTau(grid)

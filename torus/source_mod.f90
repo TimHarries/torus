@@ -32,6 +32,22 @@ module source_mod
 
   contains
 
+    subroutine freeGlobalSourceArray()
+      integer :: i
+      if (globalnSource > 0) then
+         do i =  1, globalNSource
+            call freeSource(globalSourceArray(i))
+         enddo
+         deallocate(globalSourcearray)
+      endif
+    end subroutine freeGlobalSourceArray
+
+    subroutine freeSource(source)
+      type(SOURCETYPE) :: source
+      call freeSpectrum(source%spectrum)
+      call emptySurface(source%surface)
+    end subroutine freeSource
+
     function ionizingFlux(source, grid) result(flux)
       type(sourcetype) :: source
       type(GRIDTYPE) :: grid

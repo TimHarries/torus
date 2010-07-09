@@ -59,7 +59,6 @@ module surface_mod
 contains
 
   subroutine buildSphere(centre, radius, surface, nTheta, contFile, teff, hotspec)
-    use input_variables, only : lamstart, lamEnd, nLambda
     real(double) :: teff
     type(VECTOR),intent(in) :: centre
     real(double),intent(in) :: radius ! 1.e10 cm
@@ -204,6 +203,9 @@ contains
     end if
     if (associated(surface%nuarray)) deallocate(surface%nuarray)
     if (associated(surface%hnuarray)) deallocate(surface%hnuarray)
+    if (associated(surface%angleArray)) deallocate(surface%angleArray)
+    if (associated(surface%totalPhotosphere)) deallocate(surface%totalPHotosphere)
+    if (associated(surface%totalAccretion)) deallocate(surface%totalAccretion)
 
     surface%nElements = 0 
     nullify(surface%element) 

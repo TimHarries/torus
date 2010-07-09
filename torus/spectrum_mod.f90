@@ -438,6 +438,8 @@ module spectrum_mod
       do i = 1, nKurucz
          call freeSpectrum(kspectrum(i))
       enddo
+      call freeSpectrum(spec1)
+      call freeSpectrum(spec2)
     end subroutine fillSpectrumKurucz
 
      subroutine createInterpolatedSpectrum(spectrum, spec1, spec2, t)

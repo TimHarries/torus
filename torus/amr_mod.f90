@@ -846,7 +846,6 @@ CONTAINS
     END IF
 
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
-666 continue
   END SUBROUTINE addNewChild
   
   SUBROUTINE growChildArray(parent, nNewChildren, grid)
@@ -9343,7 +9342,6 @@ end function readparameterfrom2dmap
 
       INTEGER :: iChild
       INTEGER :: error
-      real(double),pointer :: ptr(:)
       error = 0
 
       maxDeletionDepth = MAX( thisOctal%nDepth, maxDeletionDepth )
@@ -15767,8 +15765,10 @@ IF ( .NOT. gridConverged ) RETURN
        call deallocateAttribute(thisOctal%fixedtemperature)
        call deallocateAttribute(thisOctal%dustType)
        call deallocateAttribute(thisOctal%dusttypefraction)
-       call deallocateAttribute(thisOctal%diffusionApprox)
        call deallocateAttribute(thisOctal%scatteredIntensity)
+       call deallocateAttribute(thisOctal%meanIntensity)
+       call deallocateAttribute(thisOctal%diffusionApprox)
+       call deallocateAttribute(thisOctal%changed)
        call deallocateAttribute(thisOctal%nDiffusion)
        call deallocateAttribute(thisOctal%eDens)
        call deallocateAttribute(thisOctal%diffusionCoeff)

@@ -902,9 +902,8 @@ if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch
 
 call writeInfo("TORUS exiting", FORINFO)
 
-call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-call freeGrid(grid)
-
+!call freeGrid(grid)
+call myFreeGrid(grid%octreeRoot)
 deallocate(miePhase) 
 deallocate(xArray)
 

@@ -33,6 +33,7 @@ program torus
   use setupamr_mod
   use physics_mod
   use outputs_mod
+  use source_mod
 
   type(GRIDTYPE) :: grid
 #ifdef MPI
@@ -109,6 +110,7 @@ program torus
   call torus_mpi_barrier
   call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
   call freeGrid(grid)
+  call freeGlobalSourceArray()
 
 #ifdef MPI
   call torus_mpi_barrier
