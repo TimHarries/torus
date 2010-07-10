@@ -174,7 +174,7 @@ contains
 
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
-         "Maximum memory available (Mb): ","(a,i12,a)", 1500, ok, .false.)
+         "Maximum memory available (Mb): ","(a,i12,a)", 1000, ok, .false.)
     maxMemoryAvailable = maxMemoryAvailable * 1000000
 
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)
