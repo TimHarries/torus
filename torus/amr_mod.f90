@@ -975,7 +975,6 @@ CONTAINS
 
     TYPE(OCTAL), intent(inout) :: thisOctal
     
-    TYPE(OCTAL), POINTER :: childPointer
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
       ! 'limitScalar' is the value the decideSplit function uses to
       !   decide whether or not to split cell.
@@ -10256,7 +10255,6 @@ end function readparameterfrom2dmap
     INTEGER :: error
     INTEGER :: nChildrenToDelete
     TYPE(octal), POINTER :: thisChild ! convenient alias to current child 
-    TYPE(octal), POINTER :: childPointer
     LOGICAL :: deleteALLchildren ! are we getting rid of ALL the children
     INTEGER :: nChildrenStay ! how many children will be left when done
     INTEGER :: insertLocation ! the next location to use in tempChildStorage
