@@ -6,6 +6,7 @@ module memory_mod
 
   implicit none
 
+#ifdef MEMCHECK
   interface mySizeOf
      module procedure mySizeOfDouble
      module procedure mySizeOfDouble2D
@@ -15,7 +16,8 @@ module memory_mod
      module procedure mySizeOfLogical
      module procedure mySizeOfVector
   end interface
-  
+#endif  
+
   public
   integer(kind=bigInt) :: globalMemoryFootprint
   
@@ -224,7 +226,7 @@ module memory_mod
 
     end function humanReadableMemory
 
-
+#ifdef MEMCHECK
     function mySizeOfInteger(p) result (i)
       integer, pointer :: p(:)
       integer :: i
@@ -273,5 +275,6 @@ module memory_mod
       i = 0
       if (associated(p)) i = sizeof(p)
     end function mySizeOfVector
+#endif
 
   end module memory_mod
