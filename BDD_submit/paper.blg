@@ -2,44 +2,44 @@ This is BibTeX, Version 0.99c (Web2C 7.5.6)
 The top-level auxiliary file: paper.aux
 The style file: mn2e.bst
 Database file #1: references.bib
-You've used 90 entries,
+You've used 92 entries,
             2601 wiz_defined-function locations,
-            1006 strings with 19625 characters,
-and the built_in function-call counts, 43448 in all, are:
-= -- 4122
-> -- 3466
-< -- 37
-+ -- 1197
-- -- 1197
-* -- 4290
-:= -- 8014
+            1015 strings with 20113 characters,
+and the built_in function-call counts, 44461 in all, are:
+= -- 4219
+> -- 3552
+< -- 38
++ -- 1227
+- -- 1227
+* -- 4393
+:= -- 8201
 add.period$ -- 0
-call.type$ -- 90
-change.case$ -- 761
-chr.to.int$ -- 90
-cite$ -- 90
-duplicate$ -- 1061
-empty$ -- 1579
-format.name$ -- 1321
-if$ -- 7893
+call.type$ -- 92
+change.case$ -- 779
+chr.to.int$ -- 92
+cite$ -- 92
+duplicate$ -- 1083
+empty$ -- 1611
+format.name$ -- 1355
+if$ -- 8075
 int.to.chr$ -- 1
 int.to.str$ -- 0
-missing$ -- 90
-newline$ -- 280
-num.names$ -- 372
-pop$ -- 592
+missing$ -- 92
+newline$ -- 286
+num.names$ -- 380
+pop$ -- 605
 preamble$ -- 1
-purify$ -- 845
+purify$ -- 865
 quote$ -- 0
-skip$ -- 1397
+skip$ -- 1428
 stack$ -- 0
-substring$ -- 2032
-swap$ -- 148
+substring$ -- 2079
+swap$ -- 150
 text.length$ -- 10
-text.prefix$ -- 395
+text.prefix$ -- 405
 top$ -- 0
-type$ -- 807
+type$ -- 825
 warning$ -- 0
-while$ -- 364
+while$ -- 372
 width$ -- 0
-write$ -- 906
+write$ -- 926

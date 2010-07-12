@@ -21,6 +21,11 @@
 {Asplund} M.,  {Grevesse} N.,    {Sauval} A.~J.,  2006, Communications in
   Asteroseismology, 147, 76
 
+\bibitem[\protect\citeauthoryear{{Barrado y Navascu{\'e}s} \&
+  {Mart{\'{\i}}n}}{{Barrado y Navascu{\'e}s} \&
+  {Mart{\'{\i}}n}}{2003}]{navascues_2003}
+{Barrado y Navascu{\'e}s} D.,  {Mart{\'{\i}}n} E.~L.,  2003, \aj, 126, 2997
+
 \bibitem[\protect\citeauthoryear{{Bertout}, {Harder}, {Malbet}, {Mennessier} \&
   {Regev}}{{Bertout} et~al.}{1996}]{bertout_1996}
 {Bertout} C.,  {Harder} S.,  {Malbet} F.,  {Mennessier} C.,    {Regev} O.,
@@ -264,6 +269,13 @@ pp 297--311
 {Luhman} K.~L.,  {Lada} C.~J.,  {Hartmann} L.,  {Muench} A.~A.,  {Megeath}
   S.~T.,  {Allen} L.~E.,  {Myers} P.~C.,  {Muzerolle} J.,  {Young} E.,
   {Fazio} G.~G.,  2005, \apjl, 631, L69
+
+\bibitem[\protect\citeauthoryear{{Mart{\'{\i}}n}, {Brandner}, {Bouvier},
+  {Luhman}, {Stauffer}, {Basri}, {Zapatero Osorio} \& {Barrado y
+  Navascu{\'e}s}}{{Mart{\'{\i}}n} et~al.}{2000}]{martin_2000}
+{Mart{\'{\i}}n} E.~L.,  {Brandner} W.,  {Bouvier} J.,  {Luhman} K.~L.,
+  {Stauffer} J.,  {Basri} G.,  {Zapatero Osorio} M.~R.,    {Barrado y
+  Navascu{\'e}s} D.,  2000, \apj, 543, 299
 
 \bibitem[\protect\citeauthoryear{{Mayne} \& {Naylor}}{{Mayne} \&
   {Naylor}}{2008}]{mayne_2008}

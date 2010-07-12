@@ -1,4 +1,4 @@
-This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2008.7.28)  1 JUL 2010 11:10
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2008.7.28)  12 JUL 2010 12:50
 entering extended mode
  %&-line parsing enabled.
 **paper
@@ -161,44 +161,43 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 162.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 163.
 
 
 (/usr/local/texlive/2007/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 1999/05/25 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <8> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 162.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 163.
  [1
 
 
 ]
 
-LaTeX Warning: Command \r invalid in math mode on input line 225.
+LaTeX Warning: Command \r invalid in math mode on input line 226.
 
-[2]
-Underfull \vbox (badness 7740) has occurred while \output is active []
-
- [3]
+[2] [3]
 File: ./Fig/albedo.ps Graphic file (type eps)
-
-<./Fig/albedo.ps> [4] [5] [6]
+ <./Fig/albedo.ps> [4] [5] [6]
 File: ./Fig/flare_-12_183.ps Graphic file (type eps)
  <./Fig/flare_-12_183.ps>
 File: ./Fig/flare_-7_193.ps Graphic file (type eps)
- <./Fig/flare_-7_193.ps>
-[7]
+
+<./Fig/flare_-7_193.ps>
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-File: ./Fig/inner_temp.ps Graphic file (type eps)
+ [7]
+Underfull \vbox (badness 8094) has occurred while \output is active []
 
-<./Fig/inner_temp.ps>
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [8]
-File: ./Fig/no_sub_183_density.ps Graphic file (type eps)
+File: ./Fig/inner_temp.ps Graphic file (type eps)
 
-<./Fig/no_sub_183_density.ps>
+<./Fig/inner_temp.ps>
+File: ./Fig/no_sub_183_density.ps Graphic file (type eps)
+ <./Fig/no_sub_183_density.ps>
 File: ./Fig/no_sub_183_temp.ps Graphic file (type eps)
  <./Fig/no_sub_183_temp.ps>
 File: ./Fig/sub_179_density.ps Graphic file (type eps)
@@ -211,26 +210,27 @@ File: ./Fig/sub_181_density.ps Graphic file (type eps)
 File: ./Fig/sub_181_temp.ps Graphic file (type eps)
 
 <./Fig/sub_181_temp.ps>
-Underfull \vbox (badness 10000) has occurred while \output is active []
+File: ./Fig/acc_dom.ps Graphic file (type eps)
+ <./Fig/acc_dom.ps>
 
- [9]
+LaTeX Warning: Command \r invalid in math mode on input line 1109.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 1109.
+
+[9]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [10]
-File: ./Fig/acc_dom.ps Graphic file (type eps)
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
-<./Fig/acc_dom.ps>
-
-LaTeX Warning: Command \r invalid in math mode on input line 1103.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 1103.
-
+ [11]
 File: ./Fig/flare_inc.ps Graphic file (type eps)
-<./Fig/flare_inc.ps> [11]
+
+<./Fig/flare_inc.ps>
 File: ./Fig/flare_mag.ps Graphic file (type eps)
  <./Fig/flare_mag.ps>
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \vbox (badness 4752) has occurred while \output is active []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
@@ -239,6 +239,9 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [13]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [14]
 File: ./Fig/age_mass_VVI.ps Graphic file (type eps)
 
 <./Fig/age_mass_VVI.ps>
@@ -246,32 +249,27 @@ File: ./Fig/age_mass_JJK.ps Graphic file (type eps)
  <./Fig/age_mass_JJK.ps>
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [14]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
  [15]
+File: ./Fig/disc_frac_JHJK.ps Graphic file (type eps)
+
+<./Fig/disc_frac_JHJK.ps>
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [16]
-File: ./Fig/disc_frac_JHJK.ps Graphic file (type eps)
-
-<./Fig/disc_frac_JHJK.ps>
 File: ./Fig/disc_frac_irac.ps Graphic file (type eps)
- <./Fig/disc_frac_irac.ps>
+
+<./Fig/disc_frac_irac.ps>
 File: ./Fig/disc_frac_mips.ps Graphic file (type eps)
  <./Fig/disc_frac_mips.ps>
-[17]
-File: ./Fig/disc_cuts.ps Graphic file (type eps)
- <./Fig/disc_cuts.ps> [18]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [19]
+ [17]
+File: ./Fig/disc_cuts.ps Graphic file (type eps)
+
+<./Fig/disc_cuts.ps> [18] [19]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
@@ -284,24 +282,27 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [21]
-Underfull \hbox (badness 1019) in paragraph at lines 1891--1895
+Underfull \hbox (badness 1019) in paragraph at lines 1896--1900
 \OT1/cmr/m/n/9 8200. NJM and TJH were sup-ported by STFC grant
  []
 
-(./paper.bbl [22])
-Underfull \vbox (badness 10000) has occurred while \output is active []
+(./paper.bbl
+Underfull \vbox (badness 1005) has occurred while \output is active []
 
- [23]
-[24] [25
+
+Underfull \vbox (badness 1735) has occurred while \output is active []
+
+ [22]
+[23]) [24] [25
 
 ] (./paper.aux) ) 
 Here is how much of TeX's memory you used:
- 1513 strings out of 94074
- 18395 string characters out of 1163007
- 90166 words of memory out of 1500000
- 4778 multiletter control sequences out of 10000+50000
+ 1515 strings out of 94074
+ 18424 string characters out of 1163007
+ 91336 words of memory out of 1500000
+ 4780 multiletter control sequences out of 10000+50000
  17047 words of font info for 59 fonts, out of 1200000 for 2000
  645 hyphenation exceptions out of 8191
- 31i,14n,34p,1618b,352s stack positions out of 5000i,500n,6000p,200000b,5000s
+ 31i,14n,34p,1618b,451s stack positions out of 5000i,500n,6000p,200000b,5000s
 
-Output written on paper.dvi (25 pages, 163908 bytes).
+Output written on paper.dvi (25 pages, 164792 bytes).
