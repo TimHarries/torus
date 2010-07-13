@@ -106,7 +106,7 @@
 \label{intro}
 
 There is now strong evidence that as brown dwarfs (BDs) form they pass
-through a Classical T~Tauri star (CTTS) phase, during which they
+through a classical T~Tauri star (CTTS) phase, during which they
 possess a flared, dusty circumstellar disc from which they are
 actively accreting material
 \citep{jayawardhana_2003,mohanty_2004}. The accretion is thought to
@@ -116,20 +116,21 @@ of the star along magnetic field lines
 \citep{camenzind_1990,koenigl_1991,muzerolle_2003,mohanty_2008}.
 
 The interpretation of the spectral energy distributions (SEDs) of
-pre-main-sequence (PMS) stars involves trying to distinguish the
+pre-main-sequence (pre-MS) stars involves trying to distinguish the
 various contributions to the continuum from the hot spots at the base
 of the accretion flow, the photospheric flux, and the near-IR flux
 from the dusty inner disc. The complexity of the interplay between
-these contributions is exacerbated by other, geometrical, effects such
+these contributions is exacerbated by other geometrical effects such
 as the inclination (which changes the projected area of the inner disc
-wall visible to the observer) and the outer disc structure (which may
-obscure the inner disc for high inclinations)
-\citep{walker_2004,tannirkulam_2007}.
+wall visible to the observer) and the outer disc structure
+\citep[which may obscure the inner disc for high
+inclinations][]{walker_2004,tannirkulam_2007}.
 
-In surveys, particularly those attempting to discern the PMS disc
-fraction this disentangling usually takes place using broad-band
-photometric measures and cuts in colour-colour or colour-magnitude
-space \citep{luhman_2005b,luhman_2008,gutermuth_2008,monin_2010}.  The
+In surveys, particularly those attempting to discern the pre-MS disc
+fraction disentangling of the SED components usually takes place using
+broad-band photometric measures and cuts in colour-colour or
+colour-magnitude space
+\citep{luhman_2005b,luhman_2008,gutermuth_2008,monin_2010}.  The
 important quantity here is the separation in wavelength between the
 emission peaks for the stellar and thermal disc components, as it is
 these components which must be isolated. For BD disc (BDD hereafter)
@@ -140,9 +141,9 @@ component, compared to CTTS systems. Therefore, to derive disc
 fractions for BD populations we require detailed comparison models
 with which to guide disc candidate selection.
 
-Comparison of accretion rates across the pre-main-sequence (PMS) mass
-spectrum has indicated that the accretion rate is strongly correlated
-with PMS mass, \citep{muzerolle_2003,natta_2004,natta_2006}, with an
+Comparison of accretion rates across the pre-MS mass spectrum has
+indicated that the accretion rate is strongly correlated with pre-MS
+mass, \citep{muzerolle_2003,natta_2004,natta_2006}, with an
 approximate form $\dot{M}_{\rm acc}\propto M^2_*$. Since in the
 canonical picture the accretion rate is driven by the disc viscosity,
 and should be independent of the mass of the central object, this
@@ -155,7 +156,7 @@ contrast with the photospheric emission. The emission lines will also
 be weak, and indeed the H$\alpha$ equivalent width (EW) may be less
 than the 10\AA\ that traditionally demarcates classical from
 weak-lined T Tauri stars \citep[although this boundary may well be
-spectral type dependent][]{navascues_2003}. Such objects should show
+spectral type dependent,][]{navascues_2003}. Such objects should show
 doppler-broadened profiles, but the line wings will be weak, and the
 presence of underlying H$\alpha$ absorption may become dominant. Thus
 there may well be a population of low-accretion-rate CTTS which are
@@ -203,7 +204,7 @@ tool\footnote{http://www.astro.ex.ac.uk/research/bd\textunderscore
 \section{Model}
 \label{model}
 
-In this Section we detail the physical model adopted and assumptions
+In this section we detail the physical model adopted and assumptions
 made (Section \ref{physics}), then explain key elements of the
 radiative transfer code (Section \ref{torus}). Then we discuss the
 derived values, such as broadband photometric magnitudes and colours
@@ -216,7 +217,7 @@ given in Appendix \ref{consistency}.
 \subsubsection{Photospheric flux}
 \label{phot_flux}
 
-In order to model an accreting BDD system we must first model the
+In order to model an accreting BDD system one must first model the
 underlying photospheric flux. We have adopted a BD stellar interior
 and atmospheric model grid and have then constructed the total
 photospheric flux for any input value of stellar age and mass by
@@ -231,14 +232,14 @@ stellar interior models used for this study are the `DUSTY00' models
 of \cite{chabrier_2000} combined with the `AMES-Dusty', atmospheric
 models of \cite{chabrier_2000}, which are all available
 online\footnote{http://perso.ens-lyon.fr/france.allard/}. For our
-$T_{\rm eff}$ range of $\approx $3000\,K$<T_{\rm eff}<$1600\,K the
+$T_{\rm eff}$ range of $\approx$\,3000\,K\,$<T_{\rm eff}<$1600\,K the
 AMES-Dusty atmospheres are the most applicable (2700\,K$>T_{\rm
   eff}>$1700\,K). We did try including dynamic application of
 atmospheres based on the derived $T_{\rm eff}$, i.e. using AMES-Cond
 for $T_{\rm eff}<$1700\,K, but this resulted in large discontinuities
 between the model atmospheres and resulting spectra. Additionally, for
-the higher temperatures in our range \cite{martin_2000} have found the
-NextGen models to be more applicable for $\sim T_{\rm
+the higher temperatures in our range, \cite{martin_2000} have found
+the NextGen models to be more applicable for $\sim T_{\rm
   eff}>2300$K. However, as with the lower boundary this only applies
 to the edge of our temperature range and we feel it is better to use a
 consistent set of atmosphere and interior models across our
@@ -277,12 +278,12 @@ temperature ($T_{\rm acc}$), for the accretion `hot' spot, where
 \end{equation}
 
 Finally, a blackbody flux distribution is generated at $T_{\rm acc}$
-and added onto the intrinsic stellar photospheric flux. In general one
-would expect this to be an overestimate of the accretion flux, as for
-BDs large convective zones are expected on the stellar surface, and
-some of the accretion energy may act to further drive these convective
-currents, meaning flux is lost. It is worth noting however that
-observationally UV excesses are often used to recreate and then
+and added onto the intrinsic stellar photospheric flux. In general,
+one would expect this to be an overestimate of the accretion flux, as
+for BDs large convective zones are expected on the stellar surface,
+and some of the accretion energy may act to further drive these
+convective currents, meaning flux is lost. It is worth noting however
+that observationally UV excesses are often used to recreate and then
 subtract an assumed accretion flux using a blackbody flux curve, which
 is essentially the reverse of this method.
 
@@ -297,10 +298,10 @@ radius ($R_{\rm mag}$) is less than the co-rotation radius ($R_{\rm
 the surface angular velocity of the central star.  Calculations of the
 magnetic truncation radius depend on derivations of the surface
 magnetic field \citep{koenigl_1991}. This is currently unavailable for
-BD stars, due to increased molecular species obscuring the Zeeman
-splitting signatures that are normally used to derive stellar surface
-magnetic fields. Therefore, for our model grid we have adopted an
-initial inner disc radius as the co-rotation radius,
+BDs, due to an increased number of molecular species obscuring
+the Zeeman splitting signatures that are normally used to derive
+stellar surface magnetic fields. Therefore, for our model grid we have
+adopted an initial inner disc radius as the co-rotation radius,
 \begin{equation}
 {R_{\rm inner}=\left({GM_*\tau^2\over{4\pi ^2}}\right)^{1\over{3}}},
 \label{inner_eq}
@@ -364,11 +365,12 @@ density.
 We have used the {\sc torus} radiative transfer code which was
 originally described by \cite{harries_2000} and was subsequently
 updated by \cite{harries_2004} and \cite{kurosawa_2004}. {\sc torus}
-  uses the method of \cite{lucy_1999} solve radiative equilibrium on
-  an AMR mesh. The code also self-consistently solves the
-  equation of vertical hydrostatic equilibrium and dust sublimation
-  for the disc \citep[described in][]{tannirkulam_2007}. The {\sc
-    torus} code has been extensively benchmarked \citep{pinte_2009}.
+uses the method of \cite{lucy_1999} to solve radiative equilibrium on
+an AMR mesh. The code also self-consistently solves the equation of
+vertical hydrostatic equilibrium and dust sublimation for the disc
+\citep[described in][]{tannirkulam_2007}. The {\sc torus} code has
+been extensively benchmarked \citep[for radiative transfer in discs
+against][]{pinte_2009}.
 
 \subsubsection{Dust Size distribution}
 \label{dust_size}
@@ -424,9 +426,9 @@ the vertical dashed line showing 10\,$\mu$m.
 \subsubsection{Dust sublimation and the inner disc edge}
 \label{dust_edge}
 
-As our models assume magnetic-truncation at the co-rotation radius, we
-have implicitly generated an inner hole. This also means that the disc
-will have an inner wall at this radius. Evidence for inner walls in
+As our models assume magnetic truncation at the co-rotation radius, we
+have generated an inner hole. This also means that the disc will have
+an inner wall at this radius. Evidence for inner walls in
 circumstellar discs is apparent from the SEDs of disc systems, where a
 peak in emission is found between 2 and 3\,$\mu$m. The temperatures
 reached by such inner walls are expected to generate thermal flux
@@ -470,36 +472,36 @@ with a final iteration of $\tau_{\max} = \infty$. Adequately solving
 the radiative-equilibrium necessitates resolving the disc's effective
 photosphere, and adaptive mesh refinement is used to split the grid at
 the optically-thin/optically-thick boundary in order that the maximum
-cell size at this boundary is $<1$ at a wavelength of 5500\,\AA. Once
-a self-consistent sublimated rim has been determined the equation of
-hydrostatic equilibrium is solved throughout the disc, and the
-sublimation iterations are restarted (the change in the density
-structure from the hydrostatical equilibrium step naturally feeds back
-into the shape of the inner rim). Five hydrostatic equilibrium steps
-are performed to ensure convergence, although a stable disc structure
-is normally found after three such iterations. For a more
-sophisticated, and chemically more complex, study of dust sublimation,
-albeit for higher mass objects see \cite{kama_2009}.
+cell size at this boundary is $<$\,1 at a wavelength of
+5500\,\AA. Once a self-consistent sublimated rim has been determined,
+the equation of hydrostatic equilibrium is solved throughout the disc,
+and the sublimation iterations are restarted (the change in the
+density structure from the hydrostatical equilibrium step naturally
+feeds back into the shape of the inner rim). Five hydrostatic
+equilibrium steps are performed to ensure convergence, although a
+stable disc structure is normally found after three such
+iterations. For a more sophisticated, and chemically more complex,
+study of dust sublimation albeit for higher mass objects see
+\cite{kama_2009}.
 
-For our model grid we have adopted a gas-to-dust ratio, $\epsilon$, of
-100, and the gas population is assumed to be essentially static with a
-zero optical depth.
+For our model grid the gas population is assumed to be essentially
+static with a zero optical depth.
 
 \subsubsection{SEDs}
 \label{seds}
 
 Once the radiative transfer code was completed simulated SEDs were
 generated. These SEDs can be generated for any distance and for any
-system-observer inclination. For our models we have set the distance,
-to 10\,pc to create absolute flux SEDs and selected ten inclinations
-equi-spaced in $\cos i$ (0, 27, 39, 48, 56, 64, 71, 77, 84 and
+system inclination. For our models we have set the distance, to 10\,pc
+to create absolute flux SEDs and selected ten inclinations equi-spaced
+in $\cos i$ (where $i$=0, 27, 39, 48, 56, 64, 71, 77, 84 and
 90$^{\circ}$). A further useful feature of the {\sc torus} code is
-that the emitted photon packets which make up the SED are tagged on
-their way to the observer. These tags separate the packets into four
-groups. Firstly, packets are separated by source into thermal (disc)
-or stellar groups. These groups are then subdivided into those which
-reach the observer either directly or after scattering. The resulting
-SEDs are discussed in Section \ref{seds}.
+that the emitted photon packets which contribute to the SED are tagged
+on their way to the observer. These tags separate the packets into
+four groups. Firstly, packets are separated by source into thermal
+(disc) or stellar groups. These groups are then subdivided into those
+which reach the observer either directly or after scattering. The
+resulting SEDs are discussed in Section \ref{seds}.
 
 \subsection{Photometric systems and derived quantities}
 \label{derived}
@@ -507,13 +509,14 @@ SEDs are discussed in Section \ref{seds}.
 Many observational studies use non-spectroscopic data to derive the
 pertinent parameters. Therefore in order to examine the practical
 effects in the `observational plane' we have used the SEDs to produce
-broadband photometric magnitudes, and subsequently colours. Broadband
+broadband photometric magnitudes and subsequently colours. Broadband
 magnitudes were also derived in a large range of other filter sets not
 used explicitly in the analysis within this paper. These magnitudes
-are available online\footnote{http://www.astro.ex.ac.uk/research/bd\textunderscore disc}
-and are briefly discussed in Appendix \ref{website}. In addition,
-monochromatic fluxes have been derived for all filters, and again are
-available online and discussed in Appendix \ref{website}.
+are available
+online\footnote{http://www.astro.ex.ac.uk/research/bd\textunderscore
+  disc} and are briefly discussed in Appendix \ref{website}. In
+addition, monochromatic fluxes have been derived for all filters, and
+again are available online and discussed in Appendix \ref{website}.
 
 In order to derive broadband photometric magnitudes and colours the
 SEDs of either the disc or naked systems were folded through the
@@ -522,13 +525,12 @@ all cases are absolute, derived for an observer to object distance of
 10\,pc, no conversion is required to derive absolute magnitudes and
 therefore intrinsic colours.
 
-We have integrated using photon-counting and calibrated using a Vega
-spectrum for magnitudes in the optical and near-IR regimes. The filter
-bandpasses selected are, the optical system of
-\cite{bessell_1998} for \textit{UBVRI} and the \textit{CIT}
-system of \cite{elias_1982,stephens_2004} for
-\textit{JHK}, with the required shift of $-0.015$\,$\mu$m as prescribed by
-\cite{stephens_2004}.
+We have integrated, the fluxes, using photon-counting and calibrated
+using a Vega spectrum for magnitudes in the optical and near-IR
+regimes. The filter bandpasses selected are, the optical system of
+\cite{bessell_1998} for \textit{UBVRI} and the \textit{CIT} system of
+\cite{elias_1982,stephens_2004} for \textit{JHK}, with the required
+shift of $-0.015$\,$\mu$m as prescribed by \cite{stephens_2004}.
 
 We have also derived magnitudes in the mid-IR range using the IRAC and
 MIPS systems of the \textit{Spitzer} space telescope. These magnitudes
@@ -539,30 +541,30 @@ handbook\footnote{http://ssc.spitzer.caltech.edu/documents/som/som8.0.irac.pdf}
 and the MIPS instrument calibration
 website\footnote{http://ssc.spitzer.caltech.edu/mips/calib/}.
 
-These specific filter sets have been chosen due to their ubiquitous
-use and suitability for the derivation of the key stellar parameters
-of age, mass and, for populations, disc fractions. Therefore, by
-studying the changes of magnitudes (and colours) in these photometric
-systems we can test the predicted effects on these derived parameters
-caused by changes in the input parameters of our model grid. The
-optical magnitudes \textit{VI} are used to explore age related effects
-of varying the parameter space. Flux in the \textit{VI} bands is only
-minimally affected by accretion flux \citep{gullbring_1998} and
-disc thermal flux \citep{hartmann_1998} and, additionally, in a
-\textit{V, V$-$I} CMD, the reddening vector lies parallel to the pre-MS,
+We have chosen these specific filter due to their ubiquitous use and
+suitability for the derivation of the key stellar parameters of age,
+mass and, for populations, disc fractions. Therefore, by studying the
+changes of magnitudes (and colours) in these photometric systems we
+can test the predicted effects on these derived parameters caused by
+changes in the input parameters of our model grid. The optical
+magnitudes \textit{VI} are used to explore age-related effects of
+varying the parameter space. Flux in the \textit{VI} bands is only
+minimally affected by accretion flux \citep{gullbring_1998} and disc
+thermal flux \citep{hartmann_1998} and, additionally, in a \textit{V,
+  V$-$I} CMD, the reddening vector lies parallel to the pre-MS,
 minimising any age effect of extinction uncertainty, \citep[for a full
-discussion see][]{mayne_2008,mayne_2007}. The
-near-IR passbands of \textit{JHK} are most often used to derive
-stellar masses as for pre-MS objects the reddening vector, in for
-instance, a \textit{J, J$-$K} CMD, is almost perpendicular to the
-isochrones, minimising the mass effect of extinction uncertainties
-\citep[the \textit{CIT} systems was chosen to
+discussion see][]{mayne_2007,mayne_2008}. The near-IR passbands of
+\textit{JHK} are most often used to derive stellar masses. This is as
+for pre-MS objects the reddening vector, in for instance, a \textit{J,
+  J$-$K} CMD, is almost perpendicular to the isochrones. The direction
+of this vector acts to minimise the mass effect of extinction
+uncertainties \citep[the \textit{CIT} systems was chosen to
 match][]{chabrier_2000}. Finally, as is now well documented the
 \textit{Spitzer} IRAC passbands provide the best data with which to
 unambiguously separate naked and star-disc systems
-\citep{luhman_2005a}. In addition, at longer wavelengths, the
-MIPS instrument provides sensitivity to disc systems at much larger
-radii (or debris discs).
+\citep{luhman_2005a}. In addition, at longer wavelengths, the MIPS
+instrument provides sensitivity to disc systems at much larger radii
+(or debris discs).
 
 Once the model grid was completed several checks were performed to
 verify the consistency of our results. For each individual model these
@@ -602,18 +604,19 @@ ages over which the discs influence will be important.
 Data for rotation rates, from periodic variability surveys, are widely
 available for a range of different age clusters of TTS. However, fewer
 studies exist on the rotation rates of BD mass objects. Rotation
-period data for $\sigma$ Ori, at an age of $\approx$ 3 Myrs
-\citep{mayne_2008}, was studied in \cite{scholz_2004}, where periods
-are found over the range 5.78$-$74.4 hours ($\approx$ 0.24$-$3.1 days)
-for BD mass objects. \cite{scholz_2005} study rotation period data for
-stars in the vicinity of $\epsilon$ Ori, with an assumed age of
-$\approx$3 Myrs \citep{osorio_2002} and the ONC at an age of
-$\approx$2 Myrs \citep{mayne_2008}. Rotation periods, from photometric
-variability, in the range 4.7$-$87.6 hours ($\approx$ 0.2$-$3.65 days)
-for BD mass stars are found. \cite{joergens_2003} study the rotational
-periods of BD (and very low mass stars) in the Chameleon I
-region. This region is $\le$ 1 Myrs old, and the authors find rotation
-periods of 2.19, 3.376 and 3.21 days for their BD mass counterparts.
+period data for $\sigma$ Ori, at an age of $\approx$\,3 Myrs
+\citep{mayne_2008}, was studied by \cite{scholz_2004}, where periods
+are found over the range 5.78$-$74.4 hours ($\approx$\,0.24$-$3.1
+days) for BD mass objects. \cite{scholz_2005} study rotation period
+data for stars in the vicinity of $\epsilon$ Ori, with an assumed age
+of $\approx$\,3 Myrs \citep{osorio_2002} and the ONC at an age of
+$\approx$\,2 Myrs \citep{mayne_2008}. Rotation periods, from
+photometric variability, in the range 4.7$-$87.6 hours
+($\approx$\,0.2$-$3.65 days) for BD mass stars are
+found. \cite{joergens_2003} study the rotational periods of BD (and
+very low mass stars) in the Chameleon I region. This region is
+$\le$\,1 Myrs old, and the authors find rotation periods of 2.19,
+3.376 and 3.21 days for their BD targets.
 
 In some cases the periodic variability is irregular and assumed to
 come from active accretion hot spots on the BD surface \citep[see][for
@@ -622,7 +625,7 @@ indicative of active accretion. All the studies mentioned infer a disc
 locking mechanism. Furthermore, \cite{scholz_2004} and
 \cite{scholz_2005} find evidence for a mass $\propto$ period
 relationship extending into the BD regime. Additionally,
-\cite{joergens_2003} propose a shorter lifetime of $\approx$5 Myrs for
+\cite{joergens_2003} propose a shorter lifetime of $\approx$\,5 Myrs for
 BD discs, inferred from a shorter derived disc-locking
 timescale. However, as discussed in the previous studies, an imperfect
 disc locking mechanisms is also hypothesised as responsible for the
@@ -641,15 +644,14 @@ faster rotators and the edge of the slower rotators.
 \label{par_cov}
 
 As discussed in Section \ref{par_rotation} evidence for irregular
-periodic variability has been found in BD stars with detections of
+periodic variability has been found in BDs with detections of
 associated stellar discs. This is construed as evidence for accretion
 hot spots formed as magnetically channeled material hits the stellar
-surface \citep[see discussion
-in][]{bouvier_1995,herbst_2007}. The irregularity is
-thought to be caused by changes in the magnetospheric structure and
-accretion rate \citep{bouvier_1995}. For our model we have
-assumed that disc material is disrupted at the co-rotation radius and
-channeled onto the star in the form of accretion hot spots with a
+surface \citep[see discussion in][]{bouvier_1995,herbst_2007}. The
+irregularity is thought to be caused by changes in the magnetospheric
+structure and accretion rate \citep{bouvier_1995}. For our model we
+have assumed that disc material is disrupted at the co-rotation radius
+and channeled onto the star in the form of accretion hot spots with a
 characteristic temperature. Therefore, to calculate the characteristic
 temperature and the resulting blackbody accretion flux we must adopt
 an accretion rate and areal coverage of the accretion stream.
@@ -680,18 +682,18 @@ so-called FU Orionis type objects. For the more typical accretion
 rates \citep[$\dot{M}=$10$^{-11}$ to 10$^{-8.9} M_{\odot}yr^{-1}$, for
 TTS,][]{dahm_2009}, several studies have now suggested that the
 accretion rate is strongly correlated with the mass of the central
-star. This relationship was perhaps first suggested by
-\cite{muzerolle_2003} using various accretion diagnostics. Later,
-\citep{muzerolle_2005} derived a relationship of approximately
-$\dot{M}\propto M_*^2$. Further evidence was put forward by
-\cite{natta_2004}, where accretion rates as low as 5$\times$ 10$^{-12}
-{\rm M}_{\odot} {\rm yr}^{-1}$ were found for BD stars. More recently,
-even lower accretion rates of $\approx$10$^{-13} {\rm M}_{\odot} {\rm
+star. This relationship was first suggested by \cite{muzerolle_2003}
+using various accretion diagnostics. Later, \cite{muzerolle_2005}
+derived a relationship of approximately $\dot{M}\propto
+M_*^2$. Further evidence was put forward by \cite{natta_2004}, where
+accretion rates as low as 5$\times$ 10$^{-12} {\rm M}_{\odot} {\rm
+  yr}^{-1}$ were found for BDs. More recently, even lower
+accretion rates of $\approx$\,10$^{-13} {\rm M}_{\odot} {\rm
   yr}^{-1}$, have been derived for BDs by \cite{herczeg_2009}.
 Further support for a dependence of accretion rate on stellar mass was
 apparent in the significantly more homogeneous dataset of
 \cite{natta_2006}. \cite{natta_2006} analysed a set of accretion rates
-and masses derived for BD stars in $\rho$ Ophiuchi and compared these
+and masses derived for BDs in $\rho$ Ophiuchi and compared these
 results to stars in Taurus. They found that the accretion rate scales
 with central object mass into the BD regime, although with significant
 scatter.
@@ -716,7 +718,7 @@ Aurigae,][]{rice_2003}, 0.03$M_*$ \citep[GY 5, GY 11, and GY
 310,][]{mohanty_2004} and 0.022$M_*$\citep[2MASS
 J04442713+2512164,][]{bouy_2008}. As the derived disc masses all have
 a similar order of magnitude we have adopted $M_{\rm disc}\approx
-$0.01$M_*$. As changes in disc masses are expected to change the
+$\,0.01$M_*$. As changes in disc masses are expected to change the
 resulting SED less than perhaps, accretion rate for example, we have
 not varied the disc mass for this study. The results of simulations
 varying this parameter will be published in a future paper.
@@ -725,7 +727,7 @@ varying this parameter will be published in a future paper.
 \subsection{Inclination}
 \label{par_inc}
 
-Discs around BD stars exhibit increased flaring, due to the reduced
+Discs around BDs exhibit increased flaring, due to the reduced
 surface gravity in the disc \citep{walker_2004}. This increased
 flaring, and therefore larger scaleheight of the disc results in
 obscuration on the star at lower inclinations, when compared to higher
@@ -742,7 +744,7 @@ in Table \ref{par_space_table}.
 \begin{table*}
 \begin{tabular}{|l|l|}
 \hline
-Input parameter&Values (\# values)\\
+Input parameter&Values (\# of values)\\
 \hline
 Mass ($M_{\odot}$)&0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07 \& 0.08 (8)\\
 Age (Myr)&1 \& 10 (2)\\
@@ -766,28 +768,27 @@ Inclination ($^{\circ}$)&0, 27, 39, 48, 56, 64, 71, 77, 84 \& 90
 \section{Result and Analysis}
 \label{results}
 
-In this Section we first discuss the physical structure, both density
+In this section we first discuss the physical structure, both density
 and temperature, of the BDD disc systems (Section \ref{disc_struct})
 across our parameter space. Then we discuss the resulting simulated
-observations in Section\ref{observables}. We present analysis in terms
-of the impacts of the disc structure on the SEDs and colours and
+observations in Section \ref{observables}. We present analysis in
+terms of the impacts of the disc structure on the SEDs and colours and
 magnitudes. Then in Section \ref{isochrones} we examine the
 reliability of age, mass and disc fraction derivation when applied to
 our model grid. In particular we discuss selection effects causing
 higher accreting systems to be unlikely to be classified as BDD
 systems. Essentially, despite not intrinsically including a dependence
-of accretion rate on stellar mass in our grid.  We show that current
-observational techniques and theoretical models applied to the grid
-would result in a relationship of this type being derived.
+of accretion rate on stellar mass in our grid, we show that current
+observational techniques and theoretical models, applied to the grid
+,would result in a relationship of this type being derived.
 
 \subsection{Disc Structure}
 \label{disc_struct}
 
 The disc surface density is conserved in the initial density
 structure, $\Sigma ^{\beta - \alpha}$. The initial scaleheight ($h$)
-and density ($\rho$) follow $h\propto r^{\beta}$
-($h=h_0(r/R_*)^{\beta}$) and $\rho \propto r^{-\alpha}$ ($\rho
-=\rho_0\frac{R_*}{r}exp(-\frac{1}{2}[z/h(r)]^2)$) respectively., where
+and density ($\rho$) follow $h=h_0(r/R_*)^{\beta}$$\rho
+=\rho_0\frac{R_*}{r}exp(-\frac{1}{2}[z/h(r)]^2)$ respectively., where
 $r$ and $z$ are the radial and vertical coordinates. The initial
 values of $\alpha$ and $\beta$ were 2.1 and 1.1 respectively. The
 values for $\alpha$ and $\beta$ were chosen to optimise resolution of
@@ -806,17 +807,17 @@ and inner edge location.
 \subsubsection{Disc Flaring}
 \label{disc_flaring}
 
-We have previously tested the {\sc torus} code against that used by
-Walker and co-workers, using a CTTS disc model and simultaneously
-solving for radiative and hydrostatic equilibrium (but not employing
-dust sublimation). These tests showed excellent agreement in density
-and temperature structure, as well as in the resultant SEDs. The
-results of these tests were presented by \cite{walker_2006}. It is
-therefore unsurprising that at negligible mass-accretion rates our
-disc structures are very similar to those present in
-\cite{walker_2004}. Typical discs around CTTS stars have scaleheights
-at 100\,AU of between $h$(100)$=$10 to 20\,AU, whereas for BDD
-systems, $h$(100)=20 to 60\,AU (for 0.08 and 0.01 $M_{\odot}$
+We have previously tested the results of the {\sc torus} code against
+that used by Walker and co-workers, using a CTTS disc model and
+simultaneously solving for radiative and hydrostatic equilibrium (but
+not employing dust sublimation). These tests showed excellent
+agreement in density and temperature structure, as well as in the
+resultant SEDs. The results of these tests were presented by
+\cite{walker_2006}. It is therefore unsurprising that at negligible
+mass-accretion rates our disc structures are very similar to those
+present in \cite{walker_2004}. Typical discs around CTTS stars have
+scaleheights at 100\,AU of between $h$(100)$=$10 to 20\,AU, whereas
+for BDD systems, $h$(100)=20 to 60\,AU (for 0.08 and 0.01 $M_{\odot}$
 respectively). As the accretion rate increases the flux levels of the
 central star increase and lead to heating of the disc which in turn
 leads to vertical expansion. We found that levels of vertical flaring
@@ -843,10 +844,10 @@ rates of \logmdot = $-12$ and $-7$, respectively.
 the disc temperature structure and the mass of the central star, with
 the disc scaleheight $h\propto (T_{\rm disc}/M_*)^{1/2}$
 \citep{shakura_1973}. Recently however \cite{ercolano_2009} proposed
-the inverse relation of flaring with stellar mass, i.e. $h\propto
-M_*$. This suggestion was based on evidence from \cite{allers_2006},
-where SEDs for 17 systems in the mass range 6$M_{\rm
-  Jup}<M_*<$350$M_{\rm Jup}$ were fit with flared or flat disc
+that the flaring varied in the opposite sense with stellar mass,
+i.e. $h\propto M_*$. This suggestion was based on evidence from
+\cite{allers_2006}, where SEDs for 17 systems in the mass range
+6$M_{\rm Jup}<M_*<$350$M_{\rm Jup}$ were fit with flared or flat disc
 models. In general, \cite{allers_2006} find that lower mass objects
 achieve better fits with the flat disc models and higher mass objects
 with the flared discs.
@@ -884,8 +885,8 @@ assumption from both theoretical and observational perspectives:
 Radiative-transfer models indicate the temperature in the funnel flows
 may be very much greater than the dust sublimation temperature
 \citep[$>10$\,kK,][]{muzerolle_2003}, while dusty funnel flows are
-likely to be optically thick in the visible, which would lead to
-substantial photometric variability as the funnels transit the
+likely to be optically thick in the visible regime, which would lead
+to substantial photometric variability as the funnels transit the
 photosphere--an effect that is unobserved.
 
 Our models include a sophisticated treatment of dust sublimation
@@ -894,17 +895,17 @@ central protostar increase with increasing accretion rates the flux
 incident on the inner edge increases and leads to increasing erosion
 of the inner edge of the dust disc.
 
-As the inner edge moves its temperature is expected to change, this
+As the inner edge moves, its temperature is expected to change. This
 has been predicted to lead to a correlation of inner edge position and
 IR excess \citep{meyer_1997}. This may act to bias surveys correlating
 rotation rates with IR excess to search for evidence of
 disc-locking. However, the flux from the inner edge will usually peak
 between 2 and 3\,$\mu$m \citep{dullemond_2001}, given that the dust
-sublimation temperature peaks at $\approx$1400\,K for canonical
+sublimation temperature peaks at $\approx$\,1400\,K for canonical
 densities. This means that for models where dust is significantly
-sublimated the inner edge will {\em usually} have a temperature of
-$\approx$1400\,K and this correlation of disc position and temperature
-will be lost (although see below).
+sublimated, the inner edge will {\em usually} have a temperature of
+$\approx$\,1400\,K and this correlation of disc position and
+temperature will be lost (although see below).
 
 Equation \ref{inner_eq} shows that as the rotation period of the
 protostar increases the co-rotation radius decreases. This will result
@@ -922,43 +923,42 @@ material in the disc falls with increasing radius from the star
 ($\rho(r) \propto r^{-\alpha}$), and that the dust sublimation
 temperature is density dependent \citep{pollack_1994}.  Therefore, for
 systems where the inner edge has been eroded significantly from the
-co-rotation radius the temperature of the inner edge will fall
-systematically as the inner dust disc radius increases. 
+co-rotation radius, the temperature of the inner edge will fall
+systematically as the inner dust disc radius increases.
 
 For further analysis, and throughout the rest of this paper, we will
-separate the systems into two groups. These groups are those systems
-with \logmdot$\leq-9$ and \logmdot$\geq-9$, classed as typical and
-extreme accretors. This distinction is based on the point at which the
-systems undergo both significant sublimation ($\Delta R_{\rm
-  inner}>1R_*$) and have an accretion luminosity that is comparable to
-the photospheric luminosity (see Section~\ref{acc_dominance}). In
-order to examine the effect of dust sublimation on our models we have
-measured the radius of the inner edge of the dust disc by integrating
-from the centre along the midplane until an optical depth of 2/3 (at
-5500\AA) is reached. Figure \ref{inner_temp} shows the radial density
-distribution of the disc.  In this case the the final inner edge
-radius and therefore temperature is no longer strongly correlated with
-the rotation rate. Figure \ref{inner_temp} shows the final inner edge
-location ($R_{\rm inner}$, $R_*$) against the temperature of the inner
-wall ($T_{\rm inner}$, K). The left panel shows the systems designated
-as typical accretors and the right panel those with extreme accretion
-rates.  For both panels the systems with rotation periods of 0.5 and 5
-days are plotted in red and blue respectively. Those systems where the
-change in inner radius was greater than 1$R_*$, and therefore classes
-as significantly sublimated, are plotted as crosses.
+separate the systems into two groups; those systems with
+\logmdot$\leq-$9 and \logmdot$>-$9, classed as typical and extreme
+accretors. This distinction is based on the point at which the systems
+undergo both significant sublimation ($\Delta R_{\rm inner}>1R_*$) and
+have an accretion luminosity that is comparable to the photospheric
+luminosity (see Section~\ref{acc_dominance}). In order to examine the
+effect of dust sublimation on our models we have measured the radius
+of the inner edge of the dust disc by integrating from the centre
+along the midplane until an optical depth of 2/3 (at 5500\AA) is
+reached. Figure \ref{inner_temp} shows the radial density distribution
+of the disc.  In this case, the final inner edge radius, and therefore
+temperature, is no longer strongly correlated with the rotation
+rate. Figure \ref{inner_temp} shows the final inner edge location
+($R_{\rm inner}$) against the temperature of the inner wall ($T_{\rm
+  inner}$). The left panel shows the systems designated as typical
+accretors and the right panel those with extreme accretion rates.  For
+both panels the systems with rotation periods of 0.5 and 5 days are
+plotted in red and blue respectively. Those systems where the change
+in inner radius was greater than 1$R_*$, classed as significantly
+sublimated, are plotted as crosses.
 
 \begin{figure*}
 \includegraphics[scale=0.5,angle=90]{./Fig/inner_temp.ps}
-   \caption{Figure showing data for the inner edge location ($R_{\rm
-       inner}$, $R_*$). The typical accretors are shown in the
-     left panel and the extreme accretors in the
-     right panel (see text for explanation). In both
-       panels separate the systems by period, with those systems with
-     rotation periods of 0.5 and 5 days shown as red and blue symbols
-     respectively. In addition, systems where $\Delta R_{\rm inner} <
-     1R_*$ are plotted as crosses and $\Delta R_{\rm inner} > 1R_*$ as
-     filled circles (this is only achieved by some systems classed as
-     extreme accretors).\label{inner_temp}}
+\caption{Figure showing data for the inner edge location ($R_{\rm
+    inner}$, $R_*$). The typical accretors are shown in the left panel
+  and the extreme accretors in the right panel (see text for
+  explanation). Both panels separate the systems by period, with those
+  systems with rotation periods of 0.5 and 5 days shown as red and
+  blue symbols respectively. In addition, systems where $\Delta R_{\rm
+    inner} < 1R_*$ are plotted as crosses and $\Delta R_{\rm inner} >
+  1R_*$ as filled circles (this is only achieved by some systems
+  classed as extreme accretors).\label{inner_temp}}
 \end{figure*}
 
 The left panel of Figure \ref{inner_temp} shows that, taken
@@ -979,7 +979,7 @@ disc wall shape, inclination and flaring effects. This is discussed in
 more detail in Section \ref{isochrones}.
 
 Figure \ref{inner_temp} shows that for those systems where significant
-disc erosion ($\Delta R_{\rm inner} > 1.0 R_*$) has occurred the
+disc erosion ($\Delta R_{\rm inner} > 1 R_*$) has occurred the
 resulting temperature of the inner edge is weakly correlated with the
 inner edge radius, but, critically, not correlated with rotation rate.
 The inner edge temperatures of the remaining systems for the extreme
@@ -1037,10 +1037,10 @@ decrease behind the curved inner rim, over a significantly larger
 radial scale than the previous model.
 
 Finally the most extreme accretor (Figure~\ref{sub_181_a}) shows dust
-being destroyed to very large radii ($\sim 0.1$\, AU). A curved rim is
-present, without any obvious decrease in scaleheight behind the inner
-rim. The distance from the central object is such that the vertical
-component of gravity is much diminished, and the disc has a
+being destroyed out to very large radii ($\sim 0.1$\, AU). A curved
+rim is present, without any obvious decrease in scaleheight behind the
+inner rim. The distance from the central object is such that the
+vertical component of gravity is much diminished, and the disc has a
 substantial scaleheight at the inner edge, meaning that it reprocesses
 significant protostellar radiation leading to a high near-IR excess.
 
@@ -1063,41 +1063,42 @@ accretion and disc presence on the simulated observations.
 \subsubsection{Accretion dominance}
 \label{acc_dominance}
 
-Disentangling the accretion and stellar photospheric flux, in order to
-derive accretion rates becomes difficult as $T_{\rm acc} \to T_{\rm
-  eff}$, which for an accretion rate of \logmdot = $-9$, occurs at a
-fractional coverages of 20 and 10\%, for rotation periods of 5 and 0.5
-days (with $M_*=0.04M_{\odot}$ and an age of 1 Myr). Additionally,
-higher accretion rates can produce enough flux to `veil' the
-underlying photospheric features, and significantly change the peak
-flux levels. Heavy veiling of atomic lines has been extensively
-observed in CTTS systems \citep[e.g][]{kenyon_1995}.
+As $T_{\rm acc} \to T_{\rm eff}$, disentangling the accretion and
+stellar photospheric flux, in order to derive accretion rates becomes
+difficult. This equivalence in accretion hot spot and stellar
+photospheric temperature, for an accretion rate of \logmdot = $-9$,
+occurs at a fractional coverages of 20 and 10\%, for rotation periods
+of 5 and 0.5 days (with $M_*=0.04M_{\odot}$ and an age of 1
+Myr). Additionally, higher accretion rates can produce enough flux to
+`veil' the underlying photospheric features, and significantly change
+the peak flux levels. Heavy veiling of atomic lines has been
+extensively observed in CTTS systems \citep[e.g][]{kenyon_1995}.
 
-Figure \ref{acc_dom} shows the affect of increasing the accretion
-blackbody flux (for increasing accretion rates) for a BD star,
+Figure \ref{acc_dom} shows the effect of increasing the accretion
+blackbody flux (for increasing accretion rates) for a BD,
 $M=$0.04$M_{\odot}$, at 1 Myr. Whilst the photon packets originating
 from the star (both from $L_*$ and $L_{\rm acc}$) will be tagged as
-stellar by {\sc torus} we can separate these flux contributions simply
-by observing the naked star system. The panels in Figure \ref{acc_dom}
-show the flux from a naked system, with no treatment of the disc. This
-enables us to view the effect of increasing accretion rate on the
-photospheric flux in isolation. The accretion rates included in all
-panels are \logmdot = $-8$, $-9$ and $-12$ (blue, black and red lines
-respectively). The bottom panels show the systems with a rotation
-period of 5 days and top panels for those with a rotation period of
-0.5 days. Given our assumption that accretion occurs from the
-co-rotation radius, decreasing the rotational period moves this
-accretion radius closer to the star, $R_{\rm inner}\propto \tau^{2/3}$
-(see Equation \ref{inner_eq}). As the accretion radius moves father
-from the star the potential energy released by the accreted material
-is increased. This effect can be seen when comparing the top and
-bottom panels, although the effect is marginal for all but the highest
-displayed accretion rates.
+stellar by {\sc torus}, we can separate these flux contributions
+simply by observing the naked star system. The panels in Figure
+\ref{acc_dom} show the flux from a naked system, with no treatment of
+the disc. This enables us to view the effect of increasing accretion
+rate on the photospheric flux in isolation. The accretion rates
+included in all panels are \logmdot = $-8$, $-9$ and $-12$ (blue,
+black and red lines respectively). The bottom panels show the systems
+with a rotation period of 5 days and top panels for those with a
+rotation period of 0.5 days. Given our assumption that accretion
+occurs from the co-rotation radius, decreasing the rotational period
+moves this accretion radius closer to the star, $R_{\rm inner}\propto
+\tau^{2/3}$ (see Equation \ref{inner_eq}). As the accretion radius
+moves further from the star the potential energy released by the
+accreted material is increased. This effect can be seen when comparing
+the top and bottom panels, although the effect is marginal for all but
+the highest displayed accretion rates.
 
 \begin{figure*}
 \includegraphics[scale=0.6,angle=90]{./Fig/acc_dom.ps}
-\caption{Figure showing the photospheric flux (log(ergs$/s/cm^2/{\rm
-    \AA}$)) against $\lambda$ (log($\mu$m)) of a Brown Dwarf with
+\caption{Figure showing the photospheric flux (log(ergs$\rm{/s/cm}^2/{\rm
+    \AA}$)) against $\lambda$ (log($\mu$m)) of a BD with
   $M=$0.04$M_{\odot}$, at 1 Myr. No disc is included, but blackbody
   fluxes from an accretion stream at the rates of \logmdot $=-8$, $-9$
   and $-12$ are shown as blue, black and red lines respectively. The
@@ -1110,19 +1111,19 @@ displayed accretion rates.
 \end{figure*}
 
 The left panels show accretion streams with an areal coverage of 10\%
-and the left panels 1\%. As the areal coverage reduces the effective
+and the left panels 1\%. As the areal coverage reduces, the effective
 temperature of the accretion hot spot increases, resulting in an
-increase in accretion flux, and resulting shift to bluer wavelengths
-of the peak flux. This can be seen clearly by comparing the left and
-right panels of Figure \ref{acc_dom}. As the rotation rate increases
-the co-rotation radius also increases, as shown in Equation
+increase in accretion flux, and a shift to bluer wavelengths of the
+peak flux. This can be seen clearly by comparing the left and right
+panels of Figure \ref{acc_dom}. As the rotation rate increases the
+co-rotation radius also increases, as shown in Equation
 \ref{inner_eq}, $R_{\rm inner}\propto \tau^{\frac{2}{3}}$. Therefore,
 as Equations \ref{Lacc} and \ref{Tacc} show $L_{\rm acc}\propto 1-
 \frac{R_*}{R_{\rm inner}}$ and $T_{\rm acc}\propto (L_{\rm
   acc}/A)^{\frac{1}{4}}$, the temperature of the accretion hot spot
 increases as the rotational period increases. This is due to the
 increase in potential energy lost by the mass accreted. This can be
-seen in Figure by comparing the left and right panels of Figure
+seen by comparing the left and right panels of Figure
 \ref{acc_dom}. Perhaps the most important, albeit qualitative, result
 shown is Figure \ref{acc_dom} is an insight into the accretion rate at
 which the accretion blackbody flux dominates over the photospheric
@@ -1137,17 +1138,17 @@ accretion rates \logmdot$>-9$. It is also clear from Figure
 \ref{acc_dom} that the magnitude becomes brighter and the colour bluer
 (in terms of optical photometry) with increasing accretion rates as
 expected \citep{gullbring_1998}. The impact on the photometry of BDD
-systems is discussed in the next Section for individual stars and in
+systems is discussed in the next section for individual stars and in
 Section \ref{isochrones} for populations.
 
 \subsubsection{Flaring and the Inner Edge}
 \label{flare_inner_sec}
 
 As shown in Figures \ref{flare_-12_183} and \ref{flare_-7_193} and
-discussed in Section \ref{disc_flaring} BDD systems under vertical
+discussed in Section \ref{disc_flaring}, BDD systems in vertical
 hydrostatic equilibrium have highly flared discs. As discussed in
 \cite{walker_2004} this increased flaring (when compared to CTTS
-stars) leads to occultation at the star at lower inclination angles
+stars) leads to occultation of the star at lower inclination angles
 and, therefore, significant changes to the SED. Increases in the
 inclination angle for these systems quickly lead to a significant
 proportion of the stellar flux being intercepted and reprocessed by
@@ -1167,9 +1168,9 @@ density. This change in shape, as noted for Herbig Ae stars by
 of the SED, or derived IR excess, with inclination angle
 \citep{tannirkulam_2007}, for close to face on viewing angles.
 
-Figure \ref{flare_inc} shows the total SEDs for the BDD system of
-Figures \ref{flare_-12_183} and \ref{flare_-7_193} as the top and
-bottom panels respectively. The lines show the flux over all the ten
+Figure \ref{flare_inc} shows the SEDs for the BDD system of Figures
+\ref{flare_-12_183} and \ref{flare_-7_193} as the top and bottom
+panels respectively. The lines show the flux over all the ten
 inclinations (see Table \ref{par_space_table}), with the dashed line
 showing the inclination at which a sharp fall in flux is seen. This
 inclination will be the angle at which the star and inner disc becomes
@@ -1227,7 +1228,7 @@ photospheric SED for accretion rates of \logmdot = $-$9 (see Figure
 in the derived photometric magnitudes for bands blueward of a few
 microns, where the accretion and photospheric flux dominate. This is
 shown in the top panel of Figure \ref{flare_mag}. As the accretion
-rate increases the system moves to brighter magnitudes in $M_V$. The
+rate increases, the system moves to brighter magnitudes in $M_V$. The
 move to brighter magnitudes becomes significant once the accretion
 rate exceeds \logmdot = $-$9. Again moving from the fast to slow
 rotation period increases the potential energy released and in this
@@ -1251,25 +1252,25 @@ accretion rates) on the IR colours is difficult. Essentially, matching
 flux levels between two systems whilst maintaining a difference in
 inner wall shape is impossible.
 
-Therefore, for individual systems changes in the accretion rate and
-disc structure lead to significant changes in magnitudes and
-colours. The data presented in this section are for an isolated mass
-and age. However, the trends described are evident throughout our
-model grid for any given subset, and as such are representative. The
-scatter or changes in magnitude in the individual systems will change
-as a function of the remaining variables, but the dominant input
-variables affecting simulated photometry are accretion rate and
-inclination. For populations of stars these changes in magnitude and
-colour act to scatter or spread a BD locus in photometric space.
+Thus, for individual systems changes in the accretion rate and disc
+structure lead to significant changes in magnitudes and colours. The
+data presented in this section are for an isolated mass and
+age. However, the trends described are evident throughout our model
+grid for any given subset, and as such are representative. The scatter
+or changes in magnitude in the individual systems will change as a
+function of the remaining variables, but the dominant input variables
+affecting simulated photometry are accretion rate and inclination. For
+populations of stars these changes in magnitude and colour act to
+scatter or spread a BD locus in photometric space.
 
 \subsection{Parameter derivation}
 \label{isochrones}
 
-Practically, most parameters for young pre-MS and BD stars are derived
+Practically, most parameters for young pre-MS and BDs are derived
 from surveys of populations, usually open clusters, using broadband
 photometry and subsequently constructed colour-magnitude and
 colour-colour diagrams (CMDs and CoCoDs respectively, hereafter).  In
-this Section we explore the consequences of our model grid on the
+this section we explore the consequences of our model grid on the
 derivation of the primary parameters of age, mass and disc fractions,
 from populations. This in turn leads to highlighting selection effects
 with, for instance, the mass to accretion rate relation.
@@ -1281,10 +1282,10 @@ CTTS objects, defined as \logmdot = $-$12 (negligible) to \logmdot =
 $-$9 and those with elevated accretion rates, where \logmdot
 $>-$9. For several of the plots in this section the magnitude and
 colours for the $M_*=0.01M_{\odot}$ systems at high inclinations
-become extremely faint and red, and we omit them from the Figures in
+become extremely faint and red, and we omit them from the figures in
 order to conserve an appropriate scaling for the majority of the
 models. Additionally, stars at the highest inclinations, i.e edge on
-disc systems, are often omitted from the Figures due to their
+disc systems, are often omitted from the figures due to their
 extremely faint magnitudes, meaning they would not be practically
 observable.
 
@@ -1310,7 +1311,7 @@ disc structures and will publish the results in a subsequent
 publication. Overall, as found in \cite{walker_2004}, the dominant
 scattering effect for BD disc systems in an optical CMD appears to be
 caused by accretion rate and inclination. Therefore for derivation of
-parameters we explore the scatter in BD locii as a function of
+parameters we explore the scatter in BD loci as a function of
 accretion rate and inclination.
 
 \subsubsection{Mass and Age Derivation}
@@ -1402,7 +1403,7 @@ simulations, the colours of these stars move significantly blueward of
 the expected BD locus in a $M_V$, $(V-I)_0$ CMD and redward in a
 $M_J$, $(J-K)_0$ CMD. As, in the case of typical accretors, the input
 variables are in the range expected for a BD population, one could
-reasonably expect observed true BD locii to show a similar scatter. It
+reasonably expect observed true BD loci to show a similar scatter. It
 is clear that even a wide photometric selection would not even include
 all of the negligibly accreting systems at expected
 inclinations. Whilst the derivation of masses and ages for these
@@ -1430,7 +1431,7 @@ This scatter for both typical and extreme accretors is a strong
 function of inclination, where, as the inclination is increased the
 objects are pushed lower in the CMD. Indeed, for the edge on cases
 some objects have magnitudes fainter than those shown (for instance
-$M_V\approx 20$). This is expected as the star becomes obscured by the
+$M_V\approx$\,20). This is expected as the star becomes obscured by the
 flared disc, interestingly for typical systems the bottom right panels
 show that this occurs for inclinations above around 71$^{\circ}$ (as
 found in Figure \ref{flare_inc}) in most cases.  However, even for the
@@ -1453,7 +1454,7 @@ CMDs constructed using optical or near-IR colours and magnitudes.
 
 If one adopts the range of input parameters we have used (see Section
 \ref{par_space} for justification), our simulated photometry shows,
-qualitatively, that a coeval 1 Myr population of accreting BD stars
+qualitatively, that a coeval 1 Myr population of accreting BDs
 and BDD systems, with typical accretion rates and range of
 inclinations, will exhibit a significant scatter in apparent
 isochronal age. Furthermore, objects with typical (and extreme)
@@ -1598,7 +1599,7 @@ with the face-on and expected systems closer to the naked
 stars. Figure \ref{disc_frac_irac} is representative of CoCoDs
 constructed using other IRAC photometric channels. As we include
 longer wavelength bands in the IRAC CoCoDs the separation between the
-disc and naked locii increases. As the wavelength gets longer the flux
+disc and naked loci increases. As the wavelength gets longer the flux
 originates from regions of the disc at lower temperature and therefore
 greater radial distance from the star. As photometric emission is
 minimal past around 3\,$\mu$m, systems with discs will have
@@ -1857,7 +1858,7 @@ Section \ref{results} a relationship of this kind is self-reinforcing
 as lower mass objects with higher accretion rates have little chance
 of being correctly identified as such due to both the accretion flux
 and flared associated disc. Essentially, at present it is unclear how
-many BD stars are not included in this relationship due to
+many BDs are not included in this relationship due to
 misidentification. As explained in \cite{walker_2004}, BD systems with
 a disc, without including accretion effects, can have the
 characteristics of higher mass CTTS stars, due to increased disc
@@ -1902,6 +1903,42 @@ Acreman for help with the practicality of running the model grid.
 \bibliography{references}
 \appendix
 
+\section{Website}
+\label{website}
+
+As stated throughout this paper the data presented are available from
+a web page\footnote{http://www.astro.ex.ac.uk/research/bd\textunderscore disc}.
+
+\subsection{Available Data}
+\label{web_data}
+
+The magnitudes and colours presented in this paper are available both
+as individual magnitudes and as isochrones or mass tracks. Photometric
+magnitudes have also been derived for several other systems and are
+available online. These are Johnson, Cousins \textit{UBVRI(JHK)}
+\citep{johnson_1966,bessell_2005}, \textit{Tycho} $V_t$ and $B_t$
+\citep{bessell_2000}, Bessell \textit{UBVRIJHKL}
+\citep{bessell_1988,bessell_1998}, SDSS \textit{UGRIZ}
+\citep{fukugita_1996}, 2MASS $JHK_s$
+\citep{cohen_2003,skrutskie_2006}, MKO \textit{JHK}
+\citep{simons_2002,tokunaga_2002}, UKIRT \textit{ZYJHK}
+\citep{hawarden_2001}, IRAS 12, 25, 60 and 100\,$\mu$m
+\citep{neugebauer_1984} and SCUBA \textit{450WB} and \textit{850WB}
+\citep{holland_1999}. For further information on these magnitudes,
+such as the filter responses used and the adopted zeropoints please
+refer to the website.
+
+\textit{Monochromatic fluxes}
+
+In addition to the magnitudes derived for each of these bands
+monochromatic fluxes have also been derived for all bands listed
+above. These have been derived following closely the methods of
+\cite{robitaille_2006}, extended to further passbands. For details
+of the assumed SED shape, central wavelengths and bandpasses adopted
+please refer to the website. The derivations of these monochromatic
+fluxes will be detailed in a coming paper, which details a fitting
+tool associated with these data.
+
 \section{Consistency Checks}
 \label{consistency}
 
@@ -1934,7 +1971,7 @@ to match. Therefore, we must conclude that the most likely cause of
 the mismatch is due to improvements in the model atmospheres available
 online\footnote{http://perso.ens-lyon.fr/france.allard/} (this is
 likely as the models available online, have a later time stamp,
-$\approx$ 2005 compared to 2000). For the final published magnitudes,
+$\approx$\,2005 compared to 2000). For the final published magnitudes,
 for the naked systems, we have used a similar wavelength resolution as
 in our BDD systems, i.e. 200 logarithmically spaced points. This means
 that magnitudes derived from these spectra will differ slightly from
@@ -2002,42 +2039,6 @@ excellently defined system of \cite{bessell_1998}, and
 subsequent conversions to the required \textit{CIT} system
 \citep{leggett_1992}, was prescribed to an update in the model
 atmospheres available online.
-
-\section{Website}
-\label{website}
-
-As stated throughout this paper the data presented are available from
-a web page\footnote{http://www.astro.ex.ac.uk/research/bd\textunderscore disc}.
-
-\subsection{Available Data}
-\label{web_data}
-
-The magnitudes and colours presented in this paper are available both
-as individual magnitudes and as isochrones or mass tracks. Photometric
-magnitudes have also been derived for several other systems and are
-available online. These are Johnson, Cousins \textit{UBVRI(JHK)}
-\citep{johnson_1966,bessell_2005}, \textit{Tycho} $V_t$ and $B_t$
-\citep{bessell_2000}, Bessell \textit{UBVRIJHKL}
-\citep{bessell_1988,bessell_1998}, SDSS \textit{UGRIZ}
-\citep{fukugita_1996}, 2MASS $JHK_s$
-\citep{cohen_2003,skrutskie_2006}, MKO \textit{JHK}
-\citep{simons_2002,tokunaga_2002}, UKIRT \textit{ZYJHK}
-\citep{hawarden_2001}, IRAS 12, 25, 60 and 100\,$\mu$m
-\citep{neugebauer_1984} and SCUBA \textit{450WB} and \textit{850WB}
-\citep{holland_1999}. For further information on these magnitudes,
-such as the filter responses used and the adopted zeropoints please
-refer to the website.
-
-\textit{Monochromatic fluxes}
-
-In addition to the magnitudes derived for each of these bands
-monochromatic fluxes have also been derived for all bands listed
-above. These have been derived following closely the methods of
-\cite{robitaille_2006}, extended to further passbands. For details
-of the assumed SED shape, central wavelengths and bandpasses adopted
-please refer to the website. The derivations of these monochromatic
-fluxes will be detailed in a coming paper, which details a fitting
-tool associated with these data.
 
 \label{lastpage}
 \end{document}
