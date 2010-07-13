@@ -96,7 +96,7 @@ module sph_data_class
   type(sph_data), save :: sphdata
   integer, save :: npart
 
-  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:), xarray(:), etaarray(:), tempetaarray(:)
+  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:), xarray(:), etaarray(:)
   Integer, allocatable :: indexArray(:)
   integer,save :: nparticles
   real(double), save :: rcrit, rmax
@@ -1344,7 +1344,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone, RhoMin, RhoMax)
-    USE input_variables, only: hcritPercentile, hmaxPercentile, sph_norm_limit
+    USE input_variables, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull
     USE constants_mod, only: tcbr
 
     type(vector), intent(in) :: point
@@ -1386,7 +1386,7 @@ contains
     integer :: subcell
     integer, save :: prevsubcell
 
-    
+
     if(present(rhomin)) then
        rhomin = 1d30
        rhomax = -1d30
@@ -1416,7 +1416,6 @@ contains
        allocate(PositionArray(3,npart)) ! allocate memory
        allocate(xArray(npart))
        allocate(q2Array(npart))
-       allocate(tempetaArray(npart))
        allocate(etaArray(npart)) ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
        allocate(RhoArray(npart))
        allocate(TemArray(npart))
@@ -1429,7 +1428,7 @@ contains
        allocate(HullArray(npart))
 
 
-       PositionArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0; etaarray = 0.d0; tempetaarray = 0.d0
+       PositionArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0; etaarray = 0.d0
 
        Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
        xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
@@ -1558,7 +1557,7 @@ contains
     if(done) then
        if (allocated(PositionArray)) then
           deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, tempPosArray, &
-               q2Array, HullArray, etaarray, tempetaarray, RhoH2Array)
+               q2Array, HullArray, etaarray, RhoH2Array)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
@@ -1661,21 +1660,27 @@ contains
 
        elseif(param .eq. 2) then
 
-          if(any(HullArray(indexarray(1:nparticles)))) then
-             fac = 1.d0
-          else
-             fac = 1.d0 / sumWeight
-!             fac = 1.d0
-          endif
+          if ( useHull ) then 
+             if(any(HullArray(indexarray(1:nparticles)))) then
+                fac = 1.d0
+             else
+                fac = 1.d0 / sumWeight
+             endif
           
-          if(sumweight .gt. sph_norm_limit) then
-             HullArray(indexarray(1:nparticles)) = .false.
-!          if(sumweight .gt. sph_norm_limit) then
-!             fac = 1.d0 / sumWeight
+             if(sumweight .gt. sph_norm_limit) then
+                HullArray(indexarray(1:nparticles)) = .false.
+             else
+                HullArray(indexarray(1:nparticles)) = .true.
+             endif
           else
-             HullArray(indexarray(1:nparticles)) = .true.
-          endif
-          
+             if(sumweight .gt. sph_norm_limit) then
+                fac = 1.d0 / sumWeight
+             else
+                fac = 1.0
+             end if
+          end if
+ 
+
           do i = 1, nparticles
              paramValue(3) = paramValue(3) + partArray(i) * TemArray(indexArray(i)) ! Temperature
              paramValue(4) = paramValue(4) + partArray(i) * RhoArray(indexArray(i)) ! rho
@@ -1860,7 +1865,6 @@ contains
                 partcount = partcount + 1
                 indexArray(partcount) = testIndex
                 q2array(partcount) = q2test
-                tempetaarray(partcount) = etaarray(testindex)
              endif
           endif
        endif

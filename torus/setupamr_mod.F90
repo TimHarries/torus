@@ -295,7 +295,8 @@ contains
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
 
-          if(geometry .eq. 'molcluster'.or. geometry == "theGalaxy" ) then
+          if( geometry .eq. 'molcluster'.or. geometry == "theGalaxy" ) then
+             totalmasstrap = 0.0
              call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
              write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
              call writeInfo(message, TRIVIAL)

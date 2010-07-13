@@ -376,6 +376,7 @@ module input_variables
   real :: hmaxPercentile
   real :: sph_norm_limit
   integer :: kerneltype
+  logical :: useHull
 
   logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
 

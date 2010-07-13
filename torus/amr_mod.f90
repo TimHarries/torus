@@ -1237,7 +1237,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
     
-!    USE input_variables, ONLY : useHartmannTemp
+    USE input_variables, ONLY : cylindrical, amr3d !, useHartmannTemp
     USE cluster_class, ONLY:    assign_grid_values 
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
@@ -1288,26 +1288,36 @@ CONTAINS
           if(thisoctal%haschild(subcell)) then 
              continue
           else
-             if(firsttime) then
-                call CPU_TIME(tstart)
-                firsttime = .false.
-             endif
 
-             if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
-                CALL CPU_TIME(T1)
-                if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
-                recentoctal => thisoctal
-                CALL fillDensityCorners(thisOctal,grid,clusterdensity, clustervelocity, thisOctal%threed)
-                thisOctal%velocity = thisoctal%cornervelocity(14)
-             endif
+             if ( amr3d .and. .not. cylindrical) then
 
-             call assign_grid_values(thisOctal,subcell)
+                if(firsttime) then
+                   call CPU_TIME(tstart)
+                   firsttime = .false.
+                endif
 
-             counter = counter + 1
-             CALL CPU_TIME(T2)
-             if (writeoutput) write(112, *) counter, t2 - t1, t2 - tstart
-          endif
+                if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+                   CALL CPU_TIME(T1)
+                   if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
+                   recentoctal => thisoctal
+                   CALL fillDensityCorners(thisOctal,grid,clusterdensity, clustervelocity, thisOctal%threed)
+                   thisOctal%velocity = thisoctal%cornervelocity(14)
+                endif
+
+                call assign_grid_values(thisOctal,subcell)
+
+                counter = counter + 1
+                CALL CPU_TIME(T2)
+                if (writeoutput) write(112, *) counter, t2 - t1, t2 - tstart
           
+             else
+             
+                call assign_grid_values(thisOctal,subcell)
+
+             end if
+
+          end if
+
 !          CASE("molebench")
 !             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
 
@@ -8878,7 +8888,9 @@ end function readparameterfrom2dmap
 
           dv = cellVolume(thisOctal, subcell)
           totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
-          if(present(totalmasstrap)) totalMassTrap = totalMassTrap + (1.d30) * averagerhofromoctal(thisoctal,subcell) * dv
+          if(present(totalmasstrap) .and. associated(thisOctal%cornerRho)) then 
+             totalMassTrap = totalMassTrap + (1.d30) * averagerhofromoctal(thisoctal,subcell) * dv
+          end if
 
           if (PRESENT(minRho)) then
              if (thisOctal%rho(subcell) > 1.d-40) then
