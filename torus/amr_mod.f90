@@ -3545,7 +3545,7 @@ CONTAINS
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
-         smoothInnerEdge, ttauriRinner
+         smoothInnerEdge, ttauriRinner, amr2d
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4276,6 +4276,9 @@ CONTAINS
       if ( thisOctal%cylindrical ) then
          n_bin_az = nint(twoPi / thisOctal%dPhi)
          massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
+      else if ( amr2d ) then
+         cellCentre = subcellCentre(thisOctal,subCell)
+         massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
       else
          massPerCell = amrlimitscalar
       end if
