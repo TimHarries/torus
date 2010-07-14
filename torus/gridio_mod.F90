@@ -428,7 +428,6 @@ contains
           call writeAttributeStaticFlexi(20, "inStar", thisOctal%inStar, fileFormatted)
           call writeAttributeStaticFlexi(20, "inFlow", thisOctal%inFlow, fileFormatted)
           call writeAttributeStaticFlexi(20, "velocity", thisOctal%velocity, fileFormatted)
-          call writeAttributeStaticFlexi(20, "cornervelocity", thisOctal%cornervelocity, fileFormatted)
           
           call writeAttributeStaticFlexi(20, "xMax", thisOctal%xMax, fileFormatted)
           call writeAttributeStaticFlexi(20, "yMax", thisOctal%yMax, fileFormatted)
@@ -437,6 +436,7 @@ contains
           call writeAttributeStaticFlexi(20, "yMin", thisOctal%yMin, fileFormatted)
           call writeAttributeStaticFlexi(20, "zMin", thisOctal%zMin, fileFormatted)
           
+          call writeAttributePointerFlexi(20, "cornervelocity", thisOctal%cornervelocity, fileFormatted)
           call writeAttributePointerFlexi(20, "chiLine", thisOctal%chiLine, fileFormatted)
           call writeAttributePointerFlexi(20, "etaLine", thisOctal%etaLine, fileFormatted)
           call writeAttributePointerFlexi(20, "etaCont", thisOctal%etaCont, fileFormatted)
@@ -3126,7 +3126,7 @@ contains
          case("velocity")
             call readArrayFlexi(20, thisOctal%velocity, fileFormatted)
          case("cornervelocity")
-            call readArrayFlexi(20, thisOctal%cornervelocity, fileFormatted)
+            call readPointerFlexi(20, thisOctal%cornervelocity, fileFormatted)
          case("cornerrho")
             call readPointerFlexi(20, thisOctal%cornerrho, fileFormatted)
          case("chiLine")
@@ -3415,7 +3415,7 @@ contains
          case("velocity")
             call receiveArrayFlexi(thisOctal%velocity)
          case("cornervelocity")
-            call receiveArrayFlexi(thisOctal%cornervelocity)
+            call receivePointerFlexi(thisOctal%cornervelocity)
          case("cornerrho")
             call receivePointerFlexi(thisOctal%cornerrho)
          case("chiLine")
@@ -3655,7 +3655,6 @@ contains
       call sendAttributeStaticFlexi(iThread, "inStar", thisOctal%inStar)
       call sendAttributeStaticFlexi(iThread, "inFlow", thisOctal%inFlow)
       call sendAttributeStaticFlexi(iThread, "velocity", thisOctal%velocity)
-      call sendAttributeStaticFlexi(iThread, "cornervelocity", thisOctal%cornervelocity)
 
       call sendAttributeStaticFlexi(iThread, "xMax", thisOctal%xMax)
       call sendAttributeStaticFlexi(iThread, "yMax", thisOctal%yMax)
@@ -3664,6 +3663,7 @@ contains
       call sendAttributeStaticFlexi(iThread, "yMin", thisOctal%yMin)
       call sendAttributeStaticFlexi(iThread, "zMin", thisOctal%zMin)
 
+      call sendAttributePointerFlexi(iThread, "cornervelocity", thisOctal%cornervelocity)
       call sendAttributePointerFlexi(iThread, "chiLine", thisOctal%chiLine)
       call sendAttributePointerFlexi(iThread, "etaLine", thisOctal%etaLine)
       call sendAttributePointerFlexi(iThread, "etaCont", thisOctal%etaCont)

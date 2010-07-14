@@ -9477,7 +9477,6 @@ end function readparameterfrom2dmap
     dest%parentSubcell =   source%parentSubcell
     dest%subcellSize =  source%subcellSize
     dest%gasOpacity =  source%gasOpacity 
-    dest%cornerVelocity =  source%cornerVelocity
 
     dest%xMax = source%xMax
     dest%yMax = source%yMax
@@ -9497,6 +9496,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%biasCont3d, source%biasCont3d)
     call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
+    call copyAttribute(dest%cornerVelocity, source%cornerVelocity)
 
     call copyAttribute(dest%probDistLine, source%probDistLine)
     call copyAttribute(dest%probDistCont,  source%probDistCont)
@@ -12450,6 +12450,8 @@ end function readparameterfrom2dmap
 
   subroutine myScaleSmooth(factor, grid, converged, &
        inheritProps, interpProps, stellar_cluster, romData)
+    use memory_mod, only : globalMemoryFootprint
+    use input_variables, only : maxMemoryAvailable
     type(gridtype) :: grid
     real :: factor
     integer :: nTagged
@@ -12469,6 +12471,7 @@ end function readparameterfrom2dmap
     call tagScaleSmooth(nTagged, factor, grid%octreeRoot, grid,  converged, &
          inheritProps, interpProps, stellar_cluster, romData)
     call splitTagged(grid%octreeRoot, grid, inheritProps, interpProps, stellar_cluster, romData)
+    if (globalMemoryFootprint > maxMemoryAvailable) converged = .true.
 
   end subroutine myScaleSmooth
 
@@ -15495,7 +15498,7 @@ IF ( .NOT. gridConverged ) RETURN
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
-         lineEmission, atomicPhysics, photoionPhysics, dustPhysics!, storeScattered
+         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -15504,6 +15507,11 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
+
+    if (atomicPhysics.or.molecularPhysics.or.h21cm) then
+       call allocateAttribute(thisOctal%cornerVelocity, 27)
+    endif
+
 
     if ( h21cm ) then 
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)

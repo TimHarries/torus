@@ -301,7 +301,7 @@ module angularImage
 !$OMP PARALLEL default(none), private(ipixels, jpixels, this_gal_lon, this_gal_lat, viewvec),  &
 !$OMP private(viewvec_x, viewvec_y, viewvec_z), &
 !$OMP shared(npixels, galaxyPositionAngle, galaxyInclination, grid, thisMolecule), &
-!$OMP shared(ix1, ix2, cube, theta_axis, phi_axis, iTrans, deltaV, subpixels, imagegrid)
+!$OMP shared(ix1, ix2, cube, theta_axis, phi_axis, iTrans, deltaV, subpixels, imagegrid, vel_chan_num, nv)
       do jpixels = 1, npixels ! raster over image
 !$OMP DO
          do ipixels = ix1, ix2

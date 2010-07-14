@@ -6,7 +6,7 @@ module inputs_mod
   use kind_mod
   use input_variables
   use constants_mod
-  use utils_mod, only: file_line_count
+  use utils_mod, only: file_line_count, testFileExists
 
   implicit none
 
@@ -61,6 +61,8 @@ contains
     if (writeoutput) then
        call writeInfo("Parameters file is: "//trim(paramFile),TRIVIAL)
     endif
+
+    call testFileExists(paramFile)
 
     nLines = file_line_count(paramfile)
     ! nLines+1 element of cline is used in loop which reads parameter file
@@ -174,7 +176,7 @@ contains
 
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
-         "Maximum memory available (Mb): ","(a,i12,a)", 1000, ok, .false.)
+         "Maximum memory available (Mb): ","(a,i12,a)", 1500, ok, .false.)
     maxMemoryAvailable = maxMemoryAvailable * 1000000
 
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)

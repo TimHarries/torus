@@ -71,8 +71,8 @@ contains
     real(double) :: kappaScadb, kappaAbsdb
     integer(double) :: nDiffusion
     integer(double) :: nDiffusion_sub
-    integer(double) :: nMonte, nScat, nAbs
-    integer :: iMonte
+    integer(double) :: nScat, nAbs
+    integer(bigInt) :: nMonte, iMonte
     integer :: thisPhotonAbs
     real(oct) :: thisFreq
     real(oct) :: albedo
@@ -142,7 +142,7 @@ contains
     integer, dimension(:), allocatable :: photonBelongsRank
     integer, parameter :: tag = 0
     logical :: rankComplete
-    ! data space to store values from all processors
+    integer(bigInt) ::  np, n_rmdr, m  
     real :: buffer_real(nThreadsGlobal)     
 
     ! FOR MPI IMPLEMENTATION=======================================================
@@ -383,57 +383,34 @@ contains
           imonte_beg=1; imonte_end=nMonte  ! default value
 
 #ifdef MPI
-          !       ! Set the range of index for a photon loop used later.     
-          !       n_rmdr = MOD(nMonte,np)
-          !       m = nMonte/np
-          !
-          !       if (myRankGlobal .lt. n_rmdr ) then
-          !          imonte_beg = (m+1)*myRankGlobal + 1
-          !          imonte_end = imonte_beg + m
-          !       else
-          !          imonte_beg = m*myRankGlobal + 1 + n_rmdr
-          !          imonte_end = imonte_beg + m -1
-          !       end if
-          !   !    print *, ' '
-          !   !    print *, 'imonte_beg = ', imonte_beg
-          !   !    print *, 'imonte_end = ', imonte_end
-          !  
-          !      
-          !       !  Just for safety.
-          !       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
-          !          print *, 'Index out of range: i_beg and i_end must be ' 
-          !          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
-          !          print *, 'imonte_beg = ', imonte_beg
-          !          print *, 'imonte_end = ', imonte_end
-          !          stop
-          !       end if
+                 ! Set the range of index for a photon loop used later.     
+                 np = nThreadsGlobal
+                 n_rmdr = MOD(nMonte,np)
+                 m = nMonte/np
+          
+                 if (myRankGlobal .lt. n_rmdr ) then
+                    imonte_beg = (m+1)*myRankGlobal + 1
+                    imonte_end = imonte_beg + m
+                 else
+                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
+                    imonte_end = imonte_beg + m -1
+                 end if
+             !    print *, ' '
+             !    print *, 'imonte_beg = ', imonte_beg
+             !    print *, 'imonte_end = ', imonte_end
+            
+                
+                 !  Just for safety.
+                 if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
+                    print *, 'Index out of range: i_beg and i_end must be ' 
+                    print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
+                    print *, 'imonte_beg = ', imonte_beg
+                    print *, 'imonte_end = ', imonte_end
+                    stop
+                 end if
 
 
 
-
-          !====================================================================================
-          ! Splitting the innerPhoton loop for multiple processors.
-          if (myRankGlobal == 0) then
-             print *, ' '
-             print *, 'photonLoop computed by ', nThreadsGlobal-1, ' processors.'
-             print *, ' '
-
-             ! we will use an array to store the rank of the process
-             !   which will calculate each photon
-             allocate(photonBelongsRank(nMonte))
-
-             call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=100,tag=tag,&
-                  setDebug=.false.)
-             deallocate(photonBelongsRank) ! we don't really need this here. 
-          end if
-          !====================================================================================
-
-
-
-          if (myRankGlobal /= 0) then
-             mpiBlockLoop: do  
-                call mpiGetBlock(myRankGlobal,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
-                if (rankComplete) exit mpiBlockLoop  
 #endif    
 
                 !$OMP PARALLEL DEFAULT(NONE) &
@@ -449,8 +426,8 @@ contains
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
-                !$OMP PRIVATE(thermalPhoton, scatteredPhoton, loglam1, scalelam, scalenu) &
-                !$OMP SHARED(logNu1, fac1dnu) &
+                !$OMP PRIVATE(thermalPhoton, scatteredPhoton) &
+                !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
                 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
                 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
@@ -461,7 +438,7 @@ contains
 
 
                 photonloop: do iMonte = imonte_beg, imonte_end
-
+                   write(*,*) iMonte
 !                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
@@ -652,12 +629,6 @@ contains
                 enddo photonLoop
                 !$OMP END DO
                 !$OMP CRITICAL (update)
-
-#ifdef MPI
-                if (.not.blockHandout) exit mpiblockloop        
-             end do mpiBlockLoop
-          end if ! (myRankGlobal /= 0)
-#endif
 
           nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
           nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP

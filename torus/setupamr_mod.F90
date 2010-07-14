@@ -60,6 +60,7 @@ contains
     character(len=80) :: message
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
+    integer :: nUnrefine
     constantAbundance = .true.
 
 #ifdef MPI
@@ -335,7 +336,16 @@ contains
 #endif
 
 
-
+!        pause
+!       gridConverged = .false.
+!       do while(.not.gridconverged)
+!          gridconverged = .true.
+!          nUnrefine = 0
+!          call unrefineBack(grid%octreeRoot, grid, 1.125d0, 100.d0*autocm/1.d10, dble(grid%rinner), &
+!               nUnrefine, gridconverged)
+!          if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+!       end do
+!       pause
 !        call bigarraytest(grid%octreeRoot)
 !    call findTotalMemory(grid, i)
 !    call reportMemory(i)

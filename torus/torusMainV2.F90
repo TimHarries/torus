@@ -111,7 +111,6 @@ program torus
   call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
   call freeGrid(grid)
   call freeGlobalSourceArray()
-
 #ifdef MPI
   call torus_mpi_barrier
   call freeAMRCOMMUNICATOR

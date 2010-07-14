@@ -1455,7 +1455,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image, screened) &
 !$OMP SHARED(yArray, statArray, stokesImage, obsImageSet, doPvimage) &
 !$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
-!$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, maxScat, mie) &
+!$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, mie, noScattering) &
 !$OMP SHARED(miePhase, zeroVec, theta1, theta2, chanceHotRing) &
 !$OMP SHARED(nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, chanceDust) &
 !$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &

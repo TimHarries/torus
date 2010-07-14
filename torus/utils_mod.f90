@@ -65,6 +65,19 @@ module utils_mod
 
 contains
 
+  subroutine testFileExists(thisFile)
+    character(len=*) :: thisFile
+    integer :: error
+    open(53, file=thisFile, status="old",form="formatted", iostat=error)
+
+    if (error /= 0) then
+       call writeFatal("Error opening file: "//trim(thisFile))
+       stop
+    else
+       close(53)
+    endif
+  end subroutine testFileExists
+
   ! solve a quadratic equation
 
 
