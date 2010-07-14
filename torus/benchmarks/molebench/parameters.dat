@@ -1,7 +1,6 @@
 writeoutput T
 
 geometry molebench
-%geometry h2obench
 
 ! molecular stuff
 molecular T
