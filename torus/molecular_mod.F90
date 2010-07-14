@@ -825,7 +825,7 @@ module molecular_mod
 
      use grid_mod, only: freeGrid
      use sph_data_class, only: Clusterparameter
-     use input_variables, only : blockhandout, tolerance, lucyfilenamein, openlucy,&
+     use input_variables, only : blockhandout, tolerance, &!lucyfilenamein, openlucy,&
           usedust, amr1d, amr3d, plotlevels, gettau, &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
      use messages_mod, only : myRankIsZero
@@ -1429,7 +1429,7 @@ module molecular_mod
   enddo
   
   close(33)
-  666 continue
+!  666 continue
 end subroutine molecularLoop
 
 !!! find the radiation incident at a point in a cell from a pencil beam along a particular direction
@@ -2119,7 +2119,7 @@ endif
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
                           iter, nVoxels,fixedrays)
 
-     use input_variables, only : tolerance, dongstep, initnray
+     use input_variables, only : tolerance, dongstep
 
      type(octal), pointer   :: thisOctal
      real(double) :: maxFracChangePerLevel(:),  avgFracChange(:,:)
@@ -3641,7 +3641,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      real(double) :: molarray(minlevel,3),rarray(3),molout(minlevel)
      real(double) :: rminus, rcen, rplus, tval
      type(VECTOR) :: dir,pplus,pminus
-     integer :: itrans,ilevel
+     integer :: ilevel!,itrans
 
      iter = grand_iter
 
@@ -4301,7 +4301,7 @@ end subroutine plotdiscValues
   
   subroutine updateLevels(grid, nvoxels, fixedrays, maxRMSFracChange)
     
-    use input_variables, only : tolerance, dongstep, initnray, outputconvergence
+    use input_variables, only : tolerance, dongstep, outputconvergence
 
     integer :: nvoxels
     logical :: fixedrays
@@ -4593,7 +4593,7 @@ END SUBROUTINE sobseq
 
 subroutine compare_molbench(diffmax)
 
-  use input_variables, only : tolerance
+!  use input_variables, only : tolerance
 
   implicit none 
 
@@ -4620,8 +4620,8 @@ subroutine compare_molbench(diffmax)
   integer :: diffmaxloc(2)!, diffmaxr(1)
   integer :: nlines, status, i
 ! Status = 1 is a pass, 0 is a numerical fail, -1 is an incomplete file
-  max_diff = 2.d0 * tolerance * sqrt(89.d0) ! sqrt(Nvoxels)
-
+!  max_diff = 2.d0 * tolerance * sqrt(89.d0) ! sqrt(Nvoxels)
+  max_diff = 0.05
   diff = -999.
   diffmax = -1.
 
@@ -5402,7 +5402,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
      integer :: iupper, ilower
      real(double) :: nlower, nupper
 
-     logical :: lineimage
+!     logical :: lineimage
      
 !     real(double) :: dpos
 !     type(VECTOR) :: curpos

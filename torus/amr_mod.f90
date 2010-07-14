@@ -16985,8 +16985,6 @@ IF ( .NOT. gridConverged ) RETURN
   end function molebenchDensity
 
   real(double) function ggtauDensity(position,grid) result(rho)
-
-    use input_variables, only : molAbundance 
     
     type(vector) :: position
     type(gridtype) :: grid
