@@ -171,7 +171,7 @@ module amr_utils_mod
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
 !      type(vector) :: rVec
-      real(double) :: fac
+      real(double),pointer :: fac
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
@@ -227,7 +227,8 @@ module amr_utils_mod
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
           fac = -2.d0
           fac = sqrt(fac)
-          do;enddo
+          allocate(fac)
+          allocate(fac)
        endif
           if(.not. suppresswarnings) then
                 STOP

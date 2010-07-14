@@ -438,7 +438,6 @@ contains
 
 
                 photonloop: do iMonte = imonte_beg, imonte_end
-                   write(*,*) iMonte
 !                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
