@@ -25,6 +25,21 @@ do
     fi
 done
 
+echo  >> ${LOG_FILE}
+echo "Checking if memory has been freed OK ..." >> ${LOG_FILE}
+echo  >> ${LOG_FILE}
+for file in benchmarks_*/benchmarks/*/run_log*
+do
+    num_not_freed=`/usr/bin/grep "Remaining memory:" ${file} | /usr/bin/wc -l`
+    if [[ ${num_not_freed} -gt 0 ]]; then
+	this_file=`basename ${file}`
+	echo "WARNING: Unfreed memory in ${this_file}" >> ${LOG_FILE}
+    fi
+done
+echo >> ${LOG_FILE}
+echo "Finished checking memory" >> ${LOG_FILE}
+echo  >> ${LOG_FILE}
+
 subject_line=" " 
 
 # Test for success of disc benchmark
