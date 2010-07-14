@@ -46,13 +46,13 @@ program compare_molbench
         write(*,*) "TORUS: Test failed"
         exit
      end if
-
+     if(nlines .gt. 2 .and. nlines .lt. 98) then
      diff(1:ncheck,nlines) = abs(model_J(1:ncheck) - bench_J(1:ncheck)) / bench_J(1:ncheck) 
      diffmax = maxval(diff(1:ncheck,:))
      diffmaxloc = maxloc(diff(1:ncheck,:))
 
      write(*,'(7(tr2,es12.5))') model_R, diff(1:ncheck,nlines)
-
+     endif
   end do
 
   write(*,*) "Maximum difference = ",diffmax
