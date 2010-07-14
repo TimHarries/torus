@@ -7766,7 +7766,7 @@ CONTAINS
        thisOctal%temperature(subcell) = 40.
        thisOctal%velocity(subcell) = vector(0d-20,0d-20,0d-20)
        thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
-                                      / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
+                                      / (18.0 * amu))) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
   end subroutine WaterBenchmark1
 
@@ -7811,7 +7811,7 @@ CONTAINS
        thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
        thisOctal%velocity(subcell) = WaterBenchmarkvelocity(subcellCentre(thisOctal,subcell),grid)
        thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
-                                      / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
+                                      / (18.0 * amu))) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
 
    CALL fillVelocityCorners(thisOctal,grid,WaterBenchmarkVelocity,thisOctal%threed)
@@ -8311,7 +8311,7 @@ end function readparameterfrom2dmap
        v1 = 100. * r1
        vel = point
        call normalize(vel)
-       WaterBenchmarkVelocity = (v1/cSpeed) * vel
+       WaterBenchmarkVelocity = (v1*1e5/cSpeed) * vel
     endif
 
   end FUNCTION WaterBenchmarkVelocity
@@ -16984,6 +16984,34 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end function molebenchDensity
 
+  real(double) function ggtauDensity(position,grid) result(rho)
+
+    use input_variables, only : molAbundance 
+    
+    type(vector) :: position
+    type(gridtype) :: grid
+    real(double) :: r,nh20,H0,H,z,nh2
+
+    r = sqrt(position%x**2+position%y**2) ! cylindrical
+    r = r * 6.68458134e-06! (torus units to 100's of AUs)
+
+    z = 6.68458134e-04 * position%z !in AU
+
+    nh20 = 6.3e9
+    H0 = 14.55
+
+    H = H0 * r * sqrt(sqrt(r))  !H0*r^(5/4) r in 100s of AU and H in AU
+
+    if(r .gt. 1.8 .and. r .lt. 8.) then
+       nh2 = nh20 * (r **(-2.75)) * exp(-((z/H)**2))!(in cm-3) 
+       rho = nh2  * 2. * mHydrogen
+    else
+       nh2 = 1.d-60
+       rho = 1.d-60 * 2. * mhydrogen
+    endif
+
+  end function ggtauDensity
+  
   real(double) function averagerhofromoctal(thisoctal,subcell) result(rho)
     
     type(OCTAL) :: thisoctal
