@@ -34,7 +34,6 @@ contains
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104
 #ifdef MPI
-    use input_variables, only : blockhandout
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
 #endif
@@ -139,9 +138,7 @@ contains
     ! For MPI implementations =====================================================
     integer ::   ierr           ! error flag
     !  integer ::   n_rmdr, m      !
-    integer, dimension(:), allocatable :: photonBelongsRank
     integer, parameter :: tag = 0
-    logical :: rankComplete
     integer(bigInt) ::  np, n_rmdr, m  
     real :: buffer_real(nThreadsGlobal)     
 

@@ -60,7 +60,7 @@ contains
     character(len=80) :: message
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
-    integer :: nUnrefine
+!    integer :: nUnrefine
     constantAbundance = .true.
 
 #ifdef MPI
