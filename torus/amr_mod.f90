@@ -242,7 +242,7 @@ CONTAINS
 !       call assign_density(thisOctal,subcell, grid%geometry, stellar_cluster)
 
        thisoctal%rho(subcell) = -9.9d99
-       thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+       if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
     CASE("wr104")
        ! using a routine in cluster_class.f90

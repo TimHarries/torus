@@ -65,7 +65,7 @@ module sph_data_class
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
      ! Density of H2
-     real(double), pointer, dimension(:) :: rhoH2
+     real(double), pointer, dimension(:) :: rhoH2 => null()
      ! Temperature of the gas particles
      real(double), pointer, dimension(:) :: temperature
      ! Smoothing lengths of the sink particles
