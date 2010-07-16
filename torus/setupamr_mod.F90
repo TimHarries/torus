@@ -820,7 +820,6 @@ contains
           child => thisOctal%child(i)
           call myFreeGrid(child)
        enddo
-       write(*,*) "deallocating at depth ",thisOctal%nDepth
        deallocate(thisOctal%child)
     endif
 

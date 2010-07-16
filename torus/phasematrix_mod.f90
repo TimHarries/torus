@@ -71,6 +71,8 @@ module phasematrix_mod
   real, allocatable, private, save :: prob(:,:), probtemp(:), cosArray(:)
   logical, save, private :: setupMieDir = .true.
 
+!$OMP THREADPRIVATE (prob, probtemp, cosArray, setupMieDir)
+
 contains
 
   ! this function applies a phase matrix to a stokes vector
@@ -399,6 +401,8 @@ contains
     type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     integer :: i, j
     logical, save :: firstTime = .true.
+
+!$OMP THREADPRIVATE(firstTime)
 
     do i = 1, nDustType
        do j = 1, nLambda

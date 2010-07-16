@@ -149,7 +149,7 @@ contains
     type(VECTOR) :: ZeroVec = VECTOR(0.d0,0.d0,0.d0)
     real(double) :: m, oneOverM
     logical, save :: firstTime = .true.
-
+    !$OMP THREADPRIVATE(firstTime)
     if (a .eq. ZeroVec) then
        if (firstTime) then
           write(*,'(a)') "! Attempt to normalize the zero vector"
@@ -527,7 +527,7 @@ contains
     type(VECTOR) :: OUT
     type(VECTOR), save :: outprev, rvecprev
     type(VECTOR),intent(in) :: rVec
-
+    !$OMP THREADPRIVATE(outprev, rvecprev)
     if(rvec .eq. rvecprev) then
        out = outprev
     else

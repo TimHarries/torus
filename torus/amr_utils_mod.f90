@@ -583,13 +583,14 @@ module amr_utils_mod
     ! true if the point lies within the boundaries of the current octal
   
     use input_variables, only : hydrodynamics
+    use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(vector), INTENT(IN) :: point
     TYPE(vector)             :: octVec2D
     real(double)                  :: r, phi, dphi, eps
-    logical, optional :: alreadyRotated
+    logical, intent(in), optional :: alreadyRotated
     logical :: doRotate
 
     doRotate = .true.

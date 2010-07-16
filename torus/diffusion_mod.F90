@@ -254,11 +254,11 @@ contains
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
 !$OMP PRIVATE(neighbourOctal, neighbourSubcell, enplus1, firsttime, deltax, deltat) &
-!$OMP PRIVATE(deltaE, octalarray, grade, dcoeffhalf, lambda, bigr) &
+!$OMP PRIVATE(deltaE, grade, dcoeffhalf, lambda, bigr) &
 !$OMP PRIVATE(phi, DeltaPhi, rVec, DeltaR, DeltaZ) &
-!$OMP SHARED(overCorrect) & 
+!$OMP SHARED(overCorrect, octalArray) & 
 !$OMP SHARED(grid, tol, demax, ioctal_beg, ioctal_end) 
-!$OMP DO SCHEDULE(runtime)
+!$OMP DO SCHEDULE(static)
     do iOctal =  iOctal_beg, iOctal_end
 
        thisOctal => octalArray(iOctal)%content
@@ -624,10 +624,10 @@ contains
                       enPlus1 = arad*(10.d0**4)
                    endif
                 endif
-                          thisOctal%eDens(subcell) = enPlus1
-!                thisOctal%chiline(subcell) = enPlus1
-                          thisOctal%temperature(subcell) = sqrt(sqrt(enPlus1 * OneOveraRad))
-
+                !$OMP CRITICAL
+                thisOctal%eDens(subcell) = enPlus1
+                thisOctal%temperature(subcell) = sqrt(sqrt(enPlus1 * OneOveraRad))
+                !$OMP END CRITICAL
                 deltaE = abs(enPlus1-thisOctal%oldeDens(subcell)) &
                      / thisOctal%oldEdens(subcell)
                 deMax = max(deMax, deltaE)

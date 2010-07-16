@@ -108,11 +108,13 @@ contains
     
     if (dum_i.eq.1) then ! the first call in pair 
        !cpu_start(id_num) = ETIME(time_array)
-       call CPU_TIME(cpu_start(id_num))
+!       call CPU_TIME(cpu_start(id_num))
+       call wallTime(cpu_start(id_num))
        
     elseif (dum_i.eq.0) then ! the second call in pair
        !cpu_time = ETIME(time_array) - cpu_start(id_num)
-       call CPU_TIME(cputime)
+!       call CPU_TIME(cputime)
+       call wallTime(cpuTime)
        cputime = cputime - cpu_start(id_num)
 !       minutes = NINT(cputime)/60 ! this is wrong! (RK)
        minutes = INT(cputime/60.)
@@ -131,6 +133,13 @@ contains
     return
   end subroutine tune
 
+
+  subroutine wallTime(rSec)
+    integer ::  count,countRate
+    real :: rSec
+    call system_clock(count=count,count_rate=countRate)
+    rSec = real(count)/real(countRate)
+  end subroutine wallTime
 
 end module timing
 

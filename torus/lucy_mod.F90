@@ -106,7 +106,7 @@ contains
     real:: percent_undersampled
     integer(double) :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: nKilled
-    integer       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
+    integer(bigInt)       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
     real(double)  :: kAbsArray(nlambda),kAbsArray2(nlambda)
     logical :: ok                             ! Did call to randomWalk complete OK?
     logical :: photonInDiffusionZone
@@ -352,10 +352,6 @@ contains
 
           call resetDirectGrid(grid%octreeRoot)
 
-          nInf_sub = 0
-          nScat_sub = 0
-          nAbs_sub = 0
-          nDiffusion_sub = 0
           nInf = 0
           nScat = 0
           nAbs = 0
@@ -410,6 +406,9 @@ contains
 
 #endif    
 
+#ifdef _OPENMP
+                 call testRandomOMP()
+#endif
                 !$OMP PARALLEL DEFAULT(NONE) &
                 !$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
                 !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
@@ -431,14 +430,19 @@ contains
                 !$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
 
 
-                !$OMP DO SCHEDULE(runtime)
+                 nInf_sub = 0
+                 nScat_sub = 0
+                 nAbs_sub = 0
+                 nDiffusion_sub = 0
 
-
+                !$OMP DO SCHEDULE(static)
                 photonloop: do iMonte = imonte_beg, imonte_end
 !                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
                    !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
+                   
+
                    thisPhotonAbs = 0
                    call randomSource(source, nSource, iSource)
                    thisSource = source(iSource)
@@ -538,7 +542,6 @@ contains
 
                             call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
                                  actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
-
                             t1 = dble(treal)
 
                             ! if the photon has come from the diffusion zone then it has to be
@@ -1719,6 +1722,7 @@ contains
 
              call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
                   actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
+
              do i = 1, nFreq
                 thisLam = (cSpeed / freq(i)) * 1.d8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -2098,7 +2102,7 @@ contains
 
 
 
- subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  &
+subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  &
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
@@ -2108,7 +2112,7 @@ contains
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
-   type(OCTAL),pointer :: oldOctal, sOctal
+   type(OCTAL),pointer :: oldOctal, sOctal, topOctal
    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
    logical :: scatteredPhoton
    integer :: foundSubcell
@@ -2131,11 +2135,10 @@ contains
 !   real(double) :: prob
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
-
    integer, optional :: ilamIn
    real(double), optional :: kappaScaOut, kappaAbsOut
-   integer, save :: iLamScat
-   logical, save :: firstTime = .true.
+!   integer, save :: iLamScat
+!   logical, save :: firstTime = .true.
 
 
    endSubcell = 0
@@ -2144,11 +2147,12 @@ contains
    ok = .true.
    photonInDiffusionZone = .false.
    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
+   topOctal => grid%octreeRoot
 
-   if (firstTime) then
-      call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
-      firstTime = .false.
-   endif
+!   if (firstTime) then
+!      call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
+!      firstTime = .false.
+!   endif
 
 
    if(.not. present(ilamIn)) then
@@ -2202,7 +2206,7 @@ contains
        rVec = rVec + tVal * uHat
        octVec = rVec
 
-       if (.not.inOctal(grid%octreeRoot, octVec)) then
+       if (.not.inOctal(topOctal, octVec)) then
           stillinGrid = .false.
           escaped = .true.
        endif
@@ -2221,8 +2225,17 @@ contains
 !            foundSubcell=tempsubcell)
 
        if (.not.escaped) then
-       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
-            foundSubcell=tempsubcell)
+
+          if (.not.inOctal(topOctal, octVec)) then
+             write(*,*) "photon outside grid but escaped is set to ",escaped,octVec
+             write(*,*) grid%octreeRoot%subcellsize,grid%octreeRoot%xMax, inOctal(topOctal, octVec), &
+                  inOctal(topOctal,rVec)
+          endif
+
+          tempOctal => sOctal
+          call findSubcellLocal(octVec, tempOctal, tempSubcell)
+!          call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
+!            foundSubcell=tempsubcell)
 
        sOctal => tempOctal
 
@@ -2236,8 +2249,10 @@ contains
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
 
-          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
-            foundSubcell=tempsubcell)
+          tempOctal => sOctal
+          call findSubcellLocal(rVec, tempOctal, tempSubcell)
+!          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
+!            foundSubcell=tempsubcell)
 
           sOctal => tempOctal
           if (tempOctal%diffusionApprox(tempsubcell)) then
@@ -2269,33 +2284,9 @@ contains
 
        endif
 
-!       write(*,*) tempOctal%centre,tempsubcell
-!       sOctal => tempOctal
-!       if (tempOctal%diffusionApprox(tempsubcell)) then
-!          photonInDiffusionZone = .true.
-!          if (tempOctal%leftHandDiffusionBoundary(subcell)) then
-!             leftHandBoundary = .true.
-!          else
-!             leftHandBoundary = .false.
-!          endif
-!          tempOctal%nDiffusion(tempsubcell) = tempOctal%nDiffusion(tempsubcell) + abs(uHat%z)
-!          diffusionZoneTemp = tempOctal%temperature(subcell)
-!          sourceOctal => grid%octreeRoot
-!!          call random_number(prob)
-!!          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
-!!          rVec = subcellCentre(sourceOctal, sourcesubcell)
-!          rVec = octVec
-!          call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
-!          octVec = rVec
-!          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
-!            foundSubcell=tempsubcell)
-!          sOctal => tempOctal
-!          if (tempOctal%diffusionApprox(tempsubcell)) then
-!             write(*,*) "! error - photon produced in diffusion zone 1..."
-!          endif
-!       endif
 
     endif
+
 ! check whether the photon has escaped from the grid
 
 
@@ -2313,8 +2304,8 @@ contains
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
-          if (storeScattered.and.(iLam==iLamScat)) &
-               call addMeanIntensity(octVec, thisOctal, subcell, uHat, tVal*1.d10)
+!          if (storeScattered.and.(iLam==iLamScat)) &
+!               call addMeanIntensity(octVec, thisOctal, subcell, uHat, tVal*1.d10)
 
 
 !$OMP END CRITICAL (changegrid)
@@ -2335,7 +2326,8 @@ contains
 !          tau = -log(r)  ! modified as above
 
           sOctal => thisOctal
-          call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, startOctal=sOctal,&
+
+          call amrGridValues(topOctal, octVec, iLambda=iLam,  foundOctal=thisOctal, startOctal=sOctal,&
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
 
@@ -2380,7 +2372,7 @@ contains
 
 ! the photon may have escaped the grid...
 
-    if (.not.inOctal(grid%octreeRoot, octVec))  escaped = .true.
+    if (.not.inOctal(topOctal, octVec))  escaped = .true.
 
  ! if not the photon must interact in this cell
     if (.not.escaped) then
@@ -2401,7 +2393,8 @@ contains
 !       else
 !          call intersectCubeAMR2D(grid, rVec, uHat, tVal)
 !       endif
-       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, &
+
+       call amrGridValues(topOctal, octVec, startOctal=oldOctal,iLambda=iLam, &
             foundOctal=thisOctal, foundSubcell=subcell, & 
             kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
 
@@ -2435,8 +2428,8 @@ contains
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
 
-          if (storeScattered.and.(iLam==iLamScat)) &
-               call addMeanIntensity(octVec, thisOctal, subcell, uHat, 1.d10*dble(tVal)*dble(tau)/thisTau)
+!          if (storeScattered.and.(iLam==iLamScat)) &
+!               call addMeanIntensity(octVec, thisOctal, subcell, uHat, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
 
 
@@ -2461,8 +2454,10 @@ contains
 ! this is a workaround due to numerical problems with long pathlengths
 ! and small cells. needs fixing.
 
-       call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
-            foundSubcell=tempsubcell)
+       tempOctal => sOctal
+       call findSubcellLocal(rVec, tempOctal, tempSubcell)
+!       call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
+!            foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
           call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
@@ -2470,7 +2465,7 @@ contains
           photonInDiffusionZone = .true.
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
-          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal,foundOctal=tempOctal, &
+          call amrGridValues(topOctal, rVec,  startOctal=sOctal,foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "! error - photon produced in diffusion zone 2..."
@@ -2484,7 +2479,7 @@ contains
     
 666 continue
 
- end subroutine toNextEventAMR
+  end subroutine toNextEventAMR
 
 
 #ifdef MPI
@@ -3756,6 +3751,43 @@ subroutine setBiasOnTau(grid, iLambda)
     enddo
 
   end subroutine refineDiscGrid
+
+#ifdef _OPENMP
+  subroutine testRandomOMP()
+    integer :: omp_get_num_threads, omp_get_thread_num
+    integer :: np
+    integer :: nTest = 100
+    real :: r
+    integer :: i, j 
+    integer, allocatable :: array(:,:)
+    logical :: allTheSame
+
+    allocate(array(1:nTest, 8))
+    !$OMP PARALLEL DEFAULT(NONE) &
+    !$OMP PRIVATE(r, i,j) &
+    !$OMP SHARED(array, np, ntest)
+    np =  omp_get_num_threads()
+    j = omp_get_thread_num()+1
+    do i = 1, nTest
+       call random_number(r)
+       array(i,j) = int(r*10000000.d0)
+    enddo
+    !$OMP END PARALLEL
+    !$OMP BARRIER
+    allTheSame = .true.
+    do i = 1, ntest
+       do j = 2, np
+          if (array(i,1) /= array(i,j)) then
+             allTheSame = .false.
+          endif
+       enddo
+    enddo
+    deallocate(array)
+    if (allTheSame) then
+       call writeFatal("OMP random sequences are the same")
+    endif
+  end subroutine testRandomOMP
+#endif
 
 end module lucy_mod
 

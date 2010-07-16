@@ -2511,7 +2511,7 @@ CONTAINS
 
     IMPLICIT NONE
 
-    TYPE(octal), POINTER              :: octalTree
+    TYPE(octal), POINTER, intent(in)              :: octalTree
     TYPE(vector), INTENT(IN)     :: point
     TYPE(vector)                 :: point2 ! may be projected point
     TYPE(octal), OPTIONAL, POINTER    :: startOctal
@@ -2616,8 +2616,13 @@ CONTAINS
 
        ! unrotated poistion should be passed here!
 
-       IF (PRESENT(velocity))  velocity = amrGridVelocity(octalTree,point,startOctal=resultOctal,&
-            actualSubcell=subcell) 
+       IF (PRESENT(velocity)) then
+          velocity = VECTOR(0.d0, 0.d0, 0.d0) 
+          if (associated(resultOctal%cornerVelocity)) then
+             velocity = amrGridVelocity(octalTree,point,startOctal=resultOctal,&
+                  actualSubcell=subcell) 
+          endif
+       ENDIF
 
 
 
@@ -2782,6 +2787,8 @@ CONTAINS
     logical, optional :: linearinterp
     logical :: linear
 
+    amrGridVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+
     weights = 0.d0
     if(present(linearinterp)) then
        linear = linearinterp
@@ -2820,6 +2827,8 @@ CONTAINS
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
    END IF
+
+   if (.not.associated(resultOctal%cornerVelocity)) goto 666
 
       inc = 0.5 * resultOctal%subcellSize
       centre = subcellCentre(resultOctal,subcell)
@@ -11538,6 +11547,7 @@ end function readparameterfrom2dmap
     integer(double),save :: nlambda
     real(double) :: tgas
     
+!$OMP THREADPRIVATE (firstTime, nLambda, tgasArray, oneKappaAbsT, oneKappaScaT)
 
     if ( present(reset_kappa) ) then 
        if ( reset_kappa ) then 
@@ -11717,7 +11727,7 @@ end function readparameterfrom2dmap
           if (ndusttype .eq. 1) then
              if (grid%nLambda == 1) then
                 kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
-                     grid%oneKappaAbs(i,1) * thisOctal%rho(subcell)
+                     grid%oneKappaAbs(1,1) * thisOctal%rho(subcell)
              else
                 kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
                   logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
@@ -12173,6 +12183,8 @@ end function readparameterfrom2dmap
     logical :: split, outofMemory
     logical, save :: firsttime = .true., firstTimeMem = .true.
     character(len=80) :: message
+
+!$OMP THREADPRIVATE (firstTime, firstTimeMem)
 
     kabs = 0.d0; ksca = 0.d0
 

@@ -326,7 +326,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      o6yarray(i) = 1.e-10
   enddo
 
-  if (mie) nOuterLoop = nLambda
+  if (mie.or.dustPhysics) nOuterLoop = nLambda
 
   allocate(errorArray(nOuterLoop,1:nLambda))
   allocate(varianceArray(1:nLambda))
@@ -1346,7 +1346,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            if (nSource > 0) then              
               if (.not.starOff) then
                  lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
-                 if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
+!                 if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
               else
                  lcore = tiny(lcore)
               endif
@@ -1470,9 +1470,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
         nFromEnv = 0
-!$OMP DO SCHEDULE(DYNAMIC)
+!$OMP DO SCHEDULE(static)
         innerPhotonLoop: do i = iInner_beg, iInner_end
-
+!           write(*,*) omp_get_thread_num(), i
 #ifdef MPI
  !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle innerPhotonLoop
 #endif

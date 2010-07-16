@@ -212,7 +212,6 @@ contains
     nullify(surface%nuarray) 
     nullify(surface%hnuarray) 
     
-    print *, 'Deallocated memory used for surface'
 
     
   end subroutine emptySurface
