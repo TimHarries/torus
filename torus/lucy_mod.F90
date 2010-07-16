@@ -2106,7 +2106,6 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
-   use input_variables, only : storeScattered, scatteredLightWavelength
    use diffusion_mod, only: randomwalk
 
    type(GRIDTYPE) :: grid
