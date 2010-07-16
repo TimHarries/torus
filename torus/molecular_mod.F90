@@ -378,6 +378,8 @@ module molecular_mod
      real(double) :: nupper(200), nlower(200)
      real(double) :: levelpops(200), alphanubase(200), nmol
 
+     !$OMP THREADPRIVATE( firstTime1, firstTime2, firstAbundanceWarning )
+
      inlte = isinlte
 
 !Code to handle a restart. Read in grid from file 
@@ -1147,26 +1149,34 @@ module molecular_mod
 
 ! we will use an array to store the rank of the process
 ! which will calculate each octal's variables
+
+            ! Set the range of index for octal loop used later.     
+            np = nThreadsGlobal
+            n_rmdr = MOD(nMonte,np)
+            m = nMonte/np
             
-            allocate(octalsBelongRank(size(octalArray)))
+            if (myRankGlobal .lt. n_rmdr ) then
+               ioctal_beg = (m+1)*myRankGlobal + 1
+               ioctal_end = ioctal_beg + m
+            else
+               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+               ioctal_end = ioctal_beg + m - 1
+            end if
+            
 
-            if (my_rank == 0) then
-               print *, ' '
-               print *, 'molecular  computed by ', np-1, ' processors.'
-               print *, ' '
-               call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-                    maxBlockSize=10,setDebug=.false.)
 
-            endif
-     ! ============================================================================
-
-            if (my_rank /= 0) then
-               blockLoop: do     
-                  call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-                  if (rankComplete) exit blockLoop 
 #endif
 
 ! iterate over all octals, all rays, solving the system self-consistently
+
+                !$OMP PARALLEL DEFAULT(NONE) &
+                !$OMP PRIVATE(iOctal, thisOctal) &
+		!$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix) &
+		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
+		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, fac, gettau, accstep) &
+		!$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
+		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans, maxerrorloc, warncount)
+                !$OMP DO SCHEDULE(static)
     do iOctal = ioctal_beg, ioctal_end
 
 !       if (debug .and. writeoutput) then
@@ -1287,11 +1297,12 @@ module molecular_mod
           endif ! if no child
        enddo ! all subcells
     enddo ! all octals
+!$OMP END DO
+
+    !$OMP BARRIER
+    !$OMP END PARALLEL
            
 #ifdef MPI
-           if (.not.blockHandout) exit blockloop
-        end do blockLoop
-     end if ! (my_rank /= 0)
 
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -1475,6 +1486,8 @@ end subroutine molecularLoop
      real(double) :: dv, deltaV
      real(double) :: dist, dds, tval, dvAcrossCell, projVel, endprojVel, CellEdgeInterval, phiProfVal
      real(double) :: r, nmol 
+
+!$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
 
 !Set/initialise runtime parameters
      if(firsttime) then
@@ -2517,7 +2530,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    
 !   real(double) :: sink
 
-
+!$OMP THREADPRIVATE (firstTime, r)
    if(firsttime) then
       
       call sobseq(rtemp,-1)
@@ -2678,7 +2691,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      real(double), allocatable :: tempArray(:), tempArray2(:)
 #endif
 
-
+!$OMP THREADPRIVATE( background )
 
 
 
@@ -3008,6 +3021,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      real(double), optional, intent(out) :: rhomax
      real(double), optional, intent(in) :: i0max
 
+!$OMP THREADPRIVATE( firstTime, haveBeenWarned, BnuBckGrnd)
+
      if(present(tautest)) then
         dotautest = tautest
      else
@@ -3328,7 +3343,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      logical,save :: firsttime = .true.
 
      real(double) :: dI
-
+     !$OMP THREADPRIVATE( firstTime, haveBeenWarned, bnuBackground)
      if(firsttime) then
         bnubackground = bnu(cspeed / (lambda * 1d-8), dble(tcbr))
         firsttime = .false.
@@ -3557,7 +3572,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      integer, save :: ilambda = 1
      real(double) :: kappaAbs
      real :: lambda
-
+     !$OMP THREADPRIVATE (ilambda)
      kappaAbs = 0.d0
 
      do subcell = 1, thisOctal%maxChildren
@@ -3643,6 +3658,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      type(VECTOR) :: dir,pplus,pminus
      integer :: ilevel!,itrans
 
+     !$OMP THREADPRIVATE (firstTime, logrinner, logrouter, oneovernradiusminusone, oneOverNangle, nradius, nangle)
      iter = grand_iter
 
      write(resultfile,'(a,I7.7)') "results.", nRay
@@ -3778,6 +3794,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      logical :: lte
      logical, save :: done = .false.
 
+     !$OMP THREADPRIVATE (done, icount)
      mollevels = 0.d0
          
      do subcell = 1, thisOctal%maxChildren
@@ -4208,6 +4225,9 @@ end subroutine plotdiscValues
     integer, optional :: subcell
     integer, save :: savecounter = 0
     logical, save :: firsttime = .true.
+
+    !$OMP THREADPRIVATE (savecounter, firstTime)
+
 ! whilst all my code is commented out, stop the warnings    
 !    subcell = subcell
     firsttime = .false.
@@ -4460,6 +4480,9 @@ SUBROUTINE sobseq(x,init)
   INTEGER(I4B), DIMENSION(MAXDIM*MAXBIT), SAVE :: iv
   DATA ip /0,1,1,2,1,4/, mdeg /1,2,3,3,4,4/, ix /6*0/
   DATA iv /6*1,3,1,3,3,1,1,5,7,7,3,3,5,15,11,5,15,13,9,156*0/
+
+  !$OMP THREADPRIVATE (fac, in, iv)
+
   if (present(init)) then
      ix=0
      in=0
@@ -4796,7 +4819,8 @@ end subroutine compare_molbench
    real(double) :: fac
    real(double), save :: alty2
    real(double), save :: oldstep = 4.d0
-   
+   !$OMP THREADPRIVATE (alty2, oldstep)
+
    iv = ivplusone - 1
    
    allocate(x(iv))
@@ -4900,6 +4924,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      real(double) :: rayLength, maxLengthofRay
 
 !     type(VECTOR) :: curpos
+
+  !$OMP THREADPRIVATE (firstTime, haveBeenwarned, bnuBckGrnd)
 
      if(present(tautest)) then
         dotautest = tautest
@@ -5401,6 +5427,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
      integer :: iupper, ilower
      real(double) :: nlower, nupper
+  !$OMP THREADPRIVATE (firstTime, haveBeenwarned, bnuBckGrnd)
 
 !     logical :: lineimage
      
@@ -5770,7 +5797,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
       real(double) :: itot, i0, icheck
       integer :: i, j ,k, iv1, iv2
       logical, save :: firstTime=.true.
-      
+      !$OMP THREADPRIVATE(firstTime)
 
       viewVec = VECTOR(0.d0, 1.d0, 0.d0)
       nx = 2000
@@ -5937,7 +5964,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
    integer :: nStorage
    real(double) :: lengthOfRay, tau
    integer :: iThread
-   
+   !$OMP THREADPRIVATE (firstTime, haveBeenwarned)
+
    if(inOctal(grid%octreeRoot, Position)) then
       disttogrid = 0.
 !     call writeinfo("inside",TRIVIAL)
