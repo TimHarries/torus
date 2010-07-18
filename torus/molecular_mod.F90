@@ -1172,13 +1172,13 @@ module molecular_mod
 ! set-up temporary arrays for ngstep
             allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
 
-#IFDEF _OPENMP
+#ifdef _OPENMP
             if (fixedRays) then
                call randomNumberGenerator(putIseed=fixedRaySeed)
                call randomNumberGenerator(syncIseed=.true.)
             endif
             !$OMP BARRIER
-#ENDIF
+#endif
 
             !$OMP DO SCHEDULE(static)
     do iOctal = ioctal_beg, ioctal_end

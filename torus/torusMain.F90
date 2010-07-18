@@ -25,6 +25,7 @@ program torus
   use input_variables         ! variables filled by inputs subroutine
   use constants_mod
 
+  use random_mod
   use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
        setupNeighbourPointers, findtotalmass
   use setupAMR_mod
@@ -67,7 +68,6 @@ program torus
   use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
   use mpi_amr_mod, only: setupAMRCOMMUNICATOR, freeAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
   use unix_mod, only: unixGetHostname
-  use parallel_mod, only: sync_random_seed
 #endif
 
   implicit none
@@ -248,7 +248,7 @@ program torus
 
   ! set up a random seed
   
-  call init_random_seed()
+  call randomNumberGenerator(randomSeed=.true.)
 
 
   lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
@@ -594,7 +594,7 @@ program torus
 ! Calculates the mass on thr grid and also runs some geometry specific code. 
   call post_initAMRgrid
 
-     call init_random_seed()
+     call randomNumberGenerator(randomSeed=.true.)
      if (cmf) then
         nlucy = 100000
 	storeScattered = .true.
@@ -2353,7 +2353,7 @@ subroutine set_up_sources
        nSource = 0
        call createSources(nSource, source, "instantaneous", 1.d6, 1.d3, 1.d0)
        call writeInfo(message, TRIVIAL)
-       call init_random_seed()
+       call randomNumberGenerator(randomSeed=.true.)
 
     case("wr104")
        nSource = 2

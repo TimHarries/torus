@@ -21,7 +21,9 @@ contains
     real(double), intent(out), optional :: getDoubleArray(:)
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
     integer(bigInt), save :: iSeed = 0 
+#ifdef _OPENMP
     integer(bigInt), save :: iseed_omp
+#endif
     real :: r
     integer :: i, j
 
@@ -243,12 +245,12 @@ contains
       if (present(reset)) doreset=reset 
      IF(doreset.OR.IFF.EQ.0)THEN
         IFF=1
-        MJ=MSEED-IABS(IDUM)
+        MJ=MSEED-ABS(IDUM)
         MJ=MOD(MJ,MBIG)
         MA(55)=MJ
         MK=1
         DO I=1,54
-          II=MOD(21*I,55)
+          II=MOD(21*I,55_bigint)
           MA(II)=MK
           MK=MJ-MK
           IF(MK.LT.MZ)MK=MK+MBIG
@@ -256,7 +258,7 @@ contains
           enddo
         DO  K=1,4
           DO  I=1,55
-            MA(I)=MA(I)-MA(1+MOD(I+30,55))
+            MA(I)=MA(I)-MA(1+MOD(I+30,55_bigint))
             IF(MA(I).LT.MZ)MA(I)=MA(I)+MBIG
          enddo
          enddo
@@ -293,12 +295,12 @@ contains
       if (present(reset)) doreset=reset 
      IF(doreset.OR.IFF.EQ.0)THEN
         IFF=1
-        MJ=MSEED-IABS(IDUM)
+        MJ=MSEED-ABS(IDUM)
         MJ=MOD(MJ,MBIG)
         MA(55)=MJ
         MK=1
         DO I=1,54
-          II=MOD(21*I,55)
+          II=MOD(21*I,55_bigint)
           MA(II)=MK
           MK=MJ-MK
           IF(MK.LT.MZ)MK=MK+MBIG
@@ -306,7 +308,7 @@ contains
           enddo
         DO  K=1,4
           DO  I=1,55
-            MA(I)=MA(I)-MA(1+MOD(I+30,55))
+            MA(I)=MA(I)-MA(1+MOD(I+30,55_bigint))
             IF(MA(I).LT.MZ)MA(I)=MA(I)+MBIG
          enddo
          enddo

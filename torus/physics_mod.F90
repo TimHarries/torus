@@ -407,12 +407,14 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
 end subroutine setupDust
 
 subroutine testSuiteRandom()
-  integer :: i, j
+  integer :: i
   integer(bigint) :: iseed
   real :: r
   real(double) :: rd
-  integer :: np, omp_get_num_threads, omp_get_thread_num
+#ifdef _OPENMP
+  integer :: np, omp_get_num_threads, omp_get_thread_num, j
   real :: array(100,10)
+#endif
   character(len=80) :: message
 
   call randomNumberGenerator(randomSeed=.true.)

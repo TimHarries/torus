@@ -1086,7 +1086,6 @@ contains
     integer :: ioctal_beg, ioctal_end
     real(double) :: maxFracChange
     logical :: fixedRays
-    integer :: isize
     integer(bigint) :: iseed
     real(double) :: tolerance
     integer, allocatable :: sourceNumber(:)
