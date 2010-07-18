@@ -49,11 +49,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use gridtype_mod, only: GRIDTYPE       
   use gridio_mod, only: writeamrgrid
   use parallel_mod, only: torus_mpi_barrier
-  use utils_mod, only: locate, hunt, findIlambda, blackBody, init_random_seed, spline, splint, systemInfo
+  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint, systemInfo
   use unix_mod, only: unixTimes
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
-
+  use random_mod
   implicit none
 
 #ifdef MPI
@@ -1312,7 +1312,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      if (doTuning) call tune(6, "All Photon Loops")  ! Start a stopwatch
      
-     call init_random_seed()
+     call randomNumberGenerator(randomSeed=.true.)
 
      if (nSource > 0) &
      call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
@@ -1502,7 +1502,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            ! than at the core...
 
            if (lineEmission .and. contPhoton) then
-              call random_number(r)
+              call randomNumberGenerator(getReal=r)
               if (r < grid%chanceWindOverTotalContinuum) then
                  contWindPhoton = .true.
               endif
@@ -1914,13 +1914,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                ! Useful for optically thin case (to get correct scatterng flux).
                tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
                fac=1.0d0-exp(-tau_bnd)
-               call random_number(r1)
+               call randomNumberGenerator(getReal=r1)
                thisTau = min(-log(1.d0-r1*fac),tau_bnd)  
                escaped = .false.!
                ! This is done so to force the first scattering if 
                ! MAXSCAT>0. 
             else
-               call random_number(r1)
+               call randomNumberGenerator(getReal=r1)
                fac = 1.
                thistau = -log(max(1.e-20,(1. - r1)))
                if (thistau .gt. tauExt(nTau)) then
@@ -2125,7 +2125,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               if (noScattering) albedo = 0.
 
 
-              call random_number(r)
+              call randomNumberGenerator(getReal=r)
               if (r > albedo) then
                  absorbed = .true.
               endif
@@ -2275,7 +2275,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        if (obsPhoton%thermal) then
                           if (obsPhoton%scattered) then
                              yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (obsPhoton%stokes * obs_weight)
-                             call random_number(r)
+                             call randomNumberGenerator(getReal=r)
 !                             if (obsPhoton%stokes%i*obs_weight > 1.e6) then
 !                             write(*,'(i5,6f15.4)') myrankglobal,obsPhoton%stokes%i*obs_weight,obsPhoton%stokes%i, &
 !                                  obs_weight,tauext(ntau), sqrt(obsPhoton%position%x**2+obsPhoton%position%y**2)/rinner,r
@@ -2484,7 +2484,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  endif
 
 
-                  call random_number(r1)
+                  call randomNumberGenerator(getReal=r1)
                   thistau = -log(max(1.e-20,(1. - r1)))
                   if (thistau .gt. tauExt(nTau)) then
                      escaped = .true.  
@@ -2495,7 +2495,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
 !                  if (maxScat == 1) then
-!                     call random_number(r1)
+!                     call randomNumberGenerator(getDouble=r1)
 !                     thistau = -log(max(1.e-10,(1. - r1)))
 !                     if (thistau .gt. tauExt(nTau)) then
 !                        ! one scattering forced already, 
@@ -2513,7 +2513,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !                     else
 !                        fac=1.0d0-exp(-tau_bnd)
 !                     end if
-!                     call random_number(r1)
+!                     call randomNumberGenerator(getDouble=r1)
 !                     thisTau = -log(1.d0-r1*fac)
 !                     ! (RK) commented out the next line.
 !                     ! if (thisTau > tauExt(nTau)) print *, 'Fixed thisTau in scattering loop.'

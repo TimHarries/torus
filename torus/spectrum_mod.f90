@@ -40,7 +40,7 @@ module spectrum_mod
       real(double) :: r, t
       integer :: i
 
-      call random_number(r)
+      call randomNumberGenerator(getDouble=r)
       call locate(spectrum%prob, spectrum%nLambda, r, i)
       t = (r - spectrum%prob(i))/(spectrum%prob(i+1)-spectrum%prob(i))
       wavelength = spectrum%lambda(i) + t*(spectrum%lambda(i+1)-spectrum%lambda(i))
@@ -153,7 +153,7 @@ module spectrum_mod
       call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
       
       if (i1 == i2) then 
-         call random_number(r)
+         call randomNumberGenerator(getDouble=r)
          r = r - 0.5d0
          wavelength = spectrum%lambda(i1) + r * spectrum%dlambda(i1)
       else
@@ -172,7 +172,7 @@ module spectrum_mod
          lam(nProb) = 0.5d0*(tlam2+spectrum%lambda(i2))
          prob(1:nProb) = prob(1:nProb) - prob(1)
          prob(1:nProb) = prob(1:nProb)/prob(nProb)
-         call random_number(r)
+         call randomNumberGenerator(getDouble=r)
          call locate(prob, nProb, r, i1)
          t = (r - prob(i1))/(prob(i1+1)-prob(i1))
          wavelength = lam(i1) + t * (lam(i1+1)-lam(i1))

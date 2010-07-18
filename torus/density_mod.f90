@@ -470,11 +470,11 @@ contains
               clumps(iClump)%startTime = runningTime
               clumps(iClump)%duration  = mDotParameter4
               clumps(iClump)%mDot  = mDotParameter2
-              call random_number(uniformRandom)
+              call randomNumberGenerator(getReal=uniformRandom)
               clumps(iClump)%azimuth = (uniformRandom * twoPi) - pi
               clumps(iClump)%angularSize = mDotParameter5 * degToRad 
 
-              call random_number(uniformRandom)
+              call randomNumberGenerator(getReal=uniformRandom)
               timeToNextClump = -meanTime * log(1-uniformRandom)
 
               runningTime = runningTime + timeToNextClump

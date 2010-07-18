@@ -925,12 +925,12 @@ end subroutine gaussSeidelSweep
     rVec = subcellCentre(walkOctal, walkSubcell)
     nWalk  = 0
 
-    call random_number(r)
+    call randomNumberGenerator(getReal=r)
     do while(walkOctal%diffusionApprox(walkSubcell))
        nWalk = nWalk + 1
 
        if (startOctal%twoD) then
-          call random_number(r)
+          call randomNumberGenerator(getReal=r)
           rVec = subcellCentre(walkOctal, walkSubcell)
           
           if (r < 0.25) then
@@ -944,19 +944,19 @@ end subroutine gaussSeidelSweep
           endif
           if (nWalk > 1000) then
 !             write(*,*) nWalk,r,rVec,inOctal(grid%octreeRoot,rVec)
-             call random_number(r)             
+             call randomNumberGenerator(getReal=r)             
           endif
           sOctal => walkOctal
           temp = walkOctal%temperature(walkSubcell)
           if (.not.inOctal(grid%octreeRoot, rVec)) then
              rVec = subcellCentre( walkOctal, walkSubcell)
-             call random_number(r)
+             call randomNumberGenerator(getReal=r)
           endif
           call amrgridvalues(grid%octreeRoot, rVec, startOctal=sOctal, foundOctal=walkOctal, foundSubcell=walkSubcell)
        else
 
           if (.not.walkOctal%cylindrical) then
-             call random_number(r)
+             call randomNumberGenerator(getReal=r)
              rVec = subcellCentre(walkOctal, walkSubcell)
              
              if (r < 0.166666) then
@@ -976,11 +976,11 @@ end subroutine gaussSeidelSweep
              temp = walkOctal%temperature(walkSubcell)
              if (.not.inOctal(grid%octreeRoot, rVec)) then
                 rVec = subcellCentre( walkOctal, walkSubcell)
-                call random_number(r)
+                call randomNumberGenerator(getReal=r)
              endif
              call amrgridvalues(grid%octreeRoot, rVec, startOctal=sOctal, foundOctal=walkOctal, foundSubcell=walkSubcell)
           else
-             call random_number(r)
+             call randomNumberGenerator(getReal=r)
              rVec = subcellCentre(walkOctal, walkSubcell)
              rHat = VECTOR(rVec%x,rVec%y, 0.d0)
              call normalize(rHat)
@@ -997,7 +997,7 @@ end subroutine gaussSeidelSweep
              temp = walkOctal%temperature(walkSubcell)
              if (.not.inOctal(grid%octreeRoot, rVec)) then
                 rVec = subcellCentre( walkOctal, walkSubcell)
-                call random_number(r)
+                call randomNumberGenerator(getReal=r)
              endif
              call amrgridvalues(grid%octreeRoot, rVec, startOctal=sOctal, foundOctal=walkOctal, foundSubcell=walkSubcell)
           endif

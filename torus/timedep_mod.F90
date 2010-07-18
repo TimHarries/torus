@@ -517,7 +517,7 @@ contains
              wavelength = (cSpeed/freq)*1.d8
           photonTime = 0.d0
        else
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
 
           if (r < fracSource) then
 
@@ -536,7 +536,7 @@ contains
              checkLumSource = checkLumSource + eps
 
              if (.not.seedRun) then
-                call random_number(r)
+                call randomNumberGenerator(getDouble=r)
                 photonTime = r*deltaT
              endif
 
@@ -553,7 +553,7 @@ contains
 
           else
 
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              thisOctal => grid%octreeRoot
              call locateContProbAMR(r,thisOctal,subcell)
              rVec = randomPositionInCell(thisOctal, subcell)
@@ -573,7 +573,7 @@ contains
                 prob(i) = prob(i-1) + kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
              enddo
              prob = prob / prob(nFreq)
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              call locate(prob, nFreq, r, i)
              freq = freqArray(i)
              wavelength = (cSpeed/freq)*1.d8
@@ -585,7 +585,7 @@ contains
              photonTime = 0.d0
              uHat = randomUnitVector()
              if (.not.seedRun) then
-                call random_number(r)
+                call randomNumberGenerator(getDouble=r)
                 photonTime = r*deltaT
              endif
 
@@ -622,7 +622,7 @@ contains
           beenScattered = .false.
        endif
        ilambda = findIlambda(real(wavelength), lamArray, nLambda, ok)
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
 
        absorbed = .false.
        scattered = .false.
@@ -644,7 +644,7 @@ contains
 
           albedo  = kappaSca / (kappaAbs + kappaSca)
 
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           tau = -log(1.d0 - r)
 
           if (tau > tauToBoundary) then
@@ -652,7 +652,7 @@ contains
              absorbed = .false.
           else
              distanceToEvent = distToBoundary * tau/tauToBoundary
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              if (r > albedo) then
                 absorbed = .true.
                 finished = .true.
@@ -1647,7 +1647,7 @@ contains
                   oldFromGasStack)
              photonTime = 0.d0
           else
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              if (r < fracSource) then
                 rVec = VECTOR(1.d-18, 0.d0, 0.d0)
                 uHat = VECTOR(1.d0, 0.d0, 0.d0)
@@ -1655,7 +1655,7 @@ contains
                 epsOverDeltaT = totalluminosity * weightSource * deltaT / dble(nFromMatter)
                 photonFromSource = .true.
                 photonFromGas = .false.
-                call random_number(r)
+                call randomNumberGenerator(getDouble=r)
                 photonTime = (r-0.5d0)*deltaT
              else
                 call getX(xArray, prob, bias, nProb, xPhoton, photonBias)
@@ -1711,7 +1711,7 @@ contains
 
              tauToBoundary = distToBoundary * kappa(iPos) * rho(iPos) 
 
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              tau = -log(1.d0 - r)
 !             write(*,*) "tau ", tau, " tautoboundary ", &
 !                  tautoboundary, iPos, rVec%x, xCen(iPos)-dx/2.d0, xCen(iPos)+dx/2.d0
@@ -1727,7 +1727,7 @@ contains
                 distanceToEvent = distToBoundary * tau/tauToBoundary
                 timeBoundary = .false.
                 spaceBoundary = .true.
-                call random_number(r)
+                call randomNumberGenerator(getDouble=r)
                 if (r > albedo) then
                    absorbed = .true.
                    finished = .true.
@@ -2123,7 +2123,7 @@ contains
     real(double) :: r
     integer :: i
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     call locate(prob, nprob, r, i)
     x = xArray(i) + (xArray(i+1)-xArray(i))*(r - prob(i))/(prob(i+1)-prob(i))
     photonBias = bias(i) + (bias(i+1)-bias(i))*(r - prob(i))/(prob(i+1)-prob(i))
@@ -2238,7 +2238,7 @@ contains
 
   type(VECTOR) function randomUnitVector2() result (v)
     real(double) :: r
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     if (r < 0.5d0) then
        v%x = -1.d0
     else

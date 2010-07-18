@@ -345,7 +345,7 @@ contains
                 albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
 
 
-                call random_number(r)
+                call randomNumberGenerator(getDouble=r)
                 if (r < albedo) then
                    uHat = randomUnitVector() ! isotropic scattering
                 else
@@ -356,7 +356,7 @@ contains
 
 
                    if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
-                      call random_number(r1)
+                      call randomNumberGenerator(getDouble=r1)
                       if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
                          call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
@@ -760,7 +760,7 @@ end subroutine photoIonizationloop
 
 ! select an initial random tau and find distance to next cell
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     tau = -log(1.0-r)
 
     call distanceToCellBoundary(grid, rVec, uHat, tval)
@@ -837,7 +837,7 @@ end subroutine photoIonizationloop
 ! now if the photon is in the grid choose a new random tau
 
        if (stillingrid) then
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           tau = -log(1.0-r)
           call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), foundOctal=thisOctal, &
@@ -2168,7 +2168,7 @@ subroutine dumpLexington(grid, epsoverdt)
      oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
      heating = 0.d0; cooling = 0.d0; netot = 0.d0
      do j = 1, 100
-        call random_number(theta)
+        call randomNumberGenerator(getDouble=theta)
         theta = theta * Pi
         
         octVec = VECTOR(r*sin(theta),0.d0,r*cos(theta))
@@ -2694,7 +2694,7 @@ subroutine getSahaMilneFreq(table,temperature, thisFreq)
 
   t = max(5000.d0, min(20000.d0, temperature))
   call locate(table%temp, table%nTemp, t, i)
-  call random_number(r)
+  call randomNumberGenerator(getDouble=r)
   call locate(table%Clyc(i,1:table%nfreq), table%nFreq, r, j)
   fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
   thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
@@ -2719,7 +2719,7 @@ subroutine twoPhotonContinuum(thisFreq)
   prob(1:21) = prob(1:21)/prob(21)
   thisFreq = 0.
   do while((thisFreq*hcgs*ergtoev) < 13.6)
-     call random_number(r)
+     call randomNumberGenerator(getReal=r)
      call locate(prob, 21, r, i)
      fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
      thisFreq = (1.-fac)*freq
@@ -3250,7 +3250,7 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
   if (tSpec(nFreq) > 0.d0) then
      tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
-     call random_number(r)
+     call randomNumberGenerator(getDouble=r)
      call locate(tSpec, nFreq, r, i)
      fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
      photonFreq = freq(i) + fac * (freq(i+1)-freq(i))
@@ -3742,7 +3742,7 @@ end subroutine readHeIIrecombination
     tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
     if (tSpec(nFreq) > 0.d0) then
        tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        call locate(tSpec, nFreq, r, i)
        fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
        thisLambda = lamspec(i) + fac * (lamspec(i+1)-lamspec(i))
@@ -3841,7 +3841,7 @@ end subroutine readHeIIrecombination
        enddo
        prob(1:nFreq) = prob(1:nFreq)-prob(1)
        prob(1:nFreq) = prob(1:nFreq)/prob(nFreq)
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        call locate(prob, nFreq, r, i)
        t = (r - prob(i))/(prob(i+1)-prob(i))
        thisFreq = freq(i) + t * (freq(i+1)-freq(i))
@@ -4128,9 +4128,9 @@ end subroutine readHeIIrecombination
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
     use input_variables, only : nPhotons, npix, setimagesize
     use image_mod, only: initImage, writeFitsImage, freeImage, IMAGETYPE
-    use utils_mod, only: init_random_seed
     use math_mod, only: computeprobdist
     use source_mod, only: randomSource, getphotonpositiondirection
+    use random_mod
     use amr_mod, only: locatecontprobamr
 #ifdef MPI
     use mpi_global_mod, only: nThreadsGlobal
@@ -4164,7 +4164,7 @@ end subroutine readHeIIrecombination
     integer :: ierr
 #endif
 
-    call init_random_seed()
+    call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0
 
     thisImage = initImage(npix, npix, setimagesize/1.e10, &
@@ -4223,7 +4223,7 @@ end subroutine readHeIIrecombination
        thisPhoton%iLam = iLambdaPhoton
        thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
        thisPhoton%observerPhoton = .false.
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
 
 
        if (r < probSource) then
@@ -4232,7 +4232,7 @@ end subroutine readHeIIrecombination
           call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
           thisPhoton%weight = weightSource
        else
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%direction = randomUnitVector()
 	  thisOctal => grid%octreeRoot
@@ -4346,7 +4346,7 @@ end subroutine readHeIIrecombination
        kappaExt = kappaAbsGas + kappaScaGas
        tau = kappaExt * tVal
 
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        thisTau = -log(1.d0-r)
 
        if (thisTau > tau) then ! photon crosses to boundary
@@ -4363,7 +4363,7 @@ end subroutine readHeIIrecombination
 
           endLoop = .true.
           albedo = kappaScaGas/kappaExt
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           if (r < albedo) then
              scattered = .true.
           else

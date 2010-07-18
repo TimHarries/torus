@@ -91,14 +91,14 @@ contains
     close(99)
 
     do i = 1, ng
-       call random_number(r1)
+       call randomNumberGenerator(getReal=r1)
        call locate(rProb, 1000, r1, n)
        r = rAxis(n)+(r1-rProb(n))/(rProb(n+1)-rProb(n))*(rAxis(n+1)-rAxis(n))
        clumpMass = massWeight(n) + (r1-rProb(n))/(rProb(n+1)-rProb(n))*(massWeight(n+1)-massWeight(n))
        clumpMass = 1./clumpMass
        h = height * (r / (100.*autocm/1.e10))**betaDisc
        z = gasdev() * h
-       call random_number(ang)
+       call randomNumberGenerator(getReal=ang)
        ang = ang * twoPi
        position%x = r * cos(ang)
        position%y = r * sin(ang)

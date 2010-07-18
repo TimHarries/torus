@@ -1257,11 +1257,11 @@ contains
        n = 0       
        do i = 1, nsample
           ! picking a random position in the subcell
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           x =  xc - d + r*2.0d0*d
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           y =  yc - d + r*2.0d0*d
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           z =  zc - d + r*2.0d0*d               
           ! evaluate the disc density density
           ! Taking the max value samples
@@ -1271,29 +1271,6 @@ contains
        end do
        
 
-!       n = 0
-!       do i = 1, nsample
-!          ! picking a random position in the subcell
-!          call random_number(r)
-!          x =  xc - d + r*2.0d0*d
-!          call random_number(r)
-!          y =  yc - d + r*2.0d0*d
-!          call random_number(r)
-!          z =  zc - d + r*2.0d0*d               
-!          ! evaluate the disc density density
-!          ! exclude the very low density area!
-!          rho_sample = disc_density(x, y, z, sphData, stellar_cluster, dummy_d)
-!          if (rho_sample > rho_min) then 
-!             n = n + 1
-!             rho_disc_ave = rho_disc_ave + rho_sample
-!          end if
-!       end do
-!       
-!       if (n > 0) then
-!          rho_disc_ave = rho_disc_ave/dble(n)
-!       else
-!          rho_disc_ave = rho_min
-!       end if
 
     end if
     
@@ -1436,11 +1413,11 @@ contains
        
        do i = 1, nsample
           ! picking a random position in the subcell
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           x =  xc - d + r*2.0d0*d
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           y =  yc - d + r*2.0d0*d
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           z =  zc - d + r*2.0d0*d
           ! evaluate the disc density density
           rho_tmp = disc_density(x, y, z, stellar_cluster, dummy_d)

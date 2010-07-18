@@ -11,6 +11,7 @@ module molecular_mod
    use messages_mod
    use timing, only: tune
    use amr_mod
+   use random_mod
    use octal_mod
    use math_mod
    use datacube_mod
@@ -34,6 +35,7 @@ module molecular_mod
       module procedure LTEpopsDouble
    end interface
 
+   integer, parameter :: maxray = 1048577
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels, ntrans
    integer :: grand_iter, ngcounter
    integer :: nray
@@ -41,10 +43,7 @@ module molecular_mod
    real(double), allocatable :: lamarray(:), lambda(:)
    integer :: ilambda
 
-   integer, parameter :: maxray = 1048577
-!   integer, parameter :: maxray = 262145
-!   integer, parameter :: maxray = 3050000
-   integer, allocatable :: iseedpublic(:)
+   integer(bigInt) :: iseedpublic
    real(double) :: r1(5) !! quasi random number generators
    integer :: accstep = 5
    integer :: accstepgrand = 4
@@ -58,6 +57,7 @@ module molecular_mod
 
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
+
 
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
@@ -869,8 +869,6 @@ module molecular_mod
      integer :: nVoxels
      integer :: ioctal_beg, ioctal_end
      logical :: fixedRays
-     integer :: isize
-     integer, allocatable :: iseed(:)
      real(double) :: maxRMSfracChange
      
      character(len=30) :: filename
@@ -890,6 +888,7 @@ module molecular_mod
 
      logical :: ng
      integer :: status
+     integer(bigint) :: fixedRaySeed
 
      real(double) :: collmatrix(50,50), ctot(50)
 
@@ -1019,33 +1018,19 @@ module molecular_mod
       endif
 ! set number of rays used to estimate jnu and determine level pops 
       nRay = initnray
-! set-up temporary arrays for ngstep
-      allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
 ! initialise random seed for AMC method
 ! this line could be altered to give a fixed seed if re-producibility were required.
-      call init_random_seed()
-      call random_seed(size=iSize)
-      allocate(iSeed(1:iSize))      
+      call randomNumberGenerator(randomSeed=.true.)
       if(.not. restart) then 
-         call random_seed(get=iSeed)
-         allocate(iseedpublic(1:isize))
-         iseedpublic = iseed
+         call randomNumberGenerator(randomSeed=.true.)
       else ! get previous random seed if restarting
          open(95, file="restart.dat",status="unknown",form="formatted")
          read(95,*) ljunk, ijunk, ijunk
-         do i = 1, isize
-            read(95,*) iseed(i)
-         enddo
+         read(95,*) iseedpublic
          close(95)
-         allocate(iseedpublic(1:isize))
-         iseedpublic = iseed
       endif
 
-! broadcast seed to other threads
-#ifdef MPI
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-      call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-#endif
+      call randomNumberGenerator(getIseed = fixedRaySeed)
 
 ! This is the loop that controls everything
 ! 1) istage = 1, fixed rays to reduce variance between cells or 
@@ -1074,11 +1059,6 @@ module molecular_mod
          gridConvergedTest = .false.
          gridConverged = .false.
 
-! Allocate the main working arrays for i0, ds and phi
-            allocate(ds(1:maxray))
-            allocate(phi(1:maxray))
-            allocate(i0temp(1:maxtrans))
-            allocate(i0(1:maxray,1:maxtrans))
 
 ! while grid not converged iteratively find level populations
          do while (.not. gridConverged)
@@ -1104,6 +1084,8 @@ module molecular_mod
                minlevel = min(max(7,Maxlevel / 2),maxlevel - 2)
                mintrans = minlevel - 1
             endif
+
+            minLevel = 6 !TJH !!!!!!!!!!!!!!!
 
             if(grid%geometry .eq. 'agbstar' .or. &
                  grid%geometry .eq. 'h2obench1' .or. &
@@ -1132,10 +1114,11 @@ module molecular_mod
 ! Use random seed determined earlier to generate random numbers or
 ! Initialise quasi-random number generator
             if (fixedRays) then
-               call random_seed(put=iseed)   ! same seed for fixed rays
+               call randomNumberGenerator(putIseed=fixedRaySeed)
+               call randomNumberGenerator(syncIseed=.true.)   ! same seed for fixed rays
                if(quasi) call sobseq(r1, -1)
             else
-               call init_random_seed()
+               call randomNumberGenerator(randomSeed=.true.)
             endif
             
 ! default loop indicies for single processor otherwise do MPI stuff
@@ -1167,18 +1150,38 @@ module molecular_mod
 
 #endif
 
+
+
+
 ! iterate over all octals, all rays, solving the system self-consistently
 
                 !$OMP PARALLEL DEFAULT(NONE) &
-                !$OMP PRIVATE(iOctal, thisOctal) &
-		!$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix) &
+                !$OMP PRIVATE(iOctal, thisOctal, iray) &
+		!$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix, subcell) &
 		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
-		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, fac, gettau, accstep) &
+		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
 		!$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
-		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans, maxerrorloc, warncount)
-                !$OMP DO SCHEDULE(static)
-    do iOctal = ioctal_beg, ioctal_end
+		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, gettau, accstep, fixedRaySeed)
 
+
+! Allocate the main working arrays for i0, ds and phi
+            allocate(ds(1:maxray))
+            allocate(phi(1:maxray))
+            allocate(i0temp(1:maxtrans))
+            allocate(i0(1:maxray,1:maxtrans))
+! set-up temporary arrays for ngstep
+            allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
+
+#IFDEF _OPENMP
+            if (fixedRays) then
+               call randomNumberGenerator(putIseed=fixedRaySeed)
+               call randomNumberGenerator(syncIseed=.true.)
+            endif
+            !$OMP BARRIER
+#ENDIF
+
+            !$OMP DO SCHEDULE(static)
+    do iOctal = ioctal_beg, ioctal_end
 !       if (debug .and. writeoutput) then
 !          write(message,*) iOctal,ioctal_beg,ioctal_end
 !          call writeInfo(message,TRIVIAL)
@@ -1194,7 +1197,6 @@ module molecular_mod
              nHe = 0.d0
              ne = 0.d0
              nProtons = 0.d0
-
              call getCollMatrix(thisOctal%nh2(subcell), dble(thisOctal%temperature(subcell)), &
                   thismolecule, nh, nHe, ne, nprotons, collmatrix(1:maxlevel,1:maxlevel), &
                   ctot(1:maxlevel))
@@ -1227,7 +1229,7 @@ module molecular_mod
                 endif
 ! calculate the average radiation field, jnu in this cell given ds, phi and i0.
 ! This feeds into and affects solvelevels which in turns affect calculatejbar
-                call calculateJbar(grid, thisOctal, subcell, thisMolecule, ds(1:nRay), &
+                call calculateJbar(nray, grid, thisOctal, subcell, thisMolecule, ds(1:nRay), & 
                      phi(1:nRay), i0(1:nray,1:maxtrans), thisOctal%newMolecularLevel(1:maxlevel,subcell), &
                      thisOctal%jnu(1:maxtrans,subcell)) ! calculate updated Jbar
 !                write(*,*) "a",thisOctal%newMolecularLevel(1:3,subcell)
@@ -1237,7 +1239,6 @@ module molecular_mod
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
                      thisMolecule, thisOctal%nh2(subcell), collmatrix(1:maxlevel,1:maxlevel), &
                      ctot(1:maxlevel))
-!                write(*,*) thisOctal%newMolecularLevel(1:3,subcell)
                 where(isnan(thisOctal%newMolecularLevel(1:maxlevel,subcell)))
                    thisOctal%newMolecularLevel(1:maxlevel,subcell) = oldpops3
                    endwhere
@@ -1249,16 +1250,16 @@ module molecular_mod
                    if(mod(iter, accstep) .eq. 0) then
                       oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
                       if(minlevel .eq. 2) then
-                         thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                              abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                         call ngStep(thisOctal%newmolecularLevel(1:minlevel,subcell), &
+                              oldpops1(1:minlevel), oldpops2(1:minlevel), &
                               oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                              length = 2))
+                              length = 2)
                       else
-                         thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                              abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                         call ngStep(thisOctal%newMolecularLevel(1:minLevel, subcell), &
+                              oldpops1(1:minlevel), oldpops2(1:minlevel), &
                               oldpops3(1:minlevel), oldpops4(1:minlevel), &
                               abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                              length = max(2,minlevel-1)))
+                              length = max(2,minlevel-1))
                       endif
                    endif
                 endif
@@ -1277,9 +1278,10 @@ module molecular_mod
                                                  real(maxerrorloc-1) + &
                                                  min(0.99_db,maxval(error(1:minlevel))) 
 
-
 ! (R)MeanSquare error over minlevel-1 levels. RMS must be less than 1e-10 (MS < 1e-20) 
                 fac = sum(error(1:max(2,minlevel-1))**2) ! convergence criterion
+
+
 !Old style error - absoutle max value.
 !                fac = abs(maxval(error(1:max(2,minlevel-1)))) ! convergence criterion
                if (fac < 1.d-12 .or. (iter .eq. maxiter)) then
@@ -1298,7 +1300,7 @@ module molecular_mod
        enddo ! all subcells
     enddo ! all octals
 !$OMP END DO
-
+     deallocate(ds, phi, i0, i0temp)
     !$OMP BARRIER
     !$OMP END PARALLEL
            
@@ -1306,7 +1308,7 @@ module molecular_mod
 
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-        if(my_rank == 0) write(*,*) "Updating MPI grids"
+      if(my_rank == 0) write(*,*) "Updating MPI grids"
 
       ! have to send out the 'octalsBelongRank' array
       call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
@@ -1363,9 +1365,7 @@ module molecular_mod
            if(writeoutput) then
               open(95, file="restart.dat",status="unknown",form="formatted")
               write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
-              do i = 1,size(iseedpublic)
-                 write(95, *) iseedpublic(i)
-              enddo
+              write(95, *) iseedpublic
               close(95)
            endif
         endif
@@ -1410,9 +1410,9 @@ module molecular_mod
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
               if (.not.fixedRays) then
-                 if(mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) then
+!                 if(mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) then
                     nRay = nRay * 2 
-                 endif
+!                 endif
               endif
               write(message,'(a,i7,a)') "Now trying ",nRay," Rays"
               call writeInfo(message,FORINFO)
@@ -1436,7 +1436,6 @@ module molecular_mod
         deallocate(octalsBelongRank)
 #endif
      enddo
-     deallocate(ds, phi, i0, i0temp)
   enddo
   
   close(33)
@@ -1548,18 +1547,18 @@ end subroutine molecularLoop
               deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.
               if(s > 0.5) deltaV = deltaV * (-1.d0)
            else
-              call random_number(r)
+              call randomNumberGenerator(getDouble=r)
               rsave = r
               direction = randomUnitVector()
               dirsave = direction
 
               deltaV = 2.15 * thisOctal%microturb(subcell) * r
               
-              call random_number(s)
+              call randomNumberGenerator(getdouble=s)
               if(s > 0.5) deltaV = deltaV * (-1.d0)
            endif
         else ! pseudorandom
-           call random_number(r)
+           call randomNumberGenerator(getDouble=r)
            direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
            deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
         endif
@@ -1720,9 +1719,8 @@ end subroutine molecularLoop
         i0(1:maxtrans) = i0(1:maxtrans) + BnuBckGrnd(1:maxtrans) * attenuation(1:maxtrans)
      endif
    end subroutine getRay
-
 ! This subroutine calculates the average local radiation field in a cell, Jbar. So the SE can be worked out
-   subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar)
+   subroutine calculateJbar(nr, grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar)
 
      use input_variables, only : useDust, realdust, debug
 
@@ -1730,27 +1728,37 @@ end subroutine molecularLoop
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
      type(MOLECULETYPE) :: thisMolecule
-
+     integer :: nr
      real(double), intent(in) :: tempds(:), tempphi(:), i0(:,:), nPops(:)
-     real(double), intent(out) :: jbar(maxtrans)
-
-     real(double) :: phids(maxray), temptauArray(maxray), opticaldepthArray(maxray), otp(maxray), &
-          jbarinternalArray(maxray), jbarExternalArray(maxray)
+     real(double), intent(out) :: jbar(:)
+     real(double), allocatable :: phids(:), temptauArray(:), opticaldepthArray(:), otp(:), &
+          jbarinternalArray(:), jbarExternalArray(:)
      integer :: iTrans
 
-     real(double) :: nLower(maxtrans), nUpper(maxtrans), nMol
-     real(double) :: alphanuBase(maxtrans), alphanu(maxray,2),  alpha(maxray), &
-          etaline(maxtrans), jnu(maxray), jnuDust(maxtrans), snu(maxray), snugas(maxtrans), &
-          kappaAbs
+     real(double) :: nLower(maxtrans), nUpper(maxtrans), nMol, etaline(maxtrans), snugas(maxtrans), &
+          kappaAbs, alphanuBase(maxtrans), jnuDust(maxtrans)
+     real(double), allocatable :: alphanu(:,:),  alpha(:), &
+          jnu(:), snu(:)
 
      real(double) :: sumPhi
+
+     allocate(phids(1:nray))
+     allocate(tempTauArray(1:nRay))
+     allocate(opticalDepthArray(1:nray))
+     allocate(otp(1:nray))
+     allocate(jbarInternalArray(1:nray))
+     allocate(jbarExternalArray(1:nray))
+     allocate(alphanu(1:nray,1:2))
+     allocate(alpha(1:nRay))
+     allocate(jnu(1:nray))
+
+     
 
 ! Get total number density of molecules in each level
      nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
      nLower(1:maxtrans) = nPops(iLower(1:maxtrans)) * nMol
      nUpper(1:maxtrans) = nPops(iUpper(1:maxtrans)) * nMol
 
-!write(*,*) nmol, nlower(1), nupper(1)
 
 ! Determine gas emission and absorption and source function
      etaLine(1:maxtrans) = thisMolecule%einsteinA(1:maxtrans) * nUpper(1:maxtrans)
@@ -1760,14 +1768,10 @@ end subroutine molecularLoop
         snugas(1:maxtrans) = etaline(1:maxtrans) / alphanuBase(1:maxtrans)
      endwhere
 
-!     write(*,*) snugas, etaline, thisMolecule%einsteinA(1:maxtrans),alphanubase,nLower(1:maxtrans) * thisMolecule%einsteinBlu(1:maxtrans),&
-!                  nUpper(1:maxtrans) * thisMolecule%einsteinBul(1:maxtrans)
-
 ! Calculate phids and sum(phi) as required by Jbar equation (for integral)
-     phids(1:nRay) = tempphi(1:nray) * tempds(1:nray)
+     phids(1:nr) = tempphi(1:nr) * tempds(1:nr)
      sumPhi = sum(tempphi(1:nray))
 
-!write(*,*) "sumphi", sumphi
 
      alphanu(:,2) = 0.d0
      jnudust(:) = 0.d0
@@ -1835,6 +1839,16 @@ end subroutine molecularLoop
      endif
      if(debug) where(isnan(jbar)) jbar = 0.d0
    
+     deallocate(phids)
+     deallocate(tempTauArray)
+     deallocate(opticalDepthArray)
+     deallocate(otp)
+     deallocate(jbarInternalArray)
+     deallocate(jbarExternalArray)
+     deallocate(alphanu)
+     deallocate(jnu)
+
+
    end subroutine calculateJbar
 
  ! solves rate equation in matrix format
@@ -1860,7 +1874,7 @@ end subroutine molecularLoop
      logical :: dummy
 !     real(double) :: r(maxlevel,maxlevel)
 
-!     call random_number(r)
+!     call randomNumberGenerator(getDouble=r)
 
      matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero
      matrixB = 0.d0 ! Solution vector - all components (except last) => equilibrium
@@ -2180,22 +2194,25 @@ endif
                  oldpops4(1:minlevel) = thisOctal%newmolecularLevel(1:minlevel,subcell)
 ! Calculate ng accelerated levels upto minlevel - 2 (avoids numerics noise)
                  if(minlevel .eq. 2) then
-                    thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                    call ngStep( &
+                    thisOctal%newmolecularLevel(1:minlevel,subcell),  &
+                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
                          oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                         length = 2))
+                         length = 2)
                  elseif(fixedrays) then
-                    thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                    call ngStep(&
+                         thisOctal%newmolecularLevel(1:minlevel,subcell), &
+                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
                          oldpops3(1:minlevel), oldpops4(1:minlevel), &
                          abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                         length = max(2,minlevel-1), doubleweight = .false.))
+                         length = max(2,minlevel-1), doubleweight = .false.)
                  else
-                    thisOctal%newmolecularLevel(1:minlevel,subcell) = &
-                         abs(ngStep(oldpops1(1:minlevel), oldpops2(1:minlevel), &
+                    call ngStep(&
+                         thisOctal%newmolecularLevel(1:minlevel,subcell), &
+                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
                          oldpops3(1:minlevel), oldpops4(1:minlevel), &
                          abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                         length = max(2,minlevel-1), doubleweight = .false.))
+                         length = max(2,minlevel-1), doubleweight = .false.)
                  endif
               endif
            endif
@@ -3768,7 +3785,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
      enddo
 
-     write(33,'(i2,tr3,12(f11.6,tr3))') grand_iter, tauarray(1:min(12,mintrans))
+!     write(33,'(i2,tr3,12(f11.6,tr3))') grand_iter, tauarray(1:min(12,mintrans))
      
      close(31)
      close(310)
@@ -4174,7 +4191,7 @@ end subroutine plotdiscValues
 !       type(octal), pointer :: thisoctal
        integer, optional :: subcell
 
-#ifndef _OPENMP
+#ifdef _OPENMP
        type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
        integer, save :: savecounter = 0
 
@@ -4203,7 +4220,7 @@ end subroutine plotdiscValues
                                 actualSubcell = subcell, linearinterp = .false.)
        endif
 
-#ifndef _OPENMP
+#ifdef _OPENMP
        oldout = out
        oldposition = position
 #endif
@@ -4481,7 +4498,7 @@ SUBROUTINE sobseq(x,init)
   DATA ip /0,1,1,2,1,4/, mdeg /1,2,3,3,4,4/, ix /6*0/
   DATA iv /6*1,3,1,3,3,1,1,5,7,7,3,3,5,15,11,5,15,13,9,156*0/
 
-  !$OMP THREADPRIVATE (fac, in, iv)
+  !$OMP THREADPRIVATE (fac, in, iv, ip, ix, mdeg)
 
   if (present(init)) then
      ix=0

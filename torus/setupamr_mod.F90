@@ -752,7 +752,7 @@ contains
              enddo
 
              allocate(r(1:thisOctal%maxChildren), s(1:thisOctal%maxChildren))
-             call random_number(r)
+             call randomNumberGenerator(getRealArray=r)
              tot = sum(r)
              mean = tot / real(thisOctal%maxChildren)
              r = r / mean

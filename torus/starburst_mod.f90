@@ -71,7 +71,7 @@ contains
     enddo
     prob(1:nMass) = prob(1:nMass) - prob(1)
     prob(1:nMass) = prob(1:nMass) / prob(nMass)
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     call locate(prob, nMass, r, i)
     t = (r - prob(i))/(prob(i+1)-prob(i))
     mass = log10(massArray(i)) + t * (log10(massArray(i+1))-log10(massArray(i)))
@@ -109,7 +109,7 @@ contains
           totMass = 0.d0
           do while (totMass < burstMass)
              nSource = nSource + 1
-             call random_number(source(nSource)%age)
+             call randomNumberGenerator(getDouble=source(nSource)%age)
              source(nSource)%age = source(nSource)%age * burstAge
              source(nSource)%initialmass = randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
              totMass = totMass + source(nSource)%initialmass
@@ -226,7 +226,7 @@ contains
       source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
       
       source%position = randomUnitVector()
-      call random_number(r)
+      call randomNumberGenerator(getDouble=r)
       r = sqrt(r)
       source%position = source%position * (5.d0 * pctocm / 1.d10) * r
 

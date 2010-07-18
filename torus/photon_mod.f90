@@ -197,13 +197,14 @@ contains
 
        if (.not.mie) then
           randomDirection = .true.
-          call random_number(r1)
+          call randomNumberGenerator(getReal=r1)
           
           ! determine cos phi
           
           w = 2.d0*r1 - 1.d0
           t = sqrt(1.d0-w*w)
-          call random_number(r2)
+          call randomNumberGenerator(getReal=r2)
+
           ang = Pi * (2.*r2-1.d0)
           u = t*cos(ang)
           v = t*sin(ang)
@@ -600,7 +601,7 @@ contains
     contwindphoton = .false.
 
     if (grid%lineEmission) then
-       call random_number(r)
+       call randomNumberGenerator(getReal=r)
        if (r < grid%chanceWindOverTotalContinuum) then
           contWindPhoton = .true.
           photonFromEnvelope = .true.
@@ -609,7 +610,7 @@ contains
 
 
     if (mie) then
-       call random_number(r)
+       call randomNumberGenerator(getReal=r)
        if (r < probDust) then
           photonFromEnvelope = .true.
           contWindPhoton = .true.
@@ -646,7 +647,7 @@ contains
 
                 do  ! dummy loop, in case we pick a position inside a star
 
-                  call random_number(randomDouble)
+                  call randomNumberGenerator(getDouble=randomDouble)
                   ! we search through the tree to find the subcell that contains the
                   !   probability value 'randomDouble'
                   sourceOctal => grid%octreeRoot
@@ -687,7 +688,7 @@ contains
              else ! grid is cartesian
                 ok = .false.
                 do while(.not.ok)
-                   call random_number(r1)
+                   call randomNumberGenerator(getReal=r1)
                    tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
                    call locate(grid%xProbDistCont, grid%nx, r1, i1)
                    t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
@@ -698,7 +699,7 @@ contains
                         (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
                    tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
 
-                   call random_number(r2)
+                   call randomNumberGenerator(getReal=r2)
                    call locate(tempYProbDist, grid%ny, r2, i2)
                    t2 = (r2 - tempYProbDist(i2)) / &
                         (tempYProbDist(i2+1) - tempYProbDist(i2))
@@ -712,7 +713,7 @@ contains
                    tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
 
-                   call random_number(r3)
+                   call randomNumberGenerator(getReal=r3)
                    call locate(tempZProbDist, grid%nz, r3, i3)
                    t3 = (r3 - tempZProbDist(i3)) / &
                         (tempZProbDist(i3+1) - tempZProbDist(i3))
@@ -747,7 +748,7 @@ contains
              if (grid%cartesian) then
                 ok = .false.
                 do while(.not.ok)
-                   call random_number(r1)
+                   call randomNumberGenerator(getReal=r1)
                    tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
                    call locate(grid%xProbDistCont, grid%nx, r1, i1)
                    t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
@@ -758,7 +759,7 @@ contains
                         (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
                    tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
 
-                   call random_number(r2)
+                   call randomNumberGenerator(getReal=r2)
                    call locate(tempYProbDist, grid%ny, r2, i2)
                    t2 = (r2 - tempYProbDist(i2)) / &
                         (tempYProbDist(i2+1) - tempYProbDist(i2))
@@ -772,7 +773,7 @@ contains
                    tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
 
-                   call random_number(r3)
+                   call randomNumberGenerator(getReal=r3)
                    call locate(tempZProbDist, grid%nz, r3, i3)
                    t3 = (r3 - tempZProbDist(i3)) / &
                         (tempZProbDist(i3+1) - tempZProbDist(i3))
@@ -798,7 +799,7 @@ contains
                    
                 do ! dummy loop, in case we pick a position inside a star
                    thisPhoton%direction = randomUnitVector()
-                  call random_number(randomDouble)
+                  call randomNumberGenerator(getDouble=randomDouble)
 
                   ! we search through the tree to find the subcell that contains the
                   !   probability value 'randomDouble'
@@ -835,17 +836,17 @@ contains
              else ! grid is polar
 
 980             continue
-                call random_number(r1)
+                call randomNumberGenerator(getReal=r1)
                 call locate(grid%rProbDistCont, grid%nr, r1, i1)
                 t1 = (r1-grid%rProbDistCont(i1))/(grid%rProbDistCont(i1+1)-grid%rProbDistCont(i1))
                 r = grid%rAxis(i1) + t1 * (grid%rAxis(i1+1)-grid%rAxis(i1))
 
-                call random_number(r2)
+                call randomNumberGenerator(getReal=r2)
                 call locate(grid%muProbDistCont(i1,1:grid%nmu), grid%nmu, r2, i2)
                 t2 = (r2-grid%muProbDistCont(i1,i2))/(grid%muProbDistCont(i1,i2+1)-grid%muProbDistCont(i1,i2))
                 mu = grid%muAxis(i2) + t2 * (grid%muAxis(i2+1)-grid%muAxis(i2))
 
-                call random_number(r3)
+                call randomNumberGenerator(getReal=r3)
                 call locate(grid%phiProbDistCont(i1,i2,1:grid%nphi), grid%nphi, r3, i3)
                 t3 = (r3-grid%phiProbDistCont(i1,i2,i3))/(grid%phiProbDistCont(i1,i2,i3+1)-grid%phiProbDistCont(i1,i2,i3))
                 phi = grid%phiAxis(i3) + t3 * (grid%phiAxis(i3+1)-grid%phiAxis(i3))
@@ -887,13 +888,13 @@ contains
 
                       spotPhoton = .false.
 
-                      call random_number(r1)
+                      call randomNumberGenerator(getReal=r1)
                       if (r1 < chanceSpot) then
                          spotPhoton = .true.
-                         call random_number(r1)
+                         call randomNumberGenerator(getReal=r1)
                          cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
                          thisTheta = acos(cosThisTheta)
-                         call random_number(r1)
+                         call randomNumberGenerator(getReal=r1)
                          thisPhi = twoPi * r1
                          rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
                          
@@ -903,7 +904,7 @@ contains
                          rotAngle = acos(rotAngle)
                          rHat = arbitraryrotate(rHat,dble(rotAngle),tVec)
                          if (nSpot == 2) then
-                            call random_number(r1)
+                            call randomNumberGenerator(getReal=r1)
                             if (r1 < 0.5) then
                                rHat = (-1.d0) * rHat
                                rSpot = (-1.d0) * rSpot
@@ -926,7 +927,7 @@ contains
                    endif
 
                 case("binary")
-                   call random_number(r)
+                   call randomNumberGenerator(getReal=r)
                    if (r < grid%lumRatio) then
                       thisPhoton%position = grid%starPos1 + (1.01d0*(grid%rStar1) * randomUnitVector())
                       thisPhoton%fromStar1 = .true.
@@ -939,13 +940,13 @@ contains
 
                 case("ttauri", "luc_cir3d",  "cmfgen", "romanova")
 
-!                   call random_number(r1)
+!                   call randomNumberGenerator(getDouble=r1)
 !                   if (r1 < chanceHotRing) then
-!                      call random_number(r1)
+!                      call randomNumberGenerator(getDouble=r1)
 !                      thisTheta = r1*(theta2 - theta1)+theta1
-!                      call random_number(r1)
+!                      call randomNumberGenerator(getDouble=r1)
 !                      if (r1 < 0.5) thisTheta = pi - thisTheta
-!                      call random_number(r1)
+!                      call randomNumberGenerator(getDouble=r1)
 !                      if (curtains) then 
 !                        ! if we have accretion curtains, we have to restrict the
 !                        ! emission region.
@@ -996,7 +997,7 @@ contains
              prob(i) = prob(i-1) + bias(i)
           enddo
           prob(1:nbias) = prob(1:nbias) / prob(nbias)
-          call random_number(rd)
+          call randomNumberGenerator(getDouble=rd)
           call locate(prob, nbias, rd, i)
           t = (rd-prob(i))/(prob(i+1)-prob(i))
 !          do i = 1, nbias
@@ -1009,7 +1010,7 @@ contains
        else
           if (mie) then
              tot = SUM(dlam(1:nLambda))
-             call random_number(r1)
+             call randomNumberGenerator(getReal=r1)
              if (forcedWavelength) then
                 call locate(lambda, nlambda, usePhotonWavelength, ilambda)
              else
@@ -1023,7 +1024,7 @@ contains
 
              thisPhoton%lambda = lambda(ilambda)
              thisPhoton%stokes = thisPhoton%stokes * weight ! * real(nLambda) tjh 21/3/07
-             call random_number(r)
+             call randomNumberGenerator(getReal=r)
              if (nlambda == 1) then
                 x1 = lambda(1)
                 x2 = lambda(1)
@@ -1039,13 +1040,13 @@ contains
                    x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
                 endif
              endif
-!             call random_number(r)
+!             call randomNumberGenerator(getReal=r)
 !          thisPhoton%lambda = x1+r*(x2-x1)
           elseif (grid%lineEmission .and. thisPhoton%contPhoton) then
              !pick line center wavelength
              thisPhoton%lambda = lamLine
           else
-             call random_number(r1)
+             call randomNumberGenerator(getReal=r1)
              iLambda = int(r1 * real(nLambda)) + 1
              thisPhoton%lambda = lambda(ilambda)
           endif
@@ -1170,12 +1171,12 @@ contains
 !          thisPhoton%direction = randomUnitVector()
 
        else
-          call random_number(r1)
+          call randomNumberGenerator(getReal=r1)
           w = 1.d0 - r1*sin(5.*degToRad)
-          call random_number(r2)
+          call randomNumberGenerator(getReal=r2)
           if (r2 < 0.5) w = -w
           t = sqrt(1.d0-w*w)
-          call random_number(r2)
+          call randomNumberGenerator(getReal=r2)
           ang = pi*(2.*r2-1.d0)
           u = t*cos(ang)
           v = t*sin(ang)
@@ -1261,7 +1262,7 @@ contains
 
 
           do while(.not.ok)
-             call random_number(r1)
+             call randomNumberGenerator(getReal=r1)
              tempXprobdist(1:grid%nx) = grid%xProbDistLine(1:grid%nx)
              call locate(grid%xProbDistLine, grid%nx, r1, i1)
              t1 = (r1 - grid%xProbDistLine(i1))/(grid%xProbDistLine(i1+1)-grid%xProbDistLine(i1))
@@ -1277,7 +1278,7 @@ contains
              tempYProbDist(1:grid%ny) = grid%yProbDistLine(i1,1:grid%ny) + t1 * &
                   (grid%yProbDistLine(i1+1,1:grid%ny) - grid%yProbDistLine(i1,1:grid%ny))
              tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
-             call random_number(r2)
+             call randomNumberGenerator(getReal=r2)
              call locate(tempYProbDist, grid%ny, r2, i2)
              t2 = (r2 - tempYProbDist(i2)) / &
                   (tempYProbDist(i2+1) - tempYProbDist(i2))
@@ -1297,7 +1298,7 @@ contains
                   (   t1)*(   t2) * grid%zProbDistLine(i1+1, i2+1, 1:grid%nz)
              tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
-             call random_number(r3)
+             call randomNumberGenerator(getReal=r3)
              call locate(tempZProbDist, grid%nz, r3, i3)
              t3 = (r3 - tempZProbDist(i3)) / &
                   (tempZProbDist(i3+1) - tempZProbDist(i3))
@@ -1349,7 +1350,7 @@ contains
 
              ! we search through the tree to find the subcell that contains the
              !   probability value 'randomDouble'
-             call random_number(randomDouble)
+              call randomNumberGenerator(getDouble=randomDouble)
              sourceOctal => grid%octreeRoot
              call locateLineProbAMR(randomDouble,sourceOctal,sourcesubcell)
              if (.not.sourceOctal%inFlow(sourcesubcell)) then
@@ -1389,7 +1390,7 @@ contains
                 
 
              if (sourceOctal%twod) then
-                call random_number(ang)
+                call randomNumberGenerator(getReal=ang)
                 ang = ang * twoPi
                 thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
              endif
@@ -1416,7 +1417,7 @@ contains
              directionalWeight = abs(2.*t)
              call normalize(thisPhoton%originalNormal)
              thisPhoton%velocity = VECTOR(1.e-30,1.e-30,1.e-30)
-             !             call random_number(r1)
+             !             call randomNumberGenerator(getReal=r1)
              !             thisPhoton%lambda = lambda(1)+r1*(lambda(nLambda)-lambda(1))
 
              ! The resonance line wavelength is given in torus main according to the photon loop
@@ -1433,14 +1434,14 @@ contains
 
 990             continue
 
-             call random_number(r1)
+             call randomNumberGenerator(getReal=r1)
              temprProbDistLine(1:grid%nr) = grid%rProbDistLine(1:grid%nr)
              call locate(temprProbDistLine, grid%nr, r1, i1)
              t1 = (r1-temprProbDistLine(i1))/(temprProbDistLine(i1+1)-temprProbDistLine(i1))
              r = grid%rAxis(i1) + t1 * (grid%rAxis(i1+1)-grid%rAxis(i1))
 
 
-             call random_number(r1)
+             call randomNumberGenerator(getReal=r1)
              tempMuProbDistLine(1:grid%nMu) = grid%muProbDistLine(i1,1:grid%nMu) + t1 * &
                   (grid%muProbDistLine(i1+1,1:grid%nMu) - grid%muProbDistLine(i1,1:grid%nMu))
              call locate(tempmuProbDistLine, grid%nMu, r1, i2)
@@ -1448,7 +1449,7 @@ contains
              mu = grid%muAxis(i2) + t2 * (grid%muAxis(i2+1)-grid%muAxis(i2))
 
 
-             call random_number(r1)
+             call randomNumberGenerator(getReal=r1)
              tempphiProbDistLine(1:grid%nphi) = &
                   (1.d0-t1)*(1.d0-t2) * grid%phiProbDistLine(i1  , i2  , 1:grid%nphi) +&
                   (   t1)*(1.d0-t2) * grid%phiProbDistLine(i1+1, i2  , 1:grid%nphi) +&
@@ -1517,7 +1518,7 @@ contains
 !                   vBias(1:nv) = vBias(1:nv) * fac / pv(nv)
 !                   pv(1:nv) = pv(1:nv) / pv(nv)
 !
-!                   call random_number(r)
+!                   call randomNumberGenerator(getReal=r)
 !                   call locate(pv, nv, r, i)
 !                   
 !
@@ -1675,20 +1676,20 @@ contains
     vMax = 30.e5
 
     rInner = (bigG *  mHot)/(vMax**2)
-    call random_number(r)
+    call randomNumberGenerator(getReal=r)
     radius = rInner + rSol * sqrt(r)
 
     v = sqrt(bigG * mHot/radius)
 
 
-    call random_number(ang)
+    call randomNumberGenerator(getReal=ang)
     ang = 2.*pi*ang
 
     rHat = VECTOR(cos(ang),sin(ang),0.)
     vHat = rHat .cross. zAxis
     call normalize(vHat)
 
-    call random_number(r)
+    call randomNumberGenerator(getReal=r)
     if (r < 0.5) then
        vHat = VECTOR(1.,0.,0.)
     else
@@ -1715,9 +1716,9 @@ contains
 
     r = 2.*grid%rAxis(grid%nr)
     do while ( r > grid%rAxis(grid%nr))
-       call random_number(x)
+       call randomNumberGenerator(getReal=x)
        x = (2.*x-1.) * grid%rAxis(grid%nr)
-       call random_number(y)
+       call randomNumberGenerator(getReal=y)
        y = (2.*y-1.) * grid%rAxis(grid%nr)
        r = sqrt(x**2 + y**2)
     enddo

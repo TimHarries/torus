@@ -33,6 +33,7 @@ contains
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104
+    use random_mod
 #ifdef MPI
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
@@ -517,7 +518,7 @@ contains
 
                          albedo = min(albedo,0.9999d0)
 
-                         call random_number(r)
+                         call randomNumberGenerator(getDouble=r)
 
                          ! scattering case
                          if (r < albedo) then 
@@ -598,7 +599,7 @@ contains
                             enddo
 
                             if (probDistJnu(icritupper) /= 0.d0) then
-                               call random_number(r)
+                               call randomNumberGenerator(getDouble=r)
                                r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
                                call locate(probDistJnu(1:icritupper), icritupper, r, j)
                                if (j == nFreq) j = nFreq -1
@@ -1163,7 +1164,7 @@ contains
 
        do iMonte = 1, nMonte
           escaped = .false.
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           call locate(probDistPlanck, nFreq, r, j)
           thisFreq = freq(j) + (freq(j+1) - freq(j))* &
                (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
@@ -1192,7 +1193,7 @@ contains
                    albedo = grid%oneKappaSca(1,iLam) / (grid%oneKappaSca(1,iLam)+grid%oneKappaAbs(1,iLam))
                 endif
 
-                call random_number(r)
+                call randomNumberGenerator(getDouble=r)
                 if (r < albedo) then
 
                    vec_tmp=uhat 
@@ -1221,7 +1222,7 @@ contains
                    enddo
 
                    probDistJnu(1:nFreq) = probDistJnu(1:nFreq) / probDistJnu(nFreq)
-                   call random_number(r)
+                   call randomNumberGenerator(getDouble=r)
                    call locate(probDistJnu, nFreq, r, j)
                    if (j == nFreq) j = nFreq -1
                    thisFreq = freq(j) + (freq(j+1) - freq(j))* &
@@ -1398,7 +1399,7 @@ contains
        write(*,*) "ilam errro",ilam
     endif
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     tau = -log(1.0-r)
     call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
     call intersectCubeCart(grid, rVec, i1, i2, i3, uHat, tVal)
@@ -1435,7 +1436,7 @@ contains
 
 
        if (stillinGrid) then
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           tau = -log(1.0-r)
           call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
           call intersectCubeCart(grid, rVec, i1, i2, i3, uHat, tVal)
@@ -2164,7 +2165,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
    endif
 
 ! select an initial random tau and find distance to next cell
-   call random_number(r)
+   call randomNumberGenerator(getDouble=r)
    tau = -log(1.0-r)
 
     octVec = rVec
@@ -2320,7 +2321,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
 ! now if the photon is in the grid choose a new random tau
 
        if (stillinGrid) then
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           tau = -log(1.0-r)
 !          tau = -log(r)  ! modified as above
 
@@ -3751,42 +3752,6 @@ subroutine setBiasOnTau(grid, iLambda)
 
   end subroutine refineDiscGrid
 
-#ifdef _OPENMP
-  subroutine testRandomOMP()
-    integer :: omp_get_num_threads, omp_get_thread_num
-    integer :: np
-    integer :: nTest = 100
-    real :: r
-    integer :: i, j 
-    integer, allocatable :: array(:,:)
-    logical :: allTheSame
-
-    allocate(array(1:nTest, 8))
-    !$OMP PARALLEL DEFAULT(NONE) &
-    !$OMP PRIVATE(r, i,j) &
-    !$OMP SHARED(array, np, ntest)
-    np =  omp_get_num_threads()
-    j = omp_get_thread_num()+1
-    do i = 1, nTest
-       call random_number(r)
-       array(i,j) = int(r*10000000.d0)
-    enddo
-    !$OMP END PARALLEL
-    !$OMP BARRIER
-    allTheSame = .true.
-    do i = 1, ntest
-       do j = 2, np
-          if (array(i,1) /= array(i,j)) then
-             allTheSame = .false.
-          endif
-       enddo
-    enddo
-    deallocate(array)
-    if (allTheSame) then
-       call writeFatal("OMP random sequences are the same")
-    endif
-  end subroutine testRandomOMP
-#endif
 
 end module lucy_mod
 

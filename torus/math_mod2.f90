@@ -5,7 +5,7 @@ module math_mod2
   !   problems.
 
   use kind_mod
-  
+  use random_mod
   implicit none
 
   interface zriddr
@@ -264,7 +264,7 @@ contains
         if (aamax.eq.0.) then
            write(*,*) 'Singular matrix in ludcmp_f77_single.'
            write(*,*) 'Correction forced with random number!'
-           call random_number(a(:,:))
+           call randomNumberGenerator(getRealArray2d=a)
            aamax=abs(MAXVAL(a(:,:)))
 !           stop
         endif
@@ -341,7 +341,7 @@ contains
         if (aamax.eq.0.d0) then
            write(*,*) 'Singular matrix in ludcmp_f77_double.'
            write(*,*) 'Correction forced with random number!'
-           call random_number(a(:,:))
+           call randomNumberGenerator(getDoubleArray2d=a)
            aamax=abs(MAXVAL(a(:,:)))
 !           stop
         endif

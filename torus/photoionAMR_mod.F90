@@ -641,7 +641,7 @@ contains
                          albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
                          
                          
-                         call random_number(r)
+                         call randomNumberGenerator(getDouble=r)
                          if (r < albedo) then
                             uHat = randomUnitVector() ! isotropic scattering
 !                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
@@ -655,7 +655,7 @@ contains
 !                            write(*,*) "done return kappa ", myrank
                             
                             if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
-                               call random_number(r1)
+                               call randomNumberGenerator(getDouble=r1)
 
                                if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
                                   call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
@@ -981,7 +981,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     tau = -log(1.0-r)
 
     call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
@@ -1090,7 +1090,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! now if the photon is in the grid choose a new random tau
 
        if (stillingrid) then
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           tau = -log(1.0-r)
           call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), startOctal=thisOctal, &
@@ -2642,9 +2642,9 @@ subroutine dumpLexington(grid, epsoverdt)
      heating = 0.d0; cooling = 0.d0
      do j = 1, 1000
 661     continue
-        call random_number(theta)
+        call randomNumberGenerator(getDouble=theta)
         theta = theta * Pi
-        call random_number(phi)
+        call randomNumberGenerator(getDouble=phi)
         phi = phi * twoPi
         
         octVec = VECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
@@ -3190,7 +3190,7 @@ subroutine getSahaMilneFreq(table,temperature, thisFreq)
 
   t = max(5000.d0, min(20000.d0, temperature))
   call locate(table%temp, table%nTemp, t, i)
-  call random_number(r)
+  call randomNumberGenerator(getDouble=r)
   call locate(table%Clyc(i,1:table%nfreq), table%nFreq, r, j)
   fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
   thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
@@ -3215,7 +3215,7 @@ subroutine twoPhotonContinuum(thisFreq)
   prob(1:21) = prob(1:21)/prob(21)
   thisFreq = 0.
   do while((thisFreq*hcgs*ergtoev) < 13.6)
-     call random_number(r)
+     call randomNumberGenerator(getDouble=r)
      call locate(prob, 21, r, i)
      fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
      thisFreq = (1.-fac)*freq
@@ -3570,7 +3570,7 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
   if (tSpec(nFreq) > 0.d0) then
      tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
-     call random_number(r)
+     call randomNumberGenerator(getDouble=r)
      call locate(tSpec, nFreq, r, i)
      fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
      photonFreq = freq(i) + fac * (freq(i+1)-freq(i))
@@ -4006,7 +4006,7 @@ end subroutine readHeIIrecombination
     tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
     if (tSpec(nFreq) > 0.d0) then
        tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        call locate(tSpec, nFreq, r, i)
        fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
        thisLambda = lamspec(i) + fac * (lamspec(i+1)-lamspec(i))
@@ -4220,7 +4220,7 @@ end subroutine readHeIIrecombination
     integer :: isignal
     real(double) :: powerPerPhoton
 
-    call init_random_seed()
+    call randomNumberGenerator(randomSeed=.true.)
 
     absorbed = .false.
     escaped = .false.
@@ -4319,7 +4319,7 @@ end subroutine readHeIIrecombination
           thisPhoton%iLam = iLambdaPhoton
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%observerPhoton = .false.
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
 
 
           if (r < probSource) then
@@ -4336,7 +4336,7 @@ end subroutine readHeIIrecombination
              call sendPhoton(thisPhoton, iThread, endloop = .false.) 
              directFromSource = .true.
           else
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              if (r < threadProbArray(1)) then
                 iThread = 1
              else
@@ -4386,7 +4386,7 @@ end subroutine readHeIIrecombination
 
           if (iSignal == 0) then
              thisOctal => grid%octreeRoot
-             call random_number(r)
+             call randomNumberGenerator(getDouble=r)
              call locateContProbAMR(r,thisOctal,subcell)
              thisPhoton%position = randomPositionInCell(thisOctal, subcell)
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) then
@@ -4667,7 +4667,7 @@ end subroutine readHeIIrecombination
 
        tau = kappaExt * tVal
 
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        thisTau = -log(1.d0-r)
 
        if (thisTau > tau) then ! photon crosses to boundary
@@ -4701,7 +4701,7 @@ end subroutine readHeIIrecombination
           albedo = kappaScaDust/kappaExt
 !          write(*,*) "test tau  ",tau, " thistau ",thistau, "  albedo ",albedo, " ext ",kappaext, " sca ",kappaScaDust, &
 !               "dust ",thisOctal%dustTypeFraction(subcell,1)
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           if (r < albedo) then
              scattered = .true.
           else

@@ -12,6 +12,7 @@ module vector_mod
 ! v1.0 on 13/08/99
 ! real(double) and 'octal' versions of some routines added by nhs
 
+  use random_mod
   use kind_mod
 
   implicit none
@@ -311,25 +312,25 @@ contains
 
     percentPhoCav = 0.9d0
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     if (r < percentPhoCav) then   !% of photons in cavities 
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        if(r < 0.5) then
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           w = cos(openingAngle) + (r * (1.0- cos(openingAngle)))
        else
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           w = -cos(openingAngle) + (r*(-1.0 + cos(openingAngle)))
        end if
        photonPacketWeight = (1.0 - cos(openingAngle)) / percentPhoCav          
     else  !rest towards disc
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        w = -cos(openingAngle) + (r * 2.0 * cos(openingAngle))
        photonPacketWeight = cos(openingAngle) / (1.0 - percentPhoCav)
    end if
 
     t = sqrt(1.0-w*w)
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
     ang = pi*(2.d0*r-1.d0)
     u = t*cos(ang)
     v = t*sin(ang)
@@ -341,10 +342,10 @@ contains
   type(VECTOR) function randomUnitVector()
     use constants_mod, only: pi
     real(double) :: r1, r2, u, v, w, t, ang
-    call random_number(r1)
-    w = 2.*r1 - 1.
-    t = sqrt(1.0-w*w)
-    call random_number(r2)
+    call randomNumberGenerator(getDouble=r1)
+    w = 2.d0*r1 - 1.d0
+    t = sqrt(1.d0-w*w)
+    call randomNumberGenerator(getDouble=r2)
     ang = pi*(2.d0*r2-1.d0)
     u = t*cos(ang)
     v = t*sin(ang)
@@ -506,7 +507,7 @@ contains
     norm = rVec
     call normalize(norm)
 
-    call random_number(z)
+    call randomNumberGenerator(getDouble=z)
     z = sqrt(z)
 
     ang = acos(z)
@@ -515,7 +516,7 @@ contains
     v = norm
 
     v = arbitraryRotate(v, ang, n)
-    call random_number(ang)
+    call randomNumberGenerator(getDouble=ang)
     ang = ang * twoPi
     v = arbitraryRotate(v, ang, norm)
 

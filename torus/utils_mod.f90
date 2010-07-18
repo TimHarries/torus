@@ -245,6 +245,7 @@ contains
     PARAMETER (PI=3.141592654)
     DATA OLDM /-1./
     save
+    !$OMP THREADPRIVATE(oldm)
     IF (XM.LT.12.)THEN
        IF (XM.NE.OLDM) THEN
           OLDM=XM
@@ -253,8 +254,7 @@ contains
        EM=-1
        T=1.
 2      EM=EM+1.
-
-       call random_number(r1)
+       call randomNumberGenerator(getReal=r1)
        T=T*r1
        IF (T.GT.G) GO TO 2
     ELSE
@@ -265,13 +265,13 @@ contains
           G=XM*ALXM-GAMMLN(XM+1.)
        ENDIF
 1      continue
-       call random_number(r1)
+       call randomNumberGenerator(getReal=r1)
        Y=TAN(PI*r1)
        EM=SQ*Y+XM
        IF (EM.LT.0.) GO TO 1
        EM=INT(EM)
        T=0.9*(1.+Y**2)*EXP(EM*ALXM-GAMMLN(EM+1.)-G)
-       call random_number(r1)
+       call randomNumberGenerator(getReal=r1)
        IF (r1.GT.T) GO TO 1
     ENDIF
     POIDEV=EM
@@ -1069,7 +1069,7 @@ contains
     integer, intent(in) :: ny
     integer, save       :: i
     real                :: t
-
+    !$OMP THREADPRIVATE (i)
     call locate(x, ny, xi, i)
     
     t = (xi - x(i))/(x(i+1)-x(i))
@@ -1083,6 +1083,7 @@ contains
     real(double), intent(in)    :: y(n), x(n), xi
     integer, save       :: i
     real(double)                :: t
+    !$OMP THREADPRIVATE (i)
 
     call locate(x, n, xi, i)
     
@@ -1252,10 +1253,13 @@ contains
       real :: v1, v2, r, fac
       data iset/0/
       save iset,gset
+
+!$OMP THREADPRIVATE (iset, gset)
+
       if (iset.eq.0) then
 1        continue
-         call random_number(r1)
-         call random_number(r2)
+         call randomNumberGenerator(getReal=r1)
+         call randomNumberGenerator(getReal=r2)
          v1=2.*r1-1.
          v2=2.*r2-1.
          r=v1**2+v2**2
@@ -1278,12 +1282,11 @@ contains
       done = .false.
 
       do while(.not. done)
-         call random_number(x)
+         call randomNumberGenerator(getDouble=x)
          x = 6. * (x - 0.5d0) 
          y = 1. - 0.5 * unNormalizedGauss(1.d0,x)
          
-         call random_number(ytest)
-         
+         call randomNumberGenerator(getDouble=ytest)         
          if(ytest .lt. y) then
             GaussianComplementRand = x
             done = .true.
@@ -1391,9 +1394,9 @@ contains
       ok = .false.
       do while(.not.ok)
 
-         call random_number(x)
+         call randomNumberGenerator(getDouble=x)
          x = 3.d0 * x
-         call random_number(y)
+         call randomNumberGenerator(getDouble=y)
          
          t = 4.d0/sqrt(pi) * x**2 * exp(-x**2)
          
@@ -1448,11 +1451,11 @@ contains
 
       do while(.not.ok)
          ! trial value of (nu-nu0)
-         call random_number(x)
+         call randomNumberGenerator(getDouble=x)
          ! random number between -6a to 6a
          x =6.0d0*a*(-1.0d0 + 2.0d0*x) 
          ! trial value of phi(nu)
-         call random_number(y)
+         call randomNumberGenerator(getDouble=y)
 
          t = a2/(x*x +a2)  ! This should be always less than 1.
          
@@ -1660,6 +1663,7 @@ contains
       REAL*8 C1,C2
       DATA C1,C2/1.128379167095512D0  ,5.64189583547756D-1/
       SAVE C1,C2
+      !$OMP THREADPRIVATE(c1,c2)
       !
       INTEGER*4 I,J
       !
@@ -1816,6 +1820,7 @@ contains
       real mq(0:5), pq(0:5), mf(0:5), pf(0:5)
       real d, yf, ypy0, ypy0q  
 
+      !$OMP THREADPRIVATE (c, s, t)
       !**** start of executable code *****************************************
 
       yq  = y*y                                                         ! y^2
@@ -2237,7 +2242,7 @@ contains
       real(single), save, allocatable :: newYarray(:) ! newYarray(newNx) ! automatic array
       integer :: i, j
       logical, save :: first_time = .true.
-
+      !$OMP THREADPRIVATE (first_time, newYarray)
       if (first_time) then
          first_time=.false.
          ALLOCATE(newYarray(nx_max))
@@ -2268,6 +2273,7 @@ contains
       real(single), save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       integer :: i, j
       logical, save :: first_time = .true.
+      !$OMP THREADPRIVATE (first_time, newYarray)
 
       if (first_time) then
          first_time=.false.
@@ -2360,6 +2366,7 @@ contains
       real :: dy  ! error estimate
       real, save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       logical, save :: first_time = .true.
+      !$OMP THREADPRIVATE (first_time, newYarray)
        y = 0.
        dy = 0.
       if (first_time) then
@@ -2398,8 +2405,9 @@ contains
       real(double) :: y
       real(double), save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       logical, save :: first_time = .true.
-      dy = 0.; y = 0.
+      !$OMP THREADPRIVATE (first_time, newyarray)
 
+      dy = 0.; y = 0.
       if (first_time) then
          first_time=.false.
          ALLOCATE(newYarray(nx_max))
@@ -2622,6 +2630,7 @@ contains
     character(LEN=*), intent(in) :: message
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
     !
     
     if (first_time) then
@@ -2650,6 +2659,7 @@ contains
     integer, intent(in) :: val
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
     !
     
     if (first_time) then
@@ -2677,6 +2687,7 @@ contains
     real, intent(in) :: val
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
     !
     
     if (first_time) then
@@ -2704,6 +2715,8 @@ contains
     real(double), intent(in) :: val
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
+
     !
     
     if (first_time) then
@@ -2731,6 +2744,8 @@ contains
     type(vector), intent(in) :: val
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
+
     !
     
     if (first_time) then
@@ -2758,6 +2773,8 @@ contains
     logical, intent(in) :: val
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
+
     !
     
     if (first_time) then
@@ -2785,6 +2802,8 @@ contains
     character(LEN=*), intent(in) :: val
     integer, parameter :: luout = 82
     logical, save :: first_time =  .true.
+    !$OMP THREADPRIVATE (first_Time)
+
     !
     
     if (first_time) then
@@ -3127,6 +3146,8 @@ subroutine DPOLFT (N, X, Y, W, MAXDEG, NDEG, EPS, R, IERR, A)
     CO(4,3)/-13.086850D0,-2.4648165D0,-3.3846535D0,-1.2973162D0, &
             -3.3381146D0,-1.7812271D0,-3.2578406D0,-1.6589279D0, &
             -1.6282703D0,-1.3152745D0,-3.2640179D0,-1.9829776D0/
+    !$OMP THREADPRIVATE (co)
+
 !***FIRST EXECUTABLE STATEMENT  DPOLFT
   yp =0.
   M = ABS(N)
@@ -3603,6 +3624,8 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
   integer :: IPIV(NMAX),INDXR(NMAX),INDXC(NMAX)
   logical :: ok
   logical, save :: firsttime = .true.
+  !$OMP THREADPRIVATE (firstTime)
+
   ok = .true.
   DO J=1,N
      IPIV(J)=0
@@ -4399,31 +4422,6 @@ END SUBROUTINE GAUSSJ
     endif
   end subroutine convertToFnu
 
-
-
-  SUBROUTINE init_random_seed()
-    use mpi_global_mod, only: myRankGlobal
-
-    INTEGER :: i, n, clock
-    integer(bigint) :: ibig
-    INTEGER, DIMENSION(:), ALLOCATABLE :: seed
-
-    CALL RANDOM_SEED(size = n)
-    ALLOCATE(seed(n))
-
-    CALL SYSTEM_CLOCK(COUNT=clock)
-
-    do i = 1, n
-       ibig = (myRankGlobal+i)*clock
-       ibig = mod(ibig, huge(clock)-1_bigint)
-       seed(i) = ibig
-    enddo
-    CALL RANDOM_SEED(PUT = seed)
-!    write(*,*) "Setting random seed for rank ",myrankglobal, " to: ",seed(1:n)
-    DEALLOCATE(seed)
-  END SUBROUTINE init_random_seed
-
-
   subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
     use constants_mod
     implicit none
@@ -4504,6 +4502,7 @@ END SUBROUTINE GAUSSJ
     real(double), save :: oldweights(27)
 ! OpenMP has problems with saved variables so set reuse=.false. 
     logical, parameter :: reuse=.false. 
+    !$OMP THREADPRIVATE (t1old, t2old, t3old, oldweights)
 
     if(reuse .and. t1 .eq. t1old) then
        if(t2 .eq. t2old) then
@@ -4658,7 +4657,7 @@ END SUBROUTINE GAUSSJ
 !!! coded by DAR Feb 09
 !!! final version? April 2010 - got rid of all of the allocating and deallocating.
 !!! Added capability to refine on just part of the vector
-function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result(out)
+subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
   implicit none
 
@@ -4674,10 +4673,10 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
     real(double) :: diff01(length), diff02(length), diff(length)
     real(double) :: a,b,d,e,f ! matrix coefficients - matrix is symmetric (at least)
     real(double) :: c1, c2
-    real(double), pointer :: out(:)
-    real(double), target :: outarray(200)
+    real(double) :: out(:)
     real(double) :: qorig(:), rorig(:), sorig(:), torig(:)
     real(double) :: det
+    real(double) :: temp(100)
     real(double) :: OABweight(length)
 
     integer :: vectorsize
@@ -4685,11 +4684,12 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
     logical :: dodoubleweight
     
     vectorsize = size(torig)
+    temp = out
+    out = torig
 ! Catch any nasty 0s
     if(any(torig(1:length) .eq. 0.d0)) then
-       outarray(1:vectorsize) = torig(1:vectorsize)
-       out => outarray(1:vectorsize)
-       return
+       out = torig
+       goto 666
     endif
 
     if(present(doubleweight)) then
@@ -4739,25 +4739,23 @@ function ngStep(qorig, rorig, sorig, torig, weight, doubleweight, length) result
       det = a*d - b*b
       
       if(det .eq. 0.d0) then
-         outarray(1:vectorsize) = torig(1:vectorsize)
-         out => outarray(1:vectorsize)
-         return
+         out = torig
+         goto 666
       endif
 
       c1 = (e*d-b*f) / det
       c2 = (a*f-e*b) / det
 
-      outarray(1:vectorsize) = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
-
-      out => outarray(1:vectorsize)
-
+      out = temp
+      out(1:length) = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
+      
 ! Uncomment this code if you find yourself trapping NaNs      
 !      if(any(isnan(out))) then
 !         outarray(1:vectorsize) = torig(1:vectorsize)
 !         out => outarray(1:vectorsize)
 !      endif
-
-    end function ngStep
+666 continue
+    end subroutine ngStep
 
 end module utils_mod
 

@@ -1439,7 +1439,7 @@ module amr_utils_mod
 
 
     if (thisOctal%oneD) then
-       call random_number(r1)
+       call randomNumberGenerator(getDouble=r1)
        r1 = r1 - 0.5d0
        r1 = r1 * 0.9999
        r = r1 * thisOctal%subcellSize + octalCentre%x
@@ -1452,18 +1452,18 @@ module amr_utils_mod
 
        if (.not.thisOctal%cylindrical) then
 
-          call random_number(r1)
+          call randomNumberGenerator(getDouble=r1)
           r1 = r1 - 0.5  ! shift value mean value to zero
           r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
           xOctal = r1 * thisOctal%subcellSize + octalCentre%x
        
-          call random_number(r2)
+          call randomNumberGenerator(getDouble=r2)
           r2 = r2 - 0.5                                  
           r2 = r2 * 0.9999                                          
           yOctal = r2 * thisOctal%subcellSize + octalCentre%y
           
           
-          call random_number(r3)
+          call randomNumberGenerator(getDouble=r3)
           r3 = r3 - 0.5                                  
           r3 = r3 * 0.9999                                          
           zOctal = r3 * thisOctal%subcellSize + octalCentre%z
@@ -1473,20 +1473,20 @@ module amr_utils_mod
        else
 
 
-          call random_number(r1)
+          call randomNumberGenerator(getDouble=r1)
           r1 = r1 - 0.5  ! shift value mean value to zero
           r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
           xOctal = r1 * thisOctal%subcellSize + sqrt(octalCentre%x**2+octalCentre%y**2)
 
 
-          call random_number(r3)
+          call randomNumberGenerator(getDouble=r3)
           r3 = r3 - 0.5                                  
           r3 = r3 * 0.9999                                          
           zOctal = r3 * thisOctal%subcellSize + octalCentre%z
 
           randomPositionInCell = VECTOR(xOctal,0.,zOctal)
           
-          call random_number(r2)
+          call randomNumberGenerator(getDouble=r2)
           phi = atan2(octalCentre%y, octalCentre%x)
           if (phi < 0.d0) phi = phi + twoPi
 
@@ -1505,14 +1505,14 @@ module amr_utils_mod
 
        endif
     else
-
-       call random_number(r1)
+       
+       call randomNumberGenerator(getDouble=r1)
        r1 = r1 - 0.5  ! shift value mean value to zero
        r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
        xOctal = r1 * thisOctal%subcellSize + octalCentre%x
        
           
-       call random_number(r3)
+       call randomNumberGenerator(getDouble=r3)
        r3 = r3 - 0.5                                  
        r3 = r3 * 0.9999                                          
        zOctal = r3 * thisOctal%subcellSize + octalCentre%z
@@ -1520,7 +1520,8 @@ module amr_utils_mod
        randomPositionInCell = VECTOR(xOctal,0.d0,zOctal)
 
        if (thisOctal%twod) then
-          call random_number(ang)
+
+          call randomNumberGenerator(getDouble=ang)
           ang = ang * twoPi
           randomPositionInCell = rotateZ(randomPositionInCell, ang)
        endif

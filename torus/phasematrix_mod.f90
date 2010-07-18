@@ -13,7 +13,7 @@ module phasematrix_mod
   use constants_mod
   use vector_mod
   use messages_mod 
-
+  use random_mod
   implicit none
 
   public
@@ -355,7 +355,7 @@ contains
        setupMieDir = .false.
     endif
 
-    call random_number(r)
+    call randomNumberGenerator(getReal=r)
 
     probtemp(:) = prob(1:nMuMie,ilam)
 !    call locate(prob(ilam,1:nMuMie), nMuMie, r, j)
@@ -375,7 +375,7 @@ contains
 
 
     theta = acos(max(-1.0_db,min(1.0_db,theta)))
-    call random_number(r)
+    call randomNumberGenerator(getReal=r)
     phi = twoPi * r
 
     tVec = oldDirection

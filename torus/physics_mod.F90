@@ -9,6 +9,7 @@ module physics_mod
   use setupamr_mod
   use vector_mod
   use parallel_mod
+  use random_mod
   implicit none
 
 
@@ -365,7 +366,7 @@ contains
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0
         call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d3, 1.d0)
-        call init_random_seed()
+        call randomNumberGenerator(randomSeed = .true.)
     endif
     
 
@@ -404,5 +405,66 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
   call allocateMemoryForDust(grid%octreeRoot)
 end subroutine setupDust
+
+subroutine testSuiteRandom()
+  integer :: i, j
+  integer(bigint) :: iseed
+  real :: r
+  real(double) :: rd
+  integer :: np, omp_get_num_threads, omp_get_thread_num
+  real :: array(100,10)
+  character(len=80) :: message
+
+  call randomNumberGenerator(randomSeed=.true.)
+  call randomNumberGenerator(getIseed=iseed)
+  write(message,*) "Random number seed is initialized from clock with ",iseed
+  call writeInfo(message)
+  if (writeoutput) write(*,*) "Sequence of 10 random numbers (real , double)"
+  
+  do i = 1, 10
+     call randomNumberGenerator(getReal=r)
+     call randomNumberGenerator(getIseed=iseed)
+     call randomNumberGenerator(getDouble=rd)
+     if (writeoutput) write(*,*) i, r, rd
+  enddo
+
+#ifdef _OPENMP
+  if (writeoutput) write(*,*) "OMP thread test - random seed"
+  !$OMP PARALLEL DEFAULT(NONE) &
+  !$OMP PRIVATE(I,j) &
+  !$OMP SHARED(ARRAY,np)
+  call randomNumberGenerator(randomSeed=.true.)
+  np = omp_get_num_threads()
+  do i = 1, 10
+     j = omp_get_thread_num()+1
+     call randomNumberGenerator(getReal=array(i,j))
+  enddo
+  !$OMP END PARALLEL
+  do i = 1, 10
+     write(*,*) array(i,1:np)
+  enddo
+#endif
+
+
+#ifdef _OPENMP
+  if (writeoutput) write(*,*) "OMP thread test - fixed seed"
+  call randomNumberGenerator(randomSeed=.true.)
+  !$OMP PARALLEL DEFAULT(NONE) &
+  !$OMP PRIVATE(I,j) &
+  !$OMP SHARED(ARRAY,np)
+  call randomNumberGenerator(syncISeed = .true.)
+  np = omp_get_num_threads()
+  do i = 1, 10
+     j = omp_get_thread_num()+1
+     call randomNumberGenerator(getReal=array(i,j))
+  enddo
+  !$OMP END PARALLEL
+  do i = 1, 10
+     write(*,*) array(i,1:np)
+  enddo
+#endif
+
+end subroutine testSuiteRandom
+
 
 end module physics_mod

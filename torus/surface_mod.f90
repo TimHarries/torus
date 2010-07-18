@@ -142,7 +142,7 @@ contains
        theta = pi*real(i-1)/real(nTheta-1)
 !       nphi = max(1,nint(real(nTheta)*sin(theta)))
        nPhi = nTheta ! makes it easier to find element
-       call random_number(dPhase)
+       call randomNumberGenerator(getDouble=dphase)
        dPhase = dphase * twoPi
        do j = 1, nPhi
           n = n + 1
@@ -651,7 +651,7 @@ contains
     real :: r
     integer :: j
 
-    call random_number(r)
+    call randomNumberGenerator(getReal=r)
     call locate(surface%element(:)%prob, SIZE(surface%element), r, j)
     position = surface%centre + 1.0001d0*surface%element(j)%position
     direction = fromPhotosphereVector(surface%element(j)%norm)

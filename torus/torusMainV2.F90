@@ -34,7 +34,7 @@ program torus
   use physics_mod
   use outputs_mod
   use source_mod
-
+  use random_mod
   type(GRIDTYPE) :: grid
 #ifdef MPI
    include 'mpif.h'  
@@ -83,8 +83,8 @@ program torus
 
   ! set up a random seed
   
-  call init_random_seed()
-  
+  call randomNumberGenerator(randomSeed=.true.)
+  call testSuiteRandom()  
   call inputs()
 
 
@@ -98,7 +98,7 @@ program torus
 
   call writeBanner("Run-time messages","+",TRIVIAL)
 
-  call init_random_seed()
+  call randomNumberGenerator(randomSeed=.true.)
 
   call doPhysics(grid)
 

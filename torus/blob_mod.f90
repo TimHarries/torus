@@ -11,6 +11,7 @@
 module blob_mod
 
   use vector_mod            ! Vector maths
+  use random_mod
   use constants_mod         ! Physical constants
   use gridtype_mod, only: GRIDTYPE  ! The density grid
 
@@ -56,19 +57,19 @@ contains
     if (atBase) then
        r = grid%rAxis(1)*1.05
     else
-       call random_number(r1)
+       call randomNumberGenerator(getreal=r1)
        r = (1.05 + 9. * sqrt(r1)) *grid%rAxis(1)
     endif
 
     ! random latitude
 
-    call random_number(r2)
+    call randomNumberGenerator(getreal=r2)
     mu = 2.*r2 -1.
     sinTheta = sqrt(1.- mu*mu)
 
     ! random azimuth
 
-    call random_number(r3)
+    call randomNumberGenerator(getreal=r3)
     phi = r3 * twoPi
 
     ! set the position
@@ -77,7 +78,7 @@ contains
 
     ! radius random between 0.01 and 0.1 stellar radii
 
-    call random_number(r1)
+    call randomNumberGenerator(getreal=r1)
     blobs(iBlob)%radius = 0.1*grid%raxis(1) !(0.01 + 0.09*r1)*grid%rAxis(1)
 
     ! find the position of the blob within the opacity grid

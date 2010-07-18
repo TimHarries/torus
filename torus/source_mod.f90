@@ -73,7 +73,7 @@ module source_mod
 !         iSource = 1
 !      else if (nSource == 2) then
 !         lRatio = source(1)%luminosity / (source(1)%luminosity + source(2)%luminosity)
-!         call random_number(r)
+!         call randomNumberGenerator(getDouble=r)
 !         if ( r  < lRatio ) then
 !            iSource = 1
 !         else
@@ -95,7 +95,7 @@ module source_mod
 !	    
 !	 end if
 !	 
-!         call random_number(r)
+!         call randomNumberGenerator(getDouble=r)
 !         call locate(prob, nSource, r, iSource)
 !         if (iSource < nSource) then
 !            t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
@@ -139,7 +139,7 @@ module source_mod
 !            write(*,*) "Source prob: ",prob(1:nSource)
          end if
 	 
-         call random_number(r)
+         call randomNumberGenerator(getReal=r)
          call locate(prob, nSource, r, iSource)
          if (iSource < nSource) then
             t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
@@ -230,10 +230,10 @@ module source_mod
             call melvinUnitVector(direction, photonPacketWeight)  
       else
          position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
-         call random_number(r)
+         call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%y = r * grid%octreeRoot%subcellSize
-         call random_number(r)
+         call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%z = r * grid%octreeRoot%subcellSize
          direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -264,10 +264,10 @@ module source_mod
          if ( source%onEdge ) direction%z = abs(direction%z)
       else
          position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
-         call random_number(r)
+         call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%y = r * grid%octreeRoot%subcellSize
-         call random_number(r)
+         call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%z = r * grid%octreeRoot%subcellSize
          direction = VECTOR(1.d0, 0.d0, 0.d0)

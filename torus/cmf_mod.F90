@@ -10,7 +10,8 @@ module cmf_mod
   use octal_mod, only: octal, octalWrapper, subcellCentre
   use amr_mod, only: inOctal, distanceToCellBoundary, findsubcellLocal, amrGridVelocity
   use gridtype_mod, only: GRIDTYPE
-  use utils_mod, only: init_random_seed, gaussj, locate, toPerAngstrom
+  use utils_mod, only: gaussj, locate, toPerAngstrom
+  use random_mod
   use modelatom_mod, only: MODELATOM, BoltzSahaGeneral, bfOpacity, bfEmissivity, photoCrossSection, collisionRate, &
         addcrosssectionstoatom, createcontfreqarray, createrbbarrays, returneinsteincoeffs
   use source_mod, only: SOURCETYPE, I_nu, insideSource, distanceToSource
@@ -477,7 +478,7 @@ contains
     call randomRayDirection(0.5d0, position, source, nSource, direction, weightOmega)
 
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
 
     totDist = 0.d0
     call distanceToSource(source, nSource, position, direction, hitSource, disttoSource, sourcenumber)
@@ -494,7 +495,7 @@ contains
     rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
 
 
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
 
 
     deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
@@ -1050,6 +1051,7 @@ contains
     use input_variables, only : debug, rcore, lte, vturb
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
+    use random_mod
     use amr_mod, only: countVoxels, getOctalArray, sortOctalArray
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -1085,7 +1087,7 @@ contains
     real(double) :: maxFracChange
     logical :: fixedRays
     integer :: isize
-    integer, allocatable :: iseed(:)
+    integer(bigint) :: iseed
     real(double) :: tolerance
     integer, allocatable :: sourceNumber(:)
 !    type(VECTOR) :: posVec
@@ -1276,19 +1278,15 @@ contains
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
     call  sortOctalArray(octalArray,grid)
-    call init_random_seed()
+    call randomNumberGenerator(randomSeed=.true.)
 !    if (myrankiszero) then
 !       call testRays(grid, nSource, source)
 !    endif
     call torus_mpi_barrier
 
-    call random_seed(size=iSize)
-    allocate(iSeed(1:iSize))
-    call random_seed(get=iSeed)
-#ifdef MPI
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-#endif
+    call randomNumberGenerator(getiseed = iseed)
+    call randomNumberGenerator(syncIseed = .true.)
+
      if (myRankisZero) then
         open(69, file="cmf_convergence.dat", status="unknown", form="formatted")
         write(69,'(a)') &
@@ -1343,9 +1341,9 @@ contains
           allocate(position(1:nray), direction(1:nray))
 
           if (fixedRays) then
-             call random_seed(put=iseed)   ! same seed for fixed rays
+             call randomNumberGenerator(putIseed = iseed)
           else
-             call init_random_seed()
+             call randomNumberGenerator(randomSeed=.true.)
           endif
 
 
@@ -1947,11 +1945,11 @@ contains
 
     weight = 1.d0
  
-    call random_number(r)
+    call randomNumberGenerator(getDouble=r)
 
     if (r < probTowardsSource) then
        weight = chanceSource/probTowardsSource
-       call random_number(r)
+       call randomNumberGenerator(getDouble=r)
        i = int(r*real(nSource))+1
        toStar = source(i)%position - point
        call normalize(toStar)
@@ -2591,7 +2589,8 @@ contains
 
     do ir = 1, nr
        r1 = rGrid(ir)
-       call random_number(phiOffset)
+
+       call randomNumberGenerator(getDouble=phiOffset)
        phiOffset = phiOffset * dphi(1)
        do iPhi = 1, nPhi
           phi1 = phiGrid(iPhi) + phiOffset
@@ -2732,9 +2731,9 @@ contains
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
                 if (nMonte > 1) then
-                   call random_number(r)
+                   call randomNumberGenerator(getDouble=r)
                    xVal = cube%xAxis(ix) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
-                   call random_number(r)
+                   call randomNumberGenerator(getDouble=r)
                    yVal = cube%yAxis(iy) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
                 else
                    xVal = cube%xAxis(ix)

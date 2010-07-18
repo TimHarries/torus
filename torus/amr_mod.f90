@@ -5,6 +5,7 @@ module amr_mod
   ! twod stuff added by tjh started 25/08/04
 
   use vector_mod
+  use random_mod
   use messages_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
@@ -3691,10 +3692,12 @@ CONTAINS
       maxDensity = -1.e30
       DO i = 1, nsample
         searchPoint = cellCentre
-        CALL RANDOM_NUMBER(x)
-        CALL RANDOM_NUMBER(z)
+        call randomNumberGenerator(getreal=x)
+        call randomNumberGenerator(getreal=z)
         if (thisOctal%threed) then
-           CALL RANDOM_NUMBER(y)
+
+           call randomNumberGenerator(getreal=y)
+
            searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct)
            searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
            searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
@@ -4885,9 +4888,6 @@ CONTAINS
 !        ave_density = 0.0_db
 !        DO i = 1, nsample
 !          searchPoint = cellCentre
-!          CALL RANDOM_NUMBER(x)
-!          CALL RANDOM_NUMBER(y)
-!          CALL RANDOM_NUMBER(z)
 !          searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
 !          searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
 !          searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct)
@@ -6256,7 +6256,7 @@ CONTAINS
 
     polVec = rotateZ(polVec,-phi)
 
-    CALL RANDOM_NUMBER(swap)
+    call randomNumberGenerator(getReal=swap)
     IF ( swap > 0.5 ) THEN 
       point%z  = -1.0_oc * point%z
       polVec%z = -1.0_oc * polVec%z
@@ -6367,14 +6367,14 @@ CONTAINS
                 END IF
                 ok = .FALSE.
                 DO 
-                  CALL RANDOM_NUMBER(rand)
+                   call randomNumberGenerator(getReal=rand)
                   phi = (rand-0.5) * twoPi
                   IF (((phi > curtainsPhi1s+1.0).AND.(phi < curtainsPhi1e-1.0)) .OR.  &
                       ((phi > curtainsPhi2s+1.0).AND.(phi < curtainsPhi2e-1.0))) ok = .TRUE.
                   IF (ok) EXIT
                 END DO
               ELSE
-                CALL RANDOM_NUMBER(rand)
+                 call randomNumberGenerator(getReal=rand)
                 phi = (rand-0.5) * twoPi
               END IF
             END IF
@@ -7271,10 +7271,6 @@ CONTAINS
        thisOctal%rho(subcell) = 2.d0
     endif
 
-!    call random_number(u1)
-!    call random_number(u2)
-!    u1 = (2.*u1-1.) * 0.005
-!    u2 = (2.*u2-1.) * 0.005
 
     u1 = 0.d0
     if (abs(rVec%z-0.25d0) < 0.025d0) then
@@ -17143,11 +17139,11 @@ IF ( .NOT. gridConverged ) RETURN
     tot = 0.d0
     call unixTimes(cpuTime, startTime)
     do i = 1, nPaths
-       call random_Number(r)
+       call randomNumberGenerator(getDouble=r)
        rVec%x = grid%octreeRoot%centre%x + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call random_Number(r)
+       call randomNumberGenerator(getDouble=r)
        rVec%y = grid%octreeRoot%centre%y + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call random_Number(r)
+       call randomNumberGenerator(getDouble=r)
        rVec%z = grid%octreeRoot%centre%z + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
        uHat = randomUnitVector()
        call testToBoundary(grid, rVec, uHat, s)
@@ -17160,11 +17156,11 @@ IF ( .NOT. gridConverged ) RETURN
     tot = 0.d0
     call unixTimes(cpuTime, startTime)
     do i = 1, nPaths
-       call random_Number(r)
+       call randomNumberGenerator(getDouble=r)
        rVec%x = grid%octreeRoot%centre%x + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call random_Number(r)
+       call randomNumberGenerator(getDouble=r)
        rVec%y = grid%octreeRoot%centre%y + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call random_Number(r)
+       call randomNumberGenerator(getDouble=r)
        rVec%z = grid%octreeRoot%centre%z + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
        uHat = randomUnitVector()
        call testToBoundary2(grid, rVec, uHat, s)

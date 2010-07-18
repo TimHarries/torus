@@ -956,11 +956,11 @@ contains
     if (thisOctal%threeD)  then
        do i = 1, nsample
           ! picking a random position in the subcell
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           x =  xc - d + r*2.0d0*d
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           y =  yc - d + r*2.0d0*d
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           z =  zc - d + r*2.0d0*d               
           ! evaluate the disc density density
           ! Taking the max value samples
@@ -970,10 +970,10 @@ contains
     else  ! 2D amr
        do i = 1, nsample
           ! picking a random position in the subcell
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           x =  xc - d + r*2.0d0*d
           y =  yc 
-          call random_number(r)
+          call randomNumberGenerator(getDouble=r)
           z =  zc - d + r*2.0d0*d               
           ! evaluate the disc density density
           ! Taking the max value samples

@@ -1047,7 +1047,6 @@ contains
     real ::  dtau_max
     logical :: fromDisc
     real(double) :: V_th ! thermal velocity
-!    real(double) :: r    ! random number
     !-------------------------------------------------------------------------
     ! WORK ARRAYS
     logical, save :: first_time = .true.
@@ -1214,9 +1213,6 @@ contains
              ! relative velocity wrt the observer
              Vrel = projVel_mid
 
-!             ! adding random thermal velocity
-!             call random_number(r)
-!             Vrel = Vrel + r*(-1.0d0 + 2.0d0*r)*V_th/cSpeed_dbl
              
              ! The line centre of absorption profile shifted by Doppler.
 !             nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
@@ -1367,9 +1363,6 @@ contains
           ! relative velocity wrt the observer
           Vrel = projVel_mid
           
-!          ! adding random thermal velocity
-!          call random_number(r)
-!          Vrel = Vrel + r*(-1.0d0 + 2.0d0*r)*V_th/cSpeed_dbl
 
           
           ! The line centre of absorption profile shifted by Doppler.
@@ -2003,7 +1996,6 @@ contains
 !     real :: sqrt_pi
 !     logical :: fromDisc
 !     real(double) :: V_th ! thermal velocity
-!     real(double) :: r    ! random number
 !     !-------------------------------------------------------------------------
 !     ! WORK ARRAYS
 !     integer, parameter       :: maxTau = 500000  ! Use this for a normal opearation
@@ -2140,9 +2132,6 @@ contains
 !                 ! relative velocity wrt the observer
 !                 Vrel = projVel_mid
                 
-!                 ! adding random thermal velocity
-!                 call random_number(r)
-!                 Vrel = Vrel + r*(-1.0d0 + 2.0d0*r)*V_th/cSpeed_dbl
                 
 !                 ! The line centre of absorption profile shifted by Doppler.
 !                 nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 

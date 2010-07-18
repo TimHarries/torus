@@ -10,6 +10,7 @@
 module math_mod
 
   use vector_mod          ! vector maths
+  use random_mod
   use constants_mod       ! physical constants
   use kind_mod
   use messages_mod
@@ -521,7 +522,7 @@ contains
     real :: r, mu, phi
     real(double) :: r1
 
-    call random_number(r1)
+    call randomNumberGenerator(getDouble=r1)
     call locate(grid%oneProbLine, grid%nProb, r1, i)
     i1 = grid%cellIndex(i,1)
     i2 = grid%cellIndex(i,2)
@@ -538,7 +539,7 @@ contains
     real :: r, mu, phi
     real(double) :: r1
 
-    call random_number(r1)
+    call randomNumberGenerator(getDouble=r1)
     call locate(grid%oneProbCont, grid%nProb, r1, i)
     i1 = grid%cellIndex(i,1)
     i2 = grid%cellIndex(i,2)
