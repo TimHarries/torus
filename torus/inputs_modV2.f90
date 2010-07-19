@@ -44,7 +44,7 @@ contains
     probContPhoton = 1.
     imagescale = 1.
     noscattering = .false.
-
+    usebias = .true.
     nBlobs = 0
     nLines = 0
     inputnMonte = 0

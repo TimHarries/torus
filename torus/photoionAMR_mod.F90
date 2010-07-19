@@ -4259,7 +4259,7 @@ end subroutine readHeIIrecombination
           call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
 
           if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
           else
              lcore = tiny(lcore)
           endif
@@ -4271,7 +4271,7 @@ end subroutine readHeIIrecombination
           call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
 
           if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
           else
              lcore = tiny(lcore)
           endif
@@ -4282,7 +4282,7 @@ end subroutine readHeIIrecombination
           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage,iLambdaPhoton)
 
           if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
           else
              lcore = tiny(lcore)
           endif

@@ -30,7 +30,7 @@ program torus
        setupNeighbourPointers, findtotalmass
   use setupAMR_mod
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
-  use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
+  use grid_mod, only: initAMRgrid, freegrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
   use blob_mod, only: blobType
   use inputs_mod, only: inputs
@@ -263,7 +263,7 @@ program torus
   allocate(distortionVec(1:1))
 
 #ifdef MPI
-  call sync_random_seed()
+  call randomNumberGenerator(randomSeed=.true.)
 #endif
 
   ! initialize
@@ -401,22 +401,6 @@ program torus
      if (.not.ok) goto 666
 
   else
-     if (gridcoords /= "polar") then
-        if ((.not.doRaman).and.(geometry /= "binary"))  then
-           grid = initCartesianGrid(nx, ny, nz, nLambda, lamStart, lamEnd, &
-                greyContinuum, ok)
-           else
-           grid = initCartesianGrid(nx, ny, nz, 1, lamStart, lamEnd, &
-                greyContinuum, ok)
-        endif
-         if (.not.ok) goto 666
-     else   if (plezModelOn) then
-        grid = plezModel("model.plez", lamStart, lamEnd, nLambda, kfac)
-     else
-        grid = initPolarGrid(nr, nmu, nphi, nlambda, lamStart, &
-                             lamEnd, greyContinuum, ok)
-        if (.not.ok) goto 666
-     endif
   end if
 
 !  if (mie) sed = .true.
@@ -565,7 +549,7 @@ program torus
         timeStart = 0.
         timeEnd = 12.*3600.
         dTime = (timeEnd - timeStart)/real(nPhase)
-        call initInfallEnhancement(distortionVec, nVec, nPhi, infallParticleMass)
+        call initInfallEnhancement(distortionVec, nVec, infallParticleMass)
         do i = 1, nStartPhase-1
            call infallEnhancment(grid, distortionVec, nVec, nPhi, dTime, &
                 .false., infallParticleMass, alreadyDoneInfall)
@@ -1416,10 +1400,6 @@ end subroutine pre_initAMRGrid
            endif
            grid%kappaAbs = 1.e-30
 
-        case("puls")
-           call fillGridPuls(grid, mDot, rcore, tEff, v0, vterm, beta, xfac, blobs, maxBlobs, .false., vContrast)
-   !        call initGridStateq(grid, contFluxFile, contFluxFile2, popFilename, &
-   !                            readPops, writePops, lte, nLower, nUpper)
 !        case("wind")
 !           call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
 !           lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
@@ -1713,7 +1693,7 @@ end subroutine pre_initAMRGrid
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, contFluxFile, source(1)%teff, &
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 400, source(1)%teff, &
                source(1)%spectrum)
           nu =1.d15
 !           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
@@ -1954,7 +1934,7 @@ end subroutine pre_initAMRGrid
 	if (lineEmission.and.(geometry /= "cmfgen").and.(geometry /= "wind")) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, contFluxFile, dble(teff), &
+           call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, dble(teff), &
                 source(1)%spectrum)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
@@ -2071,7 +2051,7 @@ end subroutine pre_initAMRGrid
            else
 
               call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
-                      starSurface, recalcPrevious=.false., ion_name=ion_name, ion_frac=ion_frac)
+                      starSurface, recalcPrevious=.false.)
 !              if (ttau_disc_on) then
 !                 ! amrStateq will have messed up the disc, so we reset those cells
 !                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, sigmaAbs0, sigmaSca0)
@@ -2191,7 +2171,7 @@ subroutine set_up_sources
         if (.not.cmf) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(VECTOR(0.d0, 0.d0, 0.d0), dble(grid%rCore), starSurface, 1000, contFluxFile, dble(teff), &
+           call buildSphere(VECTOR(0.d0, 0.d0, 0.d0), dble(grid%rCore), starSurface, 1000, dble(teff), &
                 source(1)%spectrum)
            if (geometry == "ttauri") then
 !              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
@@ -2215,7 +2195,7 @@ subroutine set_up_sources
            source(1)%position = VECTOR(0.,0.,0.)
            call fillSpectrumBB(source(1)%spectrum, source(1)%teff,  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
-           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile, source(1)%teff, &
+           call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, source(1)%teff, &
                 source(1)%spectrum)
 !           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
            call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion, lAccretion) 
@@ -2236,7 +2216,7 @@ subroutine set_up_sources
 !           call fillSpectrumBB(source(1)%spectrum, 1.d5, 10.d0, 1000.d4,1000)
            call normalizedSpectrum(source(1)%spectrum)
 	   write(*,*) "calling build sphere..."
-           call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, contFluxFile,&
+           call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, &
                 source(1)%teff, source(1)%spectrum)
 
     case("wind")
@@ -2251,7 +2231,7 @@ subroutine set_up_sources
            call readSpectrum(source(1)%spectrum, contfluxfile, ok)
            call normalizedSpectrum(source(1)%spectrum)
 	   write(*,*) "calling build sphere..."
-           call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, contFluxFile, &
+           call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, &
                 source(1)%teff, source(1)%spectrum)
 
         
@@ -2265,7 +2245,7 @@ subroutine set_up_sources
        source(1)%position = VECTOR(0.,0.,0.)
        call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
        call normalizedSpectrum(source(1)%spectrum)
-       call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, "blackbody", &
+       call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400,  &
             source(1)%teff, source(1)%spectrum)
        call sumSurface(source(1)%surface)
        call testSurface(source(1)%surface)
@@ -2281,7 +2261,7 @@ subroutine set_up_sources
           source(1)%position = VECTOR(0.,0.,0.)
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, contFluxFile, 4000.d0, &
+          call buildSphere(grid%starPos1, dble(grid%rCore), source(1)%surface, 1000, 4000.d0, &
                source(1)%spectrum)
        endif
        nu =1.d15
@@ -2403,7 +2383,7 @@ subroutine set_up_sources
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
        source%outsideGrid = .true.
-       if (writeoutput) write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
+       if (writeoutput) write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1))
 
     case("symbiotic")
        nSource = 2
@@ -2478,7 +2458,7 @@ subroutine set_up_sources
 
           call normalizedSpectrum(source(1)%spectrum)
        else
-          call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, contFluxFile, &
+          call buildSphere(source(1)%position, source(1)%radius, source(1)%surface, 400, &
                source(1)%teff, source(1)%spectrum)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
           call normalizedSpectrum(source(1)%spectrum)
@@ -2514,7 +2494,7 @@ subroutine set_up_sources
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
           call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
-          call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1, &
+          call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400,  &
                source(1)%teff, source(1)%spectrum)
        endif
        call normalizedSpectrum(source(1)%spectrum)
@@ -2529,7 +2509,7 @@ subroutine set_up_sources
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
           call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
-          call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2, &
+          call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, &
                source(2)%teff, source(2)%spectrum)
        endif
        call normalizedSpectrum(source(2)%spectrum)
@@ -2560,7 +2540,7 @@ subroutine set_up_sources
           call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
-       call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400, contFluxFile1, &
+       call buildSphere(source(1)%position,source(1)%radius, source(1)%surface, 400,  &
             source(1)%teff, source(1)%spectrum)
 
 
@@ -2578,7 +2558,7 @@ subroutine set_up_sources
           call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
        endif
        call normalizedSpectrum(source(2)%spectrum)
-       call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, contFluxFile2, &
+       call buildSphere(source(2)%position, source(2)%radius, source(2)%surface, 400, &
             source(2)%teff, source(2)%spectrum)
 
 
@@ -2878,7 +2858,7 @@ subroutine do_lucyRadiativeEq
         write (*,*) " "
         write (*,*) "Computing the magnitudes and colors of stars ..."
         ! -- note grid distance here is in [pc]
-        call analyze_cluster(young_cluster,outVec,dble(gridDistance),grid)
+        call analyze_cluster(young_cluster,outvec,grid)
      end if
 
      call torus_mpi_barrier
