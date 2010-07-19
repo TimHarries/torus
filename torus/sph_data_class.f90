@@ -96,7 +96,7 @@ module sph_data_class
   type(sph_data), save :: sphdata
   integer, save :: npart
 
-  real(double), allocatable :: partArray(:), tempPosArray(:,:), q2array(:), xarray(:), etaarray(:)
+  real(double), allocatable :: partArray(:), q2array(:), xarray(:), etaarray(:)
   Integer, allocatable :: indexArray(:)
   integer,save :: nparticles
   real(double), save :: rcrit, rmax
@@ -1343,7 +1343,7 @@ contains
 
   end subroutine FindCriticalValue
 
-  TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone, RhoMin, RhoMax)
+  TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone)
     USE input_variables, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull
     USE constants_mod, only: tcbr
 
@@ -1377,8 +1377,6 @@ contains
 
     integer :: rcounter
 
-    real(double), optional:: RhoMin, RhoMax
-
     type(octal), pointer, save :: previousOctal => null()
     type(octal), pointer :: thisOctal
 
@@ -1386,12 +1384,6 @@ contains
     integer :: subcell
     integer, save :: prevsubcell
 
-
-    if(present(rhomin)) then
-       rhomin = 1d30
-       rhomax = -1d30
-    endif
-   
     if(present(theparam)) then
        param = theparam
     else
@@ -1424,11 +1416,10 @@ contains
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
 
-       allocate(tempPosArray(npart,3))
        allocate(HullArray(npart))
 
 
-       PositionArray = 0.d0; hArray = 0.d0; ind = 0; tempPosArray = 0.d0; q2array = 0.d0; etaarray = 0.d0
+       PositionArray = 0.d0; hArray = 0.d0; ind = 0; q2array = 0.d0; etaarray = 0.d0
 
        Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
        xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
@@ -1556,7 +1547,7 @@ contains
  
     if(done) then
        if (allocated(PositionArray)) then
-          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, tempPosArray, &
+          deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, &
                q2Array, HullArray, etaarray, RhoH2Array)
 
           deallocate(OneOverHsquared)
