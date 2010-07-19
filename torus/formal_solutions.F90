@@ -235,7 +235,7 @@ contains
   ! and the distance to observer as a function of inclination.
   ! Flux units in  [erg cm^-2 s^-2 cm^-1]
 
-  subroutine compute_obs_line_flux(lambda0, mass_ion, R_star, R_max_acc, R_max_wind, pos_star, surface, &
+  subroutine compute_obs_line_flux(lambda0, mass_ion, R_star, R_max_acc, R_max_wind, surface, &
        nr_wind, nr_acc, nr_core, nphi, dir_obs, dist_obs, grid, sampleFreq, opaqueCore,  &
        flux, lambda, nlam, filename, thin_disc_on, ttau_disc_on, ttau_jet_on, ttau_discwind_on, npix, &
        do_alphadisc_check, alphadisc_par, thinLine, emissOff, pos_disp) 
@@ -260,7 +260,6 @@ contains
     integer, intent(in)                :: nr_core       ! number of radial points for integration (core rays)
     integer, intent(in)                :: nphi          ! number of angle  points for integration 
 
-    type(VECTOR), intent(in)      :: pos_star      ! position of the star
     type(SURFACETYPE),intent(in)       :: surface       ! surface elemet of the core
     real(double), intent(in)           :: dist_obs      ! [cm] distance to the observer
     type(VECTOR), intent(in)      :: dir_obs       ! direction to the observer
@@ -268,8 +267,8 @@ contains
     real, intent(in)                   :: sampleFreq    ! max. samples per grid cell
     logical, intent(in)                :: opaqueCore    ! T if the core is opaque
     integer, intent(in)                :: nlam          ! number of wavelength/freqeuncy points
-    real,    intent(in)                :: lambda(nlam)  ! wavelength array [A]
-    real(double), intent(inout)        :: flux(nlam)    ! Flux array dimension:
+    real,    intent(in)                :: lambda(:)  ! wavelength array [A]
+    real(double), intent(inout)        :: flux(:)    ! Flux array dimension:
     character(LEN=*), intent(in)       :: filename      ! name of file for the output flux
     logical, intent(in)                :: thin_disc_on  ! T to include thin disc
     logical, intent(in)                :: ttau_disc_on  !
@@ -324,7 +323,7 @@ contains
     logical :: coreray, magray
     real(double) :: halfboxsize  ! [10^10cm] a half the size of simulation box
     ! the following should be put in input parameter later
-    logical, parameter :: limb_darkening = .false.  
+    logical :: limb_darkening 
 !    logical, parameter :: limb_darkening = .true.  
     real(double), parameter :: a1= 0.93d0       ! coefficiets in the linear limb dakening law 
     real(double), parameter :: a2= -0.23d0      ! coefficiets in the linear limb dakening law 
@@ -341,7 +340,7 @@ contains
     real(double), allocatable :: buffer1(:), buffer2(:)
     real(double)        :: buffer3(3), buffer4(3)
 #endif
-
+    limb_darkening = .false.  
     halfboxsize = grid%octreeRoot%subcellSize 
 
     ! allocating the grid points
@@ -394,7 +393,7 @@ contains
     coreray = .true.
     magray = .false.
     call setup_grid(p_core, dA_core, dr_core, dphi, nc, nr_core, nphi, &
-         1.0d-5*R_star,  R_star, pos_star, dir_obs, logscale, coreray, &
+         1.0d-5*R_star,  R_star, dir_obs, logscale, coreray, &
          magray, halfboxsize ,p_core_orig)    
 
     ! -- For rays crossing magnetosphere
@@ -403,12 +402,12 @@ contains
     magray = .true.
     if (ttau_disc_on .or. ttau_jet_on .or. ttau_discwind_on) then       
        call setup_grid(p_acc, dA_acc, dr_acc, dphi, na, nr_acc, nphi, &
-            R_star,  R_max_acc, pos_star, dir_obs, logscale, coreray, &
+            R_star,  R_max_acc,  dir_obs, logscale, coreray, &
             magray, halfboxsize,  p_acc_orig) 
     else 
        ! use the small box size ..
        call setup_grid(p_acc, dA_acc, dr_acc, dphi, na, nr_acc, nphi, &
-            R_star,  R_max_acc, pos_star, dir_obs, logscale, coreray, &
+            R_star,  R_max_acc,  dir_obs, logscale, coreray, &
             magray, R_max_acc,  p_acc_orig) 
     end if
     
@@ -420,7 +419,7 @@ contains
        coreray = .false.
        magray = .false.
        call setup_grid(p_wind, dA_wind, dr_wind, dphi, nw, nr_wind, nphi, &
-            R_max_acc, R_max_wind, pos_star, dir_obs, logscale, coreray,  &
+            R_max_acc, R_max_wind, dir_obs, logscale, coreray,  &
             magray, halfboxsize, p_wind_orig) 
        nray=nc+na+nw ! total number of rays
     end if
@@ -519,7 +518,7 @@ contains
           end if
 
           tau0 = 0.0d0
-          call integrate_formal(I0, I1,  tau0, lambda_j,  lambda0,  mass_ion, &
+          call integrate_formal(I0, I1,  lambda_j,  lambda0,  mass_ion, &
                p_core(i), dir_obs,  continuum, grid, &
                hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
                do_alphadisc_check, alphadisc_par, thinLine, emissOff)
@@ -570,7 +569,7 @@ contains
           !need to get intensity from the surface element of the star.
           I0  = 1.0d-100  ! [erg cm^-2 s^-2 cm^-1 sr^-1] should be zero at the outer boundary
           tau0 = 0.0d0
-          call integrate_formal(I0, I1,  tau0,  lambda_j,  lambda0, mass_ion,  &
+          call integrate_formal(I0, I1,  lambda_j,  lambda0, mass_ion,  &
                p_acc(i), dir_obs, continuum, grid, &
                hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
                do_alphadisc_check, alphadisc_par,thinLine, emissOff)       
@@ -624,7 +623,7 @@ contains
              !need to get intensity from the surface element of the star.
              I0  = 1.0d-100  ! [erg cm^-2 s^-2 cm^-1 sr^-1] should be zero at the outer boundary
              tau0 = 0.0d0
-             call integrate_formal(I0, I1,  tau0,  lambda_j,  lambda0, mass_ion,  &
+             call integrate_formal(I0, I1,  lambda_j,  lambda0, mass_ion,  &
                   p_wind(i), dir_obs, continuum, grid, &
                   hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
                   do_alphadisc_check, alphadisc_par,thinLine, emissOff)
@@ -771,23 +770,23 @@ contains
     write(*,*) " "
     write(*,*) "Creating and writing flux map (and spectro-astrometry) data... "
     filename_map = "image_"//TRIM(ADJUSTL(filename))
-    call create_obs_flux_map(integrated_flux, p_orig, dA, dr, dphi, &
-       nlam, nray, nphi, R_star, R_max, dir_obs, TRIM(filename_map), npix)
+    call create_obs_flux_map(integrated_flux, p_orig,  dr, dphi, &
+       nray, R_star, R_max, TRIM(filename_map), npix)
     if (pos_disp) &
          call find_position_displacement(flux_map, p_orig, dA, dr, dphi, &
-         nlam, nray, nphi, R_star, R_max, dir_obs, TRIM(filename_map), npix, &
+         nray, nphi, R_star, R_max,  TRIM(filename_map), npix, &
          dist_obs, lambda, lambda0)
 
     if (ttau_disc_on .or. ttau_jet_on .or. ttau_discwind_on) then
        ! save one for zoomed in image (1/200 of Rmax)
        filename_map = "image_"//TRIM(ADJUSTL(filename))
-       call create_obs_flux_map(integrated_flux, p_orig, dA, dr, dphi, &
-            nlam, nray, nphi, R_star, MAX(0.5d-2*R_max, 10.d0*R_star), &
-            dir_obs, TRIM(filename_map), npix)    
+       call create_obs_flux_map(integrated_flux, p_orig,  dr, dphi, &
+            nray,  R_star, MAX(0.5d-2*R_max, 10.d0*R_star), &
+            TRIM(filename_map), npix)    
        if (pos_disp) &
             call find_position_displacement(flux_map, p_orig, dA, dr, dphi, &
-            nlam, nray, nphi, R_star, MAX(1.0d-2*R_max, 10.d0*R_star), &
-            dir_obs, TRIM(filename_map), npix, &
+            nray, nphi, R_star, MAX(1.0d-2*R_max, 10.d0*R_star), &
+            TRIM(filename_map), npix, &
             dist_obs, lambda, lambda0)
 !       ! save one for zppmed  in image (1/10) of Rmax
 !       filename_map = TRIM(ADJUSTL(filename))//"_natural_zoom2_image001"
@@ -847,7 +846,7 @@ contains
   !
   ! Routine to setup the grid used in the observed flux integration (observed_flux)
   ! For the rays which intersect
-  subroutine setup_grid(p, dA, dr, dphi, nray, nr, nphi, R_min, R_max, pos_star, dir_obs, &
+  subroutine setup_grid(p, dA, dr, dphi, nray, nr, nphi, R_min, R_max,  dir_obs, &
     logscale, coreray, magray, halfboxsize, p_orig)
     implicit none
     integer, intent(in)                :: nray          ! number of rays
@@ -860,7 +859,6 @@ contains
     real(double), intent(in)  :: R_min                  ! [10^10cm] minimum radius 
     real(double), intent(in)  :: R_max                  ! [10^10cm] the wavelength 
     
-    type(VECTOR), intent(in)      :: pos_star      ! position of the sta
     type(VECTOR), intent(in)      :: dir_obs       ! direction
     logical, intent(in)                :: logscale      ! if T, r is spaced in log scale
     logical, intent(in)                :: coreray       ! if T,  core rays are to be created
@@ -994,7 +992,7 @@ contains
   ! using dtau_max values which is the max increment of optical depth along a
   ! integrating path.
   !
-  subroutine integrate_formal(I0, I1,  tau0,  wavelength,  lambda0, mass_ion, aVec, uHat,  &
+  subroutine integrate_formal(I0, I1,  wavelength,  lambda0, mass_ion, aVec, uHat,  &
         continuum, grid, hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
         do_alphadisc_check, alphadisc_par, thinLine, emissOff)      
     use amr_mod, only: amr_values_along_ray
@@ -1003,7 +1001,6 @@ contains
     implicit none   
     real(double), intent(in)  :: I0                     ! Initial intensity
     real(double), intent(out) :: I1                     ! Final intensity
-    real(double), intent(in)  :: tau0                   ! inital optical depth
     real, intent(in)          :: wavelength             ! the wavelength  [A] 
     real, intent(in)          :: lambda0                ! rest wavelength of line [A]
     real, intent(in)          :: mass_ion               ! mass of atom in [g]
@@ -1472,22 +1469,18 @@ contains
   !
   !
   ! Creates NDF image of flux map
-  subroutine create_obs_flux_map(flux_ray, ray, dA, dr, dphi, &
-       nlam, nray, nphi, R_star, R_max, dir_obs, filename, npix)
+  subroutine create_obs_flux_map(flux_ray, ray, dr, dphi, &
+        nray, R_star, R_max, filename, npix)
     use image_mod, only: IMAGETYPE, simply_writeimage, freeImage, initImage
     implicit none
-    integer, intent(in) :: nlam  ! number of wavelength points
     integer, intent(in) :: nray  ! total number of rays
-    integer, intent(in) :: nphi  ! number of angle points
     real(double), intent(in) :: flux_ray(nray) ! Flux map  array dimension= nlam x #of integration points  
     ! integration grids (original ray in setup_grid and setup_core_grid program before roatation.)
     type(VECTOR), intent(in) :: ray(nray)      
-    real(double), intent(in)   ::  dA(nray)  ! [10^20 cm]  surface element used for flux integration
     real(double), intent(in)   ::  dr(nray)    ! [10^10 cm]  radial increments
     real(double), intent(in)   ::  dphi      ! [rad]       anglular increment
     real(double), intent(in)   ::  R_star    ! [10^10 cm]  radius of sta
     real(double), intent(in)   ::  R_max     ! [10^10 cm]  max radius for plot
-    type(VECTOR),intent(in)  :: dir_obs   ! direction of observer (unitvector)
     character(LEN=*),intent(in)   :: filename  ! output filename
     integer, intent(in)           :: npix ! image size = 2*npix +1 should be an even number
     !
@@ -1520,7 +1513,7 @@ contains
              ! Flips the value of x to be consistent with Monte Calro's notation....
              ! which is the projected from the center of star not from the observer!
              ! Uncomment above to create the map in observe's perspective.
-             if (in_this_area(dble(-x), dble(y), ray(k), dA(k), dr(k), dphi, dir_obs) )then
+             if (in_this_area(dble(-x), dble(y), ray(k),  dr(k), dphi) )then
                 flux = MAX(flux_min, REAL(flux_ray(k))) + flux
 !                exit  ! this loop
              end if
@@ -1555,25 +1548,23 @@ contains
   !  3. Combine this with create_obs_flux_map for speed up! (a naive search use
   !     here is very slow!
   subroutine find_position_displacement(flux_map, ray, dA, dr, dphi, &
-       nlam, nray, nphi, R_star, R_max, dir_obs, filename, npix, &
+       nlam, nray,  R_star, R_max, filename, npix, &
        dist_obj, lam, lam0)
     implicit none
     integer, intent(in) :: nlam  ! number of wavelength points
     integer, intent(in) :: nray  ! total number of rays
-    integer, intent(in) :: nphi  ! number of angle points
-    real(double), intent(in) :: flux_map(nlam, nray) ! Flux map  array dimension= nlam x #of integration points  
+    real(double), intent(in) :: flux_map(:, :) ! Flux map  array dimension= nlam x #of integration points  
     ! integration grids (original ray in setup_grid and setup_core_grid program before roatation.)
     type(VECTOR), intent(in) :: ray(nray)      
-    real(double), intent(in)   ::  dA(nray)  ! [10^20 cm]  surface element used for flux integration
-    real(double), intent(in)   ::  dr(nray)    ! [10^10 cm]  radial increments
+    real(double), intent(in)   ::  dA(:)  ! [10^20 cm]  surface element used for flux integration
+    real(double), intent(in)   ::  dr(:)    ! [10^10 cm]  radial increments
     real(double), intent(in)   ::  dphi      ! [rad]       anglular increment
     real(double), intent(in)   ::  R_star    ! [10^10 cm]  radius of sta
     real(double), intent(in)   ::  R_max     ! [10^10 cm]  max radius for plot
-    type(VECTOR),intent(in)  :: dir_obs   ! direction of observer (unitvector)
     character(LEN=*),intent(in)   :: filename  ! output filename
     integer, intent(in)           :: npix    ! image size = 2*npix +1 should be an even number
     real(double), intent(in)   :: dist_obj   ! physical distance to the object in [cm]
-    real(single), intent(in)   :: lam(nlam)  ! wavelength array [A]
+    real(single), intent(in)   :: lam(:)  ! wavelength array [A]
     real(single), intent(in)   :: lam0       ! line wavelength [A]
     !
     !
@@ -1622,7 +1613,7 @@ contains
           x = -R_max + REAL(i-1)*pixsize + pixsize/2.0 + offset  ! mid point
           ix = -npix + (i-1)      
           do k = 1, nray
-             if (in_this_area(dble(x), dble(y), ray(k), dA(k), dr(k), dphi, dir_obs) )then
+             if (in_this_area(dble(x), dble(y), ray(k), dr(k), dphi) )then
                 ! integrating the profile acroess the x-axis
                 FL(1:nlam) = FL(1:nlam) + flux_map(1:nlam,k)/dA(k)
              end if
@@ -1714,14 +1705,12 @@ contains
   ! Projected plane is (px-py)  (note this is different from the stellar coordinate)
   ! The axis ade defined as: px = zhat x dir_obs and py = dir_obs x px
   !
-  logical function in_this_area(test_px, test_py, p, dA, dr, dphi, dir_obs)
+  logical function in_this_area(test_px, test_py, p, dr, dphi)
     implicit none
     real(double), intent(in) :: test_px, test_py  ! [10^10] test point coordinates
     type(VECTOR), intent(in)   ::  p        ! integration grids
-    real(double),      intent(in)   ::  dA       ! [10^20 cm]  surface element used for flux integration
     real(double),      intent(in)   ::  dr       ! [10^10 cm]  radial increments
     real(double),      intent(in)   ::  dphi     ! [rad]       anglular increment
-    type(VECTOR) ::  dir_obs                ! unit vector on the project plane coordinates
     !
 !    type(VECTOR) ::  px, py        ! unit vector on the project plane coordinates
     real(double) :: p_phi, p_r, pxx, pyy, r_min, r_max, phi_min, phi_max

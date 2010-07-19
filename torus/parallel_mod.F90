@@ -289,9 +289,8 @@ contains
     implicit none
 
     character(len=*), optional, intent(in) :: message 
-
-    return
-
+    character(len=1) :: test
+    test(1:1) = message(1:1)
   end subroutine torus_mpi_barrier
 
 #endif

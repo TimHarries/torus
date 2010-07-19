@@ -220,7 +220,7 @@ contains
     theta = acos( pointVec%z  / r )
     y = SIN(theta)**2 
 
-!    IF (TTauriInFlow(point,grid,ignoreDisk)) then 
+    IF (TTauriInFlow(point,grid,ignoreDisk)) then 
 !    
 !      ! we call the accretion rate function to determine the appropriate value.
 !      TTauriMdotLocal = TTauriVariableMdot(point,grid,ignoreDisk)
@@ -234,7 +234,7 @@ contains
 !    ELSE
 !      rho = 1.e-25
 !      RETURN
-!    END IF
+    END IF
 
     rho = 1.d-25
     if (inFlowMahdavi(pointVec)) rho = 1.d-14

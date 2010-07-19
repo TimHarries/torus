@@ -1,4 +1,5 @@
 MODULE bhmie_mod 
+  use kind_mod
 
   implicit none
 
@@ -34,7 +35,7 @@ contains
          PI0(MXNANG),  &
          PI1(MXNANG),  &
          TAU(MXNANG)
-    DOUBLE COMPLEX         &
+    COMPLEX(kind=double)         &
          DCXS1(2*MXNANG-1),  &
          DCXS2(2*MXNANG-1)
 
@@ -118,8 +119,8 @@ contains
 ! If your compiler does NOT support double complex, comment out following
 ! three lines, and uncomment corresponding 3 lines further below
 !
-      DOUBLE COMPLEX AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
-      DOUBLE COMPLEX D(NMXX)
+      COMPLEX(kind=double) AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
+      COMPLEX(kind=double) D(NMXX)
       PARAMETER(SINGLE=.FALSE.)
 !
 !      COMPLEX AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
@@ -139,7 +140,7 @@ contains
 !      REAL REALPART_SP
 !      COMPLEX SPCX
 !      REALPART_SP(SPCX)=(REAL(SPCX))
-      DOUBLE COMPLEX DPCX
+      COMPLEX(kind=double) DPCX
       DOUBLE PRECISION REALPART
       DOUBLE PRECISION IMAGPART
 
@@ -149,8 +150,6 @@ contains
 !***********************************************************************
 !*** Safety checks
 
-      IF(SINGLE)WRITE(0,*)'Warning: this version of bhmie uses only ', &
-                'single precision complex numbers!'
       IF(NANG.GT.MXNANG)STOP'***Error: NANG > MXNANG in bhmie'
       IF(NANG.LT.2)NANG=2
 !*** Obtain pi:
@@ -216,7 +215,7 @@ contains
       PSI1=SIN(DX)
       CHI0=-SIN(DX)
       CHI1=COS(DX)
-      XI1=DCMPLX(PSI1,-CHI1)
+      XI1=CMPLX(PSI1,-CHI1,kind=double)
       QSCA=0.E0
       GSCA=0.E0
       P=-1.
@@ -230,7 +229,7 @@ main_loop:  DO N=1,NSTOP
 ! Calculate psi_n and chi_n
           PSI=(2.E0*EN-1.)*PSI1/DX-PSI0
           CHI=(2.E0*EN-1.)*CHI1/DX-CHI0
-          XI=DCMPLX(PSI,-CHI)
+          XI=CMPLX(PSI,-CHI,kind=double)
 !
 !*** Store previous values of AN and BN for use
 !    in computation of g=<cos(theta)>
@@ -291,7 +290,7 @@ main_loop:  DO N=1,NSTOP
           PSI1=PSI
           CHI0=CHI1
           CHI1=CHI
-          XI1=DCMPLX(PSI1,-CHI1)
+          XI1=CMPLX(PSI1,-CHI1, kind=double)
 
 !
 !*** Compute pi_n for next value of n

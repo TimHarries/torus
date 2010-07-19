@@ -2290,10 +2290,9 @@ contains
   end function integral2_new
 
 
-  subroutine setupMatrices(x, alpha, beta, np, rVec, i1, i2, i3, grid, &
+  subroutine setupMatrices(x, alpha, beta, rVec, i1, i2, i3, grid, &
        hnu1, nuArray1, nnu1, hnu2, nuarray2, nnu2, visFrac1, visFrac2, &
        isBinary, thisOctal, thisSubcell,negativeErrors)
-    integer, intent(in)                :: np
     type(GRIDTYPE), intent(inout)      :: grid
     logical, intent(in)                :: isBinary
     real, intent(in)                   :: visFrac1, visFrac2
@@ -2483,7 +2482,7 @@ contains
     real(double)          :: alpha(n,n),beta(n)
     type(octal), pointer, optional :: thisOctal 
     integer, intent(in),optional   :: thisSubcell 
-    logical, parameter             :: debug = .false.
+    logical                        :: debug
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
@@ -2494,6 +2493,8 @@ contains
     integer                        :: n_iteration
     real(double)                   :: del, dx_max, dx    
     
+
+    debug = .false.
     if (size(x) /= n) then 
       print *, 'In subroutine mnewt_stateq, we are assuming argumnent ''n'' = SIZE(x),',&
                ' but in this case it is not.'
@@ -2507,7 +2508,7 @@ contains
       do k = 1, n_iteration
         if (debug) print *, 'Trial ',k      
         
-        call setupMatrices(x,alpha,beta,n,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
+        call setupMatrices(x,alpha,beta,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
              nuArray2, nNu2, visFrac1, visFrac2, isBinary, thisOctal=thisOctal, &
              thisSubcell=thisSubcell, negativeErrors=negativeErrors)
 
@@ -2860,7 +2861,7 @@ contains
   end subroutine generateOpacities
 
   subroutine amrStateq(grid, contfile, lte, nLower, nUpper, starSurface,&
-                       recalcPrevious, ion_name, ion_frac) 
+                       recalcPrevious)
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
@@ -2881,8 +2882,6 @@ contains
     integer,intent(in)          :: nLower, nUpper! level populations
     logical, intent(in)         :: recalcPrevious ! whether to improve some previous results
     ! Name of the ion (see opacity_lte_mod.f90 for the list of a valid name.)
-    character(LEN=*),intent(in), optional :: ion_name
-    real, intent(in), optional            :: ion_frac      ! n_ion/n_specie
     type(SURFACETYPE), intent(in) :: starSurface
     integer                     :: i          ! loop counters
     integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
@@ -2915,7 +2914,7 @@ contains
     real, dimension(maxLevels)  :: departCoeff
     real, dimension(maxLevels)  :: previousXall
     real                        :: previousNeRatio      
-    logical, parameter          :: debugInfo = .false.
+    logical                     :: debugInfo
     Type(VECTOR)           :: starCentre 
     real(double), parameter :: CI = 2.07d-16   ! in cgs units
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
@@ -2936,6 +2935,7 @@ contains
 #endif
 
     isBinary = .false.
+    debugInfo = .false.
     if ( trim(grid%geometry) == "binary" ) isBinary = .true.
 
     numLTEsubcells = 0
@@ -4105,17 +4105,15 @@ contains
   ! C.f. equation (8) of Klein and Castor (1978)
   !
   ! 
-  real(double) function rate_alpha_mn(m, n, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
-       rVec, i1, i2, i3, grid, visFrac1, visFrac2, binary, thisOctal, thisSubcell) 
+  real(double) function rate_alpha_mn(m, n, Hnu1, nuArray1, nNu1, &
+       rVec, i1, i2, i3, grid,  binary, thisOctal, thisSubcell) 
 
     use input_variables, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
     integer, intent(in)         :: m, n ! levels
-    integer, intent(in)         :: nNu1, nNu2
+    integer, intent(in)         :: nNu1
     logical, intent(in)         :: binary
-    real, intent(in)            :: visFrac1, visFrac2
     real, intent(in), dimension(:) :: Hnu1, nuArray1
-    real, intent(in), dimension(:) :: Hnu2, nuArray2
     integer, intent(in)         :: i1, i2, i3
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
@@ -4207,17 +4205,16 @@ contains
   ! C.f. equation (8) of Klein and Castor (1978)
   !
   ! m can be 1 to maxleve+1 (for Ne).
-  real(double) function rate_beta_m(m, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
-       rVec, i1, i2, i3, grid, visFrac1, visFrac2, binary, thisOctal, thisSubcell) 
+
+  real(double) function rate_beta_m(m, Hnu1, nuArray1, nNu1, &
+       rVec, i1, i2, i3, grid, binary, thisOctal, thisSubcell) 
 
     use input_variables, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
     integer, intent(in)         :: m ! levels
-    integer, intent(in)         :: nNu1, nNu2
+    integer, intent(in)         :: nNu1
     logical, intent(in)         :: binary
-    real, intent(in)            :: visFrac1, visFrac2
     real, intent(in), dimension(:) :: Hnu1, nuArray1
-    real, intent(in), dimension(:) :: Hnu2, nuArray2
     integer, intent(in)         :: i1, i2, i3
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
@@ -4330,7 +4327,7 @@ contains
   ! Uses a correct rate equations
   !
   subroutine mnewt_stateq_v2(grid, ntrial,x,n, tolx, tolf, Hnu1, nuArray1,&
-       nNu1, Hnu2, nuArray2, nNu2, rVec, i1, i2, i3, visFrac1, visFrac2,  &
+       nNu1, rVec, i1, i2, i3,  &
        isBinary, thisOctal, thisSubcell, needRestart, maxNegatives, be_gentle)
     use math_mod2, only: lubksb_f77, ludcmp_f77
     implicit none
@@ -4339,11 +4336,10 @@ contains
     integer, parameter             :: maxLevels = statEqMaxLevels
     integer, intent(in)            :: i1, i2, i3
     logical, intent(in)            :: isBinary
-    real, intent(in)               :: visFrac1, visFrac2
     type(VECTOR), intent(in)       :: rVec
-    real, intent(in), dimension(:) :: nuarray1, nuarray2
-    real, intent(in), dimension(:) :: hnu1, hnu2
-    integer, intent(in)            :: nNu1, nNu2
+    real, intent(in), dimension(:) :: nuarray1
+    real, intent(in), dimension(:) :: hnu1
+    integer, intent(in)            :: nNu1
     real(double),intent(inout),dimension(:) :: x
     integer, intent(in)            :: nTrial
     integer, intent(in)            :: n  ! Should be n = maxLevel + 1
@@ -4354,7 +4350,7 @@ contains
     real(double)          :: alpha(n,n),beta(n)
     type(octal), pointer, optional :: thisOctal 
     integer, intent(in),optional   :: thisSubcell 
-    logical, parameter             :: debug = .true.
+    logical                        :: debug
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
@@ -4367,6 +4363,7 @@ contains
     integer :: j1, j2
     real(double) :: dx, dx_max
 
+    debug = .true.
     ! Sanity check
     if (size(x) /= n) then 
       print *, 'In subroutine mnewt_stateq_v2, we are assuming argumnent ''n'' = SIZE(x),',&
@@ -4388,11 +4385,10 @@ contains
         ! Setting the Jacobian matrix and the conatant vector
         ! Using functions in this module.
         do j2 = 1, n  ! ==> n-index
-           beta(j2) = rate_beta_m(j2, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
-                rVec, i1, i2, i3, grid, visFrac1, visFrac2, isbinary, thisOctal, thisSubcell)           
+           beta(j2) = rate_beta_m(j2, Hnu1, nuArray1, nNu1, rVec,  i1, i2, i3, grid, isbinary, thisOctal, thisSubcell)
            do j1 = 1, n  ! ==> m-index
-              alpha(j1, j2) = rate_alpha_mn(j1, j2, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
-                   rVec, i1, i2, i3, grid, visFrac1, visFrac2, isbinary, thisOctal, thisSubcell) 
+              alpha(j1, j2) = rate_alpha_mn(j1, j2, Hnu1, nuArray1, nNu1, &
+                   rVec, i1, i2, i3, grid, isbinary, thisOctal, thisSubcell) 
            end do
         end do
 

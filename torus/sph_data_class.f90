@@ -202,11 +202,11 @@ contains
     integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
 
     integer, intent(in)   :: b_npart, b_idim
-    integer*1, intent(in) :: b_iphase(b_idim)
-    real*8, intent(in)    :: b_xyzmh(5,b_idim)
-    real*4, intent(in)    :: b_rho(b_idim)
-    real*8, intent(in)    :: b_temp(b_idim)
-    real*8, intent(in)    :: b_totalgasmass
+    integer, intent(in) :: b_iphase(b_idim)
+    real(double), intent(in)    :: b_xyzmh(5,b_idim)
+    real, intent(in)    :: b_rho(b_idim)
+    real(double), intent(in)    :: b_temp(b_idim)
+    real(double), intent(in)    :: b_totalgasmass
 ! Local variables --------------------------------------------------------------
     integer :: iii, iiipart, iiigas
 
@@ -551,21 +551,21 @@ contains
     real(double) :: udist, umass, utime,  time
     integer, parameter :: nptmass=0
 
-    INTEGER*4 :: int1, int2, i1
-    integer*4 :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
-    REAL(kind=8)    :: r1, dummy
+    INTEGER  :: int1, int2, i1
+    integer(bigint)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
+    REAL(double)    :: r1, dummy
     integer :: intarray(8)
     CHARACTER*100 fileident
 
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
 
-    integer*1, allocatable :: iphase(:)
+    integer, allocatable :: iphase(:)
     integer, allocatable   :: isteps(:)
-    real*8, allocatable    :: xyzmh(:,:)
-    real*8, allocatable    :: vxyzu(:,:)
-    real*4, allocatable    :: rho(:)
-    real*8, allocatable    :: h2rho(:)
-    real*8, allocatable    :: h1rho(:)
+    real(double), allocatable    :: xyzmh(:,:)
+    real(double), allocatable    :: vxyzu(:,:)
+    real, allocatable    :: rho(:)
+    real(double), allocatable    :: h2rho(:)
+    real(double), allocatable    :: h1rho(:)
 
     type(VECTOR) :: orig_sph, rot_sph
 
@@ -1576,12 +1576,14 @@ contains
 !   d = thisoctal%subcellsize ! the splitgrid routine effectively picks the grid size based on smoothing length (mass condition)
 
     ! hope the compiler optimizes this (for a disc, first condition is simpler to test)
-    if(abs(posvec%z) .gt. maxz + rmax .or. (posvec .dot. posvec) .gt. maxr2) then ! if point is outside particles then there will be no information
+    if(abs(posvec%z) .gt. maxz + rmax .or. &
+         (posvec .dot. posvec) .gt. maxr2) then ! if point is outside particles then there will be no information
        if(param .eq. 1) then
           if(modulus(posvec - oldpoint) .lt. 2. * d) then! cells nearby?
              Clusterparameter = oldvel ! Velocity of nearby cells
           else
-             Clusterparameter = VECTOR(2.d0,2.d0,2.d0) ! 2c is not a real velocity and everything should be trying to handle this error
+ ! 2c is not a real velocity and everything should be trying to handle this error
+             Clusterparameter = VECTOR(2.d0,2.d0,2.d0)
           endif
           return
        elseif(param .eq. 2) then
@@ -1616,7 +1618,8 @@ contains
        if(nparticles .gt. 0) call doweights(sumweight)
     else
        ! tradeoff time for accuracy in low density regions
-       r = min(4.d0 * d, rcrit) ! 4d is far enough away to have particles with their smoothing lengths captured, rcrit puts an upper limit on time
+       r = min(4.d0 * d, rcrit) ! 4d is far enough away to have particles with their 
+       !smoothing lengths captured, rcrit puts an upper limit on time
        ! 2 rcrit is essential for the mass to be correctly done... (in my case it had to be hcrit = 99%)
  
        do while (sumweight .le. 1d-3)
@@ -1696,7 +1699,8 @@ contains
           if(modulus(posvec - oldpoint) .lt. 2. * d) then! cells nearby?
              Clusterparameter = oldvel ! Velocity of nearby cells
           else
-             Clusterparameter = VECTOR(2.d0,2.d0,2.d0) ! 2c is not a real velocity and everything should be trying to handle this error
+ ! 2c is not a real velocity and everything should be trying to handle this error
+             Clusterparameter = VECTOR(2.d0,2.d0,2.d0)
           endif
        elseif(param .eq. 2) then
           Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density, temperature and H2 density 

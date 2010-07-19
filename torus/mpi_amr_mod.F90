@@ -2731,7 +2731,10 @@ contains
       integer :: subcell
       integer :: myRank
       logical :: check
-
+      integer :: i
+      i = thisOctal%nchildren
+      i = subcell
+      i = myrank
       ! Set return value of function to prevent a compiler warning. 
       check = .true.
 !      check=.false.

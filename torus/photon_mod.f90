@@ -111,7 +111,7 @@ contains
     integer :: nLambda                           ! size of wavelength array
     real :: lamArray(:)
     integer :: nMumie                            ! number of mu angles for mie
-    type(PHASEMATRIX), intent(in) :: miePhase(nDustType, nLambda, nMumie) ! mie phase matrices   
+    type(PHASEMATRIX), intent(in) :: miePhase(:,:,:)
     type(PHASEMATRIX),save,allocatable :: miePhaseTemp(:)
     ! if the system has accretion disc around the obeject
     logical, intent(in) :: ttau_disc_on          
@@ -392,11 +392,10 @@ contains
        weightLinePhoton, weightContPhoton, contPhoton, flatspec, vRot, &
        pencilBeam, secondSource, secondSourcePosition, &
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
-       theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
-       narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
-       filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
-       VoigtProf, dirObs,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
+       narrowBandImage, source, nSource, rHatInStar, energyPerPhoton, &
+       filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
+       VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
     use input_variables, only : photoionization
     use atom_mod, only: bLambda
     use amr_mod
@@ -405,7 +404,6 @@ contains
     use source_mod, only: randomSource, getphotonpositiondirection, SOURCETYPE
     use surface_mod, only: getPhotoVec
     use grid_mod, only: getIndices
-    use math_mod, only: getlineposition
 
     implicit none
 
@@ -423,7 +421,6 @@ contains
     logical :: contWindPhoton                  ! is this continuum photon produced in the wind
     logical :: ok
     logical :: narrowBandImage
-    real :: narrowBandMin, narrowBandMax  ! parameters for a narrow band image
     real(double) :: energyPerPhoton
     real :: vo6
     real :: x,y,z
@@ -466,7 +463,6 @@ contains
     real :: probDust, weightDust, weightPhoto
 
 
-    logical :: oneProb = .false.
 
     ! Spot stuff
   
@@ -491,13 +487,9 @@ contains
     logical :: forcedWavelength
     real :: usePhotonWavelength
     logical, intent(in) ::  VoigtProf
-    type(vector), intent(in) :: dirObs  ! direction to an observer
 
 !    real :: tempr
 
-    real :: theta1, theta2                     ! defines hot ring of accretion for TTaus
-    real :: chanceHotRing                      ! chance of core photon in ttauri accretion ring
-    logical, intent(in) :: curtains  ! T Tauri accretion curtains
 !    real :: curtain1size             ! angular size of first accretion curtain
     real :: thisTheta, thisPhi
     real :: x1, x2
@@ -1426,11 +1418,6 @@ contains
           else
 
 
-             if (oneProb) then
-                
-                call getLinePosition(grid, r, mu, phi, i1, i2, i3)
-                
-             else
 
 990             continue
 
@@ -1466,7 +1453,6 @@ contains
                 endif
              ! set up the position
 
-          endif
 
              sinTheta = sqrt(1.d0-mu**2)
              thisPhoton%position%x = r*cos(phi)*sinTheta

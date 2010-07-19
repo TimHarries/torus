@@ -104,7 +104,7 @@ module molecular_mod
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=80) :: junk
-     character(len=200):: dataDirectory =" ", filename
+     character(len=200):: dataDirectory, filename
      integer :: i, j, iLow, iUp, iPart
      real(double) :: a, freq, eu, c(20)
      logical :: preprocess1 = .true.
@@ -264,7 +264,7 @@ module molecular_mod
      use input_variables, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
-     character(len=200):: dataDirectory = " ", filename
+     character(len=200):: dataDirectory, filename
      character(len=80) :: junk
      integer :: i, iPart
 
@@ -354,7 +354,6 @@ module molecular_mod
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
      use grid_mod, only: freeGrid
-     use sph_data_class, only: Clusterparameter
      use input_variables, only : vturb, restart, isinLTE, &
           addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics
@@ -825,8 +824,6 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
-     use grid_mod, only: freeGrid
-     use sph_data_class, only: Clusterparameter
      use input_variables, only : blockhandout, tolerance, &!lucyfilenamein, openlucy,&
           usedust, amr1d, amr3d, plotlevels, gettau, &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
@@ -858,11 +855,11 @@ module molecular_mod
      ! For MPI implementations
      integer       ::   my_rank        ! my processor rank
      integer       ::   np             ! The number of processes
+     integer       ::   m
+     integer       ::   n_rmdr
      integer       ::   ierr           ! error flag
      integer       ::   j
      integer       ::   tag = 0 
-     logical       ::   rankComplete
-     integer, dimension(:), allocatable :: octalsBelongRank
      real(double), allocatable :: tArrayd(:,:),tempArrayd(:,:) 
 #endif
 
@@ -885,7 +882,6 @@ module molecular_mod
      integer :: dummy, ijunk
      logical :: ljunk
      logical :: juststarted = .true.
-
      logical :: ng
      integer :: status
      integer(bigint) :: fixedRaySeed
@@ -1135,8 +1131,8 @@ module molecular_mod
 
             ! Set the range of index for octal loop used later.     
             np = nThreadsGlobal
-            n_rmdr = MOD(nMonte,np)
-            m = nMonte/np
+            n_rmdr = MOD(SIZE(octalArray),np)
+            m = SIZE(octalArray)/np
             
             if (myRankGlobal .lt. n_rmdr ) then
                ioctal_beg = (m+1)*myRankGlobal + 1
@@ -1310,11 +1306,6 @@ module molecular_mod
       call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
       if(my_rank == 0) write(*,*) "Updating MPI grids"
 
-      ! have to send out the 'octalsBelongRank' array
-      call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-                     MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
       call MPI_ALLREDUCE(warncount,warncount_all,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
 
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
@@ -1324,13 +1315,13 @@ module molecular_mod
       tempArrayd = 0.d0
       do i = 1, maxlevel
         tArrayd = 0.d0
-        call packMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+        call packMoleLevel(octalArray, nVoxels, tArrayd, i)
         do j = 1, 3
            call MPI_ALLREDUCE(tArrayd(j,1:nVoxels),tempArrayd(j,1:nVoxels),nVoxels,MPI_DOUBLE_PRECISION,&
                 MPI_SUM,MPI_COMM_WORLD,ierr)
         enddo
         tArrayd = tempArrayd
-        call unpackMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+        call unpackMoleLevel(octalArray, nVoxels, tArrayd, i)
      enddo
       deallocate(tArrayd, tempArrayd)
 
@@ -1431,10 +1422,6 @@ module molecular_mod
            nRay = maxRay  ! stop when it's not practical to do more rays
            call writeWarning("Maximum number of rays exceeded - capping")
         endif
-
-#ifdef MPI
-        deallocate(octalsBelongRank)
-#endif
      enddo
   enddo
   
@@ -1459,7 +1446,7 @@ end subroutine molecularLoop
 	 	 
      integer, parameter :: maxSamplePoints = 100
 	 
-     logical :: antithetic = .true.
+     logical :: antithetic
 
      logical, save :: firsttime = .true.	 
      logical, save :: conj = .false.
@@ -1485,6 +1472,8 @@ end subroutine molecularLoop
      real(double) :: dv, deltaV
      real(double) :: dist, dds, tval, dvAcrossCell, projVel, endprojVel, CellEdgeInterval, phiProfVal
      real(double) :: r, nmol 
+
+     antithetic = .true.
 
 !$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
 
@@ -2084,7 +2073,7 @@ endif
      real(double) :: nh2, temperature, nh, nhe, ne, nprotons
      real(double) :: OneOverkT
 ! collT is what goes out and gets subtracted from matrixA
-     real(double) :: collMatrix(maxlevel, maxlevel), collT(maxlevel, maxlevel), ctot(maxlevel)
+     real(double) :: collMatrix(maxlevel, maxlevel), collT(:,:), ctot(:)
 
      collMatrix = 1.d-60
      cTot = 1d-60
@@ -2525,7 +2514,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    type(VECTOR) :: viewVec
    real(double) :: i0, opticaldepth
 
-   type(VECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner, rayposition
+   type(VECTOR) :: imagebasis(:), pixelbasis(2), pixelcorner, rayposition
    
    integer :: subpixels, minrays
    integer :: i, iray
@@ -3578,8 +3567,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    recursive subroutine addDustToOctalParams(grid, thisOctal, thisMolecule)
 
      use input_variables, only : iTrans, lineimage, lamline
-     use dust_mod, only: createDustCrossSectionPhaseMatrix
-     use phasematrix_mod, only: PHASEMATRIX
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3871,11 +3858,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    end function DustModel1
 
 #ifdef MPI 
-       subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
+       subroutine packMoleLevel(octalArray, nTemps, tArray, iLevel)
          use input_variables,only : gettau
          include 'mpif.h'
          type(OCTALWRAPPER) :: octalArray(:)
-         integer :: octalsBelongRank(:)
          integer :: nTemps
          real(double) :: tArray(:,:)
          integer :: iOctal, iSubcell, my_rank, ierr
@@ -3894,7 +3880,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            do iSubcell = 1, thisOctal%maxChildren
                if (.not.thisOctal%hasChild(iSubcell)) then
                   nTemps = nTemps + 1
-                  if (octalsBelongRank(iOctal) == my_rank) then
 
                     tArray(1,nTemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
 
@@ -3912,16 +3897,14 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                  else 
                     tArray(1:3,nTemps) = 0.d0
                  endif
-               endif
            end do
         end do
       end subroutine packMoleLevel
 
-      subroutine unpackMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
+      subroutine unpackMoleLevel(octalArray, nTemps, tArray, iLevel)
         use input_variables, only : gettau
         include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
         real(double) :: tArray(:,:)
         integer :: iOctal, iSubcell, my_rank, ierr
@@ -3961,13 +3944,14 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         use input_variables, only : centrevecX, centrevecY, centrevecZ
         use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
 
-        logical :: paraxial = .true.
+        logical :: paraxial 
         real(double) :: pixelwidth, theta
         integer :: iread
         type(VECTOR) :: centreVec, unitvec, viewvecprime, rotationaxis
 
         type(VECTOR), intent(OUT) :: viewvec, observerVec, imagebasis(2)
 
+        paraxial = .true.
         CentreVec%x = centreVecX ! 
         CentreVec%y = centreVecY ! These coordinates will be at the centre of the projected image
         CentreVec%z = centreVecZ !         
@@ -4229,7 +4213,7 @@ end subroutine plotdiscValues
 
 
 ! Calculate the density based on functional form or values stored on AMR grid.
-  real(double) function interpolated_Density(position, grid, startOctal, subcell) RESULT(out)
+  real(double) function interpolated_Density(position, grid) RESULT(out)
 
 !    use input_variables, only : sphdatafilename    
     implicit none
@@ -4238,8 +4222,6 @@ end subroutine plotdiscValues
 !    real(double) :: oldout = -8.8d88
 !    type(VECTOR):: outv
     type(gridtype), intent(in) :: grid
-    type(octal), pointer, optional :: startOctal
-    integer, optional :: subcell
     integer, save :: savecounter = 0
     logical, save :: firsttime = .true.
 
@@ -5133,7 +5115,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
            if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * &
-                   (interpolated_Density(thisposition, grid, thisoctal, subcell) / (2.d0 * mhydrogen))
+                   (interpolated_Density(thisposition, grid) / (2.d0 * mhydrogen))
 
               if(lowmemory) then
                  alphanu1 = nmol * hcgsOverFourPi * balance * phiprofval
@@ -5562,7 +5544,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
               nmol = interpolated_Density(currentposition, grid) / (thisOctal%rho(subcell))
            else
               nmol = thisoctal%molabundance(subcell) * &
-                   (interpolated_Density(currentposition, grid, thisoctal, subcell) / &
+                   (interpolated_Density(currentposition, grid) / &
                    (2.d0 * mhydrogen))
            end if
         end if
@@ -5669,7 +5651,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            
            if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * &
-              (interpolated_Density(thisposition, grid, thisoctal, subcell) / (2.d0 * mhydrogen))
+              (interpolated_Density(thisposition, grid) / (2.d0 * mhydrogen))
 
               if(lowmemory) then
                  etaline = nmol * etaline

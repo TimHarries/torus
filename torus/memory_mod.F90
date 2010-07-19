@@ -60,9 +60,9 @@ module memory_mod
     function octalMemory(thisOctal) result(tot)
       type(OCTAL), pointer :: thisOctal
       integer(kind=bigInt) tot
-
+      integer :: i
       tot = 0
-
+      i = thisOctal%nChildren
 
 
 #ifdef MEMCHECK
@@ -183,6 +183,7 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%oldestmolecularLevel)
 
 #endif
+
     end function octalMemory
 
 

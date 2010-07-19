@@ -41,7 +41,7 @@ contains
     real :: fac
     integer :: ng, i
     type(VECTOR) :: position
-    type(GAUSSIAN) :: gArray(ng)
+    type(GAUSSIAN) :: gArray(:)
 
     fac = 0.
     do i = 1, ng

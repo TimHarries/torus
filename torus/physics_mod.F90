@@ -104,7 +104,7 @@ contains
        lamEnd = 1000.d4
        nlambda = 1000
        call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-            source(isource)%surface, 100, inputcontFluxFile(isource), source(isource)%teff, &
+            source(isource)%surface, 100, source(isource)%teff, &
             source(isource)%spectrum)
        call sumSurface(source(isource)%surface, source(isource)%luminosity)
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
@@ -125,8 +125,8 @@ contains
     use input_variables, only : lucyfilenameOut, lucyFilenamein
     use input_variables, only : mCore, solveVerticalHydro, sigma0
     use cmf_mod, only : atomloop
-    use photoionAMR_mod, only: photoionizationLoopAMR, ionizeGrid
-    use photoion_mod, only : refineLambdaArray, photoionizationLoop
+    use photoion_mod, only : photoionizationLoop
+    use photoionAMR_mod, only: photoionizationLoopAMR
 #ifdef MPI
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
@@ -136,8 +136,8 @@ contains
 #ifdef MPI
     use input_variables, only : hydrovelocityconv
     use mpi_amr_mod, only : fillVelocityCornersFromHydro
-#endif
     use amr_mod, only : hydroVelocityConvert
+#endif
     use setupamr_mod, only: doSmoothOnTau
     use disc_hydro_mod, only: verticalHydrostatic
 
@@ -360,7 +360,7 @@ contains
 
      if (grid%geometry == "starburst") then
 #ifdef MPI
-        call sync_random_seed()
+        call randomNumberGenerator(syncIseed=.true.)
 #endif
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
@@ -373,7 +373,7 @@ contains
     if (grid%geometry(1:6) == "ttauri") then
        coreContinuumFlux = 0.d0
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
-            globalsourcearray(1)%surface, 1000, "blackbody", &
+            globalsourcearray(1)%surface, 1000, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
        call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion

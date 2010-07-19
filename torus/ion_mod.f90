@@ -272,7 +272,8 @@ subroutine addLevels(thisIon)
 	call addLevel(thisIon,"4P_1/2", 5.33173d0, 0.5)
 	call addLevel(thisIon,"4P_3/2", 5.33446d0, 1.5)
 	call addLevel(thisIon,"4P_5/2", 5.33797d0, 2.5)
-	!call addLevel(thisIon,"2P_1/2", 13.715684d0, 0.5) !commenting these out kills it..... are they supposed ot be in order of inc. energy???Haworth
+ !commenting these out kills it..... are they supposed ot be in order of inc. energy???Haworth
+	!call addLevel(thisIon,"2P_1/2", 13.715684d0, 0.5) &
 	!call addLevel(thisIon,"2P_3/2", 13.720780d0, 1.5)
 
     case("C III")

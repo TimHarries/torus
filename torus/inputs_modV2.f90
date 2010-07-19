@@ -1356,7 +1356,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real :: value
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1383,7 +1383,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real(double) :: value
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1410,7 +1410,7 @@ end do
  implicit none
  character(len=*) :: name
  type(VECTOR) :: value
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1439,7 +1439,7 @@ subroutine findInteger(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  integer :: value
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1467,7 +1467,7 @@ end subroutine findInteger
    character(len=*) :: name
    logical :: fLine(:)
    integer(kind=bigInt) :: value
-   character(len=80) :: cLine(*)
+   character(len=80) :: cLine(:)
    integer :: nLines
    logical :: ok
    integer :: i, j, k
@@ -1493,7 +1493,7 @@ subroutine findLogical(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  logical :: value
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1520,7 +1520,7 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  character(len=*) :: value
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1548,7 +1548,7 @@ subroutine findRealArray(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real :: value(:)
- character(len=80) :: cLine(*)
+ character(len=80) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -1575,7 +1575,7 @@ endif
                        musthave)
   character(len=*) :: name
   integer :: ival
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: Fline(:)
   character(len=100) :: output
   integer :: nLines
@@ -1605,7 +1605,7 @@ endif
                        musthave)
   character(len=*) :: name
   integer(kind=bigInt) :: ival
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -1637,7 +1637,7 @@ end subroutine getBigInteger
   real :: rval
   real :: unitConversion
   logical :: musthave
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -1684,7 +1684,7 @@ end subroutine getBigInteger
   character(len=*) :: name
   real(double) :: dval, unitConversion
   logical :: musthave
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -1716,7 +1716,7 @@ end subroutine getBigInteger
   real(double) :: unitConversion
   type(VECTOR) :: dval, ddef
   logical :: musthave
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -1747,7 +1747,7 @@ end subroutine getVector
   character(len=*) :: name
   character(len=*) :: rval
   logical :: musthave
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: Fline(:)
   character(len=100) :: output
   integer :: nLines
@@ -1776,7 +1776,7 @@ end subroutine getVector
   character(len=*) :: name
   logical :: rval
   logical :: musthave
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -1818,7 +1818,7 @@ end subroutine getVector
   character(len=*) :: name
   real :: rval(:), unitConversion
   logical :: musthave
-  character(len=80) :: cLine(*)
+  character(len=80) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines

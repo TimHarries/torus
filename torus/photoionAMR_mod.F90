@@ -494,7 +494,7 @@ contains
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
     if (writeoutput) then
-       write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1), grid)
+       write(*,'(a,1pe12.1)') "Ionizing photons per cm^2: ",ionizingFlux(source(1))
     endif
 
 !    call writeVtkFile(grid, "start.vtk", &
@@ -3215,7 +3215,7 @@ subroutine twoPhotonContinuum(thisFreq)
   prob(1:21) = prob(1:21)/prob(21)
   thisFreq = 0.
   do while((thisFreq*hcgs*ergtoev) < 13.6)
-     call randomNumberGenerator(getDouble=r)
+     call randomNumberGenerator(getReal=r)
      call locate(prob, 21, r, i)
      fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
      thisFreq = (1.-fac)*freq
@@ -5036,13 +5036,15 @@ end subroutine readHeIIrecombination
 contains
 
 ! Dummy subroutines for non-MPI case
-  SUBROUTINE resizePhotoionCoeff(thisOctal, grid)
+  SUBROUTINE resizePhotoionCoeff(thisOctal,grid)
 
     use grid_mod
     implicit none
-
     type(GRIDTYPE) :: grid
     TYPE(OCTAL), POINTER  :: thisOctal 
+    integer :: i
+    i = thisOctal%nChildren
+    i = grid%octreeRoot%nChildren
   END SUBROUTINE resizePhotoionCoeff
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &

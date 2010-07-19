@@ -326,7 +326,7 @@ contains
     real :: r
     real, intent(in) :: lamArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
-    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
+    type(PHASEMATRIX) :: miePhase(:,:,:)
     
 
     call locate(lamArray, nLambda, wavelength, ilam)
@@ -398,7 +398,7 @@ contains
   subroutine fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
     implicit none
     integer :: nDustType, nLambda, nMuMie
-    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
+    type(PHASEMATRIX) :: miePhase(:,:,:)
     integer :: i, j
     logical, save :: firstTime = .true.
 
@@ -434,13 +434,13 @@ contains
     integer, intent(in) :: nLambda
     character(len=*), intent(in) :: outFile
     !  character(len=80) :: tfile
-    real, intent(in) :: xArray(nLambda)
+    real, intent(in) :: xArray(:)
     logical, intent(in) :: jansky
     logical, intent(in) :: normalizeSpectrum, sed, velocitySpace
     real(double), intent(in) :: objectDistance
     real(double) :: area
     real, intent(in) :: lamLine
-    type(STOKESVECTOR), intent(in) :: yArray(nLambda), varianceArray(nLambda)
+    type(STOKESVECTOR), intent(in) :: yArray(:), varianceArray(:)
     type(STOKESVECTOR), allocatable :: ytmpArray(:),  ymedian(:)
     real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
     real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)

@@ -5,15 +5,15 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, a0, qDist, pDist, &
   use unix_mod, only: unixGetenv
   implicit none
   character(len=80) :: dataDirectory, filename
-  real :: lambda(*)
+  real :: lambda(:)
   real :: aMin, aMax, qDist, a0, pDist, normFac
   character(len=*) :: grainType
   integer, parameter :: nDist = 100
   integer :: nLambda
   real :: t
   real,allocatable  :: kappaExt(:)
-  real :: kappaSca(*)
-  real :: kappaAbs(*)
+  real :: kappaSca(:)
+  real :: kappaAbs(:)
   integer, parameter :: maxpts = 300
   integer :: npts
   real :: xArray1(maxpts), qAbs1(maxpts), omega1(maxpts), qSca1(maxpts)

@@ -48,9 +48,8 @@ module source_mod
       call emptySurface(source%surface)
     end subroutine freeSource
 
-    function ionizingFlux(source, grid) result(flux)
+    function ionizingFlux(source) result(flux)
       type(sourcetype) :: source
-      type(GRIDTYPE) :: grid
       real(double) :: flux
       flux = sumPhotonsOverBand(source%spectrum, 1.d0, 912.d0)
       if (source%outsidegrid) then
@@ -108,7 +107,7 @@ module source_mod
 
     subroutine randomSource(source, nSource, iSource, lamArray, nLambda, initialize)
       integer :: nSource
-      type(SOURCETYPE) :: source(1:nSource)
+      type(SOURCETYPE) :: source(:)
       integer, intent(out) :: iSource
       real, save, allocatable :: prob(:)
       real, optional :: lamArray(:)
@@ -162,8 +161,7 @@ module source_mod
       enddo
     end function sumSourceLuminosity
 
-    real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam, grid) result (tot)
-      type(gridtype) :: grid
+    real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam) result (tot)
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       real(double) :: lam, flux
@@ -193,7 +191,7 @@ module source_mod
 
     subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance, sourcenumber)
       integer :: nSource
-      type(SOURCETYPE) :: source(nSource)
+      type(SOURCETYPE) :: source(:)
       type(VECTOR) :: rVec, uHat
       integer, optional, intent(out) :: sourceNumber
       real(double), intent(out) :: distance

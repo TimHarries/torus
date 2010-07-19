@@ -1,5 +1,4 @@
 module cluster_utils
-
   ! This is a collection of functions an subroutines related to an cluster_class object. 
   ! To avoid some circular dependency, these routines where separated from the main 
   ! cluster_class.f90 
@@ -37,12 +36,11 @@ contains
   ! the distance to the cluster, this routine compute the JHKL'M'(UKIRT)
   ! magnitudes the stars and the flux at the pass band of SIRTF
   ! (instruments:MIPS & IRAC).  
-  subroutine analyze_cluster(a_cluster, dir_obs, distance, grid)
+  subroutine analyze_cluster(a_cluster, dir_obs, grid)
     use filter_set_class, only: make_filter_set, filter_set
     implicit none
     type(cluster), intent(in) :: a_cluster 
     type(VECTOR), intent(in) :: dir_obs
-    real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
     type(filter_set) :: SIRTF_MIPS

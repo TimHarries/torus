@@ -93,8 +93,6 @@ contains
     type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
     character(len=80) :: klabel(nKurucz)
 
-    kLabel = " "
-    thisTable%label = " "
     call  readKuruczGrid(klabel, kspectrum, nKurucz)
 
 
@@ -280,7 +278,7 @@ contains
        integer :: nMass
        real(double) :: initMass
        character(len=*) :: thisfile
-       character(len=200) :: tFile, datadirectory = " "
+       character(len=200) :: tFile, datadirectory
        integer :: nt, i
        thisTable%initialMass(nMass) = initMass
        

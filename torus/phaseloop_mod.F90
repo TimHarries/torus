@@ -92,7 +92,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: dtime
 
 ! local parameters
-  integer, parameter :: maxscat = 1e6  ! Maximum number of scatterings for individual photon
+  integer, parameter :: maxscat = 1000000  ! Maximum number of scatterings for individual photon
 
 ! local variables 
   real(double) :: objectDistance
@@ -495,7 +495,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         ! file is read from a file!  (RK changed here.)
         nu = cSpeed / (lamLine * angstromtocm)
         call contread(contFluxFile, nu, coreContinuumFlux)
-        call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, contFluxFile, dble(teff), &
+        call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, dble(teff), &
              source(1)%spectrum)
         if (grid%geometry == "ttauri") then
            call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
@@ -634,9 +634,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (noScattering) then
         if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
         grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
-     else if ( maxScat <= 0 ) then 
-        call writeFatal ("maxScat <= 0")
-        STOP
      endif
 
 
@@ -678,7 +675,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if ( (.not. hydrodynamics) .and. (.not. formalsol)) then
         call test_optical_depth(gridUsesAMR, VoigtProf, &
              amrGridCentre, sphericityTest,  &
-             outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
+             outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore,  &
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
 
@@ -1284,7 +1281,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         ! scattering flux!  Should be modified later.  (RK)
         call compute_obs_line_flux(lamline, REAL(mHydrogen), DBLE(grid%rstar1), &
              dble(TTauriRouter/1.0e10), dble(amrGridSize)/2.001d0/SQRT(2.0d0), &
-             VECTOR(0.0d0, 0.0d0, 0.0d0), starSurface, &
+             starSurface, &
              form_nr_wind, form_nr_acc, form_nr_core, form_nphi,  &
              outVec, objectDistance, grid, sampleFreq, opaqueCore,  &
              flux, grid%lamArray, grid%nlambda, obsfluxfile, &
@@ -1345,7 +1342,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            lcore = grid%lCore
            if (nSource > 0) then              
               if (.not.starOff) then
-                 lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)), grid)
+                 lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
 !                 if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
               else
                  lcore = tiny(lcore)
@@ -1525,11 +1522,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       weightContPhoton, contPhoton, flatspec, vRot, pencilBeam, &
                       secondSource, secondSourcePosition, &
                       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, &
-                      theta1, theta2, chanceHotRing,  &
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
-                      narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
-                      curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
-                      outVec, photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
+                      narrowBandImage,source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
+                      starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
+                      photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
 !                 write(*,*) "r, weight ", modulus(thisPhoton%position)/rcore,thisPhoton%weight, weightContPhoton
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
@@ -1578,7 +1574,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                          thisPhoton%velocity, &
                          thisPhoton%position, outVec, grid, &
                          lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau , nTau, thin_disc_on, opaqueCore, &
-                         escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+                         escProb, thisPhoton%contPhoton,  &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                          .false., nUpper, nLower, 0., 0., 0., junk,&
                          sampleFreq,intPathError, &
@@ -1618,7 +1614,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       thisPhoton%velocity, &
                       thisPhoton%position, outVec, grid, &
                       lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
-                      escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+                      escProb, thisPhoton%contPhoton,  &
                       nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                       .false., nUpper, nLower, 0., 0., 0., junk,&
                       sampleFreq,intPathError, &
@@ -1886,7 +1882,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                    thisPhoton%position, &
                    thisPhoton%direction, grid, &
                    lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
-                   escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+                   escProb, thisPhoton%contPhoton, &
                    nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
                    .false., nUpper, nLower, 0., 0., 0., &
                    junk,sampleFreq,intPathError, &
@@ -2158,7 +2154,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                             obsPhoton%lambda, lamLine, obsPhoton%velocity, &
                             obsPhoton%position, obsPhoton%direction, grid, &
                             lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
-                            escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
+                            escProb, obsPhoton%contPhoton, nLambda, contTau, hitCore, &
                             thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
                             junk, sampleFreq,intPathError, &
                             useinterp, grid%Rstar1, coolStarPosition, nSource, source)
@@ -2204,7 +2200,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                          obsPhoton%velocity, &
                          obsPhoton%position, obsPhoton%direction, grid, &
                          lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
-                         escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
+                         escProb, obsPhoton%contPhoton, &
                          nLambda, contTau, hitCore, &
                          thinLine, lineResAbs, redRegion, &
                          .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
@@ -2458,7 +2454,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                             thisPhoton%velocity, thisPhoton%position, &
                             thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
                             tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
-                            escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+                            escProb, thisPhoton%contPhoton, &
                             nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&
                             0., 0., junk,sampleFreq,intPathError, &

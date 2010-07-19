@@ -119,7 +119,7 @@ contains
     integer(bigInt) :: iseed
     integer :: ierr
 
-    call torus_mpi_barrier
+    call MPI_BARRIER(MPI_COMM_WORLD)
     call MPI_BCAST(iSeed, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   end subroutine sync_random_seed
@@ -155,7 +155,7 @@ contains
            endif
         endif
         different = .true.
-        call sort(size(itest),itest)
+        call localsort(size(itest),itest)
         different = .true.
         do i = 1, size(itest)-1
            if (itest(i) == itest(i+1)) different=.false.
@@ -165,7 +165,7 @@ contains
            stop
         endif
      endif
-     call torus_mpi_barrier
+    call MPI_BARRIER(MPI_COMM_WORLD)
      deallocate(itest)
    end subroutine test_random_across_threads
 #endif
@@ -328,5 +328,42 @@ contains
 !      endif
     END FUNCTION RAN3_double
 
+  SUBROUTINE localsort(N,RA)
+    INTEGER N, L, IR, I, J
+    integer RRA
+    integer RA(N)
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       RRA=RA(L)
+    ELSE
+       RRA=RA(IR)
+       RA(IR)=RA(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          RA(1)=RRA
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(RA(J).LT.RA(J+1))J=J+1
+       ENDIF
+       IF(RRA.LT.RA(J))THEN
+          RA(I)=RA(J)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    RA(I)=RRA
+    GO TO 10
+  END subroutine localsort
 
 end module random_mod

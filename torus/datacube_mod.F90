@@ -49,7 +49,7 @@ contains
 
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
-    use image_mod, only : deleteFitsFile, printfitsError
+    use image_mod, only : deleteFitsFile
     implicit none
     
     type(DATACUBE), intent(in) :: thisCube

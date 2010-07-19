@@ -379,9 +379,8 @@ module spectrum_mod
       real(double) :: t
       real :: loggArray(11)
       logical, save :: firstTime = .true.
-      character(len=200) :: thisFile1 = " ", thisFile2 = " ", dataDirectory = " "
+      character(len=200) :: thisFile1, thisFile2, dataDirectory
       character(len=80) :: label1, label2
-      logical,save :: firstWarning = .true.
       integer :: i1, i2
       integer, parameter :: nKurucz = 410
       type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
@@ -481,7 +480,7 @@ module spectrum_mod
        character(len=*) :: label(:)
        type(SPECTRUMTYPE) :: spectrum(:)
        integer :: nFiles
-       character(len=200) :: tfile,fluxfile,dataDirectory = " "
+       character(len=200) :: tfile,fluxfile,dataDirectory 
        logical :: ok
        integer :: i
        ok = .true.

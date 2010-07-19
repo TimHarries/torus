@@ -251,7 +251,7 @@ contains
          8.73E+00,8.70E+00,9.94E+00,1.24E+01,1.54E+01,2.94E+01,3.95E+01,    &
          4.78E+01,6.08E+01,7.09E+01,8.61E+01,1.03E+02,1.03E+02,1.03E+02,    &
          1.03E+02,1.03E+02/                                                     
-    real :: lambda(*)
+    real :: lambda(:)
     integer :: nLambda, nRef
     real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
     real(double) :: dydx
@@ -259,7 +259,7 @@ contains
     real :: t
     character(len=*), intent(in) :: graintype
     character(len=200) :: filename, dataDirectory
-    real :: mReal(*), mImg(*)
+    real :: mReal(:), mImg(:)
     dataDirectory = " "
     select case(graintype)
     case("sil_ow")
@@ -807,8 +807,8 @@ contains
     implicit none
     character(len=*) :: filename
     integer :: nlambda
-    real :: lambda(*)
-    real :: kappaAbs(*), kappaSca(*)
+    real :: lambda(:)
+    real :: kappaAbs(:), kappaSca(:)
     real :: sigmaExt(1000),sigmaSca(1000), kappa(1000), albedo(1000), tlam(1000)
     real :: tSca(1000), tAbs(1000), sigmaAbs(1000)
     character(len=40) :: filetype
@@ -957,7 +957,7 @@ contains
 
   recursive subroutine fillDustUniform(grid, thisOctal)
 
-    use input_variables, only : maxDustTypes, nDustType, grainFrac
+    use input_variables, only : nDustType, grainFrac
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child

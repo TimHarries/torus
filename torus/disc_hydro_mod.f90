@@ -369,7 +369,7 @@ contains
     integer :: nSource
     integer :: nLucy
     integer :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nDusttype,1:nLambda, 1:nMuMie)
+    type(PHASEMATRIX):: miePhase(:,:,:)
     real  :: lamArray(:)
     real :: massEnvelope
     real :: drho

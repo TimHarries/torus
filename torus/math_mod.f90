@@ -192,9 +192,14 @@ contains
 
   real function interpGridScalar(scalarGrid,nx,ny,nz,nLambda,i1, i2, i3, iLambda,t1, t2, t3)
     integer :: nx,ny,nz,nLambda
-    real :: scalarGrid(1:nx,1:ny,1:nz,1:nLambda)
+    real :: scalarGrid(:,:,:,:)
     integer i1,i2,i3, iLambda
     real :: t1, t2, t3
+    integer :: i
+    i = nlambda
+    i = nz
+    i = ny
+    i = nx
 
     interpGridScalar = &
          ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1  , i2   , i3   , ilambda) + &
@@ -210,9 +215,14 @@ contains
 
   real function interpGridScalar4(scalarGrid,nx,ny,nz,nLambda,i1, i2, i3, iLambda,t1, t2, t3)
     integer nx,ny,nz,nLambda
-    real :: scalarGrid(1:nx,1:ny,1:nz,1:nLambda)
+    real :: scalarGrid(:,:,:,:)
     integer i1,i2,i3, iLambda
     real :: t1, t2, t3
+    integer :: i
+    i = nlambda
+    i = nz
+    i = ny
+    i = nx
 
 
     interpGridScalar4 = &
@@ -231,9 +241,11 @@ contains
 
   real function interpGridScalar2(scalarGrid,nx,ny,nz,i1, i2, i3, t1, t2, t3)
     integer nx,ny,nz
-    real :: scalarGrid(1:nx,1:ny,1:nz)
+    real :: scalarGrid(:,:,:)
     integer i1,i2,i3
     real(double) :: t1, t2, t3
+    integer :: i
+    i = nx; i = ny ; i= nz
 
 
     interpGridScalar2 = &
@@ -250,9 +262,13 @@ contains
 
   real function interpGridScalar3(scalarGrid,nx,ny,nz,i1, i2, i3, t1, t2, t3)
     integer nx,ny,nz
-    real :: scalarGrid(1:nx,1:ny,1:nz)
+    real :: scalarGrid(:,:,:)
     integer i1,i2,i3
     real :: t1, t2, t3
+    integer :: i
+    i = nz
+    i = ny
+    i = nx
 
 
     interpGridScalar3 = &
@@ -460,8 +476,8 @@ contains
        lamLine, velFWHM, relInt)
     integer :: nLambda, i
     real :: fac1, fac2
-    real :: xArray(nLambda)
-    real :: sourceSpectrum(nLambda)
+    real :: xArray(:)
+    real :: sourceSpectrum(:)
     real :: lamLine, velFWHM, relInt, sigma
     real :: thisVel
 

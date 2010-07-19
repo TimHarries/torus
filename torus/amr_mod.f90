@@ -2492,7 +2492,7 @@ CONTAINS
                            interp, departCoeff,kappaAbsArray,kappaScaArray, dusttypeFraction, rosselandKappa, kappap, &
                            atthistemperature)
 
-    USE input_variables, only: nLambda, hydrodynamics
+    USE input_variables, only: hydrodynamics
 
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
@@ -2530,8 +2530,8 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: temperature
     REAL(double),OPTIONAL,intent(out)         :: kappaAbs
     REAL(double),OPTIONAL,intent(out)         :: kappaSca
-    REAL(double),OPTIONAL         :: kappaAbsArray(nLambda)
-    REAL(double),OPTIONAL         :: kappaScaArray(nLambda)
+    REAL(double),OPTIONAL         :: kappaAbsArray(:)
+    REAL(double),OPTIONAL         :: kappaScaArray(:)
     REAL(double),OPTIONAL        :: rosselandKappa
     REAL, OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
@@ -4295,7 +4295,8 @@ CONTAINS
          massPerCell = amrlimitscalar
       end if
 
-      thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0) ! placeholder for maximum expected smoothing length
+ ! placeholder for maximum expected smoothing length
+      thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0)
 
       total_mass = ave_density * total_mass
 
@@ -4338,7 +4339,8 @@ CONTAINS
       if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
          if(ave_density .gt. 1d-13) then
             T = 10.d0 * (ave_density * 1d13)**(0.4d0)
-         Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5) ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO
+ ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO
+         Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5)
             Vturb = sqrt(5.938e-4 * T + 0.09) / (cspeed * 1d-5)
          else
             Vturb = 1.03246E-06 ! above calculation with T = 10
@@ -8653,7 +8655,9 @@ end function readparameterfrom2dmap
     r = sqrt(rVec%x**2 + rVec%y**2)
     if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 10. ! tinkered from 10K - I figured the cooler bits will gently drop but a large no. of cells are close to this temp.
+! tinkered from 10K - I figured the cooler bits will gently drop but a 
+! large no. of cells are close to this temp.
+       thisOctal%temperature(subcell) = 10.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 
@@ -11518,7 +11522,7 @@ end function readparameterfrom2dmap
     integer, optional :: ilambda
     real, optional :: lambda
     real(double), intent(out), optional :: kappaSca, kappaAbs
-    real(double), optional, intent(out) :: kappaAbsArray(grid%nLambda), kappaScaArray(grid%nLambda)
+    real(double), optional, intent(out) :: kappaAbsArray(:), kappaScaArray(:)
     real(double), optional, intent(out) :: rosselandKappa
     real(double), optional, intent(out) :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
     logical, optional :: debug
@@ -12322,7 +12326,8 @@ end function readparameterfrom2dmap
                             if (split.and.(fac > 0.2d0).and.(thisOctal%etaLine(subcell) > 0.1d0).and. & 
                                  (thisOctal%etaLine(subcell) < 1.d0).and. &
                                  (thisOctal%etaLine(subcell)>neighbourOctal%etaLine(neighbourSubcell))) then
-!                               if (myrankGlobal == 1) write(*,*) " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
+!                               if (myrankGlobal == 1) write(*,*) &
+!                               " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
                                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                                     inherit=inheritProps, interp=interpProps)
                                converged = .false.

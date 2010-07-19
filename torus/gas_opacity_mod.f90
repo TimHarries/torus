@@ -317,8 +317,13 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   logical, save :: firstTime = .true.
   real, allocatable,save :: rayScatter(:)
   real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
+  real(double) :: test
   integer :: i
 
+  test = temperature
+  test = rho
+  if (PRESENT(kappaAbs)) kappaAbs = 0.d0
+  if (PRESENT(kappaAbsArray)) kappaAbsArray = 0.d0
 !  lookuptable = tioLookuptable
 !
 !  mu = 2.46

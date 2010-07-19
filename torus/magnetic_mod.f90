@@ -64,6 +64,9 @@ contains
     type(VECTOR) :: rvec, vp, magneticAxis, rVecDash
     real(double) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
     real(double) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
+    logical :: test
+
+    test=grid%octreeRoot%threed
 
     rVec = point*1.d10
 
@@ -139,6 +142,11 @@ contains
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: rvec
     real(double) :: phi, r0, r, Vesc, vel, x
+    logical :: test
+
+    test=grid%octreeRoot%threed
+
+
     velocityBlandfordPayne = VECTOR(0.d0, 0.d0, 0.d0)
     if (.not.inflowBlandfordPayne(point)) goto 666
 
@@ -203,6 +211,9 @@ contains
      type(VECTOR) :: rVec
      real(double) :: rho, r, fac, r0
      real(double) :: h, rho0
+    logical :: test
+
+    test=grid%octreeRoot%threed
 
      r0 = 100.d0 * autocm/1.d10
      fac = betaDisc - alphaDisc + 2.d0

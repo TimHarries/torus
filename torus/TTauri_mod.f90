@@ -29,7 +29,7 @@ contains
 
     type(GRIDTYPE) :: grid
     character(len=*) :: contFile1, popFileName
-    character(len=80) :: contfile2 = " ", newContfile = " "
+    character(len=80) :: contfile2, newContfile 
     logical :: readPops, writePops, lte
     logical :: curtains
     real :: dipoleOffset
@@ -418,8 +418,8 @@ contains
   end subroutine infallEnhancment
        
 
-  subroutine initInfallEnhancement(distortionVec, nVec, nPhi, particleMass)
-    integer, intent(in) :: nVec, nPhi
+  subroutine initInfallEnhancement(distortionVec, nVec,  particleMass)
+    integer, intent(in) :: nVec
     type(VECTOR), intent(inout) :: distortionVec(nVec)
     real, intent(inout) :: particleMass
     real ::  rStar, rinner, rOuter, fac, theta, rM
@@ -454,7 +454,7 @@ contains
 
     type(GRIDTYPE) :: grid
     character(len=*) :: contFile1, popFileName
-    character(len=80) :: contfile2 = " "
+    character(len=80) :: contfile2
     logical :: readPops, writePops, lte
     integer :: i, j, k
     real :: rStar, vTerm, v0, v, r, mdot

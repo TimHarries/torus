@@ -628,7 +628,7 @@ contains
                sigmaAbs, sigmaSca, meanDustParticleMass)
        else
           ! assigin the values to the grid 
-          call assign_values(thisOctal,subcell, grid, this, scaling_tau, &
+          call assign_values(thisOctal,subcell, this, &
                sigmaAbs, sigmaSca, meanDustParticleMass)
        end if
     end do
@@ -639,16 +639,14 @@ contains
   !
   !
   !
-  subroutine assign_values(thisOctal,subcell, grid, this, scaling_tau, &
+  subroutine assign_values(thisOctal,subcell, this,  &
        sigmaAbs, sigmaSca, meanDustParticleMass)
     IMPLICIT NONE
     
 !    TYPE(octal), intent(inout) :: thisOctal
     TYPE(octal), pointer :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(alpha_disc), INTENT(IN)  :: this
-    real, intent(in) :: scaling_tau
     real, intent(in) :: sigmaAbs, sigmaSca    ! [cm^2] photon-dust x-sections
     real, intent(in) :: meanDustParticleMass  ! [g]
     !

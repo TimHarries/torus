@@ -195,6 +195,8 @@ module image_mod
      integer :: i
      real :: filter_response
      real(double) :: lambda_obs
+     type(vector) :: test
+     test = center
 
      velIncgs = thisVel! * cSpeed/1.e5 
      xPix = 0; yPix = 0
@@ -632,14 +634,13 @@ module image_mod
 !! WRITE_IMAGE creates a FITS primary array containing a 2-D image.
 !
 
-     subroutine writeFitsImage(image, filename, objectDistance, type, units)
+     subroutine writeFitsImage(image, filename, objectDistance, type)
 
 ! Arguments
 #ifdef USECFITSIO
        use input_variables, only: lamStart, ImageinArcSec
 #endif
        type(IMAGETYPE), intent(in)   :: image
-       character(len=*), optional :: units
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
 

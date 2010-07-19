@@ -20,9 +20,9 @@ contains
       implicit none
 
       integer, intent(in) :: nDustType, nLambda, nMuMie
-      real, intent(in) :: xArray(nLambda)
-      real, intent(in) :: mReal(nDustType,nLambda), mImg(nDustType, nLambda)
-      type(PHASEMATRIX), intent(out) :: miePhase(nDustType, nLambda, nMuMie)
+      real, intent(in) :: xArray(:)
+      real, intent(in) :: mReal(:,:), mImg(:, :)
+      type(PHASEMATRIX), intent(out) :: miePhase(:,:,:)!nDustType, nLambda, nMuMie)
 
       integer :: i, j, k
 
@@ -161,8 +161,8 @@ contains
 
       real, intent(in) :: cosTheta
       integer, intent(in) :: nDist
-      type(beshEntry), intent(in) :: beshTable(1:nDist-1)
-      type(sphereEntry), intent(in) :: sphereTable(nDist-1)
+      type(beshEntry), intent(in) :: beshTable(:) !1:nDist-1)
+      type(sphereEntry), intent(in) :: sphereTable(:)!nDist-1)
       real, intent(in) :: pnmllg(:)
       real, intent(in) :: da(nDist-1), dist(nDist-1)
       real, intent(in) :: aFac
@@ -443,7 +443,7 @@ contains
 !     ........................................................
       real, intent(in) :: cosTheta
       integer, intent(in) :: nc
-      real, intent(out) :: pnmllg(nc)
+      real, intent(out) :: pnmllg(:)
 
       integer :: n
       real :: rn
@@ -467,7 +467,7 @@ contains
       use phasematrix_mod
 
       integer, intent(in) :: nMuMie
-      type(PHASEMATRIX), intent(inout) :: miePhase(nMuMie)
+      type(PHASEMATRIX), intent(inout) :: miePhase(:)
       integer :: i, m ,n
       real(double) :: normfac
   
@@ -908,7 +908,7 @@ contains
 !     ........................................................
       real    :: theta, costh, rn
       integer :: nc, n
-      real pnmllg(nc)
+      real pnmllg(:)
       costh = cos(theta)
 !     ..............................
 !     .  calculate orders 0 and 1  .

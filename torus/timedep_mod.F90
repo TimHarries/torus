@@ -89,7 +89,7 @@ contains
 #ifdef MPI
     write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankGlobal,".dat"
     write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankGlobal,".dat"
-    call init_random_seed()
+    call randomNumberGenerator(randomSeed=.true.)
 #endif
 
 
@@ -242,7 +242,7 @@ contains
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
             nSedWavelength, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
-            observerPosition, observerDirection, lastTime, seedRun)
+            observerPosition, observerDirection, seedRun)
        if (doTuning) call tune(6, "Time dependent RT step") 
 
        sedFlux  = sedFlux + sedFluxStep
@@ -366,13 +366,12 @@ contains
   subroutine timeDependentRTStep(grid, oldStack, oldStacknStack, oldStackFilename, currentStackFilename, &
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
        nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow, observerPosition, observerDirection, &
-       lastTime, seedRun)
+       seedRun)
     type(GRIDTYPE) :: grid
     integer :: nSource
     logical :: varyingSource
     integer :: nLambda
     integer :: nFreq
-    logical :: lastTime
     integer :: nSedWavelength, nTime
     real(double) :: sedWavelength(:)
     real(double) :: sedTime(:)
@@ -429,6 +428,7 @@ contains
     real(double) :: tempDouble
     real(double), allocatable :: tempDoubleArray(:)
 #endif
+    treal= dumpfromnow
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
 
@@ -726,7 +726,8 @@ contains
           endif
        end do
 
-       if (outOfTime.and.varyingSource.and.(.not.seedRun)) then ! remove photons that are going to free stream to the edge of the boundary
+ ! remove photons that are going to free stream to the edge of the boundary
+       if (outOfTime.and.varyingSource.and.(.not.seedRun)) then
           call tauAlongPath(ilambda, grid, rVec, uHat, tau)
           if (tau < 1.d-3) then
              outOfTime = .false.
@@ -1522,7 +1523,7 @@ contains
 !    reflecting = .false.
 !
 
-    call calculateProb(photonProb, bias, xArray, xCen, nProb, photonEnergyDensity)
+    call calculateProb(photonProb, bias, xCen, nProb, photonEnergyDensity)
 
     write(*,*) "SUM oldepsStack ",SUM(oldEpsStack(1:oldNStack))
 
@@ -1591,7 +1592,7 @@ contains
        enddo
        oldetacont = etacont
        etaCont = fourPi * (stefanBoltz/pi) * temperature**4 * kappa * rho 
-       call calculateProb(prob, bias, xArray, xCen, nProb, etaCont)
+       call calculateProb(prob, bias, xCen, nProb, etaCont)
        luminosity = SUM(etaCont*dx)
        write(*,*) "emissivity ",luminosity
        write(*,*) "time step ",deltaT
@@ -1807,13 +1808,13 @@ contains
           oldaDot = adot
           oldetaCont = etaCont
           oldPhotonEnergyDensity = photonEnergyDensity
-          call calculateADottest(distanceGridAdot, aDot, xCen, dx, nx, deltaT)
+          call calculateADottest(distanceGridAdot, aDot, dx, nx, deltaT)
           call calculatePhotonEnergyDensity(distanceGridPhotonFromGas, &
-               photonEnergyDensityFromGas, xCen, dx, nx, deltaT, photonSpeed)
+               photonEnergyDensityFromGas, dx, nx, deltaT, photonSpeed)
           call calculatePhotonEnergyDensity(distanceGridPhotonFromSource, &
-               photonEnergyDensityFromSource, xCen, dx, nx, deltaT, photonSpeed)
+               photonEnergyDensityFromSource, dx, nx, deltaT, photonSpeed)
           write(*,*) "calling calctransterms"
-          call calculateTranportTerms(deltaUtransport, energyFromCell, energyIntoCell, xCen, dx, nx, deltaT)
+          call calculateTranportTerms(deltaUtransport, energyFromCell, energyIntoCell, dx, nx)
           write(*,*) "done"
           photonEnergyDensity = photonEnergyDensityFromSource + photonEnergyDensityFromGas
           call solveNewUdens(xCen, kappa, rho, photonDensAnalytical, uDensAnalytical, nx, k, deltaT, &
@@ -2057,10 +2058,10 @@ contains
   end subroutine getPhotonFromStack
 
 
-  subroutine calculateADottest(distanceGrid, aDot, xCen, dx, nx, deltaT)
+  subroutine calculateADottest(distanceGrid, aDot, dx, nx, deltaT)
     real(double) :: distanceGrid(:)
     real(double), intent(out) :: aDot(:)
-    real(double) :: xCen(:), dx, deltaT
+    real(double) ::  dx, deltaT
     integer :: nx, i
 
 
@@ -2069,10 +2070,10 @@ contains
     enddo
   end subroutine calculateADottest
 
-  subroutine calculatePhotonEnergyDensity(distanceGrid, photonEnergyDensity, xCen, dx, nx, deltaT, photonSpeed)
+  subroutine calculatePhotonEnergyDensity(distanceGrid, photonEnergyDensity,  dx, nx, deltaT, photonSpeed)
     real(double) :: distanceGrid(:), photonSpeed
     real(double), intent(out) :: photonEnergyDensity(:)
-    real(double) :: xCen(:), dx, deltaT
+    real(double) ::  dx, deltaT
     integer :: nx, i
 
 
@@ -2081,8 +2082,8 @@ contains
     enddo
   end subroutine calculatePhotonEnergyDensity
 
-  subroutine calculateProb(prob, bias,  xArray, xCen, nProb, etaCont)
-    real(double), intent(inout) :: xArray(:), prob(:), bias(:)
+  subroutine calculateProb(prob, bias,  xCen, nProb, etaCont)
+    real(double), intent(inout) ::  prob(:), bias(:)
     real(double) :: xCen(:), etaCont(:), totalEmission, dx, tot
     integer :: i, nProb
     dx = xCen(2)-xCen(1)
@@ -2170,8 +2171,9 @@ contains
     real(double) :: k, deltaT,dx, currentTime
     real(double) :: uPrime(10000), a(10000), b(10000),c(10000), t
     integer :: nx, i
+    real(double) :: test
     logical :: diffusion
-
+    test = currentTime
     
     dx = xArray(2)-xArray(1)
 
@@ -2433,7 +2435,7 @@ contains
   subroutine TRIDIAG(A,B,C,R,U,N)
       integer, parameter ::  NMAX=10000
       integer :: n, j
-      real(double) ::  GAM(NMAX),A(N),B(N),C(N),R(N),U(N)
+      real(double) ::  GAM(NMAX),A(:),B(:),C(:),R(:),U(:)
       real(double) :: bet
       IF(B(1).EQ.0.) call writeFatal("TRIDIAG: fatal error 1")
       BET=B(1)
@@ -2450,9 +2452,9 @@ contains
     end subroutine TRIDIAG
     
 
-    subroutine quarticSub(udens_n_plus_1,  udens_n, E_n, kappa, rho,  adot, &
+    subroutine quarticSub(udens_n_plus_1,  udens_n, kappa, rho,  adot, &
          mu, gamma, deltaT, ok)
-      real(double) :: udens_n_plus_1,  udens_n, E_n, kappa, rho, mu, gamma, DeltaT
+      real(double) :: udens_n_plus_1,  udens_n, kappa, rho, mu, gamma, DeltaT
       real(double) :: a1, a2
       real(double) :: adot
       integer :: nIter
@@ -2473,9 +2475,9 @@ contains
       
       do while(.not.converged)
          xm = 0.5d0*(x1+x2)
-         y1 = quarticFunc(x1, a1, a2, udens_n, E_n)
-         y2 = quarticFunc(x2, a1, a2, udens_n, E_n)
-         ym = quarticFunc(xm, a1, a2, udens_n, E_n)
+         y1 = quarticFunc(x1, a1, a2)
+         y2 = quarticFunc(x2, a1, a2)
+         ym = quarticFunc(xm, a1, a2)
          if (y1*ym < 0.d0) then
             x1 = x1
             x2 = xm
@@ -2515,9 +2517,9 @@ contains
 
     end subroutine quarticSub
 
-    subroutine quarticSubTest(udens_n_plus_1,  udens_n, E_n, kappa, rho,  adot, &
+    subroutine quarticSubTest(udens_n_plus_1,  udens_n, kappa, rho,  adot, &
          mu, gamma, deltaT, ok)
-      real(double) :: udens_n_plus_1,  udens_n, E_n, kappa, rho, mu, gamma, DeltaT
+      real(double) :: udens_n_plus_1,  udens_n, kappa, rho, mu, gamma, DeltaT
       real(double) :: a1, a2
       real(double) :: adot
       integer :: nIter
@@ -2535,9 +2537,9 @@ contains
       
       do while(.not.converged)
          xm = 0.5d0*(x1+x2)
-         y1 = quarticFunc(x1, a1, a2, udens_n, E_n)
-         y2 = quarticFunc(x2, a1, a2, udens_n, E_n)
-         ym = quarticFunc(xm, a1, a2, udens_n, E_n)
+         y1 = quarticFunc(x1, a1, a2)
+         y2 = quarticFunc(x2, a1, a2)
+         ym = quarticFunc(xm, a1, a2)
          if (y1*ym < 0.d0) then
             x1 = x1
             x2 = xm
@@ -2569,17 +2571,17 @@ contains
 
     end subroutine quarticSubTest
 
-    function quarticFunc(x, a1, a2, udens_n, E_n) result (y)
-      real(double) :: x, a1, a2, E_n, y, udens_n
+    function quarticFunc(x, a1, a2) result (y)
+      real(double) :: x, a1, a2, y
       y = a1 * x**4 + x + a2
 
     end function quarticFunc
     
-    subroutine calculateLag(grid, nsource, source, lamArray, nLambda)
+    subroutine calculateLag(grid, source, lamArray, nLambda)
       integer :: nPhotons
       type(GRIDTYPE) :: grid
       type(SOURCETYPE) :: source(:)
-      integer :: nSource, i
+      integer :: i
       real(double) :: photonTime, dist, tau, inc, observerDistance
       real :: lamArray(:)
       real(double), allocatable :: timeArray(:), yArray(:)
@@ -2645,10 +2647,10 @@ contains
       close(20)
     end subroutine calculateLag
 
-    subroutine calculateTranportTerms(deltaUTransport, energyFromCell, energyIntoCell, xCen, dx, nx, deltaT)
+    subroutine calculateTranportTerms(deltaUTransport, energyFromCell, energyIntoCell, dx, nx)
       integer :: nx
       real(double) :: energyFromCell(:), energyIntoCell(:), deltaUtransport(:)
-      real(double) :: xCen(:), dx, deltaT
+      real(double) :: dx
       integer :: i
 
       energyIntoCell = energyIntoCell / dx

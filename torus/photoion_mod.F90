@@ -360,10 +360,10 @@ contains
                       if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
                          call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-                         call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-                         call addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                         call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                         call addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell)
 !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-                         call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                         call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                       else
                          call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                       endif
@@ -1341,12 +1341,12 @@ end subroutine photoIonizationloop
                    found = .true.
                    
                    if (found) then
-                      y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+                      y1 = (HHecooling(grid, thisOctal, subcell, t1) &
                            - totalHeating)
-                      y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
+                      y2 = (HHecooling(grid, thisOctal, subcell, t2) &
                            - totalHeating)
                       if (y1*y2 > 0.d0) then
-                         if (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) > totalHeating) then
+                         if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
                             tm = t1
                          else
                             tm  = t2
@@ -1358,11 +1358,11 @@ end subroutine photoIonizationloop
                       
                       do while(.not.converged)
                          tm = 0.5*(t1+t2)
-                         y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
                               - totalheating)
-                         y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
+                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
                               - totalheating)
-                         ym = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,tm) &
+                         ym = (HHecooling(grid, thisOctal, subcell, tm) &
                               - totalheating)
                          
                          if (y1*ym < 0.d0) then
@@ -1418,10 +1418,9 @@ end subroutine photoIonizationloop
   end function recombToGround
 
   
-  function HHeCooling(grid, thisOctal, subcell, epsOverDeltaT, temperature, debug) result (coolingRate)
+  function HHeCooling(grid, thisOctal, subcell,  temperature, debug) result (coolingRate)
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
-    real(double) :: epsOverDeltaT
     type(GRIDTYPE) :: grid
     real(double) :: nHii, nHeii, ne, nh
     real :: temperature
@@ -2261,6 +2260,7 @@ subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate
   real(double) :: nHI, nHII,  recombRate
   real :: t4, a, b, c, d
   real :: temperature
+  t4 = nhii;t4 = nhi
 
   recombRate  = 0.d0
 
@@ -2303,7 +2303,7 @@ subroutine getChargeExchangeIon(parentIon, temperature, nHI, nHII, IonRate)
   real(double) :: nHI, nHII, ionRate
   real :: temperature
   real :: t4, a, b, c, d
-
+  t4 = nhi
   IonRate = 0.d0
 
   select case(parentIon%z)
@@ -2730,7 +2730,10 @@ subroutine getRecombs(rates, thision, temperature, ne, ionFrac, nh)
   real(double) :: rates(:)
   type(IONTYPE) :: thisIon
   real(double) :: temperature, ne, ionfrac, nh
-
+  real(double) :: test
+  test = ne
+  test = ionFrac
+  test = nh
   select case(thisIon%species)
      case("O II")
         rates(1) = 0.d0
@@ -2946,13 +2949,12 @@ subroutine addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
 
 end subroutine addHigherContinua
 
-subroutine addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell)
 
   integer :: nFreq
   real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
-  type(GRIDTYPE) :: grid
   integer :: i
   real(double) :: fac, z
   real(double), allocatable :: g(:), xlf(:)
@@ -3132,11 +3134,11 @@ end subroutine addFreeFreeContinua
 
 
 
-subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:), dfreq(:)
+  real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3268,10 +3270,10 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
 end function getPhotonFreq
 
 
-subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:), dfreq(:)
+  real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3299,10 +3301,10 @@ subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
 end subroutine addForbiddenLines
   
 
-subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:), dfreq(:)
+  real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3314,7 +3316,7 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
 !  integer :: ilow , iup
   integer,parameter :: nHeIILyman = 4
 !  real(double) :: heIILyman(4)
-  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
+!  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
 
 
 
@@ -3673,7 +3675,7 @@ end subroutine readHeIIrecombination
              call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
 !             call addHydrogenRecombinationLines(nfreq,  freq, dfreq, spectrum, thisOctal, subcell, grid)
              !         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-             call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+             call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
              call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
              
              do i = 1, nFreq
@@ -3720,9 +3722,9 @@ end subroutine readHeIIrecombination
 
     call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
     call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addHydrogenRecombinationLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
     !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
 
@@ -3754,14 +3756,14 @@ end subroutine readHeIIrecombination
 
   end function getRandomWavelengthPhotoion
 
-  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, dlam, nLambda, ilambda, bias, useBias)
+  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, nLambda, ilambda, bias, useBias)
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: nFreq
     real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
-    real :: dlam(:), dlam2
+    real ::  dlam2
     real(double), allocatable :: prob(:)
     real(double) :: t
     real :: thisLam
@@ -3799,9 +3801,9 @@ end subroutine readHeIIrecombination
 !          stop
 !       endif
     call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 !    !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addForbiddenLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
 
     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
@@ -4178,7 +4180,7 @@ end subroutine readHeIIrecombination
     totalEmission = totalEmission * 1.d30
 
     if (nSource > 0) then              
-       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)), grid)
+       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
     else
        lcore = tiny(lcore)
     endif
@@ -4261,7 +4263,7 @@ end subroutine readHeIIrecombination
              exit
           endif
           
-          call scatterPhotonLocal(grid, thisPhoton)
+          call scatterPhotonLocal(thisPhoton)
           observerPhoton = thisPhoton
           observerPhoton%observerPhoton = .true.
           observerPhoton%tau = 0.d0
@@ -4285,8 +4287,7 @@ end subroutine readHeIIrecombination
   end subroutine createImage
 
 
-  subroutine scatterPhotonLocal(grid, thisPhoton)
-    type(GRIDTYPE) :: grid
+  subroutine scatterPhotonLocal(thisPhoton)
     type(PHOTON) :: thisPhoton
 
     thisPhoton%direction = randomUnitVector() !isotropic scattering
@@ -4556,7 +4557,7 @@ end subroutine readHeIIrecombination
      integer :: ilower, iupper
      logical :: ok
 
-     call identifyRecombinationTransition(grid, lineWavelength, ilower, iupper, ok)
+     call identifyRecombinationTransition(lineWavelength, ilower, iupper, ok)
 
      if (ok) then
         call addRecombinationToEmission(grid, grid%octreeRoot, dLambda, ilower, iupper)
@@ -4576,46 +4577,46 @@ end subroutine readHeIIrecombination
      real :: emissivity(3:15,2:8)
      real(double) :: hBeta, LineEmissivity
 
-     real(double) :: lambdaTrans(20,20) = reshape( source=&
-          (/ 000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8,937.803d-8,930.748d-8,926.226d-8,923.150d-8,920.963d00,&
-          919.352d-8,918.129d-8,917.181d-8,916.429d-8,915.824d-8,915.329d-8,914.919d-8,914.576d-8,914.286d-8,914.039d-8,&  
-          0.00000d-8,0000000d-8,6562.80d-8,4861.32d-8,4340.36d-8,4101.73d-8,3970.07d-8,3889.05d-8,3835.38d-8,3797.90d-8,&
-          3770.63d-8,3750.15d-8,3734.37d-8,3721.94d-8,3711.97d-8,3703.85d-8,3697.15d-8,3691.55d-8,3686.83d-8,3682.81d-8,&  
-          0.00000d-8,0.00000d-8,0000000d-8,18751.0d-8,12818.1d-8,10938.1d-8,10049.4d-8,9545.98d-8,9229.02d-8,9014.91d-8,&
-          8862.79d-8,8750.47d-8,8665.02d-8,8598.39d-8,8545.39d-8,8502.49d-8,8467.26d-8,8437.96d-8,8413.32d-8,8392.40d-8,&  
-          0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,40512.0d-8,26252.0d-8,21655.0d-8,19445.6d-8,18174.1d-8,17362.1d-8,&
-          16806.5d-8,16407.2d-8,16109.3d-8,15880.5d-8,15700.7d-8,15556.5d-8,15438.9d-8,15341.8d-8,15260.6d-8,15191.8d-8,&  
-          0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,74578.0d-8,46525.0d-8,37395.0d-8,32961.0d-8,30384.0d-8,&
-          28722.0d-8,27575.0d-8,26744.0d-8,26119.0d-8,25636.0d-8,25254.0d-8,24946.0d-8,24693.0d-8,24483.0d-8,24307.0d-8,&  
-          0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,123680.d-8,75005.0d-8,59066.0d-8,51273.0d-8,&
-          46712.0d-8,43753.0d-8,41697.0d-8,40198.0d-8,39065.0d-8,38184.0d-8,37484.0d-8,36916.0d-8,36449.0d-8,36060.0d-8,&  
-          0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8,0.00000d-8,0000000d-8,190570.d-8,113060.d-8,87577.0d-8,&
-          75061.0d-8,67701.0d-8,62902.0d-8,59552.0d-8,57099.0d-8,55237.0d-8,53783.0d-8,52622.5d-8,51679.0d-8,50899.0d-8,&  
-          0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8,0.00000d-8,0000000d-8,0000000d-8,277960.d-8,162050.d-8,&
-          123840.d-8,105010.d-8,93894.0d-8,86621.0d-8,81527.0d-8,77782.0d-8,74930.0d-8,72696.0d-8,70908.0d-8,69448.0d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,388590.d-8,&  
-          223340.d-8,168760.d-8,141790.d-8,125840.d-8,115360.d-8,108010.d-8,102580.d-8,98443.0d-8,95191.0d-8,92579.0d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          525200.d-8,298310.d-8,223250.d-8,186100.d-8,164070.d-8,149580.d-8,139380.d-8,131840.d-8,126080.d-8,121530.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,690500.d-8,388320.d-8,288230.d-8,238620.d-8,209150.d-8,189730.d-8,176030.d-8,165900.d-8,158120.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,887300.d-8,494740.d-8,364610.d-8,300020.d-8,261610.d-8,236260.d-8,218360.d-8,205090.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,111800.d-7,619000.d-8,453290.d-8,371000.d-8,322000.d-8,289640.d-8,266740.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,138600.d-7,762300.d-8,555200.d-8,452220.d-8,390880.d-8,350300.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,169400.d-7,926100.d-8,671200.d-8,544400.d-8,468760.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,204400.d-7,111200.d-7,802300.d-8,648200.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,243800.d-7,132100.d-7,949200.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,288200.d-7,155400.d-7,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,337400.d-7,&  
-          0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0 /), shape=(/20,20/))
+!     real(double) :: lambdaTrans(20,20) = reshape( source=&
+!          (/ 000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8,937.803d-8,930.748d-8,926.226d-8,923.150d-8,920.963d00,&
+!          919.352d-8,918.129d-8,917.181d-8,916.429d-8,915.824d-8,915.329d-8,914.919d-8,914.576d-8,914.286d-8,914.039d-8,&  
+!          0.00000d-8,0000000d-8,6562.80d-8,4861.32d-8,4340.36d-8,4101.73d-8,3970.07d-8,3889.05d-8,3835.38d-8,3797.90d-8,&
+!          3770.63d-8,3750.15d-8,3734.37d-8,3721.94d-8,3711.97d-8,3703.85d-8,3697.15d-8,3691.55d-8,3686.83d-8,3682.81d-8,&  
+!          0.00000d-8,0.00000d-8,0000000d-8,18751.0d-8,12818.1d-8,10938.1d-8,10049.4d-8,9545.98d-8,9229.02d-8,9014.91d-8,&
+!          8862.79d-8,8750.47d-8,8665.02d-8,8598.39d-8,8545.39d-8,8502.49d-8,8467.26d-8,8437.96d-8,8413.32d-8,8392.40d-8,&  
+!          0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,40512.0d-8,26252.0d-8,21655.0d-8,19445.6d-8,18174.1d-8,17362.1d-8,&
+!          16806.5d-8,16407.2d-8,16109.3d-8,15880.5d-8,15700.7d-8,15556.5d-8,15438.9d-8,15341.8d-8,15260.6d-8,15191.8d-8,&  
+!          0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,74578.0d-8,46525.0d-8,37395.0d-8,32961.0d-8,30384.0d-8,&
+!          28722.0d-8,27575.0d-8,26744.0d-8,26119.0d-8,25636.0d-8,25254.0d-8,24946.0d-8,24693.0d-8,24483.0d-8,24307.0d-8,&  
+!          0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,123680.d-8,75005.0d-8,59066.0d-8,51273.0d-8,&
+!          46712.0d-8,43753.0d-8,41697.0d-8,40198.0d-8,39065.0d-8,38184.0d-8,37484.0d-8,36916.0d-8,36449.0d-8,36060.0d-8,&  
+!          0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8,0.00000d-8,0000000d-8,190570.d-8,113060.d-8,87577.0d-8,&
+!          75061.0d-8,67701.0d-8,62902.0d-8,59552.0d-8,57099.0d-8,55237.0d-8,53783.0d-8,52622.5d-8,51679.0d-8,50899.0d-8,&  
+!          0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8,0.00000d-8,0000000d-8,0000000d-8,277960.d-8,162050.d-8,&
+!          123840.d-8,105010.d-8,93894.0d-8,86621.0d-8,81527.0d-8,77782.0d-8,74930.0d-8,72696.0d-8,70908.0d-8,69448.0d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,388590.d-8,&  
+!          223340.d-8,168760.d-8,141790.d-8,125840.d-8,115360.d-8,108010.d-8,102580.d-8,98443.0d-8,95191.0d-8,92579.0d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          525200.d-8,298310.d-8,223250.d-8,186100.d-8,164070.d-8,149580.d-8,139380.d-8,131840.d-8,126080.d-8,121530.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,690500.d-8,388320.d-8,288230.d-8,238620.d-8,209150.d-8,189730.d-8,176030.d-8,165900.d-8,158120.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,887300.d-8,494740.d-8,364610.d-8,300020.d-8,261610.d-8,236260.d-8,218360.d-8,205090.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,111800.d-7,619000.d-8,453290.d-8,371000.d-8,322000.d-8,289640.d-8,266740.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,138600.d-7,762300.d-8,555200.d-8,452220.d-8,390880.d-8,350300.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,169400.d-7,926100.d-8,671200.d-8,544400.d-8,468760.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,204400.d-7,111200.d-7,802300.d-8,648200.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,243800.d-7,132100.d-7,949200.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,288200.d-7,155400.d-7,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
+!          000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,337400.d-7,&  
+!          0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0 /), shape=(/20,20/))
 
 
      emissivity(15, 2:8) = (/ 0.156E-01, 0.541E-02, 0.266E-02, 0.154E-02, 0.974E-03, 0.657E-03, 0.465E-03 /)
@@ -4662,8 +4663,7 @@ end subroutine readHeIIrecombination
      enddo
    end subroutine addRecombinationToEmission
 
-  subroutine identifyRecombinationTransition(grid, lambdaLine, ilower, iupper, ok)
-    type(GRIDTYPE),intent(in) :: grid
+  subroutine identifyRecombinationTransition(lambdaLine, ilower, iupper, ok)
     real(double),intent(in) :: lambdaLine
     integer, intent(out) :: ilower, iupper
     logical, intent(inout) :: ok

@@ -3,7 +3,7 @@ module puls_mod
 contains
 
   subroutine fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, &
-       xfac, blobs, maxBlobs, doBlobs, vContrast)
+       xfac, blobs, maxBlobs, doBlobs)
 
     use constants_mod
     use vector_mod
@@ -29,7 +29,6 @@ contains
     logical :: doBlobs
 !    real :: vTermCone, vTermDisk, betaCone, betaDisk, mdotcone, mdotDisk
 !    real :: coneAng, diskAng
-    real :: vContrast
 !    integer :: muCone1, muCone2, muDisk1, muDisk2
     type(GRIDTYPE) :: grid
     type(BLOBTYPE)  :: blobs(:)

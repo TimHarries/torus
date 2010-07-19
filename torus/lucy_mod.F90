@@ -48,7 +48,7 @@ contains
     logical :: gridConverged
     integer :: nDustType
     logical, optional :: finalPass
-    type(SOURCETYPE) :: source(nsource), thisSource
+    type(SOURCETYPE) :: source(:), thisSource
     integer :: nLucy
     ! threshold value for undersampled cell in percent (for stopping iteration).
     real, intent(in) :: percent_undersampled_min  
@@ -58,8 +58,8 @@ contains
     integer :: foundSubcell
     integer :: tempSubcell
     integer, intent(in)  :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
-    real  :: lamArray(nLambda)
+    type(PHASEMATRIX):: miePhase(:,:,:)
+    real  :: lamArray(:)
     real(oct) :: r
     real :: massEnvelope, scaleFac
     real :: tauMax
@@ -604,7 +604,8 @@ contains
                                call locate(probDistJnu(1:icritupper), icritupper, r, j)
                                if (j == nFreq) j = nFreq -1
                                thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-                                    (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j)) ! note that probdistjnu(nfreq) cancels here so it's fine
+                                    (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
+				     ! note that probdistjnu(nfreq) cancels here so it's fine
                                thisLam = (cSpeed / thisFreq) * 1.e8
                                !                      write(*,*) cSpeed/thisFreq/angstromtocm
                             endif
@@ -1353,9 +1354,9 @@ contains
 
     real(oct) :: temperature
     integer :: nFreq
-    real(oct) :: freq(*)
-    real(oct) :: probDist(*)
-    real(oct) :: dnu(*)
+    real(oct) :: freq(:)
+    real(oct) :: probDist(:)
+    real(oct) :: dnu(:)
 
     integer :: i
     
@@ -1377,7 +1378,7 @@ contains
    integer :: i1, i2, i3
    real(oct) :: t1, t2, t3
    real(oct) :: tval, tau, r
-   real :: lamArray(*)
+   real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
@@ -1682,10 +1683,10 @@ contains
 
 !    real :: kabs
     real(double) :: kabsArray(1000)
-    real :: lamArray(*)
+    real :: lamArray(:)
     integer :: nFreq
-    real(oct) :: freq(*)
-    real(oct) :: dnu(*)
+    real(oct) :: freq(:)
+    real(oct) :: dnu(:)
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 20
@@ -2120,7 +2121,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
    integer :: subcell, tempSubcell!, sourceSubcell
    logical :: directPhoton
    real(oct) :: tval, tau, r
-   real :: lamArray(*)
+   real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid, ok
    logical :: escaped
@@ -2139,8 +2140,10 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
    real(double), optional :: kappaScaOut, kappaAbsOut
 !   integer, save :: iLamScat
 !   logical, save :: firstTime = .true.
-
-
+    real :: test  
+    logical :: test2
+    test = lamArray(1)	
+    test2 = scatteredPhoton
    endSubcell = 0
    stillinGrid = .true.
    escaped = .false.
@@ -2985,7 +2988,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
           thisOctal%etaCont(subcell) = 1.d-40
           if (thisOctal%temperature(subcell) > 1.d-3) then
 
-             call addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, lambda, iPhotonLambda)
+             call addDustContinuumLucyMono(thisOctal, subcell, grid, lambda, iPhotonLambda)
              
           endif
 
@@ -3026,13 +3029,13 @@ end subroutine addDustContinuumLucy
 
 !-------------------------------------------------------------------------------
 
-subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, lamArray, lambda, iPhotonLambda)
+subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLambda)
 
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
   integer :: iPhotonLambda
-  real :: lamArray(:), lambda
+  real ::  lambda
   real(double) :: kappaAbs
   kappaAbs = 0.d0
   thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
@@ -3342,11 +3345,10 @@ subroutine setBiasOnTau(grid, iLambda)
 !    write(*,*) thisOctal%scatteredIntensity(subcell,itheta,iphi)
   end subroutine addToScatteredIntensity
 
-  subroutine addMeanIntensity(position, thisOctal, subcell, uHat, tVal)
+  subroutine addMeanIntensity(thisOctal, subcell, tVal)
 
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: uHat, position
     real(double) :: tVal
     thisOctal%meanIntensity(subcell) = thisOctal%meanIntensity(subcell) + tVal
     

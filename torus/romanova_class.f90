@@ -226,11 +226,11 @@ contains
 
     type(romanova), intent(in)    :: this
     type(VECTOR), intent(in)  :: position       ! [10^10cm]
-    real*8, intent(out) :: r, phi, theta ! r in R*, theta and phi are in rad, 
+    real(double), intent(out) :: r, phi, theta ! r in R*, theta and phi are in rad, 
     !
-    real*8 :: x, y, z       ! [10^10cm]
-    real*8 :: xp, yp, zp, t 
-    real*8, parameter :: PI = 3.141592653589793d0
+    real(double) :: x, y, z       ! [10^10cm]
+    real(double) :: xp, yp, zp, t 
+    real(double), parameter :: PI = 3.141592653589793d0
 
     ! rotate the vector back to the original coodinates
     x = position%x;  y = position%y;  z = position%z
@@ -277,10 +277,10 @@ contains
     IMPLICIT NONE
 
     type(VECTOR), intent(in)  :: position       ! [10^10cm]
-    real*8, intent(out) :: r, phi, theta ! r in R*, theta and phi are in rad, 
+    real(double), intent(out) :: r, phi, theta ! r in R*, theta and phi are in rad, 
     !
-    real*8 :: x, y, z       ! [10^10cm]
-    real*8, parameter :: PI = 3.141592653589793d0
+    real(double) :: x, y, z       ! [10^10cm]
+    real(double), parameter :: PI = 3.141592653589793d0
 
     ! rotate the vector back to the original coodinates
     x = position%x;  y = position%y;  z = position%z

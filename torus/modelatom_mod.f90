@@ -245,9 +245,8 @@ contains
   end subroutine returnEinsteinCoeffs
 
 
-  real(double) function photoCrossSection(thisAtom, iTrans, iLevel, nu)
+  real(double) function photoCrossSection(thisAtom, iLevel, nu)
     type(MODELATOM) :: thisAtom
-    integer :: iTrans
     integer :: iLevel
     real(double) :: nu, e
     real :: x
@@ -317,7 +316,7 @@ contains
         iTrans = thisAtom%indexRBFtrans(j)
         iLevel = thisAtom%iLower(iTrans)
         do iFreq = 1, nFreq
-           thisAtom%photoSec(j, iFreq) = photoCrossSection(thisAtom, iTrans, iLevel, freq(ifreq))
+           thisAtom%photoSec(j, iFreq) = photoCrossSection(thisAtom, iLevel, freq(ifreq))
         enddo
      enddo
         
@@ -328,11 +327,10 @@ contains
 
 
 
-  function collisionRate(thisAtom, iTrans, temperature,label) result(rate)
+  function collisionRate(thisAtom, iTrans, temperature) result(rate)
     type(MODELATOM) :: thisAtom
     integer :: iTrans
     real(double) :: temperature, rate, u0, u1, u2
-    character(len=*), optional :: label
     real(double) :: logGamma
     real(double) :: sigma0
     real :: x
@@ -627,10 +625,10 @@ contains
 
   end subroutine readTopbase
 
-  function BoltzSahaGeneral(thisAtom, nion, level, Ne, t) result(ratio)
+  function BoltzSahaGeneral(thisAtom, level, Ne, t) result(ratio)
   
     type(MODELATOM) :: thisAtom
-    integer              :: nIon, level
+    integer              ::  level
     real(double) :: Ne, t, ratio
     real :: tReal
     real, parameter ::  Ucoeff(5,5) =  reshape(source=  &
@@ -808,7 +806,7 @@ contains
   end function oldcikt_ma
 
 
-  function etaContHydrogen(freq, thisAtom, pops, nLevels, ne, temperature, nh) result(eta)
+  function etaContHydrogen(freq, thisAtom, pops, nLevels, ne, temperature) result(eta)
 
 ! bound-free and free-free continuum emissivity
 
@@ -816,7 +814,7 @@ contains
     real(double) :: freq
     real(double) :: pops(:)
     integer :: nLevels
-    real(double) :: ne, nh
+    real(double) :: ne
     real(double) :: temperature
     real(double) :: nStar
     real(double) :: eta
@@ -831,7 +829,7 @@ contains
        thresh=(thisAtom%iPot - thisAtom%energy(j))
        photonEnergy = freq * hCgs * ergtoEv
        if (photonEnergy.ge.thresh) then
-          nStar = BoltzSahaGeneral(thisAtom, 1, j, Ne, temperature) * pops(nLevels)
+          nStar = BoltzSahaGeneral(thisAtom, j, Ne, temperature) * pops(nLevels)
           eta = eta + nStar * annu_hyd(j,freq) * exp(-(hcgs*freq)/(kerg*temperature))
        endif
     enddo
@@ -941,21 +939,20 @@ contains
      end function giii_hyd
 
 
-     function bfOpacity(freq, nAtom, thisAtom, pops, ne, nStar, temperature, ifreq) result(kappa)
+     function bfOpacity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(kappa)
        real(double) :: freq
        integer, optional :: ifreq
-       integer :: nAtom
        type(MODELATOM) :: thisAtom(:)
+       integer :: nAtom
        real(double) :: pops(:,:)
        integer :: iAtom
        integer :: iTrans
        real(double) :: kappa, fac, ne, temperature
-       real(double) :: nStar(:,:)
        integer :: ilower, j
        logical, save :: firstTime = .true.
 
        kappa = 0.d0
-       do iAtom = 1, 1!nAtom
+       do iAtom = 1, nAtom
           do j = 1, thisAtom(iAtom)%nRBFtrans
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
           if (thisAtom(iatom)%transType(itrans) /= "RBF") then
@@ -974,7 +971,7 @@ contains
 !                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * &
 !                        (pops(iAtom, ilower) - nstart(iatom,ilower)*fac)
 
-                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * pops(iatom,ilower)
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom), ilower, freq) * pops(iatom,ilower)
                 endif
              endif
           enddo
@@ -994,7 +991,7 @@ contains
        
      end function bfOpacity
 
-  function bfEmissivity(freq, nAtom, thisAtom, pops, nStar, temperature, ne, Jnu, ifreq) result(eta)
+  function bfEmissivity(freq, nAtom, thisAtom, pops, nStar, temperature, ne,  ifreq) result(eta)
 
 
 ! bound-free and free-free continuum emissivity
@@ -1008,7 +1005,6 @@ contains
     real(double) :: temperature
     real(double) :: eta, fac
     integer :: iAtom, i, iLower, iUpper
-    real(double) :: Jnu ! mean intensity
     real(double) :: ne
     real(double) :: thresh, photonEnergy, expFac, thisFac
     logical, save :: firsttime = .true.
@@ -1021,7 +1017,7 @@ contains
     fac = (2.d0 * hCgs * freq**3)/(cSpeed**2)
     expFac = exp(-(hcgs*freq)/(kerg*temperature)) 
  
-    do iAtom = 1, 1!nAtom
+    do iAtom = 1, nAtom
 
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)
@@ -1039,7 +1035,7 @@ contains
                 if (present(ifreq)) then
                    eta = eta + fac * nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * thisFac
                 else
-                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iTrans, iLower, freq) * thisFac
+                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iLower, freq) * thisFac
                 endif
              endif
           endif
@@ -1062,7 +1058,7 @@ contains
   end function bfEmissivity
 
 
-  subroutine createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
+  subroutine createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source)
     integer :: nAtom
     type(MODELATOM) :: thisAtom(:)
     integer :: nsource
@@ -1070,7 +1066,7 @@ contains
     integer :: nfreq
     real(double) :: freq(:)
     integer :: iAtom, iLevel
-    integer :: maxFreq, i
+    integer :: i
     real(double) :: nuThresh, lamMin, lamMax
     real(double) :: nuStart, nuEnd
     integer :: nEven

@@ -33,8 +33,8 @@ contains
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
-    use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
-    use discwind_class, only: discwind, new, add_discwind
+    use disc_class, only:  new
+    use discwind_class, only:  new
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
     use parallel_mod, only : sync_random_seed
@@ -64,7 +64,7 @@ contains
     constantAbundance = .true.
 
 #ifdef MPI
-    call sync_random_seed()
+    call randomNumberGenerator(syncIseed=.true.)
 #endif
 
     call writeBanner("Setting up AMR grid","-",TRIVIAL)

@@ -58,14 +58,13 @@ module surface_mod
 
 contains
 
-  subroutine buildSphere(centre, radius, surface, nTheta, contFile, teff, hotspec)
+  subroutine buildSphere(centre, radius, surface, nTheta, teff, hotspec)
     real(double) :: teff
     type(VECTOR),intent(in) :: centre
     real(double),intent(in) :: radius ! 1.e10 cm
     real(double) :: area ! 1.e20 cm^2
     type(SURFACETYPE),intent(out) :: surface
     integer,intent(in) :: nTheta
-    character(len=*),intent(in) :: contfile
     integer :: nPhi, i, j, n
     real(double) :: theta, phi, dTheta, dPhi
     real(double) :: dPhase

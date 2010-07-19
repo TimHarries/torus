@@ -178,7 +178,7 @@ contains
 
     type(GRIDTYPE) :: grid                ! the opacity grid
     integer :: maxBlobs                   ! max no of blobs
-    type(BLOBTYPE) :: blobs(*)            ! blob array 
+    type(BLOBTYPE) :: blobs(:)            ! blob array 
     real :: distance, sinTheta
     integer :: i, j, k, m
     real :: fac1,fac2,r
@@ -421,7 +421,7 @@ contains
   subroutine readBlobs(filename, maxBlobs, blobs, quiet)
 
     character(len=*) :: filename     ! the filename
-    type(BLOBTYPE) :: blobs(*)       ! blob array
+    type(BLOBTYPE) :: blobs(:)       ! blob array
     integer :: maxBlobs              ! max number of blobs
     integer :: i                     ! counter
     integer :: nBlobs                ! actual no of blobs

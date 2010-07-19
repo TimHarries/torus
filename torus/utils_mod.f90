@@ -450,7 +450,7 @@ contains
   SUBROUTINE SORTsingle(N,RA)
     INTEGER N, L, IR, I, J
     REAL RRA
-    REAL RA(N)
+    REAL RA(:)
     L=N/2+1
     IR=N
 10  CONTINUE
@@ -488,7 +488,7 @@ contains
   SUBROUTINE SORTinteger(N,RA)
     INTEGER N, L, IR, I, J
     integer RRA
-    integer RA(N)
+    integer RA(:)
     L=N/2+1
     IR=N
 10  CONTINUE
@@ -661,7 +661,7 @@ contains
   ! See the comments in the book.
   SUBROUTINE polint(xa,ya,n,x,y,dy)
     INTEGER n,NMAX
-    REAL dy,x,y,xa(n),ya(n)
+    REAL dy,x,y,xa(:),ya(:)
     PARAMETER (NMAX=10)
     INTEGER i,m,ns
     REAL den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
@@ -706,8 +706,8 @@ contains
 
   SUBROUTINE polint2(xa,ya,n,x,y,dy)
     INTEGER n,NMAX
-    REAL :: x,xa(n)
-    real(double) :: y, ya(n), dy
+    REAL :: x,xa(:)
+    real(double) :: y, ya(:), dy
     PARAMETER (NMAX=10)
     INTEGER i,m,ns
     REAL den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
@@ -803,7 +803,7 @@ contains
     INTEGER NMAX,N, I, K
     REAL SIG, P, QN, UN
     PARAMETER (NMAX=1000)
-    REAL X(N),Y(N),Y2(N),U(NMAX),YP1,YPN
+    REAL X(:),Y(:),Y2(:),U(NMAX),YP1,YPN
     IF (YP1.GT..99E30) THEN
        Y2(1)=0.
        U(1)=0.
@@ -835,7 +835,7 @@ contains
   SUBROUTINE SPLINT_SINGLE(XA,YA,Y2A,N,X,Y)
     INTEGER N, KLO, KHI, K
     REAL H, A, B
-    REAL XA(N),YA(N),Y2A(N),X,Y
+    REAL XA(:),YA(:),Y2A(:),X,Y
     KLO=1
     KHI=N
 1   IF (KHI-KLO.GT.1) THEN
@@ -862,7 +862,7 @@ contains
   ! Modified by chris
   subroutine spline_double(x,y,n,yp1,ypn,y2)
     integer :: n
-    real(double) :: yp1, ypn, x(n), y(n), y2(n)
+    real(double) :: yp1, ypn, x(:), y(:), y2(:)
     integer, parameter :: nmax=500
     integer :: i, k
     real(double) :: p, qn, sig, un, u(nmax)
@@ -913,7 +913,7 @@ contains
   ! Modified by chris
   subroutine splint_double(xa,ya,y2a,n,x,y)
     integer :: n
-    real(double) :: x, y, xa(n), y2a(n), ya(n)
+    real(double) :: x, y, xa(:), y2a(:), ya(:)
     integer :: k, khi, klo
     real(double) :: a, b, h
 
@@ -944,7 +944,7 @@ contains
   ! locate in a grid via bisection but starting at jlo
 
   pure SUBROUTINE HUNT_single(XX,N,X,JLO)
-    REAL, INTENT(IN) :: XX(*)
+    REAL, INTENT(IN) :: XX(:)
     INTEGER, INTENT(IN) :: N
     REAL, INTENT(IN)    :: X
     INTEGER, INTENT(INOUT) :: JLO
@@ -993,7 +993,7 @@ contains
 
 
   pure SUBROUTINE HUNT_octal(XX,N,X,JLO)
-    real(oct), INTENT(IN) :: XX(*)
+    real(oct), INTENT(IN) :: XX(:)
     INTEGER, INTENT(IN) :: N
     real(oct), INTENT(IN)    :: X
     INTEGER, INTENT(INOUT) :: JLO
@@ -1080,7 +1080,7 @@ contains
 
   real(double) function logInterp_dble(y, n, x, xi)
     integer, intent(in) :: n
-    real(double), intent(in)    :: y(n), x(n), xi
+    real(double), intent(in)    :: y(:), x(:), xi
     integer, save       :: i
     real(double)                :: t
     !$OMP THREADPRIVATE (i)
@@ -1094,7 +1094,7 @@ contains
   end function logInterp_dble
 
   PURE SUBROUTINE LOCATE_single(XX,N,X,J)
-    real, intent(in)    :: XX(*)
+    real, intent(in)    :: XX(:)
     integer,intent(in)  :: n
     real,intent(in)     :: x
     integer,intent(out) :: j
@@ -1126,7 +1126,7 @@ contains
   
 
     PURE SUBROUTINE LOCATE_double(XX,N,X,J)
-    real(double), intent(in) :: XX(*)
+    real(double), intent(in) :: XX(:)
     integer, intent(in)              :: n
     real(double), intent(in) :: x
     integer,intent(out)              :: j
@@ -1157,7 +1157,7 @@ contains
     END SUBROUTINE LOCATE_DOUBLE
 
     PURE SUBROUTINE LOCATE_octal(XX,N,X,J)
-    real(oct), intent(in) :: XX(*)
+    real(oct), intent(in) :: XX(:)
     integer, intent(in)              :: n
     real(oct), intent(in) :: x
     integer,intent(out)              :: j
@@ -1529,7 +1529,7 @@ contains
       implicit none
       integer :: nlambda, i
       real :: lambda
-      real :: xArray(nLambda)
+      real :: xArray(:)
       logical, intent(out) :: ok
       
       ok = .true.
@@ -1652,20 +1652,20 @@ contains
       ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa) 
       ! Cleaned : 20-Nov-2000 (JDH)
       !
-      REAL*8 VOIGTN,AA,VV
+      REAL(double) :: VOIGTN,AA,VV
       !
-      REAL*8 H(25)
+      REAL(double) ::  H(25)
       !
-      REAL*8 V,V2,V4,V6
-      REAL*8 A,A2,A4,A6
-      REAL*8 Z,Z2                       
-      REAL*8 X,W
-      REAL*8 C1,C2
+      REAL(double) :: V,V2,V4,V6
+      REAL(double) ::  A,A2,A4,A6
+      REAL(double) ::  Z,Z2                       
+      REAL(double) ::  X,W
+      REAL(double) ::  C1,C2
       DATA C1,C2/1.128379167095512D0  ,5.64189583547756D-1/
       SAVE C1,C2
       !$OMP THREADPRIVATE(c1,c2)
       !
-      INTEGER*4 I,J
+      INTEGER(bigint) :: I, J
       !
       !REAL*8 DAWSON
       !EXTERNAL DAWSON
@@ -1740,9 +1740,9 @@ contains
       IMPLICIT NONE
       ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa) 
       !
-      REAL*8 DAWSON,XX
-      REAL*8 X,U
-      REAL*8 UP,DOWN
+      REAL(double) ::  DAWSON,XX
+      REAL(double) ::  X,U
+      REAL(double) ::  UP,DOWN
       !
       X=XX
       U=X*X
@@ -2149,14 +2149,14 @@ contains
     subroutine resampleRay_tau(L, nTau, tau, dtau_max, maxtau, newL, newNTau,&
          inFlow, newInFlow)
       integer, intent(in) :: nTau, maxtau
-      real, intent(in) :: L(nTau)
-      real, intent(in) :: tau(nTau)
+      real, intent(in) :: L(:)
+      real, intent(in) :: tau(:)
       ! maxmum line optical depth increment allowed
       real, intent(in) :: dtau_max
       integer, intent(inout) :: newNtau
-      real, intent(inout)  :: newL(maxtau)
-      logical, intent(inout)  :: InFlow(nTau)
-      logical, intent(inout)  :: newInFlow(maxtau)
+      real, intent(inout)  :: newL(:)
+      logical, intent(inout)  :: InFlow(:)
+      logical, intent(inout)  :: newInFlow(:)
       !
       real :: dtau  
       integer :: nAdd 
@@ -2857,7 +2857,7 @@ contains
 !
 !     SET UP ARRAYS
 !
-      real(double) ::  X(*), Y(*), SIGMAY(*), A(*)
+      real(double) ::  X(:), Y(:), SIGMAY(:), A(:)
       real(double) ::  ARRAY(100,100), SUMX(10000), SUMY(10000)
 !
 !     ACCUMULATE WEIGHTED SUMS
@@ -3008,523 +3008,6 @@ contains
 
     end function calcPoly
       
-
-subroutine DPOLFT (N, X, Y, W, MAXDEG, NDEG, EPS, R, IERR, A)
-!
-!! DPOLFT fits discrete data in a least squares sense by polynomials ...
-!  in one variable.
-!
-!***LIBRARY   SLATEC
-!***CATEGORY  K1A1A2
-!***TYPE      DOUBLE PRECISION (POLFIT-S, DPOLFT-D)
-!***KEYWORDS  CURVE FITTING, DATA FITTING, LEAST SQUARES, POLYNOMIAL FIT
-!***AUTHOR  Shampine, L. F., (SNLA)
-!           Davenport, S. M., (SNLA)
-!           Huddleston, R. E., (SNLL)
-!***DESCRIPTION
-!
-!     Abstract
-!
-!     Given a collection of points X(I) and a set of values Y(I) which
-!     correspond to some function or measurement at each of the X(I),
-!     subroutine  DPOLFT  computes the weighted least-squares polynomial
-!     fits of all degrees up to some degree either specified by the user
-!     or determined by the routine.  The fits thus obtained are in
-!     orthogonal polynomial form.  Subroutine  DP1VLU  may then be
-!     called to evaluate the fitted polynomials and any of their
-!     derivatives at any point.  The subroutine  DPCOEF  may be used to
-!     express the polynomial fits as powers of (X-C) for any specified
-!     point C.
-!
-!     The parameters for  DPOLFT  are
-!
-!     Input -- All TYPE REAL variables are DOUBLE PRECISION
-!         N -      the number of data points.  The arrays X, Y and W
-!                  must be dimensioned at least  N  (N  >=  1).
-!         X -      array of values of the independent variable.  These
-!                  values may appear in any order and need not all be
-!                  distinct.
-!         Y -      array of corresponding function values.
-!         W -      array of positive values to be used as weights.  If
-!                  W(1) is negative,  DPOLFT  will set all the weights
-!                  to 1.0, which means unweighted least squares error
-!                  will be minimized.  To minimize relative error, the
-!                  user should set the weights to:  W(I) = 1.0/Y(I)**2,
-!                  I = 1,...,N .
-!         MAXDEG - maximum degree to be allowed for polynomial fit.
-!                  MAXDEG  may be any non-negative integer less than  N.
-!                  Note -- MAXDEG  cannot be equal to  N-1  when a
-!                  statistical test is to be used for degree selection,
-!                  i.e., when input value of  EPS  is negative.
-!         EPS -    specifies the criterion to be used in determining
-!                  the degree of fit to be computed.
-!                  (1)  If  EPS  is input negative,  DPOLFT  chooses the
-!                       degree based on a statistical F test of
-!                       significance.  One of three possible
-!                       significance levels will be used:  .01, .05 or
-!                       .10.  If  EPS=-1.0 , the routine will
-!                       automatically select one of these levels based
-!                       on the number of data points and the maximum
-!                       degree to be considered.  If  EPS  is input as
-!                       -.01, -.05, or -.10, a significance level of
-!                       .01, .05, or .10, respectively, will be used.
-!                  (2)  If  EPS  is set to 0.,  DPOLFT  computes the
-!                       polynomials of degrees 0 through  MAXDEG .
-!                  (3)  If  EPS  is input positive,  EPS  is the RMS
-!                       error tolerance which must be satisfied by the
-!                       fitted polynomial.  DPOLFT  will increase the
-!                       degree of fit until this criterion is met or
-!                       until the maximum degree is reached.
-!
-!     Output -- All TYPE REAL variables are DOUBLE PRECISION
-!         NDEG -   degree of the highest degree fit computed.
-!         EPS -    RMS error of the polynomial of degree  NDEG .
-!         R -      vector of dimension at least NDEG containing values
-!                  of the fit of degree  NDEG  at each of the  X(I) .
-!                  Except when the statistical test is used, these
-!                  values are more accurate than results from subroutine
-!                  DP1VLU  normally are.
-!         IERR -   error flag with the following possible values.
-!             1 -- indicates normal execution, i.e., either
-!                  (1)  the input value of  EPS  was negative, and the
-!                       computed polynomial fit of degree  NDEG
-!                       satisfies the specified F test, or
-!                  (2)  the input value of  EPS  was 0., and the fits of
-!                       all degrees up to  MAXDEG  are complete, or
-!                  (3)  the input value of  EPS  was positive, and the
-!                       polynomial of degree  NDEG  satisfies the RMS
-!                       error requirement.
-!             2 -- invalid input parameter.  At least one of the input
-!                  parameters has an illegal value and must be corrected
-!                  before  DPOLFT  can proceed.  Valid input results
-!                  when the following restrictions are observed
-!                       N  >=  1
-!                       0  <=  MAXDEG  <=  N-1  for  EPS  >=  0.
-!                       0  <=  MAXDEG  <=  N-2  for  EPS  <  0.
-!                       W(1)=-1.0  or  W(I)  >  0., I=1,...,N .
-!             3 -- cannot satisfy the RMS error requirement with a
-!                  polynomial of degree no greater than  MAXDEG .  Best
-!                  fit found is of degree  MAXDEG .
-!             4 -- cannot satisfy the test for significance using
-!                  current value of  MAXDEG .  Statistically, the
-!                  best fit found is of order  NORD .  (In this case,
-!                  NDEG will have one of the values:  MAXDEG-2,
-!                  MAXDEG-1, or MAXDEG).  Using a higher value of
-!                  MAXDEG  may result in passing the test.
-!         A -      work and output array having at least 3N+3MAXDEG+3
-!                  locations
-!
-!     Note - DPOLFT  calculates all fits of degrees up to and including
-!            NDEG .  Any or all of these fits can be evaluated or
-!            expressed as powers of (X-C) using  DP1VLU  and  DPCOEF
-!            after just one call to  DPOLFT .
-!
-!***REFERENCES  L. F. Shampine, S. M. Davenport and R. E. Huddleston,
-!                 Curve fitting by polynomials in one variable, Report
-!                 SLA-74-0270, Sandia Laboratories, June 1974.
-!***ROUTINES CALLED  DP1VLU, XERMSG
-!***REVISION HISTORY  (YYMMDD)
-!   740601  DATE WRITTEN
-!   890531  Changed all specific intrinsics to generic.  (WRB)
-!   891006  Cosmetic changes to prologue.  (WRB)
-!   891006  REVISION DATE from Version 3.2
-!   891214  Prologue converted to Version 4.0 format.  (BAB)
-!   900315  CALLs to XERROR changed to CALLs to XERMSG.  (THJ)
-!   900911  Added variable YP to DOUBLE PRECISION declaration.  (WRB)
-!   920501  Reformatted the REFERENCES section.  (WRB)
-!   920527  Corrected erroneous statements in DESCRIPTION.  (WRB)
-!***END PROLOGUE  DPOLFT
-  INTEGER I,IDEGF,IERR,J,JP1,JPAS,K1,K1PJ,K2,K2PJ,K3,K3PI,K4, &
-   K4PI,K5,K5PI,KSIG,M,MAXDEG,MOP1,NDEG,NDER,NFAIL, N
-  DOUBLE PRECISION TEMD1,TEMD2
-  DOUBLE PRECISION A(*),DEGF,DEN,EPS,ETST,F,FCRIT,R(*),SIG,SIGJ, &
-   SIGJM1,SIGPAS,TEMP,X(*),XM,Y(*),YP(100),W(*),W1,W11
-  DOUBLE PRECISION CO(4,3)
-  SAVE CO
-  DATA  CO(1,1), CO(2,1), CO(3,1), CO(4,1), CO(1,2), CO(2,2), &
-        CO(3,2), CO(4,2), CO(1,3), CO(2,3), CO(3,3), &
-    CO(4,3)/-13.086850D0,-2.4648165D0,-3.3846535D0,-1.2973162D0, &
-            -3.3381146D0,-1.7812271D0,-3.2578406D0,-1.6589279D0, &
-            -1.6282703D0,-1.3152745D0,-3.2640179D0,-1.9829776D0/
-    !$OMP THREADPRIVATE (co)
-
-!***FIRST EXECUTABLE STATEMENT  DPOLFT
-  yp =0.
-  M = ABS(N)
-  if (M  ==  0) go to 30
-  if (MAXDEG  <  0) go to 30
-  A(1) = MAXDEG
-  MOP1 = MAXDEG + 1
-  if (M  <  MOP1) go to 30
-  if (EPS  <  0.0D0 .AND.  M  ==  MOP1) go to 30
-  XM = M
-  ETST = EPS*EPS*XM
-  if (W(1)  <  0.0D0) go to 2
-  DO 1 I = 1,M
-    if (W(I)  <=  0.0D0) go to 30
- 1      CONTINUE
-  go to 4
- 2    DO 3 I = 1,M
- 3      W(I) = 1.0D0
- 4    if (EPS  >=  0.0D0) go to 8
-!
-! DETERMINE SIGNIFICANCE LEVEL INDEX TO BE USED IN STATISTICAL TEST FOR
-! CHOOSING DEGREE OF POLYNOMIAL FIT
-!
-  if (EPS  >  (-.55D0)) go to 5
-  IDEGF = M - MAXDEG - 1
-  KSIG = 1
-  if (IDEGF  <  10) KSIG = 2
-  if (IDEGF  <  5) KSIG = 3
-  go to 8
- 5    KSIG = 1
-  if (EPS  <  (-.03D0)) KSIG = 2
-  if (EPS  <  (-.07D0)) KSIG = 3
-!
-! INITIALIZE INDEXES AND COEFFICIENTS FOR FITTING
-!
- 8    K1 = MAXDEG + 1
-  K2 = K1 + MAXDEG
-  K3 = K2 + MAXDEG + 2
-  K4 = K3 + M
-  K5 = K4 + M
-  DO 9 I = 2,K4
- 9      A(I) = 0.0D0
-  W11 = 0.0D0
-  if (N  <  0) go to 11
-!
-! UNCONSTRAINED CASE
-!
-  DO 10 I = 1,M
-    K4PI = K4 + I
-    A(K4PI) = 1.0D0
- 10     W11 = W11 + W(I)
-  go to 13
-!
-! CONSTRAINED CASE
-!
- 11   DO 12 I = 1,M
-    K4PI = K4 + I
- 12     W11 = W11 + W(I)*A(K4PI)**2
-!
-! COMPUTE FIT OF DEGREE ZERO
-!
- 13   TEMD1 = 0.0D0
-  DO 14 I = 1,M
-    K4PI = K4 + I
-    TEMD1 = TEMD1 + W(I)*Y(I)*A(K4PI)
- 14     CONTINUE
-  TEMD1 = TEMD1/W11
-  A(K2+1) = TEMD1
-  SIGJ = 0.0D0
-  DO 15 I = 1,M
-    K4PI = K4 + I
-    K5PI = K5 + I
-    TEMD2 = TEMD1*A(K4PI)
-    R(I) = TEMD2
-    A(K5PI) = TEMD2 - R(I)
- 15     SIGJ = SIGJ + W(I)*((Y(I)-R(I)) - A(K5PI))**2
-  J = 0
-!
-! SEE if POLYNOMIAL OF DEGREE 0 SATISFIES THE DEGREE SELECTION CRITERION
-!
-  if (EPS) 24,26,27
-!
-! INCREMENT DEGREE
-!
- 16   J = J + 1
-  JP1 = J + 1
-  K1PJ = K1 + J
-  K2PJ = K2 + J
-  SIGJM1 = SIGJ
-!
-! COMPUTE NEW B COEFFICIENT EXCEPT WHEN J = 1
-!
-  if (J  >  1) A(K1PJ) = W11/W1
-!
-! COMPUTE NEW A COEFFICIENT
-!
-  TEMD1 = 0.0D0
-  DO 18 I = 1,M
-    K4PI = K4 + I
-    TEMD2 = A(K4PI)
-    TEMD1 = TEMD1 + X(I)*W(I)*TEMD2*TEMD2
- 18     CONTINUE
-  A(JP1) = TEMD1/W11
-!
-! EVALUATE ORTHOGONAL POLYNOMIAL AT DATA POINTS
-!
-  W1 = W11
-  W11 = 0.0D0
-  DO 19 I = 1,M
-    K3PI = K3 + I
-    K4PI = K4 + I
-    TEMP = A(K3PI)
-    A(K3PI) = A(K4PI)
-    A(K4PI) = (X(I)-A(JP1))*A(K3PI) - A(K1PJ)*TEMP
- 19     W11 = W11 + W(I)*A(K4PI)**2
-!
-! GET NEW ORTHOGONAL POLYNOMIAL COEFFICIENT USING PARTIAL DOUBLE
-! PRECISION
-!
-  TEMD1 = 0.0D0
-  DO 20 I = 1,M
-    K4PI = K4 + I
-    K5PI = K5 + I
-    TEMD2 = W(I)*((Y(I)-R(I))-A(K5PI))*A(K4PI)
- 20     TEMD1 = TEMD1 + TEMD2
-  TEMD1 = TEMD1/W11
-  A(K2PJ+1) = TEMD1
-!
-! UPDATE POLYNOMIAL EVALUATIONS AT EACH OF THE DATA POINTS, AND
-! ACCUMULATE SUM OF SQUARES OF ERRORS.  THE POLYNOMIAL EVALUATIONS ARE
-! COMPUTED AND STORED IN EXTENDED PRECISION.  FOR THE I-TH DATA POINT,
-! THE MOST SIGNIFICANT BITS ARE STORED IN  R(I) , AND THE LEAST
-! SIGNIFICANT BITS ARE IN  A(K5PI) .
-!
-  SIGJ = 0.0D0
-  DO 21 I = 1,M
-    K4PI = K4 + I
-    K5PI = K5 + I
-    TEMD2 = R(I) + A(K5PI) + TEMD1*A(K4PI)
-    R(I) = TEMD2
-    A(K5PI) = TEMD2 - R(I)
- 21     SIGJ = SIGJ + W(I)*((Y(I)-R(I)) - A(K5PI))**2
-!
-! SEE if DEGREE SELECTION CRITERION HAS BEEN SATISFIED OR IF DEGREE
-! MAXDEG  HAS BEEN REACHED
-!
-  if (EPS) 23,26,27
-!
-! COMPUTE F STATISTICS  (INPUT EPS  <  0.)
-!
- 23   if (SIGJ  ==  0.0D0) go to 29
-  DEGF = M - J - 1
-  DEN = (CO(4,KSIG)*DEGF + 1.0D0)*DEGF
-  FCRIT = (((CO(3,KSIG)*DEGF) + CO(2,KSIG))*DEGF + CO(1,KSIG))/DEN
-  FCRIT = FCRIT*FCRIT
-  F = (SIGJM1 - SIGJ)*DEGF/SIGJ
-  if (F  <  FCRIT) go to 25
-!
-! POLYNOMIAL OF DEGREE J SATISFIES F TEST
-!
- 24   SIGPAS = SIGJ
-  JPAS = J
-  NFAIL = 0
-  if (MAXDEG  ==  J) go to 32
-  go to 16
-!
-! POLYNOMIAL OF DEGREE J FAILS F TEST.  if THERE HAVE BEEN THREE
-! SUCCESSIVE FAILURES, A STATISTICALLY BEST DEGREE HAS BEEN FOUND.
-!
- 25   NFAIL = NFAIL + 1
-  if (NFAIL  >=  3) go to 29
-  if (MAXDEG  ==  J) go to 32
-  go to 16
-!
-! RAISE THE DEGREE if DEGREE  MAXDEG  HAS NOT YET BEEN REACHED  (INPUT
-! EPS = 0.)
-!
- 26   if (MAXDEG  ==  J) go to 28
-  go to 16
-!
-! SEE if RMS ERROR CRITERION IS SATISFIED  (INPUT EPS  >  0.)
-!
- 27   if (SIGJ  <=  ETST) go to 28
-  if (MAXDEG  ==  J) go to 31
-  go to 16
-!
-! RETURNS
-!
- 28   IERR = 1
-  NDEG = J
-  SIG = SIGJ
-  go to 33
- 29   IERR = 1
-  NDEG = JPAS
-  SIG = SIGPAS
-  go to 33
- 30   IERR = 2
-!  call XERMSG ('SLATEC', 'DPOLFT', 'INVALID INPUT PARAMETER.', 2, &
-!     1)
-  write(*,*) "invalid input parameter in dpolft"
-  go to 37
- 31   IERR = 3
-  NDEG = MAXDEG
-  SIG = SIGJ
-  go to 33
- 32   IERR = 4
-  NDEG = JPAS
-  SIG = SIGPAS
-!
- 33   A(K3) = NDEG
-!
-! WHEN STATISTICAL TEST HAS BEEN USED, EVALUATE THE BEST POLYNOMIAL AT
-! ALL THE DATA POINTS if  R  DOES NOT ALREADY CONTAIN THESE VALUES
-!
-  if ( EPS  >=  0.0  .OR.  NDEG  ==  MAXDEG) go to 36
-  NDER = 0
-  DO 35 I = 1,M
-    call DP1VLU (NDEG,NDER,X(I),R(I),YP,A)
- 35     CONTINUE
- 36   EPS = SQRT(SIG/XM)
- 37   return
- end subroutine dpolft
-
-subroutine DP1VLU (L, NDER, X, YFIT, YP, A)
-!
-!! DP1VLU uses the coefficients generated by DPOLFT to evaluate the ...
-!  polynomial fit of degree L, along with the first NDER of
-!  its derivatives, at a specified point.
-!
-!***LIBRARY   SLATEC
-!***CATEGORY  K6
-!***TYPE      DOUBLE PRECISION (PVALUE-S, DP1VLU-D)
-!***KEYWORDS  CURVE FITTING, LEAST SQUARES, POLYNOMIAL APPROXIMATION
-!***AUTHOR  Shampine, L. F., (SNLA)
-!           Davenport, S. M., (SNLA)
-!***DESCRIPTION
-!
-!     Abstract
-!
-!     The subroutine  DP1VLU  uses the coefficients generated by  DPOLFT
-!     to evaluate the polynomial fit of degree  L , along with the first
-!     NDER  of its derivatives, at a specified point.  Computationally
-!     stable recurrence relations are used to perform this task.
-!
-!     The parameters for  DP1VLU  are
-!
-!     Input -- ALL TYPE REAL variables are DOUBLE PRECISION
-!         L -      the degree of polynomial to be evaluated.  L  may be
-!                  any non-negative integer which is less than or equal
-!                  to  NDEG , the highest degree polynomial provided
-!                  by  DPOLFT .
-!         NDER -   the number of derivatives to be evaluated.  NDER
-!                  may be 0 or any positive value.  If NDER is less
-!                  than 0, it will be treated as 0.
-!         X -      the argument at which the polynomial and its
-!                  derivatives are to be evaluated.
-!         A -      work and output array containing values from last
-!                  call to  DPOLFT .
-!
-!     Output -- ALL TYPE REAL variables are DOUBLE PRECISION
-!         YFIT -   value of the fitting polynomial of degree  L  at  X
-!         YP -     array containing the first through  NDER  derivatives
-!                  of the polynomial of degree  L .  YP  must be
-!                  dimensioned at least  NDER  in the calling program.
-!
-!***REFERENCES  L. F. Shampine, S. M. Davenport and R. E. Huddleston,
-!                 Curve fitting by polynomials in one variable, Report
-!                 SLA-74-0270, Sandia Laboratories, June 1974.
-!***ROUTINES CALLED  XERMSG
-!***REVISION HISTORY  (YYMMDD)
-!   740601  DATE WRITTEN
-!   890531  Changed all specific intrinsics to generic.  (WRB)
-!   890911  Removed unnecessary intrinsics.  (WRB)
-!   891006  Cosmetic changes to prologue.  (WRB)
-!   891006  REVISION DATE from Version 3.2
-!   891214  Prologue converted to Version 4.0 format.  (BAB)
-!   900315  CALLs to XERROR changed to CALLs to XERMSG.  (THJ)
-!   900510  Convert XERRWV calls to XERMSG calls.  (RWC)
-!   920501  Reformatted the REFERENCES section.  (WRB)
-!***END PROLOGUE  DP1VLU
-  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-  INTEGER I,IC,ILO,IN,INP1,IUP,K1,K1I,K2,K3,K3P1,K3PN,K4,K4P1,K4PN, &
-   KC,L,LM1,LP1,MAXORD,N,NDER,NDO,NDP1,NORD
-  DOUBLE PRECISION A(*),CC,DIF,VAL,X,YFIT,YP(*)
-  CHARACTER*8 XERN1, XERN2
-!***FIRST EXECUTABLE STATEMENT  DP1VLU
-  if (L  <  0) go to 12
-  NDO = MAX(NDER,0)
-  NDO = MIN(NDO,L)
-  MAXORD = A(1) + 0.5D0
-  K1 = MAXORD + 1
-  K2 = K1 + MAXORD
-  K3 = K2 + MAXORD + 2
-  NORD = A(K3) + 0.5D0
-  if (L  >  NORD) go to 11
-  K4 = K3 + L + 1
-  if (NDER  <  1) go to 2
-  DO 1 I = 1,NDER
- 1      YP(I) = 0.0D0
- 2    if (L  >=  2) go to 4
-  if (L  ==  1) go to 3
-!
-! L IS 0
-!
-  VAL = A(K2+1)
-  go to 10
-!
-! L IS 1
-!
- 3    CC = A(K2+2)
-  VAL = A(K2+1) + (X-A(2))*CC
-  if (NDER  >=  1) YP(1) = CC
-  go to 10
-!
-! L IS GREATER THAN 1
-!
- 4    NDP1 = NDO + 1
-  K3P1 = K3 + 1
-  K4P1 = K4 + 1
-  LP1 = L + 1
-  LM1 = L - 1
-  ILO = K3 + 3
-  IUP = K4 + NDP1
-  DO 5 I = ILO,IUP
- 5      A(I) = 0.0D0
-  DIF = X - A(LP1)
-  KC = K2 + LP1
-  A(K4P1) = A(KC)
-  A(K3P1) = A(KC-1) + DIF*A(K4P1)
-  A(K3+2) = A(K4P1)
-!
-! EVALUATE RECURRENCE RELATIONS FOR FUNCTION VALUE AND DERIVATIVES
-!
-  DO 9 I = 1,LM1
-    IN = L - I
-    INP1 = IN + 1
-    K1I = K1 + INP1
-    IC = K2 + IN
-    DIF = X - A(INP1)
-    VAL = A(IC) + DIF*A(K3P1) - A(K1I)*A(K4P1)
-    if (NDO  <=  0) go to 8
-    DO 6 N = 1,NDO
-      K3PN = K3P1 + N
-      K4PN = K4P1 + N
- 6        YP(N) = DIF*A(K3PN) + N*A(K3PN-1) - A(K1I)*A(K4PN)
-!
-! SAVE VALUES NEEDED FOR NEXT EVALUATION OF RECURRENCE RELATIONS
-!
-    DO 7 N = 1,NDO
-      K3PN = K3P1 + N
-      K4PN = K4P1 + N
-      A(K4PN) = A(K3PN)
- 7        A(K3PN) = YP(N)
- 8      A(K4P1) = A(K3P1)
- 9      A(K3P1) = VAL
-!
-! NORMAL RETURN OR ABORT DUE TO ERROR
-!
- 10   YFIT = VAL
-  return
-!
-   11 WRITE (XERN1, '(I8)') L
-  WRITE (XERN2, '(I8)') NORD
-!  call XERMSG ('SLATEC', 'DP1VLU', &
-!     'THE ORDER OF POLYNOMIAL EVALUATION, L = ' // XERN1 // &
-!     ' REQUESTED EXCEEDS THE HIGHEST ORDER FIT, NORD = ' // XERN2 // &
-!     ', COMPUTED BY DPOLFT -- EXECUTION TERMINATED.', 8, 2)
-  write(*,*) "error 1 in dp1vlu"
-  return
-!
-!   12 call XERMSG ('SLATEC', 'DP1VLU', &
-!     'INVALID INPUT PARAMETER.  ORDER OF POLYNOMIAL EVALUATION ' // &
-!     'REQUESTED IS NEGATIVE.', 2, 2)
-     12 continue
-  write(*,*) "error 2 in dp1vlu"
-  return
-end subroutine dp1vlu
 
 subroutine createRoman(n, roman)
   integer :: n
@@ -4494,24 +3977,12 @@ END SUBROUTINE GAUSSJ
   subroutine regular_tri_quadint(t1,t2,t3,weights)
 
     real(double) :: t1, t2, t3
-    real(double), save :: t1old, t2old, t3old
     real(double) :: xu,xv,xw,yu,yv,yw,zu,zv,zw
     real(double) :: xbasis1, xbasis2, ybasis1, ybasis2, zbasis1, zbasis2
     real(double) :: xyweights(9)
     real(double) :: weights(27)
-    real(double), save :: oldweights(27)
 ! OpenMP has problems with saved variables so set reuse=.false. 
-    logical, parameter :: reuse=.false. 
-    !$OMP THREADPRIVATE (t1old, t2old, t3old, oldweights)
 
-    if(reuse .and. t1 .eq. t1old) then
-       if(t2 .eq. t2old) then
-          if(t3 .eq. t3old) then
-             weights = oldweights
-             return
-          endif
-       endif
-    endif
 
     xbasis1 = t1 - 1.d0
     xbasis2 = 2.d0 * t1 - 1.d0
@@ -4540,19 +4011,13 @@ END SUBROUTINE GAUSSJ
     weights(10:18) = zv * xyweights
     weights(19:27) = zw * xyweights
     
-    if ( reuse ) then 
-       oldweights = weights
-       t1old = t1
-       t2old = t2
-       t3old = t3
-    end if
 
   end subroutine regular_tri_quadint
 
    function general_quadint(xi,yi,x) result(y)
      implicit none
 
-     real(double), intent(in) :: xi(3),yi(3),x
+     real(double), intent(in) :: xi(:),yi(:),x
      real(double) :: y
      real(double) :: xxi(3),a(3), det
      
