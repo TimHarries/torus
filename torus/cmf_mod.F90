@@ -1048,6 +1048,7 @@ contains
 #ifdef MPI
     use input_variables, only : blockhandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
+    use amr_mod, only : countVoxels
     include 'mpif.h'
 #endif
 
