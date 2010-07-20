@@ -123,8 +123,6 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call MPI_BCAST(iSeed, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, ierr)
 
-    write(*,*) myrankGlobal, " has seed ",iseed
-
   end subroutine sync_random_seed
 
 

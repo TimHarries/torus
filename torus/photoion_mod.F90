@@ -147,6 +147,11 @@ contains
     integer :: n_rmdr, m
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
+#endif
+
+#ifdef MPI
+    !$OMP THREADPRIVATE (firstTime)
+
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -164,6 +169,7 @@ contains
     ! ============================================================================
 #endif
 
+    call randomNumberGenerator(randomSeed=.true.)
 
     ok = .true.
     rhat = VECTOR(0.d0, 0.d0, 0.d0)
@@ -279,7 +285,14 @@ contains
     
 #endif
 
-       !$OMP PARALLEL DEFAULT(NONE)
+       !$OMP PARALLEL DEFAULT(NONE) &
+       !$OMP PRIVATE (imonte, isource, thisSource, rVec, uHat, rHat, tempOctal, tempsubcell) &
+       !$OMP PRIVATE (photonPacketWeight, escaped, subcell, temp, ok, directPhoton, wavelength) &
+       !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
+       !$OMP PRIVATE (thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
+       !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
+       !$OMP SHARED (nlambda, writeoutput, ninf)
+
 
        !$OMP DO SCHEDULE (STATIC)
        mainloop: do iMonte = iMonte_beg, iMonte_end
@@ -400,8 +413,9 @@ contains
           enddo
           nInf = nInf + 1
        end do mainloop
-       !$OMP ENDDO
+       !$OMP END DO
        !$OMP BARRIER
+       !$OMP END PARALLEL
 
 #ifdef MPI
 
@@ -465,20 +479,25 @@ contains
          write(*,*) "Calculating ionization and thermal equilibria"
 
 #ifdef MPI
-                 np = nThreadsGlobal
-                 n_rmdr = MOD(nMonte,np)
-                 m = nMonte/np
-          
-                 if (myRankGlobal .lt. n_rmdr ) then
-                    imonte_beg = (m+1)*myRankGlobal + 1
-                    imonte_end = imonte_beg + m
-                 else
-                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
-                    imonte_end = imonte_beg + m -1
-                 end if
-
+    np = nThreadsGlobal
+    n_rmdr = MOD(nOctal,np)
+    m = nOctal/np
+    
+    if (myRankGlobal .lt. n_rmdr ) then
+       ioctal_beg = (m+1)*myRankGlobal + 1
+       ioctal_end = ioctal_beg + m
+    else
+       ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+       ioctal_end = ioctal_beg + m -1
+    end if
+    
 #endif
 
+    !$OMP PARALLEL DEFAULT(NONE) &
+    !$OMP PRIVATE(ioctal,i, thisOctal) &
+    !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, epsOverDeltaT, sumDeltaT, numDeltaT)
+                 
+    !$OMP DO SCHEDULE(STATIC)
     do iOctal =  iOctal_beg, iOctal_end
 
        thisOctal => octalArray(iOctal)%content
@@ -489,6 +508,9 @@ contains
        enddo
 
     enddo
+    !$OMP END DO
+    !$OMP BARRIER
+    !$OMP END PARALLEL
 
 #ifdef MPI
 
@@ -1588,8 +1610,10 @@ end subroutine photoIonizationloop
        xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)
 !       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
        if (xSec > 0.d0) then
+          !$OMP CRITICAL
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
                + fac * xSec
+          !$OMP END CRITICAL
 
 !          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
 !               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
@@ -1598,17 +1622,21 @@ end subroutine photoIonizationloop
        ! neutral h heating
 
        if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
+          !$OMP CRITICAL
           thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
             + distance * xsec / (thisfreq * hcgs) &
             * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
+          !$OMP END CRITICAL
        endif
 
        ! neutral he heating
 
        if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
+          !$OMP CRITICAL
           thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
             + distance * xsec / (thisfreq * hcgs) &
             * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
+          !$OMP END CRITICAL
        endif
 
     enddo
@@ -1617,8 +1645,10 @@ end subroutine photoIonizationloop
 
     call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
 
+    !$OMP CRITICAL
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
          + dble(distance) * dble(kappaabsdust) * photonPacketWeight
+    !$OMP END CRITICAL
 
 
   end subroutine updategrid
@@ -2334,7 +2364,7 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   real :: boltzFac
   logical, save :: firstTime = .true.
  ! - thap -check to see if the temperature is too hot for the gamma table                                                
-
+  !$OMP THREADPRIVATE (firstTime)
   maxTemp = maxval(thisIon%transition(iTransition)%t)
 
   if(temperature > maxTemp) then
@@ -3225,6 +3255,7 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   real(double), allocatable :: tSpec(:)
   integer :: i
   logical, save :: firstTime = .true.
+  !$OMP THREADPRIVATE (firstTime)
 
   allocate(tSpec(1:nFreq))
   
@@ -3243,7 +3274,7 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   else
      photonFreq = cSpeed / (1.d-8 * 100.e4)
   endif
-  if (firstTime) then
+  if (firstTime.and.writeoutput) then
      firstTime = .false.
      open(32, file="pdf.dat",form="formatted",status="unknown")
      do i = 1, nFreq

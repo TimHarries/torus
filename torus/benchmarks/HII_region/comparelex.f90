@@ -8,7 +8,9 @@ program compareLex
 
   integer, parameter :: nlines=500     ! number of lines to read from files
   integer, parameter :: nion_check = 1 ! number of species to check 
-  real, parameter :: tolerance = 0.33  ! Maximum tolerance
+  real, parameter :: tolerance = 0.10  ! Maximum tolerance
+  real :: fac1, fac2, avcheck, tav
+  integer :: nav, nt
   character(len=*), parameter :: torus_file = "lexington.dat"
   character(len=*), parameter :: ref_file   = "lexington_benchmark.dat"
 
@@ -24,28 +26,40 @@ program compareLex
   write(*,*) "Torus file: ", torus_file
   write(*,*) "Reference file: ", ref_file
   write(*,*) "Tolerance= ", tolerance
-
+  avcheck = 0.
+  nav = 0
+  tav = 0.
+  nt = 0
 lines:  do i = 1, nlines
      read(20,*) r, newT, newfrac(1:14)
      read(21,*) r, oldT, oldfrac(1:14)
      if ((newT) < 1.) cycle
      if (oldT /= 0.) then
         nTempGood = nTempGood + 1 
-        if (abs((newT-oldT)/oldT) > tolerance) then
-           failed = .true.
-           val = max(val, abs((newT-oldT)/oldT))
-           write(*,*) "Fail on temperature:", i, newT, oldT, val
-        endif
+        tav = tav + abs((newT-oldT)/oldT)
+        nt = nt + 1
      endif
      do j = 1, nion_check
         nIonGood = nIonGood + 1 
-        if ((10.d0**abs(newFrac(j)-oldFrac(j))-1.d0) > tolerance) then
-           failed = .true.
-           val = max(val,10.e0**abs(newFrac(j)-oldFrac(j))-1.e0)
-           write(*,*) "Fail on fraction: ", i, j, newFrac(j), oldFrac(j), val
-        endif
+        fac1 = 10.d0**newFrac(j)
+        fac2 = 10.d0**oldFrac(j)
+        avcheck = avcheck + abs((fac1-fac2)/fac2)
+        nav = nav + 1
      enddo
   enddo lines
+  avcheck = avcheck / real(nav)
+  tav = tav / real(nt)
+  write(*,*) "Average percentage difference in ions is ",100.*avcheck
+  write(*,*) "Average percentage difference in temp is ",100.*tav
+  if (avcheck > tolerance) then
+     failed =.true.
+     write(*,*) "Failed on ions"
+  endif
+  if (tav > tolerance) then
+     failed =.true.
+     write(*,*) "Failed on temperatures"
+  endif
+
 
   close(20)
   close(21)
@@ -54,7 +68,7 @@ lines:  do i = 1, nlines
      write(*,*) "Compared ", nIonGood, "ionization fractions"
      write(*,*) "TORUS: Test successful"
   else
-     write(*,*) "TORUS: Test failed ",100.*val, "%"
+     write(*,*) "TORUS: Test failed"
   endif
 end program compareLex
 

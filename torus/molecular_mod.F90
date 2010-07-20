@@ -1473,9 +1473,9 @@ end subroutine molecularLoop
      real(double) :: dist, dds, tval, dvAcrossCell, projVel, endprojVel, CellEdgeInterval, phiProfVal
      real(double) :: r, nmol 
 
+!$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
      antithetic = .true.
 
-!$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
 
 !Set/initialise runtime parameters
      if(firsttime) then
@@ -3664,6 +3664,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
      !$OMP THREADPRIVATE (firstTime, logrinner, logrouter, oneovernradiusminusone, oneOverNangle, nradius, nangle)
      iter = grand_iter
+     if (.not.writeoutput) goto 666
 
      write(resultfile,'(a,I7.7)') "results.", nRay
      write(resultfile2,'(a,I2.2)') "fracChangeGraph.", iter
@@ -3778,7 +3779,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      close(310)
      close(32)
      if(getdepartcoeffs) close(34)
-
+666 continue
    end subroutine dumpResults
 
 !  Simply find 1st level populated at greater than 10^-8 in LTE
@@ -4336,13 +4337,13 @@ end subroutine plotdiscValues
 
     logical :: ng
     
-10006 format(i6,tr2,6(f8.5,1x), 27x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10007 format(i6,tr2,7(f8.5,1x), 18x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10008 format(i6,tr2,8(f8.5,1x),  9x, 3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10009 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10010 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10011 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-10012 format(i6,tr2,9(f8.5,1x),      3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+10006 format(i6,tr2,6(f10.5,1x), 27x, 3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10007 format(i6,tr2,7(f10.5,1x), 18x, 3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10008 format(i6,tr2,8(f10.5,1x),  9x, 3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10009 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10010 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10011 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10012 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
     
 ! initialise to big negative
     maxFracChangePerLevel = -1.d30

@@ -1027,6 +1027,8 @@ contains
     integer :: nLines
     logical :: ok
 
+    call getInteger("nlucy", nLucy, cLine, fLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",0,ok,.false.)
+
     call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
          "Number of photons in image","(a,i8,a)", 0, ok, .false.)
 

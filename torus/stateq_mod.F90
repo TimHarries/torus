@@ -3247,7 +3247,7 @@ contains
 !$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
 !$OMP SHARED(visFrac1, visFrac2, isBinary) & 
 !$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
-!$OMP SHARED(numLTEsubcells,  NeFactor) 
+!$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo) 
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
 

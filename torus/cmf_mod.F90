@@ -2349,7 +2349,6 @@ contains
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, writeDataCube, freedatacube
 #ifdef MPI
-    use parallel_mod, only : sync_random_seed
     include 'mpif.h'
 #endif
     logical, optional :: occultingDisc
