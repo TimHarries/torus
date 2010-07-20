@@ -2,6 +2,7 @@ module random_mod
 
 use kind_mod
 use messages_mod
+use mpi_global_mod
 implicit none
 
 public 
@@ -119,8 +120,10 @@ contains
     integer(bigInt) :: iseed
     integer :: ierr
 
-    call MPI_BARRIER(MPI_COMM_WORLD)
-    call MPI_BCAST(iSeed, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+    call MPI_BCAST(iSeed, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, ierr)
+
+    write(*,*) myrankGlobal, " has seed ",iseed
 
   end subroutine sync_random_seed
 
@@ -165,7 +168,7 @@ contains
            stop
         endif
      endif
-    call MPI_BARRIER(MPI_COMM_WORLD)
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
      deallocate(itest)
    end subroutine test_random_across_threads
 #endif
@@ -210,22 +213,24 @@ contains
   SUBROUTINE seedFromClockTime(ibig)
     use mpi_global_mod, only: myRankGlobal
 
-    INTEGER :: clock
     integer(bigint) :: ibig
+    integer :: iValues(8)
     integer :: j
 #ifdef _OPENMP
      integer ::  omp_get_thread_num
 #endif
 
     j = 0
-    CALL SYSTEM_CLOCK(COUNT=clock)
+    CALL DATE_AND_TIME(values=iValues)
+    ibig = ivalues(5) * 60 * 60 * 1000 +&
+         ivalues(6) * 60 * 1000 + &
+         ivalues(7) * 1000 +&
+         ivalues(8)
 #ifdef _OPENMP
      j = omp_get_thread_num()+1
 #endif
-
-    ibig = (j+myRankGlobal+1)*clock
-    ibig = mod(ibig, huge(clock)-1_bigint)
-    ibig = -ibig
+     
+    ibig = (j+myRankGlobal+1)*ibig
   END SUBROUTINE seedFromClockTime
 
   real FUNCTION RAN3_real(IDUM, reset) result (ran3)

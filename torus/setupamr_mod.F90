@@ -37,7 +37,6 @@ contains
     use discwind_class, only:  new
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
-    use parallel_mod, only : sync_random_seed
     use mpi_amr_mod
     use photoionAMR_mod, only : ionizeGrid, resetNh
 #endif
@@ -64,6 +63,7 @@ contains
     constantAbundance = .true.
 
 #ifdef MPI
+    call randomNumberGenerator(randomSeed=.true.)
     call randomNumberGenerator(syncIseed=.true.)
 #endif
 

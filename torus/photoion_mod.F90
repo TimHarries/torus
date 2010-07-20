@@ -13,9 +13,10 @@ use amr_mod, only: returnKappa, inOctal
 use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, cellVolume
 use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcelllocal
 use source_mod, only: SOURCETYPE, sumSourceLuminosityMonochromatic
-use mpi_global_mod, only: myRankGlobal
 use ion_mod, only: IONTYPE
-
+#ifdef MPI
+use mpi_global_mod, only : myrankGlobal
+#endif
 implicit none
 
 private
@@ -73,7 +74,6 @@ contains
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection
     use spectrum_mod, only: getwavelength
 #ifdef MPI
-    use input_variables, only : blockHandout
     use parallel_mod, only: mpiBlockHandout, mpiGetblock
 #endif
     implicit none
@@ -143,11 +143,8 @@ contains
     integer ::   my_rank        ! my processor rank
     integer ::   n_proc         ! The number of processes
     integer ::   ierr           ! error flag
-    integer, dimension(:), allocatable :: photonBelongsRank
     integer, parameter :: tag = 0
-    logical :: rankComplete
-
-    integer, dimension(:), allocatable :: octalsBelongRank
+    integer :: n_rmdr, m
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
 
@@ -266,33 +263,25 @@ contains
        iMonte_end = nMonte
 
 #ifdef MPI
-  !====================================================================================
-  ! Splitting the innerPhoton loop for multiple processors.
-  if (my_rank == 0) then
-     print *, ' '
-     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
-     print *, ' '
-  endif
-  if (my_rank == 0) then
-     ! we will use an array to store the rank of the process
-     !   which will calculate each photon
-     allocate(photonBelongsRank(nMonte))
-    
-     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=10,tag=tag,&
-                          setDebug=.false.)
-     deallocate(photonBelongsRank) ! we don't really need this here. 
-  end if
-  !====================================================================================
 
-    
-    
-  if (my_rank /= 0) then
-    mpiBlockLoop: do  
-      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
-      if (rankComplete) exit mpiBlockLoop  
+
+                 np = nThreadsGlobal
+                 n_rmdr = MOD(nMonte,np)
+                 m = nMonte/np
+          
+                 if (myRankGlobal .lt. n_rmdr ) then
+                    imonte_beg = (m+1)*myRankGlobal + 1
+                    imonte_end = imonte_beg + m
+                 else
+                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
+                    imonte_end = imonte_beg + m -1
+                 end if
     
 #endif
 
+       !$OMP PARALLEL DEFAULT(NONE)
+
+       !$OMP DO SCHEDULE (STATIC)
        mainloop: do iMonte = iMonte_beg, iMonte_end
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
@@ -411,11 +400,10 @@ contains
           enddo
           nInf = nInf + 1
        end do mainloop
+       !$OMP ENDDO
+       !$OMP BARRIER
 
 #ifdef MPI
- if (.not.blockHandout) exit mpiblockloop        
-    end do mpiBlockLoop  
-  end if ! (my_rank /= 0)
 
        if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
 
@@ -461,13 +449,8 @@ contains
     
     ! we will use an array to store the rank of the process
     !   which will calculate each octal's variables
-    allocate(octalsBelongRank(size(octalArray)))
 
-    if (my_rank == 0) then
-       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=10,tag=tag,&
-                            setDebug=.false.)
     
-    endif
     ! ============================================================================
 #endif
 
@@ -482,10 +465,18 @@ contains
          write(*,*) "Calculating ionization and thermal equilibria"
 
 #ifdef MPI
- if (my_rank /= 0) then
-  blockLoop: do     
- call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-   if (rankComplete) exit blockLoop 
+                 np = nThreadsGlobal
+                 n_rmdr = MOD(nMonte,np)
+                 m = nMonte/np
+          
+                 if (myRankGlobal .lt. n_rmdr ) then
+                    imonte_beg = (m+1)*myRankGlobal + 1
+                    imonte_end = imonte_beg + m
+                 else
+                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
+                    imonte_end = imonte_beg + m -1
+                 end if
+
 #endif
 
     do iOctal =  iOctal_beg, iOctal_end
@@ -500,17 +491,11 @@ contains
     enddo
 
 #ifdef MPI
- if (.not.blockHandout) exit blockloop
- end do blockLoop        
-end if ! (my_rank /= 0)
+
 
 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
-     ! have to send out the 'octalsBelongRank' array
-     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
      allocate(tempArray(1:nVoxels))
@@ -521,14 +506,14 @@ end if ! (my_rank /= 0)
      tempArray = 0.d0
      tArrayd = 0.d0
      tempArrayd = 0.d0
-     call packTemperatures(octalArray, nVoxels, tArray,octalsBelongRank)
+     call packTemperatures(octalArray, nVoxels, tArray, ioctal_beg,ioctal_end)
      call MPI_ALLREDUCE(tArray,tempArray,nVoxels,MPI_REAL,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
      tArray = tempArray
      call unpackTemperatures(octalArray, nVoxels, tArray)
      tArray = 0.d0
      tempArray = 0.d0
-     call packne(octalArray, nVoxels, tArrayd,octalsBelongRank)
+     call packne(octalArray, nVoxels, tArrayd, ioctal_beg,ioctal_end)
      call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
      tArrayd = tempArrayd
@@ -536,11 +521,11 @@ end if ! (my_rank /= 0)
      do i = 1, grid%nIon
        tArrayd = 0.d0
        tempArrayd = 0.d0
-       call packIonFrac(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+       call packIonFrac(octalArray, nVoxels, tArrayd, ioctal_beg,ioctal_end, i)
        call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
            MPI_SUM,MPI_COMM_WORLD,ierr)
        tArrayd = tempArrayd
-       call unpackIonFrac(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+       call unpackIonFrac(octalArray, nVoxels, tArrayd, i)
      enddo
 
      call MPI_ALLREDUCE(sumDeltaT,globalSumDeltaT,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
@@ -550,7 +535,6 @@ end if ! (my_rank /= 0)
      deallocate(tempArray, tArray, tempArrayd, tArrayd)
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
-     deallocate(octalsBelongRank)
 #else
      globalSumDeltaT = sumDeltaT
      globalNumDeltaT = numDeltaT
@@ -3929,12 +3913,12 @@ end subroutine readHeIIrecombination
 
 #ifdef MPI
 
-      subroutine packTemperatures(octalArray, nTemps, tArray, octalsBelongRank)
+      subroutine packTemperatures(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
         real :: tArray(:)
+        integer :: ioctal_beg, ioctal_end
         integer :: iOctal, iSubcell, my_rank, ierr
         type(OCTAL), pointer :: thisOctal
 
@@ -3950,7 +3934,7 @@ end subroutine readHeIIrecombination
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if (octalsBelongRank(iOctal) == my_rank) then
+                 if ((ioctal >= ioctal_beg).and.(ioctal<= ioctal_end)) then
                    tArray(nTemps) = thisOctal%temperature(isubcell)
                  else 
                    tArray(nTemps) = 0.d0
@@ -3986,10 +3970,10 @@ end subroutine readHeIIrecombination
        end do
      end subroutine unpackTemperatures
 
-      subroutine packNe(octalArray, nTemps, tArray, octalsBelongRank)
+      subroutine packNe(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
+        integer :: ioctal_beg, ioctal_end
         integer :: nTemps
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr
@@ -4007,7 +3991,7 @@ end subroutine readHeIIrecombination
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if (octalsBelongRank(iOctal) == my_rank) then
+                 if ((ioctal >= ioctal_beg).and.(ioctal<= ioctal_end)) then
                    tArray(nTemps) = thisOctal%ne(isubcell)
                  else 
                    tArray(nTemps) = 0.d0
@@ -4043,11 +4027,11 @@ end subroutine readHeIIrecombination
        end do
      end subroutine unpackne
 
-      subroutine packIonFrac(octalArray, nTemps, tArray, octalsBelongRank, iIon)
-    include 'mpif.h'
+      subroutine packIonFrac(octalArray, nTemps, tArray, ioctal_beg, ioctal_end, iIon)
+        include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
+        integer :: ioctal_beg, ioctal_end
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr
         integer :: iIon
@@ -4065,7 +4049,7 @@ end subroutine readHeIIrecombination
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if (octalsBelongRank(iOctal) == my_rank) then
+                 if ((ioctal >= ioctal_beg).and.(ioctal<= ioctal_end)) then
                    tArray(nTemps) = thisOctal%ionFrac(isubcell, iIon)
                  else 
                    tArray(nTemps) = 0.d0
@@ -4075,10 +4059,9 @@ end subroutine readHeIIrecombination
        end do
      end subroutine packIonFrac
 
-      subroutine unpackIonFrac(octalArray, nTemps, tArray, octalsBelongRank, iIon)
+      subroutine unpackIonFrac(octalArray, nTemps, tArray, iIon)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr

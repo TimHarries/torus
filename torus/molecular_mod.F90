@@ -1296,7 +1296,7 @@ module molecular_mod
        enddo ! all subcells
     enddo ! all octals
 !$OMP END DO
-     deallocate(ds, phi, i0, i0temp)
+     deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4)
     !$OMP BARRIER
     !$OMP END PARALLEL
            
@@ -1315,13 +1315,13 @@ module molecular_mod
       tempArrayd = 0.d0
       do i = 1, maxlevel
         tArrayd = 0.d0
-        call packMoleLevel(octalArray, nVoxels, tArrayd, i)
+        call packMoleLevel(octalArray, nVoxels, tArrayd, i,ioctal_beg,ioctal_end)
         do j = 1, 3
            call MPI_ALLREDUCE(tArrayd(j,1:nVoxels),tempArrayd(j,1:nVoxels),nVoxels,MPI_DOUBLE_PRECISION,&
                 MPI_SUM,MPI_COMM_WORLD,ierr)
         enddo
         tArrayd = tempArrayd
-        call unpackMoleLevel(octalArray, nVoxels, tArrayd, i)
+        call unpackMoleLevel(octalArray, tArrayd, i)
      enddo
       deallocate(tArrayd, tempArrayd)
 
@@ -3858,9 +3858,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    end function DustModel1
 
 #ifdef MPI 
-       subroutine packMoleLevel(octalArray, nTemps, tArray, iLevel)
+       subroutine packMoleLevel(octalArray, nTemps, tArray, iLevel,ioctal_beg,ioctal_end)
          use input_variables,only : gettau
          include 'mpif.h'
+         integer :: ioctal_beg, ioctal_end
          type(OCTALWRAPPER) :: octalArray(:)
          integer :: nTemps
          real(double) :: tArray(:,:)
@@ -3873,62 +3874,61 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         ! Update the edens values of grid computed by all processors.
         !
         nTemps = 0
-        do iOctal = 1, SIZE(octalArray)
+        do iOctal = 1, size(octalArray)
 
            thisOctal => octalArray(iOctal)%content
 
            do iSubcell = 1, thisOctal%maxChildren
-               if (.not.thisOctal%hasChild(iSubcell)) then
-                  nTemps = nTemps + 1
-
-                    tArray(1,nTemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
-
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 
+                 if ((iOctal >= iOctal_Beg).and.(ioctal <= ioctal_end)) then
+                    tArray(1,ntemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
+       
                     if(gettau.and.(iLevel .le. mintrans)) then
-                       tArray(2,nTemps) = thisOctal%tau(ilevel,isubcell)
+                       tArray(2,ntemps) = thisOctal%tau(ilevel,isubcell)
                     else
-                       tArray(2,nTemps) = 0.d0
+                       tArray(2,ntemps) = 0.d0
                     endif
-
+                    
                     if(iLevel .eq. maxlevel) then
-                       tArray(3,nTemps) = thisOctal%convergence(isubcell)
+                       tArray(3,ntemps) = thisOctal%convergence(isubcell)
                     else
-                       tArray(3,nTemps) = 0.d0
+                       tArray(3,ntemps) = 0.d0
                     endif
-                 else 
-                    tArray(1:3,nTemps) = 0.d0
                  endif
+              endif
            end do
         end do
       end subroutine packMoleLevel
 
-      subroutine unpackMoleLevel(octalArray, nTemps, tArray, iLevel)
+      subroutine unpackMoleLevel(octalArray, tArray, iLevel)
         use input_variables, only : gettau
         include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: nTemps
         real(double) :: tArray(:,:)
         integer :: iOctal, iSubcell, my_rank, ierr
-        integer :: iLevel
+        integer :: iLevel, ntemp
         type(OCTAL), pointer :: thisOctal
         
         call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !
-        nTemps = 0
+        ntemp = 0
         do iOctal = 1, SIZE(octalArray)
            
            thisOctal => octalArray(iOctal)%content
            
            do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
-                 nTemps = nTemps + 1
-                 thisOctal%newMolecularLevel(iLevel,isubcell) = tArray(1,nTemps) 
+                 ntemp = ntemp + 1
+                 thisOctal%newMolecularLevel(iLevel,isubcell) = tArray(1,ntemp) 
                  if(gettau.and.(iLevel .le. mintrans)) then
-                    thisOctal%tau(ilevel, isubcell) = tArray(2,nTemps)
+                    thisOctal%tau(ilevel, isubcell) = tArray(2,ntemp)
                  endif
                  if(iLevel .eq. maxlevel) then
-                    thisOctal%convergence(isubcell) = tArray(3,nTemps)
+                    thisOctal%convergence(isubcell) = tArray(3,ntemp)
                  endif
               endif
            end do

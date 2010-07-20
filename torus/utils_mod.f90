@@ -4149,7 +4149,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     logical :: dodoubleweight
     
     vectorsize = size(torig)
-    temp = out
+    temp(1:size(out)) = out
     out = torig
 ! Catch any nasty 0s
     if(any(torig(1:length) .eq. 0.d0)) then
