@@ -529,7 +529,7 @@ contains
  write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are dead"
  call writeinfo(message, TRIVIAL)
 
- write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass, " Msol"
+ write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass * umass/mSol, " Msol"
  call writeinfo(message, TRIVIAL)
     
  close(LUIN)
