@@ -551,21 +551,21 @@ contains
     real(double) :: udist, umass, utime,  time
     integer, parameter :: nptmass=0
 
-    INTEGER  :: int1, int2, i1
-    integer(bigint)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
-    REAL(double)    :: r1, dummy
+    INTEGER(kind=4)  :: int1, int2, i1
+    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
+    REAL(kind=8)     :: r1, dummy
     integer :: intarray(8)
     CHARACTER*100 fileident
 
-    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+    integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
 
-    integer, allocatable :: iphase(:)
+    integer(kind=1), allocatable :: iphase(:)
     integer, allocatable   :: isteps(:)
-    real(double), allocatable    :: xyzmh(:,:)
-    real(double), allocatable    :: vxyzu(:,:)
-    real, allocatable    :: rho(:)
-    real(double), allocatable    :: h2rho(:)
-    real(double), allocatable    :: h1rho(:)
+    real(kind=8), allocatable    :: xyzmh(:,:)
+    real(kind=8), allocatable    :: vxyzu(:,:)
+    real(kind=4), allocatable    :: rho(:)
+    real(kind=8), allocatable    :: h2rho(:)
+    real(kind=8), allocatable    :: h1rho(:)
 
     type(VECTOR) :: orig_sph, rot_sph
 
