@@ -341,6 +341,8 @@ contains
   ! Assigns various values which are needed for the run.
   ! This routine should be called only after the grid has been constructed, namely
   ! only in finishGrid routine in amr_mod.f90
+  ! finishGrid makes a separate call to fillDensityCorners to fill density and 
+  ! velocity corner values
   !
   subroutine assign_grid_values(thisOctal,subcell)
 
@@ -387,12 +389,6 @@ contains
     
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)
     
-! Velocities are not required for all configurations so check if they are required
-!    if ( associated(sphData%vxn)  ) then 
-!       clusterparam = Clusterparameter(point, theparam = 1, shouldreuse = .true.) ! use switch for storing velocity
-!       thisOctal%velocity(subcell) = clusterparam
-!    end if
-      
     if ( h21cm ) then 
        call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
                    thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
