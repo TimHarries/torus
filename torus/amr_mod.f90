@@ -239,9 +239,8 @@ CONTAINS
        CALL WindSubcell(thisOctal, subcell ,grid)
        
     CASE("cluster","molcluster","theGalaxy")
-       ! using a routine in cluster_class.f90
-!       call assign_density(thisOctal,subcell, grid%geometry, stellar_cluster)
 
+       ! Flag as missing data to be filled in by FinishGrid
        thisoctal%rho(subcell) = -9.9d99
        if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
