@@ -25,6 +25,7 @@ module angularImage
   integer, parameter :: vr_file_lun=81
   character(len=*), parameter :: vr_format="unformatted"
   integer :: vel_chan_num
+  logical, save :: nColOnly 
 
   contains
 
@@ -42,6 +43,15 @@ module angularImage
       type(DATACUBE) ::  cube
       type(MOLECULETYPE) :: thisMolecule
       TYPE(VECTOR) :: intVelMod  ! modify observer's velocity by this vector
+
+! Requesting only one velocity channel is the flag for generaing multiple column densities.
+! i0_pos and i0_neg are used for storage so splitCubes needs to be true
+      if (nv ==1) then
+         nColOnly   = .true.
+         splitCubes = .true.
+      else
+         nColOnly = .false.
+      end if
 
 ! molecular weight is used for column density calculation
       thisMolecule%molecularWeight = mHydrogen / amu
@@ -99,7 +109,15 @@ module angularImage
          call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
               write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
-         if ( splitCubes ) then 
+         if ( nColOnly ) then
+            call writeinfo("Writing H2 column density to nCol_H2_"//trim(dataCubeFileName), TRIVIAL)
+            call writedatacube(cube, "nCol_H2_"//trim(dataCubeFileName), write_Intensity=.false., &
+                 write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+
+            call writeinfo("Writing CO column density to nCol_CO_"//trim(dataCubeFileName), TRIVIAL)
+            call writedatacube(cube, "nCol_CO_"//trim(dataCubeFileName), write_Intensity=.false., &
+                 write_ipos=.false., write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+         elseif ( splitCubes ) then 
             call writeinfo("Writing positive intensity to intensity_pos_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "intensity_pos_"//trim(dataCubeFileName), write_Intensity=.false., &
                  write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
@@ -386,8 +404,13 @@ module angularImage
 
       thisViewVec = viewVec
 
-     call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
-          tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
+     if ( ncolOnly ) then 
+        call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0, &
+             nCol_H2=i0_pos, nCol_CO=i0_neg, tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
+     else
+        call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
+             tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
+     end if
 
       avgIntensityNew = ((iray - 1) * avgIntensityOld + i0) / dble(iray)
       varIntensityNew = ((iray - 1) * varIntensityOld + ((i0 - avgIntensityNew) * (i0 - avgIntensityOld))) / dble(iray)
@@ -425,7 +448,7 @@ module angularImage
  end function AngPixelIntensity
 
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
-        rhomax, i0max, nCol, observerVelocity)
+        rhomax, i0max, nCol, nCol_H2, nCol_CO, observerVelocity)
 
      use input_variables, only : useDust, h21cm, densitysubsample, nv
      use octal_mod, only: OCTAL
@@ -441,9 +464,12 @@ module angularImage
      real(double) :: disttoGrid
      integer :: itrans
      real(double) :: nMol
-     real(double), intent(out) :: i0, i0_pos, i0_neg
+     real(double), intent(out) :: i0
+     real(double), intent(out), optional :: i0_pos, i0_neg
      real(double) :: previous_i0
      real(double), optional, intent(out) :: nCol
+     real(double), optional, intent(out) :: nCol_H2 ! H2 column density
+     real(double), optional, intent(out) :: nCol_CO ! CO column density
      type(VECTOR), optional, intent(in) ::  observerVelocity
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
@@ -493,7 +519,7 @@ module angularImage
         endif
         
         i0 = 1.d-60
-        tau = 1.d-60
+        if ( present (tau) ) tau = 1.d-60
         goto 666
      endif
      
@@ -515,12 +541,13 @@ module angularImage
      distToObs = (currentPosition - position) .dot. direction
 
      i0  = BnuBckGrnd
-     tau = 0.d0
-     i0_pos = BnuBckGrnd
-     i0_neg = 0.d0 
-     if (present(nCol)) nCol = 0.d0
-
-     if(present(rhomax)) rhomax = 0.d0
+     if (present(i0_pos) ) i0_pos  = BnuBckGrnd
+     if (present(i0_neg) ) i0_neg  = 0.d0 
+     if (present(tau) )    tau     = 0.d0
+     if (present(nCol))    nCol    = 0.d0
+     if (present(nCol_H2)) nCol_H2 = 0.d0
+     if (present(nCol_CO)) nCol_CO = 0.d0 
+     if (present(rhomax))  rhomax  = 0.d0
 
      thisOctal => grid%octreeRoot
      icount = 0
@@ -600,10 +627,17 @@ module angularImage
         
         ds = tval * OneOvernTauMinusOne
         
-! Calculate column density
-! Factor of 1.d10 is to convert ds to cm 
+! Calculate column density. Factor of 1.d10 is to convert ds to cm 
         if (present(nCol)) then 
            nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * tval * 1.d10
+        end if
+
+        if (present(nCol_H2)) then 
+           nCol_H2 = nCol_H2 + thisOctal%nH2(subcell) * tval * 1.d10
+        end if
+
+        if(present(nCol_CO)) then
+           nCol_CO = -1.0e10 ! missing data flag
         end if
 
         dsvector = ds * otherDirection
@@ -669,7 +703,7 @@ module angularImage
 
            dI = (1.d0-exp(-dtau))*snu
 
-           tau = tau + dtau
+           if ( present(tau) ) tau = tau + dtau
 
            attenuateddIovercell = attenuateddIovercell + dI
 
@@ -681,9 +715,9 @@ module angularImage
         dIovercell = (i0 - previous_i0) * (h21cm_lambda**2) / (2.0 * kErg)
 
         if ( dIovercell > 0 ) then 
-           i0_pos = i0_pos + dIovercell
+           if (present(i0_pos)) i0_pos = i0_pos + dIovercell
         else
-           i0_neg = i0_neg + dIovercell
+           if (present(i0_neg)) i0_neg = i0_neg + dIovercell
         end if
 
         if(present(i0max) .and. i0 .gt. 0.99d0 * i0max) then 
@@ -798,6 +832,9 @@ module angularImage
 #endif
     character(len=30)   :: outfilename
     integer, parameter  :: LUIN = 10 ! unit number of output file
+
+! Don't do this if the user only wants column densities.
+    if (nColOnly) return
 
     call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI      ", "galLon  ", "galLat  ", "crossing"/) )
 
