@@ -66,6 +66,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: rhon
      ! Density of H2
      real(double), pointer, dimension(:) :: rhoH2 => null()
+     ! Density of CO
+     real(double), pointer, dimension(:) :: rhoCO => null()
      ! Temperature of the gas particles
      real(double), pointer, dimension(:) :: temperature
      ! Smoothing lengths of the sink particles
@@ -86,11 +88,13 @@ module sph_data_class
           
      ! Does the temperature of the SPH particles get used?
      logical :: useSphTem 
+     
 
   end type sph_data
 
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:), RhoH2Array(:)
+  real(double), pointer :: rhoCOarray(:) => null()
 
   logical, allocatable :: HullArray(:)
   type(sph_data), save :: sphdata
@@ -566,7 +570,9 @@ contains
     real(kind=4), allocatable    :: rho(:)
     real(kind=8), allocatable    :: h2rho(:)
     real(kind=8), allocatable    :: h1rho(:)
+    real(kind=8), allocatable    :: COrho(:)
 
+    logical :: status
     type(VECTOR) :: orig_sph, rot_sph
 
 !
@@ -645,6 +651,16 @@ contains
     read(LUIN) ( h2rho(i), i=1, npart)
     read(LUIN) ( h1rho(i), i=1, npart)
 
+! See if there is CO data in this dump
+    allocate(COrho(npart))
+    read(LUIN, iostat=status) ( COrho(i), i=1,npart)
+    if (status == 0) then 
+       call writeInfo ("Found CO data")
+       allocate(sphdata%rhoCO(npart))
+    else
+       call writeInfo("No CO data found in this dump")
+    end if
+
     close(LUIN)
 
 
@@ -670,6 +686,7 @@ contains
 
           sphData%rhon(iiigas)  = h1rho(i)
           sphData%rhoH2(iiigas) = h2rho(i)
+          if ( associated (sphData%rhoCO) ) sphData%rhoCO(iiigas) = COrho(i)
 
           if ( internalView ) then 
 
@@ -729,11 +746,12 @@ contains
     write(message,*) "Maximum z=", maxval(xyzmh(3,:)) * udist
     call writeinfo(message, TRIVIAL)
 
-    write(message,*) "Total mass=", hI_mass * umass / mSol
+    write(message,*) "Total HI mass=", hI_mass * umass / mSol
     call writeinfo(message, TRIVIAL)
 
     deallocate(h1rho)
     deallocate(h2rho)
+    deallocate(COrho)
     deallocate(rho)
     deallocate(vxyzu)
     deallocate(xyzmh)
@@ -1065,6 +1083,11 @@ contains
     if ( ASSOCIATED(sphdata%rhoH2) ) then 
        DEALLOCATE(sphdata%rhoH2)
        NULLIFY(sphdata%rhoH2)
+    end if
+
+    if ( associated (sphData%rhoCO) ) then 
+       deallocate(sphData%rhoCO)
+       nullify(sphData%rhoCO)
     end if
 
     sphdata%inUse = .false.
@@ -1415,6 +1438,7 @@ contains
        allocate(Harray(npart))
        allocate(ind(npart))
        allocate(OneOverHsquared(npart))
+       if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
 
        allocate(HullArray(npart))
 
@@ -1502,6 +1526,10 @@ contains
           RhoH2Array(:) = -1.0e-30_db
        end if
 
+       if (associated (rhoCOarray) .and. associated(sphdata%rhoCO) ) then 
+          rhoCOarray(:) = sphdata%rhoCO(ind(:)) * codeDensityToTorus
+       end if
+
        hcrit = hcrit * codeLengthtoTORUS
        OneOverHcrit = 1.d0 / hcrit
 
@@ -1548,7 +1576,7 @@ contains
     if(done) then
        if (allocated(PositionArray)) then
           deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, &
-               q2Array, HullArray, etaarray, RhoH2Array)
+               q2Array, HullArray, etaarray, RhoH2Array, rhoCOarray)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
@@ -1579,6 +1607,9 @@ contains
           return
        elseif(param .eq. 2) then
           Clusterparameter = VECTOR(1d-37, tcbr, 0.d0)  ! density ! stays as vector for moment
+          return
+       elseif(param .eq. 3) then 
+          Clusterparameter = VECTOR(1d-37, 0.d0, 0.d0)
           return
        endif
     endif
@@ -1683,6 +1714,21 @@ contains
           
           Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, paramValue(1)*fac)  ! density ! stays as vector for moment
           
+
+       elseif (param .eq. 3) then 
+
+          if(sumweight .gt. sph_norm_limit) then
+             fac = 1.d0 / sumWeight
+          else
+             fac = 1.0
+          end if
+
+          do i = 1, nparticles
+             paramValue(1) = paramValue(1) + partArray(i) * rhoCOArray(indexArray(i)) ! CO density
+          enddo
+          
+          Clusterparameter = VECTOR(paramValue(1)*fac, 0.d0, 0.d0)  ! density ! stays as vector for moment
+
        endif
     else
 !       thisoctal%inflow(subcell) = .true. ! what to do about stuff with nothing in it...
@@ -1695,6 +1741,8 @@ contains
           endif
        elseif(param .eq. 2) then
           Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density, temperature and H2 density 
+       elseif(param .eq. 3) then
+          Clusterparameter = VECTOR(1d-37, 0.d0, 0.d0) ! CO density
        endif
     endif
 

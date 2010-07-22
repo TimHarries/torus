@@ -330,7 +330,7 @@ module angularImage
             this_gal_lat = cube%yAxis(jpixels)
 
 ! Write profile information in ASCII or binary as required. 
-            if ( vel_chan_num == nv .and. abs(this_gal_lat) < plane_lat ) then 
+            if ( vel_chan_num == nv .and. abs(this_gal_lat) < plane_lat .and. .not. nColOnly) then 
                if ( vr_format == "unformatted" ) then 
                   write(vr_file_lun) real(ipixels,db), real(jpixels,db), -1.0e30_db, -1.0e30_db , -1.0e30_db , -1.0e30_db
                else
@@ -638,8 +638,9 @@ module angularImage
            nCol_H2 = nCol_H2 + thisOctal%nH2(subcell) * tval * 1.d10
         end if
 
+! molabundance stores CO number density
         if(present(nCol_CO)) then
-           nCol_CO = -1.0e10 ! missing data flag
+           nCol_CO = nCol_CO + thisOctal%molabundance(subcell) * tval * 1.d10
         end if
 
         dsvector = ds * otherDirection

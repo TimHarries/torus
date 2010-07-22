@@ -359,11 +359,8 @@ contains
     type(vector) :: point, clusterparam
 
     point = subcellcentre(thisOctal, subcell)
-    ! density calculation
+    ! Calculate density, temperature and H2 (if required) 
     clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 2)
-    
-    if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
-    if( associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = 1.e-30
 
     thisOctal%rho(subcell) = clusterparam%x
     if ( sphData%useSphTem ) then 
@@ -389,9 +386,20 @@ contains
     
     if (associated(thisOctal%microturb)) deallocate(thisoctal%microturb)
     
+    if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
+    if( associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = 1.e-30
     if ( h21cm ) then 
        call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
                    thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
+
+       if ( associated (sphData%rhoCO) ) then 
+          ! Store CO number density in molabundance
+          clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 3)
+          thisOctal%molabundance = clusterparam%x / ( 28.0_db * mhydrogen )
+       else
+          thisOctal%molabundance = 0.0_db
+       end if
+
     end if
        
 

@@ -15554,6 +15554,7 @@ IF ( .NOT. gridConverged ) RETURN
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%NH2, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%molabundance, thisOctal%maxChildren)
        return
     end if
 
