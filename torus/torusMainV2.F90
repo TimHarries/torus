@@ -35,6 +35,7 @@ program torus
   use outputs_mod
   use source_mod
   use random_mod
+  use memory_mod
   type(GRIDTYPE) :: grid
 #ifdef MPI
    include 'mpif.h'  
@@ -53,6 +54,11 @@ program torus
   call setupAMRCOMMUNICATOR
 
   !===============================================================================
+#endif
+
+  globalMemoryChecking = .false.
+#ifdef MEMCHECK
+  globalMemoryChecking = .true.
 #endif
 
 
@@ -84,7 +90,7 @@ program torus
   ! set up a random seed
   
   call randomNumberGenerator(randomSeed=.true.)
-  call testSuiteRandom()  
+!  call testSuiteRandom()  
   call inputs()
 
 

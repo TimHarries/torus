@@ -558,7 +558,7 @@ CONTAINS
     USE sph_data_class, only: isAlive
     use mpi_global_mod, only: nThreadsGlobal
     use octal_mod, only: subcellRadius
-    use memory_mod, only : octalMemory, globalMemoryFootprint, humanReadableMemory
+    use memory_mod, only : octalMemory, globalMemoryFootprint, humanReadableMemory, globalMemoryChecking
 
     IMPLICIT NONE
     
@@ -597,7 +597,7 @@ CONTAINS
     
 
 
-    if (globalMemoryFootprint > maxMemoryAvailable) then
+    if (globalMemoryChecking.and.(globalMemoryFootprint > maxMemoryAvailable)) then
        write(message,'(a)') "Child added while memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
        call writeWarning(message)
     endif
@@ -703,6 +703,16 @@ CONTAINS
        endif
     endif
 
+    if ((parent%twod).and.(nThreadsGlobal - 1) == 16) then
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 4
+             parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
     if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
@@ -712,6 +722,8 @@ CONTAINS
           enddo
        endif
     endif
+
+
 
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
@@ -4044,10 +4056,10 @@ CONTAINS
    case("sedov")
       rInner = 0.02d0
       rVec = subcellCentre(thisOctal, subcell)
-      if (sqrt(rVec%x**2 + rVec%z**2) < rInner) then
+      if (sqrt((rVec%x-0.5d0)**2 + rVec%z**2) < rInner) then
          split = .true.
       endif
-      if ((sqrt(rVec%x**2 + rVec%z**2)-thisOctal%subcellSize/2.d0*sqrt(2.d0)) < rInner) then
+      if ((sqrt((rVec%x-0.5d0)**2 + rVec%z**2)-thisOctal%subcellSize/2.d0*sqrt(2.d0)) < rInner) then
          split = .true.
       endif
 
@@ -4950,6 +4962,7 @@ CONTAINS
                endif
             endif
          endif
+
          if (thisOctal%threeD) then
             if (thisOctal%nDepth == 1) then
                split = .true.
@@ -4960,6 +4973,18 @@ CONTAINS
             endif
          endif
       endif
+
+      if (thisOctal%twod.and.((nThreadsGlobal-1)==16)) then
+         if (thisOctal%nDepth <= 2) then
+            split = .true.
+         else
+            if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+               split = .false.
+            endif
+         endif
+      endif
+
+
       if (thisOctal%threed.and.((nThreadsGlobal-1)==64)) then
          if (thisOctal%nDepth <= 2) then
             split = .true.
@@ -7497,7 +7522,7 @@ CONTAINS
     thisOctal%gamma(subcell) = gamma
     thisOctal%iEquationOfState(subcell) = 0
 
-    rVec = subcellCentre(thisOctal, subcell)
+    rVec = subcellCentre(thisOctal, subcell)-VECTOR(0.5d0,0.d0,0.d0)
     blast = .false.
     if (modulus(rVec) < rInner) then
        blast = .true.

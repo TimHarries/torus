@@ -18,3 +18,7 @@ amrgridcentrex 0.5
 amrgridcentrey 0.
 amrgridcentrez 0.
 griddistancescale 1.d0
+
+tstart 0.d0
+tend 0.2d0
+tdump 0.005d0

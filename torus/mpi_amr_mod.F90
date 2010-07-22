@@ -31,6 +31,9 @@ contains
     if (nThreadsGlobal == 8) nHydroThreadsGlobal = 8
     if (nThreadsGlobal == 9) nHydroThreadsGlobal = 8
 
+    if (nThreadsGlobal == 16) nHydroThreadsGlobal = 16
+    if (nThreadsGlobal == 17) nHydroThreadsGlobal = 16
+
     if (nThreadsGlobal == 64) nHydroThreadsGlobal = 64
     if (nThreadsGlobal == 65) nHydroThreadsGlobal = 64
 

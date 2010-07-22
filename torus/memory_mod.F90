@@ -19,6 +19,7 @@ module memory_mod
 #endif  
 
   public
+  logical :: globalMemoryChecking
   integer(kind=bigInt) :: globalMemoryFootprint
   
   contains

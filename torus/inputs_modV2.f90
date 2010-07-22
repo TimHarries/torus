@@ -663,7 +663,8 @@ contains
     call getDouble("amrgridcentrez", amrGridCentreZ, 1.d0, cLine, fLine, nLines, &
          "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
 
-    if (amr2d) amrGridCentrex = amrGridSize/2.d0
+    if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
+         amrGridCentrex = amrGridSize/2.d0
 
 
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
@@ -1046,8 +1047,22 @@ contains
     call getReal("cfl", cflNumber, 1., cLine, fLine, nLines, &
          "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
 
+
+    call getDouble("etaviscosity", etaViscosity, 1.d0, cLine, fLine, nLines, &
+         "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
+
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &
-         "Distance grid scale:","(a,e12.3,1x,a)", 1.d10, ok, .false.)
+         "Distance grid scale: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
+
+    call getDouble("tstart", tStart, 1.d0, cLine, fLine, nLines, &
+         "Start time for hydrodynamical calculatione: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+
+    call getDouble("tend", tEnd, 1.d0, cLine, fLine, nLines, &
+         "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
+
+    call getDouble("tdump", tDump, 1.d0, cLine, fLine, nLines, &
+         "Time between dump files: ","(a,e12.3,1x,a)", 1.d0, ok, .true.)
+
 
   end subroutine readHydrodynamicsParameters
 

@@ -17,8 +17,9 @@ module hydrodynamics_mod
   implicit none
 
   public
-!  real(double) :: griddistancescale = 1.d10
-!  real(double) :: griddistancescale = 1.d0
+
+  type(OCTALWRAPPER), allocatable :: globalChildlessOctalArray(:)
+  integer :: nGlobalChildlessOctals
 
 contains
 
@@ -1758,7 +1759,8 @@ contains
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: usethisbound
-
+    integer :: ioctal
+    type(OCTAL), pointer :: thisOctal
     type(gridtype) :: grid
     real(double) :: dt
     type(vector) :: direction
@@ -1767,7 +1769,6 @@ contains
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupqx(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
-
     call fluxlimiter(grid%octreeroot, "superbee")
     call constructflux(grid%octreeroot, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
@@ -2027,6 +2028,10 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupWi(grid%octreeRoot, grid, direction)
@@ -2045,6 +2050,10 @@ contains
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call pressureForceW(grid%octreeRoot, dt)
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2164,6 +2173,7 @@ contains
   end function soundSpeed
 
   subroutine doHydrodynamics1d(grid)
+    use input_variables, only : tStart, tEnd, tDump
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt,  gamma, mu
@@ -2176,7 +2186,7 @@ contains
     integer :: myRank, ierr
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
     integer :: iUnrefine, nUnrefine
-    real(double) :: nextDumpTime, tdump, temptc(10), tend
+    real(double) :: nextDumpTime, temptc(10)
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -2237,7 +2247,7 @@ contains
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
        !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-!       call calculateRhoE(grid%octreeRoot, direction)
+!       call calculateRhoE(grid%octreeRoot, direction) 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call calculateRhoU(grid%octreeRoot, direction)
        direction = VECTOR(0.d0, 1.d0, 0.d0)
@@ -2247,12 +2257,9 @@ contains
 
     endif
 
-    currentTime = 0.d0
+    currentTime = tStart
     it = 0
     nextDumpTime = 0.d0
-    tDump = 0.005d0
-!    tdump = 0.2d0
-    tend = 0.2d0
     iUnrefine = 0
     do while(currentTime <= tend)
        tc = 0.d0
@@ -2549,6 +2556,7 @@ contains
   end subroutine doHydrodynamics3d
 
   subroutine doHydrodynamics2d(grid)
+    use input_variables, only : tStart, tEnd, tDump
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), mu
@@ -2556,7 +2564,7 @@ contains
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=80) :: plotfile
-    real(double) :: tDump, nextDumpTime, tff, tend !, ang
+    real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass
     type(VECTOR) :: direction, viewVec
     integer :: thread1(100), thread2(100), nBound(100), nPairs
@@ -2654,14 +2662,6 @@ contains
     dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
     tff = 1.d0 / sqrt(bigG * (0.1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
-    tDump = 1.d-2 * tff
-    
-    tdump = 20.d0 * dt
-
-    if (grid%geometry == "sedov") then
-       tEnd = 0.05d0
-       tdump = 0.01d0
-    endif
 
     if (writeoutput) write(*,*) "Setting tdump to: ", tdump
 
@@ -2675,6 +2675,7 @@ contains
 
 
     jt = 0
+
 
     do while(currentTime < tEnd)
        if (myrank == 1) write(*,*) "current time " ,currentTime
@@ -2761,7 +2762,7 @@ contains
                "rhov         ", &
                "rhow         ", &
                "phi          "/))
-
+          if (grid%geometry == "sedov") &
           call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(1.d-6,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 1.0d0), 1000)
 
        endif
@@ -6018,6 +6019,54 @@ end subroutine minMaxDepth
        write(*,*) "wvel: ", thisOctal%rhow(subcell)/thisOctal%rho(subcell)
     endif
   end subroutine testCell
+
+
+  RECURSIVE SUBROUTINE getChildlessOctalArray(thisOctal,array,counter)
+    ! returns an array of pointers to all of the subcells in the grid.
+    ! NB because fortran cannot create arrays of pointers, the output
+    !   array is actually of a derived type which *contains* the 
+    !   pointer to an octal.
+    ! counter should be set to 0 before this routine is called
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER                            :: thisOctal
+    TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array 
+    INTEGER, INTENT(INOUT)                          :: counter 
+  
+    INTEGER              :: i
+    TYPE(octal), POINTER :: child
+
+    ! if this is the root of the tree, we initialize the counter
+    IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
+
+    if ((thisOctal%nChildren == 0).and.(octalOnThread(thisOctal,1,myRankGlobal))) then
+       counter = counter + 1 
+       array(counter)%content => thisOctal
+       array(counter)%inUse = .TRUE. 
+    endif
+    
+    IF ( thisOctal%nChildren > 0 ) THEN
+      DO i = 1, thisOctal%nChildren, 1
+        
+        ! call this subroutine recursively on each of its children
+        child => thisOctal%child(i)
+        CALL getChildlessOctalArray(child,array,counter)
+        
+      END DO
+    END IF
+
+  END SUBROUTINE getChildlessOctalArray
+
+  subroutine createChildlessOctalArray(grid)
+    type(GRIDTYPE) :: grid
+    integer :: nvoxels, noctals
+    if (allocated(globalChildlessOctalArray)) deallocate(globalChildlessOctalArray)
+    call countVoxels(grid%octreeRoot,nOctals,nVoxels)  
+    allocate(globalChildlessOctalArray(1:nOctals))
+    nGlobalChildlessOctals = 0
+    call getChildlessOctalArray(grid%octreeRoot, globalChildlessOctalArray, nGlobalChildlessOctals)
+  end subroutine createChildlessOctalArray
 
 #endif
 
