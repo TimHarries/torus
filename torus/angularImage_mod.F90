@@ -110,6 +110,8 @@ module angularImage
               write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
 
          if ( nColOnly ) then
+            ! We're using an intensity array to write column density so fix the units
+            cube%IntensityUnit = "cm^-2     "
             call writeinfo("Writing H2 column density to nCol_H2_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "nCol_H2_"//trim(dataCubeFileName), write_Intensity=.false., &
                  write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
