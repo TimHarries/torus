@@ -1759,8 +1759,6 @@ contains
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: usethisbound
-    integer :: ioctal
-    type(OCTAL), pointer :: thisOctal
     type(gridtype) :: grid
     real(double) :: dt
     type(vector) :: direction
@@ -2556,7 +2554,7 @@ contains
   end subroutine doHydrodynamics3d
 
   subroutine doHydrodynamics2d(grid)
-    use input_variables, only : tStart, tEnd, tDump
+    use input_variables, only : tEnd, tDump
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), mu
