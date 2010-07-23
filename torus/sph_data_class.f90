@@ -572,7 +572,7 @@ contains
     real(kind=8), allocatable    :: h1rho(:)
     real(kind=8), allocatable    :: COrho(:)
 
-    logical :: status
+    integer :: status
     type(VECTOR) :: orig_sph, rot_sph
 
 !
