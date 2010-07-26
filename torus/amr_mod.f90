@@ -7320,6 +7320,10 @@ CONTAINS
        thisOctal%boundaryCondition(subcell) = 2
     endif
 
+    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
+
     thisOctal%gamma(subcell) = 5.d0/3.d0
     thisOctal%iEquationOfState(subcell) = 0
     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
@@ -7359,6 +7363,7 @@ CONTAINS
        thisOctal%rho(subcell) = 1.d0
     endif
     
+    u1 = 0.d0
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
@@ -7369,6 +7374,11 @@ CONTAINS
 !    else
 !       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 !    endif
+
+
+    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
 
     thisOctal%pressure_i(subcell) = 2.5d0 - g * thisOctal%rho(subcell) * rVec%z
     thisOctal%phi_i(subcell) = rvec%z * g 
