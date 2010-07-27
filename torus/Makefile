@@ -120,7 +120,7 @@ ifeq ($(SYSTEM), osx)
 endif
 
 ifeq ($(SYSTEM), gfortran)
-    F95COMP  = gfortran
+    F95COMP  = gfortran -fopenmp
     F77COMP  = gfortran
     F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -fbacktrace -fbounds-check -Wextra 

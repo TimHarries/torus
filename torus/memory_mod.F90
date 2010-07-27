@@ -113,6 +113,11 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%microturb)
       tot = tot + mySizeOf(thisOctal%molmicroturb)
 
+      tot = tot + mySizeOf(thisOctal%jnuLine)
+      tot = tot + mySizeOf(thisOctal%jnuCont)
+      tot = tot + mySizeOf(thisOctal%atomLevel)
+      tot = tot + mySizeOf(thisOctal%newatomLevel)
+
       tot = tot + mySizeOf(thisOctal%nh)
       tot = tot + mySizeOf(thisOctal%nhi)
       tot = tot + mySizeOf(thisOctal%nhei)
@@ -210,6 +215,14 @@ module memory_mod
 
     end subroutine reportMemory
 
+
+    subroutine resetGlobalMemory(grid)
+
+      type(GRIDTYPE) :: grid
+
+      call findTotalMemory(grid, globalMemoryFootprint)
+      call reportMemory(globalMemoryFootprint)
+    end subroutine resetGlobalMemory
 
     function  humanReadableMemory(iBytes) result (cString)
       integer(kind=bigInt) :: iBytes, i

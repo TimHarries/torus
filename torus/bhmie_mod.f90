@@ -21,7 +21,8 @@ contains
     real X
     DOUBLE PRECISION JUNK
     COMPLEX REFREL
-    COMPLEX, intent(out) :: S1(2*MXNANG-1),S2(2*MXNANG-1)
+!    COMPLEX, intent(out) :: S1(2*MXNANG-1),S2(2*MXNANG-1)
+    COMPLEX, intent(out) :: S1(:),S2(:)
 
 ! Local variables:
 
@@ -120,7 +121,7 @@ contains
 ! three lines, and uncomment corresponding 3 lines further below
 !
       COMPLEX(kind=double) AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
-      COMPLEX(kind=double) D(NMXX)
+      COMPLEX(kind=double), allocatable :: D(:)
       PARAMETER(SINGLE=.FALSE.)
 !
 !      COMPLEX AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
@@ -149,6 +150,8 @@ contains
       IMAGPART(DPCX)=(DIMAG(DPCX))
 !***********************************************************************
 !*** Safety checks
+
+      allocate(d(1:NMXX))
 
       IF(NANG.GT.MXNANG)STOP'***Error: NANG > MXNANG in bhmie'
       IF(NANG.LT.2)NANG=2
@@ -316,7 +319,7 @@ main_loop:  DO N=1,NSTOP
          S2(J)=CMPLX(DCXS2(J))
       ENDDO
 
-      RETURN
+      deallocate(d)
 
     END SUBROUTINE BHMIE
 

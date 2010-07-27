@@ -36,6 +36,7 @@ contains
     ok = .true.
     oneKappa = .false.
 
+    tMinGlobal = 3.
     grainSize = 1.
     nDustType = 1
     freefreeImage = .false.

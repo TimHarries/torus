@@ -20,7 +20,7 @@ module cmf_mod
   use parallel_mod, only: torus_mpi_barrier
   use vtk_mod, only: writeVtkfile
   use octal_mod, only : allocateAttribute
-
+  use memory_mod, only : resetGlobalMemory
   implicit none
 
   private
@@ -1046,8 +1046,6 @@ contains
     use random_mod
     use amr_mod, only: getOctalArray, sortOctalArray
 #ifdef MPI
-    use input_variables, only : blockhandout
-    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     use amr_mod, only : countVoxels
     include 'mpif.h'
 #endif
@@ -1110,11 +1108,10 @@ contains
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
+    integer       ::   n_rmdr, m
     integer       ::   ierr           ! error flag
     integer       ::   nVoxels
     integer       ::   tag=0
-    integer, dimension(:), allocatable :: octalsBelongRank
-    logical       ::   rankComplete
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
@@ -1183,6 +1180,9 @@ contains
      ionized = .true.
      call writeInfo("Allocating levels and applying LTE...")
      call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
+#ifdef MEMCHECK
+     call resetGlobalMemory(grid)
+#endif
      call setMicroturb(grid%octreeRoot, dble(vTurb))
 
      call writeInfo("Done.")
@@ -1347,26 +1347,31 @@ contains
 
 #ifdef MPI
     
-    ! we will use an array to store the rank of the process
-    !   which will calculate each octal's variables
-    allocate(octalsBelongRank(size(octalArray)))
-    
-    if (my_rank == 0) then
-       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-                            maxBlockSize=10,setDebug=.false.)
-    
-    endif
-    ! ============================================================================
-
-
- if (my_rank /= 0) then
-  blockLoop: do     
- call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-   if (rankComplete) exit blockLoop 
+            ! Set the range of index for octal loop used later.     
+            np = nThreadsGlobal
+            n_rmdr = MOD(SIZE(octalArray),np)
+            m = SIZE(octalArray)/np
+            
+            if (myRankGlobal .lt. n_rmdr ) then
+               ioctal_beg = (m+1)*myRankGlobal + 1
+               ioctal_end = ioctal_beg + m
+            else
+               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+               ioctal_end = ioctal_beg + m - 1
+            end if
+            
 #endif
 
+            !$OMP PARALLEL DEFAULT (NONE) &
+            !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction) &
+	    !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
+	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
+	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,tfilename,x1,w,ne,recalcjbar,ratio,nstar,dpops,newne) &
+	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot)&
+            !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
+	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,itrans,debug,rcore)
+            !$OMP DO SCHEDULE(STATIC)
           do iOctal = ioctal_beg, ioctal_end
-!          do iOctal = ioctal_end, ioctal_beg,-1
              write(*,*) "Doing octal ",iOctal, " of ",ioctal_end
 
 
@@ -1613,25 +1618,16 @@ contains
 
              enddo
           end do
+          !$OMP END DO
+          !$OMP BARRIER
+          !$OMP END PARALLEL
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
 
 #ifdef MPI
- if (.not.blockHandout) exit blockloop
- end do blockLoop        
- end if ! (my_rank /= 0)
-
-
-
 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
        if(my_rank == 0) write(*,*) "Updating MPI grids"
-
-
-     ! have to send out the 'octalsBelongRank' array
-     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
      allocate(tArrayd(1:nVoxels))
@@ -1641,20 +1637,20 @@ contains
      do iAtom = 1, nAtom
        do i = 1, thisAtom(iAtom)%nLevels
          tArrayd = 0.d0
-          call packAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
+          call packAtomLevel(octalArray, nVoxels, tArrayd,  iAtom, i, ioctal_beg, ioctal_end)
           call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
             MPI_SUM,MPI_COMM_WORLD,ierr)
             tArrayd = tempArrayd
-          call unpackAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
+          call unpackAtomLevel(octalArray, nVoxels, tArrayd, iAtom, i)
        enddo
      enddo
      do i = 1, nFreq
        tArrayd = 0.d0
-       call packJnu(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+       call packJnu(octalArray, nVoxels, tArrayd, i, ioctal_beg, ioctal_end)
        call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
             MPI_SUM,MPI_COMM_WORLD,ierr)
        tArrayd = tempArrayd
-       call unpackJnu(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+       call unpackJnu(octalArray, nVoxels, tArrayd, i)
      enddo
      deallocate(tArrayd, tempArrayd)
 
@@ -1685,9 +1681,6 @@ contains
           gridconverged = .true.
           write(*,*) "forcing convergence !!!!!!!!!!"
 
-#ifdef MPI
-       deallocate(octalsBelongRank)
-#endif
 
          deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
                weightFreq, weightOmega, hcol, heicol, heiicol, iCont)
@@ -1869,9 +1862,9 @@ contains
     call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
 
     if (ionized) then
-       thisOctal%ne = thisOctal%rho/mHydrogen
+       thisOctal%ne = thisOctal%rho(1:SIZE(thisOctal%ne))/mHydrogen
     else
-       thisOctal%ne = tiny(1.d-30 * thisOctal%rho/mHydrogen)
+       thisOctal%ne = tiny(1.d-30 * thisOctal%rho(1:SIZE(thisOctal%ne))/mHydrogen)
     endif
 
 
@@ -2719,6 +2712,13 @@ contains
 
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
+       !$OMP PARALLEL DEFAULT (NONE) &
+       !$OMP PRIVATE (ix, iy, iMonte, r, xval, yval, rayPos) &
+       !$OMP SHARED (cube, viewVec, grid, thisAtom, nAtom, iAtom, iTrans) &
+       !$OMP SHARED (deltaV, source, nSource, nFreqArray, freqArray, occultingDisc) &
+       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte)
+
+       !$OMP DO SCHEDULE(STATIC)
        do ix = 1, cube%nx
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
@@ -2744,6 +2744,10 @@ contains
              enddo
           enddo
        enddo
+
+       !$OMP END DO
+       !$OMP BARRIER
+       !$OMP END PARALLEL
        cube%intensity(:,:,iv-iv1+1) = cube%intensity(:,:,iv-iv1+1) / dble(nMonte)
     enddo
 #ifdef MPI
@@ -2792,11 +2796,11 @@ contains
 
 
 #ifdef MPI
-      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+      subroutine packAtomLevel(octalArray, nTemps, tArray, iAtom, iLevel, ioctal_beg, ioctal_end)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
+	integer :: ioctal_beg, ioctal_end
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr, iAtom
         integer :: iLevel
@@ -2814,7 +2818,7 @@ contains
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if (octalsBelongRank(iOctal) == my_rank) then
+                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
                    tArray(nTemps) = thisOctal%newAtomLevel(isubcell, iAtom, iLevel)
                  else 
                    tArray(nTemps) = 0.d0
@@ -2824,10 +2828,9 @@ contains
        end do
      end subroutine packAtomLevel
 
-      subroutine unpackAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+      subroutine unpackAtomLevel(octalArray, nTemps, tArray, iAtom, iLevel)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr, iAtom
@@ -2852,10 +2855,10 @@ contains
        end do
      end subroutine unpackAtomLevel
 
-      subroutine packjnu(octalArray, nTemps, tArray, octalsBelongRank, iFreq)
+      subroutine packjnu(octalArray, nTemps, tArray, iFreq, ioctal_beg, ioctal_end)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
+        integer :: ioctal_beg, ioctal_end
         integer :: nTemps
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr, iFreq
@@ -2873,7 +2876,7 @@ contains
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if (octalsBelongRank(iOctal) == my_rank) then
+                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
                    tArray(nTemps) = thisOctal%jnuCont(isubcell, ifreq)
                  else 
                    tArray(nTemps) = 0.d0
@@ -2883,10 +2886,9 @@ contains
        end do
      end subroutine packJnu
 
-      subroutine unpackJnu(octalArray, nTemps, tArray, octalsBelongRank, iFreq)
+      subroutine unpackJnu(octalArray, nTemps, tArray, iFreq)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
         integer :: nTemps
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr, iFreq

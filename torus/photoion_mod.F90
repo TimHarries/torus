@@ -149,8 +149,8 @@ contains
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
 #endif
 
-#ifdef MPI
     !$OMP THREADPRIVATE (firstTime)
+#ifdef MPI
 
 
     ! FOR MPI IMPLEMENTATION=======================================================
