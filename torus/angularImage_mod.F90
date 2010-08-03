@@ -758,7 +758,7 @@ module angularImage
          real(double) :: this_pos, this_vel, rhoH2, H2frac
 
         ! Write out los profile information before update to currentPosition
-         if ( vel_chan_num == nv .and. abs(this_gal_lat) < plane_lat ) then 
+         if ( vel_chan_num == nv .and. abs(this_gal_lat) < plane_lat .and. .not. nColOnly) then 
 
             this_pos = ( modulus(currentPosition - rayposition) ) * (1.0e7/pcToCm) ! in kpc
             this_vel = ( (startVel-observerVelocity) .dot. direction )  * ( cSpeed / 1.0d5) ! in km/s
