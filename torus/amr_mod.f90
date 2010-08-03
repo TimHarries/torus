@@ -4415,8 +4415,15 @@ CONTAINS
        cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
        cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
 
-       if ( cellCentre%x < (intPosX - 0.2e12) ) split = .false.
-       if ( cellCentre%y < (intPosY - 0.2e12) ) split = .false.
+! Limit refinement outside the region of interest and either output number of 
+! SPH particles per grid cell or split if >1 particle per cell
+       if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
+          split = .false.
+!       elseif (nparticle > 1) then
+!          split = .true. 
+       elseif (.not. split) then
+          write(113,*) nparticle
+       end if
 
     end if
 
