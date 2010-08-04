@@ -2675,6 +2675,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
              end if
           end do
        else
+          if (.not. associated(thisOctal%nDirectPhotons)) allocate (thisOctal%nDirectPhotons(thisOctal%maxChildren))
           thisOctal%nDirectPhotons(subcell) = 0
        endif
     enddo
