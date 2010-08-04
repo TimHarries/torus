@@ -548,6 +548,9 @@ contains
           ! convert units
           x = x*udist; y = y*udist;  z = z*udist  ! [10^10cm]
           
+          ! For 2D octals x is cylindrical polar r
+          if (thisOctal%twoD) x = sqrt(x**2 + y**2)
+
           ! quick check to see if this gas particle
           ! belongs to this child cell.
           if ( within_subcell(thisOctal, subcell, x, y, z) ) then
@@ -633,6 +636,9 @@ contains
           x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
           ! quick check to see if this gas particle is
           ! belongs to this cell.
+
+          ! For 2D octals x is cylindrical polar r
+          if (node%twoD) x = sqrt(x**2 + y**2)
 
           if ( within_subcell(node, subcell, x, y, z) ) then
            
