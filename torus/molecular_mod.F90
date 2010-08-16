@@ -825,7 +825,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use input_variables, only : blockhandout, tolerance, &!lucyfilenamein, openlucy,&
-          usedust, amr1d, amr3d, plotlevels, gettau, &
+          usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
      use messages_mod, only : myRankIsZero
      use dust_mod
@@ -1116,7 +1116,7 @@ module molecular_mod
             else
                call randomNumberGenerator(randomSeed=.true.)
             endif
-            
+
 ! default loop indicies for single processor otherwise do MPI stuff
             ioctal_beg = 1
             ioctal_end = SIZE(octalArray)         
@@ -1143,6 +1143,7 @@ module molecular_mod
             end if
             
 
+	    write(*,*) myrankGlobal, " doing rays ",ioctal_beg,ioctal_end            
 
 #endif
 
@@ -1288,8 +1289,8 @@ module molecular_mod
                       warncount = warncount + 1
                    endif
 ! Not entirely sure why you would want to do this. Probably diagnostic. Hence it's commented out.
-                   if(gettau) thisOctal%tau(1:mintrans,subcell) = &
-                        calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay))
+!                   if(gettau) thisOctal%tau(1:mintrans,subcell) = &
+!                        calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay))
                 endif
              enddo ! while not converged
           endif ! if no child
@@ -3860,7 +3861,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 #ifdef MPI 
        subroutine packMoleLevel(octalArray, nTemps, tArray, iLevel,ioctal_beg,ioctal_end)
-         use input_variables,only : gettau
+!         use input_variables,only : gettau
          include 'mpif.h'
          integer :: ioctal_beg, ioctal_end
          type(OCTALWRAPPER) :: octalArray(:)
@@ -3886,11 +3887,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                  if ((iOctal >= iOctal_Beg).and.(ioctal <= ioctal_end)) then
                     tArray(1,ntemps) = thisOctal%newMolecularLevel(iLevel,isubcell)
        
-                    if(gettau.and.(iLevel .le. mintrans)) then
-                       tArray(2,ntemps) = thisOctal%tau(ilevel,isubcell)
-                    else
-                       tArray(2,ntemps) = 0.d0
-                    endif
+!                    if(gettau.and.(iLevel .le. mintrans)) then
+!                       tArray(2,ntemps) = thisOctal%tau(ilevel,isubcell)
+!                    else
+!                       tArray(2,ntemps) = 0.d0
+!                    endif
                     
                     if(iLevel .eq. maxlevel) then
                        tArray(3,ntemps) = thisOctal%convergence(isubcell)
@@ -3904,7 +3905,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       end subroutine packMoleLevel
 
       subroutine unpackMoleLevel(octalArray, tArray, iLevel)
-        use input_variables, only : gettau
+!        use input_variables, only : gettau
         include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         real(double) :: tArray(:,:)
@@ -3925,9 +3926,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               if (.not.thisOctal%hasChild(iSubcell)) then
                  ntemp = ntemp + 1
                  thisOctal%newMolecularLevel(iLevel,isubcell) = tArray(1,ntemp) 
-                 if(gettau.and.(iLevel .le. mintrans)) then
-                    thisOctal%tau(ilevel, isubcell) = tArray(2,ntemp)
-                 endif
+!                 if(gettau.and.(iLevel .le. mintrans)) then
+!                    thisOctal%tau(ilevel, isubcell) = tArray(2,ntemp)
+!                 endif
                  if(iLevel .eq. maxlevel) then
                     thisOctal%convergence(isubcell) = tArray(3,ntemp)
                  endif

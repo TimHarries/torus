@@ -1102,11 +1102,11 @@ contains
     real(double), parameter :: convergeTol = 1.d-6, neTolerance = 1.d-6, tolerance = 1.d-3
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
-    character(len=80) :: message, ifilename, tfilename
+    character(len=80) :: message, ifilename
     real :: r
     logical :: ionized
     integer :: iLev, nIter, iLab, idump
-    real(double) :: lev1, lev2, x1, w
+    real(double) :: lev1, lev2
 
 #ifdef MPI
     ! For MPI implementations

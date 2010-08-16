@@ -6549,7 +6549,7 @@ CONTAINS
     use vector_mod
 
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               dipoleOffset, contFluxFile, &
+                               dipoleOffset, &
                                magStreamFile, thinDiskRin !, TTauriMstar
     USE magField, only: loadMagField
 
@@ -6558,10 +6558,6 @@ CONTAINS
     type(GRIDTYPE), intent(inout)      :: grid                
     real, intent(out) :: theta1, theta2
    
-    integer :: nNu 
-    real :: nuArray(3000),fnu(3000)
-    real :: tot
-    integer :: i 
     real :: rStar
 
 
