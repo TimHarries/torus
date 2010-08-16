@@ -1364,6 +1364,19 @@ contains
     call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
          "Do hydrodynamics: ","(a,1l,a)", .false., ok, .false.)
 
+
+    if (hydrodynamics) then
+       call getDouble("tstart", tStart, cLine, nLines, &
+            "Start time for hydrodynamical calculatione: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+       
+       call getDouble("tend", tEnd, cLine, nLines, &
+            "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
+       
+       call getDouble("tdump", tDump, cLine, nLines, &
+            "Time between dump files: ","(a,e12.3,1x,a)", 1.d0, ok, .true.)
+    endif
+
+
     call getLogical("doselfgrav", doselfgrav, cLine, nLines, &
          "Solve self-gravity: ","(a,1l,a)", .false., ok, .false.)
 

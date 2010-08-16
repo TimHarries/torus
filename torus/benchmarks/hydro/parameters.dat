@@ -1,6 +1,9 @@
 griddistancescale 1.
 mindepthamr 3
 maxdepthamr 10
+tstart 0.d0
+tend 0.2d0
+tdump 0.005d0
 cfl 0.3
 usebias F
 blockhandout T
