@@ -33,6 +33,7 @@ contains
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
+    use input_variables, only : rCore, rInner, rOuter
     use disc_class, only:  new
     use discwind_class, only:  new
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
@@ -317,6 +318,14 @@ contains
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)
+
+          case("wrshell")
+             grid%geometry = "wrshell"
+             grid%lineEmission = .false.
+             grid%rInner = rInner
+             grid%rOuter = rOuter
+             grid%rCore = rCore
+
           case DEFAULT
        end select
 
@@ -388,7 +397,7 @@ contains
 
        call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
        call locate(grid%lamArray, nLambda,lambdaSmooth,ismoothlam)
-       do j = iSmoothLam,  nLambda, 2
+       do j = iSmoothLam,  nLambda, 20
           write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
           call writeInfo(message, TRIVIAL)
           do

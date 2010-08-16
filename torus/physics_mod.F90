@@ -233,7 +233,9 @@ contains
      integer, optional, intent(in) :: numLam
      integer :: nCurrent, nt, i
      real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
+
      if (associated(xarray)) deallocate(xarray)
+
      if (molecularPhysics) then
         nLambda = 100
         allocate(xarray(1:nLambda))

@@ -118,6 +118,8 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%atomLevel)
       tot = tot + mySizeOf(thisOctal%newatomLevel)
 
+      tot = tot + mySizeOf(thisOctal%atomAbundance)
+
       tot = tot + mySizeOf(thisOctal%nh)
       tot = tot + mySizeOf(thisOctal%nhi)
       tot = tot + mySizeOf(thisOctal%nhei)

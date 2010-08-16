@@ -445,6 +445,8 @@ contains
     integer, allocatable,save :: iFreqRBB(:)
     integer, save :: iflagRBB
 
+    !$OMP THREADPRIVATE (firstWarning, firstTime, ifreqRBB, iflagRBB)
+
     if (firstTime) then
        allocate(iFreqRBB(1:nRBBTrans))
        do iRBB = 1, nRBBTRans
@@ -837,6 +839,8 @@ contains
     logical,save :: first = .true.
     real(double) :: dtau, tauav
 
+    !$OMP THREADPRIVATE (first)
+
     jBarExternal = 0.d0
     jBarInternal = 0.d0
     a = 0.d0; bul = 0.d0; blu = 0.d0
@@ -1069,7 +1073,7 @@ contains
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
     real(double), parameter :: underCorrect = 1.d0
-    real(double), parameter :: underCorrectne = 0.8d0
+    real(double), parameter :: underCorrectne = 1.0d0
     real(double) :: dne
 
     real(double) :: fac
@@ -1078,7 +1082,6 @@ contains
     real(double) :: maxFracChange
     logical :: fixedRays
     integer(bigint) :: iseed
-    real(double) :: tolerance
     integer, allocatable :: sourceNumber(:)
 !    type(VECTOR) :: posVec
 !    real(double) :: r
@@ -1096,10 +1099,11 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-3, neTolerance = 1.d-3
+    real(double), parameter :: convergeTol = 1.d-6, neTolerance = 1.d-6, tolerance = 1.d-3
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename, tfilename
+    real :: r
     logical :: ionized
     integer :: iLev, nIter, iLab, idump
     real(double) :: lev1, lev2, x1, w
@@ -1111,7 +1115,6 @@ contains
     integer       ::   n_rmdr, m
     integer       ::   ierr           ! error flag
     integer       ::   nVoxels
-    integer       ::   tag=0
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
@@ -1171,7 +1174,6 @@ contains
 !    close(69)
 
 
-     allocate(jnuCont(1:nFreq)) 
      ionized = .false.
      if (grid%geometry == "gammavel") ionized = .true.
      if (grid%geometry == "wrshell") ionized = .true.
@@ -1260,12 +1262,6 @@ contains
 !       enddo
 !    enddo
 
-
-    allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
-    allocate(mainoldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
-    allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
-    allocate(dPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
-
     allocate(octalArray(grid%nOctals))
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
@@ -1293,10 +1289,8 @@ contains
 
        if (iStage == 1) then
           fixedRays = .true.
-          tolerance = 1.d-3
        else
           fixedRays = .false.
-          tolerance = 1.d-5
        endif
 
        gridConverged = .false.
@@ -1317,26 +1311,6 @@ contains
 
           if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
 
-          allocate(ds(1:nRay))
-          allocate(phi(1:nRay))
-          allocate(rayDeltaV(1:nRay))
-          allocate(i0(1:nRBBTrans, 1:nRay))
-          allocate(Hcol(1:nRay))
-          allocate(HeIcol(1:nRay))
-          allocate(HeIIcol(1:nRay))
-          allocate(sourceNumber(1:nRay))
-          allocate(cosTheta(1:nRay))
-          allocate(weightFreq(1:nRay))
-          allocate(weightOmega(1:nRay))
-          allocate(hitPhotosphere(1:nRay))
-          allocate(iCont(1:nRay,1:nFreq))
-          allocate(position(1:nray), direction(1:nray))
-
-          if (fixedRays) then
-             call randomNumberGenerator(putIseed = iseed)
-          else
-             call randomNumberGenerator(randomSeed=.true.)
-          endif
 
 
           ! default loop indecies
@@ -1367,10 +1341,43 @@ contains
 	    !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
 	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
 	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,tfilename,x1,w,ne,recalcjbar,ratio,nstar,dpops,newne) &
-	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot)&
+	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans)&
             !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
-	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,itrans,debug,rcore)
-            !$OMP DO SCHEDULE(STATIC)
+	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom)
+
+
+            allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(mainoldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(dPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(jnuCont(1:nFreq)) 
+            allocate(ds(1:nRay))
+            allocate(phi(1:nRay))
+            allocate(rayDeltaV(1:nRay))
+            allocate(i0(1:nRBBTrans, 1:nRay))
+            allocate(Hcol(1:nRay))
+            allocate(HeIcol(1:nRay))
+            allocate(HeIIcol(1:nRay))
+            allocate(sourceNumber(1:nRay))
+            allocate(cosTheta(1:nRay))
+            allocate(weightFreq(1:nRay))
+            allocate(weightOmega(1:nRay))
+            allocate(hitPhotosphere(1:nRay))
+            allocate(iCont(1:nRay,1:nFreq))
+            allocate(position(1:nray))
+            allocate(direction(1:nray))
+
+
+            if (fixedRays) then
+               call randomNumberGenerator(putIseed = iseed)
+               call randomNumberGenerator(syncIseed = .true.)
+            else
+               call randomNumberGenerator(randomSeed=.true.)
+            endif
+            call randomNumberGenerator(getReal=r)
+            write(*,*) r
+
+            !$OMP DO SCHEDULE(STATIC,1)
           do iOctal = ioctal_beg, ioctal_end
              write(*,*) "Doing octal ",iOctal, " of ",ioctal_end
 
@@ -1461,7 +1468,9 @@ contains
                             thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
                                  thisOctal%newAtomLevel(subcell,1:nAtom,:)  + underCorrect * dPops
 
-                            thisOctal%atomLevel(subcell,:,:) = thisOctal%newatomLevel(subcell,:,:)!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!                            ! improve convergence...
+!                            thisOctal%atomLevel(subcell,:,:) = thisOctal%newatomLevel(subcell,:,:)!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
                             where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-30)
@@ -1562,6 +1571,8 @@ contains
                          if (iter == maxIter) then
                             popsConverged = .true.
                             write(message,'(a,e12.5)') "Maximum number of iterations reached in pop solver. fac = ",fac
+                            write(*,*) "fac, converged tol", fac,convergetol
+                            write(*,*) trim(message)
                             call writeWarning(message)
                          endif
 !                         write(*,*) "iter",iter,fac
@@ -1569,33 +1580,33 @@ contains
 !                      write(*,*) "Main iteration route converged after ", iter, " iterations"
                       thisOctal%ne(subcell) = ne
                       
-                        if (myRankisZero) then
-                           open(69, file=ifilename, status="old", position = "append", form="formatted")
-                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
-
-                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
-
-                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
-                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
-                                log10(thisOctal%rho(subcell))
-                           close(69) 
-                           itmp = itmp + 1
-                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
-                           open(69, file=tfilename, status="unknown",form="formatted")
-                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
-                           w = 0.5d0*(1.d0 - x1)
-                           do i = 1, nFreq
-                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1)
-                           enddo
-                           close(69)
-
-                        endif
+!                        if (myRankisZero) then
+!                           open(69, file=ifilename, status="old", position = "append", form="formatted")
+!                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
+!
+!                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
+!
+!                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
+!                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
+!                                log10(thisOctal%rho(subcell))
+!                           close(69) 
+!                           itmp = itmp + 1
+!                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
+!                           open(69, file=tfilename, status="unknown",form="formatted")
+!                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
+!                           w = 0.5d0*(1.d0 - x1)
+!                           do i = 1, nFreq
+!                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1)
+!                           enddo
+!                           close(69)
+!
+!                        endif
 
                    endif
 
@@ -1620,6 +1631,28 @@ contains
           end do
           !$OMP END DO
           !$OMP BARRIER
+
+            deallocate(oldPops)
+            deallocate(mainoldPops)
+            deallocate(newPops)
+            deallocate(dPops)
+            deallocate(jnuCont)
+            deallocate(ds)
+            deallocate(phi)
+            deallocate(rayDeltaV)
+            deallocate(i0)
+            deallocate(Hcol)
+            deallocate(HeIcol)
+            deallocate(HeIIcol)
+            deallocate(sourceNumber)
+            deallocate(cosTheta)
+            deallocate(weightFreq)
+            deallocate(weightOmega)
+            deallocate(hitPhotosphere)
+            deallocate(iCont)
+            deallocate(position)
+            deallocate(direction)
+
           !$OMP END PARALLEL
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
@@ -1678,13 +1711,13 @@ contains
           if (maxFracChange < tolerance) then
              gridConverged = .true.
           endif
-          gridconverged = .true.
-          write(*,*) "forcing convergence !!!!!!!!!!"
+!          gridconverged = .true.
+!          write(*,*) "forcing convergence !!!!!!!!!!"
 
 
-         deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
-               weightFreq, weightOmega, hcol, heicol, heiicol, iCont)
-         deallocate(position, direction, rayDeltaV)
+!         deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
+!               weightFreq, weightOmega, hcol, heicol, heiicol, iCont)
+!         deallocate(position, direction, rayDeltaV)
 
           if (.not.gridConverged) then
              if (.not.fixedRays) nRay = nRay * 2
@@ -1951,6 +1984,7 @@ contains
           if (nbug > 10000000) then
              write(*,*) "bug in direction to star"
              direction = toStar
+             exit
           endif
        enddo
     else
@@ -2266,6 +2300,11 @@ contains
                 etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
                 jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) /transitionFreq
              else
+                jnu = 0.d0
+                etaline = 0.d0
+             endif
+
+             if (.not.thisOctal%fixedTemperature(subcell)) then
                 jnu = 0.d0
                 etaline = 0.d0
              endif
@@ -2718,8 +2757,9 @@ contains
        !$OMP SHARED (deltaV, source, nSource, nFreqArray, freqArray, occultingDisc) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte)
 
-       !$OMP DO SCHEDULE(STATIC)
+       !$OMP DO SCHEDULE(STATIC,2)
        do ix = 1, cube%nx
+          write(*,*) "ix ",ix
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
                 if (nMonte > 1) then

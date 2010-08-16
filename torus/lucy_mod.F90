@@ -1645,11 +1645,13 @@ contains
              end if
           end do
        else
-          if (thisOctal%diffusionApprox(subcell)) then
-             nCellsInDiffusion = nCellsInDiffusion + 1
-          else
-             if (thisOctal%nCrossings(subcell) < minCrossings) then
-                nUnderSampled = nUndersampled + 1
+          if (.not.thisOctal%fixedTemperature(subcell)) then
+             if (thisOctal%diffusionApprox(subcell)) then
+                nCellsInDiffusion = nCellsInDiffusion + 1
+             else
+                if (thisOctal%inflow(subcell).and.(thisOctal%nCrossings(subcell) < minCrossings)) then
+                   nUnderSampled = nUndersampled + 1
+                endif
              endif
           endif
        endif
@@ -1786,7 +1788,7 @@ contains
                    thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + real(deltaT))
                 endif
  
-                if (thisOctal%nCrossings(subcell) .lt. minCrossings) then
+                if (thisOctal%inflow(subcell).and.(thisOctal%nCrossings(subcell) .lt. minCrossings)) then
                    nUnderSampled = nUndersampled + 1
                    thisOctal%undersampled(subcell) = .true.
                 endif

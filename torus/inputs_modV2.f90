@@ -252,9 +252,27 @@ contains
 
     select case(geometry)
 
-       case("ttauri")
-       call getReal("teff", teff, 1., cLine, fLine, nLines, &
-            "Source temperature (K) : ","(a,f8.0,a)", 0.0, ok, .true.)
+
+       case("wrshell")
+       call getReal("rcore", rCore, real(rSol/1.e10), cLine, fLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, rcore, cLine, fLine, nLines, &
+            "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, rinner, cLine, fLine, nLines, &
+            "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("vterm", vterm, 1.e5, cLine, fLine, nLines, &
+            "Terminal velocity (km/s): ","(a,f7.1,a)", 20., ok, .true.)
+
+       call getReal("mdot", mdot, real(msol/(365.25*24*3600.)), cLine, fLine, nLines, &
+            "Mass-loss rate (solar masses/year): ","(a,f7.3,a)", 1., ok, .true.)
+
+       call getReal("beta", beta, 1., cLine, fLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+
+     case("ttauri")
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
             "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
        rcore = TTauriRstar/1.0e10       ! [10^10cm]
@@ -338,28 +356,10 @@ contains
 
        call getLogical("lte", lte, cLine, fLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("lycontthick", LyContThick, cLine, fLine, nLines, &
-            "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
-       call getString("contflux", contFluxFile, cLine, fLine, nLines, &
-            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-       call getString("popfile", popFilename, cLine, fLine, nLines, &
-            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
-       call getLogical("writepops", writePops, cLine, fLine, nLines, &
-            "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-       call getLogical("readpops", readPops, cLine, fLine, nLines, &
-            "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-       call getLogical("writephasepops", writePhasePops, cLine, fLine, nLines, &
-            "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("readphasepops", readPhasePops, cLine, fLine, nLines, &
-            "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
-       !call getLogical("curtains", curtains, cLine, fLine, nLines, &
-       !         "Curtains of accretion: ","(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dipoleoffset", dipoleOffset, real(degtorad), cLine, fLine, nLines, &
             "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
        call getLogical("enhance", enhance, cLine, fLine, nLines, &
             "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getInteger("nlower", nLower, cLine, fLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
-       call getInteger("nupper", nUpper, cLine, fLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
        call getLogical("usehartmanntemp", useHartmannTemp, cLine, fLine, nLines, &
             "Use temperatures from Hartmann paper:","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("isotherm", isoTherm, cLine, fLine, nLines, &
@@ -579,9 +579,6 @@ contains
        call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
             "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
-       call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
-            "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
-
        call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
             "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -665,6 +662,9 @@ contains
          "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
 
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
+         amrGridCentrex = amrGridSize/2.d0
+
+    if (amr1d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
 
 
@@ -764,11 +764,6 @@ contains
        call getString(keyword, atomFileName(i), cLine, fLine, nLines, &
             "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
     enddo
-    call getInteger("itrans", itransLine, cLine, fLine, nLines, &
-         "Index of line transition: ","(a,i4,a)",4,ok,.true.)
-
-    call getInteger("iatom", itransAtom, cLine, fLine, nLines, &
-         "Atom of line transition: ","(a,i4,a)",4,ok,.true.)
 
 
 
@@ -970,6 +965,10 @@ contains
          "Minimum percentage of undersampled cell in lucy iteration: ", &
          "(a,f4.2,a)",0.0,ok,.false.)
 
+    call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
+         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
+
+
     call getReal("diffdepth", diffDepth, 1., cLine, fLine, nLines, &
          "Depth of diffusion zone (in Rosseland optical depths): ", &
          "(a,f5.1,a)",10.0,ok,.false.)
@@ -986,8 +985,6 @@ contains
     call getReal("tauforce", tauForce, 1., cLine, fLine, nLines, &
          "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
 
-    call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
-         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
 
     call getLogical("resetdiffusion", resetDiffusion, cLine, fLine, nLines, &
          "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
@@ -995,12 +992,8 @@ contains
     call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
          "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if (doSmoothGrid) then
-       call getReal("smoothfactor", smoothFactor, 1.0, cLine, fLine, nLines, &
-            "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .true.)
-    else
-       smoothFactor = 0.0      
-    end if
+    call getReal("smoothfactor", smoothFactor, 1.0, cLine, fLine, nLines, &
+         "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
     call getLogical("smoothgridtau", doSmoothGridtau, cLine, fLine, nLines, &
          "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1010,7 +1003,7 @@ contains
             "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
        call getReal("taumax", tauSmoothMax, 1.0, cLine, fLine, nLines, &
             "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 0.5, ok, .false.)
-       call getReal("taumin", tauSmoothMin, 1.0, cLine, fLine, nLines, &
+       call getReal("taumin", tauSmoothMin, 0.1, cLine, fLine, nLines, &
             "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 0.001, ok, .false.)
     endif
 
@@ -1097,6 +1090,15 @@ contains
          "Calculate data cube of 21cm emission: ","(a,1l,a)", .false., ok, .false.)
     call getLogical("splitCubes", splitCubes, cLine, fLine, nLines, &
          "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
+
+    if (atomicPhysics) then
+       call getInteger("itrans", itransLine, cLine, fLine, nLines, &
+            "Index of line transition: ","(a,i4,a)",4,ok,.true.)
+       
+       call getInteger("iatom", itransAtom, cLine, fLine, nLines, &
+            "Atom of line transition: ","(a,i4,a)",4,ok,.true.)
+    endif
+
 
     if ( h21cm ) then 
        call getInteger("nSubpixels", nSubpixels, cLine, fLine, nLines, &

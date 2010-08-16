@@ -3860,7 +3860,7 @@ CONTAINS
 
      if (ttauriwind) then
         inflow = .false.
-        do i = 1, 100
+        do i = 1, 1000
            rVec = randomPositionInCell(thisOctal,subcell)
            if (inFLowBlandfordPayne(rVec)) then
               inFlow = .true.
@@ -5343,9 +5343,15 @@ CONTAINS
 !    point = rotateY(point, dble(dipoleOffset))
 !    pointvec = rotateY(pointvec, dble(dipoleOffset))
 
+
+    thisOctal%inFlow(subcell) = .true.
+
+    r = modulus(point)
+    if (r < (ttauriRstar/1.d10)) thisOctal%inflow(subcell) = .false.
+
+
     if (.not. ttau_acc_on) then
        ! we don't include the magnetopsherical accretion
-       thisOctal%inFlow(subcell) = .FALSE.
        thisOctal%rho(subcell) = 1.e-19
        IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
     else
@@ -5412,7 +5418,6 @@ CONTAINS
              thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
           END IF
        ELSE  ! not inflow
-          thisOctal%inFlow(subcell) = .FALSE.
           !     thisOctal%rho(subcell) = 1.e-25
           thisOctal%rho(subcell) = 1.e-19
           IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
@@ -6593,20 +6598,6 @@ CONTAINS
 !    tAccretionDouble = max(1.d0, tAccretionDouble)
 !    Taccretion = TaccretionDouble**0.25
 
-!    write(*,*) contfluxfile
-    open(20,file=contFluxFile,status="old",form="formatted")
-    nnu = 1
-10  continue
-    read(20,*,end=20) nuarray(nnu), fnu(nnu)
-    nnu = nnu + 1
-    goto 10
-20  continue
-    nnu = nnu  - 1
-    close(20)
-    tot = 0.
-    do i = 1, nnu-1
-       tot = tot + 0.5*(nuArray(i+1)-nuArray(i))*(fnu(i+1)+fnu(i))
-    enddo
 !    write(*,*) (fourPi*TTauriRstar**2)*tot/lSol," solar luminosities"   
 !
 !    write(*,*) (fourPi*TTauriRstar**2)*tot/ &
@@ -7168,7 +7159,7 @@ CONTAINS
     r = modulus(rVec)
 
     thisOctal%rho(subcell) = 1.e-30
-    thisOctal%temperature(subcell) = 0.9*teff
+    thisOctal%temperature(subcell) = 30000.
     thisOctal%etaCont(subcell) = 1.e-30
     thisOctal%inFlow(subcell) = .false.
     thisOctal%velocity(subcell) = VECTOR(0.,0.,0.)
@@ -15551,7 +15542,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, &
+         photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
@@ -15630,6 +15621,8 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
     if (atomicPhysics) then
+       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%atomAbundance, thisOctal%maxChildren, nAtom)
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)

@@ -32,14 +32,12 @@ contains
 
     if (PRESENT(reset)) then
        if (reset) then
-          r = ran3_real(iseed, reset=.true.)
           r = ran3_double(iseed, reset=.true.)
        endif
     endif
 
     if (PRESENT(putiSeed)) then
        iSeed = putIseed
-       r = ran3_real(iseed, reset=.true.)
        r = ran3_double(iseed, reset=.true.)
     endif
 
@@ -59,19 +57,17 @@ contains
           !$OMP BARRIER
           iseed = iseed_omp
 #endif
-          r = ran3_real(iseed, reset=.true.)
           r = ran3_double(iseed, reset=.true.)
 
        endif
     endif
 
     if (PRESENT(getReal)) then
-       getReal = ran3_real(iseed)
+       getReal = real(ran3_double(iseed))
     endif
 
     if (PRESENT(randomSeed)) then
        call seedFromClockTime(iSeed)
-       r = ran3_real(iseed, reset=.true.)
        r = ran3_double(iseed, reset=.true.)
     endif
 
@@ -81,14 +77,14 @@ contains
 
     if (PRESENT(getRealArray)) then
        do i = 1, SIZE(getRealArray)
-          getRealArray(i) = ran3_real(iseed)
+          getRealArray(i) = real(ran3_double(iseed))
        enddo
     endif
 
     if (PRESENT(getRealArray2d)) then
        do i = 1, SIZE(getRealArray2d,1)
           do j = 1, SIZE(getRealArray2d,2)
-             getRealArray2d(i,j) = ran3_real(iseed)
+             getRealArray2d(i,j) = real(ran3_double(iseed))
           enddo
        enddo
     endif
@@ -231,60 +227,11 @@ contains
     ibig = (j+myRankGlobal+1)*ibig
   END SUBROUTINE seedFromClockTime
 
-  real FUNCTION RAN3_real(IDUM, reset) result (ran3)
-    implicit none
-    real(double), parameter ::  MBIG=1000000000.d0,MSEED=161803398.d0,MZ=0.d0
-    real(double), parameter :: fac = 1.d-9
-    real(double),save  :: ma(55)
-    integer(bigint),save :: iff = 0
-    integer(bigint) :: idum, ii, i, k
-    real(double) :: mj, mk
-    integer(bigint), save :: inext, inextp
-    logical, optional :: reset
-    logical :: doreset
-!$OMP THREADPRIVATE (ma, iff, inext, inextp)
-
-    doreset = .false.
-      if (present(reset)) doreset=reset 
-     IF(doreset.OR.IFF.EQ.0)THEN
-        IFF=1
-        MJ=MSEED-ABS(IDUM)
-        MJ=MOD(MJ,MBIG)
-        MA(55)=MJ
-        MK=1
-        DO I=1,54
-          II=MOD(21*I,55_bigint)
-          MA(II)=MK
-          MK=MJ-MK
-          IF(MK.LT.MZ)MK=MK+MBIG
-          MJ=MA(II)
-          enddo
-        DO  K=1,4
-          DO  I=1,55
-            MA(I)=MA(I)-MA(1+MOD(I+30,55_bigint))
-            IF(MA(I).LT.MZ)MA(I)=MA(I)+MBIG
-         enddo
-         enddo
-        INEXT=0
-        INEXTP=31
-      ENDIF
-      INEXT=INEXT+1
-      IF(INEXT.EQ.56)INEXT=1
-      INEXTP=INEXTP+1
-      IF(INEXTP.EQ.56)INEXTP=1
-      MJ=MA(INEXT)-MA(INEXTP)
-      IF(MJ.LT.MZ)MJ=MJ+MBIG
-      MA(INEXT)=MJ
-      RAN3=MJ*FAC
-!      if (ran3 > 1.d0) then
-!         write(*,*) "ran3 bug (real)",ran3
-!      endif
-    END FUNCTION RAN3_real
 
   real(double) FUNCTION RAN3_double(IDUM, reset) result (ran3)
     implicit none
-    real(double), parameter ::  MBIG=1000000000.d0,MSEED=161803398.d0,MZ=0.d0
-    real(double), parameter :: fac = 1.d-9
+    real(double), parameter ::  MBIG=1000000000000000.d0,MSEED=161803398331234.d0,MZ=0.d0
+    real(double), parameter :: fac = 1.d-15
     real(double),save  :: ma(55)
     integer(bigint),save :: iff = 0
     integer(bigint) :: idum, ii, i, k

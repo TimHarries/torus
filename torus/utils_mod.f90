@@ -129,8 +129,8 @@ contains
     ok = .true.
 
     ! special case:
-    if (a == 0) then
-       if (b/=0) then
+    if (a == 0.d0) then
+       if (b/=0.d0) then
           x1 = -c/b; x2 = -c/b 
        else
           write(*,*) "! quad solver failed (1):   (a,b,c) = ", a, b, c
@@ -142,7 +142,7 @@ contains
 
     y = b*b-4.d0*a*c
 
-    if (y >= 0.) then
+    if (y >= 0.d0) then
        x1 = (-b + sqrt(y))/(2.d0*a)
        x2 = (-b - sqrt(y))/(2.d0*a)
     else
