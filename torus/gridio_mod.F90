@@ -455,6 +455,10 @@ contains
           call writeAttributeStaticFlexi(20, "splitAzimuthally", thisOctal%splitAzimuthally, fileFormatted)
           call writeAttributeStaticFlexi(20, "phi", thisOctal%phi, fileFormatted)
           call writeAttributeStaticFlexi(20, "dphi", thisOctal%dphi, fileFormatted)
+          call writeAttributeStaticFlexi(20, "phimin", thisOctal%phiMin, fileFormatted)
+          call writeAttributeStaticFlexi(20, "phimax", thisOctal%phiMax, fileFormatted)
+
+
           call writeAttributeStaticFlexi(20, "r", thisOctal%r, fileFormatted)
           call writeAttributeStaticFlexi(20, "parentSubcell", thisOctal%parentSubcell, fileFormatted)
           call writeAttributeStaticFlexi(20, "inStar", thisOctal%inStar, fileFormatted)
@@ -3247,6 +3251,10 @@ contains
             call readSingleFlexi(20, thisOctal%phi, fileFormatted)
          case("dphi")
             call readSingleFlexi(20, thisOctal%dphi, fileFormatted)
+         case("phimin")
+            call readSingleFlexi(20, thisOctal%phimin, fileFormatted)
+         case("phimax")
+            call readSingleFlexi(20, thisOctal%phimax, fileFormatted)
          case("r")
             call readSingleFlexi(20, thisOctal%r, fileFormatted)
 
@@ -3536,6 +3544,10 @@ contains
             call receiveSingleFlexi(thisOctal%phi)
          case("dphi")
             call receiveSingleFlexi(thisOctal%dphi)
+         case("phimin")
+            call receiveSingleFlexi(thisOctal%phimin)
+         case("phimax")
+            call receiveSingleFlexi(thisOctal%phimax)
          case("r")
             call receiveSingleFlexi(thisOctal%r)
 
@@ -3796,6 +3808,8 @@ contains
       call sendAttributeStaticFlexi(iThread, "splitAzimuthally", thisOctal%splitAzimuthally)
       call sendAttributeStaticFlexi(iThread, "phi", thisOctal%phi)
       call sendAttributeStaticFlexi(iThread, "dphi", thisOctal%dphi)
+      call sendAttributeStaticFlexi(iThread, "phimin", thisOctal%phimin)
+      call sendAttributeStaticFlexi(iThread, "phimax", thisOctal%phimax)
       call sendAttributeStaticFlexi(iThread, "r", thisOctal%r)
       call sendAttributeStaticFlexi(iThread, "parentSubcell", thisOctal%parentSubcell)
       call sendAttributeStaticFlexi(iThread, "inStar", thisOctal%inStar)

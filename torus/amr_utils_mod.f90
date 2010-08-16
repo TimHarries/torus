@@ -167,6 +167,7 @@ module amr_utils_mod
       use input_variables, only : suppressWarnings
       TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
+      real(double) :: phi, phimax, phimin
       INTEGER, INTENT(OUT)   :: subcell
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
@@ -241,6 +242,9 @@ module amr_utils_mod
         !   must be a problem.
         IF (haveDescended) then
            boundaryProblem = .TRUE.
+           phi =  atan2(point%y,point%x)
+           phimin = thisOctal%phi - thisOctal%dphi/2.d0
+           phimax = thisOctal%phi + thisOctal%dphi/2.d0
            PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
            write(*,*) "rank ",myrankglobal, thisOctal%mpithread(1:8)
            write(*,*) "split az ",thisOctal%splitAzimuthally
@@ -260,6 +264,8 @@ module amr_utils_mod
                 thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
            write(*,*) "size ",thisOctal%subcellsize
+           write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg,thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
+                phi < thisOctal%phimax, phi > thisOctal%phimin
             fac = -2.d0
             write(*,*) sqrt(fac)
 !           rVec = subcellCentre(thisOctal,subcell)
@@ -616,7 +622,9 @@ module amr_utils_mod
           eps =  0.d0 ! sqrt(epsilon(thisOctal%subcellsize))
           IF     (r < thisOctal%r - thisOctal%subcellSize - eps) THEN ; inOctal = .FALSE. 
           ELSEIF (r > thisOctal%r + thisOctal%subcellSize + eps) THEN ; inOctal = .FALSE.
-          ELSEIF (dphi > thisOctal%dphi/2.d0) THEN ; inOctal = .FALSE.
+!          ELSEIF (dphi > thisOctal%dphi/2.d0) THEN ; inOctal = .FALSE.
+          ELSEIF (phi > thisOctal%phimax) THEN ; inOctal = .FALSE.
+          ELSEIF (phi < thisOctal%phimin) THEN ; inOctal = .FALSE.
           ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
           ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.
           ELSE  

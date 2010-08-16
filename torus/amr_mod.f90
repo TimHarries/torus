@@ -429,6 +429,8 @@ CONTAINS
           grid%octreeRoot%maxChildren = 4
           grid%octreeRoot%phi = pi
           grid%octreeRoot%dPhi = twoPi
+          grid%octreeRoot%phiMin = 0.d0
+          grid%octreeRoot%phiMax = twoPi
        endif
     endif
 
@@ -744,10 +746,15 @@ CONTAINS
               parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
           endif
           parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+          parent%child(newChildIndex)%phimin = parent%child(newChildIndex)%phi - parent%dPhi/4.d0
+          parent%child(newChildIndex)%phimax = parent%child(newChildIndex)%phi + parent%dPhi/4.d0
        else
           parent%child(newChildIndex)%phi = parent%phi
           parent%child(newChildIndex)%dphi = parent%dphi
+          parent%child(newChildIndex)%phimin = parent%phimin
+          parent%child(newChildIndex)%phimax = parent%phimax
        endif
+       if (parent%child(newChildIndex)%phimin < 1.d-10) parent%child(newChildIndex)%phimin = 0.d0 ! fixed!!!!
        parent%child(newChildIndex)%splitAzimuthally = .false.
        parent%child(newChildIndex)%maxChildren = 4
 
@@ -9506,6 +9513,10 @@ end function readparameterfrom2dmap
     dest%rho =  source%rho
     dest%phi =  source%phi
     dest%dphi = source%dphi
+
+    dest%phimin = source%phimin
+    dest%phimax = source%phimax
+
     dest%r =   source%r
     dest%velocity = source%velocity
     dest%temperature = source%temperature
@@ -12207,6 +12218,7 @@ end function readparameterfrom2dmap
     real(double) :: kabs, ksca, r, fac, tauRoss, kabsDust, kScaDust
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
+    real(double) :: r1
     integer :: neighbourSubcell, j, nDir
     logical :: split, outofMemory
     logical, save :: firsttime = .true., firstTimeMem = .true.

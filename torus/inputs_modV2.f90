@@ -966,7 +966,7 @@ contains
          "(a,f4.2,a)",0.0,ok,.false.)
 
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
-         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
+         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
 
     call getReal("diffdepth", diffDepth, 1., cLine, fLine, nLines, &
