@@ -2594,74 +2594,73 @@ contains
 
   end subroutine hydroValuesServer
 
-  subroutine fillVelocityCornersFromHydro(grid)
-    include 'mpif.h'
-    type(GRIDTYPE) :: grid
-    integer :: iThread
-    integer :: ierr
-
-       do iThread = 1, nThreadsGlobal-1
-          if (myrankGlobal /= iThread) then 
-             call hydroValuesServer(grid, iThread)
-          else
-             call  fillVelocityCornersFromCentres(grid%octreeRoot, grid)
-             call shutdownServers()
-          endif
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-       enddo
-
-     end subroutine fillVelocityCornersFromHydro
-
-  recursive subroutine fillVelocityCornersFromCentres(thisOctal, grid)
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, child
-    integer :: i
-
-    if (thisOctal%nChildren > 0) then
-       do i = 1, thisOctal%nChildren
-          child => thisOctal%child(i)
-          call fillVelocityCornersFromCentres(child, grid)
-       enddo
-    else
-       call fillVelocityCorners(thisOctal, grid, velocityCornerFixedGrid, grid%octreeRoot%threed)
-    endif
-  end subroutine fillVelocityCornersFromCentres
-
-  function velocityCornerFixedGrid(rVec, grid) result(meanVel)
-    type(GRIDTYPE), intent(in) :: grid
-    type(OCTAL), pointer :: thisOctal, currentOctal
-    integer :: i, currentSubcell
-    type(VECTOR), intent(in) :: rVec
-    type(VECTOR) :: vel(8), cVec, pVec(8), meanVel
-    integer :: nd
-    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi
-
-    pVec(1) = VECTOR(+0.1,+0.1,+0.1)
-    pVec(2) = VECTOR(-0.1,+0.1,+0.1)
-    pVec(3) = VECTOR(+0.1,-0.1,+0.1)
-    pVec(4) = VECTOR(-0.1,-0.1,+0.1)
-    pVec(5) = VECTOR(+0.1,+0.1,-0.1)
-    pVec(6) = VECTOR(-0.1,+0.1,-0.1)
-    pVec(7) = VECTOR(+0.1,-0.1,-0.1)
-    pVec(8) = VECTOR(-0.1,-0.1,-0.1)
-    currentOctal => grid%octreeRoot
-    call findSubcellLocal(rVec, currentOctal, currentSubcell)
-    thisOctal => currentOctal
-    meanVel = VECTOR(0.d0, 0.d0, 0.d0)
-    do i = 1, 8
-
-       cVec = rVec + grid%halfSmallestSubcell*pvec(i) 
-       if (inOctal(grid%octreeRoot, cVec)) then
-          call getHydroValues(grid, cVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
-          vel(i) = VECTOR(rhou/rho, rhov/rho, rhow/rho)/cSpeed
-       else
-          vel(i) = currentOctal%velocity(currentSubcell)
-       endif
-       meanVel = meanVel + vel(i)
-    enddo
-    meanVel  = meanVel / 8.d0
-  end function velocityCornerFixedGrid
-
+!  subroutine fillVelocityCornersFromHydro(grid)
+!    include 'mpif.h'
+!    type(GRIDTYPE) :: grid
+!    integer :: iThread
+!    integer :: ierr
+!
+!       do iThread = 1, nThreadsGlobal-1
+!          if (myrankGlobal /= iThread) then 
+!             call hydroValuesServer(grid, iThread)
+!          else
+!             call  fillVelocityCornersFromCentres(grid%octreeRoot, grid)
+!             call shutdownServers()
+!          endif
+!          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!       enddo
+!
+!     end subroutine fillVelocityCornersFromHydro
+!
+!  recursive subroutine fillVelocityCornersFromCentres(thisOctal, grid)
+!    type(GRIDTYPE) :: grid
+!    type(OCTAL), pointer :: thisOctal, child
+!    integer :: i
+!
+!    if (thisOctal%nChildren > 0) then
+!       do i = 1, thisOctal%nChildren
+!          child => thisOctal%child(i)
+!          call fillVelocityCornersFromCentres(child, grid)
+!       enddo
+!    else
+!       call fillVelocityCorners(thisOctal, velocityCornerFixedGrid)
+!    endif
+!  end subroutine fillVelocityCornersFromCentres
+!
+!  function velocityCornerFixedGrid(rVec) result(meanVel)
+!    type(OCTAL), pointer :: thisOctal, currentOctal
+!    integer :: i, currentSubcell
+!    type(VECTOR), intent(in) :: rVec
+!    type(VECTOR) :: vel(8), cVec, pVec(8), meanVel
+!    integer :: nd
+!    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi
+!
+!    pVec(1) = VECTOR(+0.1,+0.1,+0.1)
+!    pVec(2) = VECTOR(-0.1,+0.1,+0.1)
+!    pVec(3) = VECTOR(+0.1,-0.1,+0.1)
+!    pVec(4) = VECTOR(-0.1,-0.1,+0.1)
+!    pVec(5) = VECTOR(+0.1,+0.1,-0.1)
+!    pVec(6) = VECTOR(-0.1,+0.1,-0.1)
+!    pVec(7) = VECTOR(+0.1,-0.1,-0.1)
+!    pVec(8) = VECTOR(-0.1,-0.1,-0.1)
+!    currentOctal => grid%octreeRoot
+!    call findSubcellLocal(rVec, currentOctal, currentSubcell)
+!    thisOctal => currentOctal
+!    meanVel = VECTOR(0.d0, 0.d0, 0.d0)
+!    do i = 1, 8
+!
+!       cVec = rVec + grid%halfSmallestSubcell*pvec(i) 
+!       if (inOctal(grid%octreeRoot, cVec)) then
+!          call getHydroValues(grid, cVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
+!          vel(i) = VECTOR(rhou/rho, rhov/rho, rhow/rho)/cSpeed
+!       else
+!          vel(i) = currentOctal%velocity(currentSubcell)
+!       endif
+!       meanVel = meanVel + vel(i)
+!    enddo
+!    meanVel  = meanVel / 8.d0
+!  end function velocityCornerFixedGrid
+!
     subroutine distributeSphDataOverMPI()
       use sph_data_class, only : sphData, npart, init_sph_data
       include 'mpif.h'

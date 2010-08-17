@@ -1048,6 +1048,9 @@ contains
     use gridio_mod, only : writeAmrGrid
     use random_mod
     use amr_mod, only: getOctalArray, sortOctalArray
+#ifdef MEMCHECK
+    use memory_mod, only : resetGlobalMemory
+#endif
 #ifdef MPI
     use amr_mod, only : countVoxels
     include 'mpif.h'

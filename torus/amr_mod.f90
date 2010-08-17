@@ -17116,51 +17116,6 @@ IF ( .NOT. gridConverged ) RETURN
 
   end function averagerhofromoctal
 
-  subroutine pathTest(grid)
-    use unix_mod, only: unixTimes
-
-    type(GRIDTYPE) :: grid
-    integer :: i, nPaths
-    type(VECTOR) :: rVec, uHat
-    real(double) :: r, s, tot
-    integer :: cpuTime, startTime, endTime
-
-    nPaths = 100000
-    write(*,*) "Doing path test..."
-    tot = 0.d0
-    call unixTimes(cpuTime, startTime)
-    do i = 1, nPaths
-       call randomNumberGenerator(getDouble=r)
-       rVec%x = grid%octreeRoot%centre%x + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call randomNumberGenerator(getDouble=r)
-       rVec%y = grid%octreeRoot%centre%y + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call randomNumberGenerator(getDouble=r)
-       rVec%z = grid%octreeRoot%centre%z + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       uHat = randomUnitVector()
-       call testToBoundary(grid, rVec, uHat, s)
-       tot = tot+s
-    enddo
-    call unixTimes(cpuTime, endTime)
-    write(*,*) "Path integrals per second: ",real(nPaths)/real(endTime - startTime)
-    write(*,*) "Check: ",tot/real(nPaths)
-
-    tot = 0.d0
-    call unixTimes(cpuTime, startTime)
-    do i = 1, nPaths
-       call randomNumberGenerator(getDouble=r)
-       rVec%x = grid%octreeRoot%centre%x + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call randomNumberGenerator(getDouble=r)
-       rVec%y = grid%octreeRoot%centre%y + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       call randomNumberGenerator(getDouble=r)
-       rVec%z = grid%octreeRoot%centre%z + (2.d0*r-1.d0) * grid%octreeRoot%subcellSize
-       uHat = randomUnitVector()
-       call testToBoundary2(grid, rVec, uHat, s)
-       tot = tot + s
-    enddo
-    call unixTimes(cpuTime, endTime)
-    write(*,*) "Path integrals per second with neighbour pointers: ",real(nPaths)/real(endTime - startTime)
-    write(*,*) "Check: ",tot/real(nPaths)
-  end subroutine pathTest
    
   subroutine testToBoundary(grid, rVec, uHat, totDist)
     type(GRIDTYPE) :: grid

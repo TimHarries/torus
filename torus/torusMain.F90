@@ -26,8 +26,8 @@ program torus
   use constants_mod
 
   use random_mod
-  use amr_mod, only: amrGridValues, hydroWarpFitSplines, polardump, pathtest, &
-       setupNeighbourPointers, findtotalmass
+  use amr_mod, only: amrGridValues, hydroWarpFitSplines, polardump, &
+       findtotalmass
   use setupAMR_mod
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
   use grid_mod, only: initAMRgrid, grid_info
@@ -844,11 +844,6 @@ program torus
   lucyRadiativeEq = .false.
   call set_up_lambda_array
   
-  if (geometry=="pathtest") then
-     call setupNeighbourPointers(grid, grid%octreeRoot)
-     call pathTest(grid)
-     goto 666
-  endif
   
   ! For Shakara geometry, get the inner edge details before creating the SEDs
   if (geometry=="shakara") then

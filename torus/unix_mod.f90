@@ -6,7 +6,7 @@ contains
 
   subroutine unixGetenv(envVariable, directory, length, error)
 
-    use f90_unix
+!    use f90_unix_env
 
     character(len=*) :: envVariable
     character(len=*) :: directory
@@ -21,46 +21,28 @@ contains
 
   subroutine unixGetLogin(login)
     
-    use f90_unix_env
+!    use f90_unix_env
     
     character(len=80) :: login
     integer :: n
-    call getLogin(login)
+!    call getLogin(login)
     n = len(trim(login))
-    !login = " "
+    login = " "
 
   end subroutine unixGetLogin
 
   subroutine unixGetHostname(name)
 
-    use f90_unix_env
+!    use f90_unix_env
     
     character(len=*) :: name
-    integer :: n
+!    integer :: n
     
-    !name = " "
-    call getHostname(name, n)
+    name = " "
+!    call getHostname(name, n)
 
   end subroutine unixGetHostname
 
-  subroutine unixTimes(cpuTime, systemTime)
-
-    use f90_unix
-  
-    integer :: cpuTime, systemTime
-    integer :: countRate
-    type(tms) :: timeData
-    
-    countRate = clock_ticks_per_second() 
-    systemTime = times(timeData) / countRate
-    
-    cpuTime = timeData%uTime + timeData%cuTime !+ &
-            !  timeData%sTime + timeData%suTime 
-    
-    cpuTime = cpuTime / countRate
-
-
-  end subroutine unixTimes
     
 
 

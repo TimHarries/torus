@@ -135,7 +135,7 @@ contains
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
     use input_variables, only : hydrovelocityconv
-    use mpi_amr_mod, only : fillVelocityCornersFromHydro
+!    use mpi_amr_mod, only : fillVelocityCornersFromHydro
     use amr_mod, only : hydroVelocityConvert
 #endif
     use setupamr_mod, only: doSmoothOnTau
@@ -170,9 +170,9 @@ contains
         if (grid%splitOverMPI.and.hydrovelocityconv) then
            call setallUnchanged(grid%octreeRoot)
            call hydroVelocityConvert(grid%octreeRoot)
-           if (myrankGlobal /= 0) then
-              call fillVelocityCornersFromHydro(grid)
-           endif
+!           if (myrankGlobal /= 0) then
+!              call fillVelocityCornersFromHydro(grid)
+!           endif
         endif
 #endif
         if (dustPhysics) then

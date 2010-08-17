@@ -52,8 +52,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use gridtype_mod, only: GRIDTYPE       
   use gridio_mod, only: writeamrgrid
   use parallel_mod, only: torus_mpi_barrier
-  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint, systemInfo
-  use unix_mod, only: unixTimes
+  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
@@ -215,7 +214,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: fac1, fac2, fac3
 
   real(double) :: energyPerPhoton
-  integer :: cpuTime, startTime
 
   ! Spot stuff
   real :: chanceSpot                     ! chance of spot
@@ -293,12 +291,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   intPathError = 0
   hitCore = .false.
   chanceHotRing = 0.
-  cpuTime = 0; dopshift = 0.
+  dopshift = 0.
   outPhoton%lambda = 0.; obsPhoton%lambda = 0.
   ok = .true.; photonFromEnvelope = .true.
   rhatinStar = VECTOR(0.d0, 0.d0, 0.d0)
   sourcesubcell = 0; spotPhoton = .false.
-  startTime = 0
   call define_rotation_axis
 
   objectDistance = griddistance * pctocm
@@ -378,7 +375,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
           
      grid%timeNow = phaseTime * real(iPhase-1)
 
-     call unixTimes(cpuTime, startTime)
 
      viewVec = originalViewVec
      outVec = (-1.d0)*viewVec
@@ -1257,7 +1253,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-     call unixTimes(cpuTime, startTime)
 
 
 
@@ -2786,7 +2781,6 @@ endif ! (doPvimage)
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
 
-     call systemInfo(startTime,nPhotons)
      
      if (grid%adaptive) then
         write(message,*)  tooFewSamples, ' rays had 2 or less samples.'
