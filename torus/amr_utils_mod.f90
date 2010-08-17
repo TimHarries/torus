@@ -264,7 +264,8 @@ module amr_utils_mod
                 thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
            write(*,*) "size ",thisOctal%subcellsize
-           write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg,thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
+           write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
+                thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
                 phi < thisOctal%phimax, phi > thisOctal%phimin
             fac = -2.d0
             write(*,*) sqrt(fac)

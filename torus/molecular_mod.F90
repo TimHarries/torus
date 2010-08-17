@@ -45,6 +45,7 @@ module molecular_mod
 
    integer(bigInt) :: iseedpublic
    real(double) :: r1(5) !! quasi random number generators
+   real(double) :: r 
    integer :: accstep = 5
    integer :: accstepgrand = 4
    integer :: deptharray(50) = 0
@@ -1027,7 +1028,7 @@ module molecular_mod
       endif
 
       call randomNumberGenerator(getIseed = fixedRaySeed)
-
+      write(*,*) "myrank ",myrankglobal,fixedRayseed
 ! This is the loop that controls everything
 ! 1) istage = 1, fixed rays to reduce variance between cells or 
 ! 2) istage = 2, random rays to ensure sufficient spatial/frequency sampling
@@ -1111,11 +1112,12 @@ module molecular_mod
 ! Initialise quasi-random number generator
             if (fixedRays) then
                call randomNumberGenerator(putIseed=fixedRaySeed)
-               call randomNumberGenerator(syncIseed=.true.)   ! same seed for fixed rays
                if(quasi) call sobseq(r1, -1)
             else
                call randomNumberGenerator(randomSeed=.true.)
             endif
+
+
 
 ! default loop indicies for single processor otherwise do MPI stuff
             ioctal_beg = 1
@@ -1142,8 +1144,6 @@ module molecular_mod
                ioctal_end = ioctal_beg + m - 1
             end if
             
-
-	    write(*,*) myrankGlobal, " doing rays ",ioctal_beg,ioctal_end            
 
 #endif
 
@@ -1199,6 +1199,8 @@ module molecular_mod
                   ctot(1:maxlevel))
 
 ! First populate ds, phi and i0 so that they can be passed on to calculatejbar             
+
+
              do iRay = 1, nRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &

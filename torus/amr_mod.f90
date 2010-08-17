@@ -12218,7 +12218,6 @@ end function readparameterfrom2dmap
     real(double) :: kabs, ksca, r, fac, tauRoss, kabsDust, kScaDust
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
-    real(double) :: r1
     integer :: neighbourSubcell, j, nDir
     logical :: split, outofMemory
     logical, save :: firsttime = .true., firstTimeMem = .true.
