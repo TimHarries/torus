@@ -4,42 +4,42 @@ The style file: mn2e.bst
 Database file #1: references.bib
 You've used 96 entries,
             2601 wiz_defined-function locations,
-            1030 strings with 20915 characters,
-and the built_in function-call counts, 46215 in all, are:
-= -- 4369
+            1043 strings with 20975 characters,
+and the built_in function-call counts, 46587 in all, are:
+= -- 4448
 > -- 3692
 < -- 40
 + -- 1275
 - -- 1275
-* -- 4563
-:= -- 8529
+* -- 4616
+:= -- 8574
 add.period$ -- 0
 call.type$ -- 96
 change.case$ -- 813
 chr.to.int$ -- 96
 cite$ -- 96
-duplicate$ -- 1133
-empty$ -- 1693
+duplicate$ -- 1141
+empty$ -- 1701
 format.name$ -- 1407
-if$ -- 8393
+if$ -- 8480
 int.to.chr$ -- 1
 int.to.str$ -- 0
 missing$ -- 96
 newline$ -- 298
 num.names$ -- 396
-pop$ -- 643
+pop$ -- 627
 preamble$ -- 1
 purify$ -- 901
 quote$ -- 0
 skip$ -- 1482
 stack$ -- 0
-substring$ -- 2127
+substring$ -- 2219
 swap$ -- 156
 text.length$ -- 12
 text.prefix$ -- 421
 top$ -- 0
 type$ -- 861
 warning$ -- 0
-while$ -- 384
+while$ -- 392
 width$ -- 0
-write$ -- 966
+write$ -- 974
