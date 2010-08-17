@@ -21,6 +21,7 @@ use mpi_global_mod
 use unix_mod, only: unixGetenv
 use photon_mod
 use phasematrix_mod
+use phfit_mod, only : phfit2
 
 implicit none
 

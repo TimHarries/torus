@@ -10,6 +10,7 @@ module modelatom_mod
   use stateq_mod, only:  expint
   use utils_mod, only: locate, sort
   use source_mod, only: SOURCETYPE
+  use phfit_mod, only : phfit2
 
   implicit none
 

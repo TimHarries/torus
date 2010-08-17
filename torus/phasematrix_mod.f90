@@ -577,9 +577,6 @@ contains
     if (useNdf) then
        write(message,*) "Writing spectrum to ",trim(outfile),".sdf"
        call writeInfo(message, TRIVIAL)
-       call wrtsp(nLambda,real(stokes_i),real(stokes_q),real(stokes_qv), &
-            real(stokes_u), &
-            real(stokes_uv),tmpXarray,outFile)
     else
        write(message,*) "Writing spectrum to ",trim(outfile),".dat"
        call writeInfo(message, TRIVIAL)

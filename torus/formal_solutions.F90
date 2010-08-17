@@ -1471,7 +1471,10 @@ contains
   ! Creates NDF image of flux map
   subroutine create_obs_flux_map(flux_ray, ray, dr, dphi, &
         nray, R_star, R_max, filename, npix)
-    use image_mod, only: IMAGETYPE, simply_writeimage, freeImage, initImage
+    use image_mod, only: IMAGETYPE, freeImage, initImage
+#ifdef USECFITSIO
+    use image_mod, only : writeFitsImage
+#endif
     implicit none
     integer, intent(in) :: nray  ! total number of rays
     real(double), intent(in) :: flux_ray(nray) ! Flux map  array dimension= nlam x #of integration points  
@@ -1488,6 +1491,8 @@ contains
     type(imagetype) ::  F_map  ! flux map   []
     integer :: i, j, ix, iy , k, nsize
     real :: x, y, flux, del, flux_min, offset
+    character(len=80) :: message
+    message = filename
 
     offset = 1.0e-4*R_star
     ! initializes the map
@@ -1526,7 +1531,10 @@ contains
     end do
 
     ! now save the image to a flie
-    call simply_writeImage(F_map, filename)
+
+#if USECFITSIO
+    call writeFitsImage(F_map, filename, 1.d0, "intensity")
+#endif
 
     ! clean up
     call freeImage(F_map)

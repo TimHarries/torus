@@ -14,6 +14,7 @@ use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, cellVolume
 use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcelllocal
 use source_mod, only: SOURCETYPE, sumSourceLuminosityMonochromatic
 use ion_mod, only: IONTYPE
+use phfit_mod, only : phfit2
 #ifdef MPI
 use mpi_global_mod, only : myrankGlobal
 #endif

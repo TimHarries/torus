@@ -32,13 +32,10 @@ MPIFLAG =
 # NAG Fortran compiler
 ifeq ($(SYSTEM), nagfor)
     F95COMP  = nagfor
-    F77COMP  = nagfor
     F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN
-    F77FLAG  = -colour -kind=byte
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
     UNIXMOD  = unix_mod.f90.linux
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = 
     EXE = torus.nag
     KNOWN_SYSTEM = yes
@@ -61,7 +58,6 @@ ifeq ($(SYSTEM), davesmac)
 #    FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -shared-intel -prof-use #-g -save-temps -traceback -mmacosx-version-min=10.4 -intel-static#-ipo #-g
     FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -shared-intel -ip -pad#-g -save-temps -traceback -mmacosx-version-min=10.4 -intel-static#-ipo #-g-ip
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
 #    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
     CFITSIOLIBS = -L/Users/drundle/bin/cfitsio/lib/ -lcfitsio
     MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
@@ -80,7 +76,6 @@ ifeq ($(SYSTEM), g95)
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
@@ -95,7 +90,6 @@ ifeq ($(SYSTEM), sun)
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.sun
     KNOWN_SYSTEM = yes
@@ -109,7 +103,6 @@ ifeq ($(SYSTEM), osx)
     FASTFLAG =
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.osx
     KNOWN_SYSTEM = yes
@@ -123,7 +116,6 @@ ifeq ($(SYSTEM), gfortran)
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
 #    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
@@ -140,7 +132,6 @@ ifeq ($(SYSTEM), macmpi)
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     MPI_INC  = -I/Users/th/macmpi
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     EXE = torus.macmpi
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -154,7 +145,6 @@ ifeq ($(SYSTEM), gfort)
 #    FASTFLAG = -O3
     FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
     KNOWN_SYSTEM = yes
@@ -171,7 +161,6 @@ ifeq  ($(SYSTEM), linux)
     FASTFLAG = -w 
     MATHTRAP = -ieee=stop
     UNIXMOD  = unix_mod.f90.linux
-    KINDMOD  = kind_mod.f90.linux
     F2CLIB   = -lg2c
     STATICLIBS = -lpthread
     EXE = torus.linux
@@ -185,7 +174,6 @@ ifeq ($(SYSTEM), alpha)
     FASTFLAG = -fast
     MATHTRAP = -fpe3
     UNIXMOD  = unix_mod.f90.osf
-    KINDMOD  = kind_mod.f90.osf
     EXE = torus
     KNOWN_SYSTEM = yes
 endif
@@ -197,7 +185,6 @@ ifeq ($(SYSTEM), lamosx)
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     EXE = torus.lamosx
     MPIFLAG = -DMPI
@@ -212,7 +199,6 @@ ifeq ($(SYSTEM), lamosx-intel)
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
     EXE = torus.lamosx-intel
     MPIFLAG = -DMPI
@@ -227,7 +213,6 @@ ifeq ($(SYSTEM), ompiosx)
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS =  -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx
@@ -243,7 +228,6 @@ ifeq ($(SYSTEM), ompi)
     DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS =  -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.ompi
     MPIFLAG = -DMPI
@@ -258,7 +242,6 @@ ifeq ($(SYSTEM), ompiosx-intel)
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
     STARLIBS =  -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx-intel
@@ -279,7 +262,6 @@ ifeq ($(SYSTEM), mpilam)
 #    MATHTRAP = -ieee=stop
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linux
-    KINDMOD  = kind_mod.f90.linux
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpilam
     MPIFLAG = -DMPI
@@ -298,7 +280,6 @@ ifeq ($(SYSTEM), mpich)
     MPI_INC  = -I${TOP}/include
     F77FLAG  = -w -fno-second-underscore
     UNIXMOD  = unix_mod.f90.linux
-    KINDMOD  = kind_mod.f90.linux
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpich
     MPIFLAG = -DMPI
@@ -314,7 +295,6 @@ ifeq ($(SYSTEM), linuxintel)
 #    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
     F2CLIB   = -L/usr/lib -lg2c
     EXE = torus.linuxintel
@@ -344,7 +324,6 @@ ifeq ($(SYSTEM), zen)
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
     EXE=torus.zen
     F77FLAG=
     F2CLIB=
@@ -365,7 +344,6 @@ ifeq ($(SYSTEM), zensingle)
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
     EXE=torus.zensingle
     F77FLAG=
     F2CLIB=
@@ -386,7 +364,6 @@ endif
      STATICFLAG=
      MATHTRAP=
      UNIXMOD=unix_mod.f90.linuxintel
-     KINDMOD=kind_mod.f90.linuxintel
      EXE=torus.mpt
      F77FLAG=
      F2CLIB=
@@ -410,7 +387,6 @@ ifeq ($(SYSTEM), mpiintel)
     FASTFLAG = -O -mp
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpiintel
     MPIFLAG = -DMPI
@@ -427,7 +403,6 @@ ifeq ($(SYSTEM), openmpi)
 #    FASTFLAG = -O3
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi
@@ -449,7 +424,6 @@ ifeq ($(SYSTEM), openmpi-nocona)
 #    FASTFLAG = -march=nocona -O1
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi-nocona
@@ -464,7 +438,6 @@ ifeq ($(SYSTEM), miracle)
     FASTFLAG = -O -OPT:Olimit=0 -mp -64
 #    FASTFLAG = -OPT:Olimit=0 -O -mp
     UNIXMOD  = unix_mod.f90.miracle
-    KINDMOD  = kind_mod.f90.miracle
     EXE = torus.miracle
     KNOWN_SYSTEM = yes
 endif
@@ -477,7 +450,6 @@ ifeq ($(SYSTEM), ukaff1a)
 #    FASTFLAG = -O -OPT:Olimit=0 -mp -64
 #    FASTFLAG = -OPT:Olimit=0 -O -mp
     UNIXMOD  = unix_mod.f90.miracle
-    KINDMOD  = kind_mod.f90.miracle
     CFITSIOLIBS = -L/home/th/cfitsio -lcfitsio
     EXE = torus.ukaff1a
     MPIFLAG = -DMPI
@@ -493,7 +465,6 @@ ifeq ($(SYSTEM), omp)
 #    FASTFLAG = -O -OPT:Olimit=0 -mp -64
 #    FASTFLAG = -OPT:Olimit=0 -O -mp
     UNIXMOD  = unix_mod.f90.miracle
-    KINDMOD  = kind_mod.f90.miracle
     EXE = torus.omp
     KNOWN_SYSTEM = yes
 endif
@@ -504,7 +475,6 @@ ifeq ($(SYSTEM), ceres)
     FASTFLAG  = -O3 -xhost
     DEBUGFLAG=-g -O0 -traceback -fpe0 
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     MPIFLAG = -DMPI
     EXE = torus.ceres
@@ -521,7 +491,6 @@ ifeq ($(SYSTEM), mpig95)
 #    FASTFLAG = -O3
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpig95
@@ -536,7 +505,6 @@ ifeq ($(SYSTEM), darwin)
     DEBUGFLAG= -g -fbounds-check -Wall
     FASTFLAG = -O3
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS =  -L/usr/lib -lSystemStubs
     EXE = torus.darwin
@@ -551,7 +519,6 @@ ifeq ($(SYSTEM), mpidarwin)
     DEBUGFLAG= -g  
     FASTFLAG = -O3
     UNIXMOD  = unix_mod.f90.linuxintel
-    KINDMOD  = kind_mod.f90.linuxintel
     STARLIBS =  -L/usr/lib -lSystemStubs 
     EXE = latticeQED
     MPIFLAG = -DMPI
@@ -627,7 +594,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             integratePath.f90 readIntPro.f90 mieDistPhaseMatrix.f90 \
             gridtype_mod.f90 getRefractiveIndex.f90 draineCrossSection.f90 \
             readTioCrossSection.f90 rayleighCrossSection.f90 \
-            fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
+            fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 cont_read.f90 \
             getMeanMass.f90 input_variables.f90 amr_mod.f90 amr_utils_mod.f90 octal_mod.f90 \
             jets_mod.f90 h21cm_mod.f90 \
@@ -642,10 +609,8 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90 magnetic_mod.f90 
+            mpi_global_mod.f90 nrtype.f90 nrutil.f90 benchmark_mod.f90 bitstring_mod.f90 magnetic_mod.f90 phfit2.f90
             
-
-F77SOURCE = phfit2.f
 
 
 CAPF90SOURCE =	 random_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
@@ -666,16 +631,14 @@ INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
-F77OBJ = $(F77SOURCE:.f=.o)
-ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(INPUTSMODOBJ)
-LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ) $(INPUTSMODOBJ)
+ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(INPUTSMODOBJ)
+LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ)
 
 #
 # Compilers and compiler flags
 #
 
 F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG) $(XMLINCLUDE)
-F77 = $(F77COMP) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG) $(MPI_INC)
 
 #
 # Special targets
@@ -686,7 +649,7 @@ all: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(INPUTSMODOBJ) $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS) $(XMLLIBS)
 	    @echo "...done"
     else
@@ -699,7 +662,7 @@ lib: depends $(LIBOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files making a library..."
-	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(F77OBJ) $(INPUTSMODOBJ)
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(INPUTSMODOBJ)
 	    @echo "...done"
     else
 	    @echo ""
@@ -713,7 +676,6 @@ preprocess:
 	@echo ""
 	@echo "Creating links for system dependent files..."
 	ln -sf $(UNIXMOD) unix_mod.f90
-	ln -sf $(KINDMOD) kind_mod.f90
 	@echo "...done"
 
 depends: preprocess
@@ -729,7 +691,6 @@ clean:
 
 distclean: clean
 	@/bin/rm -f make.depends tags
-	@/bin/rm -f unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
 
 ctags:
 	@ctags --langmap='fortran:+(*.F90)' \
@@ -740,7 +701,7 @@ link: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
+	    $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
     else
@@ -762,8 +723,6 @@ link: depends $(ALLOBJ)
 %.o: %.F90
 	$(F90) -c $<
 
-%.o: %.f
-	$(F77) -c $<
 
 #
 # Auto-generated dependency file

@@ -10,6 +10,7 @@ module ion_mod
   use constants_mod
   use utils_mod
   use messages_mod
+  use phfit_mod, only : phfit2
 
   implicit none
 

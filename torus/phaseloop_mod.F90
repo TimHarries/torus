@@ -18,7 +18,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use phasematrix_mod
   use disc_class
   use image_mod, only: IMAGETYPE, PVIMAGETYPE, initImage, initPVImage, addPhotonToImage, addphotontopvimage, &
-       createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm,  writeimage, writepvimage
+       createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm
 #ifdef USECFITSIO
   use image_mod, only : writeFitsImage
 #endif
@@ -2907,7 +2907,7 @@ enddo
            ! Check the the effectieve wavelength and the 
            ! bandwith of O6 image here later and replace 5000 and 1.0d0 below!
            !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-           call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
+!           call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
         endif
         if (get_filter_set_name(filters) == "pn") then
            write(specFile,'(a,a,i3.3,a)') trim(outfile),"_image",iPhase,".ppm"
@@ -2922,7 +2922,6 @@ enddo
 
            call smoothPVimage(pvImage(iSlit), vfwhm/2.35, pfwhm/2.35)
 
-           call writePVimage(pvImage(iSlit), specfile, vSys)
         enddo
      endif
   end if ! (myRankIsZero)

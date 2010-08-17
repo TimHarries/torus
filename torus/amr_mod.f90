@@ -19,6 +19,7 @@ module amr_mod
   use mpi_global_mod, only: myRankGlobal
   use gas_opacity_mod
   use amr_utils_mod
+  use phfit_mod, only : phfit2
 
   IMPLICIT NONE
 
