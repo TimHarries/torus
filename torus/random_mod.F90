@@ -273,9 +273,10 @@ contains
       IF(MJ.LT.MZ)MJ=MJ+MBIG
       MA(INEXT)=MJ
       RAN3=MJ*FAC
-!      if (ran3 > 1.d0) then
-!         write(*,*) "ran3 bug (real)",ran3
-!      endif
+      if ((ran3 < tiny(ran3)).or.(ran3 > 0.99999999999999d0)) then
+         write(*,*) "ran3 bug ",ran3
+         ran3 = min(0.99999999999999d0,max(ran3, tiny(ran3)))
+      endif
     END FUNCTION RAN3_double
 
   SUBROUTINE localsort(N,RA)

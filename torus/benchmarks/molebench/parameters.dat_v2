@@ -22,7 +22,6 @@ distance 250.0
 moleculefile hco_benchmark.mol
 quasi F
 dongstep T
-initnray 64
 constantabundance T
 setmaxlevel 10
 outputconvergence T

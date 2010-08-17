@@ -130,7 +130,7 @@ rotateviewaboutz 0.0
 quasi F
 dongstep T
 
-initnray 64
+initnray 1024
 constantabundance T
 setmaxlevel 10
 outputconvergence T

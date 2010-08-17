@@ -132,6 +132,15 @@ contains
     call getLogical("photoionphysics", photoionPhysics, cLine, fLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+
+    if (molecularPhysics.and.atomicPhysics) then
+       call writeFatal("Cannot conduct any calculation that simultaneously includes atoms and molecules")
+    endif
+
+    if (molecularPhysics.and.photoionPhysics) then
+       call writeFatal("Cannot conduct any calculation that simultaneously includes photoionization and molecules")
+    endif
+
 !    if (.not.(dustPhysics.or.atomicPhysics.or.molecularPhysics.or.photoionPhysics)) then
 !       call writeFatal("Must include one of: dustPhysics, atomicPhysics, molecularPhysics, photoionPhysics")
 !    endif
@@ -828,7 +837,7 @@ contains
        call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
             "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
        call getInteger("initnray", initnray, cLine, fLine, nLines, &
-               "Number of fixed rays for stage 1: ","(a,i4,a)", 100, ok, .false.)
+               "Number of fixed rays for stage 1: ","(a,i4,a)", 1024, ok, .false.)
        call getLogical("dongstep", dongstep, cLine, fLine, nLines, &
                "Use Ng Acceleration: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("quasi", quasi, cLine, fLine, nLines, &

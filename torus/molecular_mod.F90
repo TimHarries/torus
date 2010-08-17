@@ -860,7 +860,6 @@ module molecular_mod
      integer       ::   n_rmdr
      integer       ::   ierr           ! error flag
      integer       ::   j
-     integer       ::   tag = 0 
      real(double), allocatable :: tArrayd(:,:),tempArrayd(:,:) 
 #endif
 
@@ -1028,7 +1027,7 @@ module molecular_mod
       endif
 
       call randomNumberGenerator(getIseed = fixedRaySeed)
-      write(*,*) "myrank ",myrankglobal,fixedRayseed
+
 ! This is the loop that controls everything
 ! 1) istage = 1, fixed rays to reduce variance between cells or 
 ! 2) istage = 2, random rays to ensure sufficient spatial/frequency sampling
@@ -1117,6 +1116,15 @@ module molecular_mod
                call randomNumberGenerator(randomSeed=.true.)
             endif
 
+!            call torus_mpi_barrier
+!            do i = 0, nThreadsGlobal-1
+!            call torus_mpi_barrier
+!               if (i==myrankGlobal) then
+!                  call randomNumberGenerator(getDouble=r)
+!                  write(*,*) myrankGlobal,r
+!               endif
+!            call torus_mpi_barrier
+!            enddo
 
 
 ! default loop indicies for single processor otherwise do MPI stuff
@@ -1693,6 +1701,11 @@ end subroutine molecularLoop
            dTau = alpha * dds * 1.d10
            attenuation = exp(-tau)
 ! Intensity along ray owing to line segment
+           do iTrans = 1, maxtrans
+              if (dtau(itrans) < -1.d0) then
+                 write(*,*) "dtau ERROR: ",dtau(itrans),alpha(itrans),dds,phiprofval
+              endif
+           enddo
            localradiationfield = exp(-dtau) 
 	   localradiationfield = OneArray - localradiationfield
            di0 = localradiationfield * snu
@@ -2212,9 +2225,9 @@ endif
 ! determine updated fractional change in each level upto minlevels.
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel,subcell) - &
                 thisOctal%molecularLevel(1:minlevel,subcell)) / &
-                (thisOctal%newmolecularLevel(1:minlevel,subcell) + 1d-60)))
+                (thisOctal%newmolecularLevel(1:minlevel,subcell) + 1d-30)))
 
-           where ( newFracChangePerLevel(1:minlevel) <= 0.0 ) newFracChangePerLevel = 1.0e-60_db
+           where ( newFracChangePerLevel(1:minlevel) <= 0.0 ) newFracChangePerLevel = 1.0e-30_db
 ! Cleverly store convergence in an integer array to reduce the size. Get 65536 log-spaced
 ! levels between 10^-9 and 10^1 which is enough.
 ! See why below!
@@ -4340,13 +4353,13 @@ end subroutine plotdiscValues
 
     logical :: ng
     
-10006 format(i6,tr2,6(f10.5,1x), 27x, 3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
-10007 format(i6,tr2,7(f10.5,1x), 18x, 3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
-10008 format(i6,tr2,8(f10.5,1x),  9x, 3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
-10009 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
-10010 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
-10011 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
-10012 format(i6,tr2,9(f10.5,1x),      3x,l1,tr3,3(f7.3,tr3),f7.5,tr3,f8.5)
+10006 format(i6,tr2,6(1pe12.3,1x), 27x, 3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
+10007 format(i6,tr2,7(1pe12.3,1x), 18x, 3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
+10008 format(i6,tr2,8(1pe12.3,1x),  9x, 3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
+10009 format(i6,tr2,9(1pe12.3,1x),      3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
+10010 format(i6,tr2,9(1pe12.3,1x),      3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
+10011 format(i6,tr2,9(1pe12.3,1x),      3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
+10012 format(i6,tr2,9(1pe12.3,1x),      3x,l1,tr3,3(f7.3,tr3),f7.3,tr3,f8.3)
     
 ! initialise to big negative
     maxFracChangePerLevel = -1.d30
@@ -4676,7 +4689,7 @@ subroutine compare_molbench(diffmax)
      model_Rarray(nlines) = model_R
 
      diff(1:ncheck,nlines) = abs(model_J(1:ncheck) - bench_J(1:ncheck)) / bench_J(1:ncheck) 
-     write(65,'(7(tr2,es12.5))') model_R, diff(1:ncheck,nlines)
+!     write(65,'(7(tr2,es12.5))') model_R, diff(1:ncheck,nlines)
 
      if(status .eq. -1) exit
      
@@ -5952,7 +5965,6 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
    real(double)  :: deltaV
    real(double) :: deps, origdeps
    
-   logical,save :: firsttime = .true.
    logical,save :: havebeenWarned = .false.
    character(len = 80) :: message
    
