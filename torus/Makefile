@@ -555,7 +555,7 @@ endif
 #
 
 F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
-            unix_mod.f90 utils_mod.f90 bhmie_mod.f90 mieDistCrossSection_mod.f90 \
+            utils_mod.f90 bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90  TTauri_mod.f90 puls_mod.f90 \
@@ -582,7 +582,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             
 
 
-CAPF90SOURCE =	 random_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
+CAPF90SOURCE =	 random_mod.F90 unix_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
 	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
