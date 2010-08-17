@@ -12166,7 +12166,7 @@ end function readparameterfrom2dmap
     use memory_mod, only : humanreadablememory, globalMemoryFootprint
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child, neighbourOctal
     logical, optional :: inheritProps, interpProps, photoSphereSplit
     integer :: subcell, i, ilambda
     logical :: converged
@@ -12236,7 +12236,6 @@ end function readparameterfrom2dmap
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
-                startOctal => thisOctal
                 neighbourOctal => thisOctal
                 neighbourSubcell = subcell
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
