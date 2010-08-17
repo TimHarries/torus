@@ -32,7 +32,7 @@ MPIFLAG =
 # NAG Fortran compiler
 ifeq ($(SYSTEM), nagfor)
     F95COMP  = nagfor
-    F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN
+    F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN -DUSEUNIXENV
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
     CFITSIOLIBS = 

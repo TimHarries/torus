@@ -6,8 +6,9 @@ contains
 
   subroutine unixGetenv(envVariable, directory, length, error)
 
-!    use f90_unix_env
-
+#ifdef USEUNIXENV
+    use f90_unix_env
+#endif
     character(len=*) :: envVariable
     character(len=*) :: directory
     integer, intent(out), optional :: length
