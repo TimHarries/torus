@@ -12338,7 +12338,6 @@ end function readparameterfrom2dmap
           enddo
        endif
     end do
-    if (associated(startOctal)) deallocate(startOctal)
 
   end subroutine myTauSmooth
 
