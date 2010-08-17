@@ -8,7 +8,6 @@
 #    6. make static=yes  : Make torus with static linking
 #    7. make trace=yes   : Make torus with ITAC profiling
 #    8. make openmp=yes  : Make torus with OpenMP 
-#    9. make ndf=yes     : Make with support for NDF files  
 #-----------------------------------------------------------------
 
 USEMKL  = no
@@ -19,7 +18,6 @@ profile = no
 static  = no
 trace   = no
 openmp  = no 
-ndf     = no
 v2      = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
@@ -84,7 +82,6 @@ ifeq ($(SYSTEM), g95)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-#    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
     KNOWN_SYSTEM = yes
@@ -99,7 +96,6 @@ ifeq ($(SYSTEM), sun)
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-    STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.sun
     KNOWN_SYSTEM = yes
@@ -128,7 +124,6 @@ ifeq ($(SYSTEM), gfortran)
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-#    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
@@ -160,7 +155,6 @@ ifeq ($(SYSTEM), gfort)
     FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
     KNOWN_SYSTEM = yes
@@ -178,7 +172,6 @@ ifeq  ($(SYSTEM), linux)
     MATHTRAP = -ieee=stop
     UNIXMOD  = unix_mod.f90.linux
     KINDMOD  = kind_mod.f90.linux
-    STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = -lg2c
     STATICLIBS = -lpthread
     EXE = torus.linux
@@ -193,7 +186,6 @@ ifeq ($(SYSTEM), alpha)
     MATHTRAP = -fpe3
     UNIXMOD  = unix_mod.f90.osf
     KINDMOD  = kind_mod.f90.osf
-    STARLIBS = -L/star/lib `ndf_link`
     EXE = torus
     KNOWN_SYSTEM = yes
 endif
@@ -288,7 +280,6 @@ ifeq ($(SYSTEM), mpilam)
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linux
     KINDMOD  = kind_mod.f90.linux
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpilam
     MPIFLAG = -DMPI
@@ -308,7 +299,6 @@ ifeq ($(SYSTEM), mpich)
     F77FLAG  = -w -fno-second-underscore
     UNIXMOD  = unix_mod.f90.linux
     KINDMOD  = kind_mod.f90.linux
-    STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpich
     MPIFLAG = -DMPI
@@ -326,7 +316,6 @@ ifeq ($(SYSTEM), linuxintel)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = -L/usr/lib -lg2c
     EXE = torus.linuxintel
     KNOWN_SYSTEM = yes
@@ -362,7 +351,6 @@ ifeq ($(SYSTEM), zen)
 #    -L$(PATH2G2C) -lg2c
     STATICLIBS= -Bstatic
     STARLIBS= #-DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
-#    -L/star/lib `ndf_link` 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
@@ -423,7 +411,6 @@ ifeq ($(SYSTEM), mpiintel)
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpiintel
     MPIFLAG = -DMPI
@@ -442,7 +429,6 @@ ifeq ($(SYSTEM), openmpi)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi
     MPIFLAG = -DMPI
@@ -465,7 +451,6 @@ ifeq ($(SYSTEM), openmpi-nocona)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi-nocona
     MPIFLAG = -DMPI
@@ -538,7 +523,6 @@ ifeq ($(SYSTEM), mpig95)
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     CFITSIOLIBS = -lcfitsio
-    STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpig95
     MPIFLAG = -DMPI
@@ -583,10 +567,6 @@ ifeq ($(cfitsio), no)
    CFITSIOLIBS  =
 else
    ETCFLAG += -DUSECFITSIO
-endif
-
-ifeq ($(ndf), yes)
-   ETCFLAG += -DUSENDF
 endif
 
 ifeq ($(memcheck), yes)
@@ -672,13 +652,13 @@ CAPF90SOURCE =	 random_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
 	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
-                 phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90 spec_ndf.F90 image_ndf.F90 timedep_mod.F90 \
+                 phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 $(TORUSMAINSOURCE)
 
 CAPF90SOURCELIB = photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F90 \
 	          diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	          parallel_mod.F90 stateq_mod.F90 torusMod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
-                  phaseloop_mod.F90 gridio_mod.F90 spec_ndf.F90 image_ndf.F90
+                  phaseloop_mod.F90 gridio_mod.F90
 
 # Object files
 #

@@ -2284,10 +2284,15 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    use input_variables, only : itrans, nSubpixels, observerpos, rgbCube, &
         gridDistance, imageside, npixels
+#ifdef USECFITSIO
    use image_mod, only: deleteFitsFile
-
+#endif
 #ifdef MPI
        include 'mpif.h'
+#endif
+
+#ifdef USECFITSIO
+   integer :: status
 #endif
 
    type(GRIDTYPE) :: grid
@@ -2297,7 +2302,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    type(VECTOR), optional :: inputViewVec
    character(len=*), optional :: dataCubeFilename
    character (len=80) :: filename, message
-   integer :: status
    real(double) :: pixelWidth
 
    type(OCTAL), pointer :: thisoctal
@@ -2433,6 +2437,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    endif
 #endif
    
+#ifdef USECFITSIO
    if (writeoutput) then
       status = 0
       call writeinfo('Deleting previous Fits file', TRIVIAL)
@@ -2440,6 +2445,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       call writeinfo('Writing Cube to Fits file: '//trim(filename), TRIVIAL)
       call writedatacube(cube, filename)
    endif
+#endif
 !     call createFluxSpectra(cube, thismolecule, itrans)
 
 !#ifdef MPI
@@ -2680,9 +2686,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, &
-          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, writetempfits, dotune, h21cm
+          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, h21cm
+#ifdef USECFITSIO
+    use input_variables, only : writetempfits
     use image_mod, only : deleteFitsFile
-
+#endif
 #ifdef MPI
      use mpi_global_mod, only: nThreadsGlobal
      include 'mpif.h'
@@ -2703,7 +2711,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      real(double), save :: background
      real, allocatable :: temp(:,:,:)
      character(len=80) :: filename
+#ifdef USECFITSIO
      integer :: status
+#endif
      logical, optional, intent(in) :: revVel
      logical :: doRevVel
 
@@ -2881,6 +2891,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            close(10)
            call writeinfo(message,FORINFO)
 
+#ifdef USECFITSIO
            if(writeoutput .and. writetempfits) then 
               status = 0
               write(filename,'(a,i3,a)') "MolRTtemp",iv,".fits"
@@ -2891,6 +2902,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                  call deleteFitsFile (filename, status)
               endif
            endif
+#endif
         end do
 
      endif
@@ -4586,8 +4598,12 @@ END SUBROUTINE sobseq
  subroutine make_h21cm_image(grid)
    
    use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc
-   use input_variables, only : useDust, isInLte, lowmemory, datacubeFilename
+   use input_variables, only : useDust, isInLte, lowmemory
    use h21cm_mod, only : h21cm_lambda
+
+#ifdef USECFITSIO
+   use input_variables, only : datacubeFilename
+#endif
 
    implicit none
 
@@ -4624,8 +4640,9 @@ END SUBROUTINE sobseq
 ! Output as brightness temperature
    cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
 
+#if USECFITSIO
    if(writeoutput) call writedatacube(cube, datacubeFilename)
-
+#endif
  end subroutine make_h21cm_image
 
 !-----------------------------------------------------------------------------------------------------------

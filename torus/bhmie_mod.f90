@@ -141,13 +141,13 @@ contains
 !      REAL REALPART_SP
 !      COMPLEX SPCX
 !      REALPART_SP(SPCX)=(REAL(SPCX))
-      COMPLEX(kind=double) DPCX
-      DOUBLE PRECISION REALPART
-      DOUBLE PRECISION IMAGPART
+!      COMPLEX(kind=double) DPCX
+!      DOUBLE PRECISION REALPART
+!      DOUBLE PRECISION IMAGPART
 
-      REALPART(DPCX)=(DBLE(DPCX))
+!      REALPART(DPCX)=(DBLE(DPCX))
 
-      IMAGPART(DPCX)=(DIMAG(DPCX))
+!      IMAGPART(DPCX)=(DIMAG(DPCX))
 !***********************************************************************
 !*** Safety checks
 
@@ -258,14 +258,20 @@ main_loop:  DO N=1,NSTOP
 ! tjh changed above to this to get round fpe errors
 
           JUNK = REAL(((2.*EN+1.)/(EN*(EN+1.))))
+!          JUNK = JUNK *  &
+!             (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN))
           JUNK = JUNK *  &
-             (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN))
+             (REAL(AN)*REAL(BN)+AIMAG(AN)*AIMAG(BN))
           GSCA=GSCA+JUNK
 
           IF(N.GT.1)THEN
+!              GSCA=GSCA+REAL(((EN-1.)*(EN+1.)/EN)*                        &
+!              (REALPART(AN1)*REALPART(AN)+IMAGPART(AN1)*IMAGPART(AN)+     &
+!               REALPART(BN1)*REALPART(BN)+IMAGPART(BN1)*IMAGPART(BN)))
+
               GSCA=GSCA+REAL(((EN-1.)*(EN+1.)/EN)*                        &
-              (REALPART(AN1)*REALPART(AN)+IMAGPART(AN1)*IMAGPART(AN)+     &
-               REALPART(BN1)*REALPART(BN)+IMAGPART(BN1)*IMAGPART(BN)))
+              (REAL(AN1)*REAL(AN)+AIMAG(AN1)*AIMAG(AN)+     &
+               REAL(BN1)*REAL(BN)+AIMAG(BN1)*AIMAG(BN)))
           ENDIF
 !
 !*** Now calculate scattering intensity pattern
@@ -310,7 +316,8 @@ main_loop:  DO N=1,NSTOP
 
       GSCA=REAL(2.D0*GSCA/QSCA)
       QSCA=REAL((2.D0/(DX*DX))*QSCA)
-      QEXT=REAL((4.D0/(DX*DX))*REALPART(DCXS1(1)))
+!      QEXT=REAL((4.D0/(DX*DX))*REALPART(DCXS1(1)))
+      QEXT=REAL((4.D0/(DX*DX))*REAL(DCXS1(1)))
       QBACK=REAL(4.D0*(ABS(DCXS1(2*NANG-1))/DX)**2)
 
 ! prepare single precision complex scattering amplitude for output

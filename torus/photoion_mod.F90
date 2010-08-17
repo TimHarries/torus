@@ -4143,7 +4143,10 @@ end subroutine readHeIIrecombination
 
   subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
     use input_variables, only : nPhotons, npix, setimagesize
-    use image_mod, only: initImage, writeFitsImage, freeImage, IMAGETYPE
+    use image_mod, only: initImage, freeImage, IMAGETYPE
+#ifdef USECFITSIO
+    use image_mod, only: writeFitsImage
+#endif
     use math_mod, only: computeprobdist
     use source_mod, only: randomSource, getphotonpositiondirection
     use random_mod
@@ -4153,7 +4156,9 @@ end subroutine readHeIIrecombination
     include 'mpif.h'
 #endif
     type(GRIDTYPE) :: grid
+#ifdef USECFITSIO
     character(len=80) :: imageFilename
+#endif
     integer :: nSource
     real(double) :: lambdaLine
     type(SOURCETYPE) :: source(:), thisSource
@@ -4293,10 +4298,12 @@ end subroutine readHeIIrecombination
      totalFlux = tempTotalFlux
 #endif
 
+#ifdef USECFITSIO
     if (writeoutput) then
        write(imageFilename, '(a,i6.6,a)') "test_",nint(lambdaLine),".fits"
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
+#endif
     call freeImage(thisImage)
   end subroutine createImage
 

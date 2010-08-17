@@ -23,7 +23,7 @@ module angularImage
 ! Approximate latitude range of galactic plane
   real(double), parameter :: plane_lat=1.0_db 
   integer, parameter :: vr_file_lun=81
-  character(len=*), parameter :: vr_format="unformatted"
+  character(len=11),save :: vr_format="unformatted"
   integer :: vel_chan_num
   logical, save :: nColOnly 
 
@@ -31,11 +31,16 @@ module angularImage
 
     subroutine make_angular_image(grid)
 
-      use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, writeDataCube, freeDataCube
+      use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
       use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
-           galaxyPositionAngle, galaxyInclination, wanttau, splitCubes, dataCubeFileName, obsVelFromGrid
+           galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid
+#ifdef USECFITSIO
+      use datacube_mod, only : writeDataCube
+      use input_variables, only : dataCubeFilename, wanttau
+#endif
+
 
       implicit none
 
@@ -102,6 +107,7 @@ module angularImage
 
       call process_cube_for_kvis(cube)
 
+#ifdef USECFITSIO
       call writeinfo("Writing data cubes", TRIVIAL)
       if(writeoutput) then
 
@@ -140,7 +146,7 @@ module angularImage
               write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
 
       end if
-
+#endif
       call freeDataCube(cube)
      
     end subroutine make_angular_image

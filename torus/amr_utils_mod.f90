@@ -172,7 +172,6 @@ module amr_utils_mod
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
 !      type(vector) :: rVec
-      real(double),pointer :: fac
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
@@ -226,10 +225,6 @@ module amr_utils_mod
           write(*,*) thisOctal%subcellSize
 !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-          fac = -2.d0
-          fac = sqrt(fac)
-          allocate(fac)
-          allocate(fac)
        endif
           if(.not. suppresswarnings) then
                 STOP
@@ -267,8 +262,6 @@ module amr_utils_mod
            write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
                 thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
                 phi < thisOctal%phimax, phi > thisOctal%phimin
-            fac = -2.d0
-            write(*,*) sqrt(fac)
 !           rVec = subcellCentre(thisOctal,subcell)
 !           write(*,*) rVec%x+thisOctal%subcellSize/2.
 !           write(*,*) rVec%x-thisOctal%subcellSize/2.

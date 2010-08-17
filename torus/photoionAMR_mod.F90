@@ -5047,45 +5047,45 @@ contains
     i = grid%octreeRoot%nChildren
   END SUBROUTINE resizePhotoionCoeff
 
-  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein, maxIter, tLimit, sublimate)
-
-    use grid_mod
-    use source_mod
-
-    implicit none
-
-    type(GRIDTYPE) :: grid
-    logical, optional :: sublimate
-    character(len=*) :: lucyfileout, lucyfilein    
-    integer :: nSource
-    type(SOURCETYPE) :: source(:)
-    integer :: nlambda
-    real :: lamArray(:)
-    logical :: readLucy, writeLucy
-    integer :: maxIter
-    real(double) :: tlimit
-
-  end subroutine photoIonizationloopAMR
-
-  subroutine ionizeGrid(thisOctal)
-    use octal_mod
-    type(octal) :: thisOctal
-  end subroutine ionizeGrid
-
-
-  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, lambdaImage, outputtype, npix)
-    use gridtype_mod
-    use vector_mod
-    use source_mod
-    type(GRIDTYPE) :: grid
-    integer :: nSource
-    type(SOURCETYPE) :: source(:)
-    type(VECTOR) :: observerDirection
-    real :: lambdaImage
-    character(len=*) :: imageFilename, outputType
-    integer :: npix
-  end subroutine createImageSplitGrid
+!  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+!       lucyfileout, lucyfilein, maxIter, tLimit, sublimate)
+!
+!    use grid_mod
+!    use source_mod
+!
+!    implicit none
+!
+!    type(GRIDTYPE) :: grid
+!    logical, optional :: sublimate
+!    character(len=*) :: lucyfileout, lucyfilein    
+!    integer :: nSource
+!    type(SOURCETYPE) :: source(:)
+!    integer :: nlambda
+!    real :: lamArray(:)
+!    logical :: readLucy, writeLucy
+!    integer :: maxIter
+!    real(double) :: tlimit
+!
+!  end subroutine photoIonizationloopAMR
+!
+!  subroutine ionizeGrid(thisOctal)
+!    use octal_mod
+!    type(octal) :: thisOctal
+!  end subroutine ionizeGrid
+!
+!
+!  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, lambdaImage, outputtype, npix)
+!    use gridtype_mod
+!    use vector_mod
+!    use source_mod
+!    type(GRIDTYPE) :: grid
+!    integer :: nSource
+!    type(SOURCETYPE) :: source(:)
+!    type(VECTOR) :: observerDirection
+!    real :: lambdaImage
+!    character(len=*) :: imageFilename, outputType
+!    integer :: npix
+!  end subroutine createImageSplitGrid
 
 #endif    
 end module photoionAMR_mod

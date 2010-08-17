@@ -18,7 +18,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use phasematrix_mod
   use disc_class
   use image_mod, only: IMAGETYPE, PVIMAGETYPE, initImage, initPVImage, addPhotonToImage, addphotontopvimage, &
-       createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm, writefitsimage, writeimage, writepvimage
+       createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm,  writeimage, writepvimage
+#ifdef USECFITSIO
+  use image_mod, only : writeFitsImage
+#endif
   use source_mod, only: SOURCETYPE
   use photon_mod, only: PHOTON, initPhoton, scatterPhoton, initplanetphoton
   use math_mod, only: thermalElectronVelocity, interpGridScalar2
@@ -2886,7 +2889,11 @@ enddo
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
            if (torusVersion(2:2) == "2") specfile = originaloutfile
 
+
+#ifdef USECFITSIO
            call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
+#endif
+
 !           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
 !           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
 !           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"

@@ -126,8 +126,8 @@ contains
     use input_variables, only : mCore, solveVerticalHydro, sigma0
     use cmf_mod, only : atomloop
     use photoion_mod, only : photoionizationLoop
-    use photoionAMR_mod, only: photoionizationLoopAMR
 #ifdef MPI
+    use photoionAMR_mod, only: photoionizationLoopAMR
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
     use source_mod, only : globalNsource, globalSourceArray
@@ -198,9 +198,12 @@ contains
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray, readlucy, writelucy, &
              lucyfileNameout, lucyfileNamein)
         else
-
+#ifdef MPI
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, .false., .false., &
              " ", " ", 5, 1.d30, sublimate=.false.)
+#else
+           call writeFatal("Domain decomposed grid requires MPI")
+#endif
         endif
 
      end if

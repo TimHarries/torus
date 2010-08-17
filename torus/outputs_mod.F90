@@ -18,8 +18,7 @@ contains
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
     use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use input_variables, only : h21cm, internalView
-    use photoionAMR_mod, only : createImageSplitGrid
-    use input_variables, only : lambdaImage, outputimagetype, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
+    use input_variables, only : lambdaImage, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
     use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
     use input_variables, only : lamStart, lamEnd
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
@@ -31,6 +30,11 @@ contains
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
     use angularImage, only: make_angular_image, map_dI_to_particles
+#ifdef MPI
+    use input_variables, only : outputImageType
+    use photoionAMR_mod, only : createImageSplitGrid
+#endif
+
     type(BLOBTYPE) :: tblob(1)
     real(double) :: totalFlux
     type(SURFACETYPE) :: tsurface
@@ -73,12 +77,15 @@ contains
     endif
 
     if (photoionPhysics.and.splitoverMPI.and.calcImage) then
-       
        observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
+#ifdef MPI
        do i = 1, nImage
           call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), lambdaImage(i), &
                outputImageType(i), nPixelsArray(i))
        enddo
+#else
+    call writeFatal("Cannot calculate an image from a domain decomposed grid without MPI")
+#endif
     endif
 
     if (molecularPhysics.and.calcDataCube) then

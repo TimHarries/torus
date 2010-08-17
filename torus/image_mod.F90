@@ -634,17 +634,16 @@ module image_mod
 !! WRITE_IMAGE creates a FITS primary array containing a 2-D image.
 !
 
+#ifdef USECFITSIO
      subroutine writeFitsImage(image, filename, objectDistance, type)
 
 ! Arguments
-#ifdef USECFITSIO
+       
        use input_variables, only: lamStart, ImageinArcSec
-#endif
-       type(IMAGETYPE), intent(in)   :: image
+       type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
 
-#ifdef USECFITSIO
 ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
@@ -763,17 +762,17 @@ module image_mod
        if (status > 0) then
           call printFitserror(status)
        end if
-#endif
 
      end subroutine writeFitsImage
+#endif
 
+#ifdef USECFITSIO
      subroutine deleteFitsFile(filename,status)
        
 ! Arguments
        character ( len = * ) filename
        integer :: status
 
-#ifdef USECFITSIO
 ! Local variables
        integer unit,blocksize
 
@@ -817,10 +816,11 @@ module image_mod
        !  Free the unit number for later reuse.
        !
        call ftfiou(unit, status)
-#endif
 
      end subroutine deleteFitsFile
+#endif
 
+#ifdef USECFITSIO
      subroutine printFitsError(status)
 
        !
@@ -830,7 +830,6 @@ module image_mod
        !
        ! Arguments
        integer :: status
-#ifdef USECFITSIO
 
        ! Local variables
        character ( len = 30 ) errtext
@@ -854,8 +853,8 @@ module image_mod
           print *,errmessage
           call ftgmsg(errmessage)
        end do
-#endif
      end subroutine printFitsError
+#endif
 
      subroutine pixelLocate(image, xDist, yDist, ix, iy)
        type(IMAGETYPE) :: image
@@ -876,7 +875,11 @@ module image_mod
      end subroutine pixelLocate
             
   subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
-    use input_variables, only : npix, setimageSize, vmin, vmax, griddistance
+    use input_variables, only : npix, setimageSize, vmin, vmax
+
+#ifdef USECFITSIO
+    use input_variables, only : griddistance
+#endif
     use amr_mod, only: distanceToGridFromOutside, distanceToCellBoundary, findSubcellLocal, returnKappa, inOctal, &
          returnScatteredIntensity
     use atom_mod, only: bnu
@@ -998,7 +1001,9 @@ module image_mod
        end do
     end do
 
+#ifdef USECFITSIO
     call writeFitsimage(image, "test.fits", griddistance*pctocm, "intensity")
+#endif
   end subroutine createLucyImage
 
       

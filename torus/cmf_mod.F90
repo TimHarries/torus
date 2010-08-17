@@ -20,7 +20,6 @@ module cmf_mod
   use parallel_mod, only: torus_mpi_barrier
   use vtk_mod, only: writeVtkfile
   use octal_mod, only : allocateAttribute
-  use memory_mod, only : resetGlobalMemory
   implicit none
 
   private
@@ -2377,9 +2376,13 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda, occultingDisc)
-    use input_variables, only : vturb, lineoff, nv, calcDataCube, dataCubeFilename
+    use input_variables, only : vturb, lineoff, nv, calcDataCube
     use messages_mod, only : myRankIsZero
-    use datacube_mod, only: DATACUBE, writeDataCube, freedatacube
+    use datacube_mod, only: DATACUBE, freedatacube
+#ifdef USECFITSIO
+    use input_variables, only : dataCubeFilename
+    use datacube_mod, only : writedataCube
+#endif
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -2465,7 +2468,10 @@ contains
        write(*,*) "Process ",my_rank, " create data cube done"
 #endif
        if (myrankiszero) then
+
+#ifdef USECFITSIO
           call writeDataCube(cube,datacubefilename)
+#endif
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
        endif
