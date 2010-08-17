@@ -38,7 +38,7 @@ module path_integral
          lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
          contPhoton,  nLambda, tauCont, hitCore, thinLine, &
          lineResAbs, redRegion, usePops, mLevel, nLevel, &
-         fStrength, gM, gN, localTau,sampleFreq,error, interp, &
+         fStrength, gM, gN, localTau,error, interp, &
          rStar, coolStarPosition, nSource, source, startOctal, startSubcell)
       
       implicit none
@@ -76,7 +76,6 @@ module path_integral
       integer, intent(in)       :: mLevel, nLevel
       real, intent(in)          :: fStrength, gM, gN
       real, intent(out)         :: localTau
-      real, intent(in)          :: sampleFreq             ! max. samples per grid cell
       integer, intent(out)      :: error                  ! error code returned
       logical, intent(in)       :: interp                 ! ????
       type(VECTOR), optional :: coolStarPosition                  ! pos of cool giant star
@@ -89,13 +88,13 @@ module path_integral
                  lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton, nLambda, tauCont, hitCore, thinLine, &
                  usePops, &
-                 sampleFreq,error)
+                 error)
          else
             call integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton,  nLambda, tauCont, hitCore, thinLine, &
                  lineResAbs, redRegion, usePops, mLevel, nLevel, &
-                 fStrength, gM, gN, localTau,sampleFreq,error, nSource, source, startOctal, startSubcell)
+                 fStrength, gM, gN, localTau,error, nSource, source, startOctal, startSubcell)
          end if
 
       else  ! grid uses a Cartisian grid
@@ -1131,7 +1130,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
      contPhoton, nLambda, tauCont, hitCore, thinLine, lineResAbs,&
      redRegion, usePops, mLevel, nLevel, &
-     fStrength, gM, gN, localTau,sampleFreq,error, nSource, source, startOctal, startSubcell)
+     fStrength, gM, gN, localTau,error, nSource, source, startOctal, startSubcell)
 
   ! should we add the 'interp' argument and implement it?
 
@@ -1175,7 +1174,6 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   integer, intent(in)       :: mLevel, nLevel
   real, intent(in)          :: fStrength, gM, gN
   real, intent(out)         :: localTau
-  real, intent(in)          :: sampleFreq             ! max. samples per grid cell
   integer, intent(out)      :: error                  ! error code returned
   !
   ! WORK ARRAYS
@@ -1274,7 +1272,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   if (.not. grid%lineEmission) then
 
      ! sample the grid along the path of the ray
-     CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+     CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,nTau,       &
                               maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
                               lambda, nSource, source, kappaAbs=kAbs,kappaSca=kSca, velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
@@ -1343,7 +1341,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
      escProb = 1.
 
-     CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+     CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,nTau,       &
                               maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
                               lambda,nSource, source, kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
@@ -1811,7 +1809,7 @@ end subroutine integratePathAMR
        L, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
        contPhoton,  nLambda, tauCont, hitCore, thinLine, &
        usePops,  &
-      sampleFreq,error)
+      error)
     
     use utils_mod, only: bigGamma, voigtn, resampleray_tau, linearresample, linearresample_dble
 
@@ -1850,7 +1848,6 @@ end subroutine integratePathAMR
     logical, intent(out)      :: hitcore                ! has the photon hit the core
     logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
     logical, intent(in)       :: usePops
-    real, intent(in)          :: sampleFreq             ! max. samples per grid cell
     integer, intent(out)      :: error                  ! error code returned
 
     !    
@@ -1979,7 +1976,7 @@ end subroutine integratePathAMR
 
     escProb = 1.
     
-    CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+    CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,nTau,       &
          maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
          L,kappaAbs=kAbs,kappaSca=kSca, velocity=velocity,&
          velocityDeriv=velocityDeriv,chiLine=chiLine,    &
@@ -2553,7 +2550,7 @@ end subroutine intersectCubeAMR
 subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      amrGridCentre, sphericityTest,  &
      dir_obs, wavelength,  lambda0, grid, thin_disc_on, opaqueCore, &
-     ThinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, Rstar, coolStarPosition, maxTau, nSource, source)
+     ThinLine, lineResAbs, nUpper, nLower,  useinterp, Rstar, coolStarPosition, maxTau, nSource, source)
 
   implicit none
   
@@ -2576,7 +2573,6 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   logical, intent(in)       :: lineResAbs    ! T if you want to include absorption
   !                                               !   of line by line resonance zones.
   integer, intent(in)       :: nUpper, nLower
-  real, intent(in)          :: sampleFreq         ! max. samples per grid cell
   !
   logical, intent(in)       :: useinterp
   real, intent(in)          :: Rstar
@@ -2655,7 +2651,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
        tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
-       sampleFreq, error, useInterp, rStar, coolStarPosition, nSource, source)
+       error, useInterp, rStar, coolStarPosition, nSource, source)
   if (error < 0) then
      write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
   end if
@@ -2689,7 +2685,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
        tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
-       sampleFreq,error, useInterp, rStar, coolStarPosition, nSource, source)
+       error, useInterp, rStar, coolStarPosition, nSource, source)
   if (error < 0) then
      write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
   end if
@@ -2723,7 +2719,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
        tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
-       sampleFreq,error, useInterp, rStar, coolStarPosition, nSource, source)
+       error, useInterp, rStar, coolStarPosition, nSource, source)
   if (error < 0) then
      write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
   end if
@@ -2757,7 +2753,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
        tauExt, tauAbs, tauSca, linePhotonalbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
        contPhoton,nLambda, tauCont, &
        hitCore, thinLine,lineResAbs, .false.,  &
-       .false., nUpper, nLower, 0., 0., 0., junk,sampleFreq,error, &
+       .false., nUpper, nLower, 0., 0., 0., junk, error, &
        useinterp, rStar, coolStarPosition, nSource, source)
 
   if (error < 0) then
@@ -2789,7 +2785,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
              contPhoton, nLambda, tauCont, &
              hitCore, thinLine, lineResAbs, .false., &
-             .false., nUpper, nLower, 0., 0., 0., junk, sampleFreq,error, &
+             .false., nUpper, nLower, 0., 0., 0., junk, error, &
              useinterp, rStar, coolStarPosition, nSource, source)
         if (error < 0) then
            write(*,*) 'Error handling not implemented for ''sphericityTest''!!! (error = ',error,')'
@@ -2831,7 +2827,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
-             sampleFreq,Error,&
+             Error,&
              useinterp, rStar, coolStarPosition, nSource, source)
 
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
@@ -2843,7 +2839,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
-             sampleFreq,Error, &
+             Error, &
              useinterp, rStar, coolStarPosition, nSource, source)
 
         write(UNOUT2, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
@@ -2883,7 +2879,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
-             sampleFreq,Error,&
+             Error,&
              useinterp, rStar, coolStarPosition, nSource, source)
         
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
@@ -2895,7 +2891,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
-             sampleFreq,Error, &
+             Error, &
              useinterp, rStar, coolStarPosition, nSource, source)
         
         write(UNOUT2, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
@@ -2938,7 +2934,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
-             sampleFreq,Error,&
+             Error,&
              useinterp, rStar, coolStarPosition, nSource, source)
         
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
@@ -2950,7 +2946,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
-             sampleFreq,Error, &
+             Error, &
              useinterp, rStar, coolStarPosition, nSource, source)
         
         write(UNOUT2, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau

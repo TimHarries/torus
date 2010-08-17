@@ -679,7 +679,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         call test_optical_depth(gridUsesAMR, VoigtProf, &
              amrGridCentre, sphericityTest,  &
              outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore,  &
-             thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
+             thinLine, lineResAbs, nUpper, nLower, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
 
       call torus_mpi_barrier("Waiting to do phase loop")
@@ -1460,7 +1460,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(miePhase, zeroVec, theta1, theta2, chanceHotRing) &
 !$OMP SHARED(nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, chanceDust) &
 !$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
-!$OMP SHARED(sampleFreq, useInterp, photLine,tooFewSamples,boundaryProbs) &
+!$OMP SHARED(useInterp, photLine,tooFewSamples,boundaryProbs) &
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
 !$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImageLocal) &
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
@@ -1580,7 +1580,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                          escProb, thisPhoton%contPhoton,  &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                          .false., nUpper, nLower, 0., 0., 0., junk,&
-                         sampleFreq,intPathError, &
+                         intPathError, &
                          useInterp, grid%Rstar1, coolStarPosition, nSource, source)
               if (intPathError == -10) then 
                  tooFewSamples = tooFewSamples + 1  
@@ -1620,7 +1620,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       escProb, thisPhoton%contPhoton,  &
                       nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                       .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,intPathError, &
+                      intPathError, &
                       useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
                       startOctal=sourceOctal, startSubcell=sourceSubcell)
               else
@@ -1888,7 +1888,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                    escProb, thisPhoton%contPhoton, &
                    nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
                    .false., nUpper, nLower, 0., 0., 0., &
-                   junk,sampleFreq,intPathError, &
+                   junk,intPathError, &
                    useInterp, grid%Rstar1, coolStarPosition, nSource, source, startOctal=sourceOctal, startSubcell=sourceSubcell)
            else
               call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, thisPhoton%direction, finaltau,&
@@ -2159,7 +2159,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                             lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
                             escProb, obsPhoton%contPhoton, nLambda, contTau, hitCore, &
                             thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
-                            junk, sampleFreq,intPathError, &
+                            junk, intPathError, &
                             useinterp, grid%Rstar1, coolStarPosition, nSource, source)
 
 
@@ -2206,7 +2206,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                          escProb, obsPhoton%contPhoton, &
                          nLambda, contTau, hitCore, &
                          thinLine, lineResAbs, redRegion, &
-                         .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
+                         .false., nUpper, nLower, 0., 0.,0.,junk, intPathError, &
                          useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
                          startOctal=currentOctal, startSubcell=currentSubcell)                 
                  else
@@ -2460,7 +2460,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                             escProb, thisPhoton%contPhoton, &
                             nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&
-                            0., 0., junk,sampleFreq,intPathError, &
+                            0., 0., junk, intPathError, &
                             useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
                             startOctal=currentOctal, startSubcell=currentSubcell)
                  else

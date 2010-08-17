@@ -4158,7 +4158,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               call writeinfo(message, FORINFO)
               write(message,*) "cell velocity",modulus(thisOctal%velocity(subcell)) * cspeed / 1d5
               call writeinfo(message, FORINFO)
-              write(message,*) "calc V ",modulus(keplerianVelocity(currentposition(i),grid)) * cspeed / 1d5
+              write(message,*) "calc V ",modulus(keplerianVelocity(currentposition(i))) * cspeed / 1d5
               call writeinfo(message, FORINFO)
               
            enddo
@@ -4216,18 +4216,18 @@ end subroutine plotdiscValues
 #endif
 
        if(molebench) then
-          Out = Molebenchvelocity(Position, grid) 
+          Out = Molebenchvelocity(Position) 
        elseif(molcluster) then
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
                                 actualSubcell = subcell, linearinterp = .false.)
        elseif(chrisdisc) then
-          Out = keplerianVelocity(Position, grid)
+          Out = keplerianVelocity(Position)
        elseif(hhobench) then
-          Out = WaterBenchmarkVelocity(Position, grid)
+          Out = WaterBenchmarkVelocity(Position)
        elseif(agbstar) then
-          Out = AGBstarVelocity(Position, grid)
+          Out = AGBstarVelocity(Position)
        elseif(ggtau) then
-          Out = ggtauvelocity(Position, grid)
+          Out = ggtauvelocity(Position)
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
                                 actualSubcell = subcell, linearinterp = .false.)
@@ -4269,9 +4269,9 @@ end subroutine plotdiscValues
 !    endif
     
     if(molebench) then
-       Out = Molebenchdensity(Position, grid) 
+       Out = Molebenchdensity(Position) 
     elseif(ggtau) then
-       Out = GGtaudensity(Position, grid) 
+       Out = GGtaudensity(Position) 
     elseif(molcluster) then
 !       if(present(startoctal)) then
 !          if(startoctal%ndepth .lt. 6) then

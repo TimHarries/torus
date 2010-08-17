@@ -56,7 +56,7 @@ module amr_mod
 
 CONTAINS
 
-  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, stellar_cluster, inherit, interp, &
+  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, inherit, interp, &
        romData, stream)
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
@@ -76,7 +76,6 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
     type(STREAMTYPE), optional :: stream
-    TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit               ! inherit densities, temp, etc of parent
     LOGICAL, OPTIONAL :: interp                ! interpolate densities, temp, etc of parent
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
@@ -164,10 +163,10 @@ CONTAINS
     SELECT CASE (grid%geometry)
 
     CASE("pathtest")
-       call calcPathTestDensity(thisOctal,subcell,grid)
+       call calcPathTestDensity(thisOctal,subcell)
 
     CASE ("ttauri")
-      CALL calcTTauriMassVelocity(thisOctal,subcell,grid)
+      CALL calcTTauriMassVelocity(thisOctal,subcell, grid)
       
     CASE ("jets")
       CALL calcJetsMassVelocity(thisOctal,subcell,grid)
@@ -191,13 +190,13 @@ CONTAINS
        endif
 
     CASE("starburst")
-       CALL calcStarburst(thisOctal, subcell, grid)
+       CALL calcStarburst(thisOctal, subcell)
        if (thisOctal%nDepth > 1) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
 
     CASE("symbiotic")
-       CALL calcSymbiotic(thisOctal, subcell, grid)
+       CALL calcSymbiotic(thisOctal, subcell)
        if (thisOctal%nDepth > 1) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
@@ -209,35 +208,35 @@ CONTAINS
        CALL calcWRShellDensity(thisOctal,subcell,grid)
 
     CASE("hydro1d")
-       call calcHydro1DDensity(thisOctal, subcell, grid)
+       call calcHydro1DDensity(thisOctal, subcell)
 
     CASE("kelvin")
-       call calcKelvinDensity(thisOctal, subcell, grid)
+       call calcKelvinDensity(thisOctal, subcell,grid)
 
     CASE("rtaylor")
-       call calcRTaylorDensity(thisOctal, subcell, grid)
+       call calcRTaylorDensity(thisOctal, subcell)
 
     CASE("bonnor")
-       call calcBonnorEbertDensity(thisOctal, subcell, grid)
+       call calcBonnorEbertDensity(thisOctal, subcell)
 
     CASE("unisphere")
-       call calcUniformsphere(thisOctal, subcell, grid)
+       call calcUniformsphere(thisOctal, subcell)
 
     CASE("sedov")
-       call calcSedovDensity(thisOctal, subcell, grid)
+       call calcSedovDensity(thisOctal, subcell)
 
     CASE("protobin")
-       call calcProtoBinDensity(thisOctal, subcell, grid)
+       call calcProtoBinDensity(thisOctal, subcell)
 
 
     CASE("gammavel")
        CALL calcGammaVel(thisOctal,subcell,grid)
 
     CASE ("spiralwind")
-       CALL spiralWindSubcell(thisOctal, subcell ,grid)
+       CALL spiralWindSubcell(thisOctal, subcell)
 
     CASE ("wind")
-       CALL WindSubcell(thisOctal, subcell ,grid)
+       CALL WindSubcell(thisOctal, subcell)
        
     CASE("cluster","molcluster","theGalaxy")
 
@@ -250,35 +249,35 @@ CONTAINS
        call assign_density(thisOctal,subcell, grid%geometry)
 
     CASE ("benchmark")
-       CALL benchmarkDisk(thisOctal, subcell ,grid)
+       CALL benchmarkDisk(thisOctal, subcell)
 
     CASE ("molebench")
        thisoctal%rho(subcell) = -9.9d99
-       CALL molecularBenchmark(thisOctal, subcell ,grid)
+       CALL molecularBenchmark(thisOctal, subcell)
 
     CASE ("h2obench1")
        CALL WaterBenchmark1(thisOctal, subcell)
 
     CASE ("h2obench2")
-       CALL WaterBenchmark2(thisOctal, subcell, grid)
+       CALL WaterBenchmark2(thisOctal, subcell)
 
     CASE ("agbstar")
-       CALL AGBStarBenchmark(thisOctal, subcell ,grid)
+       CALL AGBStarBenchmark(thisOctal, subcell)
 
     CASE ("clumpyagb")
-       CALL clumpyagb(thisOctal, subcell ,grid)
+       CALL clumpyagb(thisOctal, subcell)
 
     CASE ("molefil")
-       CALL molecularFilamentFill(thisOctal, subcell ,grid)
+       CALL molecularFilamentFill(thisOctal, subcell)
 
     CASE ("ggtau")
-       CALL ggtauFill(thisOctal, subcell ,grid)
+       CALL ggtauFill(thisOctal, subcell)
 
     CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
     CASE ("iras04158")
-       CALL iras04158(thisOctal, subcell, grid)
+       CALL iras04158(thisOctal, subcell)
 
     CASE ("warpeddisc")
        CALL warpedDisk(thisOctal, subcell ,grid)
@@ -290,7 +289,7 @@ CONTAINS
        CALL assign_melvin(thisOctal,subcell,grid)
 
     CASE("hii_test")
-       CALL assign_hii_test(thisOctal,subcell,grid)
+       CALL assign_hii_test(thisOctal,subcell)
 
     CASE("whitney")
        CALL assign_whitney(thisOctal,subcell,grid)
@@ -299,7 +298,7 @@ CONTAINS
        CALL assign_planetgap(thisOctal,subcell,grid)
 
     CASE("toruslogo")
-       CALL assign_toruslogo(thisOctal,subcell,grid)
+       CALL assign_toruslogo(thisOctal,subcell)
 
     CASE("clumpydisc")
        CALL assign_clumpydisc(thisOctal, subcell, grid)
@@ -350,11 +349,11 @@ CONTAINS
 !                              velocity=thisOctal%velocity(subcell),  &
 !                              inFlow=thisOctal%inFlow(subcell))
 
-      call getMagStreamValues3(thisOctal, subcell, stream, grid)
+      call getMagStreamValues3(thisOctal, subcell, stream)
 
 
 !      thisOctal%rho(subcell) = REAL(rhoDouble)
-!      IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity, .true.)
+!      IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity)
 !       thisOctal%microturb(subcell) = (20.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
 
     CASE DEFAULT
@@ -369,7 +368,7 @@ CONTAINS
  
   END SUBROUTINE calcValuesAMR
 
-  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, stellar_cluster, nDustType, romData ,&
+  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, romData ,&
        stream)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
@@ -383,13 +382,11 @@ CONTAINS
     REAL, INTENT(IN)                 :: size 
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
-    TYPE(cluster), optional, INTENT(IN)    :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     type(streamtype), optional :: stream
     !
     LOGICAL :: oned, twod, threed  ! true if this is a twoD amr grid
     INTEGER :: subcell ! loop counter 
-    INTEGER :: nDustType ! number of different dust types
     integer :: i
 
     character(len=100) :: message
@@ -483,7 +480,7 @@ CONTAINS
           !
           DO subcell = 1, grid%octreeRoot%maxChildren
             ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, stellar_cluster)
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
             ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
@@ -497,7 +494,7 @@ CONTAINS
           !
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, stellar_cluster)
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
@@ -552,8 +549,8 @@ CONTAINS
 
 
   SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, &
-                         stellar_cluster, inherit, interp, amrHydroInterp, splitAzimuthally, romData, &
-                         isample, stream)
+                         inherit, interp, amrHydroInterp, splitAzimuthally, romData, &
+                         stream)
     ! adds one new child to an octal
 
     USE input_variables, ONLY : cylindrical, maxMemoryAvailable
@@ -572,12 +569,10 @@ CONTAINS
                                           !   calculate the variables stored in
                                           !   the tree.
     type(STREAMTYPE), optional :: stream
-    integer, optional :: isample
     LOGICAL, INTENT(IN) :: adjustGridInfo
     LOGICAL, optional :: splitAzimuthally
       ! whether these variables should be updated: 
       !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell    
-    TYPE(cluster), OPTIONAL, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit       ! inherit densities, temps, etc from parent
     LOGICAL, OPTIONAL :: interp        ! interpolate densities, temps, etc from parent    
     
@@ -828,7 +823,7 @@ CONTAINS
     if (.not.doAMRhydroInterp) then
        DO subcell = 1, parent%child(newChildIndex)%maxChildren
           CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, &
-               stellar_cluster=stellar_cluster, inherit=inheritProps, &
+               inherit=inheritProps, &
                interp=interpolate,  &
                romData=romData, stream=stream)
           parent%child(newChildIndex)%label(subcell) = counter
@@ -1020,10 +1015,9 @@ CONTAINS
       
       IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,&
             splitInAzimuth, &
-            stellar_cluster=stellar_cluster, romData=romData)) THEN
+            romData=romData)) THEN
 
         CALL addNewChild(thisOctal, iSubcell, grid, adjustGridInfo=.TRUE., &
-                         stellar_cluster=stellar_cluster, &
                          splitAzimuthally=splitInAzimuth, romData=romData)
        
         if (.not.thisOctal%hasChild(isubcell)) then
@@ -1320,7 +1314,7 @@ CONTAINS
                    CALL CPU_TIME(T1)
                    if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
                    recentoctal => thisoctal
-                   CALL fillDensityCorners(thisOctal,grid,clusterdensity, clustervelocity, thisOctal%threed)
+                   CALL fillDensityCorners(thisOctal, clusterdensity, clustervelocity)
                    thisOctal%velocity = thisoctal%cornervelocity(14)
                 endif
 
@@ -3559,7 +3553,7 @@ CONTAINS
 
 
   FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, splitInAzimuth,&
-       stellar_cluster,romData) RESULT(split)
+       romData) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
@@ -3593,7 +3587,6 @@ CONTAINS
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
     LOGICAL                    :: split        
@@ -3810,7 +3803,7 @@ CONTAINS
 
       r = sqrt(cellcentre%x**2 + cellCentre%y**2)
       phi = atan2(cellCentre%y,cellCentre%x)
-      height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
+      height = discHeightFunc( phi,hOverR) * r
       if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
          if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
             if (abs(cellCentre%z-height) < 2.d0*cellSize) then
@@ -3883,7 +3876,7 @@ CONTAINS
 
      if (ttauriwarp) then
         phi = atan2(cellCentre%y,cellCentre%x)
-        height = discHeightFunc(r/(ttauriROuter/1.d10), phi,hOverR) * r
+        height = discHeightFunc(phi,hOverR) * r
         if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
            if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
               if (abs(cellCentre%z-height) < 2.d0*cellSize) then
@@ -5039,15 +5032,13 @@ CONTAINS
   END SUBROUTINE fillGridDummyValues
   
   
-  SUBROUTINE fillVelocityCorners(thisOctal,grid,velocityFunc, threed)
+  SUBROUTINE fillVelocityCorners(thisOctal,velocityFunc)
     ! store the velocity values at the subcell corners of an octal so
     !   that they can be used for interpolation.
 
     IMPLICIT NONE
   
     TYPE(octal), INTENT(INOUT) :: thisOctal
-    TYPE(gridtype), INTENT(IN) :: grid
-    LOGICAL, INTENT(IN) :: threed
     real(oct)      :: r1, r2, r3
     real(oct)      :: phi1, phi2, phi3
     real(oct)      :: x1, x2, x3
@@ -5055,11 +5046,10 @@ CONTAINS
     real(oct)      :: z1, z2, z3
     
     INTERFACE 
-      TYPE(vector) FUNCTION velocityFunc(point,grid)
+      TYPE(vector) FUNCTION velocityFunc(point)
         USE vector_mod
         USE gridtype_mod
         TYPE(vector), INTENT(IN) :: point
-        TYPE(gridtype), INTENT(IN)    :: grid
       END FUNCTION velocityFunc
     END INTERFACE
 
@@ -5069,9 +5059,9 @@ CONTAINS
        x3 = thisOctal%centre%x + thisOctal%subcellSize
        y1 = 0.d0
        z1 = 0.d0
-       thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
-       thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1),grid)
-       thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1),grid)
+       thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1))
        goto 666
     endif
 
@@ -5094,39 +5084,39 @@ CONTAINS
                     
           ! now store the 'base level' values
           
-          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
-          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1),grid)
-          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1),grid)
-          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1),grid)
-          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1),grid)
-          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1),grid)
-          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1),grid)
-          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1),grid)
-          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1),grid)
+          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1))
+          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1))
+          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1))
+          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1))
+          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1))
+          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1))
+          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1))
+          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1))
+          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1))
           
           ! middle level
           
-          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2),grid)
-          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2),grid)
-          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2),grid)
-          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2),grid)
-          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2),grid)
-          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2),grid)
-          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2),grid)
-          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2),grid)
-          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2),grid)
+          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2))
+          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2))
+          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2))
+          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2))
+          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2))
+          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2))
+          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2))
+          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2))
+          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2))
           
           ! top level
           
-          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3),grid)
-          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3),grid)
-          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3),grid)
-          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3),grid)
-          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3),grid)
-          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3),grid)
-          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3),grid)
-          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3),grid)
-          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3),grid)
+          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3))
+          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3))
+          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3))
+          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3))
+          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3))
+          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3))
+          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3))
+          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3))
+          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3))
 
        else ! cylindrical 
           if (thisOctal%splitAzimuthally) then
@@ -5142,39 +5132,39 @@ CONTAINS
 
              ! bottom level
 
-             thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(3) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1),grid)
-             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(5) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(6) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1),grid)
-             thisOctal%cornerVelocity(7) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(8) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(9) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z1),grid)
+             thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
+             thisOctal%cornerVelocity(3) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1))
+             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerVelocity(5) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1))
+             thisOctal%cornerVelocity(6) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1))
+             thisOctal%cornerVelocity(7) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerVelocity(8) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
+             thisOctal%cornerVelocity(9) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z1))
 
              ! middle level
 
-             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2),grid)
-             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2),grid)
-             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z2),grid)
+             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2))
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2))
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2))
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
+             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z2))
 
              ! top level
 
-             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3),grid)
-             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3),grid)
-             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3),grid)
+             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3))
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3))
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3))
 
           else
 
@@ -5190,30 +5180,30 @@ CONTAINS
 
              ! bottom level
 
-             thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(3) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1),grid)
-             thisOctal%cornerVelocity(5) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1),grid)
-             thisOctal%cornerVelocity(6) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1),grid)
+             thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
+             thisOctal%cornerVelocity(3) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1))
+             thisOctal%cornerVelocity(5) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerVelocity(6) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
 
              ! middle level
 
-             thisOctal%cornerVelocity(7) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(8) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(9) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(10) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2),grid)
-             thisOctal%cornerVelocity(11) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2),grid)
-             thisOctal%cornerVelocity(12) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2),grid)
+             thisOctal%cornerVelocity(7) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerVelocity(8) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
+             thisOctal%cornerVelocity(9) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerVelocity(10) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2))
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
 
              ! top level
 
-             thisOctal%cornerVelocity(13) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(14) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(16) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
 
           endif
        endif
@@ -5232,15 +5222,15 @@ CONTAINS
        
        ! now store the 'base level' values
        
-       thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,0.d0,z1),grid)
-       thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,0.d0,z1),grid)
-       thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,0.d0,z1),grid)
-       thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,0.d0,z2),grid)
-       thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,0.d0,z2),grid)
-       thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,0.d0,z2),grid)
-       thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,0.d0,z3),grid)
-       thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,0.d0,z3),grid)
-       thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,0.d0,z3),grid)
+       thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,0.d0,z1))
+       thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,0.d0,z1))
+       thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,0.d0,z1))
+       thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,0.d0,z2))
+       thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,0.d0,z2))
+       thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,0.d0,z2))
+       thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,0.d0,z3))
+       thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,0.d0,z3))
+       thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,0.d0,z3))
     endif
 666 continue
 
@@ -5257,7 +5247,7 @@ CONTAINS
 
   
 
-  TYPE(vector) FUNCTION TTauriVelocity(point,grid)
+  TYPE(vector) FUNCTION TTauriVelocity(point)
     ! calculates the velocity vector at a given point for a model
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
@@ -5268,17 +5258,14 @@ CONTAINS
     IMPLICIT NONE
 
     TYPE(vector), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
 
-    TYPE(vector) :: starPosn
     TYPE(vector) :: pointVec
     TYPE(vector)      :: vP
     REAL(double)  :: modVp
     REAL(double)  :: phi
     REAL(double)  :: r, rM, theta, y
 
-    starPosn = grid%starPos1
-    pointVec = (point - starPosn) * 1.e10_oc
+    pointVec = point  * 1.e10_oc
     r = modulus( pointVec ) 
     if (r /= 0.d0) then
        theta = ACOS( max(-1.d0,min(1.d0,pointVec%z / dble(r) )))
@@ -5366,7 +5353,7 @@ CONTAINS
     
        if (inflowMahdavi(pointvec)) then
           thisOctal%rho(subcell) = 1.d-14
-          thisOctal%velocity(subcell) = velocityMahdavi(pointVec/1.d10, grid)
+          thisOctal%velocity(subcell) = velocityMahdavi(pointVec/1.d10)
        else
           thisOctal%rho(subcell) = 1.d-25
           thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
@@ -5432,15 +5419,15 @@ CONTAINS
        END IF
     end if ! ttau_acc_on
 
-  thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
+  thisOctal%velocity(subcell) = TTauriVelocity(point)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
      
   if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
   IF ((thisoctal%threed).and.(subcell == 8)) &
-       CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
+       CALL fillVelocityCorners(thisOctal,TTauriVelocity)
   
   IF ((thisoctal%twod).and.(subcell == 4)) &
-       CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .false.)
+       CALL fillVelocityCorners(thisOctal,TTauriVelocity)
 
   
 666 continue
@@ -6676,12 +6663,11 @@ CONTAINS
 
   end subroutine calcTestDensity
 
-  subroutine calcPathTestDensity(thisOctal,subcell,grid)
+  subroutine calcPathTestDensity(thisOctal,subcell)
 
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -6780,12 +6766,11 @@ CONTAINS
 
   end subroutine calcLexington
 
-  subroutine calcStarburst(thisOctal,subcell,grid)
+  subroutine calcStarburst(thisOctal,subcell)
 
     use input_variables, only : hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector) :: rVec
     real(double) :: ethermal, gamma = 5.d0/3.d0
 
@@ -6852,11 +6837,10 @@ CONTAINS
     enddo
   end subroutine checkMassLossRate
 
-  subroutine calcSymbiotic(thisOctal,subcell,grid)
+  subroutine calcSymbiotic(thisOctal,subcell)
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector) :: rVec
     real(double) :: r, v, mdot
 
@@ -7182,7 +7166,7 @@ CONTAINS
        thisOctal%velocity(subcell) = thisOctal%velocity(subcell) * v/cSpeed
 
     endif
-    CALL fillVelocityCorners(thisOctal,grid,wrshellVelocity,thisOctal%threed)
+    CALL fillVelocityCorners(thisOctal,wrshellVelocity)
 
 
     thisOctal%biasCont3D = 1.
@@ -7197,12 +7181,11 @@ CONTAINS
 
   end subroutine calcWRShellDensity
 
-  subroutine calcHydro1DDensity(thisOctal,subcell,grid)
+  subroutine calcHydro1DDensity(thisOctal,subcell)
 
     use input_variables
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real(double) :: gd, xmid, x, z, r , zprime
     
@@ -7280,9 +7263,9 @@ CONTAINS
   subroutine calcKelvinDensity(thisOctal,subcell,grid)
 
     use input_variables
+    type(GRIDTYPE), intent(in) :: grid
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real :: u1 !, u2
     real(double) :: eKinetic
@@ -7342,12 +7325,11 @@ CONTAINS
 
   end subroutine Calckelvindensity
 
-  subroutine calcRTaylorDensity(thisOctal,subcell,grid)
+  subroutine calcRTaylorDensity(thisOctal,subcell)
 
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real :: u1 !, u2
     real(double), parameter :: gamma = 5.d0/3.d0
@@ -7403,13 +7385,12 @@ CONTAINS
     yminusbound = 2
   end subroutine calcRTaylorDensity
 
-  subroutine calcBonnorEbertDensity(thisOctal,subcell,grid)
+  subroutine calcBonnorEbertDensity(thisOctal,subcell)
 
     use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use utils_mod, only: bonnorebertrun
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real(double), parameter :: gamma = 5.d0/3.d0
     real(double) :: eThermal, rMod, fac
@@ -7477,12 +7458,11 @@ CONTAINS
 
   end subroutine calcBonnorEbertDensity
 
-  subroutine calcUniformSphere(thisOctal,subcell,grid)
+  subroutine calcUniformSphere(thisOctal,subcell)
 
     use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real(double) :: eThermal, rMod
 
@@ -7518,12 +7498,11 @@ CONTAINS
 
 
 
-  subroutine calcSedovDensity(thisOctal,subcell,grid)
+  subroutine calcSedovDensity(thisOctal,subcell)
 
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real(double) :: gamma, ethermal
     logical :: blast
@@ -7558,11 +7537,10 @@ CONTAINS
     xminusbound = 1
   end subroutine calcSedovDensity
 
-  subroutine calcProtoBinDensity(thisOctal,subcell,grid)
+  subroutine calcProtoBinDensity(thisOctal,subcell)
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rVec
     real(double) :: gamma, ethermal
     real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
@@ -7650,12 +7628,11 @@ CONTAINS
     
 
 
-  subroutine benchmarkDisk(thisOctal,subcell,grid)
+  subroutine benchmarkDisk(thisOctal,subcell)
 
     use input_variables, ONLY : rInner, rOuter, height, rho
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     real :: r, hr, rd
     real(double), parameter :: min_rho = 1.0d-35 ! minimum density
     TYPE(vector) :: rVec
@@ -7695,13 +7672,12 @@ CONTAINS
     thisOctal%etaLine = 1.e-30
   end subroutine benchmarkDisk
 
-  subroutine molecularBenchmark(thisOctal,subcell,grid)
+  subroutine molecularBenchmark(thisOctal,subcell)
 
     use input_variables, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
     real(double),save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
@@ -7813,12 +7789,11 @@ CONTAINS
     endif
   end subroutine WaterBenchmark1
 
-  subroutine WaterBenchmark2(thisOctal,subcell, grid)
+  subroutine WaterBenchmark2(thisOctal,subcell)
 
     use input_variables, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
-    TYPE(gridtype), INTENT(IN) :: grid
     INTEGER, INTENT(IN) :: subcell
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 200
@@ -7852,21 +7827,20 @@ CONTAINS
        thisOctal%molAbundance(subcell) = molabundance
        thisOctal%nh2(subcell) = 1e4
        thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
-       thisOctal%velocity(subcell) = WaterBenchmarkvelocity(subcellCentre(thisOctal,subcell),grid)
+       thisOctal%velocity(subcell) = WaterBenchmarkvelocity(subcellCentre(thisOctal,subcell))
        thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
                                       / (18.0 * amu))) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
 
-   CALL fillVelocityCorners(thisOctal,grid,WaterBenchmarkVelocity,thisOctal%threed)
+   CALL fillVelocityCorners(thisOctal,WaterBenchmarkVelocity)
   end subroutine WaterBenchmark2
 
-  subroutine AGBStarBenchmark(thisOctal,subcell,grid)
+  subroutine AGBStarBenchmark(thisOctal,subcell)
 
     use input_variables, only : molAbundance
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 100
     real,save :: r(nr), nh2(nr), td(nr), tg(nr), v(nr), mu(nr)
@@ -7932,16 +7906,15 @@ CONTAINS
 
     thisOctal%temperature(subcell) = thisOctal%temperaturegas(subcell)
 
-   CALL fillVelocityCorners(thisOctal,grid,AGBStarVelocity,thisOctal%threed)
+   CALL fillVelocityCorners(thisOctal,AGBStarVelocity)
   end subroutine AGBStarBenchmark
 
-  subroutine clumpyAgb(thisOctal,subcell,grid)
+  subroutine clumpyAgb(thisOctal,subcell)
 
     use input_variables, only : rinner, router, vterm, mdot
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     type(VECTOR) :: rvec
     real(double) :: r
     rVec = subcellCentre(thisOctal, subcell)
@@ -7955,13 +7928,12 @@ CONTAINS
 
   end subroutine ClumpyAgb
 
-  subroutine iras04158(thisOctal, subcell ,grid)
+  subroutine iras04158(thisOctal, subcell)
 
     use input_variables, only : router, rinner
     use density_mod, only: iras04158Disc
     
     TYPE(octal), INTENT(INOUT) :: thisOctal
-    type(GRIDTYPE), intent(in) :: grid
     INTEGER, INTENT(IN) :: subcell
     real :: r
     TYPE(vector) :: rVec
@@ -7996,12 +7968,12 @@ CONTAINS
        
        thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (28.0 * amu)) + 0.3**2) &
                                       / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-       thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
+       thisOctal%velocity(subcell) = keplerianVelocity(rvec)
     else
        thisOctal%velocity = VECTOR(1d-20,1d-20,1d-20)
     endif
 !    write(*,*) thisOctal%temperature(subcell), thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
-   CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+   CALL fillVelocityCorners(thisOctal,keplerianVelocity)
  end subroutine iras04158
  
  function readparameterfrom2dmap(point,output,dologint) result(out)
@@ -8199,13 +8171,12 @@ CONTAINS
      endif
 end function readparameterfrom2dmap
 
-  subroutine molecularFilamentFill(thisOctal,subcell,grid)
+  subroutine molecularFilamentFill(thisOctal,subcell)
 
     use input_variables, only : molAbundance!,rhoC,r0
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r0, r1
     TYPE(VECTOR) :: cellCentre
 
@@ -8223,16 +8194,15 @@ end function readparameterfrom2dmap
 
     thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
 
-   CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
+   CALL fillVelocityCorners(thisOctal,molebenchVelocity)
   end subroutine molecularFilamentFill
 
-  subroutine ggtauFill(thisOctal,subcell,grid)
+  subroutine ggtauFill(thisOctal,subcell)
 
     use input_variables, only : molAbundance 
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r,t0,nh20,H0,H,z, rmin, rmax
     TYPE(VECTOR) :: cellCentre
 
@@ -8267,33 +8237,31 @@ end function readparameterfrom2dmap
        thisOctal%temperature(subcell) = tcbr
     endif
 
-    CALL fillVelocityCorners(thisOctal,grid,ggtauVelocity,thisOctal%threed)
+    CALL fillVelocityCorners(thisOctal,ggtauVelocity)
 
   end subroutine ggtauFill
 
 
-  TYPE(vector)  function wrshellVelocity(point, grid)
-    use input_variables, only : vterm, beta
+  TYPE(vector)  function wrshellVelocity(point)
+    use input_variables, only : vterm, beta, rinner
     type(vector), intent(in) :: point
     type(vector) :: rvec
-    type(GRIDTYPE), intent(in) :: grid
     real(double) :: v, r
     rVec = point
 
     wrShellVelocity = VECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
-    If ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
-       v = 0.001d5+(vterm-0.001d5)*(1.d0 - grid%rinner/r)**beta
+    If ((r > rInner)) then !.and.(r < rOuter)) then
+       v = 0.001d5+(vterm-0.001d5)*(1.d0 - rinner/r)**beta
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
     endif
 
   end function wrshellVelocity
 
-  TYPE(vector) FUNCTION moleBenchVelocity(point, grid)
+  TYPE(vector) FUNCTION moleBenchVelocity(point)
 
     type(VECTOR), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
     integer :: i
@@ -8340,10 +8308,9 @@ end function readparameterfrom2dmap
 
   end FUNCTION moleBenchVelocity
 
-  TYPE(vector) FUNCTION WaterBenchmarkVelocity(point, grid)
+  TYPE(vector) FUNCTION WaterBenchmarkVelocity(point)
 
     type(VECTOR), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
     real :: v1, r1
     type(VECTOR) :: vel
 
@@ -8359,10 +8326,9 @@ end function readparameterfrom2dmap
 
   end FUNCTION WaterBenchmarkVelocity
 
-  TYPE(vector) FUNCTION AGBStarVelocity(point,grid)
+  TYPE(vector) FUNCTION AGBStarVelocity(point)
 
     type(VECTOR), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 100
     integer :: i
@@ -8416,10 +8382,9 @@ end function readparameterfrom2dmap
   end subroutine hydroVelocityconvert
 
 
-  TYPE(vector)  function keplerianVelocity(point, grid)
-    use input_variables, only : mcore
+  TYPE(vector)  function keplerianVelocity(point)
+    use input_variables, only : mcore,rinner
     type(vector), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
     type(vector) :: rvec
     real(double) :: v, r
     rVec = point
@@ -8431,7 +8396,7 @@ end function readparameterfrom2dmap
 !    write(*,*) "r", r
 !    write(*,*) "rvec", rvec, modulus(rvec)
 
-    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
+    if ((r > rInner)) then !.and.(r < rOuter)) then
        v = sqrt(2.d0*6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
 !    write(*,*) "v", v
  
@@ -8442,10 +8407,9 @@ end function readparameterfrom2dmap
     endif
   end function keplerianVelocity
 
-  TYPE(vector)  function ggtauVelocity(point, grid)
+  TYPE(vector)  function ggtauVelocity(point)
 
     type(vector), intent(in) :: point
-    TYPE(gridtype), INTENT(IN) :: grid
     type(vector) :: rvec
     real(double) :: v, r,v0
 
@@ -8469,12 +8433,11 @@ end function readparameterfrom2dmap
 
   end function ggtauVelocity
  
- TYPE(vector) FUNCTION ClusterVelocity(point, grid)
+ TYPE(vector) FUNCTION ClusterVelocity(point)
 
    use sph_data_class, only : clusterparameter
 
     type(VECTOR), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
@@ -8482,13 +8445,12 @@ end function readparameterfrom2dmap
     clustervelocity = Clusterparameter(point, recentoctal, subcell, theparam = 1) ! use switch for storing velocity
   end FUNCTION ClusterVelocity
 
-  real(double) FUNCTION ClusterDensity(point, grid)
+  real(double) FUNCTION ClusterDensity(point)
     
     use sph_data_class, only : clusterparameter
 
     type(VECTOR) :: out
     type(VECTOR), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
@@ -8539,12 +8501,11 @@ end function readparameterfrom2dmap
 
   end subroutine assign_melvin
 
-  subroutine assign_hii_test(thisOctal,subcell,grid)
+  subroutine assign_hii_test(thisOctal,subcell)
 
     use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector) :: rVec
     real(double) :: eThermal
 
@@ -8620,12 +8581,11 @@ end function readparameterfrom2dmap
     thisOctal%etaLine = 1.e-30
   end subroutine assign_planetgap
 
-  subroutine assign_toruslogo(thisOctal,subcell,grid)
+  subroutine assign_toruslogo(thisOctal,subcell)
 
     use density_mod, only: toruslogoDensity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -8712,8 +8672,8 @@ end function readparameterfrom2dmap
 
     if(molecular) then
  !      if(modulus(rvec) .lt. 1000.) then
-          thisOctal%velocity(subcell) = keplerianVelocity(rvec,grid)
-          CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+          thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+          CALL fillVelocityCorners(thisOctal, keplerianVelocity)
  !      else
  !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
  !      endif
@@ -8729,7 +8689,7 @@ end function readparameterfrom2dmap
     if (hydrodynamics) then
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
        thisOctal%temperature(subcell) = (1.d-15*10.d0)/thisOCtal%rho(subcell)
-       thisOctal%velocity(subcell) = keplerianVelocity(rvec,grid)
+       thisOctal%velocity(subcell) = keplerianVelocity(rvec)
        thisOctal%boundaryCondition(subcell) = 4
        thisOctal%iEquationOfState(subcell) = 1
        thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
@@ -9098,7 +9058,7 @@ end function readparameterfrom2dmap
 
 
 
-  subroutine spiralWindSubcell(thisOctal, subcell, grid)
+  subroutine spiralWindSubcell(thisOctal, subcell)
     use ostar_mod, only: returnSpiralFactor
     use input_variables
     real(double) :: v, r, rhoOut
@@ -9106,7 +9066,6 @@ end function readparameterfrom2dmap
     type(VECTOR) :: octVec
     integer :: subcell
     type(OCTAL) :: thisOctal
-    type(GRIDTYPE) :: grid
     character(len=80) :: opacityFilename
     real, allocatable :: rgrid(:), sigma(:), t(:), vgrid(:), eta(:), chi(:), etal(:), chil(:), escat(:)
     integer :: i, j
@@ -9145,13 +9104,13 @@ end function readparameterfrom2dmap
 
     thisOctal%inFlow(subcell) = .false.
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-    if (r > grid%rCore) then
+    if (r > rCore) then
        r = modulus(rVec)
-       v = v0 + (vTerm - v0) * (1. - grid%rCore/r)**beta
+       v = v0 + (vTerm - v0) * (1. - rCore/r)**beta
        rhoOut = mdot / (fourPi * (r*1.e10)**2 * v)
        rHat = rVec / r
        octVec = rVec
-       thisOctal%rho(subcell) = rhoOut* returnSpiralFactor(octVec, 10.*grid%rCore/real(twoPi))
+       thisOctal%rho(subcell) = rhoOut* returnSpiralFactor(octVec, 10.*rCore/real(twoPi))
        thisOctal%temperature(subcell) = Teff
        thisOctal%velocity(subcell)  = (v/cSpeed) * rHat
        thisOctal%inFlow(subcell) = .true.
@@ -9162,18 +9121,17 @@ end function readparameterfrom2dmap
        thisOctal%kappaAbs(subcell,1) = 1.e-30
     endif
 
-    CALL fillVelocityCorners(thisOctal,grid,ostarVelocity,thisOctal%threed)
+    CALL fillVelocityCorners(thisOctal,ostarVelocity)
 
   end subroutine spiralWindSubcell
 
-  subroutine windSubcell(thisOctal, subcell, grid)
+  subroutine windSubcell(thisOctal, subcell)
     use input_variables, only : v0, vterm, beta, twind, mdot, rcore
     real(double) :: v, r, rhoOut
     type(VECTOR) :: rHat, rvec
     type(VECTOR) :: octVec
     integer :: subcell
     type(OCTAL) :: thisOctal
-    type(GRIDTYPE) :: grid
 
     rVec = subcellCentre(thisOctal, subcell)
     r = modulus(rVec)
@@ -9193,17 +9151,16 @@ end function readparameterfrom2dmap
        thisOctal%inFlow(subcell) = .true.
     endif
 
-    CALL fillVelocityCorners(thisOctal,grid,ostarVelocity,thisOctal%threed)
+    CALL fillVelocityCorners(thisOctal,ostarVelocity)
 
   end subroutine WindSubcell
 
 
-  TYPE(vector) FUNCTION ostarVelocity(point,grid)
+  TYPE(vector) FUNCTION ostarVelocity(point)
     use input_variables, only : v0, vterm, beta, rcore
     real(double) :: r1
     type(VECTOR), intent(in) :: point
     type(VECTOR) rHat
-    type(GRIDTYPE), intent(in) :: grid
     real :: v
 
     r1 = modulus(point)
@@ -9211,7 +9168,7 @@ end function readparameterfrom2dmap
     rhat = point
     call normalize(rHat)
     if (r1 > rCore) then
-       v = v0 + (vTerm - v0) * (1. - grid%rCore/r1)**beta
+       v = v0 + (vTerm - v0) * (1. - rCore/r1)**beta
        ostarVelocity  = (dble(v/cSpeed)) * rHat
     else
        ostarVelocity  = VECTOR(0., 0., 0.)
@@ -10138,7 +10095,6 @@ end function readparameterfrom2dmap
 !                call addNewChild(thisOctal,thisSubcell,grid)
 
               call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
-                               stellar_cluster=stellar_cluster, &
                                inherit=inheritProps, interp=interpProps, romData=romData)
 !              call addNewChild(thisOctal, thissubcell, grid, adjustGridInfo=.TRUE.,  &
 !                               sphData=sphData, stellar_cluster=stellar_cluster, &
@@ -11162,17 +11118,15 @@ end function readparameterfrom2dmap
        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
     END IF
     
-    IF (subcell == 8) CALL fillVelocityCorners(thisOctal,grid,windTestVelocity,thisOctal%threed)
+    IF (subcell == 8) CALL fillVelocityCorners(thisOctal,windTestVelocity)
       
   END SUBROUTINE calcWindTestValues
 
   
-  TYPE(vector) FUNCTION windTestVelocity(point,grid)
+  TYPE(vector) FUNCTION windTestVelocity(point)
 
-    IMPLICIT NONE
-
+    use input_variables, only : rinner, router
     TYPE(vector), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
     
     TYPE(vector) :: starPosn
     TYPE(vector) :: pointVec
@@ -11185,8 +11139,8 @@ end function readparameterfrom2dmap
     REAL, PARAMETER :: vTerminal  = 2000.e5
     REAL, PARAMETER :: vBeta      = 1.0
     
-    rStar = grid%rStar1
-    starPosn = grid%starPos1
+    rStar = rsol
+    starPosn = VECTOR(0.d0, 0.d0,0.d0)
 
     pointVec = (point - starPosn) 
     
@@ -11195,7 +11149,7 @@ end function readparameterfrom2dmap
     CALL normalize(pointVecNorm)
     pointVecNormSingle = pointVecNorm
     
-    IF (r > grid%rInner .AND. r < grid%rOuter) THEN
+    IF (r > rInner .AND. r < rOuter) THEN
        velocity = REAL((v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta),kind=oct)
        windTestVelocity = (velocity / cSpeed) * pointVecNormSingle
     ELSE
@@ -12384,6 +12338,7 @@ end function readparameterfrom2dmap
           enddo
        endif
     end do
+    if (associated(startOctal)) deallocate(startOctal)
 
   end subroutine myTauSmooth
 
@@ -12601,7 +12556,7 @@ end function readparameterfrom2dmap
     enddo
   end subroutine stripMahdavi
 
-  recursive subroutine assignDensitiesBlandfordPayne(grid, thisOctal)
+  recursive subroutine assignDensitiesBlandfordPayne(grid,thisOctal)
     use input_variables, only :  vturb, dw_temperature
     use magnetic_mod, only : inflowBlandfordPayne, velocityBlandfordPayne, rhoBlandfordPayne
     type(GRIDTYPE) :: grid
@@ -12625,18 +12580,18 @@ end function readparameterfrom2dmap
           cellCentre = subcellCentre(thisOctal, subcell)
           if (inflowBlandfordPayne(cellCentre)) then
              thisOctal%inflow(subcell) = .true.
-             thisOctal%rho(subcell) = rhoBlandfordPayne(grid, cellCentre)
-             thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre, grid)
+             thisOctal%rho(subcell) = rhoBlandfordPayne(cellCentre)
+             thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre)
              thisOctal%temperature(subcell) = DW_temperature
           endif
 
           if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
 
           IF ((thisoctal%threed).and.(subcell == 8)) &
-               CALL fillVelocityCorners(thisOctal,grid,velocityBlandfordPayne, .true.)
+               CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
           
           IF ((thisoctal%twod).and.(subcell == 4)) &
-               CALL fillVelocityCorners(thisOctal,grid,VelocityBlandfordPayne, .false.)
+               CALL fillVelocityCorners(thisOctal,VelocityBlandfordPayne)
 
 
        endif
@@ -12714,7 +12669,7 @@ end function readparameterfrom2dmap
           thisR = modulus(cellCentre)*1.d10
           if (inflowMahdavi(1.d10*cellCentre)) then
              
-             thisOctal%velocity(subcell) = velocityMahdavi(cellCentre, grid)
+             thisOctal%velocity(subcell) = velocityMahdavi(cellCentre)
              thisV = modulus(thisOctal%velocity(subcell))*cSpeed
              if (thisV /= 0.d0) then
                 thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3 
@@ -12725,10 +12680,10 @@ end function readparameterfrom2dmap
                 if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
              
                 IF ((thisoctal%threed).and.(subcell == 8)) &
-                     CALL fillVelocityCorners(thisOctal,grid,velocityMahdavi, .true.)
+                     CALL fillVelocityCorners(thisOctal,velocityMahdavi)
           
                 IF ((thisoctal%twod).and.(subcell == 4)) &
-                     CALL fillVelocityCorners(thisOctal,grid,VelocityMahdavi, .false.)
+                     CALL fillVelocityCorners(thisOctal,VelocityMahdavi)
 
              endif
 
@@ -12739,7 +12694,7 @@ end function readparameterfrom2dmap
   
 
   recursive subroutine fillVelocityCornersMahdavi(thisOctal,grid)
-    use magnetic_mod, only : velocityMahdavi, inflowMahdavi
+    use magnetic_mod, only : velocityMahdavi
     use input_variables, only : vturb
     type(GRIDTYPE) :: grid
   type(octal), pointer   :: thisOctal
@@ -12761,10 +12716,10 @@ end function readparameterfrom2dmap
           if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
 
           IF ((thisoctal%threed).and.(subcell == 8)) &
-               CALL fillVelocityCorners(thisOctal,grid,velocityMahdavi, .true.)
+               CALL fillVelocityCorners(thisOctal, velocityMahdavi)
           
           IF ((thisoctal%twod).and.(subcell == 4)) &
-               CALL fillVelocityCorners(thisOctal,grid,Velocitymahdavi, .false.)
+               CALL fillVelocityCorners(thisOctal, Velocitymahdavi)
        endif
     enddo
   end subroutine fillVelocityCornersMahdavi
@@ -12930,14 +12885,13 @@ end function readparameterfrom2dmap
 
   end subroutine tagScaleSmooth
 
-  SUBROUTINE smoothAMRgrid(grid,factor, stellar_cluster, inheritProps, interpProps, &
+  SUBROUTINE smoothAMRgrid(grid,factor, inheritProps, interpProps, &
        romData)
     ! checks whether each octal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
 
     TYPE(gridtype), INTENT(INOUT) :: grid 
     REAL, INTENT(IN)              :: factor
-    TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN),optional  :: inheritProps
     logical, intent(in), optional :: interpProps 
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
@@ -13046,7 +13000,6 @@ end function readparameterfrom2dmap
             END IF
               neighbour%changed(1:neighbour%maxChildren) = .TRUE.
               call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
-                               stellar_cluster=stellar_cluster, &
                                inherit=inheritProps, interp=interpProps, romData=romData)
               gridConverged = .FALSE.
           ENDIF
@@ -13386,7 +13339,7 @@ IF ( .NOT. gridConverged ) RETURN
   ! What is the difference between this and the original startReturnSamples routine??????
   ! 
   SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
-             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
+             nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
              usePops,iLambda,error,lambda,nSource,source,kappaAbs,kappaSca,velocity,&
              velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow, etaCont, etaLine, startOctal, startSubcell)
     ! samples the grid at points along the path.
@@ -13406,7 +13359,6 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(vector), INTENT(IN)      :: startPoint ! photon start point
     TYPE(vector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
-    REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
 !    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
                        ! samples that will be made in any subcell of the octree. 
                        
@@ -15216,10 +15168,9 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine tauAlongPath2
 
 
-  subroutine getMagStreamValues2(point, grid,  rho, temperature, &
+  subroutine getMagStreamValues2(point,  rho, temperature, &
        velocity, inflow)
     type(STREAMTYPE) :: thisStream
-    type(GRIDTYPE) :: grid
     integer :: iSample
     type(VECTOR) :: point
     real(double) :: t, thisR
@@ -15280,8 +15231,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end subroutine getMagStreamValues2
 
-  subroutine getMagStreamValues3(thisOctal, subcell, stream, grid)
-    type(GRIDTYPE) :: grid
+  subroutine getMagStreamValues3(thisOctal, subcell, stream)
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(STREAMTYPE) :: stream
@@ -15316,7 +15266,7 @@ IF ( .NOT. gridConverged ) RETURN
        if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
 
        if (subcell == thisOctal%maxchildren) then
-          call fillVelocityCorners(thisOctal, grid, magstreamvelocity, .true.)
+          call fillVelocityCorners(thisOctal, magstreamvelocity)
 !          write(*,*) " "
 !          write(*,*) thisOctal%velocity(subcell)*real(cspeed/1.e5)
 !          write(*,*) thisOctal%cornervelocity(14)*real(cspeed/1.e5)
@@ -15332,8 +15282,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   end subroutine getMagStreamValues3
 
-  type(VECTOR)  function magStreamVelocity(point, grid) result(vel)
-    type(GRIDTYPE), intent(in) :: grid
+  type(VECTOR)  function magStreamVelocity(point) result(vel)
     type(VECTOR),intent(in) :: point
     real(double) :: minDist, dist, dist1, dist2, t
     integer :: i, j, isample, istream
@@ -16764,15 +16713,13 @@ IF ( .NOT. gridConverged ) RETURN
     
        end function amrgriddensity
 
-  SUBROUTINE fillDensityCorners(thisOctal,grid,densityFunc, velocityfunc,threed)
+  SUBROUTINE fillDensityCorners(thisOctal,densityFunc, velocityfunc)
     ! store the density values at the subcell corners of an octal so
     !   that they can be used for interpolation.
 
     IMPLICIT NONE
   
     TYPE(octal), INTENT(INOUT) :: thisOctal
-    TYPE(gridtype), INTENT(IN) :: grid
-    LOGICAL, INTENT(IN) :: threed
     real(oct)      :: r1, r2, r3
     real(oct)      :: phi1, phi2, phi3
     real(oct)      :: x1, x2, x3
@@ -16780,20 +16727,18 @@ IF ( .NOT. gridConverged ) RETURN
     real(oct)      :: z1, z2, z3
     
     INTERFACE 
-      real(double) FUNCTION densityFunc(point,grid)
+      real(double) FUNCTION densityFunc(point)
         USE vector_mod
         USE gridtype_mod
         TYPE(vector), INTENT(IN) :: point
-        TYPE(gridtype), INTENT(IN)    :: grid
       END FUNCTION densityFunc
     END INTERFACE
 
     INTERFACE
-      type(VECTOR) FUNCTION velocityFunc(point,grid)
+      type(VECTOR) FUNCTION velocityFunc(point)
         USE vector_mod
         USE gridtype_mod
         TYPE(vector), INTENT(IN) :: point
-        TYPE(gridtype), INTENT(IN)    :: grid
       END FUNCTION velocityFunc
     END INTERFACE
 
@@ -16803,9 +16748,9 @@ IF ( .NOT. gridConverged ) RETURN
        x3 = thisOctal%centre%x + thisOctal%subcellSize
        y1 = 0.d0
        z1 = 0.d0
-       thisOctal%cornerrho(1) = densityFunc(vector(x1,y1,z1),grid)
-       thisOctal%cornerrho(2) = densityFunc(vector(x2,y1,z1),grid)
-       thisOctal%cornerrho(3) = densityFunc(vector(x3,y1,z1),grid)
+       thisOctal%cornerrho(1) = densityFunc(vector(x1,y1,z1))
+       thisOctal%cornerrho(2) = densityFunc(vector(x2,y1,z1))
+       thisOctal%cornerrho(3) = densityFunc(vector(x3,y1,z1))
        goto 667
     endif
 
@@ -16825,69 +16770,69 @@ IF ( .NOT. gridConverged ) RETURN
           z2 = thisOctal%centre%z
           z3 = thisOctal%centre%z + thisOctal%subcellSize
 
-          thisOctal%cornerrho(14) = densityFunc(vector(x2,y2,z2),grid)          
-          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2),grid)          
                     
           ! now store the 'base level' values
                               
-          thisOctal%cornerrho(1)      =  densityFunc(vector(x1,y1,z1),grid)
-          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1),grid)
-          thisOctal%cornerrho(2)      =  densityFunc(vector(x2,y1,z1),grid)
-          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1),grid)
-          thisOctal%cornerrho(3)      =  densityFunc(vector(x3,y1,z1),grid)
-          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1),grid)
-          thisOctal%cornerrho(4)      =  densityFunc(vector(x1,y2,z1),grid)
-          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1),grid)
-          thisOctal%cornerrho(5)      =  densityFunc(vector(x2,y2,z1),grid)
-          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1),grid)
-          thisOctal%cornerrho(6)      =  densityFunc(vector(x3,y2,z1),grid)
-          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1),grid)
-          thisOctal%cornerrho(7)      =  densityFunc(vector(x1,y3,z1),grid)
-          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1),grid)
-          thisOctal%cornerrho(8)      =  densityFunc(vector(x2,y3,z1),grid)
-          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1),grid)
-          thisOctal%cornerrho(9)      =  densityFunc(vector(x3,y3,z1),grid)
-          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1),grid)
+          thisOctal%cornerrho(1)      =  densityFunc(vector(x1,y1,z1))
+          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1))
+          thisOctal%cornerrho(2)      =  densityFunc(vector(x2,y1,z1))
+          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1))
+          thisOctal%cornerrho(3)      =  densityFunc(vector(x3,y1,z1))
+          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1))
+          thisOctal%cornerrho(4)      =  densityFunc(vector(x1,y2,z1))
+          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1))
+          thisOctal%cornerrho(5)      =  densityFunc(vector(x2,y2,z1))
+          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1))
+          thisOctal%cornerrho(6)      =  densityFunc(vector(x3,y2,z1))
+          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1))
+          thisOctal%cornerrho(7)      =  densityFunc(vector(x1,y3,z1))
+          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1))
+          thisOctal%cornerrho(8)      =  densityFunc(vector(x2,y3,z1))
+          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1))
+          thisOctal%cornerrho(9)      =  densityFunc(vector(x3,y3,z1))
+          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1))
 
           ! middle level
           
-          thisOctal%cornerrho(10)      =  densityFunc(vector(x1,y1,z2),grid)
-          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2),grid)          
-          thisOctal%cornerrho(11)      =  densityFunc(vector(x2,y1,z2),grid)
-          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2),grid)
-          thisOctal%cornerrho(12)      =  densityFunc(vector(x3,y1,z2),grid)
-          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2),grid)
-          thisOctal%cornerrho(13)      =  densityFunc(vector(x1,y2,z2),grid)
-          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2),grid)
+          thisOctal%cornerrho(10)      =  densityFunc(vector(x1,y1,z2))
+          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2))
+          thisOctal%cornerrho(11)      =  densityFunc(vector(x2,y1,z2))
+          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2))
+          thisOctal%cornerrho(12)      =  densityFunc(vector(x3,y1,z2))
+          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2))
+          thisOctal%cornerrho(13)      =  densityFunc(vector(x1,y2,z2))
+          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2))
+          thisOctal%cornerrho(14)      =  densityFunc(vector(x2,y2,z2))
+          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2))
 
-          thisOctal%cornerrho(15)      =  densityFunc(vector(x3,y2,z2),grid)
-          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2),grid)
-          thisOctal%cornerrho(16)      =  densityFunc(vector(x1,y3,z2),grid)
-          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2),grid)
-          thisOctal%cornerrho(17)      =  densityFunc(vector(x2,y3,z2),grid)
-          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2),grid)
-          thisOctal%cornerrho(18)      =  densityFunc(vector(x3,y3,z2),grid)
-          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2),grid)          
+          thisOctal%cornerrho(15)      =  densityFunc(vector(x3,y2,z2))
+          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2))
+          thisOctal%cornerrho(16)      =  densityFunc(vector(x1,y3,z2))
+          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2))
+          thisOctal%cornerrho(17)      =  densityFunc(vector(x2,y3,z2))
+          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2))
+          thisOctal%cornerrho(18)      =  densityFunc(vector(x3,y3,z2))
+          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2))
           ! top level         
 
-          thisOctal%cornerrho(19)      =  densityFunc(vector(x1,y1,z3),grid)
-          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3),grid)
-          thisOctal%cornerrho(20)      =  densityFunc(vector(x2,y1,z3),grid)
-          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3),grid)
-          thisOctal%cornerrho(21)      =  densityFunc(vector(x3,y1,z3),grid)
-          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3),grid)
-          thisOctal%cornerrho(22)      =  densityFunc(vector(x1,y2,z3),grid)
-          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3),grid)
-          thisOctal%cornerrho(23)      =  densityFunc(vector(x2,y2,z3),grid)
-          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3),grid)
-          thisOctal%cornerrho(24)      =  densityFunc(vector(x3,y2,z3),grid)
-          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3),grid)
-          thisOctal%cornerrho(25)      =  densityFunc(vector(x1,y3,z3),grid)
-          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3),grid)
-          thisOctal%cornerrho(26)      =  densityFunc(vector(x2,y3,z3),grid)
-          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3),grid)
-          thisOctal%cornerrho(27)      =  densityFunc(vector(x3,y3,z3),grid)
-          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3),grid)
+          thisOctal%cornerrho(19)      =  densityFunc(vector(x1,y1,z3))
+          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3))
+          thisOctal%cornerrho(20)      =  densityFunc(vector(x2,y1,z3))
+          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3))
+          thisOctal%cornerrho(21)      =  densityFunc(vector(x3,y1,z3))
+          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3))
+          thisOctal%cornerrho(22)      =  densityFunc(vector(x1,y2,z3))
+          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3))
+          thisOctal%cornerrho(23)      =  densityFunc(vector(x2,y2,z3))
+          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3))
+          thisOctal%cornerrho(24)      =  densityFunc(vector(x3,y2,z3))
+          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3))
+          thisOctal%cornerrho(25)      =  densityFunc(vector(x1,y3,z3))
+          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3))
+          thisOctal%cornerrho(26)      =  densityFunc(vector(x2,y3,z3))
+          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3))
+          thisOctal%cornerrho(27)      =  densityFunc(vector(x3,y3,z3))
+          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3))
 
        else ! cylindrical 
           if (thisOctal%splitAzimuthally) then
@@ -16903,39 +16848,39 @@ IF ( .NOT. gridConverged ) RETURN
 
              ! bottom level
 
-             thisOctal%cornerrho(1) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1),grid)
-             thisOctal%cornerrho(2) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1),grid)
-             thisOctal%cornerrho(3) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1),grid)
-             thisOctal%cornerrho(4) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1),grid)
-             thisOctal%cornerrho(5) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1),grid)
-             thisOctal%cornerrho(6) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1),grid)
-             thisOctal%cornerrho(7) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1),grid)
-             thisOctal%cornerrho(8) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1),grid)
-             thisOctal%cornerrho(9) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z1),grid)
+             thisOctal%cornerrho(1) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerrho(2) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
+             thisOctal%cornerrho(3) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1))
+             thisOctal%cornerrho(4) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerrho(5) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1))
+             thisOctal%cornerrho(6) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1))
+             thisOctal%cornerrho(7) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerrho(8) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
+             thisOctal%cornerrho(9) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z1))
 
              ! middle level
 
-             thisOctal%cornerrho(10) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2),grid)
-             thisOctal%cornerrho(11) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2),grid)
-             thisOctal%cornerrho(12) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2),grid)
-             thisOctal%cornerrho(13) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2),grid)
-             thisOctal%cornerrho(14) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2),grid)
-             thisOctal%cornerrho(15) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2),grid)
-             thisOctal%cornerrho(16) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2),grid)
-             thisOctal%cornerrho(17) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2),grid)
-             thisOctal%cornerrho(18) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z2),grid)
+             thisOctal%cornerrho(10) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerrho(11) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
+             thisOctal%cornerrho(12) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2))
+             thisOctal%cornerrho(13) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerrho(14) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2))
+             thisOctal%cornerrho(15) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2))
+             thisOctal%cornerrho(16) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerrho(17) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
+             thisOctal%cornerrho(18) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z2))
 
              ! top level
 
-             thisOctal%cornerrho(19) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerrho(20) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerrho(21) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3),grid)
-             thisOctal%cornerrho(22) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerrho(23) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerrho(24) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3),grid)
-             thisOctal%cornerrho(25) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerrho(26) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
-             thisOctal%cornerrho(27) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3),grid)
+             thisOctal%cornerrho(19) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerrho(20) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerrho(21) = densityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3))
+             thisOctal%cornerrho(22) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerrho(23) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerrho(24) = densityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3))
+             thisOctal%cornerrho(25) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerrho(26) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerrho(27) = densityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3))
 
           else
 
@@ -16951,30 +16896,30 @@ IF ( .NOT. gridConverged ) RETURN
 
              ! bottom level
 
-             thisOctal%cornerrho(1) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1),grid)
-             thisOctal%cornerrho(2) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1),grid)
-             thisOctal%cornerrho(3) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1),grid)
-             thisOctal%cornerrho(4) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1),grid)
-             thisOctal%cornerrho(5) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1),grid)
-             thisOctal%cornerrho(6) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1),grid)
+             thisOctal%cornerrho(1) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerrho(2) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
+             thisOctal%cornerrho(3) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerrho(4) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1))
+             thisOctal%cornerrho(5) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerrho(6) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
 
              ! middle level
 
-             thisOctal%cornerrho(7) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2),grid)
-             thisOctal%cornerrho(8) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2),grid)
-             thisOctal%cornerrho(9) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2),grid)
-             thisOctal%cornerrho(10) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2),grid)
-             thisOctal%cornerrho(11) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2),grid)
-             thisOctal%cornerrho(12) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2),grid)
+             thisOctal%cornerrho(7) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerrho(8) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
+             thisOctal%cornerrho(9) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerrho(10) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2))
+             thisOctal%cornerrho(11) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerrho(12) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
 
              ! top level
 
-             thisOctal%cornerrho(13) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3),grid)
-             thisOctal%cornerrho(14) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3),grid)
-             thisOctal%cornerrho(15) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3),grid)
-             thisOctal%cornerrho(16) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3),grid)
-             thisOctal%cornerrho(17) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3),grid)
-             thisOctal%cornerrho(18) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3),grid)
+             thisOctal%cornerrho(13) = densityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerrho(14) = densityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerrho(15) = densityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerrho(16) = densityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerrho(17) = densityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerrho(18) = densityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
 
           endif
        endif
@@ -16993,24 +16938,23 @@ IF ( .NOT. gridConverged ) RETURN
        
        ! now store the 'base level' values
        
-       thisOctal%cornerrho(1) = densityFunc(vector(x1,0.d0,z1),grid)
-       thisOctal%cornerrho(2) = densityFunc(vector(x2,0.d0,z1),grid)
-       thisOctal%cornerrho(3) = densityFunc(vector(x3,0.d0,z1),grid)
-       thisOctal%cornerrho(4) = densityFunc(vector(x1,0.d0,z2),grid)
-       thisOctal%cornerrho(5) = densityFunc(vector(x2,0.d0,z2),grid)
-       thisOctal%cornerrho(6) = densityFunc(vector(x3,0.d0,z2),grid)
-       thisOctal%cornerrho(7) = densityFunc(vector(x1,0.d0,z3),grid)
-       thisOctal%cornerrho(8) = densityFunc(vector(x2,0.d0,z3),grid)
-       thisOctal%cornerrho(9) = densityFunc(vector(x3,0.d0,z3),grid)
+       thisOctal%cornerrho(1) = densityFunc(vector(x1,0.d0,z1))
+       thisOctal%cornerrho(2) = densityFunc(vector(x2,0.d0,z1))
+       thisOctal%cornerrho(3) = densityFunc(vector(x3,0.d0,z1))
+       thisOctal%cornerrho(4) = densityFunc(vector(x1,0.d0,z2))
+       thisOctal%cornerrho(5) = densityFunc(vector(x2,0.d0,z2))
+       thisOctal%cornerrho(6) = densityFunc(vector(x3,0.d0,z2))
+       thisOctal%cornerrho(7) = densityFunc(vector(x1,0.d0,z3))
+       thisOctal%cornerrho(8) = densityFunc(vector(x2,0.d0,z3))
+       thisOctal%cornerrho(9) = densityFunc(vector(x3,0.d0,z3))
     endif
 667 continue
     
   END SUBROUTINE fillDensityCorners
            
-  real(double) function molebenchDensity(position,grid) result(rho)
+  real(double) function molebenchDensity(position) result(rho)
 
     type(VECTOR),intent(in) :: position
-    TYPE(gridtype), INTENT(IN) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
     real(double),save :: r(nr), nh2(nr), junk
@@ -17048,10 +16992,9 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end function molebenchDensity
 
-  real(double) function ggtauDensity(position,grid) result(rho)
+  real(double) function ggtauDensity(position) result(rho)
     
     type(vector) :: position
-    type(gridtype) :: grid
     real(double) :: r,nh20,H0,H,z,nh2
 
     r = sqrt(position%x**2+position%y**2) ! cylindrical
@@ -17627,7 +17570,7 @@ IF ( .NOT. gridConverged ) RETURN
           phi = atan2(rVec%y, rVec%x)
           cellsize = thisOctal%subcellSize
           if (thisOctal%cylindrical) then
-             height = discHeightFunc(r/(ttauriROuter/1.d10), phi, hOverR) * r
+             height = discHeightFunc(phi, hOverR) * r
           else
              height = 0.d0
           endif
@@ -17648,9 +17591,9 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine addWarpedDisc
   
           
-  function discHeightFunc(r, phi, hOverR) result (height)
+  function discHeightFunc(phi, hOverR) result (height)
 
-    real(double) :: r, phi, hOverR, height, phiShift
+    real(double) :: phi, hOverR, height, phiShift
     
     phiShift = phi 
     if (phiShift > twoPi) phiShift = phiShift - twoPi

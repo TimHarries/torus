@@ -56,17 +56,14 @@ contains
 666 continue
   end function inFlowMahdavi
 
-  type (VECTOR) function velocityMahdavi(point, grid)
+  type (VECTOR) function velocityMahdavi(point)
     use input_variables, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar
-    type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: rvec, vp, magneticAxis, rVecDash
     real(double) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
     real(double) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
-    logical :: test
 
-    test=grid%octreeRoot%threed
 
     rVec = point*1.d10
 
@@ -136,15 +133,12 @@ contains
   end function inFlowBlandfordPayne
     
 
-  type (VECTOR) function velocityBlandfordPayne(point, grid)
+  type (VECTOR) function velocityBlandfordPayne(point)
     use input_variables, only : DW_theta, DW_rMin, ttauriMstar, ttauriRstar
-    type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: rvec
     real(double) :: phi, r0, r, Vesc, vel, x
-    logical :: test
 
-    test=grid%octreeRoot%threed
 
 
     velocityBlandfordPayne = VECTOR(0.d0, 0.d0, 0.d0)
@@ -189,9 +183,8 @@ contains
     accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
   end function accretingAreaMahdavi
 
-   function rhoBlandfordPayne(grid, rVec) result(rho)
+   function rhoBlandfordPayne(rVec) result(rho)
      use input_variables, only : DW_rmax, DW_rmin, DW_mdot
-     type(GRIDTYPE) :: grid
      type(VECTOR) :: rVec
      real(double) :: rho, kconst,vel,mdot
 
@@ -199,7 +192,7 @@ contains
      kconst = 0.5d0*(mdot/pi)/((DW_rMax**2-DW_rmin**2)*1.d20)
      rho = 1.d-25
      if (inflowBlandFordPayne(rVec)) then
-        vel = modulus(velocityBlandfordPayne(rVec,grid))*cSpeed
+        vel = modulus(velocityBlandfordPayne(rVec))*cSpeed
         rho = kconst / vel
      endif
 

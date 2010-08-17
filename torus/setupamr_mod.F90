@@ -29,7 +29,7 @@ contains
     use input_variables, only : readgrid, gridinputfilename, geometry, mdot, constantAbundance
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
-    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, dustPhysics, nDustType
+    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, dustPhysics
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
@@ -111,15 +111,15 @@ contains
 
        case("fogel")
           constantAbundance = .false.
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call setupFogel(grid, textFilename, "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
        case("cluster")
 
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("theGalaxy")
@@ -136,7 +136,7 @@ contains
 
           end select
 
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
@@ -152,12 +152,12 @@ contains
 #endif
           endif
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("wr104")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
@@ -170,7 +170,7 @@ contains
           call writeInfo("...grid smoothing complete", TRIVIAL)
 
        case("clumpyagb")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
@@ -178,7 +178,7 @@ contains
 
        case("starburst")
 #ifdef MPI
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           gridconverged = .false.
           grid%octreeRoot%rho = 100.*mhydrogen
@@ -196,13 +196,13 @@ contains
 
        case("runaway")
           call read_vh1
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("ttauri")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
@@ -237,7 +237,7 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case DEFAULT
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call fixParentPointers(grid%octreeRoot)
@@ -667,8 +667,8 @@ contains
                 thisR = sqrt(rVec%x**2 + rVec%y**2)
                 thisZ = abs(rVec%z)
 
-                thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
-                CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+                thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+                CALL fillVelocityCorners(thisOctal,keplerianVelocity)
                 outsideGrid = .false.
 
                 if ((thisR < r(1)).or.(thisR > r(nr))) outsideGrid = .true.

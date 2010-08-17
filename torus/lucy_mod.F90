@@ -1094,7 +1094,7 @@ contains
     integer :: nlucy
     integer :: nDustType
     integer,intent(in) :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
+    type(PHASEMATRIX):: miePhase(:,:,:)
     real :: lamArray(:)
     real(oct), allocatable :: distanceGrid(:, :, :)
     real(oct) :: r

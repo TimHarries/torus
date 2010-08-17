@@ -26,11 +26,11 @@ program torus
   use constants_mod
 
   use random_mod
-  use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
+  use amr_mod, only: amrGridValues, hydroWarpFitSplines, polardump, pathtest, &
        setupNeighbourPointers, findtotalmass
   use setupAMR_mod
   use gridtype_mod, only: gridType         ! type definition for the 3-d grid
-  use grid_mod, only: initAMRgrid, freegrid, grid_info
+  use grid_mod, only: initAMRgrid, grid_info
   use phasematrix_mod, only: phasematrix        ! phase matrices
   use blob_mod, only: blobType
   use inputs_mod, only: inputs
@@ -54,14 +54,12 @@ program torus
   use parallel_mod, only: torus_mpi_barrier
   use gridio_mod, only: writeAMRgrid, readamrgrid
   use bitstring_mod, only: constructBitStrings
-  use gas_opacity_mod, only: createAllMolecularTables, readTsujiKPTable, readTsujiPPTable
   use density_mod, only: calcPlanetMass
   use phaseloop_mod, only: do_phaseloop
   use timing, only: tune
   use ion_mod, only: addions
   use angularImage, only: make_angular_image, map_dI_to_particles
-  use timedep_mod, only : runTimeDependentRT, timeDependentRTtest
-  use magnetic_mod, only : accretingAreaMahdavi
+  use timedep_mod, only : runTimeDependentRT
   use lucy_mod, only : getSublimationRadius, puttau
 #ifdef MPI
   use photoionAMR_mod, only: radiationhydro, createImageSplitGrid
@@ -907,7 +905,7 @@ CONTAINS
     use romanova_class, only: get_dble_parameter, new
     use sph_data_class, only: find_inclinations, new_read_sph_data, read_stellar_disc_data, info, read_galaxy_sph_data
     use wr104_mod, only: readwr104particles
-    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
+    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax
     use luc_cir3d_class, only: new
     use vh1_mod, only: read_vh1
 
@@ -1327,7 +1325,6 @@ end subroutine pre_initAMRGrid
 
   subroutine fill_opacities_noamr( ok )
 
-    use puls_mod, only: fillGridPuls
     use grid_mod
     use TTauri_mod, only: fillGridFlaredDisk, fillgridmagneticaccretion, fillgridttauriwind
     use stateq_mod, only: initgridstateq
@@ -1473,12 +1470,10 @@ end subroutine pre_initAMRGrid
     use amr_mod
     use spectrum_mod, only: fillSpectrumBB, normalizedSpectrum
     use stateq_mod, only: map_cmfgen_opacities, amrStateq, generateOpacitiesAMR
-    use dust_mod, only: filldustshakara, filldustuniform, filldustwhitney
-    use cluster_class, only: remove_too_close_cells
-    use surface_mod, only: createTTauriSurface, createTTauriSurface2, createSurface
+    use dust_mod, only: filldustuniform, filldustwhitney
+    use surface_mod, only: createTTauriSurface2, createSurface
     use luc_cir3d_class, only: deallocate_zeus_data
-    use lucy_mod, only: allocateMemoryForLucy, putTau
-    use cmfgen_class, only: read_cmfgen_data, put_cmfgen_Rmin, put_cmfgen_Rmax, distort_cmfgen
+    use lucy_mod, only: putTau
     use magnetic_mod, only : accretingAreaMahdavi
 #ifdef MPI
     use mpi_amr_mod, only : countSubcellsMPI
@@ -1634,21 +1629,21 @@ end subroutine pre_initAMRGrid
        select case (geometry)
 
        case("fogel")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call setupFogel(grid, "harries_e0p1.dat", "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
        case("cluster", "theGalaxy")
 
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("molcluster")
           if(.not. readmol) then
              call writeInfo("Initialising adaptive grid...", TRIVIAL)
-             call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+             call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
              call writeInfo("Done. Splitting grid...", TRIVIAL)
              call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
              call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -1663,7 +1658,7 @@ end subroutine pre_initAMRGrid
 !          call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
        case("wr104")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
@@ -1676,7 +1671,7 @@ end subroutine pre_initAMRGrid
           call writeInfo("...grid smoothing complete", TRIVIAL)
           
        case("starburst")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           gridconverged = .false.
 !          do while(.not.gridconverged) 
@@ -1714,7 +1709,7 @@ end subroutine pre_initAMRGrid
 
           write(*,*) "stream read . now refining"
           write(*,*) "splitting on stream"
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, &
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, &
                stream=bigStream)
 
           if (doTuning) call tune(6, "Magstream grid construction.") ! start a stopwatch
@@ -1732,7 +1727,7 @@ end subroutine pre_initAMRGrid
           if (doTuning) call tune(6, "Magstream grid construction.") ! stop a stopwatch
 
        case DEFAULT
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call fixParentPointers(grid%octreeRoot)
@@ -2137,7 +2132,7 @@ subroutine set_up_sources
   use starburst_mod, only: createsources
   use source_mod, only: source_within_octal, randomSource
   use cluster_class, only: get_nstar, n_stars_in_octal, get_a_star
-  use surface_mod, only: createTTauriSurface, createTTauriSurface2, sumSurface, createSurface, testSurface
+  use surface_mod, only: createTTauriSurface2, sumSurface, createSurface, testSurface
 
   integer :: isize
   integer, allocatable :: iseed(:)
@@ -2612,7 +2607,7 @@ end subroutine set_up_sources
 
 subroutine post_initAMRgrid 
 
-  use amr_mod, only: find_average_temperature, findTotalMass, scaleDensityAMR
+  use amr_mod, only:findTotalMass, scaleDensityAMR
   real         :: scaleFac
   real(double) :: totalMass, totalmasstrap, maxrho, minrho
 
@@ -2733,10 +2728,9 @@ subroutine do_lucyRadiativeEq
 
   use benchmark_mod, only: check_benchmark_values
   use amr_mod, only : myTauSmooth, myScaleSmooth, countvoxels
-  use dust_mod, only : sublimateDust
   use lucy_mod, only: lucyRadiativeEquilibrium, lucyRadiativeEquilibriumAMR, allocateMemoryForLucy, &
-       getSublimationRadius, putTau, unrefineThinCells
-  use disc_hydro_mod, only: verticalHydrostatic, getbetavalue
+       unrefineThinCells
+  use disc_hydro_mod, only: verticalHydrostatic
   use cluster_utils, only: analyze_cluster
   use cluster_class, only: reassign_10k_temperature, restrict, kill_all
   logical :: gridConverged
