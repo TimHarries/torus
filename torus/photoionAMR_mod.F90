@@ -4468,9 +4468,11 @@ end subroutine readHeIIrecombination
      call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1))
+#ifdef USECFITSIO
     if (myrankGlobal == 0) then
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
+#endif
     call freeImage(thisImage)
   end subroutine createImageSplitGrid
 
