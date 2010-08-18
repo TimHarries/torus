@@ -1626,8 +1626,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, taumax = 20.d0, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
-!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau),ntau,ilambdaphoton,thisPhoton%lambda, &
-!                      modulus(thisPhoton%position)*1.d10/rsol
+!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau),ntau,ilambdaphoton, &
+!                      thisPhoton%lambda, modulus(thisPhoton%position)*1.d10/rsol
 
 !              if (thisPhoton%contPhoton)then
 !                 octVec = thisPhoton%position
