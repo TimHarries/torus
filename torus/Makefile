@@ -538,7 +538,11 @@ else
 endif
 
 ifeq ($(openmp), yes)
-   ETCFLAG += -openmp 
+  ifeq ($(F95COMP), gfortran)
+     ETCFLAG += -fopenmp
+  else
+     ETCFLAG += -openmp 
+  endif
 endif
 
 
