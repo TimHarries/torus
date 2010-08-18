@@ -537,9 +537,12 @@ else
    STATICLIBS =
 endif
 
+# Set OpenMP flags
 ifeq ($(openmp), yes)
   ifeq ($(F95COMP), gfortran)
-     ETCFLAG += -fopenmp
+     ETCFLAG += -fopenmp 
+# -static-libgcc fixes linking problems under Mac OS
+     STARLIBS += -static-libgcc
   else
      ETCFLAG += -openmp 
   endif
