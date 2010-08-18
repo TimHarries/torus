@@ -158,13 +158,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   type(VECTOR) :: zeroVec
 
-  real, allocatable :: tauExt(:)
-  real, allocatable :: tauAbs(:)
-  real, allocatable :: tauSca(:)
-  real, allocatable :: linePhotonAlbedo(:)
-  real, allocatable :: lambda(:)
+  real, allocatable,save :: tauExt(:)
+  real, allocatable,save :: tauAbs(:)
+  real, allocatable,save :: tauSca(:)
+  real, allocatable,save :: linePhotonAlbedo(:)
+  real, allocatable,save :: lambda(:)
 
-  real, allocatable :: contTau(:,:)
+  real, allocatable,save :: contTau(:,:)
 
   real, allocatable :: splineArray(:)
 
@@ -208,7 +208,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: weightContPhoton, weightLinePhoton
   real :: chanceLine, chanceContinuum
 
-  real, allocatable :: contWeightArray(:)
+  real, allocatable,save :: contWeightArray(:)
 
   real(double) :: thisChi, thisSca
   real :: fac1, fac2, fac3
@@ -287,6 +287,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(len=80) :: message
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
+
+
+!$OMP THREADPRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray)
 
   intPathError = 0
   hitCore = .false.
@@ -1426,7 +1429,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
 !$OMP PRIVATE(thisPhoton, directionalWeight) &
-!$OMP PRIVATE( ilambda, sourceSpectrum, ok) &
+!$OMP PRIVATE(ilambda, sourceSpectrum, ok) &
 !$OMP PRIVATE(hitCore, junk, thisLam, j, obs_weight, thisVel) &
 !$OMP PRIVATE(i1, i2, i3, t1, t2, t3, vray, vovercsqr, fac, observedLambda) &
 !$OMP PRIVATE(t, rHat, islit, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
@@ -1434,19 +1437,19 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PRIVATE(albedo, tempPhoton, redRegion, thrustar, ramanWeight) &
 !$OMP PRIVATE(outPhoton,intPathError) &
 !$OMP PRIVATE(nTau, escProb, spotPhoton) &
-!$OMP PRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray) &
 !$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
 !$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble) &
+!$OMP PRIVATE(finaltau) &
 !$OMP SHARED(doTuning, iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
 !$OMP SHARED(grid) &
 !$OMP SHARED(ntot) &
 !$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
 !$OMP SHARED(weightLinePhoton, flatSpec, vRot, secondSource, secondSourcePosition) &
 !$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
-!$OMP SHARED(weightContPhoton, useBias, pencilBeam ,outVec)&
+!$OMP SHARED(weightContPhoton, useBias, pencilBeam, outVec)&
 !$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, rStar, coolStarPosition) &
 !$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image, screened) &
 !$OMP SHARED(yArray, statArray, stokesImage, obsImageSet, doPvimage) &
@@ -1461,7 +1464,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
-!$OMP PRIVATE(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect, finaltau )
+!$OMP SHARED(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) 
 
 
         nFromEnv = 0
@@ -1623,7 +1626,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, taumax = 20.d0, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
-!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau)
+!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau),ntau,ilambdaphoton,thisPhoton%lambda, &
+!                      modulus(thisPhoton%position)*1.d10/rsol
 
 !              if (thisPhoton%contPhoton)then
 !                 octVec = thisPhoton%position

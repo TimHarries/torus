@@ -1342,7 +1342,7 @@ contains
             !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction) &
 	    !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
 	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
-	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,tfilename,x1,w,ne,recalcjbar,ratio,nstar,dpops,newne) &
+	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
 	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans)&
             !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
 	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom)

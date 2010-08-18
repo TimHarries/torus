@@ -90,7 +90,7 @@ program torus
   ! set up a random seed
   
   call randomNumberGenerator(randomSeed=.true.)
-  call testSuiteRandom()  
+!  call testSuiteRandom()  
   call inputs()
 
 

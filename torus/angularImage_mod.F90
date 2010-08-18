@@ -27,6 +27,8 @@ module angularImage
   integer :: vel_chan_num
   logical, save :: nColOnly 
 
+!$OMP THREADPRIVATE (vr_format)
+
   contains
 
     subroutine make_angular_image(grid)

@@ -1166,7 +1166,7 @@ module molecular_mod
 		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
 		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
 		!$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
-		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, gettau, accstep, fixedRaySeed)
+		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed)
 
 
 ! Allocate the main working arrays for i0, ds and phi
@@ -5996,7 +5996,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
    integer :: nStorage
    real(double) :: lengthOfRay, tau
    integer :: iThread
-   !$OMP THREADPRIVATE (firstTime, haveBeenwarned)
+   !$OMP THREADPRIVATE (haveBeenwarned)
 
    if(inOctal(grid%octreeRoot, Position)) then
       disttogrid = 0.

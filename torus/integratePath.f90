@@ -1220,7 +1220,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   integer :: i, j                   ! counters
 
   ! initialize variables
-
+  !$OMP THREADPRIVATE (first_time, rho, temperature, inflow, levelpop, velocity, chiline) 
+  !$OMP THREADPRIVATE (tauSob, tausob2, kabs, ksca, velocityderiv, dlambda, projVel, dummy)
   hitcore = .false.
   rVec = aVec
   escProb = 1.
