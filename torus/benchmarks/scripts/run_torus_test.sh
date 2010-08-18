@@ -14,6 +14,7 @@ ln -s ${TEST_DIR}/torus/* .
 # cfitsio libraries are built with g95 on daily test machine
 case ${SYSTEM} in
     g95)  /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
+    gfortran) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes cfitsio=no >> ${log_file} 2>&1;;
     *) /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
 esac
 
@@ -32,28 +33,28 @@ cd ..
 
 # Build the Torus library for the system defined by the 
 # SYSTEM environment variable
-make_lib()
-{
-mkdir lib
-cd    lib
-
-echo "Building Torus library for ${SYSTEM}"
-log_file=compile_log_lib.txt
-ln -s ${TEST_DIR}/torus/* .
-/usr/bin/make depends > ${log_file} 2>&1 
-/usr/bin/make lib debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1
-if [[ $? -eq 0 ]]; then
-# Count number of warnings. Subtract 2 because there are always warnings
-# about include files from the make depends step (run twice).
-    num_warn=`grep -i warning ${log_file} | wc -l | awk '{print $1 - 2}'`
-    echo "Compilation completed with ${num_warn} warnings."
-else
-    echo "Compilation failed."
-    exit 1
-fi
-cd ..
-
-}
+#make_lib()
+#{
+#mkdir lib
+#cd    lib
+#
+#echo "Building Torus library for ${SYSTEM}"
+#log_file=compile_log_lib.txt
+#ln -s ${TEST_DIR}/torus/* .
+#/usr/bin/make depends > ${log_file} 2>&1 
+#/usr/bin/make lib debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1
+#if [[ $? -eq 0 ]]; then
+## Count number of warnings. Subtract 2 because there are always warnings
+## about include files from the make depends step (run twice).
+#    num_warn=`grep -i warning ${log_file} | wc -l | awk '{print $1 - 2}'`
+#    echo "Compilation completed with ${num_warn} warnings."
+#else
+#    echo "Compilation failed."
+#    exit 1
+#fi
+#cd ..
+#
+#}
 
 make_comparespec()
 {
@@ -75,6 +76,8 @@ case ${SYSTEM} in
     g95) ./torus.g95  > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
     zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
+
+    gfortran) ./torus.gfortran > run_log_${THIS_BENCH}.txt 2>&1 ;;
 
     *) echo "Unrecognised SYSTEM type. Skipping this test";;
 esac
@@ -217,17 +220,18 @@ for sys in ${SYS_TO_TEST}; do
     check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
 
 # Only run these tests for MPI systems and not in the daily test
-    if [[ ${SYSTEM} != g95 && ${MODE} != daily ]]; then
+    if [[ ${MODE} != daily ]]; then
+	if [[ ${SYSTEM} = "ompi" || ${SYSTEM} == "zen" ]]; then 
+	    echo "Running cylindrical polar disc benchmark"
+	    export THIS_BENCH=disc_cylindrical
+	    run_bench
+	    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1
 
-	echo "Running cylindrical polar disc benchmark"
-	export THIS_BENCH=disc_cylindrical
-	run_bench
-	check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+#	echo "Running SPH-Bench"
+#	run_sphbench
+#	check_benchmark > check_log_sphbench.txt 2>&1 
 
-	echo "Running SPH-Bench"
-	run_sphbench
-	check_benchmark > check_log_sphbench.txt 2>&1 
-
+	fi
     fi
 
 done
@@ -256,8 +260,11 @@ done
 print_help()
 {
 echo ""
-echo "This script runs the torus test suite. Use the -s option to run the stable version tests."
+echo "This script runs the torus test suite."
+echo ""
 echo "Use the -d option to run the daily tests (default)."
+echo "Use the -s option to run the stable version tests."
+echo "Use the -z option to run the tests on zen."
 echo ""
 }
 
@@ -300,8 +307,8 @@ case ${MODE} in
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    stable) export SYS_TO_TEST="g95 ompi"
-	    export BUILD_ONLY=""
+    stable) export SYS_TO_TEST="g95 ompi gfortran"
+	    export BUILD_ONLY="nagfor"
             export DEBUG_OPTS="yes no"
 	    export TORUS_FC="g95"
 	    export PATH=~/bin:/usr/local/bin:${PATH}
@@ -321,7 +328,7 @@ case ${MODE} in
 	exit 1;;
 esac
 
-export CVSROOT=${USER}@pinky.astro.ex.ac.uk:/h/th/CVS
+export CVSROOT=:ext:${USER}@reduce.astro.ex.ac.uk:/home/cvs/th
 export CVS_RSH=ssh
 
 for opt in ${DEBUG_OPTS}; do
