@@ -22,9 +22,7 @@ contains
     real(double), intent(out), optional :: getDoubleArray(:)
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
     integer(bigInt), save :: iSeed = 0 
-#ifdef _OPENMP
-    integer(bigInt), save :: iseed_omp
-#endif
+    integer(bigInt) :: iseed_master
     real :: r
     integer :: i, j
 
@@ -32,7 +30,9 @@ contains
 
     if (PRESENT(reset)) then
        if (reset) then
+          !$OMP PARALLEL
           r = ran3_double(iseed, reset=.true.)
+          !$OMP END PARALLEL
        endif
     endif
 
@@ -50,14 +50,16 @@ contains
 #ifdef MPI
           call sync_random_seed(iSeed)
 #endif
-#ifdef _OPENMP
+          !$OMP PARALLEL DEFAULT (NONE) &
+          !$OMP PRIVATE (r) &
+          !$OMP SHARED (iseed_master)
           !$OMP MASTER
-          iseed_omp = iseed
+          iseed_master = iseed
           !$OMP END MASTER
           !$OMP BARRIER
-          iseed = iseed_omp
-#endif
+          iseed = iseed_master
           r = ran3_double(iseed, reset=.true.)
+          !$OMP END PARALLEL
 
        endif
     endif
@@ -67,8 +69,10 @@ contains
     endif
 
     if (PRESENT(randomSeed)) then
+!$OMP PARALLEL
        call seedFromClockTime(iSeed)
        r = ran3_double(iseed, reset=.true.)
+!$OMP END PARALLEL
     endif
 
     if (PRESENT(getDouble)) then
@@ -121,6 +125,85 @@ contains
 
   end subroutine sync_random_seed
 
+  subroutine test_random_hybrid()
+    use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
+    integer :: nOmpThreads, iOmpThread, nTot
+    integer, allocatable :: itest(:)
+    logical :: different
+    integer :: iThread, i
+    real(double) :: r
+#ifdef _OPENMP
+    integer :: omp_get_num_threads, omp_get_thread_num
+#endif
+#ifdef MPI
+    integer :: ierr
+    integer, allocatable :: itemp(:)
+#endif
+#ifdef MPI
+    include 'mpif.h'
+#endif
+
+
+    nOmpThreads = 1
+    iOmpThread = 1
+
+#ifdef _OPENMP
+    !$OMP PARALLEL DEFAULT (NONE) &
+    !$OMP SHARED (nOmpThreads)
+    !$OMP MASTER
+    nOmpThreads = omp_get_num_threads()
+    !$OMP END MASTER
+    !$OMP END PARALLEL
+#endif
+
+   nTot = nThreadsGlobal * nOmpThreads
+    allocate(itest(1:nTot))
+    itest = 0
+
+    !$OMP PARALLEL DEFAULT (NONE) &
+    !$OMP PRIVATE(iOmpThread, ntot, ithread, r) &
+    !$OMP SHARED(nOmpThreads, itest, nThreadsGlobal, myrankGlobal)
+
+
+#ifdef _OPENMP
+    iOmpThread = omp_get_thread_num() + 1
+#endif
+    
+ 
+
+    iThread = myRankGlobal*nOmpThreads + iOmpThread
+    call randomNumberGenerator(getDouble=r)
+    itest(iThread) = nint(r * 100000000.d0)
+    !$OMP END PARALLEL
+
+
+#ifdef MPI
+    allocate(itemp(SIZE(itest)))
+    itemp = 0
+    call MPI_REDUCE(itest,itemp,SIZE(itest),MPI_INTEGER,&
+         MPI_SUM,0,MPI_COMM_WORLD,ierr)
+    itest = itemp
+    deallocate(itemp)
+#endif
+    
+    if (myrankGlobal == 0) then
+    different = .true.
+    call localsort(size(itest),itest)
+    different = .true.
+    do i = 1, size(itest)-1
+       if (itest(i) == itest(i+1)) different=.false.
+    enddo
+       write(*,*) "itest ",itest
+       if (.not.different) then
+          call writeWarning("Threads do not have independent random sequences")
+       endif
+    endif
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif
+    deallocate(itest)
+  end subroutine test_random_hybrid
+    
 
 ! Test whether all threads are producing independent random numbers
   subroutine test_random_across_threads(debug)
@@ -209,12 +292,14 @@ contains
 
     integer(bigint) :: ibig
     integer :: iValues(8)
-    integer :: j
+    integer :: j, nt
 #ifdef _OPENMP
      integer ::  omp_get_thread_num
+     integer ::  omp_get_num_threads
 #endif
 
     j = 0
+    nt = 1
     CALL DATE_AND_TIME(values=iValues)
     ibig = ivalues(5) * 60 * 60 * 1000 +&
          ivalues(6) * 60 * 1000 + &
@@ -222,9 +307,10 @@ contains
          ivalues(8)
 #ifdef _OPENMP
      j = omp_get_thread_num()+1
+     nt = omp_get_num_threads()
 #endif
      
-    ibig = (j+myRankGlobal+1)*ibig
+    ibig = (j+myRankGlobal*nt)*ibig
   END SUBROUTINE seedFromClockTime
 
 

@@ -199,8 +199,7 @@ contains
              lucyfileNameout, lucyfileNamein)
         else
 #ifdef MPI
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, .false., .false., &
-             " ", " ", 5, 1.d30, sublimate=.false.)
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif

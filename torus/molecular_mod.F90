@@ -5996,7 +5996,11 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
    integer :: nStorage
    real(double) :: lengthOfRay, tau
    integer :: iThread
+   integer :: i
+
    !$OMP THREADPRIVATE (haveBeenwarned)
+   i = thisMolecule%nTrans
+
 
    if(inOctal(grid%octreeRoot, Position)) then
       disttogrid = 0.

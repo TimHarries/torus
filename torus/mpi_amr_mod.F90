@@ -1832,6 +1832,9 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillLooping
     integer :: sendThread
+    integer :: i
+
+    i = npoints
 
     thisOctal => grid%octreeRoot
     position = startPoint

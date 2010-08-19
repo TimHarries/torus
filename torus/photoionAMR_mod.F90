@@ -67,8 +67,7 @@ end type GAMMATABLE
 contains
 
 
-  subroutine radiationHydro(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein)
+  subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use input_variables, only : iDump, doselfgrav
     include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -76,8 +75,6 @@ contains
     integer :: nSource
     integer :: nLambda
     real :: lamArray(:)
-    logical :: readLucy, writeLucy
-    character(len=*) :: lucyfilein, lucyfileout
     character(len=80) :: mpiFilename
     real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
     integer :: iUnrefine
@@ -192,14 +189,12 @@ contains
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-               lucyfileout, lucyfilein, 5, loopLimitTime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-               lucyfileout, lucyfilein, 5, loopLimitTime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        endif
 
@@ -314,8 +309,7 @@ contains
 !       loopLimitTime = max(loopLimitTime,(grid%halfSmallestSubcell*1.d10)/cSpeed)
 
        call setupNeighbourPointers(grid, grid%octreeRoot)
-       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-            lucyfileout, lucyfilein, 1, loopLimitTime)
+       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime)
        call writeInfo("Done",TRIVIAL)
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot, mu)
@@ -364,8 +358,7 @@ contains
   end subroutine radiationHydro
 
 
-  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein, maxIter, tLimit, sublimate)
+  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField
     implicit none
     include 'mpif.h'
@@ -375,10 +368,7 @@ contains
     logical :: doSublimate
     real(double) :: tLimit
     type(GRIDTYPE) :: grid
-    character(len=*) :: lucyfileout, lucyfilein
-    logical :: readlucy, writelucy
-    type(OCTAL), pointer :: thisOctal, currentOctal !, tempOctal
-    integer :: currentSubcell
+    type(OCTAL), pointer :: thisOctal
 !    integer :: nCellsInDiffusion
 !    character(len=80) :: message
 !    integer :: tempSubcell
@@ -410,7 +400,6 @@ contains
     real(double) :: tPhoton
     real(double) :: albedo
     integer :: maxIter
-    logical, save :: firstCall = .true.
     type(SAHAMILNETABLE),save :: hTable, heTable
     type(RECOMBTABLE),save :: Hrecombtable
 
@@ -617,10 +606,9 @@ contains
                    nScat = 0
                    escaped = .false.
                    do while(.not.escaped)
-                      currentSubcell = 1
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
-                           crossedMPIboundary, currentOctal, currentSubcell, newThread)
+                           crossedMPIboundary, newThread)
 
                       if (crossedMPIBoundary) then
                          call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, newThread)
@@ -661,9 +649,9 @@ contains
                                if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
                                   call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                   call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-                                  call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                                  call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                                   !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-                                  call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                                  call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                                else
                                   call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                                endif
@@ -928,19 +916,18 @@ end subroutine photoIonizationloopAMR
 
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, tPhoton, tLimit, crossedMPIboundary, currentOctal, currentSubcell, newThread)
+     nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread)
   include 'mpif.h'
   integer :: myRank, ierr
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec
-   type(OCTAL), pointer :: thisOctal, tempOctal, currentOctal
+   type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
    real(double) :: tPhoton, tLimit, epsOverDeltaT
    real(double) :: photonMomentum
    integer, intent(out) :: newThread
    integer :: endSubcell
-   integer :: currentSubcell
    real(double) :: photonPacketWeight
    integer :: nFreq
    real(double) :: freq(:)
@@ -1034,8 +1021,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           nextOctal => thisOctal
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
-       else
-          call checkReflectPhoton(grid, rVec, uhat, oldrVec, thisOctal, subcell, nextOctal, nextSubcell, stillinGrid, escaped)
        endif
           
        octVec = rVec
@@ -1144,8 +1129,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           nextOctal => thisOctal
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
-       else
-          call checkReflectPhoton(grid, rVec, uhat, oldrVec, thisOctal, subcell, nextOctal, nextSubcell, stillinGrid, escaped)
        endif
 
  ! if not the photon must interact in this cell
@@ -1766,11 +1749,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     enddo
   end subroutine quickThermalCalc
 
-  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT, simple)
+  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
-    logical, optional :: simple 
     real(double) :: totalHeating
     integer :: subcell
     logical :: converged, found
@@ -1813,12 +1795,12 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    found = .true.
                    
                    if (found) then
-                      y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+                      y1 = (HHecooling(grid, thisOctal, subcell, t1) &
                            - totalHeating)
-                      y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
+                      y2 = (HHecooling(grid, thisOctal, subcell, t2) &
                            - totalHeating)
                       if (y1*y2 > 0.d0) then
-                         if (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) > totalHeating) then
+                         if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
                             tm = t1
                          else
                             tm  = t2
@@ -1836,11 +1818,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                       
                       do while(.not.converged)
                          tm = 0.5*(t1+t2)
-                         y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
                               - totalheating)
-                         y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
+                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
                               - totalheating)
-                         ym = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,tm) &
+                         ym = (HHecooling(grid, thisOctal, subcell, tm) &
                               - totalheating)
                          
                          if (y1*ym < 0.d0) then
@@ -1895,11 +1877,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   end function recombToGround
 
   
-  function HHeCooling(grid, thisOctal, subcell, epsOverDeltaT, temperature, debug) result (coolingRate)
+  function HHeCooling(grid, thisOctal, subcell, temperature, debug) result (coolingRate)
     use input_variables, only : dustOnly
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
-    real(double) :: epsOverDeltaT
     type(GRIDTYPE) :: grid
     real(double) :: nHii, nHeii, ne, nh
     real :: temperature
@@ -2149,11 +2130,9 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
         iIon = iStart+i-1
         call getChargeExchangeRecomb(grid%ion(iion+1), temperature, &
              thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
-             thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeRecombination)
         
         call getChargeExchangeIon(grid%ion(iion), temperature, &
-             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
         
@@ -2736,9 +2715,9 @@ subroutine dumpLexington(grid, epsoverdt)
   close(22)
 end subroutine dumpLexington
 
-subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate)
+subroutine getChargeExchangeRecomb(parentIon, temperature, nhi, recombRate)
   type(IONTYPE) :: parentIon
-  real(double) :: nHI, nHII
+  real(double) :: nhi
   real(double), intent(out) :: recombRate
   real :: t4, a, b, c, d
   real :: temperature
@@ -2779,9 +2758,9 @@ subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate
 
 end subroutine getChargeExchangeRecomb
 
-subroutine getChargeExchangeIon(parentIon, temperature, nHI, nHII, IonRate)
+subroutine getChargeExchangeIon(parentIon, temperature,  nHII, IonRate)
   type(IONTYPE) :: parentIon
-  real(double) :: nHI, nHII
+  real(double) :: nHII
   real(double), intent(out) :: ionRate
   real :: temperature
   real :: t4, a, b, c, d
@@ -2914,8 +2893,8 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
           rVec = subcellCentre(thisOctal,subcell)
           v = cellVolume(thisOctal, subcell)
 
-          call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
-               thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+          call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
+               
           rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
                grid%ion(iion)%transition(itrans)%a/ergtoev
           rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
@@ -2971,7 +2950,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   total = 0.d0
   do j = 5, nIons
      if (ionArray(j)%nTransitions > 0) then
-        call solvePops(ionArray(j), pops, ne, temperature, thisOctal%ionFrac(subcell,j), thisOctal%nh(subcell))
+        call solvePops(ionArray(j), pops, ne, temperature)
         rate = 0.d0
         do i = 1, ionArray(j)%nTransitions
            rate = rate + pops(ionArray(j)%transition(i)%j)*ionArray(j)%transition(i)%energy*ionArray(j)%transition(i)%a/ergtoev
@@ -2995,7 +2974,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
 end subroutine metalcoolingRate
   
 
-subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
+subroutine solvePops(thisIon, pops, ne, temperature, debug)
   type(IONTYPE) :: thisIon
   real(double) :: ne
   real, intent(out) :: pops(:)
@@ -3003,7 +2982,6 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
   integer :: n, iTrans, i, j
   real :: excitation, deexcitation, arateji
-  real(double) :: nh, ionFrac
   logical :: ok
   logical, optional :: debug
 
@@ -3014,7 +2992,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   matrixB = 0.d0
 
 
-  call getRecombs(rates, thision, dble(temperature), ne, ionFrac, nh)
+  call getRecombs(rates, thision, dble(temperature))
 
   matrixA(1,:) = 1.d0
   matrixB(1) = 1.d0
@@ -3223,10 +3201,10 @@ subroutine twoPhotonContinuum(thisFreq)
   enddo
 end subroutine twoPhotonContinuum
 
-subroutine getRecombs(rates, thision, temperature, ne, ionFrac, nh)  
+subroutine getRecombs(rates, thision, temperature)  
   real(double) :: rates(:)
   type(IONTYPE) :: thisIon
-  real(double) :: temperature, ne, ionfrac, nh
+  real(double) :: temperature
 
   select case(thisIon%species)
      case("O II")
@@ -3454,11 +3432,11 @@ end subroutine addHigherContinua
 
 
 
-subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:), dfreq(:)
+  real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3582,10 +3560,10 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
 end function getPhotonFreq
 
 
-subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addForbiddenLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:), dfreq(:)
+  real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3596,8 +3574,7 @@ subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
 
   do iIon = 3, grid%nIon
      do iTrans = 1, grid%ion(iIon)%nTransitions
-        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
-             thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
         rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
              grid%ion(iion)%transition(itrans)%a/ergtoev
         rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
@@ -3639,10 +3616,10 @@ end subroutine findForbiddenLine
         
   
 
-subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:), dfreq(:)
+  real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3654,7 +3631,7 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
 !  integer :: ilow, iup
   integer,parameter :: nHeIILyman = 4
 !  real(double) :: heIILyman(4)
-  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
+!  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
 
 
 
@@ -3933,9 +3910,9 @@ end subroutine readHeIIrecombination
           if (thisOctal%temperature(subcell) > 1.5d0) then
              call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
              call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-             call addHydrogenRecombinationLines(nfreq,  freq, dfreq, spectrum, thisOctal, subcell, grid)
+             call addHydrogenRecombinationLines(nfreq,  freq, spectrum, thisOctal, subcell, grid)
              !         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-             call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+             call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
              call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
              
              do i = 1, nFreq
@@ -3985,9 +3962,9 @@ end subroutine readHeIIrecombination
 
     call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
     call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
     !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
 
@@ -4442,7 +4419,7 @@ end subroutine readHeIIrecombination
                 endif
 
                 if (.not.crossedBoundary) then
-                   call scatterPhotonLocal(grid, thisPhoton)
+                   call scatterPhotonLocal(thisPhoton)
                    observerPhoton = thisPhoton
                    observerPhoton%observerPhoton = .true.
                    observerPhoton%tau = 0.d0
@@ -4583,8 +4560,7 @@ end subroutine readHeIIrecombination
     
   end subroutine receivePhoton
 
-  subroutine scatterPhotonLocal(grid, thisPhoton)
-    type(GRIDTYPE) :: grid
+  subroutine scatterPhotonLocal(thisPhoton)
     type(PHOTON) :: thisPhoton
 
     thisPhoton%direction = randomUnitVector() !isotropic scattering
@@ -4968,31 +4944,6 @@ end subroutine readHeIIrecombination
     thisOctal%biasCont3D = 1.d0
     thisOctal%etaCont = 0.d0
   end subroutine zeroEtaCont
-
-  subroutine checkReflectPhoton(grid, rVec, uhat, oldrVec, oldOctal, oldSubcell, nextOctal, nextSubcell, stillinGrid, escaped)
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: rVec, uHat, oldRVec
-    type(OCTAL), pointer :: nextOctal, oldOctal
-    integer :: nextSubcell, oldSubcell
-    logical :: stillInGrid, escaped
-    
-    stillInGrid = .false.
-    escaped = .true.
-
-!    if (grid%geometry == "bonnor") then
-!       rVec = oldRvec
-!       nextSubcell = oldSubcell
-!       nextOctal => oldOctal
-!       if ((rVec%x < grid%octreeRoot%xMin).or.(rVec%x > grid%octreeRoot%xMax)) then
-!          stillInGrid = .false.
-!          escaped = .true.
-!       else
-!          uHat%z = -uHat%z
-!          stillInGrid = .true.
-!          escaped = .false.
-!       endif
-!    endif
-  end subroutine checkReflectPhoton
 
   recursive subroutine addRadioContinuumEmissivity(thisOctal)
 

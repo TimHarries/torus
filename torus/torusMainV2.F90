@@ -90,6 +90,18 @@ program torus
   ! set up a random seed
   
   call randomNumberGenerator(randomSeed=.true.)
+
+
+!  call test_random_hybrid()
+!  call test_random_hybrid()
+!  call randomNumberGenerator(synciseed=.true.)
+!  call test_random_hybrid()
+!  call randomNumberGenerator(randomSeed=.true.)
+!  call test_random_hybrid()
+!  call randomNumberGenerator(reset=.true.)
+!  call test_random_hybrid()
+
+
 !  call testSuiteRandom()  
   call inputs()
 

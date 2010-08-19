@@ -651,8 +651,7 @@ program torus
     call writeVtkFile(grid, "first.vtk", &
          valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
-           call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-              lucyfilenameout, lucyfilenamein)
+           call radiationHydro(grid, source, nSource, nLambda, xArray)
            call torus_mpi_barrier
      endif
 
