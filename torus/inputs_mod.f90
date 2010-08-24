@@ -178,10 +178,11 @@ contains
        call getReal("firstinc", firstInclination, cLine, nLines, &
             "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
        firstInclination = firstInclination * degToRad
-       if (nInclination > 1) &
-            call getReal("lastinc", lastInclination, cLine, nLines, &
-            "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
-       lastInclination = lastInclination * degToRad
+       if (nInclination > 1) then 
+          call getReal("lastinc", lastInclination, cLine, nLines, &
+               "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
+          lastInclination = lastInclination * degToRad
+       end if
     end if
 
     !    call getReal("scale", scale, cLine, nLines, &
