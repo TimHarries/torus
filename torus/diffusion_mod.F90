@@ -724,7 +724,7 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
-    if (writeoutput) call writeVtkFile(grid, "bias.vtk", valueTypeString=(/"chiline    ","temperature"/))
+!    if (writeoutput) call writeVtkFile(grid, "bias.vtk", valueTypeString=(/"chiline    ","temperature"/))
 
 !    endif
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)

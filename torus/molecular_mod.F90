@@ -861,6 +861,7 @@ module molecular_mod
      integer       ::   ierr           ! error flag
      integer       ::   j
      real(double), allocatable :: tArrayd(:,:),tempArrayd(:,:) 
+     real(double), allocatable :: jArrayd(:),tempjArrayd(:) 
 #endif
 
      integer :: nVoxels
@@ -1320,6 +1321,7 @@ module molecular_mod
       call MPI_ALLREDUCE(warncount,warncount_all,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
 
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+
       allocate(tArrayd(3,1:nVoxels))
       allocate(tempArrayd(3,1:nVoxels))
       tArrayd = 0.d0
@@ -1334,7 +1336,25 @@ module molecular_mod
         tArrayd = tempArrayd
         call unpackMoleLevel(octalArray, tArrayd, i)
      enddo
-      deallocate(tArrayd, tempArrayd)
+     deallocate(tArrayd, tempArrayd)
+
+      allocate(jArrayd(1:nVoxels))
+      allocate(tempjArrayd(1:nVoxels))
+      jArrayd = 0.d0
+      tempjArrayd = 0.d0
+      do i = 1, maxtrans
+        jArrayd = 0.d0
+        call packjnutrans(octalArray, nVoxels, jArrayd, i,ioctal_beg,ioctal_end)
+        call MPI_ALLREDUCE(jArrayd(1:nVoxels),tempjArrayd(1:nVoxels),nVoxels,MPI_DOUBLE_PRECISION,&
+             MPI_SUM,MPI_COMM_WORLD,ierr)
+        jArrayd = tempjArrayd
+        call unpackjnutrans(octalArray, jArrayd, i)
+     enddo
+     deallocate(jArrayd, tempjArrayd)
+
+
+
+
 
       if(my_rank == 0) write(*,*) "Done updating"
 #else
@@ -2955,19 +2975,26 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    
    iUpper(:)  = thisMolecule%iTransUpper(1:maxtrans)
    iLower(:)  = thisMolecule%iTransLower(1:maxtrans)
-   
+
+!   write(*,*) "iupper, ilower ",iupper,ilower
+      
    do while(inOctal(grid%octreeRoot, currentPosition))
       
       call findSubcelllocal(currentPosition, thisOctal, subcell)
       call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
       
       nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+!      write(*,*) "nMol ",nmol
       nLower(:)  = thisOctal%molecularLevel(iLower(:),subcell) * nMol
       nUpper(:)  = thisOctal%molecularLevel(iUpper(:),subcell) * nMol
+
+!      write(*,*) "nupper, nlower ",nupper,nlower
+
       balance(:) = (nLower(:) * thisMolecule%einsteinBlu(1:maxtrans) - &
            nUpper(:) * thisMolecule%einsteinBul(1:maxtrans))
+!      write(*,*) "balance ", balance   
       alphaTemp(:) = hCgsOverFourPi * balance(:) ! Equation 8
-      
+!      write(*,*) "alphatemp ",alphatemp
       thisPosition = currentPosition
       startVel = Velocity(currentposition, grid)
       
@@ -2980,10 +3007,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
       
       nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
-      
+!      write(*,*) "dv ntau ",dvacrosscell,ntau
       CellEdgeInterval = 1.d0 / (dble(ntau) - 1.0)
       dds = tval * cellEdgeInterval
-      
+!      write(*,*) "dds ",dds
       dist = 0.d0
       
       do i = 2, nTau
@@ -2993,15 +3020,21 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
          thisPosition = currentPosition + dist * direction
          
          thisVel = velocity(thisPosition, grid)
+!         write(*,*) "thisvel ",thisvel
          dv = deltaV - (thisVel .dot. direction)
+!         write(*,*) "dv ",dv
          PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
-         
+!         write(*,*) "phiprofval ",phiprofval
          alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
-         alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)              
+!         write(*,*) "alphanu ",alphanu(1:maxtrans,1)
+         alpha(1:maxtrans) = alphanu(1:maxtrans,1) !+ alphanu(1:maxtrans,2) !!!!!!!!!!!!!!!!!!!!!!!
+!         write(*,*) "alpha ",alpha
          dTau(:) = alpha(:) * dds * 1.d10 
+!         write(*,*) "dtau ",dtau
 ! dds is interval width & optical depth, dTau = alphanu*dds - between eqs (3) and (4)
          
          tau(:) = tau(:) + dtau(:) ! contribution to optical depth from this line integral
+!         write(*,*) "tau ",tau
          
       enddo
       
@@ -3925,11 +3958,44 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                     else
                        tArray(3,ntemps) = 0.d0
                     endif
+
                  endif
               endif
            end do
         end do
       end subroutine packMoleLevel
+
+       subroutine packJnuTrans(octalArray, nTemps, tArray, iTrans, ioctal_beg,ioctal_end)
+         include 'mpif.h'
+         integer :: ioctal_beg, ioctal_end
+         type(OCTALWRAPPER) :: octalArray(:)
+         integer :: nTemps
+         real(double) :: tArray(:)
+         integer :: iOctal, iSubcell, my_rank, ierr
+         integer :: iTrans
+         type(OCTAL), pointer :: thisOctal
+
+        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+        !
+        ! Update the edens values of grid computed by all processors.
+        !
+        nTemps = 0
+        do iOctal = 1, size(octalArray)
+
+           thisOctal => octalArray(iOctal)%content
+
+           do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 
+                 if ((iOctal >= iOctal_Beg).and.(ioctal <= ioctal_end)) then
+                    tArray(ntemps) = thisOctal%jnu(iTrans,isubcell)
+       
+                 endif
+              endif
+           end do
+        end do
+      end subroutine packJnuTrans
 
       subroutine unpackMoleLevel(octalArray, tArray, iLevel)
 !        use input_variables, only : gettau
@@ -3963,6 +4029,33 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            end do
         end do
       end subroutine unpackMoleLevel
+
+      subroutine unpackJnuTrans(octalArray, tArray, iTrans)
+        include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iTrans, ntemp
+        type(OCTAL), pointer :: thisOctal
+        
+        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+        !
+        ! Update the edens values of grid computed by all processors.
+        !
+        ntemp = 0
+        do iOctal = 1, SIZE(octalArray)
+           
+           thisOctal => octalArray(iOctal)%content
+           
+           do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 ntemp = ntemp + 1
+                 thisOctal%jnu(itrans,isubcell) = tArray(ntemp) 
+              endif
+           end do
+        end do
+      end subroutine unpackJnuTrans
+
 #endif
 
       subroutine setObserverVectors(viewvec, observerVec, imagebasis)
