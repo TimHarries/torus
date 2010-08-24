@@ -358,6 +358,7 @@ program torus
   end if
   inclination = max(inclination, 1.e-4)
 
+  scale=1000.0 
   scale = scale * rSol
 
   rStar = 100.*rSol
