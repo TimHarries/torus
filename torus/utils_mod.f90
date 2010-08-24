@@ -4102,7 +4102,6 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     real(double) :: out(:)
     real(double) :: qorig(:), rorig(:), sorig(:), torig(:)
     real(double) :: det
-    real(double) :: temp(100)
     real(double) :: OABweight(length)
 
     integer :: vectorsize
@@ -4110,7 +4109,6 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     logical :: dodoubleweight
     
     vectorsize = size(torig)
-    temp(1:size(out)) = out
     out = torig
 ! Catch any nasty 0s
     if(any(torig(1:length) .eq. 0.d0)) then
@@ -4172,8 +4170,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
       c1 = (e*d-b*f) / det
       c2 = (a*f-e*b) / det
 
-      out = temp
-      out(1:length) = (1d0 - c1 - c2) * torig + c1 * sorig + c2 * rorig
+      out(1:length) = (1d0 - c1 - c2) * torig(1:length) + c1 * sorig(1:length) + c2 * rorig(1:length)
       
 ! Uncomment this code if you find yourself trapping NaNs      
 !      if(any(isnan(out))) then

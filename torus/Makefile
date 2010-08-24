@@ -43,12 +43,8 @@ endif
 
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
-#    F77COMP  = g95
-#    F77FLAG  = -w -fno-second-underscore -g
 #    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
     F95COMP  = ifort
-    F77COMP  = ifort
-    F77FLAG  = -w -fno-second-underscore -g -O0 -traceback -fpe0 -debug full -check all -warn all -intconstant -f77rtl
 #   DEBUGFLAG = -warn -g -no-ipo  # 
     DEBUGFLAG=-O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps -shared-intel #-assume nounderscore
 #    DEBUGFLAG=-g -save-temps -assume nounderscore
@@ -67,9 +63,7 @@ endif
 
 ifeq ($(SYSTEM), g95)
     F95COMP  = g95
-    F77COMP  = g95
-    F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
+    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
 #    FASTFLAG = -O3 -mcpu=G5
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
@@ -81,8 +75,6 @@ endif
 
 ifeq ($(SYSTEM), sun)
     F95COMP  = sunf95
-    F77COMP  = sunf95
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
@@ -93,8 +85,6 @@ endif
 
 ifeq ($(SYSTEM), osx)
     F95COMP  = g95
-    F77COMP  = g95
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g
     FASTFLAG =
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
@@ -105,8 +95,6 @@ endif
 
 ifeq ($(SYSTEM), gfortran)
     F95COMP  = gfortran
-    F77COMP  = gfortran
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -fbacktrace -fbounds-check -Wextra 
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
@@ -118,9 +106,7 @@ endif
 
 ifeq ($(SYSTEM), macmpi)
     F95COMP  = g95
-    F77COMP  = g95
     F95FLAG  = -fno-second-underscore
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g
     STATICFLAG = -static
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
@@ -132,8 +118,6 @@ endif
 
 ifeq ($(SYSTEM), gfort)
     F95COMP  = gfc
-    F77COMP  = gfc
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g 
 #    FASTFLAG = -O3
     FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
@@ -144,9 +128,7 @@ endif
 
 ifeq  ($(SYSTEM), linux)
     F95COMP  = f95
-    F77COMP  = f77
     #F95FLAG  = -maxcontin=2500
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -C=all
     #DEBUGFLAG= -g
     STATICFLAG = -Bstatic
@@ -160,7 +142,6 @@ endif
 
 ifeq ($(SYSTEM), alpha)
     F95COMP  = f90
-    F77COMP  = f77
     DEBUGFLAG= -g
     FASTFLAG = -fast
     MATHTRAP = -fpe3
@@ -169,9 +150,7 @@ ifeq ($(SYSTEM), alpha)
 endif
 
 ifeq ($(SYSTEM), lamosx)
-    F77COMP  = ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
     F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
@@ -182,9 +161,7 @@ endif
 
 ifeq ($(SYSTEM), lamosx-intel)
     F95COMP  = ${GUANINE_HOME}/csr201/local-i386/bin/mpif77
-    F77COMP  = ${GUANINE_HOME}/csr201/local-i386/bin/mpif77
     F95FLAG  = -fno-pic -read_only_relocs suppress
-    F77FLAG  = -fno-pic -read_only_relocs suppress -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
@@ -194,10 +171,8 @@ ifeq ($(SYSTEM), lamosx-intel)
 endif
 
 ifeq ($(SYSTEM), ompiosx)
-    F77COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
     F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
     F95FLAG  = -w
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
@@ -208,11 +183,9 @@ ifeq ($(SYSTEM), ompiosx)
 endif
 
 ifeq ($(SYSTEM), ompi)
-    F77COMP  = mpif90
     F95COMP  = mpif90
     F95FLAG  = -Wno=155
-    F77FLAG  = -Wno=151
-    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
+    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
     CFITSIOLIBS =  -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.ompi
@@ -222,9 +195,7 @@ endif
 
 ifeq ($(SYSTEM), ompiosx-intel)
     F95COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
-    F77COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
     F95FLAG  = -fno-pic -read_only_relocs suppress -w
-    F77FLAG  = -fno-pic -read_only_relocs suppress -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
@@ -238,9 +209,7 @@ ifeq ($(SYSTEM), mpilam)
     TOP  = /h/rk/mpi_nag
     TOP2 = /h/rk/mpi_g77
     F95COMP  = ${TOP}/bin/mpif95
-    F77COMP  = ${TOP2}/bin/mpif77
     F95FLAG  = -mismatch
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -C=all -dcfuns 
     STATICFLAG = -Bstatic
     FASTFLAG = -dcfuns -w 
@@ -256,13 +225,11 @@ ifeq ($(SYSTEM), mpich)
     TOP  = /h/th/mpich
     TOP2 = /h/th/mpich_g77
     F95COMP  = ${TOP}/bin/mpif90
-    F77COMP  = ${TOP2}/bin/mpif77
     F95FLAG  = -mismatch
     DEBUGFLAG= -g -dcfuns
     FASTFLAG = -O3 -dcfuns -w
 #    MATHTRAP = -ieee=stop
     MPI_INC  = -I${TOP}/include
-    F77FLAG  = -w -fno-second-underscore
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpich
     MPIFLAG = -DMPI
@@ -271,8 +238,6 @@ endif
 
 ifeq ($(SYSTEM), linuxintel)
     F95COMP  = ifort 
-    F77COMP  = ifort
-    F77FLAG  = -w
     DEBUGFLAG= -g
 #    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
@@ -285,7 +250,6 @@ endif
 
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
-    F77COMP= mpif90
 
 #    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 
@@ -306,7 +270,6 @@ ifeq ($(SYSTEM), zen)
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zen
-    F77FLAG=
     F2CLIB=
 #    -L$(PATH2G2C) -lg2c
     STATICLIBS= -Bstatic
@@ -319,13 +282,11 @@ endif
 
 ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort
-    F77COMP= ifort
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zensingle
-    F77FLAG=
     F2CLIB=
     STATICLIBS= -Bstatic
     STARLIBS= 
@@ -338,13 +299,11 @@ endif
 # Build using SGI's Message Passing Toolkit version of MPI. 
  ifeq ($(SYSTEM), zenmpt)
      F95COMP= ifort -lmpi
-     F77COMP= ifort -lmpi
      FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
      DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
      STATICFLAG=
      MATHTRAP=
      EXE=torus.mpt
-     F77FLAG=
      F2CLIB=
      STATICLIBS= -Bstatic
      STARLIBS= 
@@ -358,9 +317,7 @@ ifeq ($(SYSTEM), mpiintel)
     TOP  = $(HOME)/mpi_intel
     TOP2 = $(HOME)/mpi_g77
     F95COMP  = ${TOP}/bin/mpif77
-    F77COMP  = ${TOP2}/bin/mpif77
     F95FLAG  = -mp
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -O0 -CA -CV -CS -CB -mp
 #    FASTFLAG = -O2 -I/usr/include/nptl -L/usr/lib/nptl -mp
     FASTFLAG = -O -mp
@@ -374,9 +331,7 @@ endif
 ifeq ($(SYSTEM), openmpi)
     TOP = /h/chris/local/opt/openmpi
     F95COMP  = ${TOP}/bin/mpif77
-    F77COMP  = ${TOP}/bin/mpif77
     F95FLAG  = -w
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
 #    FASTFLAG = -O3
     MPI_INC  = -I${TOP}/include
@@ -390,9 +345,7 @@ endif
 ifeq ($(SYSTEM), openmpi-nocona)
     TOP = /home/chris/local
     F95COMP  = ${TOP}/bin/mpif77
-    F77COMP  = ${TOP}/bin/mpif77
     F95FLAG  = -w
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
 #    FASTFLAG = -O0
 #    FASTFLAG = -O3
@@ -409,7 +362,6 @@ endif
 
 ifeq ($(SYSTEM), miracle)
     F95COMP  = f90
-    F77COMP  = f77
     DEBUGFLAG= -g
     FASTFLAG = -O -OPT:Olimit=0 -mp -64
 #    FASTFLAG = -OPT:Olimit=0 -O -mp
@@ -419,7 +371,6 @@ endif
 
 ifeq ($(SYSTEM), ukaff1a)
     F95COMP  = mpif90
-    F77COMP  = mpif77
     F95FLAG  = -qsuffix=f=f90
     DEBUGFLAG= -g
 #    FASTFLAG = -O -OPT:Olimit=0 -mp -64
@@ -432,9 +383,7 @@ endif
 
 ifeq ($(SYSTEM), omp)
     F95COMP  = xlf90_r
-    F77COMP  = xlf_r
     F95FLAG  = -qsuffix=f=f90 -q64 -qsmp=omp -qnoipa
-    F77FLAG  = -q64 -qsmp=noauto
     DEBUGFLAG= -g
 #    FASTFLAG = -O -OPT:Olimit=0 -mp -64
 #    FASTFLAG = -OPT:Olimit=0 -O -mp
@@ -444,7 +393,6 @@ endif
 
 ifeq ($(SYSTEM), ceres)
     F95COMP  = mpiifort
-    F77COMP= mpiifort
     FASTFLAG  = -O3 -xhost
     DEBUGFLAG=-g -O0 -traceback -fpe0 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
@@ -456,9 +404,7 @@ endif
 ifeq ($(SYSTEM), mpig95)
     TOP = /h/chris/local
     F95COMP  = ${TOP}/bin/mpif77
-    F77COMP  = ${TOP}/bin/mpif77
     F95FLAG  = -w
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
 #    FASTFLAG = -O3
     MPI_INC  = -I${TOP}/include
@@ -471,8 +417,6 @@ endif
 
 ifeq ($(SYSTEM), darwin)
     F95COMP  = g95
-    F77COMP  = g95
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -fbounds-check -Wall
     FASTFLAG = -O3
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
@@ -484,8 +428,6 @@ endif
 ifeq ($(SYSTEM), mpidarwin)
     TOP = ${HOME}/mpi_g95
     F95COMP  = ${TOP}/bin/mpif77 
-    F77COMP  = ${TOP}/bin/mpif77 
-    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g  
     FASTFLAG = -O3
     STARLIBS =  -L/usr/lib -lSystemStubs 

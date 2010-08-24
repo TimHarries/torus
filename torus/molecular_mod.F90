@@ -1683,7 +1683,7 @@ end subroutine molecularLoop
              thisOctal%molecularLevel(iupper(1:maxtrans),subcell) * thisMolecule%einsteinBul(1:maxtrans))
 ! Emission by gas per length        
         spontaneous(1:maxtrans) = (hCgsOverfourPi * nmol) * &
-             thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(:),subcell)
+             thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(1:maxtrans),subcell)
 ! Source function 
         where (balance /= 0.d0)
            snu(1:maxtrans) = spontaneous(1:maxtrans) / balance(1:maxtrans)
@@ -2186,7 +2186,7 @@ endif
 
      real(double) :: oldpops1(maxlevel), oldpops2(maxlevel), oldpops3(maxlevel), oldpops4(maxlevel)
    
-     real(double) :: newFracChangePerLevel(minlevel), temp(minlevel), maxFracChange
+     real(double) :: newFracChangePerLevel(minlevel), temp(minlevel-1), maxFracChange
 
      logical :: ng
      ng = dongstep
