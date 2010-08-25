@@ -160,8 +160,6 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
   real(double) :: t1, t2, t3                                ! interpolation factors
 
-  real, parameter :: precision = 1.e-4              ! relative precision
-
   integer :: maxTau
 
   real :: wavelength                                ! the wavelength and frequency

@@ -1919,7 +1919,7 @@ contains
 
     use input_variables, only : kerneltype
 
-    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
+!    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
     real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed
 
     real(double) :: sumweight

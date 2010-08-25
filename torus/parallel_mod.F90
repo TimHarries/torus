@@ -289,7 +289,7 @@ contains
     implicit none
 
     character(len=*), optional, intent(in) :: message 
-    character(len=1) :: test	
+    character(len=1) :: test
     if (PRESENT(message)) then
        test(1:1) = message(1:1)
     endif

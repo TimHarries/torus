@@ -261,7 +261,7 @@ contains
              astar = accretingAreaMahdavi(grid)
              if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
              call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
-	     if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+             if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
              ! Finding the total mass in the accretion flow

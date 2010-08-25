@@ -424,7 +424,6 @@ contains
     real :: tem_ave
     integer :: nparticle     
 
-    real(double), parameter :: density_crit = 1d-13
     !
     !
     ! assign density to the subcell
@@ -1244,7 +1243,6 @@ contains
     type(vector)     :: cellCenter
     logical, save :: first_time = .true.
     integer :: i, n
-    real(double) , parameter:: rho_min = 1.0d-23
     
     ! quick check for the first time
     if (first_time) then

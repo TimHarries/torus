@@ -730,12 +730,6 @@ module amr_utils_mod
     integer, optional :: sSubcell
     real(oct), intent(out) :: tval
     !
-    type(VECTOR), parameter :: norm(6) = (/ VECTOR( 1.0d0,  0.d0,   0.0d0),  &
-                                            VECTOR( 0.0d0,  1.0d0,  0.0d0),  &
-                                            VECTOR( 0.0d0,  0.0d0,  1.0d0),  &
-                                            VECTOR(-1.0d0,  0.0d0,  0.0d0),  &
-                                            VECTOR( 0.0d0, -1.0d0,  0.0d0),  &
-                                            VECTOR( 0.0d0,  0.0d0, -1.0d0) /)
     type(VECTOR) :: rDirection
     type(OCTAL),pointer :: thisOctal
     real(double) :: distTor1, distTor2, theta, mu

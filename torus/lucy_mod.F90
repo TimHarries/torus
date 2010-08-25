@@ -2144,7 +2144,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
 !   logical, save :: firstTime = .true.
     real :: test  
     logical :: test2
-    test = lamArray(1)	
+    test = lamArray(1)
     test2 = scatteredPhoton
    endSubcell = 0
    stillinGrid = .true.
@@ -2797,7 +2797,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
   real :: nDiffusion(:)
   integer :: nIndex, nIndexScattered
   integer :: subcell, i !, j , k
-  integer, parameter :: nTheta = 10, nPhi = 10
+!  integer, parameter :: nTheta = 10, nPhi = 10
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2837,7 +2837,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
   integer :: nIndex
   integer :: subcell, i !, j, k
   integer :: nIndexScattered
-  integer, parameter :: nTheta = 10, nPhi = 10
+!  integer, parameter :: nTheta = 10, nPhi = 10
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3073,7 +3073,6 @@ subroutine setBiasOnTau(grid, iLambda)
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
-    real(double), parameter :: underCorrect = 0.8d0
     real(double) :: kappaSca, kappaAbs, kappaExt
     type(VECTOR) :: arrayVec(6)
      integer :: nDir

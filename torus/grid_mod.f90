@@ -526,7 +526,6 @@ contains
 
     implicit none
     type(GRIDTYPE) :: grid
-    integer, parameter :: nRad = 100
     real :: rOuter, rInner, rCore
     type(VECTOR) :: rVec, vVec
     real :: r 
@@ -626,7 +625,6 @@ contains
 
     implicit none
     type(GRIDTYPE) :: grid
-    integer, parameter :: nRad = 1000
     real :: rOuter, rInner, rCore
     type(VECTOR) :: rVec, vVec
     real :: r
@@ -712,7 +710,6 @@ contains
 
     implicit none
     type(GRIDTYPE) :: Grid
-    integer, parameter :: nRad = 50
     real(double) :: phi
     real :: rTorus
     real :: rOuter
@@ -4045,12 +4042,11 @@ contains
 
     implicit none
     type(GRIDTYPE) :: grid
-    integer, parameter :: nRad = 100
     real :: rOuter, rInner, rCore
     type(VECTOR) :: rVec
     real :: phi, r
     real :: height
-    integer, parameter :: nTheta = 101, nPhi = 200
+    integer, parameter :: nPhi = 200
     real :: x, y, z, mCore
     type(VECTOR) :: spinAxis
     integer :: i, j, k

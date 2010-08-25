@@ -4487,7 +4487,7 @@ CONTAINS
 
       !
       if (nparticle > limit ) then 
-	 split = .TRUE.
+         split = .TRUE.
       else
          split = .FALSE.
       end if
@@ -5711,8 +5711,6 @@ CONTAINS
     logical, intent(inout) :: alreadyDoneInfall
 
     real(oct) :: dTime
-    real, parameter :: etaFac = 9
-    real, parameter :: chiFac = 1
     type(vector) :: distortionVec(nVec)
     type(vector) :: thisVec
     type(vector) :: thisVel
@@ -7269,7 +7267,6 @@ CONTAINS
     type(VECTOR) :: rVec
     real :: u1 !, u2
     real(double) :: eKinetic
-    real(double), parameter :: gamma = 5.d0/3.d0
 
 
     rVec = subcellCentre(thisOctal, subcell)
@@ -7332,7 +7329,6 @@ CONTAINS
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     real :: u1 !, u2
-    real(double), parameter :: gamma = 5.d0/3.d0
     real(double) :: g, eKinetic
     real(double) :: zpos
     
@@ -7392,7 +7388,6 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double), parameter :: gamma = 5.d0/3.d0
     real(double) :: eThermal, rMod, fac
     logical, save :: firstTime = .true.
     integer, parameter :: nr = 1000
@@ -11526,7 +11521,7 @@ end function readparameterfrom2dmap
     real :: temperature
     real :: frac
     real :: tlambda
-    real, parameter :: sublimationTemp = 1500., subRange = 100.
+!    real, parameter :: sublimationTemp = 1500., subRange = 100.
 !    real :: tArray(1000)
     real(double) :: freq, dfreq, norm !,  bnutot
     integer :: i,j,m,itemp
@@ -13409,7 +13404,6 @@ IF ( .NOT. gridConverged ) RETURN
     LOGICAL                 :: intersectionFound  ! true when intersection takes place      
     real(oct)    :: intersectionRadius ! disk radius when photon intersects
     real(oct)    :: diskDistance       ! distance to disk intersection
-    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     
     type(vector) :: currentPosition
     type(octal), pointer :: sOctal, thisOctal
@@ -13417,7 +13411,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: length, distToNextCell
     ! we will abort tracking a photon just before it reaches the edge of the
     !   simulation space. This is the fraction of the total distance to use:
-    real(oct), PARAMETER :: distanceFraction = 0.999_oc 
     real(double) :: fudgeFac = 0.1d0
     integer :: nSource_local
     TYPE(vector)       :: vectorToIntersectionXYZ ! intersection with disk (cartesian)
@@ -15502,7 +15495,7 @@ IF ( .NOT. gridConverged ) RETURN
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
-    integer, parameter :: nTheta = 10 , nphi = 10
+!    integer, parameter :: nTheta = 10 , nphi = 10
 
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.

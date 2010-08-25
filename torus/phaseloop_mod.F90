@@ -667,7 +667,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
      ! DONE SO.
-     if (grid%geometry /= "cmfgen") then	
+     if (grid%geometry /= "cmfgen") then
         grid%rStar1 = rcore/1.e10
      end if
      !
@@ -2665,8 +2665,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 !        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
         do i = 1, nLambda
-	 errorArray(iOuterLoop,1:nLambda) = yArray(i) - oldyArray(i)
-enddo
+           errorArray(iOuterLoop,1:nLambda) = yArray(i) - oldyArray(i)
+        enddo
          oldyArray = yArray  
   
 

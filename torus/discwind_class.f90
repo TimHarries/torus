@@ -582,8 +582,6 @@ contains
     type(discwind), intent(in) :: this
     real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
     !
-    real(double), parameter :: pi = 3.14159265d0
-    !
     real(double) :: x, y, z, d     ! [cm]  
     real(double) :: rho    ! cylyndical distance [cm]
     real(double) :: r      ! distance from a souce displaced [cm]

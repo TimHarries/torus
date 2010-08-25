@@ -803,8 +803,8 @@ contains
     !
     !
     
-    integer, parameter :: maxTau  = 1000
-    integer, parameter :: nLambda = 1000
+!    integer, parameter :: maxTau  = 1000
+!    integer, parameter :: nLambda = 1000
     ! local variables
 !    real :: lambda(maxTau)    ! path distance array
 !    real :: tauExt(maxTau)    ! optical depth

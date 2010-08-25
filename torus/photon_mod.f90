@@ -437,7 +437,7 @@ contains
     real :: r, mu, phi                         ! spherical polar coords
     real :: sinTheta      
     real(oct) :: t1, t2, t3                         ! multipliers
-    integer, parameter :: nv = 100
+!    integer, parameter :: nv = 100
 !    real :: dv(nv)
 !    real :: vArray(nv), pv(nv), vbias(nv)
     real :: vPhi                               ! azimuthal velocities

@@ -102,7 +102,6 @@ contains
     type(OCTAL),pointer :: oldOctal
     real(quad) :: dtau, delta
     real(double)::  I00                         ! input intensity
-    real(double), parameter :: c=2.99792458d10  ! speed of light in cm/s
 
     kappaAbs = 0.d0; kappaSca = 0.d0
     I00 = I0*offset

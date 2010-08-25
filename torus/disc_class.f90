@@ -652,7 +652,6 @@ contains
     !
     TYPE(VECTOR)     :: cellCentre 
     real :: r
-    real, parameter :: rho_bg = rho_min  ! background density
     ! the following should be really taken from a parameter files... 
     ! Need to fix this later. 
     real  :: M

@@ -58,7 +58,7 @@ contains
     real :: minRho, maxRho
     !type(VECTOR) :: rHat, vHat
     real :: mLoss, vTerm, v0 ! vel, dist, rMag
-    integer, parameter :: nCalvet = 22
+!    integer, parameter :: nCalvet = 22
     !integer :: iCalvet
     !real :: tCalvet(nCalvet) = (/10000.,10000.,10000.,10000.,10000.,10000.,10000., &
     !                   9600., 9000., 8000.,7300.,6600., 6000., 5400., &

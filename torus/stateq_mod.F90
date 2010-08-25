@@ -1308,18 +1308,18 @@ contains
     ! making cint a PARAMETER may cause problems with XL Fortran
     !  real(double) :: cint(5,10)
     !  cint = reshape(source=                                                                   &
-    real(double), parameter :: cint(5,10) = reshape(source=                         &
-         (/-0.4350000e0_db, 0.3000000e00_db,0.0000000e0_db, 0.0000000e0_db,0.00000000e0_db,  &
-            1.9987261e1_db,-5.8906298e-5_db,0.0000000e0_db,-2.8185937e4_db,5.44441600e7_db,  &
-            1.3935312e3_db,-1.6805859e02_db,0.0000000e0_db,-2.5390000e3_db,0.00000000e0_db,  &
-            2.0684609e3_db,-3.3415820e02_db,0.0000000e0_db, 0.0000000e0_db,-7.6440625e3_db,  &
-            3.2174844e3_db,-5.5882422e02_db,0.0000000e0_db, 0.0000000e0_db,-6.8632500e3_db,  &
-            5.7591250e3_db,-1.5163125e03_db,8.1750000e1_db, 0.0000000e0_db,0.00000000e0_db,  &
-            1.4614750e4_db,-4.8283750e03_db,3.9335938e2_db, 0.0000000e0_db,0.00000000e0_db,  &
-            2.8279250e4_db,-1.0172750e04_db,9.1967968e2_db, 0.0000000e0_db,0.00000000e0_db,  &
-            4.6799250e4_db,-1.7627500e04_db,1.6742031e3_db, 0.0000000e0_db,0.00000000e0_db,  &
-           -7.4073000e4_db, 6.8599375e03_db,0.0000000e0_db, 2.0169800e5_db,0.00000000e0_db/),&
-                                                                             shape=(/5,10/))
+!!$    real(double), parameter :: cint(5,10) = reshape(source=                         &
+!!$         (/-0.4350000e0_db, 0.3000000e00_db,0.0000000e0_db, 0.0000000e0_db,0.00000000e0_db,  &
+!!$            1.9987261e1_db,-5.8906298e-5_db,0.0000000e0_db,-2.8185937e4_db,5.44441600e7_db,  &
+!!$            1.3935312e3_db,-1.6805859e02_db,0.0000000e0_db,-2.5390000e3_db,0.00000000e0_db,  &
+!!$            2.0684609e3_db,-3.3415820e02_db,0.0000000e0_db, 0.0000000e0_db,-7.6440625e3_db,  &
+!!$            3.2174844e3_db,-5.5882422e02_db,0.0000000e0_db, 0.0000000e0_db,-6.8632500e3_db,  &
+!!$            5.7591250e3_db,-1.5163125e03_db,8.1750000e1_db, 0.0000000e0_db,0.00000000e0_db,  &
+!!$            1.4614750e4_db,-4.8283750e03_db,3.9335938e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+!!$            2.8279250e4_db,-1.0172750e04_db,9.1967968e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+!!$            4.6799250e4_db,-1.7627500e04_db,1.6742031e3_db, 0.0000000e0_db,0.00000000e0_db,  &
+!!$           -7.4073000e4_db, 6.8599375e03_db,0.0000000e0_db, 2.0169800e5_db,0.00000000e0_db/),&
+!!$                                                                             shape=(/5,10/))
 
     t1 = min(t,1.5e5_db)
     chi=hydE0eV-eTrans(i)
@@ -1403,10 +1403,6 @@ contains
     integer               :: i1,j1           ! lower/upper level
     integer :: lower, upper
     real(double) :: factor
-    real(double),parameter :: avals(7) =                                    &    
-            (/ 2.579997e-10_db, -1.629166e-10_db, 7.713069e-11_db, -2.668768e-11_db, &
-               6.642513e-12_db, -9.422885e-13_db, 0.e0_db                            /)
-
 
     t1 = min(t,1.e5_db)
     i1 = min(i,j)
@@ -2260,7 +2256,7 @@ contains
        write(*,*) " =====> nuArray(nNu) =  ", nuArray2(nNu)
        write(*,*) " =====> You should try to fix this problem !"
        write(*,*) " =====> HINT: Add a point with low flux value at the end of "
-       write(*,*) " =====>       your input flux data file."	  
+       write(*,*) " =====>       your input flux data file."
        write(*,*) " "
        jnuHot = 1.e-28
        iMin = 1
@@ -2464,7 +2460,6 @@ contains
     implicit none
 
     type(GRIDTYPE), intent(inout)  :: grid
-    integer, parameter             :: maxLevels = statEqMaxLevels
     integer, intent(in)            :: i1, i2, i3
     logical, intent(in)            :: isBinary
     real, intent(in)               :: visFrac1, visFrac2
@@ -2916,7 +2911,6 @@ contains
     real                        :: previousNeRatio      
     logical                     :: debugInfo
     Type(VECTOR)           :: starCentre 
-    real(double), parameter :: CI = 2.07d-16   ! in cgs units
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
 !    real :: lam
     integer                     :: numLTEsubcells 
@@ -3576,8 +3570,6 @@ contains
     real(double)                :: transe
     integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
     real(double)       :: freq
-    logical, parameter          :: debugInfo = .true.
-    real(double), parameter :: CI = 2.07d-16   ! in cgs units
     type(octalWrapper), dimension(:), allocatable :: octalArray ! array containing pointers to octals
     call map_transition_arrays(maxLevels)
     freq = cspeed/lambdaTrans(nLower,nUpper)

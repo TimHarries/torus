@@ -3035,8 +3035,8 @@ end subroutine addFreeFreeContinua
 
         dd = (/8.986940175e+00, -4.009515855e+00,  8.808871266e-01,& 
 &          2.640245111e-02, -4.580645915e-02, -3.568055702e-03,&
-&      	  2.827798067e-03,  3.365860195e-04, -8.006936989e-01,&
-&      	  9.466021705e-01,  9.043402532e-02, -9.608451450e-02,&
+&          2.827798067e-03,  3.365860195e-04, -8.006936989e-01,&
+&          9.466021705e-01,  9.043402532e-02, -9.608451450e-02,&
 &         -1.885629865e-02,  1.050313890e-02,  2.800889961e-03,&
 &         -1.078209202e-03, -3.781305103e-01,  1.102726332e-01,&
 &         -1.543619180e-02,  8.310561114e-03,  2.179620525e-02,&
@@ -3330,7 +3330,7 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
   real :: emissivity
 !  real :: heII4686
 !  integer :: ilow , iup
-  integer,parameter :: nHeIILyman = 4
+!  integer,parameter :: nHeIILyman = 4
 !  real(double) :: heIILyman(4)
 !  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
 
@@ -4257,7 +4257,7 @@ end subroutine readHeIIrecombination
           call randomNumberGenerator(getDouble=r)
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%direction = randomUnitVector()
-	  thisOctal => grid%octreeRoot
+          thisOctal => grid%octreeRoot
           call locateContProbAMR(r,thisOctal,subcell)
           thisPhoton%position = randomPositionInCell(thisOctal, subcell)
           thisPhoton%weight = weightEnv

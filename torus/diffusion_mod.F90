@@ -617,7 +617,7 @@ contains
                 if (enPlus1 < 0.d0) then
                    if (firstTime) write(*,*) "Warning: negative energy density."
                    overcorrect = 1.d0
-		   firstTime = .false.
+                   firstTime = .false.
                    deltaE = (enPlus1-thisOctal%oldeDens(subcell))
                    enPlus1 = enPlus1 + undercorrect * deltaE ! undercorrect here
                    if (enPlus1 < 0.d0) then

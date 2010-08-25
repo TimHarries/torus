@@ -293,7 +293,6 @@ contains
     TYPE(Vector), INTENT(IN) :: point    
     !
     real(double), parameter ::  rho_min = 1.0e-18 ! [g/cm^3]     
-    real(double), parameter ::  rho_max = 1.0e-2  ! [g/cm^3]     
     !
     real(double) :: ri
 

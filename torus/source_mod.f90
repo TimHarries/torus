@@ -119,9 +119,9 @@ module source_mod
       if (nSource == 1) then
          iSource = 1
       else
-	 if (PRESENT(initialize)) then
+         if (PRESENT(initialize)) then
 	    ! allocate array
-	    if (allocated(prob)) then
+            if (allocated(prob)) then
                deallocate(prob)
             endif
             ALLOCATE(prob(1:nSource))
@@ -130,11 +130,11 @@ module source_mod
                prob(i) = integrateSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
                     dble(lamArray(nLambda))) /lsol
             enddo
-	    do i = 2, nSource
-	       prob(i) = prob(i) + prob(i-1)
-	    enddo
-	    prob(1:nSource) = prob(1:nSource) - prob(1)
-	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
+            do i = 2, nSource
+               prob(i) = prob(i) + prob(i-1)
+            enddo
+            prob(1:nSource) = prob(1:nSource) - prob(1)
+            prob(1:nSource) = prob(1:nSource) / prob(nSource)
 !            write(*,*) "Source prob: ",prob(1:nSource)
          end if
 	 

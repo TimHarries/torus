@@ -415,7 +415,7 @@ contains
                   write(lunit, *) thisOctal%molabundance(subcell)
 
                case("bnu")
-	       write(*,*) thisOctal%bnu(1,subcell)
+                  write(*,*) thisOctal%bnu(1,subcell)
                   write(lunit, *) real(thisOctal%bnu(1,subcell))
 
                case("dc0")

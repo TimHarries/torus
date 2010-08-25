@@ -349,103 +349,103 @@ contains
     LOGINT_dble=EXP(ANS)
   END FUNCTION LOGINT_DBLE
 
-  	SUBROUTINE dswap(a,b)
-	REAL(DP), INTENT(INOUT) :: a,b
-	REAL(DP) :: dum
-	dum=a
-	a=b
-	b=dum
-	END SUBROUTINE dswap
+  SUBROUTINE dswap(a,b)
+    REAL(DP), INTENT(INOUT) :: a,b
+    REAL(DP) :: dum
+    dum=a
+    a=b
+    b=dum
+  END SUBROUTINE dswap
 
-        SUBROUTINE dmasked_swap(a,b,mask)
-	REAL(DP), INTENT(INOUT) :: a,b
-	LOGICAL(LGT), INTENT(IN) :: mask
-	REAL(DP) :: swp
-	if (mask) then
-		swp=a
-		a=b
-		b=swp
-	end if
-      END SUBROUTINE dmasked_swap
+  SUBROUTINE dmasked_swap(a,b,mask)
+    REAL(DP), INTENT(INOUT) :: a,b
+    LOGICAL(LGT), INTENT(IN) :: mask
+    REAL(DP) :: swp
+    if (mask) then
+       swp=a
+       a=b
+       b=swp
+    end if
+  END SUBROUTINE dmasked_swap
 
 
   ! sort an array
 
-  	SUBROUTINE dquicksort(arr)
-	USE nrtype; USE nrutil, ONLY : nrerror
-	IMPLICIT NONE
-	REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr
-	INTEGER(I4B), PARAMETER :: NN=15, NSTACK=50
-	REAL(DP) :: a
-	INTEGER(I4B) :: n,k,i,j,jstack,l,r
-	INTEGER(I4B), DIMENSION(NSTACK) :: istack
-	n=size(arr)
-	jstack=0
-	l=1
-	r=n
-	do
-		if (r-l < NN) then
-			do j=l+1,r
-				a=arr(j)
-				do i=j-1,l,-1
-					if (arr(i) <= a) exit
-					arr(i+1)=arr(i)
-				end do
-				arr(i+1)=a
-			end do
-			if (jstack == 0) RETURN
-			r=istack(jstack)
-			l=istack(jstack-1)
-			jstack=jstack-2
-		else
-			k=(l+r)/2
-			call dswap(arr(k),arr(l+1))
-			call dmasked_swap(arr(l),arr(r),arr(l)>arr(r))
-			call dmasked_swap(arr(l+1),arr(r),arr(l+1)>arr(r))
-			call dmasked_swap(arr(l),arr(l+1),arr(l)>arr(l+1))
-			i=l+1
-			j=r
-			a=arr(l+1)
-			do
-				do
-					i=i+1
-					if (arr(i) >= a) exit
-				end do
-				do
-					j=j-1
-					if (arr(j) <= a) exit
-				end do
-				if (j < i) exit
-				call dswap(arr(i),arr(j))
-			end do
-			arr(l+1)=arr(j)
-			arr(j)=a
-			jstack=jstack+2
-			if (jstack > NSTACK) call nrerror('sort: NSTACK too small')
-			if (r-i+1 >= j-l) then
-				istack(jstack)=r
-				istack(jstack-1)=i
-				r=j-1
-			else
-				istack(jstack)=j-1
-				istack(jstack-1)=l
-				l=i
-			end if
-		end if
-	end do
-      END SUBROUTINE dquicksort
+  SUBROUTINE dquicksort(arr)
+    USE nrtype; USE nrutil, ONLY : nrerror
+    IMPLICIT NONE
+    REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr
+    INTEGER(I4B), PARAMETER :: NN=15, NSTACK=50
+    REAL(DP) :: a
+    INTEGER(I4B) :: n,k,i,j,jstack,l,r
+    INTEGER(I4B), DIMENSION(NSTACK) :: istack
+    n=size(arr)
+    jstack=0
+    l=1
+    r=n
+    do
+       if (r-l < NN) then
+          do j=l+1,r
+             a=arr(j)
+             do i=j-1,l,-1
+                if (arr(i) <= a) exit
+                arr(i+1)=arr(i)
+             end do
+             arr(i+1)=a
+          end do
+          if (jstack == 0) RETURN
+          r=istack(jstack)
+          l=istack(jstack-1)
+          jstack=jstack-2
+       else
+          k=(l+r)/2
+          call dswap(arr(k),arr(l+1))
+          call dmasked_swap(arr(l),arr(r),arr(l)>arr(r))
+          call dmasked_swap(arr(l+1),arr(r),arr(l+1)>arr(r))
+          call dmasked_swap(arr(l),arr(l+1),arr(l)>arr(l+1))
+          i=l+1
+          j=r
+          a=arr(l+1)
+          do
+             do
+                i=i+1
+                if (arr(i) >= a) exit
+             end do
+             do
+                j=j-1
+                if (arr(j) <= a) exit
+             end do
+             if (j < i) exit
+             call dswap(arr(i),arr(j))
+          end do
+          arr(l+1)=arr(j)
+          arr(j)=a
+          jstack=jstack+2
+          if (jstack > NSTACK) call nrerror('sort: NSTACK too small')
+          if (r-i+1 >= j-l) then
+             istack(jstack)=r
+             istack(jstack-1)=i
+             r=j-1
+          else
+             istack(jstack)=j-1
+             istack(jstack-1)=l
+             l=i
+          end if
+       end if
+    end do
+  END SUBROUTINE dquicksort
 
-      SUBROUTINE dquicksort2(arr,slave)
-	USE nrtype; USE nrutil, ONLY : assert_eq
-	IMPLICIT NONE
-	REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr,slave
-	INTEGER :: ndum
-	INTEGER, DIMENSION(size(arr)) :: index
-	ndum=assert_eq(size(arr),size(slave),'sort2')
-	call indexx(size(arr), arr,index)
-	arr=arr(index)
-	slave=slave(index)
-      END SUBROUTINE dquicksort2
+  SUBROUTINE dquicksort2(arr,slave)
+    USE nrtype; USE nrutil, ONLY : assert_eq
+    IMPLICIT NONE
+    REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr,slave
+    INTEGER :: ndum
+    INTEGER, DIMENSION(size(arr)) :: index
+    ndum=assert_eq(size(arr),size(slave),'sort2')
+    call indexx(size(arr), arr,index)
+    arr=arr(index)
+    slave=slave(index)
+  END SUBROUTINE dquicksort2
 
   SUBROUTINE SORTsingle(N,RA)
     INTEGER N, L, IR, I, J

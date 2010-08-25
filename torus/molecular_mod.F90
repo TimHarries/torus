@@ -1479,7 +1479,7 @@ end subroutine molecularLoop
 	 
      logical :: antithetic
 
-     logical, save :: firsttime = .true.	 
+     logical, save :: firsttime = .true.
      logical, save :: conj = .false.
      type(VECTOR), save :: possave, dirsave
      real(double), save :: rsave, s
@@ -1491,7 +1491,7 @@ end subroutine molecularLoop
      integer :: subcell
 
      integer :: nTau     
-     integer :: ilambda, iTrans, iTau	
+     integer :: ilambda, iTrans, iTau
 
      real(double) :: alphanu(maxtrans,2), alpha(maxtrans),  snu(maxtrans), jnu(maxtrans)
      real(double) :: tau(maxtrans), dTau(maxtrans), localradiationfield(maxtrans), attenuation(maxtrans), kappaAbs
@@ -1648,7 +1648,7 @@ end subroutine molecularLoop
         CellEdgeInterval = OneOverNtauArray(ntau) ! if ntau = 2 then the segment is taken in one chunk
         dds = tval * cellEdgeInterval ! determine line segment length
         halfstep = dds * 0.5 * direction ! find point halfway between start and end to take representative velocity
-        dist = 0.d0	
+        dist = 0.d0
 					
 ! Calculate absorption from (various types of) dust 		
         if(useDust) then     
@@ -1727,7 +1727,7 @@ end subroutine molecularLoop
               endif
            enddo
            localradiationfield = exp(-dtau) 
-	   localradiationfield = OneArray - localradiationfield
+           localradiationfield = OneArray - localradiationfield
            di0 = localradiationfield * snu
 ! Add contribution to whole line           
            i0 = i0 + attenuation * di0

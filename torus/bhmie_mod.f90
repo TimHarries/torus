@@ -26,7 +26,6 @@ contains
 
 ! Local variables:
 
-    LOGICAL SINGLE
     INTEGER J,JJ,N,NSTOP,NMX,NN
     DOUBLE PRECISION CHI,CHI0,CHI1,DANG,DX,EN,FN,P,PII,PSI,PSI0,PSI1, &
                        THETA,XSTOP,YMOD
@@ -120,13 +119,14 @@ contains
 ! If your compiler does NOT support double complex, comment out following
 ! three lines, and uncomment corresponding 3 lines further below
 !
+! 'Single' parameter is no longer in this routine so it was removed, hence
+! only two lines here. D Acreman, August 2010. 
+
       COMPLEX(kind=double) AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
       COMPLEX(kind=double), allocatable :: D(:)
-      PARAMETER(SINGLE=.FALSE.)
 !
 !      COMPLEX AN,AN1,BN,BN1,DREFRL,XI,XI1,Y
 !      COMPLEX D(NMXX)
-!      PARAMETER(SINGLE=.TRUE.)
 !
 !**********************************************************************
 ! Following four statements should be enabled if NOT using g77.

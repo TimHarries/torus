@@ -165,7 +165,7 @@ contains
     real(double) :: zAxis(:), subcellsize(:)
     real :: xPos, yPos
     integer :: subcell
-    real(double) :: rhotemp	
+    real(double) :: rhotemp
     real :: temptemp
     real :: direction
     type(VECTOR) :: currentPos, temp

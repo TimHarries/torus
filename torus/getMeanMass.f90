@@ -169,7 +169,6 @@ real function getMeanRadius2(aMin, aMax, a0, qDist, pDist)
   real :: radius(n)  ! 
 
   real :: normFac
-  real, parameter :: density = 2.   ! mean density of graphite 2 g /cm^3
   a1 = log(aMin)
   a2 = log(aMax)
   !

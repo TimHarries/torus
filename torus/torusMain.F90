@@ -543,7 +543,7 @@ program torus
      if ( enhance ) then
         nVec = 100
         nPhi = 360
-	if (allocated(distortionVec)) deallocate(distortionVec)
+        if (allocated(distortionVec)) deallocate(distortionVec)
         allocate(distortionVec(nVec))
         timeStart = 0.
         timeEnd = 12.*3600.
@@ -580,11 +580,11 @@ program torus
      call randomNumberGenerator(randomSeed=.true.)
      if (cmf) then
         nlucy = 100000
-	storeScattered = .true.
-	scatteredLightWavelength = 2.166e4
+        storeScattered = .true.
+        scatteredLightWavelength = 2.166e4
 
         if (ttauridisc) call do_lucyRadiativeEq
-	if (.not.readlucy) &
+        if (.not.readlucy) &
         call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
         if (writeoutput) then
@@ -713,8 +713,8 @@ program torus
   if (photoionization) then 
         call photoIonizationloop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
              lucyfileNameout, lucyfileNamein)
-	 observerDirection = VECTOR(dble(sin(thisinclination)), 0.d0, dble(cos(thisinclination)))
- 	call writeMultiImages(grid, nSource, source, observerDirection)
+        observerDirection = VECTOR(dble(sin(thisinclination)), 0.d0, dble(cos(thisinclination)))
+        call writeMultiImages(grid, nSource, source, observerDirection)
 
         goto 666
   end if
@@ -1746,7 +1746,7 @@ end subroutine pre_initAMRGrid
              astar = accretingAreaMahdavi(grid)
              if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
              call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
-	     if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+             if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
               ! Finding the total mass in the accretion flow
@@ -1821,13 +1821,13 @@ end subroutine pre_initAMRGrid
 
            ! 
            if (doSmoothGrid) then
-	      call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
               do
                  gridConverged = .true.
                  ! The following is Tim's replacement for soomthAMRgrid.
                  call myScaleSmooth(smoothFactor, grid, &
                       gridConverged,  inheritProps = .false., &
-		      interpProps = .false.,  &
+                      interpProps = .false.,  &
                       stellar_cluster=young_cluster, romData=romData)
                  if (gridConverged) exit
               end do
@@ -1921,7 +1921,7 @@ end subroutine pre_initAMRGrid
         if ( myRankIsZero ) call grid_info(grid, "*")
 #endif
 
-	if (lineEmission.and.(geometry /= "cmfgen").and.(geometry /= "wind")) then
+        if (lineEmission.and.(geometry /= "cmfgen").and.(geometry /= "wind")) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 1000, dble(teff), &
@@ -1949,7 +1949,7 @@ end subroutine pre_initAMRGrid
         endif
 
         if ((geometry == "whitney").and.(nDustType ==4)) then
-           call	fillDustWhitney(grid, grid%octreeRoot)	
+           call fillDustWhitney(grid, grid%octreeRoot)
         endif
 
         if (((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")).and.(nDustType>1)) then
@@ -2196,7 +2196,7 @@ subroutine set_up_sources
 
            nSource = 1
            allocate(source(1:1))
-	   teff = 1.d5
+           teff = 1.d5
            source(:)%outsideGrid = .false.
            source(1)%luminosity = fourPi * stefanBoltz * (CMFGEN_rmin*1.d10)**2 * teff**4
            source(1)%radius = CMFgen_rmin
@@ -2205,7 +2205,7 @@ subroutine set_up_sources
            call readSpectrum(source(1)%spectrum, contfluxfile, ok)
 !           call fillSpectrumBB(source(1)%spectrum, 1.d5, 10.d0, 1000.d4,1000)
            call normalizedSpectrum(source(1)%spectrum)
-	   write(*,*) "calling build sphere..."
+           write(*,*) "calling build sphere..."
            call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, &
                 source(1)%teff, source(1)%spectrum)
 
@@ -2220,7 +2220,7 @@ subroutine set_up_sources
            source(1)%position = VECTOR(0.,0.,0.)
            call readSpectrum(source(1)%spectrum, contfluxfile, ok)
            call normalizedSpectrum(source(1)%spectrum)
-	   write(*,*) "calling build sphere..."
+           write(*,*) "calling build sphere..."
            call buildSphere(grid%starPos1, dble(source(1)%radius), source(1)%surface, 100, &
                 source(1)%teff, source(1)%spectrum)
 
@@ -2978,7 +2978,7 @@ subroutine initialize_blobs
      if (writeoutput) write(*,'(a)') "Running blobs and writing configuration files"
      do i = 1, nPhase
   
-        grid%timeNow = timeStart + (timeEnd-timeStart)*real(i-1)/real(nPhase-1)	    
+        grid%timeNow = timeStart + (timeEnd-timeStart)*real(i-1)/real(nPhase-1)
         write(specFile,'(a,i3.3,a)') trim(outfile),i,".dat"
         write(50,*) specFile(1:30), grid%timeNow
   

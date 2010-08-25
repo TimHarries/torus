@@ -1101,7 +1101,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-6, neTolerance = 1.d-6, tolerance = 1.d-3
+    real(double), parameter :: convergeTol = 1.d-6, tolerance = 1.d-3
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
@@ -1302,7 +1302,7 @@ contains
        do while (.not.gridConverged)
 
           nIter = nIter + 1
-	  idump = idump + 1
+          idump = idump + 1
           write(ifilename,'(a,i2.2,a)') "ionization",idump,".dat"
           if (myRankisZero) then
              open(69, file=ifilename, status="unknown", form="formatted")
