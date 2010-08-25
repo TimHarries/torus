@@ -1246,7 +1246,7 @@ contains
          "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("imagesize", setImageSize, real(autocm), cLine, fLine, nLines, &
-         "Image size (AU): ", "(a,1pe10.2,1x,a)", 0., ok, .false.)
+         "Image size (AU): ", "(a,1pe10.2,1x,a)", 1.0, ok, .false.)
 
 
     if (nimage == 1) then

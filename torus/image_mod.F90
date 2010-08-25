@@ -63,6 +63,14 @@ module image_mod
         ny = 1
      end if
 
+! Check that the image has a non-zero size otherwise axes will all be zero. 
+     if (imageSizeX == 0.0 ) then 
+        call writeWarning ("initImage: imageSizeX = 0")
+     end if
+     if (imageSizeY == 0.0 ) then 
+        call writeWarning ("initImage: imageSizeX = 0")
+     end if
+
      allocate(initImage%pixel(1:nx,1:ny))
      allocate(initImage%vel(1:nx,1:ny))
      allocate(initImage%totWeight(1:nx,1:ny))
@@ -431,6 +439,11 @@ module image_mod
        scale = 1.d20 / distance**2 ! to per cm^2
        angularScale =  (image%xAxisCentre(2) - image%xAxisCentre(1))*1.d10/distance
        strad = angularScale**2 ! str per pix
+
+       if ( strad == 0.0 ) then 
+          call writewarning( "ConvertImageToMJanskiesPerStr: strad = 0.0 no conversion performed")
+          return
+       end if
 
        do i = 1, image%nx
           do j = 1, image%ny 

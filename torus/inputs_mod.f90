@@ -1489,6 +1489,7 @@ contains
     if (geometry == "lexington" .or. geometry == "runaway") then
        photoionization = .true.
        onekappa = .true.
+       thisInclination = 10.0
        call getReal("rinner", rInner, cLine, nLines, &
             "Inner Radius (10^17cm): ","(a,f5.1,a)", 30., ok, .true.)
        rinner = rinner * 1.e7
@@ -2100,7 +2101,7 @@ contains
          "Narrow band image: ","(a,1l,a)",.false., ok, .false.)
 
     call getReal("imagesize", setImageSize, cLine, nLines, &
-         "Image size (AU): ", "(a,1pe10.2,1x,a)", 0., ok, .false.)
+         "Image size (AU): ", "(a,1pe10.2,1x,a)", 1.0, ok, .false.)
     setimagesize = setimagesize * auTocm
 
     call getReal("imageScale", imageScale, cLine, nLines, &
