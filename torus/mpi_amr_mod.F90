@@ -2202,6 +2202,7 @@ contains
     rhouCorner = 0.d0
     rhovCorner = 0.d0
     rhowCorner = 0.d0
+    phicorner  = 0.d0
 
     if (debug) then
        write(*,*) "addnewchild with interp debug"

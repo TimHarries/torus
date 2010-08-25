@@ -7187,14 +7187,14 @@ CONTAINS
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: gd, xmid, x, z, r , zprime
+    real(double) :: xmid, x, z, r , zprime !, gd
     
 
     rVec = subcellCentre(thisOctal, subcell)
-    xmid = (x1 + x2)/2.d0
+!    xmid = (x1 + x2)/2.d0
     x = rVec%x
     z = rVec%z
-    gd = 0.05d0 * (x2 - x1)
+!    gd = 0.05d0 * (x2 - x1)
     if (thisOctal%twod) then
        r = modulus(rVec - VECTOR(0.5d0, 0.d0, 0.5d0))
     else

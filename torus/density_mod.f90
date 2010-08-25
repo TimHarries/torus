@@ -864,7 +864,8 @@ contains
   end function benchmarkDensity
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
-    use input_variables
+    use input_variables, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
+         alphaDisc, rho0, smoothInnerEdge, streamFac
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -878,6 +879,7 @@ contains
     real ::  phi1, phi2, dphi, r1, turns, d
     type(VECTOR),save :: stream1(nStream), stream2(nStream)
     logical :: ok
+    real :: x1, x2
 
     if (firstTime) then
 
