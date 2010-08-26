@@ -67,7 +67,8 @@ contains
 
     nLines = file_line_count(paramfile)
     ! nLines+1 element of cline is used in loop which reads parameter file
-    allocate ( cLine(nLines+1) )
+    ! Needs to be +2 in case the last line doesn't have a newline at the end
+    allocate ( cLine(nLines+2) )
     nLines = 0 
 
     open(unit=32, file=paramfile, status='old', iostat=error)
