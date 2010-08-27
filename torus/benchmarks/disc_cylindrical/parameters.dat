@@ -1,70 +1,64 @@
-suppressLucySmooth T
-usebias F
-nphotons 500000
-amrgridcentrex 2.e6
-amrgridcentrey 0.0000
-amrgridcentrez 0.0000
-distance 2.25558e-8
-amrgridsize 4.0e6
-dosmoothgrid T
-taumax 0.5
-taumin 0.001
-smoothgridtau F
-smoothfactor 2.
-limitscalar 5.e23
-samplefreq 2.
-lambdasmooth 5500.
-popfile lucy.dat
-ninc 2
-firstinc 12.5
-lastinc 77.5
-readpops F
-plane_for_plot x-z
-writepops F
-nphase 1
-sised T
-wavlin F
-filter_set_name step_functions
-lamstart 1200.
-lamend  2.e7
-nlambda 200
-lambdafile F
-lamfilename lamfile.dat
-gridtype octree
-gridusesamr T
-amr2d F
-amr3d T
+! Torus v2 parameter file for 2D benchmark disc
+! See Pascucci et al, 2004, A&A, 417, 793
+
+dustphysics T   ! use dust microphysics 
+
+radeq T  ! perform a radiative equilibrium calculation
+
+! AMR grid parameters
+
+readgrid F   ! we aren't reading a grid, we will set one up from scratch
+writegrid F  ! we don't need to write out the AMR file - we just need SEDs
+amrgridsize 4.e6
+amrgridcentrex 2.e6 ! the linear size of the top-level AMR mesh in units of 10^10 cm
+amr3d T  ! this is a 2d (cylindical) model
 cylindrical T
-geometry benchmark
-rcore 1.                               
-rinner 1.                                
-router 1000.                              
-height 125.
-rho 8.16136e-18
-maxscat 1000000
-forceFirstScat F
-filename test
-device "/xs"                             
-stokesimage F
-vmin -100000.                            
-vmax +100000.                            
-teff 5800.
-probcont 1.                              
-mie T                                    
-line F                                   
-opaquecore T
-lucyrad T
-lucyfilein lucy.dat
-lucyfileout lucy.dat
-writelucy T
-readlucy F
-probdust 0.1
-graintype1 sil_dl
-amin1 0.12
-amax1 0.1201
-qdist1 0.01
-tthresh 2000.
-imagesize 0.
-hydro F
-iso_scatter T
-ndf F
+
+! grid smoothing switches
+
+smoothgridtau T  ! smooths the grid for optical depth, in order to resolve disc photosphere
+dosmoothgrid T   ! smooth the grid for jumps in cell refinement
+smoothfactor 3.0 ! make sure that neighbouring cells are not only one AMR depth apart
+
+
+! Source parameters
+
+nsource 1  ! there is just one source
+radius1 1.  ! it has a radius of 1 solar radius
+teff1 5800.  ! the source effective temperature 
+contflux1 blackbody ! the continuum flux is assumed to be a blackbody
+mass1 1.   ! the source has a mass of one solar mass
+sourcepos1 0. 0. 0  ! it is located at the grid cntre
+
+! Geometry specific parameters
+
+geometry benchmark  ! this is the Pascucci (2004) benchmark
+rinner 1. ! inner disc radius (AU)                                
+router 1000. ! outer disc radius        
+height 125. ! disc scaleheight at 100 AU (in AU)
+rho 8.16136e-18  ! density at inner edge midplane (g/cc)
+
+! Dust grain properties
+
+iso_scatter T      ! Assume isotropic scattering (assumed by benchmark)
+graintype1 sil_dl  ! Drain and Lee silicates
+amin1 0.12         ! minimum grain size (microns)
+amax1 0.1201       ! maximum grain size (microns)
+qdist1 0.01        ! power law index (flat)
+
+! Output SEDs
+
+spectrum T   ! produce a spectrum
+
+! SED parameters
+
+ninc 2               ! number of inclinations
+firstinc 12.5        ! the first inclination (degrees)
+lastinc 77.5         ! the last inclination (degrees)
+nphotons 500000      ! the number of photon packets in each SED
+filename test        ! the root of the output filename
+sised T              ! Write spectrum as lambda vs F lambda in SI units
+distance 2.25558e-8  ! Distance to observer
+sedlammin 0.12       ! minimum wavelength in SED file
+sedlammax 2000       ! maximum wavelength in SED file
+sedwavlin F          ! Linear spacing in SED file? 

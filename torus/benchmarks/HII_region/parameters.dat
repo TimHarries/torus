@@ -1,64 +1,59 @@
-probdust 1.
-lucyrad T
-nlucy 200000
-nmonte 10
-mindepthamr 8
-maxdepthamr 8
-hydrodynamics F
-usebias F
-blockhandout T
-dosmoothgrid T
-smoothgridtau T
-smoothfactor 2.
-taumin 1.
-taumax 10.
-lambdasmooth 900.
-nphotons 100
-amrgridcentrex 2.2e9
-amrgridcentrey 0.0000
-amrgridcentrez 0.0000
-probcont 1.
-mie T
-iso_scatter T
-limitscalar 1.
-popfile junk
-distance 1.
-amrgridsize 4.4e9
-samplefreq 2.
-readpops F
-plane_for_plot x-z
-plot_maps T
-writepops F
-nphase 1
-wavlin F
-filter_set_name step_functions
-lamstart 10.
-lamend  1.e5
-nlambda 1000
-gridtype octree
-gridusesamr T
-amr1d T
-amr2d F
-amr3d F
-geometry lexington
-rinner 30.
-noscat F
-forceFirstScat F
-filename test
-device "/xs"                             
-stokesimage F
-vmin -100000.                            
-vmax +100000.                            
-teff 10000.
-mincrossings 50
-ndusttype 1
-firstinc 90.
-lastinc 90.
-ninc 1
-maxscat 10
-hydro F
+!
+! Grid set up
+!
+
+splitovermpi    F
+readgrid        F
+
+amr1d           T
+mindepthamr     8
+maxdepthamr     8
+amrgridcentrex  2.2e9
+amrgridcentrey  0.0000
+amrgridcentrez  0.0000
+amrgridsize     4.4e9
+geometry        lexington
+
+!
+! Physics 
+! Allow parameters to default for now
+! See readPhotoionPhysicsParameters for parameters
+!
+
+photoionphysics  T 
+dustphysics      T
+
+! Source parameters 
+
+nsource     1 
+radius1     18.67
+teff1       40000.0
+mass1       80.0
+contflux1   blackbody
+sourcepos1  0.0,0.0,0.0
+
+!
+! Type of calculation
+!
+
+photoioneq   T
+
+!
+! Dust parameters
+!
+
 dusttogas 1.e-20
 graintype1 sil_dl
 amin1 0.1
 amax1 0.11
 qdist1 0.0
+
+
+! Grid output 
+
+writegrid F
+
+! Geometry specific parameters
+
+rinner 30.0
+

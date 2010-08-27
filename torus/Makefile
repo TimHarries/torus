@@ -18,7 +18,7 @@ profile = no
 static  = no
 trace   = no
 openmp  = no 
-v2      = no
+v2      = yes
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
