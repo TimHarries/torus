@@ -349,13 +349,13 @@ for opt in ${DEBUG_OPTS}; do
 	    case ${USEDEBUGFLAGS} in
 		yes) export G95_FPU_INVALID=true
 		    export G95_FPU_ZERODIV=true
-		    export G95_FPU_OVERFLOW=true
-		    export G95_MEM_INIT=NAN;;
+		    export G95_FPU_OVERFLOW=true;;
+#		    export G95_MEM_INIT=NAN;;
 
 		no) export G95_FPU_INVALID=false
 		    export G95_FPU_ZERODIV=false
-		    export G95_FPU_OVERFLOW=false
-		    export G95_MEM_INIT=NONE;;
+		    export G95_FPU_OVERFLOW=false;;
+#		    export G95_MEM_INIT=NONE;;
 
 	    esac
 
