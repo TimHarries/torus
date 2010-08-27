@@ -1040,6 +1040,9 @@ contains
     call getReal("taudiff", tauDiff, 1., cLine, fLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
+    call getReal("edenstol", eDensTol, 1., cLine, fLine, nLines, &
+         "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
+
   end subroutine readPhotoionEquilibriumParameters
 
   subroutine readHydrodynamicsParameters(cLine, fLine, nLines)

@@ -118,7 +118,7 @@ contains
     case("benchmark")
        grid%geometry = "benchmark"
        grid%rCore = rCore
-       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * sourceTeff(1)**4 * 1.e20
        grid%rInner = rInner
        grid%rOuter = rOuter
 
