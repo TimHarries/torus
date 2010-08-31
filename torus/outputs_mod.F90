@@ -59,7 +59,6 @@ contains
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
-    viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
     if (writegrid) then
        call writeAMRgrid(gridOutputFilename,.false.,grid)
     endif
@@ -70,6 +69,7 @@ contains
 
     if (atomicPhysics.and.calcDataCube) then
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
        gridDistance = 140.d0* pctocm/1.d10
        call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
             viewVec, dble(gridDistance), &
