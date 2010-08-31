@@ -18,7 +18,7 @@ cylindrical T
 
 smoothgridtau T  ! smooths the grid for optical depth, in order to resolve disc photosphere
 dosmoothgrid T   ! smooth the grid for jumps in cell refinement
-smoothfactor 3.0 ! make sure that neighbouring cells are not only one AMR depth apart
+smoothfactor 2.0 ! make sure that neighbouring cells are not only one AMR depth apart
 
 
 ! Source parameters
