@@ -291,6 +291,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 !$OMP THREADPRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray)
 
+  phaseTime = 0.0
+  phaseOffset = 0.0
+
   intPathError = 0
   hitCore = .false.
   chanceHotRing = 0.
@@ -375,9 +378,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 ! From here we do multiple runs if required !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   phaseLoop: do iPhase = nStartPhase, nEndPhase
-          
+     
      grid%timeNow = phaseTime * real(iPhase-1)
-
 
      viewVec = originalViewVec
      outVec = (-1.d0)*viewVec
