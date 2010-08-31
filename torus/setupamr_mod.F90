@@ -278,7 +278,7 @@ contains
              do
                 gridConverged = .true.
                 ! The following is Tim's replacement for soomthAMRgrid.
-                call myScaleSmooth(3., grid, &
+                call myScaleSmooth(smoothFactor, grid, &
                      gridConverged,  inheritProps = .false., &
                      interpProps = .false.,  &
                      stellar_cluster=young_cluster, romData=romData)
