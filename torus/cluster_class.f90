@@ -10,13 +10,11 @@ module cluster_class
   use source_mod, only: SOURCETYPE
   use octal_mod, only: octal, subcellCentre, cellVolume, within_subcell
   use vector_mod
-  use mpi_global_mod
   implicit none
 
   public :: new,  &
        &    kill_all, &
        &    kill_only_stars, &
-       &    get_boxsize, &
        &    get_nstar, &
        &    put_a_star, &
        &    get_a_star, &
@@ -46,8 +44,6 @@ module cluster_class
   
   type cluster
      private   ! It is better to be private! (The maintenance is easier later...)
-     ! size of the cubic box which hold the entire sph particle and stars.
-     real(double) :: boxsize  
      ! number of stars
      integer :: nstar
      ! stars
@@ -77,7 +73,6 @@ contains
     implicit none
     type(cluster), intent(inout) :: this
     
-    this%boxsize = 1
     this%nstar= 1
 
     NULLIFY(this%stars)
@@ -89,14 +84,12 @@ contains
   !
   ! Initializing with sph data
   !
-  subroutine int_cluster_alt(this, amrGridSize, disc_on)
+  subroutine int_cluster_alt(this, disc_on)
     use sph_data_class, only: get_nptmass
     implicit none
     type(cluster), intent(inout) :: this
-    real(double), intent(in) :: amrGridSize
     logical, intent(in) :: disc_on
     ! Store important info from the data.    
-    this%boxsize = amrGridSize  ! [10^10 cm]
     !
     this%nstar = get_nptmass()
 
@@ -120,7 +113,6 @@ contains
     type(cluster),intent(inout) :: this
 
     this%nstar=0
-    this%boxsize=0.0d0
     DEALLOCATE(this%stars)
     NULLIFY(this%stars)
 
@@ -142,18 +134,6 @@ contains
   ! Accessors
   !==============================================================
   
-  !
-  ! Return the size of the box which holds the whole particles
-  function get_boxsize(this) RESULT(out)
-    implicit none
-    real(double) :: out
-    type(cluster), intent(in) :: this
-    
-    out = this%boxsize
-    
-  end function get_boxsize
-  
-
   !
   ! Returns the number of stars
   !
@@ -817,7 +797,7 @@ contains
 
     
     nc = thisOctal%nChildren    
-    do subcell = 1, 8
+    do subcell = 1, thisOctal%maxchildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, nc
@@ -1181,7 +1161,7 @@ contains
     TYPE(vector)     :: cellCenter
 
     nstar = get_nstar(this)
-    
+
     ! position if the cell
     cellCenter = subcellCentre(octal_in,subcell)
     xc=dble(cellCenter%x); yc=dble(cellCenter%y); zc=dble(cellCenter%z)

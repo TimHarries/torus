@@ -292,7 +292,7 @@ contains
 
   if ( present( fix_source_T ) ) then 
 
-     call new(young_cluster, dble(amrGridSize), disc_on)
+     call new(young_cluster, disc_on)
 
      write(message,*) "Calling build_cluster with fixed parameters "
      call writeInfo(message, TRIVIAL)
@@ -307,7 +307,7 @@ contains
      call read_isochrone_data(isochrone_data)
      
      ! making a cluster object
-     call new(young_cluster, dble(amrGridSize), disc_on)
+     call new(young_cluster, disc_on)
      call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data )
     
   end if

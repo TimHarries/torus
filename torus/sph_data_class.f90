@@ -363,6 +363,7 @@ contains
 
   end subroutine read_sph_data
 
+! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(filename)
     implicit none
 
@@ -373,7 +374,8 @@ contains
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
     real(double) :: udist, umass, utime,  time, uvel, utemp
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h
-    integer :: itype, ipart, icount, iptmass, igas, idead
+    integer :: itype ! splash particle type, different convention to SPHNG 
+    integer :: ipart, icount, iptmass, igas, idead
     integer :: nptmass, nghost, nstar, nunknown, nlines
     real(double) :: junkArray(50) !, junk
     character(LEN=1)  :: junkchar
@@ -473,6 +475,7 @@ contains
 
        icount = icount + 1
 
+! 1=gas particle
        if (itype == 1) then 
           igas = igas + 1
 
@@ -499,7 +502,8 @@ contains
 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
           
-       else if(itype .eq. 4) then
+! 3=sink, 4=star
+       else if(itype .eq. 3 .or. itype .eq. 4) then
 
           iptmass = iptmass + 1
 
@@ -519,6 +523,8 @@ contains
           write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas
           call writeinfo(message, TRIVIAL)
           write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10, gaspartmass
+
+! 2=ghost, 5=dead/unknown
        else
 
           idead = idead + 1

@@ -76,7 +76,7 @@ contains
     else
        flatspec = .true.
     end if
-     call new(young_cluster, dble(amrGridSize), .false.)
+    call new(young_cluster, .false.)
 
     if (readgrid) then
        grid%splitOverMPI = splitOverMPI
@@ -298,7 +298,7 @@ contains
         call finishGrid(grid%octreeRoot, grid, romData=romData)
 
           if( geometry .eq. 'molcluster'.or. geometry == "theGalaxy" ) then
-             totalmasstrap = 0.0
+             totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30
              call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
              write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
              call writeInfo(message, TRIVIAL)
@@ -343,7 +343,7 @@ contains
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif
-
+        
 
 !        pause
 !       gridConverged = .false.
