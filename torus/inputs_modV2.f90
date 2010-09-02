@@ -1008,9 +1008,11 @@ contains
     call getLogical("smoothgridtau", doSmoothGridtau, cLine, fLine, nLines, &
          "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
 
+! Also used for calculating tau in VTK output
+    call getReal("lambdasmooth", lambdasmooth, 1.0, cLine, fLine, nLines, &
+         "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+
     if (dosmoothgridtau) then
-       call getReal("lambdasmooth", lambdasmooth, 1.0, cLine, fLine, nLines, &
-            "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
        call getReal("taumax", tauSmoothMax, 1.0, cLine, fLine, nLines, &
             "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 0.5, ok, .false.)
        call getReal("taumin", tauSmoothMin, 0.1, cLine, fLine, nLines, &
