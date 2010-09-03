@@ -5,7 +5,7 @@ module kind_mod
   implicit none
 
   integer, parameter :: single = kind(0.)
-  integer, parameter :: bigInt = kind(1000000000)
+  integer, parameter :: bigInt = selected_int_kind(10)
   integer, parameter :: si = single
   integer, parameter :: double = kind(0.d0)
   integer, parameter :: db = double
