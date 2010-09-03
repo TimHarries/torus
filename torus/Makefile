@@ -95,7 +95,7 @@ endif
 
 ifeq ($(SYSTEM), gfortran)
     F95COMP  = gfortran
-    DEBUGFLAG= -g -fbacktrace -fbounds-check -Wall -Wextra 
+    DEBUGFLAG= -g -fbacktrace -fbounds-check -Wall -Werror
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
 #    F2CLIB   = -L/usr/local/lib -lg2c

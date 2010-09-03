@@ -95,7 +95,7 @@ contains
     do i = 1, thisAtom%nLevels
        read(30,'(a120)') junk
        call splitIntoChunks(junk, nChunks, chunk)
-       thisAtom%level(i) = chunk(1)
+       thisAtom%level(i) = chunk(1)(1:10)
        read(chunk(3), *) thisAtom%energy(i)
        read(chunk(4), *) thisAtom%g(i)
     enddo
@@ -120,7 +120,7 @@ contains
     do i = 1, thisAtom%nTrans
        read(30,'(a120)') junk
        call splitIntoChunks(junk, nChunks, chunk)
-       thisAtom%transType(i) = chunk(1)
+       thisAtom%transType(i) = chunk(1)(1:3)
        thisAtom%iLower(i) = getLevel(thisAtom, chunk(2))
        thisAtom%iUpper(i) = getLevel(thisAtom, chunk(3))
        read(chunk(4),*) thisAtom%equation(i)
