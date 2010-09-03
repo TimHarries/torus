@@ -3,7 +3,6 @@
 export BASE_DIR=/Users/acreman
 export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
 export LOG_FILE=${BASE_DIR}/torus_daily_test_log
-export num_tests=2
 
 cd  ${TORUS_TEST_DIR}
 
@@ -45,7 +44,7 @@ subject_line=" "
 # Test for success of disc benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc/check_log_disc.txt | /usr/bin/wc -l `
 
-if [[ ${num_success} -eq ${num_tests} ]]; then
+if [[ ${num_success} -eq 2 ]]; then
     subject_line="${subject_line} Disc benchmark successful."
 else
     subject_line="${subject_line} Disc benchmark failed."
@@ -59,24 +58,6 @@ if [[ ${num_success} -eq 1 ]]; then
 else
     subject_line="${subject_line} Molecular benchmark failed."
 fi
-
-# Test for success of cylindrical polar disc benchmark
-#num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc_cylindrical/check_log_disc_cylindrical.txt | /usr/bin/wc -l `
-
-#if [[ ${num_success} -eq ${num_tests} ]]; then
-#    subject_line="${subject_line} Cylindrical polar disc benchmark successful."
-#else
-#    subject_line="${subject_line} Cylindrical polar disc benchmark failed."
-#fi
-
-# Test for success of sphbench
-#num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/sphbench/check_log_sphbench.txt | /usr/bin/wc -l `
-
-#if [[ ${num_success} -eq ${num_tests} ]]; then
-#    subject_line="${subject_line} SPH-Bench successful. "
-#else
-#    subject_line="${subject_line} SPH-Bench failed. "
-#fi
 
 # Test for success of hydro benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/hydro/check_log_hydro.txt | /usr/bin/wc -l `
@@ -96,12 +77,12 @@ else
     subject_line="${subject_line} HII region benchmark failed. "
 fi
 
-# Join the output files together and get rid of the old log file
+# Move log file
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log 
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
-mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk drundle@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk"
+mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk drundle@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk tjh202@exeter.ac.uk"
 for user in ${mail_to}; do
     /sw/bin/mutt -s "${subject_line}" ${attach_list} ${user} < ${LOG_FILE}
 done
