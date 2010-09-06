@@ -12,7 +12,6 @@ module lucy_mod
   use timing, only: tune
   use vtk_mod, only: writeVtkFile
   use mpi_global_mod, only: myRankGlobal
-  use gridio_mod
   use memory_mod
   implicit none
 
@@ -34,6 +33,8 @@ contains
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104
     use random_mod
+    use gas_opacity_mod, only: atomhydrogenRayXsection
+    use gridio_mod, only: writeAMRgrid
 #ifdef MPI
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
