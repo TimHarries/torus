@@ -8,6 +8,7 @@
 #    6. make static=yes  : Make torus with static linking
 #    7. make trace=yes   : Make torus with ITAC profiling
 #    8. make openmp=yes  : Make torus with OpenMP 
+#    9. make coverage=yes: Generate coverage statistics with gnu compilers 
 #-----------------------------------------------------------------
 
 USEMKL  = no
@@ -19,6 +20,7 @@ static  = no
 trace   = no
 openmp  = no 
 v2      = yes
+coverage = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -464,6 +466,11 @@ endif
 
 ifeq ($(profile), yes)
    ETCFLAG += -pg
+endif
+
+ifeq ($(coverage), yes)
+   ETCFLAG +=  -fprofile-arcs -ftest-coverage
+   FASTFLAG = 
 endif
 
 ifeq ($(trace), yes)
