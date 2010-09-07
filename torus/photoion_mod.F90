@@ -1315,7 +1315,7 @@ end subroutine photoIonizationloop
     real(double) :: epsOverDeltaT
     real(double) :: totalHeating
     integer :: subcell
-    logical :: converged, found
+    logical :: converged
     real :: t1, t2, tm
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
@@ -1345,51 +1345,49 @@ end subroutine photoIonizationloop
                    
                    t1 = 1.
                    t2 = 100000.
-                   found = .true.
                    
-                   if (found) then
+                   y1 = (HHecooling(grid, thisOctal, subcell, t1) &
+                        - totalHeating)
+                   y2 = (HHecooling(grid, thisOctal, subcell, t2) &
+                        - totalHeating)
+                   if (y1*y2 > 0.d0) then
+                      if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
+                         tm = t1
+                      else
+                         tm  = t2
+                      endif
+                      converged = .true.
+                   endif
+                      
+                   ! Find root of heating and cooling by bisection
+                   
+                   do while(.not.converged)
+                      tm = 0.5*(t1+t2)
                       y1 = (HHecooling(grid, thisOctal, subcell, t1) &
-                           - totalHeating)
+                           - totalheating)
                       y2 = (HHecooling(grid, thisOctal, subcell, t2) &
-                           - totalHeating)
-                      if (y1*y2 > 0.d0) then
-                         if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
-                            tm = t1
-                         else
-                            tm  = t2
-                         endif
+                           - totalheating)
+                      ym = (HHecooling(grid, thisOctal, subcell, tm) &
+                           - totalheating)
+                      
+                      if (y1*ym < 0.d0) then
+                         t1 = t1
+                         t2 = tm
+                      else if (y2*ym < 0.d0) then
+                         t1 = tm
+                         t2 = t2
+                      else
                          converged = .true.
+                         tm = 0.5*(t1+t2)
+                         write(*,*) t1, t2, y1,y2,ym
                       endif
                       
-                      ! Find root of heating and cooling by bisection
-                      
-                      do while(.not.converged)
-                         tm = 0.5*(t1+t2)
-                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
-                              - totalheating)
-                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
-                              - totalheating)
-                         ym = (HHecooling(grid, thisOctal, subcell, tm) &
-                              - totalheating)
-                         
-                         if (y1*ym < 0.d0) then
-                            t1 = t1
-                            t2 = tm
-                         else if (y2*ym < 0.d0) then
-                            t1 = tm
-                            t2 = t2
-                         else
-                            converged = .true.
-                            tm = 0.5*(t1+t2)
-                            write(*,*) t1, t2, y1,y2,ym
-                         endif
-                         
-                         if (abs((t1-t2)/t1) .le. 1.e-3) then
-                            converged = .true.
-                         endif
-                         niter = niter + 1
-                      enddo
-                   endif
+                      if (abs((t1-t2)/t1) .le. 1.e-3) then
+                         converged = .true.
+                      endif
+                      niter = niter + 1
+                   enddo
+
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
