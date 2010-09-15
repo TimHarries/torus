@@ -492,8 +492,9 @@ ifeq ($(openmp), yes)
      ETCFLAG += -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
      STARLIBS += -static-libgcc
+     FASTFLAG = 
   else
-     ETCFLAG += -openmp 
+     ETCFLAG += -openmp
   endif
 endif
 

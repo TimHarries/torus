@@ -2124,12 +2124,14 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
    integer :: subcell, tempSubcell!, sourceSubcell
    logical :: directPhoton
    real(oct) :: tval, tau, r
+   real(double) :: tval_db
    real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid, ok
    logical :: escaped
    real(double) :: kappaScaDb, kappaAbsDb
    real(oct) :: thisTau
+   real(double) :: tauRatio
    real(oct) :: thisFreq
    real(oct) :: thisLam
    integer :: iLam
@@ -2300,13 +2302,19 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
 
 ! update the distance grid
 
-!$OMP CRITICAL (changegrid)
+! ifort (v11 and earlier) has problems with type conversion in atomic statements.
+    tval_db = real(tval,db)
+!$OMP ATOMIC
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb
+!$OMP ATOMIC
+    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+    if (directPhoton) then
+!$OMP ATOMIC
+       thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+    end if
 
-          thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-               + tVal * dble(kappaAbsdb)
-          thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-          if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
-
+! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
+! in use then access to shared memory may need to be protected from simutaneous updates. 
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
@@ -2314,7 +2322,6 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
 !               call addMeanIntensity(octVec, thisOctal, subcell, uHat, tVal*1.d10)
 
 
-!$OMP END CRITICAL (changegrid)
 
 
 ! now we need to return if the photon is in the diffusionzone
@@ -2423,14 +2430,21 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
 
        if (thisTau > 0.d0) then
 
-!$OMP CRITICAL (changegrid2)
 
-          
+! ifort (v11 and earlier) has problems with type conversion in atomic statements.
+    tval_db = real(tval,db)
+    tauRatio = real( (tau/thisTau) ,db)
+!$OMP ATOMIC
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb
+!$OMP ATOMIC
+    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+    if (directPhoton) then
+!$OMP ATOMIC
+       thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+    end if
 
-             thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
-             thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-          if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
+! in use then access to shared memory may need to be protected from simutaneous updates. 
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
 
@@ -2439,7 +2453,6 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
 
 
 
-!$OMP END CRITICAL (changegrid2)
 
 
           oldOctal => thisOctal

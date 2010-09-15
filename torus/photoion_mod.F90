@@ -1609,10 +1609,9 @@ end subroutine photoIonizationloop
        xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)
 !       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
        if (xSec > 0.d0) then
-          !$OMP CRITICAL
+          !$OMP ATOMIC
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
                + fac * xSec
-          !$OMP END CRITICAL
 
 !          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
 !               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
@@ -1621,21 +1620,19 @@ end subroutine photoIonizationloop
        ! neutral h heating
 
        if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
-          !$OMP CRITICAL
+          !$OMP ATOMIC
           thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
             + distance * xsec / (thisfreq * hcgs) &
             * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
-          !$OMP END CRITICAL
        endif
 
        ! neutral he heating
 
        if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
-          !$OMP CRITICAL
+          !$OMP ATOMIC
           thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
             + distance * xsec / (thisfreq * hcgs) &
             * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
-          !$OMP END CRITICAL
        endif
 
     enddo
@@ -1644,10 +1641,9 @@ end subroutine photoIonizationloop
 
     call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
 
-    !$OMP CRITICAL
+    !$OMP ATOMIC
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
-         + dble(distance) * dble(kappaabsdust) * photonPacketWeight
-    !$OMP END CRITICAL
+         + distance * kappaabsdust * photonPacketWeight
 
 
   end subroutine updategrid

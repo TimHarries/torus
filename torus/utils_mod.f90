@@ -2514,6 +2514,7 @@ contains
 
     x(1:newnx) = xtemp(1:newnx)
     nx = newnx
+    deallocate(xtemp)
   end subroutine stripSimilarValuesSingle
 
   subroutine stripSimilarValuesDouble(x, nx, xtol)
@@ -2538,6 +2539,7 @@ contains
 
     x(1:newnx) = xtemp(1:newnx)
     nx = newnx
+    deallocate(xtemp)
   end subroutine stripSimilarValuesDouble
        
 
