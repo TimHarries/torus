@@ -1269,7 +1269,7 @@ contains
        call getInteger("npixels", npixelsArray(1), cLine, fLine, nLines, &
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
-       call getReal("inclination", inclinations(1), real(degtorad), cLine, fLine, nLines, &
+       call getReal("inclination", inclinationArray(1), real(degtorad), cLine, fLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
     call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
