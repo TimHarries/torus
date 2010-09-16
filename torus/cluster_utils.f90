@@ -83,7 +83,7 @@ contains
     integer :: i
     real(double) :: I0_J, I0_H, I0_K, I0_L, I0_M, I0_V  ! initial intensity
 !    real(double) :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
-    real(quad) :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
+    real(double) :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
     integer :: nstar
     type(sourcetype) :: a_star
     real(double) :: T  !   temperature in K.    
@@ -112,7 +112,7 @@ contains
     ! 
     ! Observed flux and magnitudes
 !    real(double) :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1]
-    real(quad) :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double) :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1 *offset]
     real(double) :: m_J, m_H, m_K, m_L, m_M, m_V  !  magnitudes of real stars
     real(double) :: m_J0, m_H0, m_K0, m_L0, m_M0  ! mag. of naked stars
     real(double), allocatable :: m_V0(:)
@@ -603,7 +603,7 @@ contains
 
     implicit none
     
-    real(quad) ::  F_obs    ! output intensity.
+    real(double) ::  F_obs    ! output intensity.
     !
     real(double), intent(in)  ::  I0  ! [erg cm^-2 s^-2 A^-1 sr^-1] input intensity
     real(double), intent(in)  :: wavelength    ! [A] the wavelength 
@@ -620,7 +620,7 @@ contains
     type(VECTOR), allocatable     :: p(:)          ! integration grids
     real(double), allocatable :: dA(:)         ! surface elements at p
     type(VECTOR)                  :: q             
-    real(quad)                :: F, F_core, Fi, I1, F_sub
+    real(double)                :: F, F_core, Fi, I1, F_sub
     !
     real(double)              :: pi
     integer :: i, np, nc

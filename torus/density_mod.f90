@@ -1458,7 +1458,7 @@ end subroutine calcPlanetMass
     REAL(double), INTENT(OUT), OPTIONAL :: rho
     REAL, INTENT(OUT), OPTIONAL :: temperature
     TYPE(vector), INTENT(OUT), OPTIONAL :: velocity
-    LOGICAL(KIND=logic), INTENT(OUT), OPTIONAL :: inFlow ! in accretion stream?
+    LOGICAL, INTENT(OUT), OPTIONAL :: inFlow ! in accretion stream?
 
     INTEGER :: iSample
     REAL(oct) :: rStar

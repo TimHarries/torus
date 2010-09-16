@@ -72,7 +72,7 @@ contains
 
     implicit none
 
-    real(quad) ::  I1    ! output intensity.
+    real(double) ::  I1    ! output intensity.
     !
     real(double), intent(in)  ::  I0    ! input intensity
     real(double), intent(in)  ::  tau0  ! optical depth at the initial point 
@@ -95,12 +95,12 @@ contains
     real(double) :: kappaSca, kappaAbs
     real(double) :: etaCont
     real(oct) :: chi, eta, tau
-    real(quad)  :: integral
+    real(double)  :: integral
     integer :: ilambda
     logical :: escaped
     type(OCTAL), pointer :: thisOctal
     type(OCTAL),pointer :: oldOctal
-    real(quad) :: dtau, delta
+    real(double) :: dtau, delta
     real(double)::  I00                         ! input intensity
 
     kappaAbs = 0.d0; kappaSca = 0.d0

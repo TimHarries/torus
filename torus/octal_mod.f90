@@ -129,7 +129,7 @@ MODULE octal_mod
 
   TYPE octalWrapper
     TYPE(octal), POINTER  :: content => NULL()
-    LOGICAL(KIND=logic), DIMENSION(8) :: inUse
+    LOGICAL, DIMENSION(8) :: inUse
   END TYPE octalWrapper
  
   TYPE wrapperArray
@@ -138,7 +138,7 @@ MODULE octal_mod
 
   TYPE octalListElement
     TYPE(octal), POINTER  :: content => NULL()
-    LOGICAL(KIND=logic), DIMENSION(8) :: inUse
+    LOGICAL, DIMENSION(8) :: inUse
     TYPE(octalListElement), POINTER :: next => NULL()
   END TYPE octalListElement
 

@@ -1179,7 +1179,7 @@ CONTAINS
     TYPE(gridType), INTENT(IN) :: grid
     
     TYPE(octal), POINTER  :: tempContent
-    LOGICAL(KIND=logic), DIMENSION(8) :: tempInUse
+    LOGICAL, DIMENSION(8) :: tempInUse
     
     INTEGER               :: i, n
 
@@ -1211,7 +1211,7 @@ CONTAINS
       real(oct) :: valueA
       real(oct) :: valueJ
       TYPE(octal), POINTER :: Acontent
-      LOGICAL(KIND=logic), DIMENSION(8) :: AinUse
+      LOGICAL, DIMENSION(8) :: AinUse
       TYPE(vector)    :: starPos
       
       starPos = grid%starPos1
@@ -15168,7 +15168,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double),optional :: rho
     real,optional :: temperature
     type(VECTOR), optional :: velocity
-    logical(kind=logic), optional :: inFlow
+    logical, optional :: inFlow
     logical :: outsideStream
     outsideStream = .false.
     iSample = 0

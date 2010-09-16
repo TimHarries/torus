@@ -1,20 +1,24 @@
 module kind_mod
-  ! KIND parameters, specific to the individual system
-  ! double, octal and logic entries added by nhs
+  ! KIND parameters
+  !
+  ! Single and double are defined to be consistent with IEEE 754 definitions. 
+  ! On some systems higher precisions are available (10 or 16 bytes) but 
+  ! this is compiler dependent and will cause a performace hit if 
+  ! implemented in software. Consequently oct is set to double by default. 
 
   implicit none
 
-  integer, parameter :: single = kind(0.)
+  integer, parameter :: single = selected_real_kind(6, 37)
+  integer, parameter :: double = selected_real_kind(15, 307)
   integer, parameter :: bigInt = selected_int_kind(10)
+
   integer, parameter :: si = single
-  integer, parameter :: double = kind(0.d0)
   integer, parameter :: db = double
-  integer, parameter :: quad = kind(0.d0)
-  integer, parameter :: qd = quad
-  integer, parameter :: oct = kind(0.d0)
+
+! 16 byte quad precision
+!  integer, parameter :: oct = selected_real_kind(33, 4931) 
+  integer, parameter :: oct = double
   integer, parameter :: oc = oct
 
-  integer, parameter :: logic = kind(.true.)
-  integer, parameter :: lg = logic
-
 end module kind_mod
+

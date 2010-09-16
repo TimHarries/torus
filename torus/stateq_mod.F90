@@ -3871,7 +3871,7 @@ contains
 
     type(octal), pointer        :: thisOctal
     type(GRIDTYPE),intent(inout):: grid      
-    logical(kind=logic), dimension(:), intent(in), optional :: subcellMask
+    logical, dimension(:), intent(in), optional :: subcellMask
 
     integer               :: iSubcell
     !real(double) :: Ne1, Ne2
