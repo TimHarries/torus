@@ -63,6 +63,7 @@ mkdir ${WORKING_DIR}/bin
 cd    ${WORKING_DIR}/bin
 cp ../benchmarks/disc/comparespec.f90 .
 ${TORUS_FC} -o comparespec comparespec.f90
+echo
 }
 
 run_bench()
@@ -72,14 +73,8 @@ ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 
 case ${SYSTEM} in
     ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
-
-    g95) ./torus.g95  > run_log_${THIS_BENCH}.txt 2>&1 ;;
-
     zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
-
-    gfortran) ./torus.gfortran > run_log_${THIS_BENCH}.txt 2>&1 ;;
-
-    *) echo "Unrecognised SYSTEM type. Skipping this test";;
+    *) ./torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1 ;;
 esac
 
 #Tag the tune.dat file 
@@ -149,21 +144,26 @@ check_hydro()
 {
 echo Compiling compareSod code
 ${TORUS_FC} -o comparesod compareSod.f90
-./comparesod > check_log_hydro.txt
+./comparesod
 }
 
 check_hII()
 {
 echo Compiling comparelex code
 ${TORUS_FC} -o comparelex comparelex.f90
-./comparelex > check_log_hII.txt
+./comparelex
 }
 
 prepare_run()
 {
 if [[ -e ${TEST_DIR} ]]; then
-    echo "Removing old ${TEST_DIR}"
-    rm -rf ${TEST_DIR}
+    if [[ ${CLOBBEROK} == yes ]]; then
+	echo "Removing old ${TEST_DIR}"
+	rm -rf ${TEST_DIR}
+    else
+	echo "${TEST_DIR} already exisits. Aborting"
+	exit 1
+    fi
 fi
 
 echo "Working directory is ${TEST_DIR}"
@@ -171,7 +171,7 @@ mkdir -p ${TEST_DIR}
 cd ${TEST_DIR}
 
 echo Checking out torus from CVS archive...
-/usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
+    /usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
 }
 
 run_torus_test_suite()
@@ -190,15 +190,25 @@ for sys in ${SYS_TO_TEST}; do
     cp -r ${TEST_DIR}/torus/benchmarks . 
 
 # Build code
-    make_build
-#    make_lib
+    if [[ ${DO_BUILD} == yes ]]; then
+	make_build
+#        make_lib
+    else
+	mkdir build
+	cd build 
+	ln -s ${TORUS_BINARY}
+	cd ..
+    fi
+
     make_comparespec
 
 # Run hydro benchmark
     case ${SYSTEM} in
 	ompi|zen)  echo "Running hydro benchmark"
 	    run_hydro
-	    check_hydro;;
+	    check_hydro  > check_log_hydro.txt 2>&1 
+	    cat check_log_hydro.txt
+	    echo ;;
 	*) echo "Hydro benchmark does not run on this system. Skipping";;
     esac
 
@@ -207,17 +217,23 @@ for sys in ${SYS_TO_TEST}; do
     export THIS_BENCH=disc
     run_bench 
     check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${THIS_BENCH}.txt
+    echo
 
     echo "Running HII region benchmark"
     export THIS_BENCH=HII_region
     run_bench
-    check_hII
+    check_hII > check_log_hII.txt 2>&1 
+    cat check_log_hII.txt
+    echo
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
     mkdir ${WORKING_DIR}/benchmarks/molebench/plots 
     run_bench
     check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
+    tail check_log_${THIS_BENCH}.txt # Lots of output so tail this file
+    echo
 
 # Only run these tests for MPI systems and not in the daily test
     if [[ ${MODE} != daily ]]; then
@@ -226,6 +242,8 @@ for sys in ${SYS_TO_TEST}; do
 	    export THIS_BENCH=disc_cylindrical
 	    run_bench
 	    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1
+	    cat check_log_${THIS_BENCH}.txt
+	    echo 
 
 #	echo "Running SPH-Bench"
 #	run_sphbench
@@ -265,6 +283,7 @@ echo ""
 echo "Use the -d option to run the daily tests (default)."
 echo "Use the -s option to run the stable version tests."
 echo "Use the -z option to run the tests on zen."
+echo "Use -e followed by full path to a torus executable to use a pre-built binary"
 echo ""
 }
 
@@ -272,6 +291,8 @@ echo ""
 
 # Default mode is daily test
 export MODE=daily
+export DO_BUILD=yes
+export CLOBBEROK=yes
 
 # If we're running on Zen then set the appropriate mode
 this_host=`hostname`
@@ -289,6 +310,10 @@ do
 	-s) export MODE=stable;;
 	-d) export MODE=daily;;
 	-z) export MODE=zen;;
+	-e) export DO_BUILD=no
+	    export CLOBBEROK=no
+	    shift 
+	    TORUS_BINARY=$1;;
 	-h) print_help
 	    exit;;
     esac
@@ -328,8 +353,21 @@ case ${MODE} in
 	exit 1;;
 esac
 
+
 export CVSROOT=:ext:${USER}@reduce.astro.ex.ac.uk:/home/cvs/th
 export CVS_RSH=ssh
+if [[ $DO_BUILD == no ]]; then
+    if [[ ! -x ${TORUS_BINARY} ]]; then
+	echo "ERROR: ${TORUS_BINARY} is not an executable file"
+	exit 1
+    else
+	SYS_TO_TEST=`basename ${TORUS_BINARY} | tr '.' ' ' | awk '{print $2}`
+	echo "Using pre-built binary ${TORUS_BINARY}"
+	echo "System type is ${SYS_TO_TEST}"
+	export TORUS_FC="g95"   # Make sure FPE flags are set in case this g95
+	export DEBUG_OPTS="yes" # Just sets flags if pre-built binary is used
+    fi
+fi 
 
 for opt in ${DEBUG_OPTS}; do
     export USEDEBUGFLAGS=${opt}
@@ -370,7 +408,9 @@ for opt in ${DEBUG_OPTS}; do
     prepare_run
 
 # Test build but don't run benchmarks
-    build_only_tests
+    if [[ ${DO_BUILD} == yes ]]; then
+	build_only_tests
+    fi
 
 # Run benchmark tests
     run_torus_test_suite
