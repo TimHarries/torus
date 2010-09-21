@@ -3914,16 +3914,16 @@ CONTAINS
 !      endif
 
    case("runaway")
-      cellCentre = subcellCentre(thisOctal,subCell)
-      if ( cellCentre%z > 0.0 .and. cellCentre%x < 5.0e6 .and. thisOctal%nDepth < 5 ) then
-         split = .true.
-      else
-         split=.false.
-      end if
 
       call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
+
+      ! Split on mass per cell 
+      total_mass = cellVolume(thisOctal, subcell)  * 1.d30 * ave_density
+      if ( total_mass > amrlimitscalar .and. amrlimitscalar > 0.0 ) split = .true.
+
+      ! Split on density contrast
       fac = ( maxDensity - minDensity ) / ( maxDensity + minDensity )
-      if ( npt_subcell >= 2 .and. fac > 0.1 ) split = .true. 
+      if ( npt_subcell >= 2 .and. fac > amrlimitscalar2 .and. amrlimitscalar2 > 0.0 ) split = .true. 
 
 
    case("starburst")
