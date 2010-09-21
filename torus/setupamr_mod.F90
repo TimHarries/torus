@@ -201,6 +201,20 @@ contains
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+          if (doSmoothGrid) then
+             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             do
+                gridConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothfactor, grid, &
+                     gridConverged,  inheritProps = .false., &
+                     interpProps = .false.,  &
+                     stellar_cluster=young_cluster, romData=romData)
+                if (gridConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+          endif
+
        case("ttauri")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)

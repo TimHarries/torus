@@ -1039,11 +1039,20 @@ contains
     call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
          "Number of photons in image","(a,i8,a)", 0, ok, .false.)
 
+    call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
+         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100000,ok,.false.)
+
     call getReal("taudiff", tauDiff, 1., cLine, fLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
     call getReal("edenstol", eDensTol, 1., cLine, fLine, nLines, &
          "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
+
+    call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
+         "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getReal("smoothfactor", smoothFactor, 1.0, cLine, fLine, nLines, &
+         "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
   end subroutine readPhotoionEquilibriumParameters
 
