@@ -67,7 +67,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
-    use input_variables, only : nlucy, taudiff
+    use input_variables, only : nlucy, taudiff, lambdaSmooth
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use gridio_mod, only: readAmrGrid, writeAmrGrid
     use ion_mod, only: addXsectionArray
@@ -97,7 +97,7 @@ contains
     integer :: iSource
     type(VECTOR) :: rVec, uHat, rHat
     real(double) :: lCore
-    integer :: nMonte, iMonte
+    integer(bigInt) :: nMonte, iMonte
     integer :: subcell
     integer :: i
     logical :: escaped
@@ -106,7 +106,6 @@ contains
     type(VECTOR) :: octVec
     real(double) :: r
     integer :: ilam
-    integer :: nInf
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
     integer :: nIter
@@ -128,15 +127,24 @@ contains
 
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
-    integer :: iMonte_beg, iMonte_end, nSCat
+    integer(bigInt) :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
     integer ::  nVoxels, nOctals
 
 ! For testing convergence
+! Temperature
     real(double) :: sumDeltaT, globalSumDeltaT, meanDeltaT
     integer      :: numDeltaT, globalNumDeltaT
+! Electron density
+    real(double) :: sumDeltaNe, globalSumDeltaNe, meanDeltaNe
+    integer      :: numDeltaNe, globalNumDeltaNe
+
+    integer      :: num_undersampled
+    real         :: percent_undersampled
+    real, parameter :: max_undersampled = 1.0 ! Maximum percentage of cells which can be undersampled
     integer, parameter :: lun_convfile = 42 ! unit number for convergence file
+    integer, parameter :: maxIter=20
 
 #ifdef MPI
     ! For MPI implementations
@@ -144,8 +152,7 @@ contains
     integer ::   my_rank        ! my processor rank
     integer ::   n_proc         ! The number of processes
     integer ::   ierr           ! error flag
-    integer, parameter :: tag = 0
-    integer :: n_rmdr, m
+    integer(bigInt) :: n_rmdr, m
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
 #endif
@@ -243,12 +250,14 @@ contains
        nMonte = nlucy
     endif
 
-    if (writeoutput) &
-         open (unit=lun_convfile, status="replace",file="convergence.dat", form="formatted")
+    if (writeoutput) then
+       open (unit=lun_convfile, status="replace",file="convergence.dat", form="formatted")
+       write(lun_convfile,'(a)') "# iteration   Mean dT [K]      Mean dNe   % bad cells        nMonte"
+       close(lun_convfile)
+    end if
 
     do while(.not.converged)
        nIter = nIter + 1
-       nInf=0
 
 
        nCellsInDiffusion = 0
@@ -292,7 +301,7 @@ contains
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
        !$OMP PRIVATE (thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
-       !$OMP SHARED (nlambda, writeoutput, ninf)
+       !$OMP SHARED (nlambda, writeoutput)
 
 
        !$OMP DO SCHEDULE (STATIC)
@@ -412,7 +421,6 @@ contains
                 escaped = .true.
              Endif
           enddo
-          nInf = nInf + 1
        end do mainloop
        !$OMP END DO
        !$OMP BARRIER
@@ -435,8 +443,8 @@ contains
 
        epsOverDeltaT = (lCore) / dble(nMonte)
 
-       call  identifyUndersampled(grid%octreeRoot)
-
+       num_undersampled = 0.0
+       call  identifyUndersampled(grid%octreeRoot, num_undersampled)
 
 
     np = 1
@@ -445,6 +453,7 @@ contains
 #endif
     firstTime = .true.
     sumDeltaT = 0.0_db; numDeltaT = 0
+    sumDeltaNe=  0.0_db; numDeltaNe = 0
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -496,7 +505,8 @@ contains
 
     !$OMP PARALLEL DEFAULT(NONE) &
     !$OMP PRIVATE(ioctal,i, thisOctal) &
-    !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, epsOverDeltaT, sumDeltaT, numDeltaT)
+    !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, epsOverDeltaT) &
+    !$OMP REDUCTION(+:sumDeltaT, numDeltaT, sumDeltaNe, numDeltaNe)
                  
     !$OMP DO SCHEDULE(STATIC)
     do iOctal =  iOctal_beg, iOctal_end
@@ -504,7 +514,7 @@ contains
        thisOctal => octalArray(iOctal)%content
 
        do i = 1 , 3
-          call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
+          call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, sumDeltaNe, numDeltaNe)
           call calculateThermalBalance(grid, thisOctal, epsOverDeltaT, sumDeltaT, numDeltaT)
        enddo
 
@@ -553,6 +563,8 @@ contains
 
      call MPI_ALLREDUCE(sumDeltaT,globalSumDeltaT,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
      call MPI_ALLREDUCE(numDeltaT,globalNumDeltaT,1,MPI_INTEGER,         MPI_SUM,MPI_COMM_WORLD,ierr)
+     call MPI_ALLREDUCE(sumDeltaNe,globalSumDeltaNe,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+     call MPI_ALLREDUCE(numDeltaNe,globalNumDeltaNe,1,MPI_INTEGER,         MPI_SUM,MPI_COMM_WORLD,ierr)
 
 
      deallocate(tempArray, tArray, tempArrayd, tArrayd)
@@ -561,6 +573,8 @@ contains
 #else
      globalSumDeltaT = sumDeltaT
      globalNumDeltaT = numDeltaT
+     globalSumDeltaNe = sumDeltaNe
+     globalNumDeltaNe = numDeltaNe
 #endif
        deallocate(octalArray)
 
@@ -684,28 +698,41 @@ contains
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
-    if (grid%geometry == "melvin" .or. grid%geometry == "runaway") then
+
+    meanDeltaT  = globalSumDeltaT  / real(globalNumDeltaT,db)
+    meanDeltaNe = globalSumDeltaNe / real(globalNumDeltaNe,db)
+    percent_undersampled = 100.0 * real(num_undersampled)/real(nVoxels)
+    if (writeoutput) then 
+       open(unit=lun_convfile, file="convergence.dat", status="old", position="append")
+       write(lun_convfile,'(i11, 3(2x, f12.2), (2x, i12))')  &
+            niter, meanDeltaT, meanDeltaNe, percent_undersampled , nmonte
+       close(lun_convfile)
+    end if
+
+    if (grid%geometry == "melvin") then
       if (niter < 10) nMonte = nMonte * 2
    endif
 
+   if ( grid%geometry == "runaway" ) then 
+      if ( percent_undersampled > max_undersampled ) nMonte = nMonte * 2
+   end if
 
     call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
+    lambdaSmooth = 5500.0 ! wavelength for tau
     call writeVtkFile(grid, "temp.vtk", &
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
-         "OII        ", "OIII       "/))
+         "OII        ", "OIII       ", "tau        "/))
 
-! Convergence conditions: work in progess (DMA March 2010)
-    meanDeltaT = globalSumDeltaT / real(globalNumDeltaT,db)
-    if (writeoutput) write(lun_convfile,*) "Iteration ", niter, "Mean dT = ", meanDeltaT
 
-    if (niter == 12) then 
+    if (niter == maxIter) then 
        converged = .true. 
        call writeInfo("Maximum number of iterations reached",FORINFO)
-    elseif ( abs(meanDeltaT) < 1.0_db) then 
-! Not applied yet
-!       converged = .true.
-       call writeInfo("Temperature converged to within 1K",FORINFO)
+    elseif ( abs(meanDeltaT) < 5.0_db .and. &
+             abs(meanDeltaNe) < 0.01  .and. &
+             percent_undersampled < max_undersampled ) then 
+       converged = .true.
+       call writeInfo("Convergence conditions met.",FORINFO)
     else
        converged = .false.
     end if
@@ -1288,11 +1315,14 @@ end subroutine photoIonizationloop
     enddo
   end subroutine getHbetaluminosity
 
-  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
+  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, sumDeltaNe, numDeltaNe)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
     integer :: subcell
+    real(double) :: ne_old
+    real(double), intent(inout) :: sumDeltaNe
+    integer, intent(inout) ::numDeltaNe
     
     do subcell = 1, thisOctal%maxChildren
 
@@ -1300,7 +1330,10 @@ end subroutine photoIonizationloop
 
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
+                ne_old = thisOctal%Ne(subcell)
                 call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
+                sumDeltaNe = sumDeltaNe + (thisOctal%Ne(subcell) - ne_old)
+                numDeltaNe = numDeltaNe + 1
              else
                 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
@@ -1319,7 +1352,7 @@ end subroutine photoIonizationloop
     real :: t1, t2, tm
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
-    real :: underCorrection = 1.
+    real :: underCorrection = 0.5
     integer :: nIter
 ! For testing convergence
     real(double), intent(inout) :: sumDeltaT
@@ -1660,9 +1693,13 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
   real(double), allocatable :: xplus1overx(:)
+  real(double) :: ne_old, delta_ne
+
   chargeExchangeIonization = 0.d0; chargeExchangeRecombination = 0.d0
   v = cellVolume(thisOctal, subcell)
   k = 1
+  ne_old = thisOctal%ne(subcell)
+
   do while(k <= grid%nIon)
 
      iStart = k
@@ -1706,14 +1743,15 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
      endif
      
 
-        deallocate(xplus1overx)
+     deallocate(xplus1overx)
 
-        k = iEnd + 1
-     end do
+     k = iEnd + 1
+  end do
 
-     thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
+  thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
+  delta_ne = thisOctal%ne(subcell) - ne_old
 
-   end subroutine solveIonizationBalance
+end subroutine solveIonizationBalance
 
 
 function recombRate(thisIon, temperature) result (rate)
@@ -3615,11 +3653,12 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine unpackvalues
 
-  recursive subroutine  identifyUndersampled(thisOctal)
+  recursive subroutine  identifyUndersampled(thisOctal, num_undersampled)
     use input_variables, only : minCrossings
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
+    integer, intent(inout) :: num_undersampled
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3627,13 +3666,14 @@ end subroutine readHeIIrecombination
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call identifyUndersampled(child)
+                call identifyUndersampled(child, num_undersampled)
                 exit
              end if
           end do
        else
           if (thisOctal%nCrossings(subcell) < minCrossings) then
              thisOctal%undersampled(subcell) = .true.
+             num_undersampled = num_undersampled + 1 
           else
              thisOctal%undersampled(subcell) = .false.
           endif
@@ -4168,7 +4208,7 @@ end subroutine readHeIIrecombination
     type(IMAGETYPE) :: thisimage
     logical :: escaped, absorbed, stillSCattering  
     real(double) :: totalEmission
-    integer :: iLambdaPhoton, nInf
+    integer :: iLambdaPhoton
     real(double) :: lCore, probsource, r
     real(double) :: powerPerPhoton
     real(double) :: totalLineEmission, chanceSource, weightSource, weightEnv
@@ -4216,7 +4256,6 @@ end subroutine readHeIIrecombination
        write(*,*) "Probability of photon from sources: ", probSource
     endif
 
-    nInf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     
@@ -4266,7 +4305,6 @@ end subroutine readHeIIrecombination
        call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
 
        stillScattering = .true.
-       ninf = ninf + 1
        endloop = .false.
 
        do while ((.not.endLoop).and.stillScattering)
