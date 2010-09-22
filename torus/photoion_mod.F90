@@ -282,7 +282,7 @@ contains
 
 
                  np = nThreadsGlobal
-                 n_rmdr = MOD(nMonte,np)
+                 n_rmdr = MOD(nMonte,int(np,kind=bigInt))
                  m = nMonte/np
           
                  if (myRankGlobal .lt. n_rmdr ) then
