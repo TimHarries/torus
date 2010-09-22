@@ -41,7 +41,7 @@ module ion_mod
      real :: abundance    ! of element relative to H
      real(double) :: nuthresh ! freq equivalent of ion pot
      integer :: nFreq  ! number of frequency bins in xsection array
-     real(double), pointer :: freq(:), xSec(:) ! frequency and ionization xsection arrays
+     real(double), pointer :: freq(:)=>null(), xSec(:)=>null() ! frequency and ionization xsection arrays
      character(len=8) :: species  ! name of ion
      integer :: nTransitions ! number of bb transitions for this species
      integer :: nLevels ! number of energy levels
