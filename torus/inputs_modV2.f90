@@ -27,7 +27,7 @@ contains
 
     character(len=80) :: dataDirectory
 
-    character(len=80) :: paramFile
+    character(len=100) :: paramFile
 
     integer :: error
 
