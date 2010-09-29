@@ -704,7 +704,7 @@ contains
     percent_undersampled = 100.0 * real(num_undersampled)/real(nVoxels)
     if (writeoutput) then 
        open(unit=lun_convfile, file="convergence.dat", status="old", position="append")
-       write(lun_convfile,'(i11, 3(2x, f12.2), (2x, i12))')  &
+       write(lun_convfile,'(i11, 3(2x, f12.4), (2x, i12))')  &
             niter, meanDeltaT, meanDeltaNe, percent_undersampled , nmonte
        close(lun_convfile)
     end if
