@@ -288,6 +288,9 @@ CONTAINS
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
 
+    CASE("gaussian")
+       CALL assign_gaussian(thisOctal,subcell)
+
     CASE("hii_test")
        CALL assign_hii_test(thisOctal,subcell)
 
@@ -4054,6 +4057,10 @@ CONTAINS
       if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
+!Thaw
+   case("gaussian")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+
    case("sedov")
       rInner = 0.02d0
       rVec = subcellCentre(thisOctal, subcell)
@@ -7347,7 +7354,8 @@ CONTAINS
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
-       u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+       !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+       u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
 !    if (abs(rVec%z) < 0.02d0) then
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed
@@ -8495,6 +8503,37 @@ end function readparameterfrom2dmap
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
 
   end subroutine assign_melvin
+
+!Thaw 2D gaussian distribution
+  subroutine assign_gaussian(thisOctal,subcell)
+    use input_variables, only : xplusbound, xminusbound, zplusbound, zminusbound
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: x, gd, z
+
+    x = 0.d0
+    z = 0.d0
+    xplusbound = 1
+    xminusbound = 1
+    zplusbound = 1
+    zminusbound = 1
+    rVec = subcellCentre(thisOctal, subcell)
+    x = rVec%x
+    z = rVec%z
+    gd = 0.5d0
+    thisOctal%rho(subcell) =1.d0 + 0.3d0 * exp(-(((x-0.5d0)**2 + (z-0.5d0)**2))/gd**2)
+    thisOctal%energy(subcell) = 1.d0
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+    thisOctal%pressure_i(subcell) = 1.d0
+    thisOctal%phi_i(subcell) = 0.d0
+    thisOctal%boundaryCondition(subcell) = 2
+    thisOctal%gamma(subcell) = 7.d0/5.d0
+    thisOctal%iEquationOfState(subcell) = 0
+
+  end subroutine assign_gaussian
+
+
 
   subroutine assign_hii_test(thisOctal,subcell)
 

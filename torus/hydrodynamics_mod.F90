@@ -63,8 +63,7 @@ contains
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-
-!          if (.not.thisoctal%ghostcell(subcell)) then
+     !     if (.not.thisoctal%ghostcell(subcell)) then
 
           
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
@@ -90,6 +89,12 @@ contains
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
                 
+             case("vanleer")
+		!write(*,*) "vanleer"
+                thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
+                abs(thisoctal%rlimit(subcell))) / (1 + abs(thisoctal%rlimit(subcell)))
+
+
              case default
                 write(message,'(a,a)') "flux limiter not recognised: ", trim(limitertype)
                 call writefatal(message)
@@ -97,8 +102,9 @@ contains
              end select
 !             if (thisoctal%ghostcell(subcell)) thisoctal%philimit(subcell) = 1.d0
 !                        thisoctal%philimit(subcell) = 1.d0
-!          endif
+         ! endif
           endif
+
        enddo
   end subroutine fluxlimiter
 
@@ -532,8 +538,9 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
 
-          if (.not.thisoctal%edgecell(subcell)) then !xxx changed from ghostcell
-             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+	   !thaw - edgecell is correct.
+          if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
+	     locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 
@@ -553,8 +560,9 @@ contains
 
 
              thisoctal%u_interface(subcell) = &
-                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
-
+                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
+                  (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
+      
           endif
        endif
     enddo
@@ -955,6 +963,53 @@ contains
   end subroutine setupwpm
 
 
+  !Thaw - Rhie-Chow interpolation 
+  recursive subroutine rhiechowui(thisoctal, grid, direction, dt)
+     !Subroutine to modify the cell interface velocities according to Rhie-Chow
+     !interpolation
+
+    include 'mpif.h'
+    integer :: myrank, ierr
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+    type(vector) :: direction
+    real(double) :: dt, dx
+    
+    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call rhiechowui(child, grid, direction, dt)
+                exit
+             end if
+          end do
+       else
+
+      
+!          if (thisoctal%mpithread(subcell) /= myrank) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+
+	       !Thaw- only works for fixed grid like this, but will do for now
+	       dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+	       
+		!write(*,*), "ui", thisoctal%u_interface(subcell)
+		if (.not.thisoctal%edgecell(subcell)) then
+		thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
+                ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
+                (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+		! write(*,*), "ui", thisoctal%u_interface(subcell)
+		 endif
+	  endif
+   enddo
+
+  end subroutine rhiechowui
+
    recursive subroutine computepressureu(thisoctal, direction)
      use input_variables, only : etaViscosity
      include 'mpif.h'
@@ -1186,8 +1241,16 @@ contains
 !             dx = thisoctal%subcellsize * griddistancescale
 
 
-             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
-                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+!             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
+!                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+
+		   
+	    !Thaw - Rhie-Chow interpolation
+	    !print *, "rhou", thisoctal%rhou(subcell)
+	    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt) * &
+            ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
+	    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+	    !print *, "rhou", thisoctal%rhou(subcell)
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
@@ -1236,6 +1299,32 @@ contains
                 do;enddo
                 endif
              endif
+       !Thaw - debug
+       !      if(thisoctal%ghostcell(subcell)) then
+	!     	write(*,*) "ghostcell data"
+	!        write(*,*) "u ",thisoctal%rhou(subcell)/thisoctal%rho(subcell)/1.d5
+        !        write(*,*) "rho ", thisoctal%rho(subcell)
+        !        write(*,*) "rho i+1 ", thisoctal%rho_i_plus_1(subcell)
+        !        write(*,*) "rho i-1 ", thisoctal%rho_i_minus_1(subcell)
+        !        write(*,*) "pressure i + 1 ",thisoctal%pressure_i_plus_1(subcell)
+        !        write(*,*) "pressure i - 1 ",thisoctal%pressure_i_minus_1(subcell)
+        !        write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
+        !        write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
+	!    end if
+        !    if(thisoctal%edgecell(subcell)) then
+        !       write(*,*) "edgecell data"
+        !        write(*,*) "u ",thisoctal%rhou(subcell)/thisoctal%rho(subcell)/1.d5
+        !        write(*,*) "rho ", thisoctal%rho(subcell)
+	!        write(*,*) "rho i+1 ", thisoctal%rho_i_plus_1(subcell)
+        !        write(*,*) "rho i-1 ", thisoctal%rho_i_minus_1(subcell)
+        !        write(*,*) "pressure i + 1 ",thisoctal%pressure_i_plus_1(subcell)
+	!        write(*,*) "pressure i - 1 ",thisoctal%pressure_i_minus_1(subcell)
+        !        write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
+        !        write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
+	!    end if
+
+
+
        endif
     enddo
   end subroutine pressureforceu
@@ -1283,13 +1372,19 @@ contains
 !             dx = thisoctal%subcellsize * griddistancescale
 
 
-             thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
-                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+         !    thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
+         !         (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+
+	    thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt) * &
+            ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
+            (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+            !print *, "rhou", thisoctal%rhou(subcell)
 
              thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
+        
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "rhov ",thisoctal%rhov(subcell)
                 write(*,*) "dt ",dt
@@ -1380,8 +1475,15 @@ contains
              dx = 0.5d0 * (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
 !             dx = thisoctal%subcellsize * griddistancescale
 
-             thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
-                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+            ! thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
+            !      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+
+
+            thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt) * &
+            ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
+            (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+            !print *, "rhou", thisoctal%rhou(subcell)
+
 
              thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
@@ -1768,6 +1870,7 @@ contains
     call setupqx(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call fluxlimiter(grid%octreeroot, "superbee")
+    !call fluxlimiter(grid%octreeroot, "vanleer")
     call constructflux(grid%octreeroot, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupflux(grid%octreeroot, grid, direction)
@@ -1795,11 +1898,24 @@ contains
     call setupui(grid%octreeroot, grid, direction)
     call setupupm(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call computepressureu(grid%octreeroot, direction) !Thaw Rhie-Chow might just need setuppressureu
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
 !
+!Thaw - extra boundary impose
+
+   ! call imposeboundary(grid%octreeroot)
+   ! call periodboundary(grid)
+   ! call transfertempstorage(grid%octreeroot)
+   ! call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
     call setupui(grid%octreeroot, grid, direction)
     call setupupm(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
@@ -1807,12 +1923,13 @@ contains
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call setuppressure(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call pressureforceu(grid%octreeroot, dt)
 !
     call imposeboundary(grid%octreeroot)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
-
   end subroutine hydrostep1d
 
 
@@ -1873,12 +1990,24 @@ contains
     call setupUpm(grid%octreeRoot, grid, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call computepressureu(grid%octreeroot, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
+    !call imposeboundary(grid%octreeroot)
+    !call periodboundary(grid)
+    !call transfertempstorage(grid%octreeroot)
+    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -1887,6 +2016,8 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call pressureForceU(grid%octreeRoot, dt/2.d0)
     if (myrankglobal == 1) call tune(6,"X-direction step")
 
@@ -1899,12 +2030,25 @@ contains
     call setupVpm(grid%octreeRoot, grid, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
+    call computepressurev(grid%octreeroot, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
+
+    !call imposeboundary(grid%octreeroot)
+    !call periodboundary(grid)
+    !call transfertempstorage(grid%octreeroot)
+    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
+
+
     call setupVi(grid%octreeRoot, grid, direction)
     call setupVpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
@@ -1913,7 +2057,10 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call pressureForceV(grid%octreeRoot, dt)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
+  
+   call pressureForceV(grid%octreeRoot, dt)
     if (myrankglobal == 1) call tune(6,"Y-direction step")
 
 
@@ -1924,12 +2071,25 @@ contains
     call setupWpm(grid%octreeRoot, grid, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+    call computepressurew(grid%octreeroot, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+
+    !call imposeboundary(grid%octreeroot)
+    !call periodboundary(grid)
+    !call transfertempstorage(grid%octreeroot)
+    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+
+
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -1938,6 +2098,10 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)   
     call pressureForceW(grid%octreeRoot, dt)
     if (myrankglobal == 1) call tune(6,"Z-direction step")
 
@@ -1951,12 +2115,24 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call computepressurew(grid%octreeroot, direction) !Thaw 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
+    !call imposeboundary(grid%octreeroot)
+    !call periodboundary(grid)
+    !call transfertempstorage(grid%octreeroot)
+    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -1965,6 +2141,9 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+   
     call pressureForceU(grid%octreeRoot, dt/2.d0)
     if (myrankglobal == 1) call tune(6,"X-direction step")
 
@@ -2011,6 +2190,12 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call computepressureu(grid%octreeroot, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2026,6 +2211,9 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     call imposeBoundary(grid%octreeRoot)
@@ -2037,6 +2225,12 @@ contains
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+    call computepressurew(grid%octreeroot, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -2050,6 +2244,9 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
     call pressureForceW(grid%octreeRoot, dt)
 
     call imposeBoundary(grid%octreeRoot)
@@ -2061,6 +2258,12 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call computepressureu(grid%octreeroot, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setuppressure(grid%octreeroot, grid, direction) !Thaw
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2074,6 +2277,9 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call rhiechowui(grid%octreeroot, grid, direction, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     call imposeBoundary(grid%octreeRoot)
@@ -2189,6 +2395,8 @@ contains
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(10)
+    character(len=80) :: plotfile
+
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -2306,16 +2514,24 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        endif
 
+
 !          if (myRank == 1) write(*,*) "current time ",currentTime,dt
        currentTime = currentTime + dt
        if (currentTime .gt. nextDumpTime) then
-          call  dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+          !Thaw
+	    write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
+          call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
+       VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+          !call  dumpValuesAlongLine(grid, "sod",it,".dat",
+      ! VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-          grid%iDump = it
+	    grid%iDump = it
           grid%currentTime = currentTime
        endif
 
+
+   
 
     enddo
 
@@ -2764,7 +2980,7 @@ contains
                "rhow         ", &
                "phi          "/))
           if (grid%geometry == "sedov") &
-          call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(1.d-6,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 1.0d0), 1000)
+          call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
 
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -3111,6 +3327,8 @@ contains
                 thisOctal%tempStorage = 0.d0
              endif
 
+	     !Thaw - allows me to force boundaries
+	     !thisoctal%boundaryCondition(subcell) = 2
              select case(thisOctal%boundaryCondition(subcell))
                 case(1) ! reflecting
                    locator = thisOctal%boundaryPartner(subcell)
@@ -3206,8 +3424,8 @@ contains
 ! NB confusion regarding 2d being x,z rather than x,y
 
                    if (thisOctal%twod.or.thisOctal%oneD) then
-                      if (dir%x > 0.9d0) then
-                         thisOctal%tempStorage(subcell,3) =-abs(bOctal%rhou(bSubcell))
+                      if (dir%x > 0.9d0) then !THAW
+                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))
                          thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
                       endif
