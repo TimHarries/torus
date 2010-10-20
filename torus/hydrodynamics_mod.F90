@@ -2395,7 +2395,7 @@ contains
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(10)
-    character(len=80) :: plotfile
+    !character(len=80) :: plotfile
 
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -2522,7 +2522,7 @@ contains
 	  !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          call  dumpValuesAlongLine(grid, "sod",it,".dat", &
+          call  dumpValuesAlongLine(grid, "sod.dat", &
 	  VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
