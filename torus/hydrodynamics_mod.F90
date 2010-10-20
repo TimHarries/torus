@@ -2519,11 +2519,11 @@ contains
        currentTime = currentTime + dt
        if (currentTime .gt. nextDumpTime) then
           !Thaw
-	    write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
-          call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
-       VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          !call  dumpValuesAlongLine(grid, "sod",it,".dat",
-      ! VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+	  !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
+          !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
+          !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+          call  dumpValuesAlongLine(grid, "sod",it,".dat", &
+	  VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
 	    grid%iDump = it
