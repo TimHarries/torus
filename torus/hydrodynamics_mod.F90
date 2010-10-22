@@ -996,10 +996,17 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
 	       !Thaw- only works for fixed grid like this, but will do for now
-	       dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-	       
+	       !dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) -
+	       !thisoctal%x_i_minus_1(subcell))
+	       	       
+
+	       !if (dx <= 0.d0) then
+	       !   print *, "failed"
+	!	  print *, "dx = ", dx
+	 !      end if       
 		!write(*,*), "ui", thisoctal%u_interface(subcell)
 		if (.not.thisoctal%edgecell(subcell)) then
+		dx = thisoctal%subcellsize * griddistancescale
 		thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
                 ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                 (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
