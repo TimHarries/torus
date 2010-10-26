@@ -124,10 +124,11 @@ contains
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein
     use input_variables, only : mCore, solveVerticalHydro, sigma0
+    use input_variables, only : radiationHydrodynamics
     use cmf_mod, only : atomloop
     use photoion_mod, only : photoionizationLoop
 #ifdef MPI
-    use photoionAMR_mod, only: photoionizationLoopAMR
+    use photoionAMR_mod, only: photoionizationLoopAMR, radiationHydro !
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
     use source_mod, only : globalNsource, globalSourceArray
@@ -207,20 +208,25 @@ contains
 
      end if
 
-     if (hydrodynamics) then
+     if (hydrodynamics.and.(.not.photoionPhysics)) then
 #ifdef MPI 
         call dohydrodynamics(grid)
 #else
         call writeFatal("hydrodynamics not available in single processor version")
         stop
 #endif
-     endif
+     else 
+        call setupXarray(grid, xArray, nLambda)
+        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
-!     if (radiationHydrodynamics) then
-!        call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-!             lucyfilenameout, lucyfilenamein)
-!        call torus_mpi_barrier
-!     endif
+#ifdef MPI 
+        call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray)
+#else
+        call writeFatal("hydrodynamics not available in single processor version")
+        stop
+#endif
+        call torus_mpi_barrier
+     endif
 
    end subroutine doPhysics
 

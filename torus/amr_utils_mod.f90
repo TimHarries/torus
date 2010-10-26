@@ -597,6 +597,7 @@ module amr_utils_mod
     if (PRESENT(alreadyRotated)) doRotate = .not.alreadyRotated
 
     if (thisOctal%threeD) then
+       
        if (.not.thisOctal%cylindrical) then
           IF (point%x < thisOctal%xMin) THEN ; inOctal = .FALSE. ; goto 101
           ELSEIF (point%x > thisOctal%xMax) THEN ; inOctal = .FALSE.; goto 101
@@ -876,6 +877,11 @@ module amr_utils_mod
              write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToCellBoundary. "
              write(*,*) direction%x,direction%y,direction%z
              write(*,*) t(1:6)
+             write(*,*) "denom: ", denom(1:6)
+             write(*,*) "normdiff%x: ", normdiff%x
+             write(*,*) "normdiff%y: ", normdiff%y
+             write(*,*) "normdiff%z: ", normdiff%z
+             write(*,*) "halfsubcellsize ", halfsubcellsize
              call torus_abort
           endif
           

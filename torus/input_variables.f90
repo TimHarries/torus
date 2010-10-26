@@ -18,6 +18,7 @@ module input_variables
     logical :: atomicPhysics
     logical :: dustPhysics
 
+    logical :: radiationHydrodynamics !Thaw
     logical :: radiativeEquilibrium
     logical :: statisticalEquilibrium
     logical :: photoionEquilibrium

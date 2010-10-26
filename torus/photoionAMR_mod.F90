@@ -537,6 +537,7 @@ contains
                 call randomSource(source, nSource, iSource)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+
                 tPhoton = 0.d0
 !                write(*,*) inOctal(grid%octreeRoot, rVec), "rvec ",rVec," dir ",uhat
  !               call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -1091,7 +1092,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          write(*,*) "disttocell rvec ", inSubcell(thisOCtal, subcell, rVec)
 !          write(*,*) "disttocell octvec ", inSubcell(thisOCtal, subcell, octVec)
 
-          if (.not.inSubcell(thisOctal, subcell, rVec)) then
+          if (.not. inSubcell(thisOctal, subcell, rVec)) then
              write(*,*) "rvec ",rVec
              write(*,*) "octvec ", octvec
              write(*,*) "xmin xmax ", thisOctal%xmin, thisOctal%xmax
@@ -4304,6 +4305,8 @@ end subroutine readHeIIrecombination
              call randomSource(source, nSource, iSource)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
+
+
 !             if (thisSource%outsideGrid) then
 !                thisPhoton%stokes%i = thisPhoton%stokes%i * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
 !                   (thisSource%radius*1.d10)**2 / (thisSource%distance**2)

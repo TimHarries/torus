@@ -173,6 +173,10 @@ contains
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    !Thaw
+    call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
+         "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
     endif
@@ -901,6 +905,9 @@ contains
 
     call getLogical("usemetals", usemetals, cLine, fLine, nLines, &
          "Use metals in photoionization calculation: ","(a,1l,a)", .true., ok, .false.)
+
+    call getLogical("nodiffuse", noDiffuseField, cLine, fLine, nLines, &
+         "Ignore diffuse radiation field: ","(a,1l,a)", .false., ok, .false.)
 
 
     call getReal("h_abund", h_abund, 1., cLine, fLine, nLines, &

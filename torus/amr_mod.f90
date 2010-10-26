@@ -7357,7 +7357,8 @@ CONTAINS
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
        !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
-       u1 = 0.01d0*(1.d0+cos((4.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+       u1 = 0.01d0*(1.d0+cos((4.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))* &
+       (1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
 !    if (abs(rVec%z) < 0.02d0) then
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed
