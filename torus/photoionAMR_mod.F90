@@ -492,7 +492,7 @@ contains
 
 
     if (inputnMonte == 0) then
-       nMonte = 100000000
+       nMonte = 100000
     else
        nMonte = inputnMonte
     endif
@@ -1022,6 +1022,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           nextOctal => thisOctal
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
+       else
+          stillingrid = .false.
+          escaped = .true.
        endif
           
        octVec = rVec
