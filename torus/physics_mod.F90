@@ -124,7 +124,7 @@ contains
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein
     use input_variables, only : mCore, solveVerticalHydro, sigma0
-    use input_variables, only : radiationHydrodynamics
+    !use input_variables, only : radiationHydrodynamics
     use cmf_mod, only : atomloop
     use photoion_mod, only : photoionizationLoop
 #ifdef MPI
