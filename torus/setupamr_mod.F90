@@ -383,7 +383,7 @@ contains
 
   subroutine doSmoothOnTau(grid)
 
-    use input_variables, only: doSmoothGridTau, dustPhysics, nLambda, lambdaSmooth
+    use input_variables, only: doSmoothGridTau, dustPhysics, lambdaSmooth
     use input_variables, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
     use utils_mod, only: locate
     use lucy_mod, only: putTau
@@ -410,8 +410,8 @@ contains
        end if
 
        call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-       call locate(grid%lamArray, nLambda,lambdaSmooth,ismoothlam)
-       do j = iSmoothLam,  nLambda, 20
+       call locate(grid%lamArray, grid%nLambda,lambdaSmooth,ismoothlam)
+       do j = iSmoothLam,  grid%nLambda, 20
           write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
           call writeInfo(message, TRIVIAL)
           do

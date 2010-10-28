@@ -596,6 +596,9 @@ contains
        call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
             "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("opaquecore", opaqueCore, cLine, fLine, nLines, &
+            "Opaque Core: ","(a,1l,a)", .true., ok, .false.)
+
        if (solveVerticalHydro) then
           call getInteger("nhydro", nhydro,  cline, fLine, nLines, &
                "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
@@ -604,6 +607,11 @@ contains
 
        call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
+
+       call getLogical("dumpinneredge", dumpInnerEdge, cLine, fLine, nLines, &
+            "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .false., ok, .false.)
+
+
 
 !       rCore = rCore * rSol / 1.e10
 !       rinner = (rinner * (rCore * 1e10)) / autocm
@@ -1015,6 +1023,9 @@ contains
     call getLogical("smoothgridtau", doSmoothGridtau, cLine, fLine, nLines, &
          "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
 
+      call getLogical("multilucyfiles", multilucyfiles, cLine, fLine, nLines, &
+            "Multiple lucy vtk files: ","(a,1l,1x,a)", .false., ok, .false.)
+
 ! Also used for calculating tau in VTK output
     call getReal("lambdasmooth", lambdasmooth, 1.0, cLine, fLine, nLines, &
          "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
@@ -1395,6 +1406,14 @@ contains
 
     call getInteger("sednumlam", SEDnumLam, cLine, fLine, nLines, &
          "Number of SED points: ", "(a,i3,1x,a)", 200, ok, .false.)
+
+    call getLogical("lambdafile", lamfile, cLine, fLine, nLines, &
+         "Wavelength grid from file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (lamFile) then
+       call getString("lamfilename", lamFilename, cLine, fLine, nLines, &
+            "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
 
   end subroutine readSpectrumParameters
 

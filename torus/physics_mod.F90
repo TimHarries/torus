@@ -100,9 +100,9 @@ contains
        end select
 
        call normalizedSpectrum(source(isource)%spectrum)
-       lamStart = 10.d0
-       lamEnd = 1000.d4
-       nlambda = 1000
+!       lamStart = 10.d0
+!       lamEnd = 1000.d4
+!       nlambda = 1000
        call buildSphere(source(isource)%position, dble(source(isource)%radius), &
             source(isource)%surface, 100, source(isource)%teff, &
             source(isource)%spectrum)
@@ -208,7 +208,8 @@ contains
 
      end if
 
-     if (hydrodynamics.and.(.not.photoionPhysics)) then
+     if (hydrodynamics) then
+        if (.not.photoionPhysics) then
 #ifdef MPI 
         call dohydrodynamics(grid)
 #else
@@ -227,11 +228,12 @@ contains
 #endif
         call torus_mpi_barrier
      endif
-
+  endif
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
+     use input_variables, only : lamFile, lamFilename
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -240,7 +242,7 @@ contains
      logical, optional, intent(in) :: wavLin
      integer, optional, intent(in) :: numLam
      integer :: nCurrent, nt, i
-     real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd
+     real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd, junk
 
      if (associated(xarray)) deallocate(xarray)
 
@@ -287,6 +289,11 @@ contains
         else
            call setupLogSpacing
         end if
+
+        if (lamFile) then
+           call setupLamFile
+        endif
+
      endif
 
      if (photoionPhysics) then
@@ -333,6 +340,33 @@ contains
         enddo
         
        end subroutine setupLogSpacing
+
+       subroutine setupLamfile
+
+         if (associated(xArray)) then
+            deallocate(xArray)
+         endif
+
+
+         call writeInfo("Reading wavelength points from file.", TRIVIAL)
+         open(77, file=lamfilename, status="old", form="formatted")
+         nLambda = 1
+         ! Count the number of entries
+333      continue
+         read(77,*,end=334) junk
+         nLambda = nLambda + 1
+         goto 333
+334      continue
+         nlambda = nlambda - 1
+         allocate(xArray(nlambda))
+         ! Rewind the file and read them in
+         rewind(77)
+         do i = 1, nLambda
+            read(77,*) xArray(i)
+         enddo
+         close(77)
+
+       end subroutine setupLamfile
 
        subroutine setupLinSpacing
 
