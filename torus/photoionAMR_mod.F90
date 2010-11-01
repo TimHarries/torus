@@ -110,7 +110,7 @@ contains
     nextDumpTime = 0.d0
     tDump = 0.005d0
     deltaTforDump = 2.d10
-    if (grid%geometry == "hii_test") deltaTforDump = 100.d0/secstoyears
+    if (grid%geometry == "hii_test") deltaTforDump = 10000.d0/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -359,7 +359,7 @@ contains
 
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, sublimate)
-    use input_variables, only : quickThermal, inputnMonte, noDiffuseField
+    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
@@ -492,7 +492,21 @@ contains
 
 
     if (inputnMonte == 0) then
-       nMonte = 100000
+       !Thaw - nmonte selector:
+       if(minDepthAMR == maxDepthAMR) then
+          if(thisOctal%twoD) then
+             nMonte = 10.d0 * (2.d0**(maxDepthAMR))
+          else if(thisOCtal%threeD) then
+	     nMonte = 10.d0 * (3.d0**(maxDepthAMR))
+	  else
+	     nMonte = 10.d0 * maxDepthAMR
+          end if
+       else
+          write(*,*) "Non - uniform grid, setting arbitrary nMonte"
+	  nMonte = 100000
+	  write(*,*) "nMonte = ", nMonte
+       end if
+       
     else
        nMonte = inputnMonte
     endif

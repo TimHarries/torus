@@ -7357,7 +7357,7 @@ CONTAINS
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
        !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
-       u1 = 0.01d0*(1.d0+cos((4.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))* &
+       u1 = 0.01d0*(1.d0+sin((twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))* &
        (1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
 !    if (abs(rVec%z) < 0.02d0) then
@@ -7386,10 +7386,10 @@ CONTAINS
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
     zplusbound = 1
     zminusbound = 1
-    xplusbound = 2
-    xminusbound = 2
-    yplusbound = 2
-    yminusbound = 2
+    xplusbound = 1
+    xminusbound = 1
+    yplusbound = 1
+    yminusbound = 1
   end subroutine calcRTaylorDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
@@ -8517,8 +8517,8 @@ end function readparameterfrom2dmap
 
     x = 0.d0
     z = 0.d0
-    xplusbound = 1
-    xminusbound = 1
+    xplusbound = 2
+    xminusbound = 2
     zplusbound = 1
     zminusbound = 1
     rVec = subcellCentre(thisOctal, subcell)
@@ -8530,7 +8530,7 @@ end function readparameterfrom2dmap
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     thisOctal%pressure_i(subcell) = 1.d0
     thisOctal%phi_i(subcell) = 0.d0
-    thisOctal%boundaryCondition(subcell) = 2
+    !thisOctal%boundaryCondition(subcell) = 2
     thisOctal%gamma(subcell) = 7.d0/5.d0
     thisOctal%iEquationOfState(subcell) = 0
 
@@ -8546,9 +8546,13 @@ end function readparameterfrom2dmap
     TYPE(vector) :: rVec
     real(double) :: eThermal
 
+    !Parameters changed to those in Iliev et al 2006 MNRAS, 371, 1057-1086
+
     rVec = subcellCentre(thisOctal,subcell)
-    thisOctal%rho(subcell) = 6000.d0*mHydrogen
-    thisOctal%temperature(subcell) = 300.d0
+    !thisOctal%rho(subcell) = 6000.d0*mHydrogen
+    thisOctal%rho(subcell) = (1.d-3)*mHydrogen
+!    thisOctal%temperature(subcell) = 300.d0
+    thisOctal%temperature(subcell) = 100.d0
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -8558,7 +8562,8 @@ end function readparameterfrom2dmap
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
 
-    thisOctal%ionFrac(subcell,1) = 1.e-10
+
+    thisOctal%ionFrac(subcell,1) = 1.e-10 
     thisOctal%ionFrac(subcell,2) = 1.
     thisOctal%ionFrac(subcell,3) = 1.e-10
     thisOctal%ionFrac(subcell,4) = 1.       
