@@ -7357,7 +7357,7 @@ CONTAINS
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
        !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
-       u1 = 0.01d0*(1.d0+sin((twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))* &
+       u1 = 0.01d0*(1.d0+cos((twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))* &
        (1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
     endif
 !    if (abs(rVec%z) < 0.02d0) then
@@ -8565,9 +8565,9 @@ end function readparameterfrom2dmap
 
     thisOctal%ionFrac(subcell,1) = 1.e-10 
     thisOctal%ionFrac(subcell,2) = 1.
-    thisOctal%ionFrac(subcell,3) = 1.e-10
-    thisOctal%ionFrac(subcell,4) = 1.       
-    thisOctal%etaCont(subcell) = 0.
+!    thisOctal%ionFrac(subcell,3) = 1.e-10
+!    thisOctal%ionFrac(subcell,4) = 1.       
+!    thisOctal%etaCont(subcell) = 0.
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)

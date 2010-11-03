@@ -186,17 +186,24 @@ contains
     loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed
     do irefine = 1, 1
 
+
+!Thaw - need to ensure convergence below
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 10, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 10, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        endif
+
+    call writeInfo("Dumping post-photoionization data", TRIVIAL)
+    call writeVtkFile(grid, "start.vtk", &
+         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+
 
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
@@ -494,16 +501,16 @@ contains
     if (inputnMonte == 0) then
        !Thaw - nmonte selector:
        if(minDepthAMR == maxDepthAMR) then
-          if(thisOctal%twoD) then
-             nMonte = 10.d0 * (2.d0**(maxDepthAMR))
-          else if(thisOCtal%threeD) then
-	     nMonte = 10.d0 * (3.d0**(maxDepthAMR))
+          if(grid%octreeRoot%twoD) then
+             nMonte = 100000.d0 * (2.d0**(maxDepthAMR))
+          else if(grid%octreeRoot%threeD) then
+	     nMonte = 100000.d0 * (3.d0**(maxDepthAMR))
 	  else
-	     nMonte = 10.d0 * maxDepthAMR
+	     nMonte = 100000.d0 * maxDepthAMR
           end if
        else
           write(*,*) "Non - uniform grid, setting arbitrary nMonte"
-	  nMonte = 100000
+	  nMonte = 1000000
 	  write(*,*) "nMonte = ", nMonte
        end if
        

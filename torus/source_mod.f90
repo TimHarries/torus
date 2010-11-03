@@ -251,7 +251,6 @@ module source_mod
             !      ! simply treating as a point source
             position = source%position
             direction = randomUnitVector()
-            
          else
             rHat = randomUnitVector()
             position = source%position + source%radius*rHat
@@ -270,6 +269,8 @@ module source_mod
          position%z = r * grid%octreeRoot%subcellSize
          direction = VECTOR(1.d0, 0.d0, 0.d0)
       endif
+
+      !Thaw - photons from corner sources should be directed into the grid
     end subroutine getPhotonPositionDirection
 
 

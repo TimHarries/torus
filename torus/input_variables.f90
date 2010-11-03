@@ -14,9 +14,10 @@ module input_variables
   logical :: readGrid, writeGrid
 
     logical :: molecularPhysics
-   logical :: photoionPhysics
+    logical :: photoionPhysics
     logical :: atomicPhysics
     logical :: dustPhysics
+    logical :: hOnly !Thaw
 
     logical :: radiationHydrodynamics !Thaw
     logical :: radiativeEquilibrium

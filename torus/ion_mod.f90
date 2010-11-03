@@ -86,7 +86,7 @@ contains
     real :: e, xSec
     integer :: i
 
-    thisIon%nfreq = nFreq
+    thision%nfreq = nFreq
     if (associated(thisIon%Freq)) deallocate(thisIon%freq)
     if (associated(thisIon%xsec)) deallocate(thisIon%xsec)
     allocate(thisIon%freq(1:nFreq), thisIon%xSec(1:nFreq))
@@ -117,7 +117,7 @@ contains
   end function returnXsec
 
   subroutine addIons(ionArray, nIon)
-    use input_variables, only : usemetals
+    use input_variables, only : usemetals, hOnly
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
 
@@ -128,14 +128,18 @@ contains
     nIon = nIon + 1
     call createIon(ionArray(nIon), 1, 0, 1.e-10) ! H II 2
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 2, 2, 2.459e1) ! He I 3
+    if (.not. hOnly) then
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 2, 1, 5.442e1) ! He II 4
+       nIon = nIon + 1
+       call createIon(ionArray(nIon), 2, 2, 2.459e1) ! He I 3
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 2, 0, 1.e-10) ! He III (alpha particle!) 5
+       nIon = nIon + 1
+       call createIon(ionArray(nIon), 2, 1, 5.442e1) ! He II 4
+
+       nIon = nIon + 1
+       call createIon(ionArray(nIon), 2, 0, 1.e-10) ! He III (alpha particle!) 5
+
+    end if
 
     if (usemetals) then
 

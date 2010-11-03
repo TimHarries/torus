@@ -3351,8 +3351,10 @@ contains
                 thisOctal%tempStorage = 0.d0
              endif
 
-	     !Thaw - allows me to force boundaries
+	     !Thaw - DEBUG force boundaries
 	     !thisoctal%boundaryCondition(subcell) = 2
+
+
              select case(thisOctal%boundaryCondition(subcell))
                 case(1) ! reflecting
                    locator = thisOctal%boundaryPartner(subcell)
@@ -4018,6 +4020,7 @@ contains
                 endif
              endif
           enddo
+	  
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = getBoundary(boundary)

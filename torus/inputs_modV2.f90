@@ -173,6 +173,9 @@ contains
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("hOnly", hOnly, cLine, fline, nLines, &
+         "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
+
     !Thaw
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
