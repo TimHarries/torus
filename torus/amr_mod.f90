@@ -11549,7 +11549,7 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-    use input_variables, only: nDustType, photoionization, mie, includeGasOpacity
+    use input_variables, only: nDustType, photoionization, mie, includeGasOpacity, hOnly
     use atom_mod, only: bnu
     implicit none
     type(GRIDTYPE) :: grid
@@ -11894,7 +11894,11 @@ end function readparameterfrom2dmap
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
          kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
-         kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
+         if (.not. hOnly) then
+            kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
+         else
+            kappaHe = 0.d0
+         end if
          kappaAbs = kappaAbs + (kappaH + kappaHe)
       endif
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)

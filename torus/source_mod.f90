@@ -258,7 +258,13 @@ module source_mod
             ! for general case here.....
             direction = fromPhotoSphereVector(rHat)
          endif
-         if ( source%onEdge ) direction%z = abs(direction%z)
+         !Thaw - modded v. of Daves code. Currently very limited special case
+         if (source%onEdge .and. grid%geometry == "hii_test") then
+            print *, "FORCED PHOTON"
+            direction%z = abs(direction%z)
+            direction%y = abs(direction%y)
+            direction%x = abs(direction%x)
+         end if
       else
          position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
          call randomNumberGenerator(getDouble=r)

@@ -502,11 +502,11 @@ contains
        !Thaw - nmonte selector:
        if(minDepthAMR == maxDepthAMR) then
           if(grid%octreeRoot%twoD) then
-             nMonte = 100000.d0 * (2.d0**(maxDepthAMR))
+             nMonte = 1000.d0 * (2.d0**(maxDepthAMR))
           else if(grid%octreeRoot%threeD) then
-	     nMonte = 100000.d0 * (3.d0**(maxDepthAMR))
+	     nMonte = 1000.d0 * (3.d0**(maxDepthAMR))
 	  else
-	     nMonte = 100000.d0 * maxDepthAMR
+	     nMonte = 1000.d0 * maxDepthAMR
           end if
        else
           write(*,*) "Non - uniform grid, setting arbitrary nMonte"
@@ -544,7 +544,18 @@ contains
 
        iMonte_beg = 1
        iMonte_end = nMonte
-       photonPacketWeight = 1.d0
+
+       !THaw - re weight for edge sources
+       !if(source%onEdge) then
+       !   if (grid%octreeRoot%threeD) then
+       if (grid%geometry == "hii_test") then
+	     photonPacketWeight = 1.d0/8.d0
+	!  else if (grid%octreeRoot%twoD) then
+	!     photonPacketWeight = 1.d0 /4.d0
+	!  end if
+       else
+	  photonPacketWeight = 1.d0
+       end if
        nTotScat = 0
        nPhot = 0
 
