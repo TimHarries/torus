@@ -87,8 +87,7 @@ contains
           source%onEdge = .true.
 	  !Thaw - not sure why this is here. Surely lost photons just will not contribute.
           ! only half the photons will end up on the grid
-          source(isource)%luminosity = source(isource)%luminosity / 2.0
-	  print *, "Source on edge"
+          source(isource)%luminosity = source(isource)%luminosity / 2.d0
        endif
 
        select case(inputContFluxFile(isource))
