@@ -46,6 +46,8 @@ contains
     imagescale = 1.
     noscattering = .false.
     usebias = .true.
+    
+    intProFilename = "none"
     nBlobs = 0
     nLines = 0
     inputnMonte = 0
@@ -268,6 +270,44 @@ contains
     logical :: ok
 
     select case(geometry)
+
+       case("cmfgen")
+          oneKappa = .true.
+          fastIntegrate = .false.
+          lineEmission = .true.
+          probContPhoton = 0.2
+          call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
+               "Line emission wavelength: ","(a,f6.1,1x,a)", 850., ok, .true.)
+
+       call getDouble("CMFGEN_Rmin", CMFGEN_Rmin, 1.d0, cLine, fLine, nLines, &
+            "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+       rcore = CMFGEN_Rmin      ! [10^10cm]
+
+
+       call getDouble("CMFGEN_Rmax", CMFGEN_Rmax, 1.d0, cLine, fLine, nLines, &
+            "max radius of cmfgen data  [rStar] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+       CMFGEN_rmax = CMFGEN_Rmin * CMFGEN_Rmax
+
+
+!       call getString("contflux", contFluxFile, cLine, fLine, nLines, &
+!            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+
+       call getReal("omega", bigOmega, 1., cLine, fLine, nLines, &
+            "Ratio of w/w_c: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+
+       call getLogical("uniformstar", uniformStar, cLine, fLine, nLines, &
+            "Assume a uniform star ","(a,1l,1x,a)", .false., ok, .true.)
+       if (uniformStar) then
+          call getReal("gamma", eddingtonGamma, 1., cLine, fLine, nLines, &
+               "Eddington parameter: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+
+          call getReal("alpha", alphaCAK, 1., cLine, fLine, nLines, &
+               "CAK power-law index alpha: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+          if (bigOmega > sqrt(1.d0-eddingtonGamma)) then
+             call writeFatal("Omega limit exceeded")
+             stop
+          endif
+       endif
 
 
        case("wrshell")
@@ -1369,6 +1409,15 @@ contains
     end if
 
 
+    call getReal("vmin", vMinSpec, 1.0, cLine, fLine, nLines, &
+         "Minimum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", -2000.0, ok, .false.)
+
+    call getReal("vmax", vMaxSpec, 1.0, cLine, fLine, nLines, &
+         "Maximum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
+
+    call getInteger("nv", nVelocity, cLine, fLine, nLines, &
+         "Number of velocity bins: ", "(a,i3,1x,a)", 1, ok, .false.)
+
     call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
@@ -1403,6 +1452,7 @@ contains
 
     call getReal("sedlammax", SEDlamMax, 1.0e4, cLine, fLine, nLines, &
          "Maximum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
+
 
     call getLogical("sedwavlin", SEDwavLin, cLine, fLine, nLines, &
          "Linear wavelength spacing in SED: ","(a,1l,1x,a)", .false., ok, .false.)

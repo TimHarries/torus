@@ -184,6 +184,8 @@ module input_variables
   real :: setImageSize
   real :: imageScale
   real :: vMin, vMax
+  real :: vMinSpec, vMaxSpec
+  integer :: nVelocity
   real :: gridDistance
   integer :: observerpos
 

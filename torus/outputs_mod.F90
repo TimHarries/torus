@@ -20,7 +20,7 @@ contains
     use input_variables, only : h21cm, internalView
     use input_variables, only : lambdaImage, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
     use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
-    use input_variables, only : lamStart, lamEnd
+    use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
@@ -132,6 +132,43 @@ contains
                0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
                0., 0, .false., 100000, &
+               miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+       end if
+       allocate(inclinations(1))
+       if (calcImage) then
+          do i = 1, nImage
+             nlambda = 1
+             stokesImage = .true.
+             outfile = imageFilename(i)
+             npix = nPixelsArray(i)
+             ninclination = 1
+             inclinations(1) = inclinationArray(i)
+             lamStart = lambdaImage(i)
+             lamEnd = lambdaImage(i)
+             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
+                  wavLin=.true., numLam=1)
+
+             call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+             call do_phaseloop(grid, .true., 0., 0., 0.,  &
+                  0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+                  tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+                  0., 0, .false., 100000, &
+                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+          enddo
+       endif
+
+    endif
+
+    if (atomicPhysics.and.(calcspectrum.or.calcimage)) then
+       mie = .false.
+       lineEmission = .true.
+       grid%lineEmission = .true.
+       if ( calcspectrum ) then 
+          call setupXarray(grid, xarray, nVelocity)
+          call do_phaseloop(grid, .true., 0., 0., 0.,  &
+               0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+               tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+               0., 0, .true., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
        end if
        allocate(inclinations(1))

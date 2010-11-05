@@ -641,7 +641,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      endif
 
 
-
      allocate(lambda(1:maxTau))
      allocate(tauExt(1:maxTau))
      allocate(tauAbs(1:maxTau))
@@ -746,7 +745,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
 
-     if (grid%lineEmission) then
+     if (lineEmission) then
 
         ! integrate the line and continuum emission and read the 
         ! intrinsic profile
@@ -758,7 +757,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            if (.not.grid%resonanceLine) then
               call computeProbDist(grid, totLineEmission, &
                    totWindContinuumEmission,lamline, useBias)
-
               ! convert from per steradian              
               totLineEmission = totLineEmission * fourPi
               totWindContinuumEmission = totwindContinuumEmission * fourPi
@@ -851,15 +849,16 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         nu = cSpeed / (lamLine * angstromtocm)
         if (writeoutput) write(*,'(a,e12.3)') "Line emission: ",totLineEmission
+        totCoreContinuumEmission = 0.d0
         select case(grid%geometry)
            case("binary")
               call contread(contFluxFile, nu, totCoreContinuumEmission1)
               call contread(contFluxFile2, nu, totCoreContinuumEmission2)
            case("puls")
               totCoreContinuumEmission = pi * blackBody(0.77 * tEff, lamLine)
-           case DEFAULT
-              call contread(contFluxFile, nu, coreContinuumFlux)
-              totCoreContinuumEmission = coreContinuumFlux
+!           case DEFAULT
+!              call contread(contFluxFile, nu, coreContinuumFlux)
+!              totCoreContinuumEmission = coreContinuumFlux
         end select
 
 
@@ -906,11 +905,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         endif
 
 
-        nuStart = cSpeed / (lamStart * angstromtocm)
-        nuEnd = cSpeed / (lamEnd * angstromtocm)
+        nuStart = cSpeed / (grid%lamArray(1) * angstromtocm)
+        nuEnd = cSpeed / (grid%lamArray(grid%nLambda) * angstromtocm)
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
         if (writeoutput) write(*,'(a,e12.3)') "Wind cont emission: ",totWindContinuumEmission
+        if (writeoutput) write(*,*) grid%lamArray(1), &
+             grid%lamArray(grid%nlambda)
 
 
 ! factor of four pi taken out from below - input continuum files are expected
@@ -1033,7 +1034,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      end if
 
      nContPhotons = (probContPhoton * real(nPhotons) / real(nOuterLoop))
-
+     if (writeoutput) write(*,*) "Number of continuum photons: ",nContPhotons
 
 
      if (formalSol) then
@@ -1325,7 +1326,20 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      call test_random_across_threads()
 #endif
 
+#ifdef _OPENMP
+
+#else
+           allocate(lambda(1:maxTau))
+           allocate(tauExt(1:maxTau))
+           allocate(tauAbs(1:maxTau))
+           allocate(tauSca(1:maxTau))
+           allocate(linePhotonalbedo(1:maxTau))
+           allocate(contTau(1:maxTau,1:nLambda)) 
+           allocate(contWeightArray(1:nLambda))
+#endif
+
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
+
         if (mie) then
 
            iLambdaPhoton = iOuterLoop
@@ -1469,15 +1483,20 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) 
 
 
+
+
         nFromEnv = 0
 !$OMP DO SCHEDULE(static)
         innerPhotonLoop: do i = iInner_beg, iInner_end
+
 !           write(*,*) omp_get_thread_num(), i
 #ifdef MPI
  !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle innerPhotonLoop
 #endif
            ! The following six arrays must be allocated and deallocated for each 
            ! innerPhotonLoop to make the program work with OpenMP! (RK)
+
+#ifdef _OPENMP
            allocate(lambda(1:maxTau))
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
@@ -1485,6 +1504,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            allocate(linePhotonalbedo(1:maxTau))
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
+#endif
+
+
+
+
 #ifdef MPI
  !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) goto 999
 #endif
@@ -1511,6 +1535,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            nScat = 0
 
            ! initialize the photon
+
            
            contWeightArray = 1.
 
@@ -1553,7 +1578,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            endif
 
 
-!           write(*,*) "after init",thisPhoton%stokes%i,contwindphoton
            observedLambda = thisPhoton%lambda
 !           if (thisPhoton%contPhoton) then
 !
@@ -1565,11 +1589,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !           endif
 
 
-
            iLambda = findIlambda(thisPhoton%lambda, grid%lamArray, nLambda, ok)
 
            ! now we fire the photon direct to the observer
            lineResAbs = .false.  ! F for the zero-th scattering.
+
+
+
            if (doRaman) then
               
               call integratePath(gridUsesAMR, VoigtProf, &
@@ -1628,7 +1654,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, taumax = 20.d0, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
-!                 write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau),ntau,ilambdaphoton, &
+
+!              if (thisPhoton%contPhoton) &
+!                   write(*,*) "Optical depth to observer: ",tauExt(ntau),tauSca(nTau),tauAbs(ntau),ntau, &
 !                      thisPhoton%lambda, modulus(thisPhoton%position)*1.d10/rsol
 
 !              if (thisPhoton%contPhoton)then
@@ -2534,6 +2562,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 999  continue  ! escape route for a bad photon
 
+#ifdef _OPENMP
            deallocate(lambda)
            deallocate(tauSca)
            deallocate(tauExt)
@@ -2541,10 +2570,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            deallocate(linePhotonalbedo)
            deallocate(contTau)
            deallocate(contWeightArray)
+#endif
            
 !           call plotspec(grid%lamArray, yArray, nLambda)
 
         enddo innerPhotonLoop
+
+
 
 !        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
 
@@ -2674,6 +2706,19 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
      end do outerPhotonLoop ! outer photon loop
+
+#ifdef OPENMP
+
+#else
+   deallocate(lambda)
+   deallocate(tauSca)
+   deallocate(tauExt)
+   deallocate(tauAbs)
+   deallocate(linePhotonalbedo)
+   deallocate(contTau)
+   deallocate(contWeightArray)
+#endif
+
 
      if (doTuning) call tune(6, "All Photon Loops")  ! Stop a stopwatch
 
@@ -2813,15 +2858,14 @@ endif ! (doPvimage)
 !     endif
 
  varianceArray = STOKESVECTOR(0.d0, 0.d0, 0.d0, 0.d0)
- do i = 1, nLambda
-    do j = 1, nOuterLoop
-    varianceArray(i)%i = varianceArray(i)%i + (errorArray(j,i)%i - yArray(i)%i/dble(nOuterLoop))**2
-    varianceArray(i)%q = varianceArray(i)%q + (errorArray(j,i)%q - yArray(i)%q/dble(nOuterLoop))**2
-    varianceArray(i)%u = varianceArray(i)%u + (errorArray(j,i)%u - yArray(i)%u/dble(nOuterLoop))**2
-    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
-         
- enddo
-enddo
+! do i = 1, nLambda
+!    do j = 1, nOuterLoop
+!    varianceArray(i)%i = varianceArray(i)%i + (errorArray(j,i)%i - yArray(i)%i/dble(nOuterLoop))**2
+!    varianceArray(i)%q = varianceArray(i)%q + (errorArray(j,i)%q - yArray(i)%q/dble(nOuterLoop))**2
+!    varianceArray(i)%u = varianceArray(i)%u + (errorArray(j,i)%u - yArray(i)%u/dble(nOuterLoop))**2
+!    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
+! enddo
+!enddo
  if (myRankIsZero) then 
     if (PRESENT(overrideFilename)) outfile = overrideFilename
     if (nLambda > 1) then

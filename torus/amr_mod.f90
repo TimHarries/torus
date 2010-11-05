@@ -4271,7 +4271,7 @@ CONTAINS
          if (i == nr) i = nr-1
 
          dR = ABS(R_cmfgen(i+1)-R_cmfgen(i))
-         thisScale = cellsize/amrlimitscalar
+         thisScale = cellsize/2.d0
          
          if ( thisScale > dR) then
             split = .true.
@@ -11549,7 +11549,8 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-    use input_variables, only: nDustType, photoionization, mie, includeGasOpacity, hOnly
+<<<<<<< amr_mod.f90
+    use input_variables, only: nDustType, photoionization, mie, includeGasOpacity, lineEmission, honly
     use atom_mod, only: bnu
     implicit none
     type(GRIDTYPE) :: grid
@@ -11714,7 +11715,11 @@ end function readparameterfrom2dmap
              ! For line computation (without dust).
              ! Needs modification for a model which include gas and dust here.
              ! This is a temporarily solution
-             kappaSca = thisOctal%kappaSca(subcell,iLambda)
+             if (lineEmission) then
+                kappaSca = thisOctal%kappaSca(subcell,1)
+             else
+                kappaSca = thisOctal%kappaSca(subcell,iLambda)
+             endif
           end if
        else
           kappaSca = 0.
@@ -11754,7 +11759,11 @@ end function readparameterfrom2dmap
              ! For line computation (without dust).
              ! Needs modification for a model which include gas and dust here.
              ! This is a temporarily solution
-             kappaAbs = thisOctal%kappaAbs(subcell,iLambda)
+             if (lineEmission) then
+                kappaAbs = thisOctal%kappaAbs(subcell,1)
+             else
+                kappaAbs = thisOctal%kappaAbs(subcell,iLambda)
+             endif
           end if
        else
           kappaAbs = 0.
@@ -17419,85 +17428,6 @@ IF ( .NOT. gridConverged ) RETURN
     end select
   end function getPhiValue
 
-  recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0)
-  type(gridtype) :: grid
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real, intent(in)          :: lambda0                ! rest wavelength of line
-  integer :: subcell, i
-  real(double) :: d, dV, r, tauSob, escProb
-  type(vector)  :: rvec, rhat, direction
-  real(double):: nu0, dr, dA, tau
-  
-  do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call set_bias_cmfgen(child, grid, lambda0)
-                exit
-             end if
-          end do
-
-       else
-          if (thisOctal%inflow(subcell)) then
-             d = thisOctal%subcellsize 
-
-             rVec = subcellCentre(thisOctal,subcell)
-             r = modulus(rvec)
-             if (r /= 0.0d0) then
-                rhat = rvec/r
-             else
-                rhat = VECTOR(0.0d0, 0.0d0, 1.0d0)
-             end if
-
-             if (thisOctal%threed) then
-                dV = d*d*d
-             else
-                dr = d
-                dA = 2.0_db*pi*(SQRT(rVec%x*rVec%x  + rVec%y*rVec%y))*dr
-                dV = d*dA
-             endif
-
-             nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
-              ! in a radial direction
-             tauSob = thisOctal%chiline(subcell)  / nu0
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, rhat, &
-                  startOctal=thisOctal)
-           
-             if (tauSob < 0.01) then
-                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
-                     tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
-             else if (tauSob < 15.) then
-                escProb = (1.0d0-exp(-tauSob))/tauSob
-             else
-                escProb = 1.d0/tauSob
-             end if
-             escProb = max(escProb, 1.d-4)
-
-             rVec = subcellCentre(thisoctal, subcell)
-             direction = rVec
-             call normalize(direction)
-             call tauAlongPathCMF(grid, rVec, direction, tau, tauMax=1.d3, &
-                  startOctal=thisOctal, startSubcell=subcell)
-             thisOctal%biasCont3d(subcell) = max(exp(-tau), 1.d-4)
-             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
-
-
-          else  ! this subcell is not "inFlow"
-             thisOctal%biasCont3D(subcell) = 1.0d-150
-             thisOctal%biasLine3D(subcell) = 1.0d-150
-          end if
-          ! just in case ....
-          thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
-          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)
-       endif ! if (thisOctal%hasChild(subcell)) then
-    enddo
-
-  end subroutine set_bias_cmfgen
-
-
   subroutine tauAlongPathCMF(grid, rVec, direction, tau, tauMax, startOctal, startSubcell)
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
@@ -17524,9 +17454,9 @@ IF ( .NOT. gridConverged ) RETURN
     do while (inOctal(grid%octreeRoot, currentPosition))
 
        call findSubcellLocal(currentPosition, thisOctal,subcell)
-!       kappaExt = thisOctal%kappaSca(subcell,1) + thisOctal%kappaAbs(subcell,1)
+       kappaExt = thisOctal%kappaSca(subcell,1) + thisOctal%kappaAbs(subcell,1)
 !       kappaExt = thisOctal%kappaAbs(subcell,1)
-        kappaExt = sqrt(thisOctal%kappaSca(subcell,1) * thisOctal%kappaAbs(subcell,1))
+!        kappaExt = sqrt(thisOctal%kappaSca(subcell,1) * thisOctal%kappaAbs(subcell,1))
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
        

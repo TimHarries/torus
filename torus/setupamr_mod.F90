@@ -33,7 +33,7 @@ contains
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
-    use input_variables, only : rCore, rInner, rOuter
+    use input_variables, only : rCore, rInner, rOuter, lamline
     use disc_class, only:  new
     use discwind_class, only:  new
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
@@ -332,6 +332,9 @@ contains
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)
+              call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
+              call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ","chiline ","ne      ", &
+                   "velocity"/))
 
           case("wrshell")
              grid%geometry = "wrshell"
@@ -863,5 +866,84 @@ contains
        enddo
     endif
   end subroutine bigarraytest
+  recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0)
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real, intent(in)          :: lambda0                ! rest wavelength of line
+  integer :: subcell, i
+  real(double) :: d, dV, r, tauSob, escProb
+  type(vector)  :: rvec, rhat, direction
+  real(double):: nu0, dr, dA, tau
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_cmfgen(child, grid, lambda0)
+                exit
+             end if
+          end do
+
+       else
+          if (thisOctal%inflow(subcell)) then
+             d = thisOctal%subcellsize 
+
+             rVec = subcellCentre(thisOctal,subcell)
+             r = modulus(rvec)
+             if (r /= 0.0d0) then
+                rhat = rvec/r
+             else
+                rhat = VECTOR(0.0d0, 0.0d0, 1.0d0)
+             end if
+
+             if (thisOctal%threed) then
+                dV = d*d*d
+             else
+                dr = d
+                dA = 2.0_db*pi*(SQRT(rVec%x*rVec%x  + rVec%y*rVec%y))*dr
+                dV = d*dA
+             endif
+
+             nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
+              ! in a radial direction
+             tauSob = thisOctal%chiline(subcell)  / nu0
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, rhat, &
+                  startOctal=thisOctal)
+           
+             if (tauSob < 0.01) then
+                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
+                     tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+             else if (tauSob < 15.) then
+                escProb = (1.0d0-exp(-tauSob))/tauSob
+             else
+                escProb = 1.d0/tauSob
+             end if
+             escProb = max(escProb, 1.d-10)
+
+             rVec = subcellCentre(thisoctal, subcell)
+             direction = rVec
+             call normalize(direction)
+             call tauAlongPathCMF(grid, rVec, direction, tau, tauMax=1.d3, &
+                  startOctal=thisOctal, startSubcell=subcell)
+             thisOctal%biasCont3d(subcell) = max(exp(-tau),1.d-6)
+             thisOctal%biasLine3D(subcell) = max(escProb*thisOctal%biasCont3D(subcell),1.d-6)
+
+
+          else  ! this subcell is not "inFlow"
+             thisOctal%biasCont3D(subcell) = 1.0d-150
+             thisOctal%biasLine3D(subcell) = 1.0d-150
+          end if
+          ! just in case ....
+          thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
+          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)
+       endif ! if (thisOctal%hasChild(subcell)) then
+    enddo
+
+  end subroutine set_bias_cmfgen
+
+
 
 end module setupamr_mod

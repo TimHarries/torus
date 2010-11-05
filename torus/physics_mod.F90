@@ -234,7 +234,7 @@ contains
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
-     use input_variables, only : lamFile, lamFilename
+     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nVelocity
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -296,6 +296,16 @@ contains
         endif
 
      endif
+
+     if (atomicPhysics) then
+        nLambda = nVelocity
+       allocate(xArray(1:nLambda))
+       lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
+       lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
+       do i = 1, nLambda
+          xArray(i) = lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1)
+       enddo
+    endif
 
      if (photoionPhysics) then
         nLambda = 1000

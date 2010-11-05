@@ -553,6 +553,9 @@ contains
        
        ! now store the 'base level' values
        
+       if (.not.associated (thisoctal%cornervelocity)) then
+          allocate(thisOctal%cornerVelocity(1:9))
+       endif
        thisOctal%cornerVelocity(1) = cmfgen_velocity(vector(x1,0.d0,z1))
        thisOctal%cornerVelocity(2) = cmfgen_velocity(vector(x2,0.d0,z1))
        thisOctal%cornerVelocity(3) = cmfgen_velocity(vector(x3,0.d0,z1))
@@ -572,6 +575,10 @@ contains
        
        ! now store the 'base level' values
        
+       if (.not.associated (thisoctal%cornervelocity)) then
+          allocate(thisOctal%cornerVelocity(1:3))
+       endif
+
        thisOctal%cornerVelocity(1) = cmfgen_velocity(vector(x1,0.d0,0.d0))
        thisOctal%cornerVelocity(2) = cmfgen_velocity(vector(x2,0.d0,0.d0))
        thisOctal%cornerVelocity(3) = cmfgen_velocity(vector(x3,0.d0,0.d0))
