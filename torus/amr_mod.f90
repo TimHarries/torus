@@ -11549,7 +11549,6 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-<<<<<<< amr_mod.f90
     use input_variables, only: nDustType, photoionization, mie, includeGasOpacity, lineEmission, honly
     use atom_mod, only: bnu
     implicit none
