@@ -12892,7 +12892,7 @@ end function readparameterfrom2dmap
                 dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
              else
                 nDir = 4
-                aHat = VECTOR(centre%x, centre%y, 0.d0)
+                aHat = VECTOR(centre%x+0.1*grid%halfSmallestSubcell, centre%y, 0.d0)
                 call normalize(aHat)
                 dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
                 dirVec(2) = aHat

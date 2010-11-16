@@ -617,7 +617,7 @@ contains
     logical :: readFile
     integer ::  nOctals, nVoxels
 #ifdef MPI
-    integer :: iThread
+!    integer :: iThread
 #endif
 
     readFile = .true.
@@ -629,22 +629,37 @@ contains
     endif
 
     if (.not.grid%splitOverMPI) then
+
+
 #ifdef MPI
-       do iThread = 0, nThreadsGlobal-1
-          if (iThread == myRankGlobal) then
+       call readGridMPI(grid, filename, fileFormatted)
+#else
+       call readAmrGridSingle(filename, fileFormatted, grid)
 #endif
-             call readAmrGridSingle(filename, fileFormatted, grid)
              call updateMaxDepth(grid)
              call setSmallestSubcell(grid)
 !             call checkAMRgrid(grid, .false.)
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
              grid%nOctals = nOctals
-!             CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
-#ifdef MPI
-          endif
-          call torus_mpi_barrier
-       Enddo
-#endif
+
+
+!#ifdef MPI
+!       do iThread = 0, nThreadsGlobal-1
+!          if (iThread == myRankGlobal) then
+!             write(*,'(a,i3)') "Reading grid for thread: ",ithread
+!#endif
+!             call readAmrGridSingle(filename, fileFormatted, grid)
+!             call updateMaxDepth(grid)
+!             call setSmallestSubcell(grid)
+!!             call checkAMRgrid(grid, .false.)
+!             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+!             grid%nOctals = nOctals
+!!             CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+!#ifdef MPI
+!          endif
+!          call torus_mpi_barrier
+!       Enddo
+!#endif
     endif
     
 #ifdef MPI
@@ -3005,6 +3020,60 @@ contains
          endif
 
        end subroutine readZerothThread
+
+
+       subroutine readGridMPI(grid, gridfilename, fileFormatted)
+         type(GRIDTYPE) :: grid
+         character(len=*) :: gridFilename
+         logical :: fileFormatted
+         integer :: iThread
+         integer :: nOctals, nVoxels
+
+         if (associated(grid%octreeRoot)) then
+            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+            grid%octreeRoot => null()
+         endif
+
+         do iThread = 1, nThreadsGlobal - 1
+            if (myrankGlobal == iThread) then
+               call openGridFile(gridFilename, fileformatted)
+               call readStaticComponents(grid, fileFormatted)
+               close(20)
+            endif
+            call torus_mpi_barrier
+         enddo
+
+         if (myrankGlobal == 0) then
+             call readAmrGridSingle(gridfilename, fileFormatted, grid)
+             call sendGridToAllThreads(grid%octreeRoot)
+          else
+            allocate(grid%octreeRoot)
+            grid%octreeRoot%nDepth = 1
+            nOctals = 0
+             call getBranchOverMPI(grid%octreeRoot, null())
+          endif
+
+          call torus_mpi_barrier
+          call updateMaxDepth(grid)
+          call setSmallestSubcell(grid)
+          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+          grid%nOctals = nOctals
+        end subroutine readGridMPI
+
+        recursive subroutine sendGridToAllThreads(thisOctal)
+          type(OCTAL), pointer :: thisOctal, child
+          integer :: iThread, n, i
+          do iThread = 1, nThreadsGlobal-1
+             call sendOctalViaMPI(thisOctal, iThread)
+          enddo
+          n = thisOctal%nChildren
+          if (n > 0) then
+             do i = 1, n
+                child => thisOctal%child(i)
+                call sendGridToAllThreads(child)
+             enddo
+          endif
+        end subroutine sendGridToAllThreads
 
        recursive subroutine readBranchFromFile(iThread, fileFormatted)
          integer :: ithread

@@ -236,8 +236,8 @@ contains
           mdot = 2.d-8 * msol * secstoyears
           call zeroDensity(grid%octreeRoot)
           astar = accretingAreaMahdavi(grid)
-          ttauriwind = .true.
-          ttauridisc = .true.
+          ttauriwind = .false.
+          ttauridisc = .false.
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
           call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
           if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)

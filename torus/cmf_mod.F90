@@ -2306,9 +2306,11 @@ contains
                 etaline = 0.d0
              endif
 
-             if (.not.thisOctal%fixedTemperature(subcell)) then
-                jnu = 0.d0
-                etaline = 0.d0
+             if (associated(thisOctal%fixedTemperature)) then
+                if (.not.thisOctal%fixedTemperature(subcell)) then
+                   jnu = 0.d0
+                   etaline = 0.d0
+                endif
              endif
 
              if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc

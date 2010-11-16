@@ -109,7 +109,7 @@ contains
             source(isource)%spectrum)
        call sumSurface(source(isource)%surface, source(isource)%luminosity)
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
-      if (writeoutput) write(*,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
+      if (myrankGlobal==0)  write(*,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
 
     end do
   end subroutine setupSources
@@ -234,7 +234,7 @@ contains
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
-     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nVelocity
+     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -298,7 +298,7 @@ contains
      endif
 
      if (atomicPhysics) then
-        nLambda = nVelocity
+        nLambda = nv
        allocate(xArray(1:nLambda))
        lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
        lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
@@ -432,8 +432,10 @@ contains
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
        call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
+       globalNSource = 1
     endif
 
+    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
 
 
 end subroutine setupGlobalSources

@@ -729,6 +729,9 @@ contains
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
 
+    if (amr3d.and.cylindrical.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
+         amrGridCentrex = amrGridSize/2.d0
+
     if (amr1d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
 
@@ -1012,7 +1015,7 @@ contains
     call getLogical("lte", lte, cLine, fLine, nLines, &
          "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
-         "Turbulent velocity (km/s):","(a,f4.1,1x,a)", 50., ok, .true.)
+         "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
 
 
   end subroutine readAtomicLoopParameters
@@ -1415,7 +1418,7 @@ contains
     call getReal("vmax", vMaxSpec, 1.0, cLine, fLine, nLines, &
          "Maximum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
 
-    call getInteger("nv", nVelocity, cLine, fLine, nLines, &
+    call getInteger("nv", nv, cLine, fLine, nLines, &
          "Number of velocity bins: ", "(a,i3,1x,a)", 1, ok, .false.)
 
     call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
