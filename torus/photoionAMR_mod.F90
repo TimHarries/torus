@@ -109,7 +109,7 @@ contains
     nextDumpTime = 0.d0
     tDump = 0.005d0
     deltaTforDump = 2.d10
-    if (grid%geometry == "hii_test") deltaTforDump = 1000000.d0/secstoyears
+    if (grid%geometry == "hii_test") deltaTforDump = 3.d0/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -174,16 +174,16 @@ contains
 
     endif
 
-    if(.not. hOnly) then
-       call ionizeGrid(grid%octreeRoot)
-    end if
+    !if(.not. hOnly) then
+    call ionizeGrid(grid%octreeRoot)
+    !end if
 
 !    call writeVtkFile(grid, "start.vtk", &
 !         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
-    loopLimitTime = 1.e30
-    if (startFromNeutral) loopLimitTime = grid%currentTime
-    loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed
+    loopLimitTime = 3.d0/secstoyears
+    !if (startFromNeutral) loopLimitTime = grid%currentTime
+    !loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed
     do irefine = 1, 1
        
        if (irefine == 1) then
@@ -310,9 +310,11 @@ contains
 
 
        !loopLimitTime = 1.e30
-       loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed       
+       !loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed       
 !       loopLimitTime = grid%currentTime
 !       loopLimitTime = max(loopLimitTime,(grid%halfSmallestSubcell*1.d10)/cSpeed)
+	!looplimitTime = max(dt, loopLimitTime)
+	loopLimitTime = 3.d0/secstoyears
 
        call setupNeighbourPointers(grid, grid%octreeRoot)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 7, loopLimitTime)
@@ -348,8 +350,8 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-          !write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-          !call writeAmrGrid(mpiFilename, .false., grid)
+          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
+          call writeAmrGrid(mpiFilename, .false., grid)
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","HI           " , "temperature  ", &
@@ -357,8 +359,8 @@ contains
 
 	  
 	  write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
-	  call dumpValuesAlongLine(grid, datFileName, VECTOR(-2.3d12,  -2.3d12,2.3d12), &
-	        VECTOR(1.d12, -2.3d12, 2.3d12), 1000)
+	  call dumpValuesAlongLine(grid, datFileName, VECTOR(-11.d8,  -11.d8,11.d8), &
+	        VECTOR(1.d8, -11.d8, 11.d8), 1000)
 
 	  
 	  !write(mpiFilename,'(a, i4.4, a)') "ifrit_", grid%iDump,".txt"

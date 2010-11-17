@@ -216,6 +216,10 @@ CONTAINS
     CASE("rtaylor")
        call calcRTaylorDensity(thisOctal, subcell)
 
+    !Thaw                                                                                                                  
+    CASE("firstStar")
+       call calcFirstStarDensity(thisOctal, subcell)
+
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
@@ -4061,6 +4065,11 @@ CONTAINS
    case("gaussian")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
+!Thaw                                                                                                                      
+   case("firstStar")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+
    case("sedov")
       rInner = 0.02d0
       rVec = subcellCentre(thisOctal, subcell)
@@ -7357,7 +7366,7 @@ CONTAINS
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
           !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
-          u1 = 0.05d0*(1.d0+cos((3.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))!* &
+          u1 = 0.03d0*(1.d0+cos((3.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))!* &
           !(1.d0+cos(twoPi*(rVec%z-ghostSize)))/16.d0
     endif
     !if (abs(rVec%z) < 0.02d0) then
@@ -7391,6 +7400,53 @@ CONTAINS
     yplusbound = 1
     yminusbound = 1
   end subroutine calcRTaylorDensity
+
+!thaw: a model comprising a neutral (or partially ionized) hydrogen gas surrounded by                                              
+!a fully ionized plasma. A bit of a toy at present.                                                                                
+  subroutine calcfirstStarDensity(thisOctal, subcell)
+    use input_variables, only : xplusbound, xminusbound, zplusbound, zminusbound
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: randX, randY, randZ, r
+
+    call random_seed()
+    call random_number(randX)
+    call random_number(randY)
+    call random_number(randZ)
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    thisOctal%gamma = 5.d0/3.d0
+    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%rho = 1.d0 * mHydrogen
+
+    r = sqrt(rVec%x**2 + rVec%z**2)
+
+    if(r < 1.d12) then
+       thisOctal%temperature = 155000.d0
+    else
+       thisOctal%temperature = 160000.d0
+    end if
+
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%ionFrac(subcell,1) = 1.e-10
+    thisOctal%ionFrac(subcell,2) = 1.
+
+    thisOctal%velocity(subcell) = VECTOR(randX, randY, randZ)/cSpeed
+
+    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
+
+    xplusbound = 2
+    xminusbound = 2
+    zplusbound = 2
+    zminusbound = 2
+
+  end subroutine calcfirstStarDensity
+
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
 
