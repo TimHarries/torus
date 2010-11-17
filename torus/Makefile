@@ -1,4 +1,4 @@
-#----------------------------------------------------------------
+#-------------------------------------------------------------------------
 # Usage :: 
 #    1. make             : Make torus with optimization flag(s)
 #    2. make clean       : Clean up directory
@@ -9,7 +9,7 @@
 #    7. make trace=yes   : Make torus with ITAC profiling
 #    8. make openmp=yes  : Make torus with OpenMP 
 #    9. make coverage=yes: Generate coverage statistics with gnu compilers 
-#-----------------------------------------------------------------
+#-------------------------------------------------------------------------
 
 USEMKL  = no
 cfitsio = yes
