@@ -771,6 +771,7 @@ contains
           stop
        end if
 
+       
 
        grainFracTotal = 0.
        do i = 1, nDustType
@@ -781,6 +782,7 @@ contains
           write(qDistLabel, '(a,i1.1)') "qdist",i
           write(pDistLabel, '(a,i1.1)') "pdist",i
           write(a0Label, '(a,i1.1)') "a0",i
+          
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
           !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
           !       if (writeoutput) write(*,*)

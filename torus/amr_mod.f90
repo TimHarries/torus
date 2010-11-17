@@ -7356,15 +7356,15 @@ CONTAINS
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
-       !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
-       u1 = 0.01d0*(1.d0+cos((twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))* &
-       (1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+          !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
+          u1 = 0.05d0*(1.d0+cos((3.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))!* &
+          !(1.d0+cos(twoPi*(rVec%z-ghostSize)))/16.d0
     endif
-!    if (abs(rVec%z) < 0.02d0) then
+    !if (abs(rVec%z) < 0.02d0) then
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed
-!    else
-!       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-!    endif
+    !else
+    !   thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    !endif
 
 
     thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
@@ -7386,8 +7386,8 @@ CONTAINS
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
     zplusbound = 1
     zminusbound = 1
-    xplusbound = 1
-    xminusbound = 1
+    xplusbound = 2
+    xminusbound = 2
     yplusbound = 1
     yminusbound = 1
   end subroutine calcRTaylorDensity
@@ -8575,15 +8575,15 @@ end function readparameterfrom2dmap
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = 0.d0
-    thisOctal%gamma(subcell) = 1.01d0
+    thisOctal%gamma(subcell) = 5.d0/3.d0
     thisOctal%iEquationOfState(subcell) = 1
 
-    zplusbound = 1
-    zminusbound = 1
-    xplusbound = 1
-    xminusbound = 1
-    yplusbound = 1
-    yminusbound = 1
+    zplusbound = 4
+    zminusbound = 4
+    xplusbound = 4
+    xminusbound = 4
+    yplusbound = 4
+    yminusbound = 4
 
   end subroutine assign_hii_test
 

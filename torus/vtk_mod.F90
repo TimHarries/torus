@@ -22,7 +22,7 @@ module vtk_mod
      module procedure writeVtkFileSource
   end interface
 
-  public :: writeVtkfile
+  public :: writeVtkfile, writeIfritfile
 
   private :: writePoints, writeIndices, writeValue
 
@@ -925,6 +925,119 @@ contains
 #endif
 
   end subroutine writeVtkFileAMR
+
+   subroutine writeIfritFile(grid, ifritFilename)
+      use input_variables, only : minDepthAMR, maxDepthAMR
+      type(GRIDTYPE) :: grid
+      character(len=*) :: ifritFilename
+      integer :: fileID, nValueType, nPointOffset
+      integer :: i, iType
+      character(len=20) :: valueType(50)
+      integer :: nCells, nPoints, nOctals, nVoxels
+#ifdef MPI
+      include 'mpif.h'
+      integer :: ierr
+      integer, allocatable :: iOffsetArray(:)
+      integer :: myRank, nThreads, iThread
+#endif
+
+#ifdef MPI
+   if ((.not.grid%splitOverMpi).and.(myRankGlobal /= 0)) goto 101
+#endif
+#ifdef MPI
+   if((grid%splitOverMpi) .and. (myRankGlobal == 0)) goto 101
+#endif
+
+     if(minDepthAMR == maxDepthAMR) then
+        open(fileID, file=ifritFilename, status="new", form="formatted")
+
+        !This is certainly subject to change
+        if(grid%splitOverMpi) then
+           nValueType = 5
+           valueType(1) = "rho"
+           valueType(2) = "velocity"
+           valueType(3) = "temperature"
+           valueType(4) = "HI"
+           valueType(5) = "mpithread"
+        end if
+
+        if(grid%octreeRoot%threeD) then
+           nPointOffset = 8
+           write(fileID, *) 2.**maxDepthAMR, 2.**maxDepthAMR, 2.**maxDepthAMR
+        else if(grid%octreeRoot%twoD) then
+           nPointOffset = 4
+           write(fileID, *) 2.**maxDepthAMR, 2.**maxDepthAMR
+        else if(grid%octreeRoot%oneD) then
+           nPointOffset = 2
+           write(fileID, *) 2.**maxDepthAMR
+        end if
+
+
+        call countVoxels(grid%octreeRoot, nOctals, nVoxels)
+#ifdef MPI
+      if(grid%splitOverMpi) then
+         call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+         call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+         call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+         allocate(iOffsetArray(1:nThreads-1))
+       call countSubcellsMPI(grid, nVoxels, nSubcellArray = iOffsetArray)
+       iOffsetArray(2:nThreads-1) = iOffsetArray(1:nThreads-2)
+       iOffsetArray(1) = 0
+       do i = 2, nThreads-1
+          iOffsetArray(i) = iOffsetArray(i) + iOffsetArray(i-1)
+       enddo
+       iOffsetArray = iOffsetArray * nPointOffset
+    endif
+#endif
+
+
+       nCells = nVoxels
+       nPoints = nCells * nPointOffset
+
+!#ifdef MPI
+!    if (grid%splitOverMpi) then
+!       do iThread = 1, nThreadsGlobal
+!          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!          if (iThread == myRankGlobal) then
+!             call writePoints(grid, ifritFilename, nPoints)
+!          endif
+!       enddo
+!    endif
+!#endif
+
+!#ifdef MPI
+!       if (grid%splitOverMpi) then
+!
+!          do iThread = 1, nThreadsGlobal
+!             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!             if (iThread == myRankGlobal) then
+!                call writeIndices(grid, ifritFilename, nPoints, nCells, iOffsetArray(myRankGlobal))
+!             endif
+!          enddo
+!       endif
+!#endif
+
+#ifdef MPI
+       if (grid%splitOverMpi) then
+
+          do iThread = 1, nThreadsGlobal
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             if (iThread == myRankGlobal) then
+                call writeValue(grid, ifritFilename, valueType(iType))
+             endif
+	  end do
+       endif
+#endif
+      else
+      !Write data for test 5 from Cosmological Radiative Transfer Comparison Test
+         print *, "Not a fixed grid, IFRIT file write failed"
+      end if
+
+#ifdef MPI
+     101 continue
+#endif
+
+   end subroutine writeIfritFile
 
 
 

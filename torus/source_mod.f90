@@ -24,6 +24,7 @@ module source_mod
      type(SURFACETYPE) :: surface
      logical :: outsideGrid
      logical :: onEdge
+     logical :: onCorner
      real(double) :: distance
   end type SOURCETYPE
 
@@ -245,6 +246,7 @@ module source_mod
       real(double) :: r 
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
+      type(VECTOR) :: cornerDir
 
       if (.not.source%outsideGrid) then
          if (pointSource) then
@@ -258,12 +260,43 @@ module source_mod
             ! for general case here.....
             direction = fromPhotoSphereVector(rHat)
          endif
-         !Thaw - modded v. of Daves code. Currently very limited special case
-         if (source%onEdge .and. grid%geometry == "hii_test") then
-            print *, "FORCED PHOTON"
-            direction%z = abs(direction%z)
-            direction%y = abs(direction%y)
-            direction%x = abs(direction%x)
+         !Thaw- if source is on a corner, direct all photons into computational domain
+         !These are re-weighted to account for bias in photoionAMR_mod
+         if (source%onCorner) then
+            cornerDir = source%position - grid%octreeRoot%centre
+            !print *, "cornerDir = ", cornerDir
+            !print *, "source%position = ", source%position
+            !print *, "grid%octreeRoot%centre", grid%octreeRoot%centre
+            !print *, "preDirection = ", direction
+            if (cornerDir%x > 0 .and. direction%x > 0) then
+               direction%x = -direction%x 
+              ! print *, "called A"
+            else if (cornerDir%x < 0 .and. direction%x < 0) then
+               direction%x = -direction%x
+              ! print *, "called B"
+            end if
+            if (cornerDir%z > 0 .and. direction%z > 0) then
+               direction%z = -direction%z
+               !print *, "called C"
+            else if (cornerDir%z < 0 .and. direction%z < 0) then
+               direction%z = -direction%z
+             !  print *, "called D"
+            end if
+            if (cornerDir%y > 0 .and. direction%y > 0) then
+               direction%y = -direction%y
+              ! print *, "called E"
+            else if (cornerDir%y < 0 .and. direction%y < 0) then
+               direction%y = -direction%y
+              !! print *, "called F"
+            end if
+         !Currently dont handle edges
+            
+           ! print *, "postDirection : ", direction
+
+           ! stop
+            !direction%z = abs(direction%z)
+            !direction%y = abs(direction%y)
+            !direction%x = abs(direction%x)
          end if
       else
          position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
@@ -278,9 +311,6 @@ module source_mod
 
       !Thaw - photons from corner sources should be directed into the grid
     end subroutine getPhotonPositionDirection
-
-
-
 
   function distanceToSphere(rVec, uHat, centre, radius) result (distance)
     real(double) :: distance, radius

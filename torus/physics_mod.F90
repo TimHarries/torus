@@ -67,7 +67,7 @@ contains
     real(double) :: distToEdge, fac
     
     do iSource = 1, nSource
-       
+   
        source(iSource)%teff = sourceTeff(iSource)
        source(iSource)%mass = sourceMass(iSource)
        source(iSource)%radius = sourceRadius(iSource)
@@ -77,17 +77,47 @@ contains
 
        source(isource)%outsideGrid = .false.
        source(isource)%onEdge      = .false. 
-       distToEdge = source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize)
+       distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
           source(isource)%outsideGrid = .true.
           source(isource)%distance = modulus(source(isource)%position)*1.d10
           source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
                (fourPi*source(isource)%distance**2)
        else if ( distToEdge < grid%halfSmallestSubcell) then
-          source%onEdge = .true.
-	  !Thaw - not sure why this is here. Surely lost photons just will not contribute.
-          ! only half the photons will end up on the grid
-          source(isource)%luminosity = source(isource)%luminosity / 2.d0
+          source(iSource)%onEdge = .true.
+	  source(iSource)%onCorner = .false.
+	  !Thaw - accomodating corner sources
+	  if(grid%octreeRoot%twoD) then
+	     distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+	     if ( distToEdge < grid%halfSmallestSubcell) then
+	        source(iSource)%onCorner = .true.
+	     end if
+	  else if(grid%octreeRoot%threeD) then
+	     distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+	     if ( distToEdge < grid%halfSmallestSubcell) then
+	        distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
+	        if ( distToEdge < grid%halfSmallestSubcell) then
+		   source(iSource)%onCorner = .true.
+		end if
+             else
+		source(iSource)%onCorner = .false.
+	     end if
+	  end if
+          
+	  !Adjust the source luminosity if it is on an edge or corner
+	  if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
+	     source(isource)%luminosity = source(isource)%luminosity / 2.d0
+	  else if(source(iSource)%onCorner) then
+	     if(grid%octreeRoot%twoD) then
+	        source(isource)%luminosity = source(isource)%luminosity / 4.d0
+             else if(grid%octreeRoot%threeD) then
+		source(isource)%luminosity = source(isource)%luminosity / 8.d0
+             end if
+	  end if
+
+	  !if(source(iSource)%onCorner) then
+	  !   write(*,*) "SOURCE ON CORNER!"
+	  !end if
        endif
 
        select case(inputContFluxFile(isource))

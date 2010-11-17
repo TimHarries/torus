@@ -3351,10 +3351,7 @@ contains
                 thisOctal%tempStorage = 0.d0
              endif
 
-	     !Thaw - DEBUG force boundaries
-	     !thisoctal%boundaryCondition(subcell) = 2
-
-
+	    
              select case(thisOctal%boundaryCondition(subcell))
                 case(1) ! reflecting
                    locator = thisOctal%boundaryPartner(subcell)
@@ -3363,7 +3360,10 @@ contains
 
                    dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
                    call normalize(dir)
-                   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+		   
+		   
+		   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+		   
                    thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
 
                    thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
@@ -3450,8 +3450,8 @@ contains
 ! NB confusion regarding 2d being x,z rather than x,y
 
                    if (thisOctal%twod.or.thisOctal%oneD) then
-                      if (dir%x > 0.9d0) then !THAW
-                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))
+                      if (dir%x > 0.9d0) then 
+                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))		      
                          thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
                       endif
