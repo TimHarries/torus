@@ -1133,6 +1133,7 @@ CONTAINS
 
   END SUBROUTINE getOctalArray
 
+
   RECURSIVE SUBROUTINE getOctalArrayLevel(thisOctal,array,counter,ndepth,maxOctals) 
     ! returns an array of pointers to all of the subcells in the grid.
     ! NB because fortran cannot create arrays of pointers, the output
@@ -4563,21 +4564,17 @@ CONTAINS
 
 !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
-      if (r < 10.*grid%rinner) then
-         if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac/2.)) split = .true.
-      else
-         if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
-      endif
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
       if (.not.smoothInnerEdge) then
          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-!      else
-!         fac = grid%rinner * 1.01d0
-!         if (((r-cellsize/2.d0) < fac).and. ((r+cellsize/2.d0) > fac) .and. &
-!              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      else
+         fac = grid%rinner * 1.01d0
+         if (((r-cellsize/2.d0) < fac).and. ((r+cellsize/2.d0) > fac) .and. &
+              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
       endif
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.

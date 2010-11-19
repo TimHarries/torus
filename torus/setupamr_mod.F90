@@ -219,6 +219,7 @@ contains
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          if (doSmoothGrid) then
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
           do
              gridConverged = .true.
@@ -227,6 +228,7 @@ contains
              if (gridConverged) exit
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
+          endif
           
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)

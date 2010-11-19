@@ -194,6 +194,8 @@ contains
        call writeFatal("Can only perform a photoionization calculation using photoionization physics")
     endif
 
+    call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
+         "Smooth AMR grid: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
          "Maximum memory available (Mb): ","(a,i12,a)", 1500, ok, .false.)

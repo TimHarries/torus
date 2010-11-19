@@ -2707,7 +2707,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      end do outerPhotonLoop ! outer photon loop
 
-#ifdef OPENMP
+#ifdef _OPENMP
 
 #else
    deallocate(lambda)

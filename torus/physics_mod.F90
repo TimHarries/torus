@@ -73,46 +73,46 @@ contains
        source(iSource)%radius = sourceRadius(iSource)
        source(iSource)%position = sourcePos(iSource)
        source(isource)%luminosity = fourPi * stefanBoltz * &
-            (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+	    (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
 
        source(isource)%outsideGrid = .false.
-       source(isource)%onEdge      = .false. 
+       source(isource)%onEdge	   = .false. 
        distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
-          source(isource)%outsideGrid = .true.
-          source(isource)%distance = modulus(source(isource)%position)*1.d10
-          source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-               (fourPi*source(isource)%distance**2)
+	  source(isource)%outsideGrid = .true.
+	  source(isource)%distance = modulus(source(isource)%position)*1.d10
+	  source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+	       (fourPi*source(isource)%distance**2)
        else if ( distToEdge < grid%halfSmallestSubcell) then
-          source(iSource)%onEdge = .true.
+	  source(iSource)%onEdge = .true.
 	  source(iSource)%onCorner = .false.
 	  !Thaw - accomodating corner sources
 	  if(grid%octreeRoot%twoD) then
 	     distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
 	     if ( distToEdge < grid%halfSmallestSubcell) then
-	        source(iSource)%onCorner = .true.
+		source(iSource)%onCorner = .true.
 	     end if
 	  else if(grid%octreeRoot%threeD) then
 	     distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
 	     if ( distToEdge < grid%halfSmallestSubcell) then
-	        distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
-	        if ( distToEdge < grid%halfSmallestSubcell) then
+		distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
+		if ( distToEdge < grid%halfSmallestSubcell) then
 		   source(iSource)%onCorner = .true.
 		end if
-             else
+	     else
 		source(iSource)%onCorner = .false.
 	     end if
 	  end if
-          
+	  
 	  !Adjust the source luminosity if it is on an edge or corner
 	  if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
 	     source(isource)%luminosity = source(isource)%luminosity / 2.d0
 	  else if(source(iSource)%onCorner) then
 	     if(grid%octreeRoot%twoD) then
-	        source(isource)%luminosity = source(isource)%luminosity / 4.d0
-             else if(grid%octreeRoot%threeD) then
+		source(isource)%luminosity = source(isource)%luminosity / 4.d0
+	     else if(grid%octreeRoot%threeD) then
 		source(isource)%luminosity = source(isource)%luminosity / 8.d0
-             end if
+	     end if
 	  end if
 
 	  !if(source(iSource)%onCorner) then
@@ -121,23 +121,36 @@ contains
        endif
 
        select case(inputContFluxFile(isource))
-          case("blackbody")
-             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
-          case("kurucz")
-             call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
-                  source(isource)%radius*1.d10)
-          case DEFAULT
-             call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
+	  case("blackbody")
+	     call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
+	  case("kurucz")
+	     call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
+		  source(isource)%radius*1.d10)
+	  case DEFAULT
+	     call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
        end select
 
        call normalizedSpectrum(source(isource)%spectrum)
-!       lamStart = 10.d0
-!       lamEnd = 1000.d4
-!       nlambda = 1000
+!	lamStart = 10.d0
+!	lamEnd = 1000.d4
+!	nlambda = 1000
        call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-            source(isource)%surface, 100, source(isource)%teff, &
-            source(isource)%spectrum)
+	    source(isource)%surface, 400, source(isource)%teff, &
+	    source(isource)%spectrum)
        call sumSurface(source(isource)%surface, source(isource)%luminosity)
+       fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
+!	if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
+!	   if (myrankGlobal==0) then
+!	      write(*,*) "WARNING: luminosity from effective temperature and that from the SED differ by >1%"
+!	      write(*,*) "Lum from Teff (lSol): ",fac/lSol
+!	      write(*,*) "Lum from SED	(lSol): ",source(1)%luminosity/lSol
+!	      write(*,*) "Implied source of accretion luminosity of: ",(source(1)%luminosity-fac)/lSol
+!	      tmp = 1.d0/(1.d0/(source(1)%radius * 1.e10) - 1.d0/(rInner*1.d10)) ! [cm]
+!	      fac = (source(1)%luminosity-fac) * tmp / (bigG * mCore)
+!	      write(*,*) "Mass accretion rate could be ",fac/mSol/ secstoYears, " solar masses/year"
+!	   endif
+!	endif
+
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
       if (myrankGlobal==0)  write(*,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
 
@@ -151,7 +164,7 @@ contains
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics
+	 lucy_undersampled, molecularPhysics, hydrodynamics
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein
     use input_variables, only : mCore, solveVerticalHydro, sigma0
@@ -182,82 +195,82 @@ contains
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
-        call setupXarray(grid, xarray, nLambda)
-        call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-!        call fillDustUniform(grid, grid%octreeRoot)
-        if (.not.variableDustSublimation) call doSmoothOnTau(grid)
+	call setupXarray(grid, xarray, nLambda)
+	call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+!	 call fillDustUniform(grid, grid%octreeRoot)
+	if (.not.variableDustSublimation) call doSmoothOnTau(grid)
 
-        if (solveVerticalHydro) then
+	if (solveVerticalHydro) then
 
-           call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                globalsourcearray, globalnSource, nLucy, massEnvelope)
-        else
-           call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
-        endif
+	   call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
+		globalsourcearray, globalnSource, nLucy, massEnvelope)
+	else
+	   call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
+		globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
+	endif
      endif
 
      if (molecularPhysics.and.statisticalEquilibrium) then
 #ifdef MPI
-        if (grid%splitOverMPI.and.hydrovelocityconv) then
-           call setallUnchanged(grid%octreeRoot)
-           call hydroVelocityConvert(grid%octreeRoot)
-!           if (myrankGlobal /= 0) then
-!              call fillVelocityCornersFromHydro(grid)
-!           endif
-        endif
+	if (grid%splitOverMPI.and.hydrovelocityconv) then
+	   call setallUnchanged(grid%octreeRoot)
+	   call hydroVelocityConvert(grid%octreeRoot)
+!	    if (myrankGlobal /= 0) then
+!	       call fillVelocityCornersFromHydro(grid)
+!	    endif
+	endif
 #endif
-        if (dustPhysics) then
-           call setupXarray(grid, xarray, nLambda)
-           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-           usedust = .true.
-           realdust = .true.
-        endif
-        lowMemory = .false.
-        call molecularLoop(grid, globalMolecule)
+	if (dustPhysics) then
+	   call setupXarray(grid, xarray, nLambda)
+	   call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+	   usedust = .true.
+	   realdust = .true.
+	endif
+	lowMemory = .false.
+	call molecularLoop(grid, globalMolecule)
      endif
      
      if (atomicPhysics.and.statisticalEquilibrium) then
-        call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
+	call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
 
      if (photoionPhysics.and.photoionEquilibrium) then 
 
-        call setupXarray(grid, xArray, nLambda)
-        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+	call setupXarray(grid, xArray, nLambda)
+	if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
-        if (.not.grid%splitOverMPI) then
-           call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray, readlucy, writelucy, &
-             lucyfileNameout, lucyfileNamein)
-        else
+	if (.not.grid%splitOverMPI) then
+	   call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray, readlucy, writelucy, &
+	     lucyfileNameout, lucyfileNamein)
+	else
 #ifdef MPI
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, sublimate=.false.)
+	   call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, sublimate=.false.)
 #else
-           call writeFatal("Domain decomposed grid requires MPI")
+	   call writeFatal("Domain decomposed grid requires MPI")
 #endif
-        endif
+	endif
 
      end if
 
      if (hydrodynamics) then
-        if (.not.photoionPhysics) then
+	if (.not.photoionPhysics) then
 #ifdef MPI 
-        call dohydrodynamics(grid)
+	call dohydrodynamics(grid)
 #else
-        call writeFatal("hydrodynamics not available in single processor version")
-        stop
+	call writeFatal("hydrodynamics not available in single processor version")
+	stop
 #endif
      else 
-        call setupXarray(grid, xArray, nLambda)
-        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+	call setupXarray(grid, xArray, nLambda)
+	if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
 #ifdef MPI 
-        call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray)
+	call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray)
 #else
-        call writeFatal("hydrodynamics not available in single processor version")
-        stop
+	call writeFatal("hydrodynamics not available in single processor version")
+	stop
 #endif
-        call torus_mpi_barrier
+	call torus_mpi_barrier
      endif
   endif
    end subroutine doPhysics
@@ -278,151 +291,151 @@ contains
      if (associated(xarray)) deallocate(xarray)
 
      if (molecularPhysics) then
-        nLambda = 100
-        allocate(xarray(1:nLambda))
-        lamStart = 1200.d0
-        lamEnd = 1.d7
-        logLamStart = log10(lamStart)
-        logLamEnd = log10(lamEnd)
-        do i = 1, nlambda
-           fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           xArray(i) = fac
-        enddo
+	nLambda = 100
+	allocate(xarray(1:nLambda))
+	lamStart = 1200.d0
+	lamEnd = 1.d7
+	logLamStart = log10(lamStart)
+	logLamEnd = log10(lamEnd)
+	do i = 1, nlambda
+	   fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+	   fac = 10.**fac
+	   xArray(i) = fac
+	enddo
      endif
 
      if (dustPhysics) then
 
-        if ( present(numLam) ) then 
-           nLambda = numLam
-        else
-           nLambda = 1000
-        end if
-        allocate(xarray(1:nLambda))
+	if ( present(numLam) ) then 
+	   nLambda = numLam
+	else
+	   nLambda = 1000
+	end if
+	allocate(xarray(1:nLambda))
 
-        if ( present(lamMin) ) then 
-           lamStart = lamMin
-        else
-           lamStart = 10.d0
-        end if
-        if ( present(lamMax) ) then 
-           lamEnd = lamMax
-        else
-           lamEnd = 1.d7
-        end if
+	if ( present(lamMin) ) then 
+	   lamStart = lamMin
+	else
+	   lamStart = 10.d0
+	end if
+	if ( present(lamMax) ) then 
+	   lamEnd = lamMax
+	else
+	   lamEnd = 1.d7
+	end if
 
-        if ( present(wavLin) ) then 
-           if (wavLin) then 
-              call setupLinSpacing
-           else
-              call setupLogSpacing
-           endif
-        else
-           call setupLogSpacing
-        end if
+	if ( present(wavLin) ) then 
+	   if (wavLin) then 
+	      call setupLinSpacing
+	   else
+	      call setupLogSpacing
+	   endif
+	else
+	   call setupLogSpacing
+	end if
 
-        if (lamFile) then
-           call setupLamFile
-        endif
+	if (lamFile) then
+	   call setupLamFile
+	endif
 
      endif
 
      if (atomicPhysics) then
-        nLambda = nv
+	nLambda = nv
        allocate(xArray(1:nLambda))
        lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
-       lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
+       lamend =	 lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
        do i = 1, nLambda
-          xArray(i) = lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1)
+	  xArray(i) = lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1)
        enddo
     endif
 
      if (photoionPhysics) then
-        nLambda = 1000
-        allocate(xarray(1:nLambda))
-        lamStart = 10.d0
-        lamEnd = 1.d7
-        logLamStart = log10(lamStart)
-        logLamEnd = log10(lamEnd)
-        xArray(1) = lamStart
-        xArray(2) = lamEnd
-        nCurrent = 2
-        call refineLambdaArray(xArray, nCurrent, grid)
-        nt = nLambda - nCurrent
-        do i = 1, nt
-           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           nCurrent=nCurrent + 1
-           xArray(nCurrent) = fac
-           call sort(nCurrent, xArray)
-        enddo
+	nLambda = 1000
+	allocate(xarray(1:nLambda))
+	lamStart = 10.d0
+	lamEnd = 1.d7
+	logLamStart = log10(lamStart)
+	logLamEnd = log10(lamEnd)
+	xArray(1) = lamStart
+	xArray(2) = lamEnd
+	nCurrent = 2
+	call refineLambdaArray(xArray, nCurrent, grid)
+	nt = nLambda - nCurrent
+	do i = 1, nt
+	   fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+	   fac = 10.**fac
+	   nCurrent=nCurrent + 1
+	   xArray(nCurrent) = fac
+	   call sort(nCurrent, xArray)
+	enddo
      endif
 
 
 
 
      if (dustPhysics.or.photoIonPhysics.or.atomicPhysics.or.molecularPhysics) then
-        grid%nLambda = nLambda
-        if (associated(grid%lamArray)) deallocate(grid%lamArray)
-        allocate(grid%lamArray(1:nLambda))
-        grid%lamArray = xarray
+	grid%nLambda = nLambda
+	if (associated(grid%lamArray)) deallocate(grid%lamArray)
+	allocate(grid%lamArray(1:nLambda))
+	grid%lamArray = xarray
      endif
 
      contains
 
        subroutine setupLogSpacing
 
-         logLamStart = log10(lamStart)
-         logLamEnd = log10(lamEnd)
-         do i = 1, nlambda
-            fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-            fac = 10.**fac
-            xArray(i) = fac
-        enddo
-        
+	 logLamStart = log10(lamStart)
+	 logLamEnd = log10(lamEnd)
+	 do i = 1, nlambda
+	    fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+	    fac = 10.**fac
+	    xArray(i) = fac
+	enddo
+	
        end subroutine setupLogSpacing
 
        subroutine setupLamfile
 
-         if (associated(xArray)) then
-            deallocate(xArray)
-         endif
+	 if (associated(xArray)) then
+	    deallocate(xArray)
+	 endif
 
 
-         call writeInfo("Reading wavelength points from file.", TRIVIAL)
-         open(77, file=lamfilename, status="old", form="formatted")
-         nLambda = 1
-         ! Count the number of entries
-333      continue
-         read(77,*,end=334) junk
-         nLambda = nLambda + 1
-         goto 333
-334      continue
-         nlambda = nlambda - 1
-         allocate(xArray(nlambda))
-         ! Rewind the file and read them in
-         rewind(77)
-         do i = 1, nLambda
-            read(77,*) xArray(i)
-         enddo
-         close(77)
+	 call writeInfo("Reading wavelength points from file.", TRIVIAL)
+	 open(77, file=lamfilename, status="old", form="formatted")
+	 nLambda = 1
+	 ! Count the number of entries
+333	 continue
+	 read(77,*,end=334) junk
+	 nLambda = nLambda + 1
+	 goto 333
+334	 continue
+	 nlambda = nlambda - 1
+	 allocate(xArray(nlambda))
+	 ! Rewind the file and read them in
+	 rewind(77)
+	 do i = 1, nLambda
+	    read(77,*) xArray(i)
+	 enddo
+	 close(77)
 
        end subroutine setupLamfile
 
        subroutine setupLinSpacing
 
-         if (nLambda > 1) then
-            do i = 1, nlambda
-               xArray(i) = LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart)
-            enddo
-         else 
-            xArray(1) = lamStart
-         endif
+	 if (nLambda > 1) then
+	    do i = 1, nlambda
+	       xArray(i) = LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart)
+	    enddo
+	 else 
+	    xArray(1) = lamStart
+	 endif
        end subroutine setupLinSpacing
 
    end subroutine setupXarray
 
-   subroutine setupGlobalSources(grid)     
+   subroutine setupGlobalSources(grid)	   
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
@@ -433,33 +446,33 @@ contains
 
 
      if (associated(globalsourceArray)) then
-        deallocate(globalSourceArray)
+	deallocate(globalSourceArray)
      endif
 
      if (inputNsource > 0 ) call writeBanner("Source setup","-",TRIVIAL)
      if (inputNsource > 0) then
-        globalnSource = inputNSource
-        allocate(globalsourceArray(1:globalnSource))
-        call setupSources(globalnSource, globalsourceArray, grid)
+	globalnSource = inputNSource
+	allocate(globalsourceArray(1:globalnSource))
+	call setupSources(globalnSource, globalsourceArray, grid)
      endif
 
      if (grid%geometry == "starburst") then
 #ifdef MPI
-        call randomNumberGenerator(syncIseed=.true.)
+	call randomNumberGenerator(syncIseed=.true.)
 #endif
-        allocate(globalsourcearray(1:10000))
-        globalsourceArray(:)%outsideGrid = .false.
-        globalnSource = 0
-        call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d3, 1.d0)
-        call randomNumberGenerator(randomSeed = .true.)
+	allocate(globalsourcearray(1:10000))
+	globalsourceArray(:)%outsideGrid = .false.
+	globalnSource = 0
+	call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d3, 1.d0)
+	call randomNumberGenerator(randomSeed = .true.)
     endif
     
 
     if (grid%geometry(1:6) == "ttauri") then
        coreContinuumFlux = 0.d0
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
-            globalsourcearray(1)%surface, 1000, &
-            globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
+	    globalsourcearray(1)%surface, 1000, &
+	    globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
        call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
        globalNSource = 1
@@ -489,7 +502,7 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
   allocate(grid%tempRossArray(1:grid%nTempRossArray))
 
 
-  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+  call	createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
   call allocateMemoryForDust(grid%octreeRoot)
 end subroutine setupDust
 

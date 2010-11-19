@@ -484,7 +484,7 @@ contains
           call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
           
           call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-          do j = iSmoothLam, nLambda, 20
+          do j = iSmoothLam, nLambda, 2
              write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
              call writeInfo(message, TRIVIAL)
              do

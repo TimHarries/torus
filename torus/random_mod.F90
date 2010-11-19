@@ -8,7 +8,7 @@ implicit none
 public 
 contains
 
-  subroutine randomNumberGenerator(reset, putIseed, getIseed, syncIseed, randomSeed, getReal, getDouble, &
+  subroutine randomNumberGenerator(reset, putIseed, getIseed,  syncIseed, randomSeed, getReal, getDouble, &
        getRealArray,getDoubleArray, getRealArray2d,getDoubleArray2d)
     integer(bigInt),intent(in), optional :: putIseed
     integer(bigInt),intent(out), optional :: getIseed
@@ -46,23 +46,24 @@ contains
     endif
 
     if (PRESENT(syncIseed)) then
-       if (syncISeed) then
+       if (syncIseed) then
 #ifdef MPI
-          call sync_random_seed(iSeed)
+       !$OMP MASTER
+       call sync_random_seed(iSeed)
+       !$OMP END MASTER
 #endif
-          !$OMP PARALLEL DEFAULT (NONE) &
-          !$OMP PRIVATE (r) &
-          !$OMP SHARED (iseed_master)
-          !$OMP MASTER
-          iseed_master = iseed
-          !$OMP END MASTER
-          !$OMP BARRIER
-          iseed = iseed_master
-          r = ran3_double(iseed, reset=.true.)
-          !$OMP END PARALLEL
-
-       endif
+       !$OMP PARALLEL DEFAULT (NONE) &
+       !$OMP PRIVATE (r) &
+       !$OMP SHARED (iseed_master)
+       !$OMP MASTER
+       iseed_master = iseed
+       !$OMP END MASTER
+       !$OMP BARRIER
+       iseed = iseed_master
+       r = ran3_double(iseed, reset=.true.)
+       !$OMP END PARALLEL
     endif
+ endif
 
     if (PRESENT(getReal)) then
        getReal = real(ran3_double(iseed))
@@ -193,16 +194,97 @@ contains
     do i = 1, size(itest)-1
        if (itest(i) == itest(i+1)) different=.false.
     enddo
-       write(*,*) "itest ",itest
        if (.not.different) then
-          call writeWarning("Threads do not have independent random sequences")
+          write(*,*), "! Threads do not have independent random sequences"
        endif
+          write(*,*), "Random sequence test:  Success - threads have independent random sequences"
     endif
 #ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 #endif
     deallocate(itest)
   end subroutine test_random_hybrid
+    
+
+  subroutine test_same_hybrid()
+    use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
+    integer :: nOmpThreads, iOmpThread, nTot
+    integer, allocatable :: itest(:)
+    logical :: different
+    integer :: iThread, i
+    real(double) :: r
+#ifdef _OPENMP
+    integer :: omp_get_num_threads, omp_get_thread_num
+#endif
+#ifdef MPI
+    integer :: ierr
+    integer, allocatable :: itemp(:)
+#endif
+#ifdef MPI
+    include 'mpif.h'
+#endif
+
+
+    nOmpThreads = 1
+    iOmpThread = 1
+
+#ifdef _OPENMP
+    !$OMP PARALLEL DEFAULT (NONE) &
+    !$OMP SHARED (nOmpThreads)
+    !$OMP MASTER
+    nOmpThreads = omp_get_num_threads()
+    !$OMP END MASTER
+    !$OMP END PARALLEL
+#endif
+
+   nTot = nThreadsGlobal * nOmpThreads
+    allocate(itest(1:nTot))
+    itest = 0
+
+    !$OMP PARALLEL DEFAULT (NONE) &
+    !$OMP PRIVATE(iOmpThread, ntot, ithread, r) &
+    !$OMP SHARED(nOmpThreads, itest, nThreadsGlobal, myrankGlobal)
+
+
+#ifdef _OPENMP
+    iOmpThread = omp_get_thread_num() + 1
+#endif
+    
+ 
+
+    iThread = myRankGlobal*nOmpThreads + iOmpThread
+    call randomNumberGenerator(getDouble=r)
+    itest(iThread) = nint(r * 100000000.d0)
+    !$OMP END PARALLEL
+
+
+#ifdef MPI
+    allocate(itemp(SIZE(itest)))
+    itemp = 0
+    call MPI_REDUCE(itest,itemp,SIZE(itest),MPI_INTEGER,&
+         MPI_SUM,0,MPI_COMM_WORLD,ierr)
+    itest = itemp
+    deallocate(itemp)
+#endif
+    
+    if (myrankGlobal == 0) then
+    different = .true.
+    call localsort(size(itest),itest)
+    different = .true.
+    do i = 1, size(itest)-1
+       if (itest(i) == itest(i+1)) different=.false.
+    enddo
+       if (different) then
+          write(*,*) "! Threads do not have same random sequences"
+       else
+          write(*,*) "Synced seed test: Success - threads have same random number sequences"
+       endif
+    endif
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif
+    deallocate(itest)
+  end subroutine test_same_hybrid
     
 
 ! Test whether all threads are producing independent random numbers

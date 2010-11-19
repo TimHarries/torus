@@ -1107,7 +1107,7 @@ contains
     character(len=80) :: message, ifilename
     real :: r
     logical :: ionized
-    integer :: iLev, nIter, iLab, idump
+    integer :: iLev, nIter, iLab, idump, nt
     real(double) :: lev1, lev2
 
 #ifdef MPI
@@ -1118,6 +1118,10 @@ contains
     integer       ::   ierr           ! error flag
     integer       ::   nVoxels
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
+#endif
+
+#ifdef _OPENMP
+    integer :: omp_get_thread_num
 #endif
 
 
@@ -1337,15 +1341,21 @@ contains
             end if
             
 #endif
+            if (fixedRays) then
+               call randomNumberGenerator(synciSeed = .true.)
+            else
+               call randomNumberGenerator(randomSeed=.true.)
+            endif
+
 
             !$OMP PARALLEL DEFAULT (NONE) &
-            !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction) &
+            !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction, nt) &
 	    !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
 	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
 	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
 	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans)&
             !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
-	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom)
+	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom, myrankGlobal)
 
 
             allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
@@ -1372,16 +1382,20 @@ contains
 
             if (fixedRays) then
                call randomNumberGenerator(putIseed = iseed)
-               call randomNumberGenerator(syncIseed = .true.)
+               call randomNumberGenerator(reset = .true.)
+               call test_same_hybrid()
             else
                call randomNumberGenerator(randomSeed=.true.)
             endif
             call randomNumberGenerator(getReal=r)
-            write(*,*) r
 
             !$OMP DO SCHEDULE(STATIC,1)
           do iOctal = ioctal_beg, ioctal_end
-             write(*,*) "Doing octal ",iOctal, " of ",ioctal_end
+             nt = 0
+#ifdef _OPENMP
+             nt = omp_get_thread_num()
+#endif
+             write(*,*) myrankGlobal, nt, " doing octal ",iOctal, " of ",ioctal_end
 
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
@@ -1661,6 +1675,7 @@ contains
 
 #ifdef MPI
 
+     write(*,*) myrankGlobal, " now waiting at barrier"
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
        if(my_rank == 0) write(*,*) "Updating MPI grids"
 
