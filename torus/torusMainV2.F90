@@ -89,13 +89,14 @@ program torus
 
   ! set up a random seed
   
+#ifdef _OPENMP
   call randomNumberGenerator(randomSeed=.true.)
   call test_random_hybrid()
   call randomNumberGenerator(synciseed=.true.)
   call test_same_hybrid()
   call randomNumberGenerator(reset=.true.)
   call test_same_hybrid()
-
+#endif
 
 !  call testSuiteRandom()  
   call inputs()

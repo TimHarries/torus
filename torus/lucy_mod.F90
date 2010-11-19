@@ -3686,7 +3686,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine integrateUpwards
 
   recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
-    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner, smoothinneredge, maxMemoryAvailable
+    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner, maxMemoryAvailable
     use memory_mod, only : globalMemoryFootprint
     logical :: gridConverged
     type(gridtype) :: grid

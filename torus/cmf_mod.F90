@@ -1383,7 +1383,9 @@ contains
             if (fixedRays) then
                call randomNumberGenerator(putIseed = iseed)
                call randomNumberGenerator(reset = .true.)
+#ifdef _OPENMP
                call test_same_hybrid()
+#endif
             else
                call randomNumberGenerator(randomSeed=.true.)
             endif

@@ -445,13 +445,13 @@ contains
 
     !  Read keywords from the header.
     call FTGKYJ(unit,"LABEL", junk,comment,status)
-    thisCube%label = comment
+    thisCube%label = comment(1:10)
     call FTGKYJ(unit,"VUNIT", junk,comment,status)
-    thisCube%vUnit = comment
+    thisCube%vUnit = comment(1:10)
     call FTGKYJ(unit,"XUNIT", junk,comment,status)
-     thisCube%xUnit = comment
+     thisCube%xUnit = comment(1:10)
     call FTGKYJ(unit,"IUNIT", junk,comment,status)
-    thisCube%IntensityUnit = comment
+    thisCube%IntensityUnit = comment(1:10)
     call FTGKYD(unit,"DISTANCE", thisCube%obsdistance,comment,status)
 
     ! 2nd HDU : converged
