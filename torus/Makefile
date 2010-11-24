@@ -567,9 +567,8 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ)
 F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG) $(XMLINCLUDE)
 
 #
-# Special targets
-#   - New .f90.raw files need to be added to both preprocess *and* distclean.
 #
+
 all: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
@@ -600,8 +599,9 @@ preprocess:
 	@echo ""
 	@echo "====== Creating TORUS for $(SYSTEM) system ======"
 	@echo ""
-	@echo "Creating links for system dependent files..."
-	@echo "...done"
+	@echo "BUILD OPTIONS: "
+	@echo "OpenMP = $(openmp)"
+	@echo "Debug  = $(debug)"
 
 depends: preprocess
 	@echo ""
@@ -638,9 +638,6 @@ link: depends $(ALLOBJ)
 # General rules to make object files
 #
 .SUFFIXES:
-
-%.o: %.f90.raw
-	$(F90) -c $*.f90
 
 %.o: %.f90
 	$(F90) -c $<
