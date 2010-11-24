@@ -110,6 +110,8 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
+
+
     if (.not.readgrid) then
        call readGridInitParameters(cLine, fLine, nLines)
        call readGeometrySpecificParameters(cLine, fLine, nLines)
@@ -206,7 +208,7 @@ contains
     if (radiativeEquilibrium) call readRadiativeEquilibriumParameters(cLine, fLine, nLines)
     if (photoionEquilibrium) call readPhotoionEquilibriumParameters(cLine, fLine, nLines)
     if (hydrodynamics) call readHydrodynamicsParameters(cLine, fLine, nLines)
-
+   
 ! now do we dump the output grid
 
     call writeBanner("Output file details","*",TRIVIAL)
@@ -601,7 +603,6 @@ contains
     case("shakara")
 
        oneKappa = .true.
-       fastIntegrate = .true.
        call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
             "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 

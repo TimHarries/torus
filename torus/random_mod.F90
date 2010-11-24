@@ -8,7 +8,7 @@ implicit none
 public 
 contains
 
-  subroutine randomNumberGenerator(reset, putIseed, getIseed,  syncIseed, randomSeed, getReal, getDouble, &
+  subroutine randomNumberGenerator(reset, putIseed, getIseed, syncIseed, randomSeed, getReal, getDouble, &
        getRealArray,getDoubleArray, getRealArray2d,getDoubleArray2d)
     integer(bigInt),intent(in), optional :: putIseed
     integer(bigInt),intent(out), optional :: getIseed
@@ -22,7 +22,6 @@ contains
     real(double), intent(out), optional :: getDoubleArray(:)
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
     integer(bigInt), save :: iSeed = 0 
-    integer(bigInt) :: iseed_master
     real :: r
     integer :: i, j
 
@@ -48,20 +47,9 @@ contains
     if (PRESENT(syncIseed)) then
        if (syncIseed) then
 #ifdef MPI
-       !$OMP MASTER
        call sync_random_seed(iSeed)
-       !$OMP END MASTER
 #endif
-       !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (r) &
-       !$OMP SHARED (iseed_master)
-       !$OMP MASTER
-       iseed_master = iseed
-       !$OMP END MASTER
-       !$OMP BARRIER
-       iseed = iseed_master
        r = ran3_double(iseed, reset=.true.)
-       !$OMP END PARALLEL
     endif
  endif
 
@@ -150,7 +138,7 @@ contains
 
 #ifdef _OPENMP
     !$OMP PARALLEL DEFAULT (NONE) &
-    !$OMP SHARED (nOmpThreads)
+    !$OMP SHARED(nOmpThreads)
     !$OMP MASTER
     nOmpThreads = omp_get_num_threads()
     !$OMP END MASTER

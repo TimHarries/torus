@@ -101,7 +101,6 @@ program torus
 !  call testSuiteRandom()  
   call inputs()
 
-
   call setupMicrophysics(grid)
 
   call  setupamrgrid(grid)

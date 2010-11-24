@@ -30,8 +30,8 @@ contains
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
     use angularImage, only: make_angular_image, map_dI_to_particles
+    use input_variables, only : outputImageType, fastIntegrate, lamFile, lamFilename
 #ifdef MPI
-    use input_variables, only : outputImageType
     use photoionAMR_mod, only : createImageSplitGrid
 #endif
 
@@ -128,6 +128,7 @@ contains
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+          fastIntegrate=.true.
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
@@ -149,6 +150,7 @@ contains
                   wavLin=.true., numLam=1)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+             fastIntegrate=.true.
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
                   0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                   tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &

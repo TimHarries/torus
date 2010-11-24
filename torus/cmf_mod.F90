@@ -744,6 +744,19 @@ contains
              endif
 
 
+             if (tau(irbb) < 0.d0) then
+                write(*,*) "Negative tau(irbb) problem ",tau(irbb), irbb
+             endif
+             if (dtau < 0.d0) then
+                write(*,*) "negative dtau ",dtau
+             endif
+             if (i0(irbb) > 1.e20) then
+                write(*,*) "intensity bug ",i0(irbb), irbb
+             endif
+             if (snu > 1.d20) then
+                write(*,*) "snu bug ",snu, jnu, alphanu
+             endif
+
              i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
 
              tau(iRBB) = tau(iRBB) + dtau
@@ -1357,7 +1370,9 @@ contains
             !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
 	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom, myrankGlobal)
 
-
+            !$OMP MASTER
+            call randomNumberGenerator(getIseed=iseed)
+            !$OMP END MASTER
             allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
             allocate(mainoldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
             allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
@@ -1383,14 +1398,11 @@ contains
             if (fixedRays) then
                call randomNumberGenerator(putIseed = iseed)
                call randomNumberGenerator(reset = .true.)
-#ifdef _OPENMP
-               call test_same_hybrid()
-#endif
             else
                call randomNumberGenerator(randomSeed=.true.)
             endif
             call randomNumberGenerator(getReal=r)
-
+            write(*,*) myrankGlobal, r
             !$OMP DO SCHEDULE(STATIC,1)
           do iOctal = ioctal_beg, ioctal_end
              nt = 0
