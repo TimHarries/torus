@@ -270,7 +270,9 @@ contains
        call stripDustAway(grid%octreeRoot, 1.d-7, 1.d30)
     endif
 
-    call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust1","dust2"/))
+    if (nDustType > 1) then 
+       call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust1","dust2"/))
+    endif
 
     nCellsInDiffusion = 0
     call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
