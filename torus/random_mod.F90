@@ -113,6 +113,7 @@ contains
     call MPI_BCAST(iSeed, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, ierr)
 
   end subroutine sync_random_seed
+#endif
 
   subroutine test_random_hybrid()
     use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
@@ -274,7 +275,7 @@ contains
     deallocate(itest)
   end subroutine test_same_hybrid
     
-
+#ifdef MPI
 ! Test whether all threads are producing independent random numbers
   subroutine test_random_across_threads(debug)
     use mpi_global_mod, only : nThreadsGlobal, myRankGlobal

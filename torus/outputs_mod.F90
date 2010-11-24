@@ -30,7 +30,7 @@ contains
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
     use angularImage, only: make_angular_image, map_dI_to_particles
-    use input_variables, only : outputImageType, fastIntegrate, lamFile, lamFilename
+    use input_variables, only : outputImageType, fastIntegrate
 #ifdef MPI
     use photoionAMR_mod, only : createImageSplitGrid
 #endif

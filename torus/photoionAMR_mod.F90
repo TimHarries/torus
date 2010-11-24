@@ -67,7 +67,7 @@ contains
 
 
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
-    use input_variables, only : iDump, doselfgrav, hOnly
+    use input_variables, only : iDump, doselfgrav !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
