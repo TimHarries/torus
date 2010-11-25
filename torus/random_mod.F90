@@ -184,9 +184,9 @@ contains
        if (itest(i) == itest(i+1)) different=.false.
     enddo
        if (.not.different) then
-          write(*,*), "! Threads do not have independent random sequences"
+          write(*,*) "! Threads do not have independent random sequences"
        endif
-          write(*,*), "Random sequence test:  Success - threads have independent random sequences"
+          write(*,*) "Random sequence test:  Success - threads have independent random sequences"
     endif
 #ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 

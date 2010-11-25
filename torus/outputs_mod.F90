@@ -30,8 +30,9 @@ contains
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
     use angularImage, only: make_angular_image, map_dI_to_particles
-    use input_variables, only : outputImageType, fastIntegrate
+    use input_variables, only : fastIntegrate
 #ifdef MPI
+    use input_variables, only : outputImageType
     use photoionAMR_mod, only : createImageSplitGrid
 #endif
 
