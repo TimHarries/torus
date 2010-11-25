@@ -926,7 +926,7 @@ contains
 
   end subroutine writeVtkFileAMR
 
-!   subroutine writeIfritFile(grid, ifritFilename)
+!   subroutine writeIfitFile(grid, ifritFilename)
 !      use input_variables, only : minDepthAMR, maxDepthAMR
 !      type(GRIDTYPE) :: grid
 !      character(len=*) :: ifritFilename

@@ -1548,6 +1548,29 @@ contains
     enddo
   end subroutine copyrhotoq
 
+  recursive subroutine copyIonfractoq(thisoctal, iion)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iion
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyIonFractoq(child, iion)
+                exit
+             end if
+          end do
+       else
+  
+          thisoctal%q_i(subcell) = thisoctal%ionFrac(subcell, iion)
+        
+       endif
+    enddo
+  end subroutine copyIonfractoq
+
   recursive subroutine copyrhoetoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -1740,6 +1763,31 @@ contains
     enddo
   end subroutine copyqtorho
 
+  recursive subroutine copyqtoIonfrac(thisoctal, direction, iion)
+    type(vector) :: direction
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iion
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyqtoIonfrac(child, direction, iion)
+                exit
+             end if
+          end do
+       else
+  
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
+          thisoctal%ionFrac(subcell,iion) = thisoctal%q_i(subcell)
+       endif
+    enddo
+  end subroutine copyqtoIonfrac
+
   recursive subroutine copyqtorhoe(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -1805,6 +1853,23 @@ contains
     call copyqtorho(grid%octreeroot, direction)
 
   end subroutine advectrho
+
+  subroutine advectIonFrac(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+    integer :: i
+
+    do i = 1, grid%nion
+       call copyIonfractoq(grid%octreeroot, i)
+       call advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       call copyqtoIonfrac(grid%octreeroot, direction, i)
+    enddo
+
+  end subroutine advectIonFrac
 
   subroutine advectrhoe(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
@@ -2010,6 +2075,9 @@ contains
     call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    if(photoionPhysics .and. hydrodynamics) then
+       call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
     !call imposeboundary(grid%octreeroot)
@@ -2050,6 +2118,9 @@ contains
     call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
+    if(photoionPhysics .and. hydrodynamics) then
+       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
+    end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
 
     !call imposeboundary(grid%octreeroot)
@@ -2091,6 +2162,9 @@ contains
     call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+    if(photoionPhysics .and. hydrodynamics) then
+       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+    end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
     !call imposeboundary(grid%octreeroot)
@@ -2133,6 +2207,9 @@ contains
     call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    if(photoionPhysics .and. hydrodynamics) then
+       call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
     !call imposeboundary(grid%octreeroot)

@@ -109,7 +109,7 @@ contains
     nextDumpTime = 0.d0
     tDump = 0.005d0
     deltaTforDump = 2.d10
-    if (grid%geometry == "hii_test") deltaTforDump = 3.d0/secstoyears
+    if (grid%geometry == "hii_test") deltaTforDump = 1.d7/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -122,7 +122,8 @@ contains
     endif
 
     timeofNextDump = 0.d0
-
+    !timeofNextDump = deltaTforDump
+    
 
     if (myRank == 1) write(*,*) "CFL set to ", cfl
 
@@ -178,23 +179,19 @@ contains
     call ionizeGrid(grid%octreeRoot)
     !end if
 
-!    call writeVtkFile(grid, "start.vtk", &
-!         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
-
-    loopLimitTime = 3.d0/secstoyears
-    !if (startFromNeutral) loopLimitTime = grid%currentTime
-    !loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed
+    looplimitTime = deltaTforDump
+    if (myrank == 1) write(*,*) "loopLimitTime: ", loopLimitTime
     do irefine = 1, 1
        
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 7, loopLimitTime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 7, loopLimitTime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
           call writeInfo("Done",TRIVIAL)
        endif
 
@@ -263,6 +260,8 @@ contains
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
 
+       !grid%currentTime = grid%currentTime + dt       
+
        if (myrank == 1) then
           write(*,*) tc(1:9)
           write(*,*) "courantTime", dt
@@ -277,6 +276,7 @@ contains
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
        if (myrank == 1) write(*,*) "Time step", dt
+              
 
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
@@ -302,30 +302,19 @@ contains
        endif
 
 
-
-
        call writeInfo("Calling photoionization loop",TRIVIAL)
        !       call ionizeGrid(grid%octreeRoot)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
 
-       !loopLimitTime = 1.e30
-       !loopLimitTime = (grid%halfSmallestSubcell*1.d10)/cSpeed       
-!       loopLimitTime = grid%currentTime
-!       loopLimitTime = max(loopLimitTime,(grid%halfSmallestSubcell*1.d10)/cSpeed)
-	!looplimitTime = max(dt, loopLimitTime)
-	loopLimitTime = 3.d0/secstoyears
-
+       loopLimitTime = grid%currentTime + dt
        call setupNeighbourPointers(grid, grid%octreeRoot)
-       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 7, loopLimitTime)
+       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
        call writeInfo("Done",TRIVIAL)
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot, mu)
           call calculateRhoE(grid%octreeRoot, direction)
        endif
-       !
-
-
 
 
        if (myRank /= 0) then
@@ -343,7 +332,10 @@ contains
 !       call writeVtkFile(grid, "current.vtk", &
 !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
+       !Not happy with this here, Moved by Thaw above
        grid%currentTime = grid%currentTime + dt
+
+
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
 
        if (dumpThisTime) then
@@ -359,8 +351,8 @@ contains
 
 	  
 	  write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
-	  call dumpValuesAlongLine(grid, datFileName, VECTOR(-11.d8,  -11.d8,11.d8), &
-	        VECTOR(1.d8, -11.d8, 11.d8), 1000)
+	  call dumpValuesAlongLine(grid, datFileName, VECTOR(-23.d11,  -23.d11,23.d11), &
+	        VECTOR(23.d11, 23.d11, 23.d11), 1000)
 
 	  
 	  !write(mpiFilename,'(a, i4.4, a)') "ifrit_", grid%iDump,".txt"
@@ -420,7 +412,7 @@ contains
 
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
-    integer, parameter :: nTemp = 7
+    integer, parameter :: nTemp = 9
     real(double) :: tempstorage(nTemp)
     real(double) :: v, dustHeating
     real :: kappaP
@@ -510,7 +502,7 @@ contains
           if(grid%octreeRoot%twoD) then
              nMonte = 10000.d0 * (2.d0**(maxDepthAMR))
           else if(grid%octreeRoot%threeD) then
-	     nMonte = 1000.d0 * (3.d0**(maxDepthAMR)) !Changed for testing purposes from 10**5 to 10**3
+	     nMonte = 5000.d0 * (3.d0**(maxDepthAMR)) !Changed for testing purposes from 10**5 to 10**3
 	  else
 	     nMonte = 10000.d0 * maxDepthAMR
           end if
@@ -532,7 +524,7 @@ contains
     do while(.not.converged)
        nIter = nIter + 1
        nInf=0
-
+       
 
 !       nCellsInDiffusion = 0
 !      call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
@@ -565,7 +557,7 @@ contains
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
 
-		!THaw - re-weighting for corner sources, edges still need work
+		!re-weighting for corner sources, edges still need work
 		if(source(iSource)%onCorner) then
                    if (grid%octreeRoot%threeD) then
                       photonPacketWeight = 1.d0/8.d0
@@ -589,16 +581,16 @@ contains
  !               endif
                 
                 
-                call getWavelength(thisSource%spectrum, wavelength)
-                
+                call getWavelength(thisSource%spectrum, wavelength)                
                 thisFreq = cSpeed/(wavelength / 1.e8)
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
 
                 iThread = thisOctal%mpiThread(subcell)
 
 
+	
                 call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iThread)
-!                write(*,*) "Rank 0 sending photon with rvec%x ",rvec%x, " to ", iThread
+		!write(*,*) "Rank 0 sending photon with rvec ",rvec," to ", iThread
                 nInf = nInf + 1
 		     
              end do mainloop
@@ -626,15 +618,18 @@ contains
           else
              endLoop = .false.
              nEscaped = 0
+	     
              do while(.not.endLoop)
+	        crossedMPIboundary = .false.
                 call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)
-
+!		print *, "rank ", myRank, "got a photon at ", rVec
+		!print *, myRank
                 if (iSignal == 0) then
                    endLoop = .true.
                    goto 777
                 endif
                 if (iSignal == 1) then
-                   call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+                   call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)		   
                    goto 777
                 endif
 
@@ -652,16 +647,17 @@ contains
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
                            crossedMPIboundary, newThread)
 
+
                       if (crossedMPIBoundary) then
                          call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, newThread)
+			 !print *, "rank ", myRank, "sends photon to thread ", newThread
                          goto 777
                       endif
 
                       if (noDiffuseField) escaped = .true.
 		
                       if (escaped) nEscaped = nEscaped + 1
-
-
+		      
                       if (.not. escaped) then
                          
                          thisLam = (cSpeed / thisFreq) * 1.e8
@@ -1077,6 +1073,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     stillinGrid = .true.
     escaped = .false.
+    
     crossedMPIboundary = .false.
     outOfTime = .false.
 
@@ -1120,7 +1117,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 !    write(*,*) "tau, thisTau ", tau, thistau
 
-    do while(stillinGrid .and. (tau > thisTau)) 
+    do while(stillinGrid .and. (tau > thisTau) .and. .not. outOfTime) 
 
 ! add on the distance to the next cell
 
@@ -1132,12 +1129,17 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) - uHat * photonMomentum
 !       if (myrankGlobal == 1) write(*,*) "mom sub ",thisOctal%radiationMomentum(subcell)
        tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
+       !print *, "tphoton", tphoton
+       !print *, "tlimit", tlimit
        if (tPhoton > tLimit) then
           escaped = .true.
           outOfTime = .true.
+	
        endif
 
 ! check whether the photon has escaped from the grid
+
+       
 
        if (inOctal(grid%octreeRoot,rVec)) then
           nextOctal => thisOctal
@@ -1151,7 +1153,23 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        octVec = rVec
 
 
-
+!THAW - debug statements
+    !  print *, "subcell", subcell
+    !  print *, "nextsubcell", nextsubcell
+    !  print *, "oldrvec", oldrvec
+    !  print *, "rvec", rvec
+    !  print *, "subcellCentre(thisoctal)", subcellcentre(thisOctal, subcell)
+    !  print *, "subcellCentre(nextOctal)", subcellCentre(nextOctal, subcell)
+    !  print *, "this on thread? ", octalOnThread(nextOctal, subcell, myRank)
+    !  print *, "nextOctal%mpithread ", nextOctal%mpiThread(nextSubcell)
+    !  print *, "tVal ", tval
+    !  print *, "grid%halfsmallestsubcell ", grid%halfSmallestSubcell
+    !  print *, "uHat", uHat
+    !   print *, "tPhoton ", tPhoton
+    !   print *, "tLimit ", tLimit
+    !   print *, "StillInGrid ", stillInGrid
+    !   print *, "outOfTime ", outOfTime
+       
 ! check whether the photon has  moved across an MPI boundary
         
       if (stillInGrid) then
@@ -1161,10 +1179,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              escaped = .true.
              crossedMPIboundary = .true.
              newThread = nextOctal%mpiThread(nextSubcell)
+             !print *, "next on thread? ", octalOnThread(nextOctal, nextSubcell, newThread)
           endif
        endif
 
 
+       !if(crossedMPIBoundary) then
+       !   stop
+       !end if
 
 ! update the distance grid
 
@@ -1316,6 +1338,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (tPhoton > tLimit) then
           escaped = .true.
           outOfTime = .true.
+	  
        endif
 
        if (.not.inOctal(grid%octreeRoot, rVec)) then  ! this is only needed due to floating point boundary issues
