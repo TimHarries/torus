@@ -199,6 +199,9 @@ contains
     call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
          "Smooth AMR grid: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getReal("smoothfactor", smoothFactor, 1.0, cLine, fLine, nLines, &
+         "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
+
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
          "Maximum memory available (Mb): ","(a,i12,a)", 1500, ok, .false.)
     maxMemoryAvailable = maxMemoryAvailable * 1000000
