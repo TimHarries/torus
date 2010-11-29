@@ -6,8 +6,8 @@ module sph_data_class
   use messages_mod
   use utils_mod
   use timing
-  use gridtype_mod
   use math_mod2
+  use octal_mod
   use constants_mod, only : OneOnFourPi, mSol, degToRad
 
   ! 
@@ -828,29 +828,23 @@ contains
   !
   
   ! returns program units of distance in cm 
-!  function get_udist(this) RESULT(out)
   Function get_udist() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%udist
   end function get_udist
 
   ! returns program units of mass in g
-!  function get_umass(this) RESULT(out)
   function get_umass() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%umass
   end function get_umass
 
   ! returns program units of time in s
-!  function get_utime(this) RESULT(out)
   function get_utime() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%utime
   end function get_utime
     
@@ -859,27 +853,22 @@ contains
   function get_npart() RESULT(out)
     implicit none
     integer ::out 
-!    type(sph_data), intent(in) :: this
     out = sphdata%npart
   end function get_npart
     
 
   ! returns the number of point masses
-!  function get_nptmass(this) RESULT(out)
   function get_nptmass() RESULT(out)
     implicit none
     integer :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%nptmass
   end function get_nptmass
     
 
   ! returns the time of dump time in the unit of [utime]
- ! function get_time(this) RESULT(out)
  function get_time() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%time
   end function get_time
     
@@ -890,7 +879,6 @@ contains
   ! x, y, z are in [udist] ... See the type definition section.
   subroutine get_position_gas_particle(i, x, y, z)
     implicit none    
-!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
     real(double), intent(out) :: x, y, z
     
@@ -907,7 +895,6 @@ contains
   ! x, y, z are in [udist] ... See the type definition section.
   subroutine put_position_gas_particle(i, name, value)
     implicit none    
-!    type(sph_data), intent(inout) :: this
     integer, intent(in) :: i
     character(LEN=*), intent(in) :: name
     real(double), intent(in) :: value
@@ -933,7 +920,6 @@ contains
   function get_rhon(i) RESULT(out)
     implicit none
     real(double) :: out 
-!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
     out  = sphdata%rhon(i)
@@ -946,7 +932,6 @@ contains
   function get_temp(i) RESULT(out)
     implicit none
     real(double) :: out 
-!    type(sph_data), intent(in) :: this
     Integer, intent(in) :: i
 
     out  = sphdata%temperature(i)
@@ -968,7 +953,6 @@ contains
   function get_vel(i) RESULT(out)
     implicit none
     type(VECTOR) :: out 
-!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
     out  = VECTOR(sphdata%vxn(i),sphdata%vyn(i),sphdata%vzn(i))
@@ -980,7 +964,6 @@ contains
   
   subroutine put_rhon(i, value)
     implicit none
-!    type(sph_data), intent(inout) :: this
     integer, intent(in) :: i
     real(double), intent(in) :: value
 
@@ -994,7 +977,6 @@ contains
   ! x, y, z are in [udist] ... See the type definition section.
   subroutine get_position_pt_mass(i, x, y, z)
     implicit none    
-!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
     real(double), intent(out) :: x, y, z
     
@@ -1012,7 +994,6 @@ contains
   function get_pt_mass(i) RESULT(out)
     implicit none
     real(double)  :: out 
-!    type(sph_data), intent(in) :: this
     integer, intent(in):: i
 
     out = sphdata%ptmass(i)  !in program units [umass]. See above.
@@ -1029,7 +1010,6 @@ contains
 
   subroutine kill_sph_data()
     implicit none
-!    type(sph_data), intent(inout) :: this
     
     DEALLOCATE(sphdata%xn, sphdata%yn, sphdata%zn)
     DEALLOCATE(sphdata%rhon, sphdata%temperature)
@@ -1111,7 +1091,6 @@ contains
   function max_distance() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
     !
     real(double) :: d_max, d, x, y, z
     integer :: i, j, n
@@ -1137,7 +1116,6 @@ contains
   function get_rhon_min() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
 
     out = MINVAL(sphdata%rhon)
     
@@ -1150,7 +1128,6 @@ contains
   function get_rhon_max() RESULT(out)
     implicit none
     real(double) :: out
-!    type(sph_data), intent(in) :: this
 
     out = MAXVAL(sphdata%rhon)
     
@@ -1163,7 +1140,6 @@ contains
   !
   subroutine get_spins(i, sx, sy, sz) 
     implicit none
-!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i 
     real(double), intent(out) :: sx, sy, sz 
     
@@ -1181,7 +1157,6 @@ contains
   ! if filename is '*' then it prints on screen.
   subroutine info(filename)
     implicit none
-!    type(sph_data), intent(in) :: this
     character(LEN=*), intent(in) :: filename
     integer :: UN
     real(double) :: tmp
@@ -1224,7 +1199,6 @@ contains
   subroutine get_stellar_disc_parameters(i, discrad, discmass, &
        spinx, spiny, spinz)
     implicit none    
-!    type(sph_data), intent(in) :: this
     integer, intent(in) :: i
     real(double), intent(out) :: discrad    ! in [10^10cm] 
     real(double), intent(out) :: discmass   ! in [grams] 
@@ -1257,7 +1231,6 @@ contains
   function stellar_disc_exists() RESULT(out)
     implicit none
     logical :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%have_stellar_disc
   end function stellar_disc_exists
 
@@ -1271,7 +1244,6 @@ contains
   !
   subroutine find_inclinations(obs_x, obs_y, obs_z, outfilename)
     implicit none
-!    type(sph_data), intent(in) :: this
     real(double), intent(in) :: obs_x,  obs_y, obs_z  ! directions cosines of of observer.
     character(LEN=*), intent(in) :: outfilename 
     real(double) :: r1, r2, inc, dp, pi
@@ -1313,7 +1285,6 @@ contains
   pure function isAlive() RESULT(out)
     implicit none
     logical :: out
-!    type(sph_data), intent(in) :: this
     out = sphdata%inUse
   end function isAlive
 
@@ -2008,5 +1979,42 @@ contains
       endif
    enddo
  end function indexWord
+
+! Calculate the total mass of SPH particles found within the AMR grid. Use 
+! sphdata%rhon to calculate the mass as this is used to populate  the grid 
+! density in assign_grid_values. Assumes h = eta * (m/rho)^(1/3) with eta=1.2.
+! D. Acreman, November 2010.
+ function sph_mass_within_grid(grid)
+   use gridtype_mod, only: gridtype
+   use amr_utils_mod, only: inOctal
+
+   implicit none
+
+   type(GRIDTYPE), intent(in) :: grid
+   real(dp)     :: sph_mass_within_grid
+   integer      :: ipart
+   real(dp)     :: sphDistToTorus
+   real(dp)     :: thisMass
+   real(dp), parameter :: eta=1.2
+   TYPE(VECTOR) :: thisPos
+
+   sph_mass_within_grid = 0.0
+   if ( .not. sphData%inUse ) return
+
+   sphDistToTorus = sphData%udist * 1.0e-10_dp
+
+   do ipart=1, sphdata%npart
+      thisPos = VECTOR(sphdata%xn(ipart), sphdata%yn(ipart), sphdata%zn(ipart))
+      thisPos = thisPos * sphDistToTorus
+      if ( inOctal(grid%octreeRoot, thisPos ) ) then
+         thisMass = sphdata%rhon(ipart) * (sphData%hn(ipart) / eta)**3 
+         sph_mass_within_grid =  sph_mass_within_grid + thisMass
+       end if
+   end do
+
+   sph_mass_within_grid = sph_mass_within_grid * sphData%umass / mSol 
+
+ end function sph_mass_within_grid
+
 end module sph_data_class
     

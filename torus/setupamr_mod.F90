@@ -36,7 +36,7 @@ contains
     use input_variables, only : rCore, rInner, rOuter, lamline
     use disc_class, only:  new
     use discwind_class, only:  new
-    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
+    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data, sph_mass_within_grid
 #ifdef MPI 
     use mpi_amr_mod
     use photoionAMR_mod, only : ionizeGrid, resetNh
@@ -319,6 +319,8 @@ contains
              write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
              call writeInfo(message, TRIVIAL)
              write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
+             call writeInfo(message, TRIVIAL)
+             write(message,*) "Mass of SPH particles within grid: ", sph_mass_within_grid(grid), " solar masses"
              call writeInfo(message, TRIVIAL)
              write(message,*) "Maximum Density: ",maxrho, " g/cm^3"
              call writeInfo(message, TRIVIAL)
