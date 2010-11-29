@@ -109,7 +109,7 @@ contains
     nextDumpTime = 0.d0
     tDump = 0.005d0
     deltaTforDump = 2.d10
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d7/secstoyears
+    if (grid%geometry == "hii_test") deltaTforDump = 5.d6/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -259,7 +259,9 @@ contains
        call MPI_ALLREDUCE(tc, tempTc, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
-
+!       if(grid%geometry == "hii_test") then
+!          dt = 1.d7
+!       end if
        !grid%currentTime = grid%currentTime + dt       
 
        if (myrank == 1) then
@@ -303,7 +305,7 @@ contains
 
 
        call writeInfo("Calling photoionization loop",TRIVIAL)
-       !       call ionizeGrid(grid%octreeRoot)
+              call ionizeGrid(grid%octreeRoot)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
 
@@ -332,7 +334,6 @@ contains
 !       call writeVtkFile(grid, "current.vtk", &
 !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
 
-       !Not happy with this here, Moved by Thaw above
        grid%currentTime = grid%currentTime + dt
 
 
@@ -354,6 +355,10 @@ contains
 	  call dumpValuesAlongLine(grid, datFileName, VECTOR(-23.d11,  -23.d11,23.d11), &
 	        VECTOR(23.d11, 23.d11, 23.d11), 1000)
 
+!Thaw, adding code to track I-front position
+          !write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
+	  !call dumpStromgrenRadius(grid, datFileName, VECTOR(-23.d11, -23.d11,23.d11), &
+          !      VECTOR(23.d11, 23.d11, 23.d11), 1000)
 	  
 	  !write(mpiFilename,'(a, i4.4, a)') "ifrit_", grid%iDump,".txt"
 	  !call writeIfritFile(grid, mpiFileName)
@@ -1892,7 +1897,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        if (.not.thisOctal%hasChild(subcell)) then
 	  !print *, "quickthermal ionfrac = ", thisOctal%ionFrac(subcell,2)
-          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+	  !THAW -TRYING HOTTER
+          !thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) *
+	  !thisOctal%ionFrac(subcell,2)
+	  !Thaw - changed by a factor of 10
+	  !thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) *
+	  !thisOctal%ionFrac(subcell,2)
+	  thisOctal%temperature(subcell) = 10.d0 + (30000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
 	  !if(thisOctal%temperature(subcell) /= 10.d0) then
 	  !   print *, "Temperature: ", thisOctal%temperature(subcell)			    
 	  !end if

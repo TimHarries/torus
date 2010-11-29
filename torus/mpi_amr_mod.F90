@@ -1815,6 +1815,92 @@ contains
   end subroutine periodBoundaryReceiveRequestsLevel
 
 
+!THaw-to track evolution of I front with time
+subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, soctal
+    integer :: subcell
+    integer :: nPoints
+    type(VECTOR) :: startPoint, endPoint, position, direction, cen
+    real(double) :: loc(3), hi
+    character(len=*) :: thisFile
+    integer :: ierr
+    integer, parameter :: nStorage = 4
+    real(double) :: tempSTorage(nStorage), tval
+    integer, parameter :: tag = 50
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillLooping, done
+    integer :: sendThread
+    integer :: i
+
+    i = npoints
+
+    thisOctal => grid%octreeRoot
+    position = startPoint
+    direction = endPoint - startPoint
+    call normalize(direction)
+
+    if (myrankGlobal == 0) then
+
+       open(20, file=thisFile, form="formatted", status="unknown", position="append")
+       done = .false.
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+
+          cen%x = tempStorage(1)
+          cen%y = tempStorage(2)
+          cen%z = tempStorage(3)
+          hi = tempStorage(4)
+          if(hi == 0.5 .and. .not. done) then
+             write(20,'(5e14.5)') modulus(cen-startPoint), hi
+             done = .true.
+          end if
+          position = cen
+          position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
+       enddo
+       do sendThread = 1, nThreadsGlobal-1
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+       enddo
+       close(20)
+       goto 666
+
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+             call findSubcellLocal(position, thisOctal, subcell)
+             sOctal => thisOctal
+             cen = subcellCentre(thisOctal, subcell)
+             call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+             tempStorage(1) = cen%x
+             tempStorage(2) = cen%y
+             tempStorage(3) = cen%z
+             tempStorage(4) = thisOctal%ionFrac(subcell,1)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+          endif
+       enddo
+    endif
+
+ 666   continue
+end subroutine dumpStromgrenRadius
+
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     include 'mpif.h'

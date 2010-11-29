@@ -13,6 +13,7 @@ module hydrodynamics_mod
   use mpi_amr_mod
   use gridio_mod
   use vtk_mod
+  use utils_mod, only : getNumberDensity
 
   implicit none
 
@@ -2077,6 +2078,7 @@ contains
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     if(photoionPhysics .and. hydrodynamics) then
        call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
@@ -6240,7 +6242,7 @@ end subroutine refineGridGeneric2
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-
+    real(double) :: numDensity
 
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic
@@ -6262,9 +6264,13 @@ end subroutine refineGridGeneric2
 !          write(*,*) "rhou,rhow ", thisOCtal%rhou(subcell), thisOctal%rhow(subcell)
 !          write(*,*) "etot, ekinetic, eThermal ",etot, ekinetic, ethermal
        case(1) ! isothermal
+          call getNumberDensity(thisOctal, subcell, numDensity)
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
-          getPressure =  (thisOctal%gamma(subcell) - 1.d0) * thisOctal%rho(subcell) * eThermal
-!          getPressure = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+          !getPressure =  (thisOctal%gamma(subcell) - 1.d0) *
+	  !thisOctal%rho(subcell) * eThermal
+	  !Thaw - needs to be more generic for species mass
+          !getPressure =  (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+          getPressure = numDensity*kerg*thisOctal%temperature(subcell)
 
        case(2) !  equation of state from Bonnell 1994
           if (thisOctal%rho(subcell) < rhoCrit) then

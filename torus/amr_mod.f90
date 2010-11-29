@@ -10,7 +10,7 @@ module amr_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute
-  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint
+  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint, getNumberDensity
   use density_mod, only:    density, TTauriInFlow
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
@@ -7362,10 +7362,17 @@ CONTAINS
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
+          if(rVec%x > 0.40 .and. rVec%x < 0.60 ) then
+             u1 = -0.015
+          end if
+
           !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
-          u1 = 0.08d0*(1.d0+cos((3.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))!* &
+          !u1 = 0.08d0*(1.d0+cos((3.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))!* &
           !(1.d0+cos(twoPi*(rVec%z-ghostSize)))/16.d0
     endif
+    
+    
+
     !if (abs(rVec%z) < 0.02d0) then
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)/cSpeed
     !else
@@ -8592,12 +8599,11 @@ end function readparameterfrom2dmap
 
 
   subroutine assign_hii_test(thisOctal,subcell)
-
     use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
-    real(double) :: eThermal
+    real(double) :: eThermal!, numDensity
 
     !Parameters changed to those in Iliev et al 2006 MNRAS, 371, 1057-1086
 
@@ -8625,13 +8631,17 @@ end function readparameterfrom2dmap
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     
     !Thaw - most ethermals have a factor of 1.5 that is missing from ours
-    !ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
-    ethermal = 1.5d0*(1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    !ethermal = 1.5d0*(1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+    !Thaw changed
+    !call getNumberDensity(thisOctal, subcell, numDensity)
+    !thisOctal%pressure_i = numDensity*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    !thisOctal%pressure_i(subcell) = (thisOctal%gamma(subcell) - 1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = 0.d0
-    thisOctal%gamma(subcell) = 5.d0/3.d0
     thisOctal%iEquationOfState(subcell) = 1
 
     zplusbound = 4
