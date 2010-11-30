@@ -1014,5 +1014,25 @@ function returnAbundance(z) result(a)
 end function returnAbundance
 
 
+!subroutine getNumberDensity(grid, thisOctal, subcell, numDensity)
+!  type(IONTYPE) :: ionArray(:)
+!  integer :: nIon
+!  type(GRIDTYPE) :: grid
+!  type(OCTAL), pointer :: thisOctal
+!1  integer :: subcell
+!1  integer :: i
+!  real(double) :: numDensity!
+!
+!  numDensity = 0.d0
+!
+!  do i = 1, grid%nIon
+!     numDensity = numDensity + grid%ion(i)%abundance * 2.d0 * grid%ion(i)%z * mHydrogen
+!  end do
+!1
+!  numDensity = numDensity + thisOctal%ne(subcell) * mElectron !electrons
+!  numDensity = thisOctal%rho / numDensity!
+!
+!end subroutine
+
 end module ion_mod
 

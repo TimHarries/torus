@@ -23,6 +23,7 @@ module input_variables
     logical :: radiativeEquilibrium
     logical :: statisticalEquilibrium
     logical :: photoionEquilibrium
+    logical :: rhieChow !Thaw
 
     logical :: calcDataCube
     logical :: rgbCube

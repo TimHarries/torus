@@ -184,6 +184,10 @@ contains
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    !Thaw
+    call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
+         "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
+
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
     endif

@@ -1826,7 +1826,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     real(double) :: loc(3), hi
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 4
+    integer, parameter :: nStorage = 5
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 50
     integer :: status(MPI_STATUS_SIZE)
@@ -1842,9 +1842,13 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     call normalize(direction)
 
     if (myrankGlobal == 0) then
-
+       !Overwrite existing file
+       open(20, file=thisFile, form="formatted", status="new")
+       close(20)
+       !Append new positions to a new file
        open(20, file=thisFile, form="formatted", status="unknown", position="append")
        done = .false.
+       !print *, "Starting dump of Stromgren data"
        do while(inOctal(grid%octreeRoot, position))
           call findSubcellLocal(position, thisOctal, subcell)
           sendThread = thisOctal%mpiThread(subcell)
@@ -1858,13 +1862,24 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
           cen%y = tempStorage(2)
           cen%z = tempStorage(3)
           hi = tempStorage(4)
-          if(hi == 0.5 .and. .not. done) then
-             write(20,'(5e14.5)') modulus(cen-startPoint), hi
+	  tVal = tempStorage(5)
+	  !print *, "hi ", hi
+	  !print *, "cen: ", cen
+          if(hi > 0.5 .and. .not. done) then
+	     !print *, "Edge found"
+             write(20,'(5e14.5)') grid%currentTime, modulus(cen-startPoint)
              done = .true.
+	     goto 555
           end if
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
+	  !print *, "POSITION ", position
+	  !print *, "direction ", direction
+	  !print *, "tVal ", tVal
+
        enddo
+555    continue
+       !Send escape trigger to other threads
        do sendThread = 1, nThreadsGlobal-1
           loc(1) = 1.d30
           loc(2) = 1.d30
@@ -1877,6 +1892,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
 
     else
        stillLooping = .true.
+       !print *, "Starting to loop rank", myRankGlobal
        do while(stillLooping)
           call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
           position%x = loc(1)
@@ -1893,12 +1909,15 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
              tempStorage(2) = cen%y
              tempStorage(3) = cen%z
              tempStorage(4) = thisOctal%ionFrac(subcell,1)
+	     tempStorage(5) = tVal
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+	     
           endif
        enddo
     endif
 
  666   continue
+ !print *, "Stromgren dump completed"
 end subroutine dumpStromgrenRadius
 
 
@@ -1951,7 +1970,12 @@ end subroutine dumpStromgrenRadius
           write(20,'(5e14.5)') modulus(cen-startPoint), rho, rhou/rho, rhoe,p
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
+          !print *, "POSITION 2 ", position
+          !print *, "direction 2 ", direction
+          !print *, "tVal 2 ", tVal
+
        enddo
+       !Send escape trigger to other threads
        do sendThread = 1, nThreadsGlobal-1
           loc(1) = 1.d30
           loc(2) = 1.d30

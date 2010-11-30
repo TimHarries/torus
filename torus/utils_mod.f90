@@ -12,7 +12,7 @@ module utils_mod
 
   implicit none
  
- public :: getNumberDensity
+ public 
 
   interface stripSimilarValues
      module procedure stripSimilarValuesDouble
@@ -4182,42 +4182,6 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 !      endif
 666 continue
     end subroutine ngStep
-
-!Thaw - get number density in cell
-subroutine getNumberDensity(thisOctal, subcell, numDensity)
-  use input_variables, only : usemetals, hOnly
-  type(OCTAL), pointer :: thisOctal
-  integer :: subcell
-  integer :: i
-  real(double) :: numDensity    
-
-  do i=1, SIZE(thisOctal%ionFrac)
-      if(i ==1) then !Hydrogen
-         numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 2.d0 * mHydrogen
-      else if (i ==2) then !Ionised hydrogen
-         numDensity = numDensity + thisOctal%ionFrac(subcell, i) * mHydrogen
-      else if(.not. hOnly) then 
-         if(i >= 3 .and. i <=5) then !Helium
-            numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 4.d0 * mHydrogen
-         else if(usemetals) then
-            if(i >=6 .and. i <= 10) then !Carbon
-               numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 12.d0 * mHydrogen               
-            else if(i >= 11 .and. i <= 14) then !Nitrogen
-               numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 14.d0 * mHydrogen 
-            else if(i >= 15 .and. i <= 18) then !Oxygen
-               numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 16.d0 * mHydrogen
-            else if(i >= 19 .and. i <= 22) then !Neon 
-               numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 20.d0 * mHydrogen
-            else if(i >= 23 .and. i <= 26) then !Sulphur
-               numDensity = numDensity + thisOctal%ionFrac(subcell, i) * 32.d0 * mHydrogen
-            end if
-         end if
-      end if
-  enddo
-  numDensity = numDensity + thisOctal%ne(subcell) * mElectron !electrons
-  numDensity = thisOctal%rho(subcell) / numDensity
-
-end subroutine
 
 end module utils_mod
 

@@ -10,7 +10,7 @@ module amr_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute
-  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint, getNumberDensity
+  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint
   use density_mod, only:    density, TTauriInFlow
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
@@ -215,10 +215,6 @@ CONTAINS
 
     CASE("rtaylor")
        call calcRTaylorDensity(thisOctal, subcell)
-
-    !Thaw                                                                                                                  
-    CASE("firstStar")
-       call calcFirstStarDensity(thisOctal, subcell)
 
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
@@ -4066,11 +4062,6 @@ CONTAINS
    case("gaussian")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
-!Thaw                                                                                                                      
-   case("firstStar")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-
    case("sedov")
       rInner = 0.02d0
       rVec = subcellCentre(thisOctal, subcell)
@@ -7363,7 +7354,7 @@ CONTAINS
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
           if(rVec%x > 0.40 .and. rVec%x < 0.60 ) then
-             u1 = -0.015
+             u1 = -0.03
           end if
 
           !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
@@ -7404,53 +7395,6 @@ CONTAINS
     yplusbound = 1
     yminusbound = 1
   end subroutine calcRTaylorDensity
-
-!thaw: a model comprising a neutral (or partially ionized) hydrogen gas surrounded by                                              
-!a fully ionized plasma. A bit of a toy at present.                                                                                
-  subroutine calcfirstStarDensity(thisOctal, subcell)
-    use input_variables, only : xplusbound, xminusbound, zplusbound, zminusbound
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    INTEGER, INTENT(IN) :: subcell
-    type(VECTOR) :: rVec
-    real(double) :: randX, randY, randZ, r
-
-    call random_seed()
-    call random_number(randX)
-    call random_number(randY)
-    call random_number(randZ)
-
-    rVec = subcellCentre(thisOctal, subcell)
-
-    thisOctal%gamma = 5.d0/3.d0
-    thisOctal%iEquationOfState(subcell) = 0
-    thisOctal%rho = 1.d0 * mHydrogen
-
-    r = sqrt(rVec%x**2 + rVec%z**2)
-
-    if(r < 1.d12) then
-       thisOctal%temperature = 155000.d0
-    else
-       thisOctal%temperature = 160000.d0
-    end if
-
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%ionFrac(subcell,1) = 1.e-10
-    thisOctal%ionFrac(subcell,2) = 1.
-
-    thisOctal%velocity(subcell) = VECTOR(randX, randY, randZ)/cSpeed
-
-    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
-    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
-    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
-
-    xplusbound = 2
-    xminusbound = 2
-    zplusbound = 2
-    zminusbound = 2
-
-  end subroutine calcfirstStarDensity
-
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
 
@@ -8608,9 +8552,7 @@ end function readparameterfrom2dmap
     !Parameters changed to those in Iliev et al 2006 MNRAS, 371, 1057-1086
 
     rVec = subcellCentre(thisOctal,subcell)
-    !thisOctal%rho(subcell) = 6000.d0*mHydrogen
     thisOctal%rho(subcell) = (1.d-3)*mHydrogen
-!    thisOctal%temperature(subcell) = 300.d0
     thisOctal%temperature(subcell) = 100.d0
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
@@ -8630,15 +8572,10 @@ end function readparameterfrom2dmap
     
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     
-    !Thaw - most ethermals have a factor of 1.5 that is missing from ours
-    !ethermal = 1.5d0*(1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
-    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    ethermal = 1.5d0*(1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%gamma(subcell) = 5.d0/3.d0
-    !Thaw changed
-    !call getNumberDensity(thisOctal, subcell, numDensity)
-    !thisOctal%pressure_i = numDensity*kerg*thisOctal%temperature(subcell)
+
     thisOctal%pressure_i = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
-    !thisOctal%pressure_i(subcell) = (thisOctal%gamma(subcell) - 1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = 0.d0
