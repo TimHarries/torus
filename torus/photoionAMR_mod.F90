@@ -447,7 +447,7 @@ contains
     integer, allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 !    character(len=80) :: vtkFilename
-    real(double) :: deltaT, rate
+    real(double) :: deltaT!, rate
 
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
@@ -807,9 +807,9 @@ contains
        write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
     endif
 
-    rate = hrecombination(thisOctal%temperature(subcell))
-    print *, "rate1 = ", rate
-    print *, "temperature1 = ", thisOctal%temperature(subcell)
+    !rate = hrecombination(thisOctal%temperature(subcell))
+    !print *, "rate1 = ", rate
+    !print *, "temperature1 = ", thisOctal%temperature(subcell)
 
 
     if (myRank /= 0) then
@@ -841,9 +841,9 @@ contains
 
     endif
 
-    rate = hrecombination(thisOctal%temperature(subcell))
-    print *, "rate2 = ", rate
-    print *, "temperature2 = ", thisOctal%temperature(subcell)
+    !rate = hrecombination(thisOctal%temperature(subcell))
+    !print *, "rate2 = ", rate
+    !print *, "temperature2 = ", thisOctal%temperature(subcell)
 
     !deallocate(octalArray)
 
@@ -1155,12 +1155,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (tPhoton > tLimit) then
           escaped = .true.
           outOfTime = .true.
-	
        endif
 
 ! check whether the photon has escaped from the grid
-
-       
 
        if (inOctal(grid%octreeRoot,rVec)) then
           nextOctal => thisOctal
@@ -1236,9 +1233,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              uHat = randomUnitVector()
           endif
        endif
-
-
-
 
 
 ! now if the photon is in the grid choose a new random tau
@@ -1375,8 +1369,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           uHat = randomUnitVector()
-       endif
-
+       end if
     endif
 
 666 continue
