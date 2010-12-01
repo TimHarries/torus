@@ -7354,7 +7354,7 @@ CONTAINS
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
           if(rVec%x > 0.40 .and. rVec%x < 0.60 ) then
-             u1 = -0.03
+             u1 = -0.045
           end if
 
           !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
@@ -8579,14 +8579,15 @@ end function readparameterfrom2dmap
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = 0.d0
+    !Thaw - changed from isothermal to adiabatic
     thisOctal%iEquationOfState(subcell) = 1
 
-    zplusbound = 4
+    zplusbound = 1
     zminusbound = 4
     xplusbound = 4
-    xminusbound = 4
+    xminusbound = 1
     yplusbound = 4
-    yminusbound = 4
+    yminusbound = 1
 
   end subroutine assign_hii_test
 

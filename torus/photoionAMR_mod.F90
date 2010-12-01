@@ -109,7 +109,7 @@ contains
     nextDumpTime = 0.d0
     tDump = 0.005d0
     deltaTforDump = 2.d10
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d7/secstoyears
+    if (grid%geometry == "hii_test") deltaTforDump = 1.d5/secstoyears
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -121,8 +121,8 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    timeofNextDump = 0.d0
-    !timeofNextDump = deltaTforDump
+    !timeofNextDump = 0.d0
+    timeofNextDump = deltaTforDump
     
 
     if (myRank == 1) write(*,*) "CFL set to ", cfl
@@ -180,6 +180,7 @@ contains
     !end if
 
     looplimitTime = deltaTforDump
+    !looplimitTime = 0.1375d10
     if (myrank == 1) write(*,*) "loopLimitTime: ", loopLimitTime
     do irefine = 1, 1
        
@@ -259,16 +260,13 @@ contains
        call MPI_ALLREDUCE(tc, tempTc, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
-!       if(grid%geometry == "hii_test") then
-!          dt = 1.d7
-!       end if
-       !grid%currentTime = grid%currentTime + dt       
 
        if (myrank == 1) then
           write(*,*) tc(1:9)
           write(*,*) "courantTime", dt
        endif
        dumpThisTime = .false.
+
        if ((grid%currentTime + dt) >= timeOfNextDump) then
           dt =  timeofNextDump - grid%currentTime
           dumpThisTime = .true.
@@ -308,11 +306,13 @@ contains
               call ionizeGrid(grid%octreeRoot)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
-
-       loopLimitTime = grid%currentTime + dt
-       call setupNeighbourPointers(grid, grid%octreeRoot)
-       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
-       call writeInfo("Done",TRIVIAL)
+       if(dt /= 0.d0) then
+         loopLimitTime = grid%currentTime + dt
+	 !loopLimitTime = (0.1375d10)
+         call setupNeighbourPointers(grid, grid%octreeRoot)
+         call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 5, loopLimitTime)
+         call writeInfo("Done",TRIVIAL)
+       end if
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot, mu)
           call calculateRhoE(grid%octreeRoot, direction)
@@ -340,6 +340,15 @@ contains
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
 
        if (dumpThisTime) then
+
+          !Thaw, to match time dumps of other codes
+	  if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d6/secstoyears)) then
+	     deltaTForDump = 1.d6/secstoyears
+	  end if
+          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d7/secstoyears)) then
+             deltaTForDump = 1.d7/secstoyears
+          end if
+
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
@@ -438,7 +447,7 @@ contains
     integer, allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 !    character(len=80) :: vtkFilename
-    real(double) :: deltaT
+    real(double) :: deltaT, rate
 
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
@@ -798,6 +807,10 @@ contains
        write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
     endif
 
+    rate = hrecombination(thisOctal%temperature(subcell))
+    print *, "rate1 = ", rate
+    print *, "temperature1 = ", thisOctal%temperature(subcell)
+
 
     if (myRank /= 0) then
        do iOctal =  iOctal_beg, iOctal_end
@@ -827,6 +840,10 @@ contains
        enddo
 
     endif
+
+    rate = hrecombination(thisOctal%temperature(subcell))
+    print *, "rate2 = ", rate
+    print *, "temperature2 = ", thisOctal%temperature(subcell)
 
     !deallocate(octalArray)
 
@@ -2106,6 +2123,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        betaRec = 9.4255985E-11 -4.04794384E-12*log10Te &
             & -1.0055237E-11*log10Te*log10Te +  1.99266862E-12*log10Te*log10Te*log10Te&
             & -1.06681387E-13*log10Te*log10Te*log10Te*log10Te
+
+       
        
        coolRec = Nhii*Ne*betaRec*kerg*TeUsed/sqrt(TeUsed)
        

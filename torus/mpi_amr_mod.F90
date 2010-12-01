@@ -1833,6 +1833,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     logical :: stillLooping, done
     integer :: sendThread
     integer :: i
+    logical, save :: firstTime =.true.
 
     i = npoints
 
@@ -1842,9 +1843,13 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     call normalize(direction)
 
     if (myrankGlobal == 0) then
-       !Overwrite existing file
-       open(20, file=thisFile, form="formatted", status="new")
-       close(20)
+       if(firstTime) then
+          !Overwrite any existing file
+          open(20, file=thisFile, form="formatted", status="unknown")
+	  write(20,*) " "
+          close(20)
+          firstTime = .false.
+       end if
        !Append new positions to a new file
        open(20, file=thisFile, form="formatted", status="unknown", position="append")
        done = .false.
@@ -1910,6 +1915,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
              tempStorage(3) = cen%z
              tempStorage(4) = thisOctal%ionFrac(subcell,1)
 	     tempStorage(5) = tVal
+             !tempStorage(6) = thisOctal%rhou(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
 	     
           endif
