@@ -585,7 +585,7 @@ contains
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
 
-       case("molcluster", "theGalaxy")
+       case("molcluster", "theGalaxy", "cluster", "wr104")
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 

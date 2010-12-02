@@ -62,7 +62,6 @@ CONTAINS
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
    
-    use cluster_class, only:  assign_density
     use luc_cir3d_class, only: calc_cir3d_mass_velocity
     use cmfgen_class, only: cmfgen_mass_velocity
     use jets_mod, only: calcJetsMassVelocity
@@ -238,15 +237,11 @@ CONTAINS
     CASE ("wind")
        CALL WindSubcell(thisOctal, subcell)
        
-    CASE("cluster","molcluster","theGalaxy")
+    CASE("cluster","molcluster","theGalaxy","wr104")
 
        ! Flag as missing data to be filled in by FinishGrid
        thisoctal%rho(subcell) = -9.9d99
        if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
-
-    CASE("wr104")
-       ! using a routine in cluster_class.f90
-       call assign_density(thisOctal,subcell, grid%geometry)
 
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell)

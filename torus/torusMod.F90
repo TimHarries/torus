@@ -5,9 +5,6 @@
 ! produce polarized spectra of hot and cool stellar winds
 !
 
-! written by tjh
-! Extracted from torusMain by D. Acreman (March 2008)
- 
 module torus_mod
 
   implicit none 
@@ -18,118 +15,39 @@ module torus_mod
 
 contains
 
-  subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas, &  ! Required arguments
+subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &  
                    b_xyzmh, b_rho,         b_iphase,              &
                    b_udist, b_umass,       b_utime,               &
-                   b_time,  b_temp,        temp_min,              &
-                   b_totalgasmass,         file_tag,              &
-                   fix_source_R, fix_source_L, fix_source_T,      &  ! optional arguments
-                   remove_radius )         
+                   b_time,  b_temp,        b_totalgasmass,        &
+                   file_tag              )
 
-  use utils_mod
+  use torus_version_mod
   use input_variables         ! variables filled by inputs subroutine
   use constants_mod
-
-  use amr_mod, only: amrGridValues, deleteOctreeBranch, hydroWarpFitSplines, polardump, pathtest, &
-       setupNeighbourPointers, findtotalmass
-  use gridtype_mod, only: gridType         ! type definition for the 3-d grid
-  use grid_mod, only: initCartesianGrid, initPolarGrid, plezModel, initAMRgrid, freegrid, grid_info
-  use phasematrix_mod, only: phasematrix        ! phase matrices
-  use blob_mod, only: blobType
-  use inputs_mod, only: inputs
-  use TTauri_mod, only: infallenhancment, initInfallEnhancement 
-  use romanova_class, only: romanova
-  use dust_mod, only: createDustCrossSectionPhaseMatrix, MieCrossSection 
-  use source_mod, only: sourceType, buildSphere 
-  use sph_data_class, only: read_sph_data, kill, sphdata, clusterparameter, npart, init_sph_data2, info
-  use cluster_class
-  use surface_mod, only: surfaceType
-  use disc_class, only: alpha_disc, new, add_alpha_disc, finish_grid, turn_off_disc
-  use jet_class, only: jet, new, add_jet, finish_grid_jet, turn_off_jet
-  use photoion_mod, only: photoIonizationloop
-  use molecular_mod, only: moleculetype, calculatemoleculespectrum, molecularloop, readmolecule, make_h21cm_image
-  use modelatom_mod, only: modelAtom, createrbbarrays, readatom, stripatomlevels
-  use cmf_mod, only: atomLoop, calculateAtomSpectrum
-  use vtk_mod, only: writeVtkfile
-  use parallel_mod, only: torus_mpi_barrier
-  use gridio_mod, only: writeAMRgrid, readamrgrid
-  use bitstring_mod, only: constructBitStrings
-  use gas_opacity_mod, only: createAllMolecularTables, readTsujiKPTable, readTsujiPPTable
-  use density_mod, only: calcPlanetMass
-  use phaseloop_mod, only: do_phaseloop
-  use timing, only: tune
-  use ion_mod, only: addions
-  use isochrone_class, only: isochrone, read_isochrone_data, new
-  use lucy_mod, only: lucyRadiativeEquilibriumAMR 
+  use messages_mod
+  use mpi_global_mod
+  use utils_mod
+  use inputs_mod
+  use timing
+  use grid_mod
+  use gridio_mod
+  use setupamr_mod
+  use physics_mod
+  use outputs_mod
+  use source_mod
+  use random_mod
+  use memory_mod
+  use sph_data_class 
+  type(GRIDTYPE) :: grid
 #ifdef MPI
-  use mpi_global_mod, only: myRankGlobal
-  use photoionAMR_mod, only: radiationhydro
-  use hydrodynamics_mod, only: doHydrodynamics1d, doHydrodynamics2d, doHydrodynamics3d, readAMRgridMpiALL 
-  use mpi_amr_mod, only: setupAMRCOMMUNICATOR, freeAMRCOMMUNICATOR, findMassOverAllThreads, grid_info_mpi
-  use unix_mod, only: unixGetHostname
-  use parallel_mod, only: sync_random_seed
+   include 'mpif.h'  
+#endif
+#ifdef MPI
+  ! For MPI implementations =====================================================
+  integer ::   ierr           ! error flag
 #endif
 
-  implicit none
-
-  real, allocatable :: xArray(:), tArray(:)
-  real :: testlam, junk
-  real(double) :: fac
-  integer :: nCurrent, nt
-
-  integer :: nSource
-  type(SOURCETYPE), allocatable :: source(:)
-  type(SOURCETYPE) a_star
-
-  ! variables for the grid
-
-  type(GRIDTYPE) :: grid
-
-  ! variables to do with dust
-  integer :: itestlam, ismoothlam
-  integer, parameter :: nMuMie = 1000
-  type(PHASEMATRIX), pointer :: miePhase(:,:,:)
-
-  ! model flags
-  logical :: flatSpec
-  logical :: ok
-  logical :: greyContinuum
-
-  ! model parameters
-  integer :: i, j
-
-#ifdef MPI
-  character(len=80) :: tempChar
-#endif  
-
-  real :: theta1, theta2
-  type(SURFACETYPE) :: starSurface
-
-  ! adaptive grid stuff
-  type(VECTOR)      :: amrGridCentre ! central coordinates of grid
-  integer           :: nOctals       ! number of octals in grid
-  integer           :: nVoxels       ! number of unique voxels in grid
-                                     !   (i.e. the number of childless subcells)
-
-  character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
-
-  ! For romanova geometry case
-  type(romanova) :: romData ! parameters and data for romanova geometry
-
-  type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
-  real :: inclination
-  integer, parameter :: maxTau = 20000
-  type(BLOBTYPE), allocatable :: blobs(:)
-  real dTime
-
-  ! Used for multiple sources (when geometry=cluster)
-  type(cluster)   :: young_cluster
-
-  ! Name of the file to output various message from torus
-  character(len=80) :: message
-
 ! Variables used when linking to sph code
-  type(isochrone)       :: isochrone_data
   integer, intent(in)   :: b_idim, b_npart, b_nptmass
   integer*1, intent(in) :: b_iphase(b_idim)
   real*8, intent(in)    :: b_xyzmh(5,b_idim)
@@ -138,609 +56,98 @@ contains
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
   real*8, intent(inout) :: b_temp(b_idim)   ! Temperature of gas particles
   real*8, intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
-  real(kind=8), intent(in)      :: temp_min
   character(len=11), intent(in) :: file_tag
 
-! optional arguments to use when fixing source properties
-  real*8, optional :: fix_source_R  ! source radius
-  real*8, optional :: fix_source_L  ! source luminosity
-  real*8, optional :: fix_source_T  ! source temperature
-  real*8, optional :: remove_radius ! radius to use for remove_too_close_cells
-
-  character(len=11), save       :: prev_file_tag="none"
-  integer, save :: num_calls = 0
-  character(len=4) :: char_num_calls
-  character(len=100) :: filename
-
-! Begin executable statements --------------------------------------------------
-
 #ifdef MPI
-
   ! FOR MPI IMPLEMENTATION=======================================================
 
   ! Set up amrCOMMUNICATOR and global mpi groups
   call setupAMRCOMMUNICATOR
 
-  call unixGetHostname(tempChar) 
-  print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
-  print *, 'Process ', myRankGlobal, 'b_npart=', b_npart,  &
-           'b_nptmass=', b_nptmass, 'b_num_gas=', b_num_gas
-
   !===============================================================================
-
 #endif
 
+  globalMemoryChecking = .false.
+#ifdef MEMCHECK
+  globalMemoryChecking = .true.
+#endif
+
+
   writeoutput    = .true.
+  doTuning       = .true.
   outputwarnings = .true.
   outputinfo     = .true.
-  doTuning       = .true.
   myRankIsZero   = .true.
+
+
 #ifdef MPI
   if (myRankGlobal/=1) writeoutput  = .false.
   if (myRankGlobal/=1) doTuning     = .false.
   if (myRankGlobal/=0) myRankIsZero = .false.
 #endif
-  
+
+
+  call writeTorusBanner()
+
+  call setVersion("V2.0")
+  grid%version = torusVersion
+  verbosityLevel = 5
+  call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
+
+
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   ! set up a random seed
   
-  call init_random_seed()
-
-#ifdef MPI
-  call sync_random_seed()
+#ifdef _OPENMP
+  call randomNumberGenerator(randomSeed=.true.)
+  call test_random_hybrid()
+  call randomNumberGenerator(synciseed=.true.)
+  call test_same_hybrid()
+  call randomNumberGenerator(reset=.true.)
+  call test_same_hybrid()
 #endif
 
+!  call testSuiteRandom()  
+  call inputs()
 
-  ! initialize
+  call setupMicrophysics(grid)
 
-  sed = .false.
-  jansky = .false.
-  SIsed = .false.
-  thinLine = .false.
-  flatspec = .false.
-  greyContinuum = .false.
-  secondSource = .false.
-  doRaman = .false.
-  enhance = .false.
-
-  contFluxFile = "none"
-  intProFilename = "none"
-
-  lucyRadiativeEq = .false. ! this has to be initialized here
-
-! Used to  set up output file names
-! Reset the counter each time the SPH dump file name changes 
-  if ( file_tag /= prev_file_tag ) num_calls = 0
-  prev_file_tag = file_tag
-  num_calls = num_calls + 1
-  write(char_num_calls,'(i4.4)') num_calls
-
-  ! get the model parameters
-
-  call inputs() ! variables are passed using the input_variables module
-
-! check that the minimum temperature used in the SPH code matches that used in Torus
-  if ( temp_min /= TminGlobal ) then
-     write(*,*) "Minimum temperature in the SPH code does not match that in Torus"
-     write(*,*) "Torus: TminGlobal=", TminGlobal
-     write(*,*) "SPH: temp_min=", temp_min
-     STOP
-  endif
-
-  if (geometry /= "cluster" ) then
-     print *, "Error: cluster geometry required"
-     goto 666
-  endif
-
-  if (cmf) then
-     print *, "Error: not compatible with cmf"
-     goto 666
-  endif
-
-  if (.not. gridUsesAMR) then
-     print *, "Error: AMR grid required"
-     STOP
-  end if
-
-  grid%photoionization = photoionization
-  ! time elipsed since the beginning of the model
-  grid%timeNow = phaseTime * REAL(nStartPhase-1)
-  
-
-  grid%resonanceLine = resonanceLine
-
-  amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
-
-
-  if (doRaman) screened = .true.
-
-  scale = scale * rSol
-
-  ! switches for line emission
-
-  if (lineEmission) then
-     flatspec = .true.
-     greyContinuum = .true.
-  endif
-
-  if (allocated(inclinations)) then
-     inclination = inclinations(1)
-  else
-     inclination = firstInclination
-  end if
-  if (inclination .lt. 1.e-6) then
-     call writeWarning("inclination less than 1.e-6, now set to 1.e-6.")
-     call writeWarning("Did you specify an inclination of 0?")
-  end if
-  inclination = max(inclination, 1.e-4)
-
-  !=====================================================================
-  ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOULD BE HERE
-  !=====================================================================
-
-  ! The total number of gas particles is the total number of active particles less the number of point masses.
-  call init_sph_data2(b_udist, b_umass, b_utime, b_num_gas, b_time, b_nptmass, &
+  call init_sphtorus(b_udist, b_umass, b_utime, b_num_gas, b_time, b_nptmass, &
        b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
-  ! Communicate particle data. Non-mpi case has a stubbed routine. 
   call gather_sph_data
-  npart = sphData%npart
 
-  ! Writing basic info of this data
-  if (myRankIsZero) call info("info_sph_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
+  call setupamrgrid(grid)
 
-  if ( present( fix_source_T ) ) then 
+  call setupGlobalSources(grid)
 
-     call new(young_cluster, disc_on)
+  call writeBanner("Run-time messages","+",TRIVIAL)
 
-     write(message,*) "Calling build_cluster with fixed parameters "
-     call writeInfo(message, TRIVIAL)
+  call randomNumberGenerator(randomSeed=.true.)
 
-     call build_cluster(young_cluster, dble(lamstart), dble(lamend), fix_source_R=fix_source_R, fix_source_L=fix_source_L, &
-          fix_source_T=fix_source_T )
+  call doPhysics(grid)
 
-  else
-     
-     ! reading in the isochrone data needed to build an cluster object.
-     call new(isochrone_data, "dam98_0225")   
-     call read_isochrone_data(isochrone_data)
-     
-     ! making a cluster object
-     call new(young_cluster, disc_on)
-     call build_cluster(young_cluster, dble(lamstart), dble(lamend), iso_data=isochrone_data )
-    
-  end if
-
-  ! Wrting the stellar catalog readble for a human
-  filename="catalogue_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat"
-  if (myRankIsZero) call write_catalog(young_cluster, trim(filename) )
-
-  ! Finding the inclinations of discs seen from +z directions...
-  !     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
-
-  !==========================================================================
-  !==========================================================================
-
-  ! allocate the grid - this might crash out through memory problems
-
-     ! any AMR allocation stuff goes here
-  call initAMRGrid(newContFluxFile,flatspec,grid,ok,theta1,theta2)
-  if (.not.ok) goto 666
-
-  grid%splitOverMpi = .false.
-
-
-  grid%resonanceLine = resonanceLine
-  grid%lambda2 = lamline
-
-  ! Note: the first index should be either lambda or mu
-  !       in order to speedup the array operations!!!  (RK) 
-  allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
-
-  grid%doRaman = doRaman
-
-  if (photoionization) call addIons(grid%ion, grid%nion)
-  
-
-! Set up the wavelength arrays with either linear or log spaced values.
-  call set_up_lambda_array
-
-  !
-  ! Setting the number of opacity (kappa) arrays in grid.
-  !
-  if (flatspec) then
-     grid%nopacity = 1
-  else
-     grid%nopacity = nLambda
-  end if
-
-  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
-
-  if (noScattering) then
-     if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
-     grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
-  endif
-
-  if (includeGasOpacity) then
-
-     ! This routine may cause trouble with MPI routine! 
-     ! Propably multiple nodes are trying to write to a same file at a same time.
-
-     call readTsujiPPTable()
-     call readTsujiKPTable()
-     call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, grid%lamArray)
-
-  end if
-
-  if (mie) then
-     call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
-     call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-     grid%itestlam = iTestLam
-     write(message,*) "Test wavelength index: ",itestlam,ismoothlam
-     call writeInfo(message, TRIVIAL)
-  end if
-
-  ! Set up the AMR grid
-  call amr_grid_setup
-
-  ! Write the information on the grid to file using a routine in grid_mod.f90
-  filename = trim ("info_grid_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
-  if ( myRankIsZero ) call grid_info(grid, filename)
-
-  ! set up the sources
-  call set_up_sources
-
-  call checkSphTotalMass(grid, 2.0, ok)
-  if ( .not. ok ) goto 666
-
-  call torus_mpi_barrier
-
-  call init_random_seed()
-
-  filename = trim ( "torus_in_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
-  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho        ","temperature"/) )
-
-  if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
-  
-  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-       nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope,  &
-       lucy_undersampled )
-
-  if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
-
-  if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
-
-  filename = trim ( "torus_out_"//trim(adjustl(file_tag))//TRIM(ADJUSTL(char_num_calls))//".vtk" )
-  if (myRankIsZero) call  writeVtkFile(grid, filename, valueTypeString=(/"rho        ","temperature"/))
+  call doOutputs(grid)
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
 
-  if ( nInclination > 0 ) then
+  if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 
-     call writeInfo ("Calling phaseloop", FORINFO)
-     call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
-          theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
-          starsurface, newContFluxFile, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
-          0.0, 10000, flatspec,maxTau,                                         &
-          miePhase, nsource, source, blobs, nmumie, dTime)
 
-  else
-     call writeInfo ("Not calling phaseloop", FORINFO)
-  end if
-
-! Tidy up and finish the run 
-
-666 continue
-
-if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
-
-call writeInfo("TORUS exiting", FORINFO)
-
-call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-call freeGrid(grid)
-
-deallocate(miePhase) 
-deallocate(xArray)
-
-call torus_mpi_barrier
-
+  call torus_mpi_barrier
+  call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+  call freeGrid(grid)
+  call freeGlobalSourceArray()
 #ifdef MPI
-call freeAMRCOMMUNICATOR
+  call torus_mpi_barrier
+  call freeAMRCOMMUNICATOR
+  call MPI_FINALIZE(ierr)
 #endif
 
-CONTAINS
-!-----------------------------------------------------------------------------------------------------------------------
-  subroutine set_up_lambda_array
-    use photoion_mod, only: refineLambdaArray
-
-    real :: deltaLambda
-    real :: loglamStart, logLamEnd
-
-
-    if (allocated(xArray)) then
-       deallocate(xArray)
-    endif
-
-     if (lucyradiativeEq) then
-        call writeInfo("Doing radiative equilibrium so setting own wavelength arrays", TRIVIAL)
-        nLambda = 200
-        allocate(xArray(1:nLambda))
-        logLamStart = log10(1200.)
-        logLamEnd   = log10(2.e7)
-        do i = 1, nLambda
-           xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-           xArray(i) = 10.**xArray(i)
-        enddo
-        goto 777
-     endif
-
-
-
-     if(nLambdaInput == 0)  then
-        if (allocated(source)) then
-           call writeInfo("Basing SED wavelength grid on input photospheric spectrum",TRIVIAL)
-           nLambda = SIZE(source(1)%spectrum%lambda)
-           allocate(xArray(1:nLambda))
-           xArray = source(1)%spectrum%lambda
-           
-           
-           lamStart = 1200.
-           lamEnd = 2.e7
-           logLamStart = log10(lamStart)
-           logLamEnd   = log10(lamEnd)
-           
-           do i = 1, 200
-              testLam = logLamStart + real(i-1)/real(200-1)*(logLamEnd - logLamStart)
-              if (testLam < xArray(1)) then
-                 allocate(tArray(1:nLambda))
-                 tArray = xArray
-                 nLambda = nLambda + 1
-                 deallocate(xArray)
-                 allocate(xArray(1:nLambda))
-                 xArray(1) = testLam
-                 xArray(2:nLambda) = tArray
-                 deallocate(tArray)
-              endif
-              if (testLam > xArray(nLambda)) then
-                 allocate(tArray(1:nLambda))
-                 tArray = xArray
-                 nLambda = nLambda + 1
-                 deallocate(xArray)
-                 allocate(xArray(1:nLambda))
-                 xArray(nLambda) = testLam
-                 xArray(1:nLambda-1) = tArray
-                 deallocate(tArray)
-              endif
-           enddo
-        else
-           nLambda = 200
-           allocate(xArray(1:nLambda))
-           lamStart = 1200.
-           lamEnd = 2.e7
-           logLamStart = log10(lamStart)
-           logLamEnd   = log10(lamEnd)
-           do i = 1, nLambda
-              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-              xArray(i) = 10.**xArray(i)
-           enddo
-        endif
-     else
-        nLambda = nLambdaInput
-        allocate(xArray(1:nLambda))
-        
-        if (lamLinear) then
-           deltaLambda = (lamEnd - lamStart) / real(nLambda)
-           
-           xArray(1) = lamStart + deltaLambda/2.
-           do i = 2, nLambda
-              xArray(i) = xArray(i-1) + deltaLambda
-           enddo
-           
-        else
-           
-           logLamStart = log10(lamStart)
-           logLamEnd   = log10(lamEnd)
-           
-           do i = 1, nLambda
-              xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-              xArray(i) = 10.**xArray(i)
-           enddo
-           
-           if (photoionization) then
-              xArray(1) = lamStart
-              xArray(2) = lamEnd
-              nCurrent = 2
-              call refineLambdaArray(xArray, nCurrent, grid)
-              nt = nLambda - nCurrent
-              do i = 1, nt
-                 fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-                 fac = 10.**fac
-                 nCurrent=nCurrent + 1
-                 xArray(nCurrent) = fac
-                 call sort(nCurrent, xArray)
-              enddo
-           endif
-
-        endif
-
-
-!       if (mie) then
-!          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
-!             call locate(xArray, nLambda, lambdaTau, i)
-!             t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
-!             if (t1 > 0.5) then
-!                write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
-!                call writeInfo(message, TRIVIAL)
-!                xArray(i+1) = lambdaTau
-!             else
-!                write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
-!                call writeInfo(message, TRIVIAL)
-!                xArray(i) = lambdaTau
-!             endif
-!          endif
-!       endif
-
-     endif
-
-
-       if (lamFile) then
-          call writeInfo("Reading wavelength points from file.", TRIVIAL)
-          open(77, file=lamfilename, status="old", form="formatted")
-          nLambda = 1
-333       continue
-          read(77,*,end=334) junk
-          xArray(nLambda) = junk
-          nLambda = nLambda + 1
-          goto 333
-334       continue
-          nlambda = nlambda - 1
-          close(77)
-       endif
-
-777 continue
-    !
-    ! Copying the wavelength array to the grid
-       if (associated(grid%lamArray)) deallocate(grid%lamArray)
-       allocate(grid%lamArray(1:nLambda))
-    do i = 1, nLambda
-       grid%lamArray(i) = xArray(i)
-    enddo
-    grid%nLambda = nLambda
-  end subroutine set_up_lambda_array
-
-!-----------------------------------------------------------------------------------------------------------------------
-
-  subroutine amr_grid_setup
-
-    use constants_mod, only: mSol
-    use amr_mod
-    use stateq_mod, only: amrStateq
-
-    real(double) :: removedMass
-    real(double) :: close_radius
-    TYPE(vector) :: someVector
-
-    if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
-
-    if (readPops .or. readPhasePops .or. readLucy) then 
-
-       print *, "Error: TorusMod not configured with readPops, readPhasePops, readLucy" 
-       STOP
-
-    else  ! not reading a population file
-
-        if ( present (remove_radius) ) grid%rCore = remove_radius*1e-10
-
-       amrGridCentre = Vector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
-       call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
-       
-       call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, young_cluster, nDustType)
-       call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
-       call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-   
-        nOctals = 0
-        nVoxels = 0
-        call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-        write(message,*) "Adaptive grid contains: ",nOctals," octals"
-        call writeInfo(message, TRIVIAL)
-        write(message,*) "                      : ",nVoxels," unique voxels"
-        call writeInfo(message, TRIVIAL)
-        grid%nOctals = nOctals
-        call howmanysplits()
-
-        call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
-        call finishGrid(grid%octreeRoot, grid, romData=romData)
-
-        ! Removing the cells within close_radius of the stars.
-        ! Use value from subroutine argument if present or value from parameter file if not. 
-        close_radius = real(grid%rCore, kind=db)
-
-        removedMass = 0.0
-        write(message,*) "Removing mass within ", close_radius, " (10^10 cm)"
-        call writeInfo(message, TRIVIAL)
-        call remove_too_close_cells(young_cluster, grid%octreeRoot, close_radius, removedMass, 1.0d-60, 'z')
-        write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
-        call writeInfo(message, TRIVIAL)
-
-        call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
-
-        if (lineEmission.and.(.not.cmf)) then
-           !  calculate the statistical equilibrium (and hence the emissivities 
-           !  and the opacities) for all of the subcells in an
-           !  adaptive octal grid.
-           !  Using a routine in stateq_mod module.
-           if (writeoutput) write(*,*) "Calling statistical equilibrium routines..."
-           if (doTuning) call tune(6, "amrStateq") ! start a stopwatch  
-
-           call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
-                      starSurface, recalcPrevious=.false., ion_name=ion_name, ion_frac=ion_frac)
-
-           call torus_mpi_barrier('waiting for other amrStatEq calls to return...')
-
-           if (doTuning) call tune(6, "amrStateq") ! stop a stopwatch  
-           if (writeoutput) write(*,*) "... statistical equilibrium routines complete"
-
-        end if ! (lineEmission)
-
-        !
-        ! cleaning up unused memoryusing the routine in sph_data_class
-        somevector = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
-        call kill()
-
-        if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
-
-     end if ! (readPops .or. readPhasePops)
-
-  call torus_mpi_barrier ! sync here
-  
-  if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
-
-end subroutine amr_grid_setup
-
-!-----------------------------------------------------------------------------------------------------------------------
-subroutine set_up_sources
-  use source_mod, only: source_within_octal, randomSource
-
-  integer      :: nstar
-
-  ! set up the sources
-  nSource = 0
- 
-  ! Extract some info from cluster object.
-  nstar = get_nstar(young_cluster)  ! number of stars in the cluster
-  nSource =  n_stars_in_octal(young_cluster, grid%octreeRoot)
-       
-  ! copy the star over in the array.
-  ! This is ugly. Maybe lucyRadiativeEquilibriumAMR should be changed to take
-  ! an cluster_class object as an input variable in future.
-  ALLOCATE(source(nSource))
-  
-  ! Restricting the source to be within the root cell (in case the root cell is 
-  ! is smaller than the sph model space!
-  j = 0 
-  do i = 1, nstar
-     a_star = get_a_star(young_cluster, i)
-     ! using a function in source_mod
-     if ( source_within_octal(a_star, grid%octreeRoot) ) then
-        j = j+1
-        source(j) = a_star
-     end if
-  end do
-
-  if (nSource > 0) then
-     call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
-     call writeInfo("Sources set up.",TRIVIAL)
-  endif
-
-
-end subroutine set_up_sources
-
-!-----------------------------------------------------------------------------------------------------------------------
+  call writeBanner("Torus completed","o",TRIVIAL)
 
 end subroutine torus
-
-end module torus_mod
 
 !-----------------------------------------------------------------------------------------------------------------------
 
@@ -836,49 +243,6 @@ end module torus_mod
 
   end subroutine update_sph_temperature
 
-!-------------------------------------------------------------------------------  
-! Check the total mass on the grid against the total mass component of the SPH data structure.
-! 
-! D. Acreman, July 2008
-   
-  subroutine checkSphTotalMass(grid, threshold, ok)
-
-    use gridtype_mod, only: gridtype
-    use sph_data_class, only : sphData
-    use constants_mod, only: mSol
-    use messages_mod
-    use amr_mod
-
-    implicit none
-
-    type(GRIDTYPE), intent(in) :: grid
-    real, intent(in)           :: threshold
-    logical, intent(out)       :: ok
-
-    real(double) :: totalMass
-    real(double) :: diff
-
-    character(len=100) :: message
-
-    totalMass = 0.d0
-    call findTotalMass(grid%octreeRoot, totalMass)
-    totalMass = totalMass / mSol
-
-    write(message,*) "Mass of envelope: ",totalMass, " solar masses"
-    call writeInfo(message, FORINFO)
-    write(message,*) "Mass from SPH data structure: ", sphData%totalgasmass
-    call writeInfo(message, FORINFO)
-
-    ok = .true. 
-    diff = ( abs(totalMass - sphData%totalgasmass) ) / sphData%totalgasmass
-    if ( diff > threshold ) then
-       ok = .false. 
-       write(message,*) "Difference between mass on grid and mass from particles exceeds allowable limit."
-       call writeFatal(message)
-    end if
-
-  end subroutine checkSphTotalMass
-
 !-------------------------------------------------------------------------------
 
 #ifdef MPI 
@@ -891,7 +255,7 @@ end module torus_mod
   subroutine gather_sph_data
 
     USE kind_mod
-    USE sph_data_class, only: sphData
+    USE sph_data_class, only: sphData, npart
 
     implicit none
     include 'mpif.h'
@@ -1068,6 +432,7 @@ end module torus_mod
   sphData%rhon(:)        = rhon_tmp(:)
   sphData%temperature(:) = temperature_tmp(:)
   sphData%npart          = npart_all
+  npart                  = npart_all
   sphData%gasmass(:)     = gasmass_tmp(:)
   sphData%hn(:)          = hn_tmp(:)
 
@@ -1138,6 +503,8 @@ end module torus_mod
   end subroutine gather_sph_data
 
 #endif
+
+end module torus_mod
 
 ! End of file ------------------------------------------------------------------
 

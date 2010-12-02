@@ -76,7 +76,7 @@ fi
 
 # 1.3 Set up the build directories
 # Specify libraries for linking (used by sphNG Makefile)
-export TORUS_LIB="${sphtorus_dir}/lib -ltorus -L${HOME}/cfitsio/lib -lcfitsio"
+export TORUS_LIB="${sphtorus_dir}/lib -ltorus"
 
 if [[ -e ${sphtorus_dir} ]]; then
     if [ ${overwrite} -eq 1 ]; then
@@ -111,7 +111,7 @@ fi
 # 2.2 Build torus
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
 make depends
-make ${debug_flag} ${profile_flag} ${itac_flag} lib
+make ${debug_flag} ${profile_flag} ${itac_flag} cfitsio=no lib
 if [[ -e libtorus.a ]]; then
   echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
 else

@@ -313,7 +313,6 @@ contains
 
           !          if (variableDustSublimation) thisSmooth = .false.
 
-          !          if ( suppressLucySmooth ) thisSmooth = .false.
 
           if (thisSmooth) then
              call locate(grid%lamArray, nLambda,lambdaSmooth, ismoothlam)

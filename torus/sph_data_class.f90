@@ -131,7 +131,6 @@ contains
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     real(double), optional  :: uvel, utemp    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
-!    integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
 
@@ -194,7 +193,7 @@ contains
   ! 
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
-  subroutine init_sph_data2(udist, umass, utime, b_num_gas, time, nptmass, &
+  subroutine init_sphtorus(udist, umass, utime, b_num_gas, time, nptmass, &
         b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
     implicit none
 
@@ -206,7 +205,7 @@ contains
     integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
 
     integer, intent(in)   :: b_npart, b_idim
-    integer, intent(in) :: b_iphase(b_idim)
+    integer*1, intent(in) :: b_iphase(b_idim)
     real(double), intent(in)    :: b_xyzmh(5,b_idim)
     real, intent(in)    :: b_rho(b_idim)
     real(double), intent(in)    :: b_temp(b_idim)
@@ -300,7 +299,7 @@ contains
        do; end do 
     ENDIF
 
-  end subroutine init_sph_data2
+  end subroutine init_sphtorus
 
   
   !
@@ -1480,8 +1479,8 @@ contains
        Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
        RhoArray(:) = sphdata%rhon(ind(:))
        etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
-       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
-            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
+!       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
+!            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
 
        write(message, *) "Critical smoothing Length in code units", hcrit
        call writeinfo(message, TRIVIAL)

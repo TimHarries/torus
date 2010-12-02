@@ -236,8 +236,6 @@ contains
             "Max velocity across cell (in linewidths): ","(a,es9.3,1x,a)", 9.9d99, ok, .false.) 
        call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
             "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("suppressLucySmooth", suppressLucySmooth, cLine, nLines, &
-            "Suppress AMR grid in Lucy mod: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("doVelocitySplit", doVelocitySplit, cLine, nLines, &
             "Split on SPH velocities: ","(a,1l,1x,a)", .true., ok, .false.)
        call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &

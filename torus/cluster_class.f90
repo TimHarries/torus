@@ -21,7 +21,6 @@ module cluster_class
        &    build_cluster, &
        &    assign_grid_values, &
        &    update_particle_list, &
-       &    assign_density, &
        &    find_n_particle_in_subcell, &
        &    n_stars_in_octal, &
        &    remove_too_close_cells, &
@@ -306,16 +305,6 @@ contains
     grid%rCore        = rCore
 
   end subroutine initClusterAMR
-
-
-
-  !
-  !
-  ! 
-  !
-  !
-
-  
   
   !
   ! Assigns various values which are needed for the run.
@@ -385,104 +374,6 @@ contains
 
   end subroutine assign_grid_values
 
-  !
-  ! Adds density values to ths subcell of thisOctal.
-  !
-  ! This routine can be used for example, in addNewChild and initFirstOctal
-  ! in amr_mod.f90
-  !
-  subroutine assign_density(thisOctal,subcell, geometry, a_cluster)
-
-    implicit none
-
-    type(octal), intent(inout) :: thisOctal
-    integer, intent(in) :: subcell
-    character(len=*) :: geometry
-    type(cluster), intent(in), optional :: a_cluster
-    real(double) :: density_ave, rho_disc_ave, dummy_d
-!    type(VECTOR) :: velocity_ave
-    real :: tem_ave
-    integer :: nparticle     
-
-    !
-    !
-    ! assign density to the subcell
-       
-    select case (geometry)
-       case ("cluster")
-          call find_temp_in_subcell(nparticle, tem_ave, &
-               thisOctal, subcell)
-
-          thisOctal%temperature(subcell)  = tem_ave
-          call find_n_particle_in_subcell(nparticle, density_ave, &
-               thisOctal, subcell)
-
-          ! if this subcell intersect with any of the stellar disk
-          ! in the cluster, then add the contribution from the stellar disc.
-          rho_disc_ave = 1.d-30
-
-         if (a_cluster%disc_on) then
-             if (stellar_disc_exists() .and.  &       
-                  disc_intersects_subcell(a_cluster, thisOctal, subcell) ) then
-
-                rho_disc_ave = average_disc_density_fast(thisOctal, &
-                     subcell, a_cluster, dummy_d)
-
-!             rho_disc_ave = average_disc_density(sphData, thisOctal, &
-!                  subcell, a_cluster)
-                thisOctal%rho(subcell) = density_ave + rho_disc_ave
-
-             ! This should be in [g/cm^3]
-
-!             if (thisOctal%rho(subcell) > 5.d-14) then
-                if (thisOctal%rho(subcell) > 1.d-20) then
-                   thisOctal%inFlow(subcell) = .true.  
-                else
-                   thisOctal%inFlow(subcell) = .true.
-                endif
-             else
-
-                thisOctal%rho(subcell) = density_ave
-                ! This should be in [g/cm^3]
-                
-                if (thisOctal%rho(subcell) > 1.d-27) then
-                   thisOctal%inFlow(subcell) = .true.  
-                else
-                   thisOctal%inFlow(subcell) = .true.
-                endif
-             end if
-          else
-
-             thisOctal%rho(subcell) = density_ave
-             ! This should be in [g/cm^3]
-             
-             if (thisOctal%rho(subcell) > 1.d-27) then
-                thisOctal%inFlow(subcell) = .true.  
-             else
-                thisOctal%inFlow(subcell) = .true.
-             endif
-
-          end if
-
-
-          !!
-          !! REMOVE THIS LATER !
-          !!
-          !!thisOctal%rho(subcell) =  1.0e-28 ! just for testing...
-          !!
-          !!
-          !!
-
-       case ("molcluster")
-
-       case("wr104")
-          call find_n_particle_in_subcell(nparticle, density_ave, &
-               thisOctal, subcell)          
-          thisOctal%rho(subcell) = max(1.d-30,dble(nparticle)/ cellVolume(thisOctal, subcell))
-    end select
-
-  end subroutine assign_density
-    
   !
   ! Updates the sph particle linked list.
   !
@@ -680,82 +571,6 @@ contains
     
   end subroutine find_n_particle_in_subcell
 
-
-  subroutine find_temp_in_subcell(n, tem_ave, node, subcell)
-    use input_variables, only : TMinGlobal
-    use sph_data_class, only: get_temp, get_position_gas_particle
-    implicit none
-    integer, intent(out) :: n    ! number of particles in the subcell
-    real, intent(out) :: tem_ave ! average temperature of the subcell
-    type(octal), intent(inout)    :: node
-    integer, intent(in)           :: subcell ! index of the subcell
-    !
-    integer :: npart
-    integer :: i, j, counter
-    real(double) :: x, y, z
-    !
-    real(double), save :: udist  ! for units conversion  
-    logical, save  :: first_time = .true.
-
-    ! Carry out the initial calculations
-    if (first_time) then       
-       ! units of sphData
-       udist = get_udist()  ! [cm]
-
-       ! convert units
-       udist = udist/1.0d10  ! [10^10cm]
-
-       first_time = .false.
-    end if
-
-    if (associated(node%gas_particle_list)) then
-       
-       ! retriveing the number of the total gas particles
-       ! in "node".
-       ! -- using the function in linked_list_class.f90
-       npart = SIZE(node%gas_particle_list)
-       
-       counter = 0
-       tem_ave = 0.0d0
-       do i=1, npart
-          ! Retriving the sph data index for this paritcle
-          j = node%gas_particle_list(i)
-          
-          ! retriving this posisiton of the gas particle.
-          call get_position_gas_particle(j, x, y, z)
-          
-          ! convert units
-          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
-          ! quick check to see if this gas particle is
-          ! belongs to this cell.
-          if ( within_subcell(node, subcell, x, y, z) ) then
-             counter = counter + 1
-             tem_ave = tem_ave + get_temp(j) 
-          end if
-          
-       end do
-       
-       n = counter
-       
-    else
-
-       n = 0
-
-    endif
-    
-    if (n>0) then
-       tem_ave = tem_ave/real(n)
-    else
-       tem_ave = TMinGlobal
-    end if
-    
-
-  end subroutine find_temp_in_subcell
-
-  !
-  ! For a given octal object, this function finds and returns the number of stars within in 
-  ! this octal.
-  !
 
   function n_stars_in_octal(this, an_octal) result(out)
     use source_mod, only: source_within_octal
