@@ -142,7 +142,6 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
 #ifdef MPI
   call torus_mpi_barrier
   call freeAMRCOMMUNICATOR
-  call MPI_FINALIZE(ierr)
 #endif
 
   call writeBanner("Torus completed","o",TRIVIAL)
