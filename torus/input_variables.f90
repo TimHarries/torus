@@ -613,6 +613,7 @@ module input_variables
   logical :: narrowBandImage
   logical :: useInterp
   real    :: lucy_undersampled  
+  logical :: convergeOnUndersampled
   integer :: minCrossings
   logical :: forceLucyConv
   logical :: multiLucyFiles

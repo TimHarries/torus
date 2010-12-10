@@ -56,7 +56,7 @@ contains
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass
-    real(double) :: minRho, maxRho, totalmasstrap
+    real(double) :: minRho, maxRho, totalmasstrap, removedMass
     character(len=80) :: message
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
@@ -346,6 +346,11 @@ contains
              grid%rInner = rInner
              grid%rOuter = rOuter
              grid%rCore = rCore
+
+          case("cluster")
+             call remove_too_close_cells(young_cluster, grid%octreeRoot, real(rCore,db), removedMass, 1.0d-37, 'z')
+             write(message,*) "Mass removed by remove_too_close_cells: ", removedMass / mSol, " solar masses"
+             call writeInfo(message, TRIVIAL)
 
           case DEFAULT
        end select

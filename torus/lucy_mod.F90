@@ -26,7 +26,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use input_variables, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use input_variables, only : object, maxMemoryAvailable
+    use input_variables, only : object, maxMemoryAvailable, convergeOnUndersampled
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -934,7 +934,7 @@ contains
 
        if (percent_undersampled > percent_undersampled_min) then
           iMultiplier  = iMultiplier * 2
-          converged = .false.
+          if ( convergeOnUndersampled ) converged = .false.
        endif
 
 

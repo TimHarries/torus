@@ -607,6 +607,11 @@ contains
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
 
+          if ( geometry == "cluster" ) then 
+             call getReal("removeradius", rCore, 1.0, cLine, fLine, nLines, &
+                  "Clearing radius (Torus units): ","(a,f7.3,a)", 2000.0, ok, .false.)
+          end if
+
     case("shakara")
 
        oneKappa = .true.
@@ -1047,6 +1052,9 @@ contains
     call getReal("lucy_undersampled", lucy_undersampled, 1., cLine, fLine, nLines, &
          "Minimum percentage of undersampled cell in lucy iteration: ", &
          "(a,f4.2,a)",0.0,ok,.false.)
+
+    call getLogical("convergeonundersampled", convergeOnUndersampled, cLine, fLine, nLines, &
+         "Prevent convergence when too many cells undersampled: ", "(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
