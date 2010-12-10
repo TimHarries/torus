@@ -65,7 +65,8 @@ contains
     type(SOURCETYPE) :: source(:)
     logical :: ok
     real(double) :: distToEdge, fac
-    
+    character(len=80) :: message
+
     do iSource = 1, nSource
    
        source(iSource)%teff = sourceTeff(iSource)
@@ -77,7 +78,9 @@ contains
 
        source(isource)%outsideGrid = .false.
        source(isource)%onEdge      = .false. 
-       distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
+! Find distance of source from upper or lower z boundary, whichever is smaller.
+       distToedge = min ( abs( source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
+                          abs( source(iSource)%position%z - (grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize) ) )
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
           source(isource)%outsideGrid = .true.
           source(isource)%distance = modulus(source(isource)%position)*1.d10
@@ -87,7 +90,9 @@ contains
           source(iSource)%onEdge = .true.
           source(iSource)%onCorner = .false.
           !Thaw - accomodating corner sources
-          if(grid%octreeRoot%twoD) then
+          if ( grid%octreeRoot%cylindrical ) then 
+             source(iSource)%onCorner = .false.
+          else if(grid%octreeRoot%twoD) then
              distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
              if ( distToEdge < grid%halfSmallestSubcell) then
                 source(iSource)%onCorner = .true.
@@ -115,9 +120,9 @@ contains
              end if
           end if
 
-          !if(source(iSource)%onCorner) then
-          !   write(*,*) "SOURCE ON CORNER!"
-          !end if
+          if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)
+          if(source(iSource)%onedge)   call writeinfo("Source is on edge",   TRIVIAL)
+
        endif
 
        select case(inputContFluxFile(isource))
@@ -152,7 +157,8 @@ contains
 !       endif
 
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
-      if (myrankGlobal==0)  write(*,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
+       write(message,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
+       call writeInfo(message, TRIVIAL)
 
     end do
   end subroutine setupSources
