@@ -348,6 +348,7 @@ contains
              grid%rCore = rCore
 
           case("cluster")
+             removedMass = 0.0
              call remove_too_close_cells(young_cluster, grid%octreeRoot, real(rCore,db), removedMass, 1.0d-37, 'z')
              write(message,*) "Mass removed by remove_too_close_cells: ", removedMass / mSol, " solar masses"
              call writeInfo(message, TRIVIAL)
