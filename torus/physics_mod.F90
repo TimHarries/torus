@@ -279,6 +279,17 @@ contains
         call torus_mpi_barrier
      endif
   endif
+
+! Free memory allocated in this subroutine
+  if (associated(xArray)) then
+     deallocate(xArray)
+     nullify(xArray)
+  end if
+  if (associated(miePhase)) then
+     deallocate(miePhase)
+     nullify(miePhase)
+  end if
+
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
