@@ -41,13 +41,9 @@ use particle_pos_mod, only: particle_pos
   real(kind=8), parameter :: year = 60.0*60.0*24.0*365.25 
   real(kind=8), parameter :: b_time=182.0e6_db * year ! Current time, used as age of star
   real(kind=8), allocatable :: b_temp(:)
-  real(kind=8), parameter :: temp_min=3.0
   real(kind=8), parameter :: total_disc_mass=0.011  ! Taken from 2D benchmark
   real(kind=8)            :: total_gas_mass
   character(len=11), parameter :: file_tag = "sphbench   "
-  real(kind=8), parameter :: source_R =    1.0
-  real(kind=8), parameter :: source_L =    1.0
-  real(kind=8), parameter :: source_T = 5800.0 
 
 ! Source parameters
   real(db), parameter :: mSol = 1.9891e33_db
@@ -203,7 +199,7 @@ use particle_pos_mod, only: particle_pos
 ! Initialise phase flag. Gas particles are denoted by zero.
    b_iphase(1:b_num_gas) = 0 
 
-   b_temp(1:b_num_gas) = temp_min
+   b_temp(1:b_num_gas) = 3.0
 
 ! 2. Set up point mass properties
 
@@ -232,8 +228,7 @@ use particle_pos_mod, only: particle_pos
   call torus(b_idim,  b_npart,       b_nptmass, b_num_gas, &
              b_xyzmh, b_rho,         b_iphase,                        &
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
-            temp_min, total_gas_mass, file_tag,                       &
-            fix_source_R=source_R, fix_source_L=source_L, fix_source_T=source_T)
+             total_gas_mass, file_tag )
 
   open(unit=61, file="part_out_"//trim(adjustl(char_nproc))//".dat", status='replace')
   do ipart=1, b_num_gas

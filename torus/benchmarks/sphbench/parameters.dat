@@ -1,66 +1,46 @@
-! Torus parameter file for sphbench 
+! Torus V2 SPH benchmark
 
-! AMR grid parameters
-gridusesamr T
-amrgridcentrex 0.0000
-amrgridcentrey 0.0000
-amrgridcentrez 0.0000
-amrgridsize 5.0e6
+readgrid F
+writegrid F
+dustphysics T
+radeq T
+
+nsource 1
+radius1 1.0
+teff1 5800.0
+mass1 1.0
+contflux1 blackbody
+sourcepos1 0.0 0.0 0.0
+
+! Suppress splitting on velocity as there is no velocity information
+doVelocitySplit F
+
+! AMR grid stuff 
+cylindrical T 
 amr2d F
 amr3d T
+amrgridcentrex 0.0
+amrgridcentrey 0.0
+amrgridcentrez 0.0
+amrgridsize 5.0e6
 
-! Geometry specific parameters
-geometry cluster
-rcore 215.0  
-! miniumum temperature on AMR grid
-tminglobal 3.0
-! No discs added
-disc_on F
-! Grid splitting parameters 
+! Maximum mass per cell for AMR grid generation. 
 limitscalar 5.e26
-limittwo 0.0
+limittwo 0.3
 
-! SED parameters
-ninc 2
-firstinc 12.5
-lastinc 77.5
+sphdatafilename none
+sphNormLimit 0.5
+kerneltype 0
+useHull F
 
-! SED output filename
-filename test
+! Geometry flag. 
+geometry cluster
 
-! use isotropic mie scattering
-mie T    
+! minimum temperature on AMR grid
+tminglobal 3.0
+
+! Scattering parameters. 
 iso_scatter T
-
-! Use lucyradiative equlibrium 
-lucyrad T
-
-! number of photons to use for generating SEDs
-nphotons 500000
-
-! Don't read wavelengths from file
-lambdafile F
-
-! Specify wavelength array properties
-wavlin F
-lamstart 1200.
-lamend  2.e7
-nlambda 200
-
-! Distance to grid from observer
-distance 2.25558e-8
-
-! Write spectrum as lambda vs F lambda in SI units
-sised T
-
-! grid smoothing parameters
-suppressLucySmooth T
-
-! maximum number of scatters before photon is aborted
-maxscat 1000000
-
-! Variance reduction (required parameter)
-usebias F
 
 ! Dust grain properties
 graintype1 sil_dl
@@ -68,9 +48,15 @@ amin1 0.12
 amax1 0.1201
 qdist1 0.01
 
-! probability of contiuum photon
-probcont 1.0 	
-! Probability of photon from dusty envelope
-probdust 0.1
-
-
+! SED parameters
+spectrum T
+ninc 2               ! number of inclinations
+firstinc 12.5        ! the first inclination (degrees)
+lastinc 77.5         ! the last inclination (degrees)
+nphotons 500000      ! the number of photon packets in each SED
+filename test        ! the root of the output filename
+sised T              ! Write spectrum as lambda vs F lambda in SI units
+distance 2.25558e-8  ! Distance to observer
+sedlammin 0.12       ! minimum wavelength in SED file
+sedlammax 2000       ! maximum wavelength in SED file
+sedwavlin F          ! Linear spacing in SED file? 

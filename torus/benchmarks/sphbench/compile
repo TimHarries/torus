@@ -4,7 +4,7 @@ echo Compiling SPH-Bench for ${SYSTEM} system
 
 case ${SYSTEM} in 
 
-    intelmac) export MYF90="g95";;
+    g95) export MYF90="g95";;
 
     ompi) export MYF90="mpif90 -DMPI";;
 
@@ -23,7 +23,8 @@ ${MYF90} -c -o particle_pos.o particle_pos.f90
 ${MYF90} -c -o sphbench.o     sphbench.F90
 
 echo Linking
-${MYF90} -o sphbench sphbench.o particle_pos.o -L. -ltorus -L${HOME}/cfitsio/lib -lcfitsio
+# Compile Torus library without cfitsio 
+${MYF90} -o sphbench sphbench.o particle_pos.o -L. -ltorus 
 
 echo Done
 
