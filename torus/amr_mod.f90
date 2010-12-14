@@ -1076,11 +1076,6 @@ CONTAINS
       
    END DO
 
-!    if (associated(thisOctal%gas_particle_list)) then
-!       DEALLOCATE(thisOctal%gas_particle_list)
-!    endif
-
-
   END SUBROUTINE splitGrid
   
   
@@ -15913,6 +15908,7 @@ IF ( .NOT. gridConverged ) RETURN
        call deallocateAttribute(thisOctal%oldmolecularLevel)
        call deallocateAttribute(thisOctal%oldestmolecularLevel)
 
+       call deallocateAttribute(thisOctal%gas_particle_list)
 
      end subroutine deallocateOctalDynamicAttributes
 

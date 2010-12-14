@@ -141,6 +141,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   call freeGrid(grid)
   call freeGlobalSourceArray()
   dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
+  call kill() ! Free SPH data type
 #ifdef MPI
   call torus_mpi_barrier
   call freeAMRCOMMUNICATOR

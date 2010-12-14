@@ -391,6 +391,7 @@ contains
 !              do; enddo
 !              endif
         call kill_all(young_cluster)
+        call delete_particle_lists(grid%octreeRoot)
   end subroutine setupamrgrid
 
   subroutine doSmoothOnTau(grid)
