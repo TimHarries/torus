@@ -39,6 +39,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   use memory_mod
   use sph_data_class 
   type(GRIDTYPE) :: grid
+  type(VECTOR) :: dummy
 #ifdef MPI
    include 'mpif.h'  
 #endif
@@ -139,6 +140,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
   call freeGrid(grid)
   call freeGlobalSourceArray()
+  dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
 #ifdef MPI
   call torus_mpi_barrier
   call freeAMRCOMMUNICATOR

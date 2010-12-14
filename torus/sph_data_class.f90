@@ -1552,11 +1552,12 @@ contains
     if(done) then
        if (allocated(PositionArray)) then
           deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, &
-               q2Array, HullArray, etaarray, RhoH2Array, rhoCOarray)
+               q2Array, HullArray, etaarray, RhoH2Array)
 
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
 
+          if (associated(rhoCOarray)) deallocate(rhoCOarray)
           if (allocated(VelocityArray)) deallocate (VelocityArray)
        endif
        nullify(previousOctal)
