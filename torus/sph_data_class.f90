@@ -1528,11 +1528,13 @@ contains
           endif
        enddo
 
-       write(message,*) "Hull smoothing Length in 10^10cm ", Hedge
-       call writeinfo(message, TRIVIAL)
+       if (useHull) then 
+          write(message,*) "Hull smoothing Length in 10^10cm ", Hedge
+          call writeinfo(message, TRIVIAL)
 
-       write(message,*) "Percentage of Hull particles ", 100. * real(count(HullArray)) / real(npart)
-       call writeinfo(message, TRIVIAL)
+          write(message,*) "Percentage of Hull particles ", 100. * real(count(HullArray)) / real(npart)
+          call writeinfo(message, TRIVIAL)
+       endif
 
        OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
 
