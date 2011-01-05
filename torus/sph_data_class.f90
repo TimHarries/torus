@@ -205,7 +205,7 @@ contains
     integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
 
     integer, intent(in)   :: b_npart, b_idim
-    integer*1, intent(in) :: b_iphase(b_idim)
+    integer(kind=1), intent(in) :: b_iphase(b_idim)
     real(double), intent(in)    :: b_xyzmh(5,b_idim)
     real, intent(in)    :: b_rho(b_idim)
     real(double), intent(in)    :: b_temp(b_idim)
