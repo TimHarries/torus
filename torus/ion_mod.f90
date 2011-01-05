@@ -40,6 +40,7 @@ module ion_mod
      real :: ipot         ! ionization potential
      real :: abundance    ! of element relative to H
      real(double) :: nuthresh ! freq equivalent of ion pot
+     real(double) :: nucleons     ! number of nucleons, use to calculate mass
      integer :: nFreq  ! number of frequency bins in xsection array
      real(double), pointer :: freq(:)=>null(), xSec(:)=>null() ! frequency and ionization xsection arrays
      character(len=8) :: species  ! name of ion
@@ -51,9 +52,9 @@ module ion_mod
 
 contains
 
-  subroutine createIon(thisIon, z, n, ipot)
+  subroutine createIon(thisIon, z, n, nucleons, ipot)
     type(IONTYPE) :: thisIon
-    integer :: z, n, i
+    integer :: z, n, i, nucleons
     real :: iPot
     character(len=2) :: element
     character(len=4) :: roman
@@ -62,6 +63,7 @@ contains
     element = " "; roman = " "
     thisIon%z = z
     thisIon%n = n
+    thisIon%nucleons = nucleons
     i = z - n + 1
     call returnElement(z, element)
     call createRoman(i, roman)
@@ -109,6 +111,8 @@ contains
     integer :: i
 
        if (PRESENT(iFreq)) then
+!          print *, "iFreq", iFreq
+!          print *, "thisIon%xSec(iFreq)", thisIon%xSec(iFreq)
           xSec = thisIon%xSec(iFreq)
        else
           call locate(thisIon%freq, thisIon%nFreq, freq, i)
@@ -123,97 +127,97 @@ contains
 
 
     nIon = 1
-    call createIon(ionArray(nIon), 1, 1, 1.360e1) ! H I 1
+    call createIon(ionArray(nIon), 1, 1, 1, 1.360e1) ! H I 1
 
     nIon = nIon + 1
-    call createIon(ionArray(nIon), 1, 0, 1.e-10) ! H II 2
+    call createIon(ionArray(nIon), 1, 0, 1, 1.e-10) ! H II 2
 
     if (.not. hOnly) then
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 2, 2, 2.459e1) ! He I 3
+       call createIon(ionArray(nIon), 2, 2, 4, 2.459e1) ! He I 3
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 2, 1, 5.442e1) ! He II 4
+       call createIon(ionArray(nIon), 2, 1, 4, 5.442e1) ! He II 4
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 2, 0, 1.e-10) ! He III (alpha particle!) 5
+       call createIon(ionArray(nIon), 2, 0, 4, 1.e-10) ! He III (alpha particle!) 5
 
     end if
 
     if (usemetals) then
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 6, 6, 1.126e1) ! C I
+       call createIon(ionArray(nIon), 6, 6, 12, 1.126e1) ! C I
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 6, 5, 2.438e1) ! C II
+       call createIon(ionArray(nIon), 6, 5, 12, 2.438e1) ! C II
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 6, 4, 4.789e1) ! C III
+       call createIon(ionArray(nIon), 6, 4, 12, 4.789e1) ! C III
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 6, 3, 6.449e1) ! C IV
+       call createIon(ionArray(nIon), 6, 3, 12, 6.449e1) ! C IV
 
        !    nIon = nIon + 1
-       !    call createIon(ionArray(nIon), 6, 2, 3.921e2) ! C V
+       !    call createIon(ionArray(nIon), 6, 2, 12, 3.921e2) ! C V
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 7, 7, 1.453e1) ! N I
+       call createIon(ionArray(nIon), 7, 7, 14, 1.453e1) ! N I
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 7, 6, 2.960e1) ! N II
+       call createIon(ionArray(nIon), 7, 6, 14, 2.960e1) ! N II
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 7, 5, 4.745e1) ! N III
+       call createIon(ionArray(nIon), 7, 5, 14, 4.745e1) ! N III
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 7, 4, 7.747e1) ! N IV
+       call createIon(ionArray(nIon), 7, 4, 14, 7.747e1) ! N IV
 
        !    nIon = nIon + 1
        !    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 8, 8, 1.362e1) ! O I
+       call createIon(ionArray(nIon), 8, 8, 16, 1.362e1) ! O I
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 8, 7, 3.512e1) ! O II
+       call createIon(ionArray(nIon), 8, 7, 16, 3.512e1) ! O II
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 8, 6, 5.494e1) ! O III
+       call createIon(ionArray(nIon), 8, 6, 16, 5.494e1) ! O III
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 8, 5, 7.741e1) ! O IV
+       call createIon(ionArray(nIon), 8, 5, 16, 7.741e1) ! O IV
 
        !    nIon = nIon + 1
-       !    call createIon(ionArray(nIon), 8, 4, 1.139e2) ! O V
+       !    call createIon(ionArray(nIon), 8, 4, 16, 1.139e2) ! O V
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 10, 10, 2.156e1) ! Ne I
+       call createIon(ionArray(nIon), 10, 10, 20, 2.156e1) ! Ne I
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 10, 9, 4.096e1) ! Ne II
+       call createIon(ionArray(nIon), 10, 9, 20, 4.096e1) ! Ne II
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 10, 8, 6.342e1) ! Ne III
+       call createIon(ionArray(nIon), 10, 8, 20, 6.342e1) ! Ne III
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
+       call createIon(ionArray(nIon), 10, 7, 20, 9.712e1) ! Ne IV
 
        !    nIon = nIon + 1
-       !    call createIon(ionArray(nIon), 10, 6, 1.262e2) ! Ne V
+       !    call createIon(ionArray(nIon), 10, 6, 20, 1.262e2) ! Ne V
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 16, 16, 1.036e1) ! S I
+       call createIon(ionArray(nIon), 16, 16, 32, 1.036e1) ! S I
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 16, 15, 2.334e1) ! S II
+       call createIon(ionArray(nIon), 16, 15, 32, 2.334e1) ! S II
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 16, 14, 3.479e1) ! S III
+       call createIon(ionArray(nIon), 16, 14, 32, 3.479e1) ! S III
 
        nIon = nIon + 1
-       call createIon(ionArray(nIon), 16, 13, 4.722e1) ! S IV
+       call createIon(ionArray(nIon), 16, 13, 32, 4.722e1) ! S IV
     endif
     if (writeoutput) &
          write(*,*) "Added ",nion," species to photoionization calculation"
@@ -1013,26 +1017,6 @@ function returnAbundance(z) result(a)
 
 end function returnAbundance
 
-
-!subroutine getNumberDensity(grid, thisOctal, subcell, numDensity)
-!  type(IONTYPE) :: ionArray(:)
-!  integer :: nIon
-!  type(GRIDTYPE) :: grid
-!  type(OCTAL), pointer :: thisOctal
-!1  integer :: subcell
-!1  integer :: i
-!  real(double) :: numDensity!
-!
-!  numDensity = 0.d0
-!
-!  do i = 1, grid%nIon
-!     numDensity = numDensity + grid%ion(i)%abundance * 2.d0 * grid%ion(i)%z * mHydrogen
-!  end do
-!1
-!  numDensity = numDensity + thisOctal%ne(subcell) * mElectron !electrons
-!  numDensity = thisOctal%rho / numDensity!
-!
-!end subroutine
 
 end module ion_mod
 

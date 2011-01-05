@@ -3883,12 +3883,12 @@ END SUBROUTINE GAUSSJ
     real(double) :: dr, drhodr, d2rhodr2
     character(len=80) :: message
 
-
-
     zinner = 0.001d0
     allocate(zeta(1:nr), phi(1:nr))
     zeta = 0.d0
     phi = 0.d0
+
+
 
     do i = 1, nr
       zeta(i) = log10(zinner) + (log10(zetaCrit)-log10(zinner))*dble(i-1)/dble(nr-1)
@@ -3908,6 +3908,7 @@ END SUBROUTINE GAUSSJ
    d2rhodr2 = (-fourPi*bigG*rho(1)**2 * (mu*mHydrogen) / (kerg * t)) 
  
    do i = 2, nr
+!   do i = 1, nr
       dr = r(i) - r(i-1)
       rho(i) = rho(i-1) + drhodr * dr
       d2rhodr2 = (-fourPi*bigG*rho(i)**2 * (mu*mHydrogen) / (kerg * t)) - (2.d0/r(i))*drhodr + (1.d0/rho(i))*drhodr**2
@@ -3919,6 +3920,7 @@ END SUBROUTINE GAUSSJ
    eThermal = 0.d0
    eGrav = 0.d0
    do i = 2, nr
+!   do i = 1, nr
       dv = fourPi*r(i)**2*(r(i)-r(i-1))
       mass = mass + rho(i)*dv
       eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
@@ -3927,7 +3929,9 @@ END SUBROUTINE GAUSSJ
    
    write(message,'(a,f5.2)') "Outer radius of Bonnor-Ebert sphere is (in pc): ",r0/pctocm
     call writeInfo(message, TRIVIAL)
-   write(message,'(a,f5.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
+    !print *, "mass", mass
+    !print *, "msol", msol
+    !write(message,'(a,f5.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
    call writeInfo(message, TRIVIAL)
    write(message,'(a,1pe12.3)') "Gravitational p.e.  contained in Bonnor-Ebert sphere is: ",eGrav
    call writeInfo(message, TRIVIAL)

@@ -188,6 +188,32 @@ contains
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
          "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    !Thaw
+    call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
+         "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
+    
+    !Thaw --- user friendly boundaries
+  !  call getString("xplusbound", xplusboundString, cLine, fLine, nLines, &
+  !       "positive x boundary condition:  ","(a,a,a)","free",ok, .true.)
+  !  
+  !  call getString("xminusbound", xplusboundString, cLine, fLine, nLines, &
+  !       "positive x boundary condition:  ","(a,a,a)","free",ok, .true.)
+!
+!    call getString("yplusbound", xplusboundString, cLine, fLine, nLines, &
+!         "positive y boundary condition:  ","(a,a,a)","free",ok, .true.)
+!
+!    call getString("yminusbound", xplusboundString, cLine, fLine, nLines, &
+!         "negative y boundary condition:  ","(a,a,a)","free",ok, .true.)
+!
+!    call getString("zplusbound", xplusboundString, cLine, fLine, nLines, &
+!         "positive z boundary condition:  ","(a,a,a)","free",ok, .true.)
+!
+!    call getString("zminusbound", xplusboundString, cLine, fLine, nLines, &
+!         "negative z boundary condition:  ","(a,a,a)","free",ok, .true.)
+!
+!    !--- User friendly boundaries
+
+
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
     endif

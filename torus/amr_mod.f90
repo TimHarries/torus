@@ -7343,9 +7343,14 @@ CONTAINS
     if (thisOctal%threed) then
        u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
     else
-          if(rVec%x > 0.40 .and. rVec%x < 0.60 ) then
-             u1 = -0.045
+          if(rVec%x > 0.20 .and. rVec%x < 0.30 ) then
+             u1 = -0.055
           end if
+          if(rVec%x > 0.70 .and. rVec%x < 0.80 ) then
+             u1 = -0.055
+          end if
+
+
 
           !u1 = 0.01d0*(1.d0+cos(3.d0*twoPi*rVec%x))*(1.d0+cos(twoPi*(rVec%z-zPos)))/4.d0
           !u1 = 0.08d0*(1.d0+cos((3.d0*twoPi*(rVec%x-ghostSize))/(1.d0-2.d0*ghostSize)))!* &
@@ -7402,7 +7407,12 @@ CONTAINS
     if (firstTime) then
        firstTime = .false.
        r = 0.d0; rho = 0.d0
-       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
+       !The first variable passed is mu
+!       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
+!PASSING (t, my, rho0, nr, r, rho)
+!       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
+       call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)
+
        r = r / 1.d10
        if (myrankGlobal==1) then
           do i =1 , nr
@@ -7425,14 +7435,17 @@ CONTAINS
 !    thisOctal%rho(subcell) = rho(nr)
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    !Thaw - will probably want to change this to use returnMu
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
-    thisOctal%gamma(subcell) = 1.d01
-    thisOctal%iEquationOfState(subcell) = 1
+    !thisOctal%gamma(subcell) = 1.d01
+    thisOctal%gamma(subcell) = 5./3.
+    thisOctal%iEquationOfState(subcell) = 0
       
+    !Stuff is commented out for stability testing
     thisOctal%inFlow(subcell) = .true.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
@@ -7448,14 +7461,19 @@ CONTAINS
        endif
        thisOctal%etaCont(subcell) = 0.
 
-    zplusbound = 2
-    zminusbound = 2
+    zplusbound = 4
+    zminusbound = 4
     xplusbound = 4
     xminusbound = 4
     yplusbound = 4
     yminusbound = 4
 
-
+!    zplusbound = 2
+!    zminusbound = 2
+!    xplusbound = 4
+!    xminusbound = 4
+!    yplusbound = 4
+!    yminusbound = 4
   end subroutine calcBonnorEbertDensity
 
   subroutine calcUniformSphere(thisOctal,subcell)
@@ -8539,11 +8557,12 @@ end function readparameterfrom2dmap
     TYPE(vector) :: rVec
     real(double) :: eThermal!, numDensity
 
-    !Parameters changed to those in Iliev et al 2006 MNRAS, 371, 1057-1086
-
+    ! commented out Parameters are those of Iliev et al 2006 MNRAS, 371, 1057-1086
+   
     rVec = subcellCentre(thisOctal,subcell)
-    thisOctal%rho(subcell) = (1.d-3)*mHydrogen
-    thisOctal%temperature(subcell) = 100.d0
+    !thisOctal%rho(subcell) = (1.d-3)*mHydrogen
+    thisOctal%rho(subcell) = (1.d2)*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -8554,22 +8573,21 @@ end function readparameterfrom2dmap
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
 
 
-    thisOctal%ionFrac(subcell,1) = 1.e-10 
-    thisOctal%ionFrac(subcell,2) = 1.
+    thisOctal%ionFrac(subcell,1) = 1.
+    thisOctal%ionFrac(subcell,2) = 1.e-10
 !    thisOctal%ionFrac(subcell,3) = 1.e-10
 !    thisOctal%ionFrac(subcell,4) = 1.       
 !    thisOctal%etaCont(subcell) = 0.
     
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     
-    ethermal = 1.5d0*(1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%gamma(subcell) = 5.d0/3.d0
 
-    thisOctal%pressure_i = (thisOctal%rho(subcell)/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = 0.d0
-    !Thaw - changed from isothermal to adiabatic
     thisOctal%iEquationOfState(subcell) = 1
 
     zplusbound = 1

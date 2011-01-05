@@ -708,6 +708,9 @@ module input_variables
   logical :: hydrovelocityConv
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
+!Thaw
+  character :: xminusboundString, yminusboundString, zminusboundString
+  character :: xplusboundString, yplusboundString, zplusboundString
   real :: x1, x2
 
   logical :: timeDependentRT

@@ -74,33 +74,56 @@ contains
        source(iSource)%radius = sourceRadius(iSource)
        source(iSource)%position = sourcePos(iSource)
        source(isource)%luminosity = fourPi * stefanBoltz * &
-            (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+				  (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
 
        source(isource)%outsideGrid = .false.
        source(isource)%onEdge      = .false. 
+
+       source(iSource)%onCorner = .false.
+
+
+       !This currently only captures corners, edges will come later
+       distToEdge = abs(abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%z))
+!       print *, "distToEdge ", distToEdge
+!       print *, "smallestSubcell", grid%halfSmallestSubcell
+!       print *, "abs(source(iSource)%position%z)", abs(source(iSource)%position%z)       
+!       print *, "grid%octreeRoot%centre%z", grid%octreeRoot%centre%z
+       
+
+
+
 ! Find distance of source from upper or lower z boundary, whichever is smaller.
        distToedge = min ( abs( source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
                           abs( source(iSource)%position%z - (grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize) ) )
+
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
           source(isource)%outsideGrid = .true.
           source(isource)%distance = modulus(source(isource)%position)*1.d10
           source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
                (fourPi*source(isource)%distance**2)
-       else if ( distToEdge < grid%halfSmallestSubcell) then
+       else if ( distToEdge < grid%halfSmallestSubcell) then          
           source(iSource)%onEdge = .true.
           source(iSource)%onCorner = .false.
           !Thaw - accomodating corner sources
+
+          if(grid%octreeRoot%twoD) then
+             distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+!             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
+
           if ( grid%octreeRoot%cylindrical ) then 
              source(iSource)%onCorner = .false.
           else if(grid%octreeRoot%twoD) then
              distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+	  end if
              if ( distToEdge < grid%halfSmallestSubcell) then
                 source(iSource)%onCorner = .true.
              end if
           else if(grid%octreeRoot%threeD) then
-             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+	      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+!             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
              if ( distToEdge < grid%halfSmallestSubcell) then
-                distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
+	         distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%y))
+!                distToEdge = abs(abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize)))
                 if ( distToEdge < grid%halfSmallestSubcell) then
                    source(iSource)%onCorner = .true.
                 end if
@@ -109,15 +132,8 @@ contains
              end if
           end if
           
-          !Adjust the source luminosity if it is on an edge or corner
-          if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
-             source(isource)%luminosity = source(isource)%luminosity / 2.d0
-          else if(source(iSource)%onCorner) then
-             if(grid%octreeRoot%twoD) then
-                source(isource)%luminosity = source(isource)%luminosity / 4.d0
-             else if(grid%octreeRoot%threeD) then
-                source(isource)%luminosity = source(isource)%luminosity / 8.d0
-             end if
+          if(source(iSource)%onCorner) then
+             write(*,*) "SOURCE ON CORNER!"
           end if
 
           if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)

@@ -264,10 +264,14 @@ module source_mod
          !These are re-weighted to account for bias in photoionAMR_mod
          if (source%onCorner) then
             cornerDir = source%position - grid%octreeRoot%centre
-            !print *, "cornerDir = ", cornerDir
-            !print *, "source%position = ", source%position
-            !print *, "grid%octreeRoot%centre", grid%octreeRoot%centre
-            !print *, "preDirection = ", direction
+            if(cornerDir%x == 0.0 .and. cornerDir%y == 0.0 .and. cornerDir%z == 0.0 ) then
+               print *, "Corner Error! "
+               stop
+            end if
+        !2D    print *, "cornerDir = ", cornerDir
+           ! print *, "source%position = ", source%position
+           ! print *, "grid%octreeRoot%centre", grid%octreeRoot%centre
+           ! print *, "preDirection = ", direction
             if (cornerDir%x > 0 .and. direction%x > 0) then
                direction%x = -direction%x 
               ! print *, "called A"
@@ -291,9 +295,9 @@ module source_mod
             end if
          !Currently dont handle edges
             
-           ! print *, "postDirection : ", direction
+!            print *, "postDirection : ", direction
 
-           ! stop
+            
             !direction%z = abs(direction%z)
             !direction%y = abs(direction%y)
             !direction%x = abs(direction%x)
