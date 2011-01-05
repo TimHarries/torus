@@ -16,6 +16,7 @@ echo "-h   Display help"
 echo "-o   Overwrite any existing build"
 echo "-p   Compile with profiling options enabled"
 echo "-mpi Compile for multi-processor running using MPI"
+echo "-openmp Compile with OpenMP"
 }
 # Set up the build information here -----------------------------------------------------------------
 BASE_DIR=${PWD}
@@ -29,6 +30,8 @@ echo "INFO: This is build_sphtorus"
 # 0. Handle command line arguments
 debug_flag=""
 profile_flag=""
+openmp_flag=""
+openmp_lib_flag=""
 overwrite=0
 while [ $# -gt 0 ]
 do
@@ -48,6 +51,9 @@ do
         -itac) echo "INFO: Using ITAC profiling"
 	       export trace=yes
 	       itac_flag="trace=yes";;
+        -openmp) echo "INFO: Using OpenMP"
+	         openmp_lib_flag=-openmp
+                 openmp_flag="openmp=yes";;
     esac
 shift
 done
@@ -76,7 +82,7 @@ fi
 
 # 1.3 Set up the build directories
 # Specify libraries for linking (used by sphNG Makefile)
-export TORUS_LIB="${sphtorus_dir}/lib -ltorus"
+export TORUS_LIB="${sphtorus_dir}/lib -ltorus ${openmp_lib_flag}"
 
 if [[ -e ${sphtorus_dir} ]]; then
     if [ ${overwrite} -eq 1 ]; then
@@ -111,7 +117,7 @@ fi
 # 2.2 Build torus
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
 make depends
-make ${debug_flag} ${profile_flag} ${itac_flag} cfitsio=no lib
+make ${debug_flag} ${profile_flag} ${itac_flag} ${openmp_flag} cfitsio=no lib
 if [[ -e libtorus.a ]]; then
   echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
 else
