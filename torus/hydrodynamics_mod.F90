@@ -2803,10 +2803,10 @@ contains
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
           call writeVtkFile(grid, "beforeselfgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi       " /))
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
           call writeVtkFile(grid, "afterselfgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi       " /))
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
           if (myrank == 1) write(*,*) "Done"
           if (myrank == 1) call tune(6, "Self-Gravity")
        endif
@@ -2835,7 +2835,7 @@ contains
 
     write(plotfile,'(a)') "start.vtk"
     call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi       " /))
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
     do while(.true.)
        if (myrank /= 0) then

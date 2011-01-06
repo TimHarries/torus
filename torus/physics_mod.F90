@@ -143,15 +143,15 @@ contains
              source(iSource)%onCorner = .false.
           else if(grid%octreeRoot%twoD) then
              distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
-	  end if
+          end if
              if ( distToEdge < grid%halfSmallestSubcell) then
                 source(iSource)%onCorner = .true.
              end if
           else if(grid%octreeRoot%threeD) then
-	      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+             distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
 !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
              if ( distToEdge < grid%halfSmallestSubcell) then
-	         distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%y))
+                distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%y))
 !                distToEdge = abs(abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize)))
                 if ( distToEdge < grid%halfSmallestSubcell) then
                    source(iSource)%onCorner = .true.
