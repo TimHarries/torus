@@ -50,7 +50,7 @@ module ion_mod
      type(TRANSITIONTYPE) :: transition(20) 
   end type IONTYPE
 
-  type(IONTYPE) :: globalIonArray(50)
+  type(IONTYPE), save :: globalIonArray(50)
   integer :: nGlobalIon
 
 contains

@@ -1120,7 +1120,7 @@ contains
     character(len=80) :: message, ifilename
     real :: r
     logical :: ionized
-    integer :: iLev, nIter, iLab, idump, nt
+    integer :: iLev, nIter, iLab, idump, nt, nInuse
     real(double) :: lev1, lev2
 
 #ifdef MPI
@@ -1129,7 +1129,7 @@ contains
     integer       ::   np             ! The number of processes
     integer       ::   n_rmdr, m
     integer       ::   ierr           ! error flag
-    integer       ::   nVoxels, nInuse
+    integer       ::   nVoxels
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
