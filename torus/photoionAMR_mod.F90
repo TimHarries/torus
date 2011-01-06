@@ -69,6 +69,7 @@ contains
 
 
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
+    use ion_mod, only : returnMu
     use input_variables, only : iDump, doselfgrav !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -103,7 +104,6 @@ contains
     cfl = 0.3d0
     
     mu = 1.d0
-!    mu = returnMu(thisOctal, subcell, grid%ion, grid%nIon)
 
     viewVec = VECTOR(-1.d0,0.d0,0.d0)
     viewVec = rotateZ(viewVec, 40.d0*degtorad)
@@ -3288,34 +3288,6 @@ function svs1982(t, alpharad, xrad) result (rate)
   rate = alpharad * (t /1.d4)**(-xrad)
 end function svs1982
 
-function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
-  real(double) :: ne, tot
-  integer :: subcell
-  type(OCTAL) :: thisOctal
-  type(IONTYPE) :: ionArray(:)
-  integer :: nion, i
-
-  tot = 0.d0 
-  do i = 1, nIon
-     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
-          thisOctal%ionFrac(subcell, i) * dble(ionArray(i)%z-ionArray(i)%n)
-  enddo
-  ne = tot
-end function returnNe
-
-!function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
- ! real(double) :: mu, tot
-!  integer :: subcell
-!  type(OCTAL) :: thisOctal
-!  type(IONTYPE) :: ionArray(:)
-!  integer :: nion, i
-! 
-!  tot = 0.d0!  do i = 1, nIon
-!     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
-!           dble(ionArray(i)%nucleons)*mHydrogen
-!  enddo
-!  mu = tot
-!end function returnMu
 
 subroutine dumpLexington(grid, epsoverdt)
   type(GRIDTYPE) :: grid

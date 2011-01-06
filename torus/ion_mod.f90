@@ -1021,5 +1021,37 @@ function returnAbundance(z) result(a)
 end function returnAbundance
 
 
+function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
+  real(double) :: mu, tot
+  integer :: subcell
+  type(OCTAL) :: thisOctal
+  type(IONTYPE) :: ionArray(:)
+  integer :: nion, i
+ 
+  tot = 0.d0
+  do i = 1, nIon
+     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
+           dble(ionArray(i)%nucleons)
+  enddo
+  tot = tot + thisOctal%ne(subcell)/mElectron
+  mu = tot
+end function returnMu
+
+
+function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
+  real(double) :: ne, tot
+  integer :: subcell
+  type(OCTAL) :: thisOctal
+  type(IONTYPE) :: ionArray(:)
+  integer :: nion, i
+
+  tot = 0.d0 
+  do i = 1, nIon
+     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
+          thisOctal%ionFrac(subcell, i) * dble(ionArray(i)%z-ionArray(i)%n)
+  enddo
+  ne = tot
+end function returnNe
+
 end module ion_mod
 

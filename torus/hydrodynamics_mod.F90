@@ -1042,7 +1042,7 @@ contains
 
 
 
-          thisoctal%pressure_i(subcell) = getpressure(grid, thisoctal, subcell)
+          thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
           
           biggamma = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
@@ -1107,7 +1107,7 @@ contains
 
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-          thisoctal%pressure_i(subcell) = getpressure(grid, thisoctal, subcell)
+          thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
 
           biggamma = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
@@ -1172,7 +1172,7 @@ contains
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-          thisoctal%pressure_i(subcell) = getpressure(grid, thisoctal, subcell)
+          thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
 
           biggamma = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
@@ -2475,7 +2475,7 @@ contains
 
           if (.not.thisOctal%ghostCell(subcell)) then
 
-             cs = soundSpeed(grid, thisOctal, subcell)
+             cs = soundSpeed(thisOctal, subcell)
 !             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
              dx = thisOctal%subcellSize * gridDistanceScale
 !             speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
@@ -2491,9 +2491,8 @@ contains
     enddo
   end subroutine computeCourantTime
 
-  function soundSpeed(grid, thisOctal, subcell) result (cs)
+  function soundSpeed(thisOctal, subcell) result (cs)
     type(OCTAL), pointer :: thisOctal
-    type(GRIDTYPE) :: grid
     integer :: subcell
     real(double) :: cs
     real(double) :: u2, eKinetic, eTot, eThermal
@@ -2524,16 +2523,16 @@ contains
           endif
           cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
        case(1) ! isothermal
-          cs = sqrt(getPressure(grid, thisOctal, subcell)/thisOctal%rho(subcell))
+          cs = sqrt(getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
 	  !if(cs > 2200000.) then
           !   print *, "cs ", cs
 	  !   stop
 	  !end if
        case(2) ! barotropic
           if (thisOctal%rho(subcell) < rhoCrit) then
-             cs = sqrt( getPressure(grid, thisOctal, subcell)/thisOctal%rho(subcell))
+             cs = sqrt( getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
           else
-             cs = sqrt(gamma2 *  getPressure(grid, thisOctal, subcell)/thisOctal%rho(subcell))
+             cs = sqrt(gamma2 *  getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
           endif
        case(3) ! polytropic
           cs = sqrt(thisOctal%gamma(subcell)*thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
@@ -5129,11 +5128,11 @@ end subroutine refineGridGeneric2
           rhou(nc) = thisOctal%rhou(subcell)
           rhov(nc) = thisOctal%rhov(subcell)
           rhow(nc) = thisOctal%rhow(subcell)
-          cs(nc) = soundSpeed(grid, thisOctal, subcell)
+          cs(nc) = soundSpeed(thisOctal, subcell)
 
           mass = mass +  thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) * 1.d30
 
-          cs(nc) = soundSpeed(grid, thisOctal, subcell)
+          cs(nc) = soundSpeed(thisOctal, subcell)
           if (thisOctal%ghostCell(subcell)) ghostCell=.true.
 !          if (thisOctal%refinedLastTime(subcell)) refinedLastTime = .true.
        endif
@@ -6196,7 +6195,7 @@ end subroutine refineGridGeneric2
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 
-    call saveGhostCellPhi(grid%octreeRoot)
+!    call saveGhostCellPhi(grid%octreeRoot)
 
     if (PRESENT(multigrid)) then
 
@@ -6270,7 +6269,7 @@ end subroutine refineGridGeneric2
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
 
-    call reapplyGhostCellPhi(grid%octreeRoot)
+!    call reapplyGhostCellPhi(grid%octreeRoot)
 
     if (grid%octreeRoot%twoD) then
        deltaT =  (2.d0*grid%halfSmallestSubcell*gridDistanceScale)**2 / 4.d0
@@ -6308,9 +6307,8 @@ end subroutine refineGridGeneric2
 
   end subroutine selfGrav
 
-  real(double) function getPressure(grid, thisOctal, subcell)
-    use ion_mod, only : nGlobalIon, globalIonArray
-    type(GRIDTYPE) :: grid
+  real(double) function getPressure(thisOctal, subcell)
+    use ion_mod, only : nGlobalIon, globalIonArray, returnMu
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
@@ -6339,8 +6337,6 @@ end subroutine refineGridGeneric2
 !          write(*,*) "rhou,rhow ", thisOCtal%rhou(subcell), thisOctal%rhow(subcell)
 !          write(*,*) "etot, ekinetic, eThermal ",etot, ekinetic, ethermal
        case(1) ! isothermal
-	  mu = returnMu(thisOctal, subcell, grid%ion, grid%nIon)
-	   
 	  !if(thisOctal%rho(subcell)/(mu) /= 0.5d0) then
 	  !if (thisOctal%rho(subcell)/(mu) /= 100.d0) then
           !   print *, "rho/mu ", (thisOctal%rho(subcell)/(mu))
