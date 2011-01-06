@@ -116,6 +116,13 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
+       case("kengo")
+          constantAbundance = .false.
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call readgridKengo(grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+
        case("cluster")
 
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
@@ -397,7 +404,7 @@ contains
 
   subroutine doSmoothOnTau(grid)
 
-    use input_variables, only: doSmoothGridTau, dustPhysics, lambdaSmooth
+    use input_variables, only: doSmoothGridTau, dustPhysics, lambdaSmooth, cylindrical
     use input_variables, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
     use utils_mod, only: locate
     use lucy_mod, only: putTau
@@ -416,7 +423,7 @@ contains
 
        call writeVtkFile(grid, "beforesmooth.vtk")
 
-       doPhotoSphereSplit =  ((.not.variableDustSublimation).and.(.not.photoionPhysics))
+       doPhotoSphereSplit =  ((.not.cylindrical).and.(.not.variableDustSublimation).and.(.not.photoionPhysics))
        if ( doPhotoSphereSplit ) then
           call writeInfo("Doing photsphere split", TRIVIAL)
        else
@@ -430,7 +437,7 @@ contains
           call writeInfo(message, TRIVIAL)
           do
              gridConverged = .true.
-             call putTau(grid, grid%lamArray(j))
+             if (dophotospheresplit) call putTau(grid, grid%lamArray(j))
              call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
                   inheritProps = .false., interpProps = .false., &
                   photosphereSplit = doPhotoSphereSplit )
@@ -747,6 +754,109 @@ contains
         end subroutine fillGridFogel
 
 
+        subroutine readgridKengo(grid)
+          type(GRIDTYPE) :: grid
+! *** data read routine
+! *** input: step, levmin, levmax
+! *** output: x, y, z, rho
+!      subroutine readd(step,levmin,levmax,x,y,z,rho)
+
+! *** parameters for grid configuration
+! *** imax,jmax,kmax: grid size, lmax: max of levels
+      integer, parameter :: imax=64, jmax=64, kmax=64, lmax=20
+! *** ibl,jbl,kbl: offset between coarse and fine levels
+! *** relation between coarse and fine levels is:
+! *** rho(ibl+i,jbl+j,kbl+k,l-1)=
+! *** (rho(2*i-1, 2*j-1, 2*k-1, l)+...+rho(2*i, 2*j, 2*k, l))/8d0
+      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
+
+! *** conversion factors from computational units to cgs units.
+      real(double), parameter :: rho0=1d-18, l0=2.07636d16
+
+! *** input/output variables
+      integer levmin,levmax
+      real(double) ::  x(imax), y(jmax) ,z(kmax)
+      real(double) ::  rho(imax,jmax,kmax)
+
+
+! *** internal variables
+      real(double) ::  time(lmax)
+      integer*8 ::  lstep(lmax)
+      real :: version, arrtmp(imax,jmax,kmax)
+      real :: xtmp(imax),ytmp(jmax),ztmp(kmax)
+      integer :: i, j, k, l, level
+      integer :: subcell
+      character(len=80) :: fn
+      logical :: converged
+      type(VECTOR) :: point
+      type(OCTAL), pointer :: thisOctal
+      levmin = 1
+      levmax = 5
+      do l=levmin,levmax
+         write(fn,'(a,i1,a,i1,a)') "st",0,".",l,".d"
+         open(11,file=fn,form='unformatted')
+         read(11) version,i,j,k,level,lstep(l),time(l)
+         write(*,*) version, i, j, k,level,lstep(l),time(l)
+         read(11) xtmp
+         read(11) ytmp
+         read(11) ztmp
+         do i=1,imax
+            x(i)=xtmp(i)*l0/1.d10
+         enddo
+         do j=1,jmax
+            y(j)=ytmp(j)*l0/1.d10
+         enddo
+         do k=1,kmax
+            z(k)=ztmp(k)*l0/1.d10
+         enddo
+         if (Writeoutput) write(*,*) "Grid size is ",(x(64)-x(1))+(x(2)-x(1))
+         read(11) arrtmp
+         do k=1,kmax
+            do j=1,jmax
+               do i=1,imax
+                  rho(i,j,k)=arrtmp(i,j,k)*rho0
+               enddo
+            enddo
+         enddo
+         close(11)
+         converged = .false.
+         thisOctal => grid%octreeRoot
+         do while (.not.converged)
+            converged = .true.
+            do k = 1, kmax
+               do j = 1, jmax
+                  do i = 1, imax
+                     point = VECTOR( dble(x(i)), dble(y(j)), dble(z(k)) )
+                     call findSubcellLocal(point,thisOctal,subcell)
+                     if (thisOctal%subcellSize > (x(2)-x(1))) then
+                        converged = .false.
+                        call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                             inherit=.true., interp=.false.)
+                     endif
+                  enddo
+               enddo
+            enddo
+         enddo
+
+
+         do i = 1, imax
+            do j = 1, jmax
+               do k = 1, kmax
+                  point = VECTOR( dble(x(i)), dble(y(j)), dble(z(k)) )
+                  call findSubcellLocal(point,thisOctal,subcell)
+                  thisOctal%rho(subcell) = rho(i,j,k)
+               enddo
+            enddo
+         enddo
+
+
+      enddo
+    end subroutine readgridKengo
+
+
+
+
+
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
     use input_variables, only : maxDepthAMR
     type(GRIDTYPE) :: grid
@@ -843,7 +953,7 @@ contains
     fac = abs(actualMass-massWanted)/massWanted
     if (fac > 0.01d0) then
        write(message,'(a,f7.1,a)') "Grid mass differs from required mass by: ",100.d0*fac, " %"
-       call writeFatal(message)
+       call writeWarning(message)
     endif
   end subroutine testAMRmass
 

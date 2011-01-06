@@ -96,8 +96,10 @@ module spectrum_mod
       
 
       tot = 0.d0
-      tot = tot + spectrum%normFlux(i1)*(spectrum%lambda(i1+1)-tlam1)
-      tot = tot + spectrum%normFlux(i2)*(tlam2-spectrum%lambda(i2))
+      ePhoton = hCgs*cspeed/(tlam1*angstromtocm)
+      tot = tot + spectrum%flux(i1)*(spectrum%lambda(i1+1)-tlam1)/ephoton
+      ePhoton = hCgs*cspeed/(tlam2*angstromtocm)
+      tot = tot + spectrum%flux(i2)*(tlam2-spectrum%lambda(i2))/ephoton
       do i = i1, i2-1
          ePhoton = hCgs*cspeed/(0.5*(spectrum%lambda(i+1)+spectrum%lambda(i))*angstromtocm)
          tot = tot + (0.5d0*(spectrum%flux(i+1)+spectrum%flux(i)) * &

@@ -662,6 +662,22 @@ contains
        call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
             "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
 
+       call getReal("rgapinner", rGapInner, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Inner gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
+
+       call getReal("rgapouter", rGapOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
+
+       call getReal("rhogap", rhoGap, 1., cLine, fLine, nLines, &
+            "Density in gap (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
+
+
+       call getDouble("phiref", phiRefine, 1.d0, cLine, fLine, nLines, &
+            "Range of azimuthal refinement (degrees): ","(a,f5.1,a)", 180.d0, ok, .false.)
+
+       call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 10.d0, ok, .false.)
+
        call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
@@ -916,6 +932,11 @@ contains
        write(keyword, '(a,i1)') "sourcepos",i
        call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
             "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       write(keyword, '(a,i1)') "probsource",i
+       call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
+            "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
+
     enddo
 
   end subroutine readSourceParameters

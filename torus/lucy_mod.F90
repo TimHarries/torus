@@ -126,6 +126,7 @@ contains
     real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
+    real(double) :: packetWeight
     real(double) :: subRadius
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
@@ -428,7 +429,7 @@ contains
                 !$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
                 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
                 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
-                !$OMP PRIVATE(oldUHat) &
+                !$OMP PRIVATE(oldUHat, packetWeight) &
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
@@ -454,7 +455,7 @@ contains
                    
 
                    thisPhotonAbs = 0
-                   call randomSource(source, nSource, iSource)
+                   call randomSource(source, nSource, iSource, packetWeight)
                    thisSource = source(iSource)
                    call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
                    thermalphoton = .true.
@@ -483,7 +484,7 @@ contains
                       ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
                       ilam = max(ilam, 1)
 
-                      call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray,  &
+                      call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,  &
                            photonInDiffusionZone, diffusionZoneTemp,  &
                            directPhoton, scatteredPhoton,  &
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
@@ -1100,6 +1101,7 @@ contains
     type(VECTOR) :: uHat, uNew
     type(VECTOR) :: rVec
     integer :: nlucy
+    real(double) :: packetWeight
     integer :: nDustType
     integer,intent(in) :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(:,:,:)
@@ -1187,7 +1189,7 @@ contains
 
           do while(.not.escaped)
 
-             call toNextEvent(grid, rVec, uHat, escaped, distanceGrid, thisFreq, nLambda, lamArray)
+             call toNextEvent(grid, rVec, uHat, packetWeight, escaped, distanceGrid, thisFreq, nLambda, lamArray)
              if (escaped) nInf = nInf + 1
 
              if (.not. escaped) then
@@ -1378,7 +1380,7 @@ contains
   end subroutine setupFreqProb
 
 
- subroutine toNextEvent(grid, rVec, uHat,  escaped, distanceGrid, thisFreq, nLambda, lamArray)
+ subroutine toNextEvent(grid, rVec, uHat, packetWeight,  escaped, distanceGrid, thisFreq, nLambda, lamArray)
    use grid_mod, only: getindices
 
    type(GRIDTYPE) :: grid
@@ -1388,6 +1390,7 @@ contains
    real(oct) :: tval, tau, r
    real :: lamArray(:)
    integer :: nLambda
+   real(double) :: packetWeight
    logical :: stillinGrid
    logical :: escaped
    real(oct) :: thisTau
@@ -1476,7 +1479,7 @@ contains
           else
              kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
           endif
-          distanceGrid(i1,i2,i3) = distanceGrid(i1,i2,i3) + (tVal*tau/thisTau) * kabs
+          distanceGrid(i1,i2,i3) = distanceGrid(i1,i2,i3) + (tVal*tau/thisTau) * kabs * packetWeight
        endif
        
 
@@ -2114,7 +2117,7 @@ contains
 
 
 
-subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray,  &
+subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
@@ -2125,6 +2128,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal, topOctal
    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
+   real(double) :: packetWeight
    logical :: scatteredPhoton
    integer :: foundSubcell
    integer :: endSubcell
@@ -2442,7 +2446,7 @@ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArr
     tval_db = real(tval,db)
     tauRatio = real( (tau/thisTau) ,db)
 !$OMP ATOMIC
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb * packetWeight
 !$OMP ATOMIC
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
     if (directPhoton) then
@@ -3615,7 +3619,8 @@ subroutine setBiasOnTau(grid, iLambda)
     real(double) :: kappaAbsDust, kappaScaDust
     viewVec = VECTOR(0.d0, 0.d0, -1.d0)
 
-    position = VECTOR(x, 0.d0, grid%octreeRoot%subcellSize-0.01d0*grid%halfSmallestSubcell)
+    position = VECTOR(x, 0.d0, &
+         grid%octreeRoot%subcellSize-0.01d0*grid%halfSmallestSubcell)
     thisOctal => grid%octreeRoot
     subcell = 1
     i0 = 0.d0

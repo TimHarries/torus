@@ -726,7 +726,7 @@ contains
 
 
 
-             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+             dTau = max(0.d0, alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10)
 
 
              etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
@@ -1114,7 +1114,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-6, tolerance = 1.d-3
+    real(double), parameter :: convergeTol = 1.d-3, tolerance = 1.d-3
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
@@ -1129,7 +1129,7 @@ contains
     integer       ::   np             ! The number of processes
     integer       ::   n_rmdr, m
     integer       ::   ierr           ! error flag
-    integer       ::   nVoxels
+    integer       ::   nVoxels, nInuse
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
@@ -1285,6 +1285,23 @@ contains
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
     call  sortOctalArray(octalArray,grid)
+
+    nInUse = 0 
+    do iOctal = 1, SIZE(octalArray)
+       thisOctal => octalArray(iOctal)%content
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.thisOctal%hasChild(subcell)) then
+             
+             thisOctal%inFlow(subcell) = &
+                  thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
+             
+             if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) nInuse = nInUse + 1
+          endif
+       enddo
+    enddo
+    if (writeoutput) write(*,*) "Total number of cells in use ",nInuse
+
+
     call randomNumberGenerator(randomSeed=.true.)
 !    if (myrankiszero) then
 !       call testRays(grid, nSource, source)
@@ -1329,6 +1346,8 @@ contains
           endif
 
           if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
+
+             
 
 
 
@@ -1403,13 +1422,16 @@ contains
             endif
             call randomNumberGenerator(getReal=r)
             write(*,*) myrankGlobal, r
+
+
+
+
             !$OMP DO SCHEDULE(STATIC,1)
           do iOctal = ioctal_beg, ioctal_end
              nt = 0
 #ifdef _OPENMP
              nt = omp_get_thread_num()
 #endif
-             write(*,*) myrankGlobal, nt, " doing octal ",iOctal, " of ",ioctal_end
 
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
@@ -1432,6 +1454,9 @@ contains
                         thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
 
                    if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then 
+
+                      write(*,*) myrankGlobal, nt, subcell, " doing octal ",iOctal, " of ",ioctal_end
+
                         !.and.(.not.thisOctal%fixedTemperature(subcell))) then
                       nHit = 0
                       do iRay = 1, nRay

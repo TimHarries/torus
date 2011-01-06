@@ -2075,6 +2075,7 @@ contains
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
+
     !THAW
    if (selfGravity) then
        call periodBoundary(grid, justGrav = .true.)
@@ -2279,11 +2280,13 @@ contains
     call periodBoundary(grid)
     call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
+
     !THAW
     if (selfGravity) then
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
+
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
 
 
@@ -2799,7 +2802,11 @@ contains
        if (doselfGrav) then
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
+          call writeVtkFile(grid, "beforeselfgrav.vtk", &
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi       " /))
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+          call writeVtkFile(grid, "afterselfgrav.vtk", &
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi       " /))
           if (myrank == 1) write(*,*) "Done"
           if (myrank == 1) call tune(6, "Self-Gravity")
        endif
@@ -2822,13 +2829,13 @@ contains
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
-    nextDumpTime = tdump + currentTime
+    nextDumpTime = 0.
     iUnrefine = 0
 
 
     write(plotfile,'(a)') "start.vtk"
     call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          " /))
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi       " /))
 
     do while(.true.)
        if (myrank /= 0) then
@@ -3511,7 +3518,6 @@ contains
 
                    thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
                    thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
-                   thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
 
@@ -3584,7 +3590,6 @@ contains
 
                    thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
                    thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
-                   thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
 
@@ -3661,7 +3666,6 @@ contains
 
                    thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
                    thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
-                   thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
 
@@ -6185,14 +6189,17 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-4
+    real(double), parameter :: tol = 1.d-6
     integer :: it, ierr, i
     character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 
+    call saveGhostCellPhi(grid%octreeRoot)
+
     if (PRESENT(multigrid)) then
+
 
        call updateDensityTree(grid%octreeRoot)
 
@@ -6263,6 +6270,7 @@ end subroutine refineGridGeneric2
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
 
+    call reapplyGhostCellPhi(grid%octreeRoot)
 
     if (grid%octreeRoot%twoD) then
        deltaT =  (2.d0*grid%halfSmallestSubcell*gridDistanceScale)**2 / 4.d0
@@ -6280,8 +6288,8 @@ end subroutine refineGridGeneric2
        
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
-       call periodBoundary(grid, justGrav = .true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+!       call periodBoundary(grid, justGrav = .true.)
+!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        
@@ -6301,15 +6309,15 @@ end subroutine refineGridGeneric2
   end subroutine selfGrav
 
   real(double) function getPressure(grid, thisOctal, subcell)
+    use ion_mod, only : nGlobalIon, globalIonArray
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    real(double) :: ne, mu
+    real(double) :: mu
 
     mu = 0.d0
-    ne = 0.d0
 
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic
@@ -6344,9 +6352,14 @@ end subroutine refineGridGeneric2
 
 	  eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
 	  !Thaw - needs to be more generic for species mass
-          getPressure =  (thisOctal%rho(subcell)/mu)*kerg*thisOctal%temperature(subcell)
-          !!getPressure = mu*kerg*thisOctal%temperature(subcell)
-	  
+
+          mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          getPressure =  (thisOctal%rho(subcell)/(mu * mHydrogen))*kerg*thisOctal%temperature(subcell)
+          !getPressure = numDensity*kerg*thisOctal%temperature(subcell)
+	  !print *, "rho/2mH ", (thisOctal%rho(subcell)/(2.d0*mHydrogen))
+	  !print *, "numDensity ", numDensity
+	  !print *, "getPressure ", getPressure
+
 
        case(2) !  equation of state from Bonnell 1994
           if (thisOctal%rho(subcell) < rhoCrit) then
@@ -6475,6 +6488,57 @@ end subroutine minMaxDepth
 
 #endif
 
+  recursive subroutine saveGhostCellPhi(thisOctal)
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  saveGhostCellPhi(child)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%ghostCell(subcell)) then
+             if (.not.associated(thisOctal%chiline)) then
+                allocate(thisOctal%chiline(1:8))
+             endif
+             thisOctal%chiline(subcell) = thisOctal%phi_i(subcell)
+          endif
+          
+       endif
+    end do
+  end subroutine saveGhostCellPhi
+
+  recursive subroutine reapplyGhostCellPhi(thisOctal)
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  reapplyGhostCellPhi(child)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%ghostcell(subcell)) then
+             thisOctal%phi_i(subcell) = thisOctal%chiline(subcell)
+          endif
+          
+       endif
+    end do
+  end subroutine reapplyGhostCellPhi
+
 function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
   real(double) :: mu, tot, ne, mA, mE
   integer :: subcell
@@ -6511,5 +6575,4 @@ function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
 
 end function returnMu
 
-    
 end module hydrodynamics_mod

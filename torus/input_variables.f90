@@ -323,6 +323,7 @@ module input_variables
   real :: rSmooth, rHeight, sigmaPower
   real :: flaringPower, gapViscAlpha
   real :: rGap, mPlanet, gapWidth
+  real :: rGapInner, rGapOuter, rhoGap
   logical :: planetGap
 
 
@@ -386,7 +387,7 @@ module input_variables
   logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
 
   integer :: inputNsource
-  real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10)
+  real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)
   type(VECTOR) :: sourcePos(10)
   character(len=80) :: inputContFluxFile(10)
 
@@ -434,6 +435,7 @@ module input_variables
   real(double) :: hOverR
   real :: ThinDiskRin      ! (in R_star units)
   real :: curtainsPhi1s ! accretion curtains from (s)tart... 
+  real(double) :: phiRefine, dphiRefine
   real :: curtainsPhi1e ! ... to (e)nd angle
   real :: curtainsPhi2s ! (all in degrees)
   real :: curtainsPhi2e ! must be: phi1s<phi1e<phi2s<phi2e

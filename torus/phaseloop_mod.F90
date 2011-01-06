@@ -278,6 +278,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(LEN=30) :: name_filter
   real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
   real(double) :: bandwidth   ! Band width of a filter[A]
+  real(double) :: weightsource
 
   ! intrinsic profile variables
 
@@ -1316,7 +1317,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      call randomNumberGenerator(randomSeed=.true.)
 
      if (nSource > 0) &
-     call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
+     call randomSource(source, nSource, i, weightSource,grid%lamArray, nLambda, initialize=.true.)  
 
      if (mie.or.photoionization.or.lineEmission) then
         nInnerLoop = nPhotons / nOuterLoop
@@ -1454,7 +1455,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PRIVATE(outPhoton,intPathError) &
 !$OMP PRIVATE(nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
-!$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
+!$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv, weightSource) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble) &
@@ -1550,7 +1551,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       weightContPhoton, contPhoton, flatspec, vRot, pencilBeam, &
                       secondSource, secondSourcePosition, &
                       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, &
-                      nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
+                      nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto, weightSource, &
                       narrowBandImage,source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)

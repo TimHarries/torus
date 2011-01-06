@@ -37,6 +37,7 @@ contains
 
   if (photoionPhysics) then
      call addIons(grid%ion, grid%nion)
+     call addIons(globalIonArray, nGlobalIon)
      photoionization = .true.
   endif
 
@@ -74,10 +75,38 @@ contains
        source(iSource)%radius = sourceRadius(iSource)
        source(iSource)%position = sourcePos(iSource)
        source(isource)%luminosity = fourPi * stefanBoltz * &
-				  (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+            (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+       source(iSource)%prob = sourceProb(iSource)
 
        source(isource)%outsideGrid = .false.
        source(isource)%onEdge      = .false. 
+       source(isource)%onCorner    = .false. 
+!       distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
+!       if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
+!          source(isource)%outsideGrid = .true.
+!          source(isource)%distance = modulus(source(isource)%position)*1.d10
+!          source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+!               (fourPi*source(isource)%distance**2)
+!       else if ( distToEdge < grid%halfSmallestSubcell) then
+!          source(iSource)%onEdge = .true.
+!          source(iSource)%onCorner = .false.
+!          !Thaw - accomodating corner sources
+!          if(grid%octreeRoot%twoD) then
+!             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+!             if ( distToEdge < grid%halfSmallestSubcell) then
+!                source(iSource)%onCorner = .true.
+!             end if
+!          else if(grid%octreeRoot%threeD) then
+!             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+!             if ( distToEdge < grid%halfSmallestSubcell) then
+!                distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
+!                if ( distToEdge < grid%halfSmallestSubcell) then
+!                   source(iSource)%onCorner = .true.
+!                end if
+!             else
+!                source(iSource)%onCorner = .false.
+!             end if
+!          end if
 
        source(iSource)%onCorner = .false.
 
@@ -131,11 +160,9 @@ contains
                 source(iSource)%onCorner = .false.
              end if
           end if
-          
           if(source(iSource)%onCorner) then
              write(*,*) "SOURCE ON CORNER!"
           end if
-
           if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)
           if(source(iSource)%onedge)   call writeinfo("Source is on edge",   TRIVIAL)
 
@@ -197,7 +224,7 @@ contains
     use photoionAMR_mod, only: photoionizationLoopAMR, radiationHydro !
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
-    use source_mod, only : globalNsource, globalSourceArray
+    use source_mod, only : globalNsource, globalSourceArray, randomSource
     use molecular_mod, only : molecularLoop, globalMolecule
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
@@ -210,6 +237,8 @@ contains
 
     real, pointer :: xArray(:) => null()
     integer :: nLambda 
+    real(double) :: packetWeight
+    integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     type(GRIDTYPE) :: grid
@@ -218,9 +247,21 @@ contains
 
      if (dustPhysics.and.radiativeEquilibrium) then
         call setupXarray(grid, xarray, nLambda)
+        if (globalnSource > 0) then
+           call randomSource(globalsourcearray, globalnSource, &
+                i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
+        endif
         call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 !        call fillDustUniform(grid, grid%octreeRoot)
+#ifdef MPI
+        call randomNumberGenerator(syncIseed=.true.)
+#endif
+
         if (.not.variableDustSublimation) call doSmoothOnTau(grid)
+
+#ifdef MPI
+        call randomNumberGenerator(randomSeed=.true.)
+#endif
 
         if (solveVerticalHydro) then
 
@@ -266,7 +307,7 @@ contains
              lucyfileNameout, lucyfileNamein)
         else
 #ifdef MPI
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, sublimate=.false.)
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, 0.d0, sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
@@ -370,6 +411,7 @@ contains
         if (lamFile) then
            call setupLamFile
         endif
+
 
      endif
 

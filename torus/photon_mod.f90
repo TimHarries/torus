@@ -32,7 +32,7 @@ module photon_mod
 
   type PHOTON
      type(STOKESVECTOR) :: stokes         ! the stokes intensities
-     real :: weight                       ! photon weight
+     real(double) :: weight                       ! photon weight
      real :: lambda                       ! wavelength
      type(VECTOR) :: normal               ! scattering normal
      type(VECTOR) :: oldNormal            ! the last scattering normal
@@ -392,7 +392,7 @@ contains
        weightLinePhoton, weightContPhoton, contPhoton, flatspec, vRot, &
        pencilBeam, secondSource, secondSourcePosition, &
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
-       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
+       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, weightSource,&
        narrowBandImage, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
@@ -461,6 +461,7 @@ contains
     type(VECTOR) :: octalPoint            ! 
 !    type(octal), pointer :: foundOctal       
     real :: probDust, weightDust, weightPhoto
+    real(double) :: weightSource
 
 
 
@@ -513,7 +514,7 @@ contains
     real :: temperature,  N_HI
     real(double) :: rho
     real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
-    real(double) :: r3_oct
+    real(double) :: r3_oct, sourceWeight
     type(Vector) ::  velocity
 !    type(octal), pointer :: thisOctal
 
@@ -551,9 +552,10 @@ contains
     ! if we are doing this by sources then find out which source we are using
     
     if (nSource > 0) then
-       call randomSource(source, nSource, thisSource)
+       call randomSource(source, nSource, thisSource, sourceWeight)
     endif
 
+    thisPhoton%stokes = thisPHoton%stokes * sourceWeight
 
     if (nLambda > 1) then
        do i = 2, nLambda-1
@@ -1605,7 +1607,7 @@ contains
     call normalize(thisPhoton%oldnormal)
 
 
-    thisPhoton%stokes = thisPhoton%stokes * biasWeight
+    thisPhoton%stokes = thisPhoton%stokes * biasWeight * weightSource
 
 
   end subroutine initPhoton

@@ -61,6 +61,8 @@ contains
       integer :: lunit
       integer :: subcell, i
       real :: xp, xm, yp, ym, zm, zp, d, r1, r2, phi, dphi
+      real :: phi1, phi2, phiStart, phiEnd
+      integer :: nPhi, iPhi
       type(VECTOR) :: rVec
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
@@ -112,21 +114,29 @@ contains
                   r2 = sqrt(rVec%x**2 + rVec%y**2) + d
                   phi = atan2(rVec%y, rVec%x)
                   dphi = returndPhi(thisOctal)
-                  write(lunit,*) r1*cos(phi-dphi), r1*sin(phi-dphi), zm
+                  phi1 = phi - dphi
+                  phi2 = phi + dphi
+                  nPhi = max(1, nint(dphi/(10.d0*degtorad)))
+                  do iPhi = 1, nPhi
+                     phiStart = phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi)
+                     phiEnd   = phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi)
 
-                  write(lunit,*) r1*cos(phi+dphi), r1*sin(phi+dphi), zm
-
-                  write(lunit,*) r2*cos(phi+dphi), r2*sin(phi+dphi), zm
-
-                  write(lunit,*) r2*cos(phi-dphi), r2*sin(phi-dphi), zm
-
-                  write(lunit,*) r1*cos(phi-dphi), r1*sin(phi-dphi), zp
-
-                  write(lunit,*) r1*cos(phi+dphi), r1*sin(phi+dphi), zp
-
-                  write(lunit,*) r2*cos(phi+dphi), r2*sin(phi+dphi), zp
-
-                  write(lunit,*) r2*cos(phi-dphi), r2*sin(phi-dphi), zp
+                     write(lunit,*) r1*cos(phiStart), r1*sin(phiStart), zm
+                     
+                     write(lunit,*) r1*cos(phiEnd), r1*sin(phiEnd), zm
+                     
+                     write(lunit,*) r2*cos(phiEnd), r2*sin(phiEnd), zm
+                     
+                     write(lunit,*) r2*cos(phiStart), r2*sin(phiStart), zm
+                     
+                     write(lunit,*) r1*cos(phiStart), r1*sin(phiStart), zp
+                     
+                     write(lunit,*) r1*cos(phiEnd), r1*sin(phiEnd), zp
+                     
+                     write(lunit,*) r2*cos(phiEnd), r2*sin(phiEnd), zp
+                     
+                     write(lunit,*) r2*cos(phiStart), r2*sin(phiStart), zp
+                  enddo
                endif
             else
                rVec = subcellCentre(thisOctal,subcell)
@@ -171,6 +181,7 @@ contains
   contains
 
     recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset, grid)
+      use input_variables, only : cylindrical
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI
@@ -178,7 +189,7 @@ contains
 #endif
       type(GRIDTYPE) :: grid
       integer :: lunit
-      integer :: subcell, i
+      integer :: subcell, i,j,n
       integer :: iOffset, nCount
 
       do subcell = 1, thisOctal%maxChildren
@@ -198,15 +209,30 @@ contains
 #endif
 
             if (thisOctal%threed) then
-               write(lunit, '(9i10)') 8, nCount + iOffset,&
-                    nCount + iOffset + 1, &
-                    nCount + iOffset + 2, &
-                    nCount + iOffset + 3, &
-                    nCount + iOffset + 4, &
-                    nCount + iOffset + 5, &
-                    nCount + iOffset + 6, &
-                    nCount + iOffset + 7
-               nCount = nCount + 8
+               if (.not.cylindrical) then
+                  write(lunit, '(9i10)') 8, nCount + iOffset,&
+                       nCount + iOffset + 1, &
+                       nCount + iOffset + 2, &
+                       nCount + iOffset + 3, &
+                       nCount + iOffset + 4, &
+                       nCount + iOffset + 5, &
+                       nCount + iOffset + 6, &
+                       nCount + iOffset + 7
+                  nCount = nCount + 8
+               else
+                  n = max(1, nint(returnDphi(thisOctal)/(10.d0*degtorad)))
+                  do j = 1 , n
+                     write(lunit, '(9i10)') 8, nCount + iOffset,&
+                          nCount + iOffset + 1, &
+                          nCount + iOffset + 2, &
+                          nCount + iOffset + 3, &
+                          nCount + iOffset + 4, &
+                          nCount + iOffset + 5, &
+                          nCount + iOffset + 6, &
+                          nCount + iOffset + 7
+                     nCount = nCount + 8
+                  enddo
+               endif
             else
 
                write(lunit, '(5i10)') 4, nCount + iOffset,&
@@ -260,7 +286,7 @@ contains
   contains
 
     recursive subroutine recursiveWriteValue(thisOctal, valueType, grid)
-      use input_variables, only : lambdasmooth
+      use input_variables, only : lambdasmooth, cylindrical
       type(OCTAL), pointer :: thisOctal, child
 #ifdef MPI
       include 'mpif.h'  
@@ -268,7 +294,7 @@ contains
       type(GRIDTYPE), intent(in) :: grid
       type(VECTOR) :: rVec, vel
       integer :: lunit = 69
-      integer :: subcell, i
+      integer :: subcell, i, j, nVal
       integer, save :: iLambda
       real :: value
       real(double) :: kAbs, kSca
@@ -293,6 +319,13 @@ contains
             if ( (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) .and. grid%splitOverMPI ) cycle
 #endif
 
+            nVal = 1
+            if (thisOctal%threed.and.cylindrical) then
+               nVal = max(1, nint(returndPhi(thisOctal)/(10.d0*degtorad)))
+            endif
+
+
+            do j = 1, nVal
             select case (valueType)
                case("rho")
 
@@ -508,6 +541,9 @@ contains
                case("ne")
                   write(lunit, *) real(thisOctal%ne(subcell))
 
+               case("pressure")
+                  write(lunit, *) real(thisOctal%pressure_i(subcell))
+
 
 
                case("inflow")
@@ -639,10 +675,11 @@ contains
                case DEFAULT
                   write(*,*) "Cannot write vtk type ",trim(valueType)
              end select
+          enddo
 
 
-         endif
-      enddo
+       endif
+    enddo
 
 
     end subroutine recursiveWriteValue
@@ -672,7 +709,7 @@ contains
 
     nPoints = 0 
     do iSource = 1 , nSource
-       nPoints = source(iSource)%surface%nElements
+       nPoints = nPoints + source(iSource)%surface%nElements
     enddo
     nElements = nPoints
     nPoints = nPoints * 4
@@ -689,15 +726,22 @@ contains
           v1 = arbitraryRotate(cVec, -dtheta/2.d0, aVec)
           v1 = rotateZ(v1, dphi/2.d0)
 
+          v1 = v1 + source(isource)%position
+
           v2 = arbitraryRotate(cVec, -dtheta/2.d0, aVec)
           v2 = rotateZ(v2, -dphi/2.d0)
+
+          v2 = v2 + source(isource)%position
 
           v3 = arbitraryRotate(cVec, dtheta/2.d0, aVec)
           v3 = rotateZ(v3, dphi/2.d0)
 
+          v3 = v3 + source(isource)%position
+
           v4 = arbitraryRotate(cVec, dtheta/2.d0, aVec)
           v4 = rotateZ(v4, -dphi/2.d0)
 
+          v4 = v4 + source(isource)%position
 
           write(lunit,*) v1%x, v1%y, v1%z
           write(lunit,*) v2%x, v2%y, v2%z
@@ -819,7 +863,10 @@ contains
     endif
 
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
-
+    if (cylindrical) then
+       nVoxels = 0
+       call countVoxelsCylindrical(grid%octreeRoot, nVoxels)
+    endif
 
 #ifdef MPI
     if (grid%splitOverMpi) then
@@ -1039,6 +1086,26 @@ contains
 !
 !   end subroutine writeIfritFile
 
+
+    recursive subroutine countVoxelsCylindrical(thisOctal, nVoxels)
+      type(OCTAL), pointer :: thisOctal, child
+      integer :: subcell, i, nVoxels
+
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call countVoxelsCylindrical(child, nVoxels)
+                  exit
+               end if
+            end do
+         else
+            nVoxels = nVoxels + max(1, nint(returndphi(thisOctal)/(10.d0*degtorad)))
+         endif
+      enddo
+    end subroutine countVoxelsCylindrical
 
 
 

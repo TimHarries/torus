@@ -26,6 +26,7 @@ module source_mod
      logical :: onEdge
      logical :: onCorner
      real(double) :: distance
+     real(double) :: prob ! probability of packet from this source
   end type SOURCETYPE
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
@@ -52,9 +53,11 @@ module source_mod
     function ionizingFlux(source) result(flux)
       type(sourcetype) :: source
       real(double) :: flux
-      flux = sumPhotonsOverBand(source%spectrum, 1.d0, 912.d0)
+      flux = sumPhotonsOverBand(source%spectrum, 10.d0, 912.d0)
       if (source%outsidegrid) then
          flux = flux * (source%radius*1.d10)**2/source%distance**2
+      else
+         flux = flux * fourPi*(source%radius*1.d10)**2
       endif
     end function ionizingFlux
 
@@ -106,44 +109,65 @@ module source_mod
 !    end subroutine randomSource
 
 
-    subroutine randomSource(source, nSource, iSource, lamArray, nLambda, initialize)
+    subroutine randomSource(source, nSource, iSource, weight,lamArray, nLambda, initialize)
+      use input_variables, only : lambdaImage
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       integer, intent(out) :: iSource
-      real, save, allocatable :: prob(:)
+      real(double), save, allocatable :: prob(:), weightArray(:)
       real, optional :: lamArray(:)
+      real(double) :: weight
       integer,optional :: nlambda
-      real :: r, t
+      real(double) :: r, t
       integer :: i
       logical, optional :: initialize
 
       if (nSource == 1) then
          iSource = 1
+         weight = 1.d0
       else
          if (PRESENT(initialize)) then
 	    ! allocate array
             if (allocated(prob)) then
                deallocate(prob)
             endif
+            if (allocated(weightArray)) then
+               deallocate(weightArray)
+            endif
             ALLOCATE(prob(1:nSource))
 	    ! Create the prob. dist. function.
-            do i = 1, nSource
-               prob(i) = integrateSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
-                    dble(lamArray(nLambda))) /lsol
-            enddo
-            do i = 2, nSource
+            if (nLambda > 1) then
+               do i = 1, nSource
+                  prob(i) = integrateSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
+                       dble(lamArray(nLambda))) /lsol
+               enddo
+            else
+               do i = 1, nSource
+                  prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaImage(1)))
+               enddo
+            endif
+            prob(1:nSource) = prob(1:nSource)/SUM(prob(1:nSource))
+            allocate(weightArray(1:nSource))
+            if (SUM(source(1:nSource)%prob) == 0.d0) then
+               weightArray(1:nSource) = 1.d0
+            else
+               weightArray(1:nSource) = prob(1:nSource) / source(1:nSource)%prob
+               prob(1:nSource) = source(1:nSource)%prob
+            endif
+
+             do i = 2, nSource
                prob(i) = prob(i) + prob(i-1)
             enddo
             prob(1:nSource) = prob(1:nSource) - prob(1)
             prob(1:nSource) = prob(1:nSource) / prob(nSource)
-!            write(*,*) "Source prob: ",prob(1:nSource)
          end if
 	 
-         call randomNumberGenerator(getReal=r)
+         call randomNumberGenerator(getDouble=r)
          call locate(prob, nSource, r, iSource)
          if (iSource < nSource) then
             t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
             if (t > 0.5) iSource = iSource + 1
+            weight = weightArray(isource)
          endif
       endif
 
@@ -186,6 +210,20 @@ module source_mod
         endif
      enddo
     end function sumSourceLuminosityMonochromatic
+
+    real(double) function sourceLuminosityMonochromatic(source, lam) result (tot)
+      type(SOURCETYPE) :: source
+      real(double) :: lam, flux
+
+      tot = 0.d0
+      if (lam > source%spectrum%lambda(source%spectrum%nLambda)) then
+         tot = tot + 1.d-200
+      else
+         flux =  loginterp_dble(source%spectrum%flux(1:source%spectrum%nLambda), &
+              source%spectrum%nLambda, source%spectrum%lambda(1:source%spectrum%nLambda), lam)
+         tot = tot + flux * fourPi * (source%radius*1.d10)**2 
+      endif
+    end function sourceLuminosityMonochromatic
 
 
 
@@ -275,21 +313,21 @@ module source_mod
             if (cornerDir%x > 0 .and. direction%x > 0) then
                direction%x = -direction%x 
               ! print *, "called A"
-            else if (cornerDir%x < 0 .and. direction%x < 0) then
+            else if (cornerDir%x < 0.d0 .and. direction%x < 0.d0) then
                direction%x = -direction%x
               ! print *, "called B"
             end if
-            if (cornerDir%z > 0 .and. direction%z > 0) then
+            if (cornerDir%z > 0.d0 .and. direction%z > 0.d0) then
                direction%z = -direction%z
                !print *, "called C"
-            else if (cornerDir%z < 0 .and. direction%z < 0) then
+            else if (cornerDir%z < 0.d0 .and. direction%z < 0.d0) then
                direction%z = -direction%z
              !  print *, "called D"
             end if
-            if (cornerDir%y > 0 .and. direction%y > 0) then
+            if (cornerDir%y > 0.d0 .and. direction%y > 0.d0) then
                direction%y = -direction%y
               ! print *, "called E"
-            else if (cornerDir%y < 0 .and. direction%y < 0) then
+            else if (cornerDir%y < 0.d0 .and. direction%y < 0.d0) then
                direction%y = -direction%y
               !! print *, "called F"
             end if

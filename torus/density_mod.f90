@@ -865,7 +865,7 @@ contains
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use input_variables, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, streamFac
+         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -931,8 +931,8 @@ contains
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
        if (smoothInnerEdge) then
           fac = 1.d0
-          if (r < 1.01d0*rinner) then
-             fac = (1.01d0*rinner - r)/(0.01d0*rinner)
+          if (r < 1.02d0*rinner) then
+             fac = (1.02d0*rinner - r)/(0.02d0*rinner)
              fac = 10.d0*fac
              fac = exp(-fac)
              rhoOut = rhoOut * fac
@@ -969,6 +969,35 @@ contains
        enddo
        dist = dist / (0.01d0*rInner)
        rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
+    endif
+
+!    basic gap
+
+    if ((r < rGapOuter*1.02).and.(r > rGapInner*0.98)) then
+
+       if (smoothInnerEdge) then
+          fac = 1.d0
+          if ((r < 1.02d0*rGapouter).and.(r > 0.5*(rGapInner+rGapOuter))) then
+             fac = (1.02d0*rGapouter - r)/(0.02d0*rGapouter)
+             fac = 10.d0*fac
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+          if ((r > 0.98*rGapInner).and.(r < 0.5*(rGapInner+rGapOuter))) then
+             fac = (r - 0.98*rGapInner)/(0.02d0*rGapInner)
+             fac = 10.d0*fac
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+       endif
+
+
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+       fac = max(-50.d0,fac)
+       rhoOut = max(rhoOut, rhoGap * exp(fac))
+
+
     endif
 
     rhoOut = max(rhoOut, 1.d-30)

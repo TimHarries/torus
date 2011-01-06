@@ -1597,6 +1597,11 @@ contains
 
 
        call fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
+       do i = 1, nDustType
+          do j = 1, nLambda
+             call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
+          enddo
+       enddo
 
        call resetNewDirectionMie
        call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)

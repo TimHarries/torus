@@ -9,7 +9,7 @@ module amr_mod
   use messages_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
-       allocateattribute, copyattribute, deallocateattribute
+       allocateattribute, copyattribute, deallocateattribute, returndphi
   use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint
   use density_mod, only:    density, TTauriInFlow
   use romanova_class, only: romanova
@@ -1386,6 +1386,7 @@ CONTAINS
       END SUBROUTINE countVoxelsPrivate
 
   END SUBROUTINE countVoxels
+
 
   RECURSIVE SUBROUTINE fixParentPointers(thisOctal)
       
@@ -3558,11 +3559,12 @@ CONTAINS
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
-         maxdepthamr, vturbmultiplier
+         maxdepthamr, vturbmultiplier, rGapInner, rGapOuter
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          smoothInnerEdge, ttauriRinner, amr2d
+    use input_variables, only : phiRefine, dPhiRefine
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -3616,7 +3618,7 @@ CONTAINS
 
     type(VECTOR) :: minV, maxV
     real(double) :: vgradx, vgrady, vgradz, vgrad
-    real(double) :: T, vturb, b
+    real(double) :: T, vturb, b, dphi
 
     splitInAzimuth = .false.
     split = .false.
@@ -4552,11 +4554,8 @@ CONTAINS
       if (.not.smoothInnerEdge) then
          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-      else
-         fac = grid%rinner * 1.01d0
-         if (((r-cellsize/2.d0) < fac).and. ((r+cellsize/2.d0) > fac) .and. &
-              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
       endif
+
       if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
            (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
 
@@ -4569,10 +4568,28 @@ CONTAINS
 !         endif
 !      endif
 !
-!      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
-!         splitInAzimuth = .true.
-!         split = .true.
-!      endif
+
+      if (thisOctal%cylindrical) then
+         if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 2.d0*hr)) then
+            phi = atan2(cellcentre%y, cellcentre%x)
+            if (phi < 0.d0) phi = phi + twopi
+            dphi = returndPhi(thisOctal)
+            phi1 = phi - dphi
+            if (phi1 < 0.d0) phi1 = phi1 + twoPi
+            phi2 = phi + dphi
+            if (dPhi*radtodeg > dPhiRefine) then
+               if (((phi1*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                    (phi1*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                   ((phi2*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                   (phi2*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                   ((phi1*radtodeg < 180.d0-phiRefine/2.d0).and. &
+                   (phi2*radtodeg > 180.d0+phiRefine/2.d0))) then
+                  splitInAzimuth = .true.
+                  split = .true.
+               endif
+            endif
+         endif
+      endif
 !
       if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
          split = .false.
@@ -7482,7 +7499,7 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod
+    real(double) :: eThermal, rMod, mass
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
@@ -7490,8 +7507,8 @@ CONTAINS
        thisOctal%rho(subcell) = 1000.d0*2.d0*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 100.d0*2.d0*mHydrogen
-       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%rho(subcell) = 10.d0*2.d0*mHydrogen
+       thisOctal%temperature(subcell) = 100.d0
     endif
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
@@ -7501,7 +7518,8 @@ CONTAINS
 
     thisOctal%boundaryCondition(subcell) = 2
 
-    thisOctal%phi_i(subcell) = -bigG * 200.d0 * mSol / (modulus(rVec)*1.d10)
+    mass = (fourPi/3.d0) * pctocm**3 * 1000.d0 * 2.d0 * mHydrogen
+    thisOctal%phi_i(subcell) = -bigG * mass / (modulus(rVec)*1.d10)
     thisOctal%gamma(subcell) = 2.d0
     thisOctal%iEquationOfState(subcell) = 3
 
@@ -8673,7 +8691,7 @@ end function readparameterfrom2dmap
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
     thisOctal%inflow(subcell) = .true.
-    thisOctal%temperature(subcell) = 10. 
+    thisOctal%temperature(subcell) = 100. 
     thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
 
@@ -12269,6 +12287,10 @@ end function readparameterfrom2dmap
 
           r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
           centre = subcellCentre(thisOctal, subcell)
+          if (thisOctal%cylindrical) then 
+             aHat = (0.1*grid%halfSmallestsubcell)*randomUnitVector()
+             centre = centre + aHat
+          endif
           if (thisOctal%threed) then
              if (.not.thisOctal%cylindrical) then
                 nDir = 6
@@ -12280,7 +12302,7 @@ end function readparameterfrom2dmap
                 dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
              else
                 nDir = 4
-                aHat = VECTOR(centre%x, centre%y, 0.d0)
+                aHat = centre
                 call normalize(aHat)
                 dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
                 dirVec(2) = aHat
@@ -12891,7 +12913,7 @@ end function readparameterfrom2dmap
           end do
        else
 
-          r = thisOctal%subcellSize/2.d0 + 0.0001d0*grid%halfSmallestSubcell
+          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell) 
           if (thisOctal%threed) then
              if (.not.thisOctal%cylindrical) then
@@ -12904,7 +12926,7 @@ end function readparameterfrom2dmap
                 dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
              else
                 nDir = 4
-                aHat = VECTOR(centre%x+0.1*grid%halfSmallestSubcell, centre%y, 0.d0)
+                aHat = VECTOR(centre%x+0.3*grid%halfSmallestSubcell, centre%y+0.321*grid%halfSmallestSubcell, 0.d0)
                 call normalize(aHat)
                 dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
                 dirVec(2) = aHat
@@ -12923,7 +12945,8 @@ end function readparameterfrom2dmap
              dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
           do j = 1, nDir
-             octVec = centre + r * dirvec(j)
+             octVec = centre+VECTOR(0.01*grid%halfSmallestSubcell, 0.01d0*grid%halfSmallestSubcell, &
+                  +0.001d0*grid%halfSmallestSubcell) + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
 
                 startOctal => thisOctal

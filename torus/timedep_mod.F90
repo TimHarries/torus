@@ -394,6 +394,7 @@ contains
     real(double) :: prob(2000), luminosity, sourceLuminosity
     integer :: nFromMatter, nPhotons
     real(double) :: fracSource, chanceSource, chanceGas, weightSource, weightGas
+    real(double) :: weightSource2
     type(VECTOR) :: rVec, uHat, rHat
     type(VECTOR) :: observerDirection, observerPosition
     real(double) :: eps, r, freq,  photonTime, tDble
@@ -522,14 +523,14 @@ contains
           if (r < fracSource) then
 
              radiativeEquPhoton = .false.
-             call randomSource(source, nSource, iSource)
+             call randomSource(source, nSource, iSource, weightSource2)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
              call getWavelength(thisSource%spectrum, wavelength)
              beenScattered = .false.
              freq = cSpeed/(wavelength / 1.e8)
              photonTime = 0.d0
-             eps = weightSource * totalluminosity * deltaT / dble(nFromMatter)
+             eps = weightSource * weightSource2 * totalluminosity * deltaT / dble(nFromMatter)
 !             write(*,*) "star eps " , eps
              photonFromSource = .true.
              photonFromGas = .false.

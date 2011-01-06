@@ -1696,7 +1696,7 @@ contains
 !             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
 !             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
@@ -1752,11 +1752,10 @@ contains
              tempStorage(5) = thisOctal%rhow(Subcell)
              tempStorage(6) = thisOctal%energy(Subcell)
              tempStorage(7) = thisOctal%pressure_i(Subcell)
-             tempStorage(8) = thisOctal%phi_i(Subcell)
-             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           else
              tempStorage(1) = thisOctal%phi_i(Subcell)
-             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           endif
        endif
     enddo
@@ -1803,11 +1802,10 @@ contains
              tempStorage(5) = thisOctal%rhow(Subcell)
              tempStorage(6) = thisOctal%energy(Subcell)
              tempStorage(7) = thisOctal%pressure_i(Subcell)
-             tempStorage(8) = thisOctal%phi_i(Subcell)
-             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           else
              tempStorage(1) = thisOctal%phi_i(Subcell)
-             call MPI_SEND(tempStorage, 8, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           endif
        endif
     enddo
@@ -1834,7 +1832,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     integer :: sendThread
     integer :: i
     logical, save :: firstTime =.true.
-
+    real(double) :: oldR, newR, oldHi, r
     i = npoints
 
     thisOctal => grid%octreeRoot
@@ -1854,6 +1852,10 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
        open(20, file=thisFile, form="formatted", status="unknown", position="append")
        done = .false.
        !print *, "Starting dump of Stromgren data"
+
+       oldR = 0.d0
+       newR = 0.d0
+       oldHi = 0.d0
        do while(inOctal(grid%octreeRoot, position))
           call findSubcellLocal(position, thisOctal, subcell)
           sendThread = thisOctal%mpiThread(subcell)
@@ -1870,12 +1872,16 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
 	  tVal = tempStorage(5)
 	  !print *, "hi ", hi
 	  !print *, "cen: ", cen
+          newR = modulus(cen-startPoint)
           if(hi > 0.5 .and. .not. done) then
+              r = oldR + (newR-oldR) * (0.5 - oldHi)/(hi-oldhi)
 	     !print *, "Edge found"
-             write(20,'(5e14.5)') grid%currentTime, modulus(cen-startPoint)
+             write(20,'(5e14.5)') grid%currentTime*secsToYears/1.d6, r*1.d10/(1000.d0*pctocm)
              done = .true.
 	     goto 555
           end if
+          oldR = newR
+          oldHi= hi
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
 	  !print *, "POSITION ", position
@@ -1934,10 +1940,10 @@ end subroutine dumpStromgrenRadius
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen
-    real(double) :: loc(3), rho, rhou , rhoe, p
+    real(double) :: loc(3), rho, rhou , rhoe, p, phi
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 8
+    integer, parameter :: nStorage = 9
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 50
     integer :: status(MPI_STATUS_SIZE)
@@ -1973,7 +1979,8 @@ end subroutine dumpStromgrenRadius
           rhou = tempStorage(6)
           rhoe = tempStorage(7)
           p = tempStorage(8)
-          write(20,'(5e14.5)') modulus(cen-startPoint), rho, rhou/rho, rhoe,p
+          phi = tempStorage(9)
+          write(20,'(6e14.5)') modulus(cen-startPoint), rho, rhou/rho, rhoe,p, phi
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
           !print *, "POSITION 2 ", position
@@ -2011,9 +2018,10 @@ end subroutine dumpStromgrenRadius
              tempStorage(3) = cen%z
              tempStorage(4) = thisOctal%rho(subcell)
              tempStorage(5) = tVal
-             tempStorage(6) = thisOctal%rhou(subcell)             
+             tempStorage(6) = sqrt(thisOctal%rhou(subcell)**2+thisOctal%rhov(subcell)**2+thisOctal%rhow(subcell)**2)
              tempStorage(7) = thisOctal%rhoe(subcell)             
              tempStorage(8) = thisOctal%pressure_i(subcell)             
+             tempStorage(9) = thisOctal%phi_i(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
           endif
        enddo

@@ -112,7 +112,7 @@ contains
     logical :: converged
     real :: temp
     real(double) :: luminosity1, luminosity2, luminosity3
-    real(double) :: photonPacketWeight
+    real(double) :: photonPacketWeight, sourceWeight
     real(double) :: fac
 !    logical :: gridConverged
     real(double) :: albedo
@@ -297,7 +297,7 @@ contains
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE (imonte, isource, thisSource, rVec, uHat, rHat, tempOctal, tempsubcell) &
-       !$OMP PRIVATE (photonPacketWeight, escaped, subcell, temp, ok, directPhoton, wavelength) &
+       !$OMP PRIVATE (photonPacketWeight, sourceWeight, escaped, subcell, temp, ok, directPhoton, wavelength) &
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
        !$OMP PRIVATE (thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
@@ -306,7 +306,7 @@ contains
 
        !$OMP DO SCHEDULE (STATIC)
        mainloop: do iMonte = iMonte_beg, iMonte_end
-          call randomSource(source, nSource, iSource)
+          call randomSource(source, nSource, iSource, sourceWeight)
           thisSource = source(iSource)
 
           !thap variance reduction for melvin geometry
@@ -314,7 +314,7 @@ contains
              call getMelvinPositionDirection(thisSource, rVec, uHat, grid, photonPacketWeight)
           else
              call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
-             photonPacketWeight = 1.d0             
+             photonPacketWeight = sourceWeight
           end if
           
                     
@@ -4282,7 +4282,7 @@ end subroutine readHeIIrecombination
 
 
        if (r < probSource) then
-          call randomSource(source, nSource, iSource)
+          call randomSource(source, nSource, iSource, weightSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
           thisPhoton%weight = weightSource
