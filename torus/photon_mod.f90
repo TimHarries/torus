@@ -113,6 +113,7 @@ contains
     integer :: nMumie                            ! number of mu angles for mie
     type(PHASEMATRIX), intent(in) :: miePhase(:,:,:)
     type(PHASEMATRIX),save,allocatable :: miePhaseTemp(:)
+!$OMP THREADPRIVATE (miePhaseTemp)
     ! if the system has accretion disc around the obeject
     logical, intent(in) :: ttau_disc_on          
     ! to find if scattering occurs in the accretion disc
@@ -136,7 +137,9 @@ contains
     logical :: mie_scattering
     real :: weight
     logical, save :: firstTime = .true.
+!$OMP THREADPRIVATE (firstTime)
     real, allocatable, save :: cosArray(:)
+!$OMP THREADPRIVATE (cosArray)
     weight = 1.
     if (firstTime)  then
        allocate(cosArray(1:nMuMie))
@@ -461,7 +464,7 @@ contains
     type(VECTOR) :: octalPoint            ! 
 !    type(octal), pointer :: foundOctal       
     real :: probDust, weightDust, weightPhoto
-    real(double) :: weightSource
+    real(double), intent(in) :: weightSource
 
 
 

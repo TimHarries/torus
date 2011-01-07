@@ -1455,7 +1455,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PRIVATE(outPhoton,intPathError) &
 !$OMP PRIVATE(nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
-!$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv, weightSource) &
+!$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble) &
@@ -1464,7 +1464,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP SHARED(grid) &
 !$OMP SHARED(ntot) &
 !$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
-!$OMP SHARED(weightLinePhoton, flatSpec, vRot, secondSource, secondSourcePosition) &
+!$OMP SHARED(weightLinePhoton, weightSource, flatSpec, vRot, secondSource, secondSourcePosition) &
 !$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
 !$OMP SHARED(weightContPhoton, useBias, pencilBeam, outVec)&
 !$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, rStar, coolStarPosition) &
