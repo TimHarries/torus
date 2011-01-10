@@ -143,7 +143,10 @@ contains
   end subroutine run_random_test_suite
 
   subroutine test_random_hybrid()
-    use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
+#ifdef MPI
+    use mpi_global_mod, only : nThreadsGlobal
+#endif
+    use mpi_global_mod, only : myRankGlobal
     integer :: nOmpThreads, iOmpThread, nTot
     integer, allocatable :: itest(:)
     logical :: different
@@ -227,7 +230,10 @@ contains
     
 
   subroutine test_same_hybrid()
-    use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
+#ifdef MPI
+    use mpi_global_mod, only : nThreadsGlobal
+#endif
+    use mpi_global_mod, only : myRankGlobal
     integer :: nOmpThreads, iOmpThread, nTot
     integer, allocatable :: itest(:)
     logical :: different
