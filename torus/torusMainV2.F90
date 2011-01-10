@@ -69,11 +69,11 @@ program torus
   myRankIsZero   = .true.
 
 
-#ifdef MPI
-  if (myRankGlobal/=1) writeoutput  = .false.
-  if (myRankGlobal/=1) doTuning     = .false.
-  if (myRankGlobal/=0) myRankIsZero = .false.
-#endif
+  if (TorusMpi) then 
+     if (myRankGlobal/=1) writeoutput  = .false.
+     if (myRankGlobal/=1) doTuning     = .false.
+     if (myRankGlobal/=0) myRankIsZero = .false.
+  end if
 
 
   call writeTorusBanner()
@@ -82,21 +82,13 @@ program torus
   grid%version = torusVersion
   verbosityLevel = 5
   call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
-
+  call report_parallel_type
 
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   ! set up a random seed
-  
-#ifdef _OPENMP
-  call randomNumberGenerator(randomSeed=.true.)
-  call test_random_hybrid()
-  call randomNumberGenerator(synciseed=.true.)
-  call test_same_hybrid()
-  call randomNumberGenerator(reset=.true.)
-  call test_same_hybrid()
-#endif
+  if (torusOpenMP) call run_random_test_suite
 
 !  call testSuiteRandom()  
   call inputs()

@@ -22,6 +22,7 @@ contains
     real(double), intent(out), optional :: getDoubleArray(:)
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
     integer(bigInt), save :: iSeed = 0 
+    integer(bigInt) :: iseed_syncval
     real :: r
     integer :: i, j
 
@@ -30,6 +31,7 @@ contains
     if (PRESENT(reset)) then
        if (reset) then
           !$OMP PARALLEL
+          iseed=0
           r = ran3_double(iseed, reset=.true.)
           !$OMP END PARALLEL
        endif
@@ -47,11 +49,20 @@ contains
     if (PRESENT(syncIseed)) then
        if (syncIseed) then
 #ifdef MPI
-       call sync_random_seed(iSeed)
+          call sync_random_seed(iSeed)
 #endif
-       r = ran3_double(iseed, reset=.true.)
+
+!$OMP PARALLEL DEFAULT (NONE) &
+!$OMP SHARED (iseed_syncval) PRIVATE(r)
+!$OMP MASTER
+          iseed_syncval = iseed
+!$OMP END MASTER
+!$OMP BARRIER
+          iseed = iseed_syncval
+          r = ran3_double(iseed, reset=.true.)
+!$OMP END PARALLEL 
+       endif
     endif
- endif
 
     if (PRESENT(getReal)) then
        getReal = real(ran3_double(iseed))
@@ -115,6 +126,22 @@ contains
   end subroutine sync_random_seed
 #endif
 
+! Run tests to check that random seeds are the same/different across
+! MPI processes and OpenMP threads. 
+  subroutine run_random_test_suite()
+    implicit none
+
+    if (torusSerial) return 
+
+    call randomNumberGenerator(randomSeed=.true.)
+    call test_random_hybrid()
+    call randomNumberGenerator(synciseed=.true.)
+    call test_same_hybrid()
+    call randomNumberGenerator(reset=.true.)
+    call test_same_hybrid()
+
+  end subroutine run_random_test_suite
+
   subroutine test_random_hybrid()
     use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
     integer :: nOmpThreads, iOmpThread, nTot
@@ -146,7 +173,11 @@ contains
     !$OMP END PARALLEL
 #endif
 
-   nTot = nThreadsGlobal * nOmpThreads
+#ifdef MPI
+    nTot = nThreadsGlobal * nOmpThreads
+#else
+    nTot = nOmpThreads
+#endif
     allocate(itest(1:nTot))
     itest = 0
 
@@ -226,7 +257,11 @@ contains
     !$OMP END PARALLEL
 #endif
 
-   nTot = nThreadsGlobal * nOmpThreads
+#ifdef MPI
+    nTot = nThreadsGlobal * nOmpThreads
+#else
+    nTot = nOmpThreads
+#endif
     allocate(itest(1:nTot))
     itest = 0
 
@@ -257,14 +292,15 @@ contains
 #endif
     
     if (myrankGlobal == 0) then
-    different = .true.
+    different = .false.
     call localsort(size(itest),itest)
-    different = .true.
+    different = .false.
     do i = 1, size(itest)-1
-       if (itest(i) == itest(i+1)) different=.false.
+       if (itest(i) /= itest(i+1)) different=.true.
     enddo
        if (different) then
           write(*,*) "! Threads do not have same random sequences"
+          write(*,*) itest
        else
           write(*,*) "Synced seed test: Success - threads have same random number sequences"
        endif
