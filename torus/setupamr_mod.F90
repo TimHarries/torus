@@ -768,7 +768,7 @@ contains
 ! *** relation between coarse and fine levels is:
 ! *** rho(ibl+i,jbl+j,kbl+k,l-1)=
 ! *** (rho(2*i-1, 2*j-1, 2*k-1, l)+...+rho(2*i, 2*j, 2*k, l))/8d0
-      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
+!      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
 
 ! *** conversion factors from computational units to cgs units.
       real(double), parameter :: rho0=1d-18, l0=2.07636d16
@@ -781,7 +781,7 @@ contains
 
 ! *** internal variables
       real(double) ::  time(lmax)
-      integer*8 ::  lstep(lmax)
+      integer(kind=8) ::  lstep(lmax)
       real :: version, arrtmp(imax,jmax,kmax)
       real :: xtmp(imax),ytmp(jmax),ztmp(kmax)
       integer :: i, j, k, l, level

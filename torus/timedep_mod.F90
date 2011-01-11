@@ -303,7 +303,7 @@ contains
                 open(32, file=vtkFilename, status="unknown", form="formatted")
                 write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
                 do i = 1, nSedWavelength-1
-                   write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                   write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                         outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
                 enddo
                 close(32)
@@ -313,7 +313,7 @@ contains
                 write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
 
                 do i = 1, nSedWavelength-1
-                   write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                   write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                         outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
                 enddo
                 close(32)
@@ -341,7 +341,7 @@ contains
              open(32, file=vtkFilename, status="unknown", form="formatted")
              write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
              do i = 1, nSedWavelength-1
-                write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                      outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
              enddo
              close(32)
@@ -351,7 +351,7 @@ contains
              write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
 
              do i = 1, nSedWavelength-1
-                write(32,'(1p2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
+                write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                      outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
              enddo
              close(32)
