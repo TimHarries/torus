@@ -70,6 +70,7 @@ run_bench()
 {
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
+#export TORUS_JOB_DIR=`pwd`/
 
 case ${SYSTEM} in
     ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
@@ -322,8 +323,8 @@ done
 
 case ${MODE} in 
 
-    daily) export SYS_TO_TEST="ompi"
-           export BUILD_ONLY="gfortran g95 nagfor"
+    daily) export SYS_TO_TEST="ompi gfortran"
+           export BUILD_ONLY="g95 nagfor"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
