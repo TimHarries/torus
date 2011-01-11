@@ -96,9 +96,13 @@ ifeq ($(SYSTEM), osx)
 endif
 
 ifeq ($(SYSTEM), gfortran)
-    F95COMP  = gfortran
+    ifeq ($(mpi), yes)
+        F95COMP = mpif90
+        MPIFLAG = -DMPI
+    else
+        F95COMP = gfortran
+    endif
     DEBUGFLAG= -g -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
-
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
 #    F2CLIB   = -L/usr/local/lib -lg2c
@@ -489,7 +493,7 @@ endif
 
 # Set OpenMP flags
 ifeq ($(openmp), yes)
-  ifeq ($(F95COMP), gfortran)
+  ifeq ($(SYSTEM), gfortran)
      ETCFLAG += -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
      STARLIBS += -static-libgcc
