@@ -2889,7 +2889,6 @@ contains
 !    real(double),parameter :: tolf = 1.e6_db   ! tolerance
     real(double),parameter :: tolx = 1.e-6_db   ! tolerance
     real(double),parameter :: tolf = 1.e0_db  ! tolerance
-    integer                     :: returnVal     ! status value
     real(double),dimension(1:maxLevels+1) :: xall
     real(double)       :: nTot
     real                        :: visFrac1      ! visible fraction of star 1
@@ -2944,7 +2943,6 @@ contains
     
     starCentre = grid%starPos1
 
-    if (grid%geometry == "ttauri" .or. grid%geometry == "luc_cir3d" .or. grid%geometry == "romanova") then 
       nNu1 = starSurface%nNuHotFlux
       nNu2 = nNu1
       hnu2(1:nNu2) = 0.0
@@ -2952,20 +2950,6 @@ contains
        !   lam = (cSpeed / nuArray2(i)) * 1.e8
        !   hnu2(i) = pi*blackbody(tAccretion, lam)/fourPi
        !enddo
-
-    else   
-      open(20,file=contfile,status="old",form="formatted")
-      nnu1 = 1
-      do
-         read(20,*,iostat=returnVal) nuarray1(nNu1), hnu1(nNu1)
-         if (returnVal /= 0) exit
-         nNu1 = nNu1 + 1
-      end do
-      nNu1 = nNu1  - 1
-      close(20)
-      hNu1(1:nNu1) = hnu1(1:nNu1) / fourPi   ! Converts from flux to flux momemnt
-      nNu2 = 0
-    endif
 
 
     ! 2-D case for rotationally symmetric geometries
@@ -3513,6 +3497,647 @@ contains
     end subroutine calcAMRstatEq
 
   end subroutine amrStateq
+
+  subroutine amrStateqNew(grid, lte, nLower, nUpper, starSurface,&
+                       recalcPrevious)
+    ! calculate the statistical equilibrium for the subcells in an
+    !   adaptive octal grid.
+
+    USE amr_mod
+    USE input_variables, ONLY: LyContThick, statEq1stOctant
+#ifdef MPI
+    USE input_variables, ONLY: blockHandout
+#endif
+    use parallel_mod
+
+    implicit none
+#ifdef MPI
+    include 'mpif.h'
+#endif
+    type(GRIDTYPE),intent(inout):: grid      
+    logical,intent(in)          :: lte           ! true if lte conditions
+    integer,intent(in)          :: nLower, nUpper! level populations
+    logical, intent(in)         :: recalcPrevious ! whether to improve some previous results
+    ! Name of the ion (see opacity_lte_mod.f90 for the list of a valid name.)
+    type(SURFACETYPE), intent(in) :: starSurface
+    integer                     :: i          ! loop counters
+    integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
+    integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
+    integer                     :: iOctal        ! loop counter
+    integer                     :: iSubcell      ! loop counter
+    integer                     :: nOctal        ! number of octals in grid
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+!    real(double),parameter :: tolx = 1.e6_db   ! tolerance
+!    real(double),parameter :: tolf = 1.e6_db   ! tolerance
+    real(double),parameter :: tolx = 1.e-6_db   ! tolerance
+    real(double),parameter :: tolf = 1.e0_db  ! tolerance
+    real(double),dimension(1:maxLevels+1) :: xall
+    real(double)       :: nTot
+    real                        :: visFrac1      ! visible fraction of star 1
+    real                        :: visFrac2      ! visible fraction of star 2
+    logical                     :: isBinary      ! true for binary system
+    integer                     :: nNu1, nNu2
+    real                        :: hNu1(2000)
+    real                        :: hNu2(2000)
+    real                        :: nuarray1(2000)
+! nuarray2 is not used in practice. It is used in the equation8 function if  geometry == binary
+! however this subroutine will stop if geometry == binary
+! The array is initialised to zero here to prevent compiler warnings. D. Acreman 28/11/07
+    real                        :: nuarray2(2000)=0.0
+    type(vector)                :: rVec
+    real(double)       :: NeLTE
+    type(octal), pointer        :: thisOctal => null()
+    real, dimension(maxLevels)  :: departCoeff
+    real, dimension(maxLevels)  :: previousXall
+    real                        :: previousNeRatio      
+    logical                     :: debugInfo
+    Type(VECTOR)           :: starCentre 
+    real(double), parameter :: NeFactor = 20.0_db ! NeFactor
+!    real :: lam
+    integer                     :: numLTEsubcells 
+
+    ! 2-d case variables
+    type(octalListElement),pointer  :: listHead => NULL() ! linked list of octals
+    type(octalWrapper), allocatable :: planeOctals(:) ! array of pointers to octals in 2d plane
+    type(octalWrapper), allocatable :: subsetOctals(:) ! array of pointers to octals
+
+    integer       ::   ioctal_beg, ioctal_end  
+#ifdef MPI
+    ! For MPI implementations
+    integer       ::   my_rank        ! my processor rank
+    integer       ::   np             ! The number of processes
+    integer       ::   ierr           ! error flag
+#endif
+
+    isBinary = .false.
+    debugInfo = .false.
+    if ( trim(grid%geometry) == "binary" ) isBinary = .true.
+
+    numLTEsubcells = 0
+
+    if (LyContThick) then
+      print *, '**************************************************'
+      print *, 'Lyman Continuum Thick!'
+      print *, '**************************************************'
+    end if
+    ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
+    call map_transition_arrays(maxLevels)
+    
+    starCentre = grid%starPos1
+
+    nNu1 = starSurface%nNuHotFlux
+    nNu2 = nNu1
+    hnu2(1:nNu2) = 0.0
+    !do i = 1, nNu2
+    !   lam = (cSpeed / nuArray2(i)) * 1.e8
+    !   hnu2(i) = pi*blackbody(tAccretion, lam)/fourPi
+    !enddo
+
+    ! 2-D case for rotationally symmetric geometries
+#ifdef MPI
+        print *, "grid%statEq2d=", grid%statEq2d
+        print *, "grid%amr2dOnly=", grid%amr2dOnly
+        print *, "statEq1stOctant=", statEq1stOctant
+        print *, "lte=", lte
+        print *, "recalcPrevious=", recalcPrevious
+#endif
+    if (grid%statEq2d .and. (.not. lte) ) then
+       ! we first get a list of the octals that lie in a plane across the
+       !   space.
+       nOCtal = 0
+       if (.not. recalcPrevious) then
+          call getIntersectedOctals(grid%octreeRoot,listHead,grid,nOctal)
+          print *, nOctal, ' octals intersect the plane for 2-d statEq'
+       else
+          call getIntersectedOctals(grid%octreeRoot,listHead,grid,nOctal,onlyChanged=.true.)
+          print *, nOctal, ' octals in the 2-d plane have been updated'
+       end if
+       
+       ! allocate the array of pointers to octals that intersect the plane 
+       allocate(planeOctals(nOctal))
+       call moveOctalListToArray(listHead,planeOctals)
+       
+       ! now calculate the non-LTE populations in that plane.
+       ! we use 'setupCoeffs' to store the departure coefficients
+       ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
+       !   coefficients as a starting point.
+       ! 'firstTime' must be on
+       call calcAMRstatEqNew(planeOctals, setupCoeffs=.true., propogateCoeffs=.true., &
+            firstTime=.true.,NeFactor=NeFactor)
+       deallocate(planeOctals) ! no longer need the pointers to that plane.
+       
+       print *, '   Mapping 2-D cells to 3-D...'
+       call map2DstatEq(grid%octreeRoot,grid)
+       print *, '   ...3-D mapping done'
+
+
+    !
+    !
+    elseif (statEq1stOctant) then
+       ! we first get a list of the octals that lie in a plane across the
+       !   space.
+       nOCtal = 0
+       if (.not. recalcPrevious) then
+          call getOctalsInFirstOctant(grid%octreeRoot,listHead,grid,nOctal)
+          print *, nOctal, ' octals (in the first octant) used in amrstatEq'
+       else
+          call getOctalsInFirstOctant(grid%octreeRoot,listHead,grid,nOctal,onlyChanged=.true.)
+          print *, nOctal, ' octals (in the first octant) have been updated/changed'
+       end if
+       
+       ! allocate the array of pointers to octals in first octant
+       allocate(subsetOctals(nOctal))
+       call moveOctalListToArray(listHead,subsetOctals)
+       
+       ! now calculate the non-LTE populations 
+       ! we use 'setupCoeffs' to store the departure coefficients
+       ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
+       !   coefficients as a starting point.
+       ! 'firstTime' must be on
+       call calcAMRstatEqNew(subsetOctals, setupCoeffs=.true., propogateCoeffs=.true., &
+            firstTime=.true.,NeFactor=NeFactor)
+       deallocate(subsetOctals) ! no longer need the pointers to that plane.
+       
+       print *, '   Mapping the first octant octal cells to other octants...'
+       call mapOctantStatEq(grid%octreeRoot,grid)
+       print *, '   ...3-D mapping done'
+
+
+    ! if we're going to calculate solutions for all the cells (not just those in 
+    !   a plane): 
+    elseif ((.not. grid%amr2dOnly) .or. lte .or. recalcPrevious) then    
+
+
+       write(*,*) "Doing all cells..."
+      ! get an array of octals comprising the entire tree
+      allocate(octalArray(grid%nOctals))
+      call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+
+      if ((grid%statEq2d .and. (.not. lte)) .or. recalcPrevious) then
+
+!        if ((grid%statEq2d .and. (.not. lte)) .and. recalcPrevious) then
+          ! map the departure coefficients from the 2-d plane to the new cells
+          print *, 'Mapping 2-d plane coefficients to modified cells...'
+          do iOctal = 1, size(octalArray), 1
+            if (any(octalArray(iOctal)%inUse)) then
+              call map2dStatEq(octalArray(iOctal)%content,grid,               &
+                 subcellMask=(octalArray(iOctal)%content%changed .and. octalArray(iOctal)%inUse))
+            end if
+          end do
+!        end if
+
+          ! we do not want to 'setupCoeffs'
+          ! we don't use 'propogateCoeffs' because we have already mapped good
+          !   starting values to each cell.
+          ! 'firstTime' must be off because we have already computed LTE values.
+        call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.false.,&
+                           firstTime=.false.,NeFactor=NeFactor)
+        !print *, 'and again, just for fun...'                   
+        !call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.false.,&
+        !                   firstTime=.false.,NeFactor=NeFactor)
+      else
+                
+        ! we solve from scratch for all the cells
+        call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.true., &
+                           firstTime=.true.,NeFactor=NeFactor)
+
+      end if 
+      deallocate(octalArray)
+    end if
+    ! if we are going to use them later, we must store all the departure
+    ! coefficients.
+    if (.not. lte) then
+      
+      if (.not.(allocated(octalArray))) then
+        allocate(octalArray(grid%nOctals))
+        call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+      end if
+      
+      call saveAllDepartCoeffs(octalArray)
+    end if
+      
+    !! we no longer need to store the departure coefficients
+    !if (grid%statEq2d .and. (.not. lte) .and. (.not. recalcPrevious)) &
+    !  call removeDepartCoeffs(grid%octreeRoot)
+
+    call generateOpacitiesAMR(grid, nLower, nUpper)
+    
+  contains
+  
+  subroutine calcAMRstatEqNew(octalArray,setupCoeffs,propogateCoeffs,firstTime,NeFactor)
+    ! takes an array of pointers to octals, and calculates the statistical 
+    !   equilibrium. 
+    use messages_mod, only : myRankIsZero
+    use surface_mod, only: photoFluxIntegral
+
+#ifdef MPI
+    include 'mpif.h'
+#endif
+    type(octalWrapper), intent(inout), dimension(:) :: octalArray
+    logical, intent(in) :: setupCoeffs  ! whether to store the departure 
+                                        !   coefficients in the octal structure.
+    logical, intent(in) :: propogateCoeffs ! whether to use previous cell's
+                                           !   departure coefficients as
+                                           !   starting values.
+                                           
+    logical, intent(in) :: firstTime ! if this is the first run, we have to 
+                                     !   calculate LTE values first.
+    real(double), intent(in) :: NeFactor ! fudge factor for Ne
+!    real :: photoOmega, hotOmega
+    logical :: needRestart ! non-physical solution flag
+    integer :: previousSubcell
+    real(double),dimension(maxLevels) :: tempLevels
+    real(double) :: tempNe
+    real,dimension(SIZE(starSurface%nuArray)) :: photoFlux1
+!    integer, parameter :: ntrial_max = 20
+    integer, parameter :: ntrial_max = 50
+#ifdef MPI
+     logical :: dcAllocated
+     integer, dimension(:), allocatable :: octalsBelongRank
+     logical :: rankComplete
+     integer :: tag = 0
+     integer :: tempInt
+#endif
+
+    if ( firstTime .and.  (  &
+         grid%geometry(1:8) == 'windtest'  .or.   &
+         grid%geometry(1:6) == 'ttauri'    .or.   &
+         grid%geometry(1:6) == 'luc_cir3d' .or.   &
+         grid%geometry(1:8) == 'romanova'         &
+         )  )  then
+       ! sort the octals by radius
+       print *, '   Sorting octalArray by radius...'
+       call sortOctalArray(octalArray,grid)
+       print *, '   ...sorting complete'
+    end if
+   
+    do i = 1, size(octalArray), 1 
+      if (recalcPrevious) then
+        ! if we're just updating a few cells, set the mask
+        octalArray(i)%inUse = octalArray(i)%content%changed
+      end if
+      octalArray(i)%content%changed = .false.
+    end do
+    
+    if (firstTime .or. (recalcPrevious .and. .not. grid%statEq2d)) then 
+       print *, "   calculating LTE values..." ,size(octalArray)
+       do iOctal = 1, SIZE(octalArray), 1
+          thisOctal => octalArray(iOctal)%content
+          do iSubcell = 1, thisOctal%maxChildren
+             if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then 
+
+                call LTElevels(thisOctal%temperature(iSubcell),  &
+                               thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
+                               thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
+                if (.not. associated(thisOctal%departCoeff)) then
+                  allocate(thisOctal%departCoeff(8,maxLevels+1))
+                  thisOctal%departCoeff = 1.0
+                end if
+
+                if (thisOctal%Ne(iSubcell)<0) then
+                   write(*,*) 'Error:: ne (electron density) < 0  in stateq_mod::amrStateq!!!'
+                   write(*,*) "thisOctal%Ne(",iSubcell,") = ", thisOctal%Ne(iSubcell)
+                   write(*,*) "thisOctal%centre = ", thisOctal%centre
+                   write(*,*) "iOctal = ", iOctal
+                   stop
+                end if
+
+             endif
+          enddo
+       enddo
+       print *, "   ...LTE calculations complete." 
+    end if
+
+    if (.not.lte) then
+       print *, "   calculating non-LTE values..." 
+            
+       visFrac1 = 1.
+       visFrac2 = 0.
+       isBinary = .false.
+       
+       ! default loop indecies
+       ioctal_beg = 1
+       ioctal_end = SIZE(octalArray)       
+
+
+#ifdef MPI 
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    
+    ! we will use an array to store the rank of the process
+    !   which will calculate each octal's variables
+    allocate(octalsBelongRank(size(octalArray)))
+    
+    if (my_rank == 0) then
+       print *, ' '
+       print *, 'calcAMRstatEq routine  computed by ', np-1, ' processors.'
+       print *, ' '
+       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+                            maxBlockSize=10,setDebug=.false.)
+    
+    endif
+    ! ============================================================================
+#endif
+
+       
+       ! initialize some variables
+       departCoeff = 1.0
+       previousXall = -9.9
+       previousNeRatio = 1.0
+
+#ifdef MPI
+ if (my_rank /= 0) then
+  blockLoop: do     
+ call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit blockLoop 
+#endif
+
+!!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
+!!$OMP    ! NOT WORKING YET WITH INTEL COMPILER!!!!!!
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
+!$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
+!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i, starCentre) &
+!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface) & 
+!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
+!$OMP SHARED(visFrac1, visFrac2, isBinary) & 
+!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
+!$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo) 
+!$OMP DO SCHEDULE(DYNAMIC)
+       do iOctal =  iOctal_beg, iOctal_end, 1
+
+          print *, 'Octal #',iOctal
+          thisOctal => octalArray(iOctal)%content
+          if (setupCoeffs) allocate (thisOctal%departCoeff(8,maxLevels+1))
+            ! departCoeff(maxLevels+1) is the LTE/nonLTE Ne ratio
+          
+          do iSubcell = 1,  thisOctal%maxChildren, 1
+             if (octalArray(iOctal)%inUse(iSubcell) .and. ((thisOctal%inFlow(iSubcell) .and. &
+                thisOctal%nTot(iSubcell) > 1.0) )) then
+                if (recalcPrevious .and. .not. firstTime) then
+                  ! calculate LTE values, and then scale by old coefficients
+                  
+                  call LTElevels(thisOctal%temperature(iSubcell),  &
+                                 thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
+                                 thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
+
+                  thisOctal%Ne(iSubcell) = &
+                    thisOctal%Ne(iSubcell) * thisOctal%departCoeff(iSubcell,maxLevels+1)      
+                  thisOctal%N(iSubcell,:) = &
+                    thisOctal%N(iSubcell,:) * thisOctal%departCoeff(iSubcell,1:maxLevels)      
+                  
+                end if
+                
+                ! store the electron density so that we can use it for
+                !   comparison later.
+                NeLTE = thisOctal%Ne(iSubcell)
+                
+                ! if we are using starting values from the previous cell, apply
+                !   them now
+                if (propogateCoeffs) then
+                   thisOctal%Ne(iSubcell) = thisOctal%Ne(iSubcell) * previousNeRatio     
+                   thisOctal%N(iSubcell,1:maxLevels) = departCoeff(1:maxLevels) * &
+                                      boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
+                                      real(thisOctal%temperature(iSubcell),kind=db))
+                end if
+                
+                xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
+                xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
+                
+                if (.not. propogateCoeffs .and. .not. firstTime) &
+                       previousXall = xAll(1:maxLevels)
+                       
+                rVec = subcellCentre(thisOctal,iSubcell)
+
+                !call photoSolidAngle(rVec, starSurface, hotOmega, photoOmega)
+                photoFlux1 = photoFluxIntegral(rVec, starSurface, SIZE(starSurface%nuArray))
+                photoFlux1 = photoFlux1 / fourPi   ! Converts from flux to flux moment
+                hNu1(1:nNu1) = photoFlux1(1:nNu1)
+                nuArray1(1:nNu1) = starSurface%nuArray(:)
+
+                if (isBinary) then
+                  print *, 'Binary geometry not implemented for amrStateq surface models'
+                  stop
+                end if
+                  
+!                call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
+                call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
+                           nuArray1, nNu1, &
+                           hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
+                           isBinary, thisOctal, iSubcell,   &
+                           needRestart=needRestart,maxNegatives=20)
+
+                if (needRestart) then
+
+                  ! first try departure coefficients from a neighbouring cell
+
+                  do previousSubcell = 1, iSubcell-1, 1
+
+                    if (thisOctal%inFlow(previousSubcell)           .and.  &
+                        (thisOctal%nTot(previousSubcell) > 1.0)     .and.  &
+                        octalArray(iOctal)%inUse(previousSubcell)) then
+                      print *, 'Using starting coefficients from previous',&
+                               ' subcell: ',previousSubcell
+                      ! calculate the departure coefficients for the previous
+                      !   subcell 
+                      call LTElevels(thisOctal%temperature(previousSubcell),  &
+                                     thisOctal%rho(previousSubcell),tempNe,nTot,tempLevels)
+                      tempNe = thisOctal%Ne(previousSubcell) / tempNe
+                      tempLevels = thisOctal%N(previousSubcell,1:maxLevels) / tempLevels
+                     
+                      ! recalculate LTE for the current subcell 
+                      call LTElevels(thisOctal%temperature(iSubcell),  &
+                                     thisOctal%rho(iSubcell),xAll(maxLevels+1),&
+                                     thisOctal%nTot(iSubcell),xAll(1:maxLevels))
+                      ! apply coefficients
+                      xAll(maxLevels+1) = xAll(maxLevels+1) * tempNe
+                      xAll(1:maxLevels) = xAll(1:maxLevels) * tempLevels
+                      
+!                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, &
+                      call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, &
+                           hNu1(1:nNu1), nuArray1, nNu1, &
+                           hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
+                           isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
+
+                      if (.not. needRestart) exit 
+                    end if 
+                 
+                  end do
+
+                  if (needRestart) then
+                    print *, 'None of the neighbouring subcells provided',&
+                             ' suitable starting points.'
+
+                    ! try starting from LTE
+                    print *, 'Trying LTE starting point.'
+                    call LTElevels(thisOctal%temperature(iSubcell),  &
+                                   thisOctal%rho(iSubcell),xAll(maxLevels+1),&
+                                   thisOctal%nTot(iSubcell),xAll(1:maxLevels))
+
+!                    call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, &
+                    call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, &
+                         tolf, hNu1(1:nNu1), nuArray1, nNu1, &
+                         hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
+                         isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
+
+                    if (needRestart) then
+                      print *, "Starting from LTE population and using more gentle approach (BE_GENTLE=.TRUE.)."
+
+                      call LTElevels(thisOctal%temperature(iSubcell),  &
+                                     thisOctal%rho(iSubcell),xAll(maxLevels+1),&
+                                     thisOctal%nTot(iSubcell),xAll(1:maxLevels),NeFactor=NeFactor)
+!                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf,  &
+                      call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf,  &
+                         hNu1(1:nNu1), nuArray1, nNu1, &
+                         hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
+                         isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20, be_gentle=.true.)
+                      
+                      if (needRestart) then
+                         print *, 'LTE initial guess with BE_GENTLE=T option did not work....'
+                         print *, 'Fixing subcell (at depth ',thisOctal%nDepth,') at LTE values!!!'
+                         call LTElevels(thisOctal%temperature(iSubcell),  &
+                              thisOctal%rho(iSubcell),xAll(maxLevels+1),&
+                              thisOctal%nTot(iSubcell),xAll(1:maxLevels))
+                         numLTEsubcells = numLTEsubcells + 1
+                         ! For now, we turn off the cells failed to converge. (RK added this)
+                         thisOctal%inFlow(iSubcell) = .false.
+                      end if
+                    end if
+
+                  end if
+                end if
+
+                ! store the results
+                thisOctal%N(iSubcell,1:maxLevels) = xall(1:maxLevels)
+                thisOctal%Ne(iSubcell) = xall(maxLevels+1)
+                
+                if (propogateCoeffs .or. setupCoeffs .or. associated(thisOctal%departCoeff)) then
+
+                   ! we work out the Ne ratio of non-LTE to LTE...
+                   previousNeRatio = thisOctal%Ne(iSubcell) / NeLTE
+                  
+                   ! and the departure coefficients from LTE at the current (non-LTE) Ne
+                   departCoeff(1:maxLevels) = real(xall(1:maxLevels))/                         &
+                                                 boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
+                                                 real(thisOctal%temperature(iSubcell),kind=db))
+                   ! store these in the octal
+                   thisOctal%departCoeff(iSubcell,1:maxLevels) = departCoeff(:)
+                   thisOctal%departCoeff(iSubcell,maxLevels+1) = previousNeRatio
+                end if
+                           
+                if (debugInfo) then
+                   write (*,'(a12,i1,a15,f7.0,a16,1pe14.3)') '   subcell #', iSubcell, '  temperature: ', & 
+                                      thisOctal%temperature(iSubcell),' N(HI)+N(HII): ',thisOctal%rho(iSubcell)/mHydrogen 
+                   write (*,'(a,1pe15.4,a)') '    radius = ',&
+                      modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
+                   write(*,*) '  level   dep.coeff      N          N LTE     start N  '
+                   do i = 1 , maxLevels
+                      departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
+                                                real(thisOctal%temperature(iSubcell),kind=db))
+                      write(*,'(a5,i3,1p,e12.3,e12.3,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i),&
+                       boltzSaha(i, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)),&
+                       previousXall(i)
+                   enddo
+                   if (.not. propogateCoeffs .and. .not. firstTime) then 
+                     write(*,*) 'Log Ne = ',REAL(log10(thisOctal%Ne(iSubcell))),&
+                                '  Ne final / Ne starting value = ',REAL(thisOctal%Ne(iSubcell)/NeLTE)
+                   else
+                     write(*,*) 'Log Ne = ',REAL(log10(thisOctal%Ne(iSubcell))), &
+                                '  Ne non-LTE/LTE = ',REAL(thisOctal%Ne(iSubcell)/NeLTE)
+                   end if
+                   
+                   !write(*,'(a,f6.2)') 'Hot spot viewing fraction(%): ',100.*hotOmega/(photoOmega+hotOmega)
+                end if   
+                
+             else if (setupCoeffs) then
+                
+                if (.not. associated(thisOctal%departCoeff)) allocate (thisOctal%departCoeff(8,maxLevels+1))
+                thisOctal%departCoeff(iSubcell,:) = 1.0
+                
+             endif
+          enddo
+       enddo
+!$OMP END DO
+!$OMP BARRIER
+!$OMP END PARALLEL
+
+#ifdef MPI
+ if (.not.blockHandout) exit blockloop
+ end do blockLoop        
+ end if ! (my_rank /= 0)
+
+     print *,'Process ',my_rank,' waiting to update values in calcAMRstatEq...' 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     ! have to send out the 'octalsBelongRank' array
+     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+       !
+       ! Update the values (N and Ne) of grid computed by all processors.
+       !
+       do iOctal = 1, SIZE(octalArray)
+          !print *,'Process ',my_rank,' starting octal ',iOctal 
+
+          !if (my_rank==0)   print *,'Root reports rank ',octalsBelongRank(ioctal), 'for octal',ioctal
+          thisOctal => octalArray(iOctal)%content
+          
+          ! we may need to allocate departure coefficients
+          if (my_rank == octalsBelongRank(iOctal)) then
+            dcAllocated = associated(thisOctal%departCoeff)
+            !print *, 'rank ',my_rank,'broadcasting dcAllocated:',dcAllocated
+          end if
+          
+          call MPI_BCAST(dcAllocated, 1, &
+               MPI_LOGICAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+          
+          if (dcAllocated .and. .not. associated(thisOctal%departCoeff)) then 
+            allocate(thisOctal%departCoeff(8,maxLevels+1))
+            !print *, 'process ',my_rank,'allocating dc'
+          end if
+          
+          do iSubcell = 1, thisOctal%maxChildren
+             if (octalArray(iOctal)%inUse(iSubcell)) then
+                
+                call MPI_BCAST(thisOctal%nTot(iSubcell), 1, MPI_DOUBLE_PRECISION,&
+                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+                call MPI_BCAST(thisOctal%Ne(iSubcell), 1, MPI_DOUBLE_PRECISION, &
+                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+                call MPI_BCAST(thisOctal%N(iSubcell, 1:maxlevels), maxlevels, &
+                     MPI_DOUBLE_PRECISION, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+             end if
+          
+             if (dcAllocated) then
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+                call MPI_BCAST(thisOctal%departCoeff(iSubcell, 1:maxlevels+1), maxlevels+1, &
+                     MPI_REAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+             end if   
+          end do
+       end do
+          
+     tempInt = 0
+     call MPI_REDUCE(numLTEsubcells,tempInt,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     numLTEsubcells = tempInt
+          
+     print *,'Process ',my_rank,' finished updating values in calcAMRstatEq...' 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif
+      
+      if (myRankIsZero) then
+         print *, "   non-LTE calculations complete..." 
+         print *, numLTEsubcells,' subcells were fixed at LTE values'
+      end if
+       
+    endif
+
+    end subroutine calcAMRstatEqNew
+
+  end subroutine amrStateqNew
 
   subroutine saveAllDepartCoeffs(octalArray)
     ! populate the 'departcoeff' variable for all of the octals.

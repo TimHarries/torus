@@ -213,7 +213,7 @@ contains
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics
+         lucy_undersampled, molecularPhysics, hydrodynamics, cmf, lte, nlower, nupper
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein
     use input_variables, only : mCore, solveVerticalHydro, sigma0
@@ -293,9 +293,15 @@ contains
         call molecularLoop(grid, globalMolecule)
      endif
      
-     if (atomicPhysics.and.statisticalEquilibrium) then
+     if (atomicPhysics.and.statisticalEquilibrium.and.cmf) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
+
+     if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
+        call amrStateqNew(grid, lte, nLower, nUpper, globalSourceArray(1)%surface,&
+                       .false.)
+     endif
+
 
      if (photoionPhysics.and.photoionEquilibrium) then 
 
