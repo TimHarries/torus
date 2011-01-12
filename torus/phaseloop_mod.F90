@@ -8,7 +8,7 @@ CONTAINS
 
 subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel,  &
      theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
-     starsurface, newContFluxFile, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
+     starsurface, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename)
 
@@ -239,7 +239,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   character(len=80) :: tempChar
   character(len=80) :: phasePopFilename
   character(len=80) :: originalOutFile, filename
-  character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   character(len=80) :: specfile, obsfluxfile
 
   logical :: ok

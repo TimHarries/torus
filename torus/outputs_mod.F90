@@ -49,7 +49,6 @@ contains
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
 !    real(double) :: ang
-    character(len=80) :: tstring
     type(VECTOR) :: tvec(1)
 
     if ( (.not.calcImage).and. &
@@ -132,7 +131,7 @@ contains
           fastIntegrate=.true.
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-               tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+               tsurface, 0., 0., tdisc, tvec, 1,       &
                0., 0, .false., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
        end if
@@ -154,7 +153,7 @@ contains
              fastIntegrate=.true.
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
                   0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-                  tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+                  tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
           enddo
@@ -170,7 +169,7 @@ contains
           call setupXarray(grid, xarray, nVelocity)
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-               tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+               tsurface, 0., 0., tdisc, tvec, 1,       &
                0., 0, .true., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
        end if
@@ -191,7 +190,7 @@ contains
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
                   0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-                  tsurface,  tstring, 0., 0., tdisc, tvec, 1,       &
+                  tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
           enddo
