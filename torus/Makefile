@@ -178,12 +178,10 @@ ifeq ($(SYSTEM), lamosx-intel)
 endif
 
 ifeq ($(SYSTEM), ompiosx)
-    F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
-    F95FLAG  = -w
-    DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O0
-    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
-    STARLIBS =  -L/usr/lib -lSystemStubs 
+    F95COMP  = mpif90 
+    DEBUGFLAG= -g -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
+    FASTFLAG = -O3
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
