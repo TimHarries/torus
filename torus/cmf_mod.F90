@@ -2905,7 +2905,7 @@ contains
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
-	integer :: ioctal_beg, ioctal_end
+        integer :: ioctal_beg, ioctal_end
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, my_rank, ierr, iAtom
         integer :: iLevel
