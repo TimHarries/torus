@@ -540,7 +540,7 @@ contains
 
 	   !thaw - edgecell is correct.
           if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
-	     locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 
@@ -996,16 +996,16 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
 
-		if (.not.thisoctal%ghostcell(subcell)) then
+          if (.not.thisoctal%ghostcell(subcell)) then
 		!if (.not.thisoctal%edgecell(subcell)) then
-		dx = thisoctal%subcellsize * griddistancescale
-		thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
-                ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
-                (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+             dx = thisoctal%subcellsize * griddistancescale
+             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
+                  ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
+                  (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
 		! write(*,*), "ui", thisoctal%u_interface(subcell)
-		 endif
-	  endif
-   enddo
+          endif
+       endif
+    enddo
 
   end subroutine rhiechowui
 
@@ -1250,16 +1250,16 @@ contains
 		   
 	    !Thaw - Rhie-Chow interpolation
 	    !print *, "rhou", thisoctal%rhou(subcell)
-            if(rhieChow) then
-	    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt) * &
-            ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-	    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+             if(rhieChow) then
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt) * &
+                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
+                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
 	    !print *, "rhou", thisoctal%rhou(subcell)
 
-	    else 
-	    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
-                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-	    end if 
+             else 
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
+                     (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+             end if
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
@@ -1390,7 +1390,7 @@ contains
          !         (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
             if(rhieChow) then
-         	    thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt) * &
+               thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt) * &
                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                     (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
                     !print *, "rhou", thisoctal%rhou(subcell)
@@ -2687,10 +2687,10 @@ contains
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           call  dumpValuesAlongLine(grid, "sod.dat", &
-	  VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+               VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-	    grid%iDump = it
+          grid%iDump = it
           grid%currentTime = currentTime
        endif
 
@@ -3507,7 +3507,7 @@ contains
                    call normalize(dir)
 		   
 		   
-		   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+                   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
 		   
                    thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
 
@@ -3594,7 +3594,7 @@ contains
 
                    if (thisOctal%twod.or.thisOctal%oneD) then
                       if (dir%x > 0.9d0) then 
-                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))		      
+                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))
                          thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
                       endif
@@ -6346,7 +6346,7 @@ end subroutine refineGridGeneric2
           !   print *, "getPressure ", getPressure
 	  !end if
 
-	  eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
+          eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
 	  !Thaw - needs to be more generic for species mass
 
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)

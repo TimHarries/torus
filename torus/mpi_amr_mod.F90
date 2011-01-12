@@ -353,7 +353,7 @@ contains
                     value(nSquares) = tmp
                     speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2) / thisOctal%rho(subcell)
                     ang(nSquares) = atan2(thisOctal%rhov(subcell), thisOctal%rhou(subcell))
-	              if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
+                    if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
                  endif
               case DEFAULT
               end select
@@ -1842,7 +1842,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
        if(firstTime) then
           !Overwrite any existing file
           open(20, file=thisFile, form="formatted", status="unknown")
-	  write(20,*) " "
+          write(20,*) " "
           close(20)
           firstTime = .false.
        end if
@@ -1867,7 +1867,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
           cen%y = tempStorage(2)
           cen%z = tempStorage(3)
           hi = tempStorage(4)
-	  tVal = tempStorage(5)
+          tVal = tempStorage(5)
 	  !print *, "hi ", hi
 	  !print *, "cen: ", cen
           newR = modulus(cen-startPoint)
@@ -1876,7 +1876,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
 	     !print *, "Edge found"
              write(20,'(5e14.5)') grid%currentTime*secsToYears/1.d6, r*1.d10/(1000.d0*pctocm)
              done = .true.
-	     goto 555
+             goto 555
           end if
           oldR = newR
           oldHi= hi
@@ -1918,7 +1918,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
              tempStorage(2) = cen%y
              tempStorage(3) = cen%z
              tempStorage(4) = thisOctal%ionFrac(subcell,1)
-	     tempStorage(5) = tVal
+             tempStorage(5) = tVal
              !tempStorage(6) = thisOctal%rhou(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
 	     

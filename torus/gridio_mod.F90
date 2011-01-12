@@ -2894,7 +2894,7 @@ contains
          logical :: fileFormatted
          type(OCTAL), pointer :: thisOctal, parent, child, depth3
 !         character(len=80) :: message
-	 integer :: i, iChild, ithread
+         integer :: i, iChild, ithread
 
 
          allocate(depth3)
@@ -3079,7 +3079,7 @@ contains
          integer :: ithread
          logical :: fileFormatted
          type(OCTAL), pointer :: thisOctal => null()
-	 integer :: i, n
+         integer :: i, n
 
          allocate(thisOctal)
          call readOctalViaTags(thisOctal, fileFormatted)

@@ -2855,7 +2855,7 @@ contains
     where (grid%kappaabs < 0.) grid%kappaabs = 1.e-20
   end subroutine generateOpacities
 
-  subroutine amrStateq(grid, contfile, lte, nLower, nUpper, starSurface,&
+  subroutine amrStateq(grid, lte, nLower, nUpper, starSurface,&
                        recalcPrevious)
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
@@ -2872,7 +2872,6 @@ contains
     include 'mpif.h'
 #endif
     type(GRIDTYPE),intent(inout):: grid      
-    character(len=*),intent(in) :: contfile      ! filename for continuum flux
     logical,intent(in)          :: lte           ! true if lte conditions
     integer,intent(in)          :: nLower, nUpper! level populations
     logical, intent(in)         :: recalcPrevious ! whether to improve some previous results
