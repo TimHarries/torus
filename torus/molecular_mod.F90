@@ -526,9 +526,9 @@ module molecular_mod
 ! this just catches stuff if it's been allocated and not set.
 
               if (.not.associated(thisOctal%microturb)) then
-                   allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-                   thisOctal%microTurb = 0.d0
-                endif
+                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
+                 thisOctal%microTurb = 0.d0
+              endif
               if(thisoctal%microturb(subcell) .le. 1d-20) then
 !                 if(.not. molebench) 
                  thisOctal%microturb(subcell) = max(1d-7, &
@@ -1156,8 +1156,12 @@ module molecular_mod
 
 #endif
 
-
-
+! Make sure all MPI processes and OpenMP threads have the correct random seed
+            if (fixedRays .and. TorusOpenmp) then
+               call randomNumberGenerator(putIseed=fixedRaySeed)
+               call randomNumberGenerator(syncIseed=.true.)
+               call test_same_hybrid
+            endif
 
 ! iterate over all octals, all rays, solving the system self-consistently
 
@@ -1177,14 +1181,6 @@ module molecular_mod
             allocate(i0(1:maxray,1:maxtrans))
 ! set-up temporary arrays for ngstep
             allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
-
-#ifdef _OPENMP
-            if (fixedRays) then
-               call randomNumberGenerator(putIseed=fixedRaySeed)
-               call randomNumberGenerator(syncIseed=.true.)
-            endif
-            !$OMP BARRIER
-#endif
 
             !$OMP DO SCHEDULE(static)
     do iOctal = ioctal_beg, ioctal_end
