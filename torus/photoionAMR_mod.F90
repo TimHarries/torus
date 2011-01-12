@@ -116,12 +116,7 @@ contains
     grid%currentTime = 0.d0
     grid%iDump = 0
     tDump = 0.005d0
-<<<<<<< photoionAMR_mod.F90
     deltaTforDump = 2.d11
-=======
-    deltaTforDump = 2.d10
-
->>>>>>> 1.89
     nextDumpTime = deltaTforDump
     if (grid%geometry == "hii_test") deltaTforDump = 1.d10
     iunrefine = 0
@@ -203,15 +198,11 @@ contains
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-<<<<<<< photoionAMR_mod.F90
+
 	  !if(grid%geometry /= "bonnor") then
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 500, loopLimitTime)	       
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 500, loopLimitTime, 0.d0)
           !end if
-=======
-	  if(grid%geometry /= "bonnor") then
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 700, loopLimitTime,0.d0)	       
-          end if
->>>>>>> 1.89
+
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
@@ -239,7 +230,7 @@ contains
 
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot)
-	  call calculateRhoE(grid%octreeRoot, direction)
+          call calculateRhoE(grid%octreeRoot, direction)
        endif
 
 
@@ -357,12 +348,8 @@ contains
        !if(looplimittime < 1.d5) then
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
-	  call setupNeighbourPointers(grid, grid%octreeRoot)
-<<<<<<< photoionAMR_mod.F90
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 100, loopLimitTime)
-=======
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, dt)
->>>>>>> 1.89
+          call setupNeighbourPointers(grid, grid%octreeRoot)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 100, loopLimitTime, 0.d0)
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -413,22 +400,22 @@ contains
           end if
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d6)) then
              deltaTForDump = 1.d6
-	  end if
+          end if
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d7)) then
              deltaTForDump = 1.d7
-	  end if
+          end if
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d8)) then
              deltaTForDump = 1.d8
-	  end if
-	  if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d9)) then
-	     deltaTForDump = 1.d9
-	  end if
+          end if
+          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d9)) then
+             deltaTForDump = 1.d9
+          end if
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d10)) then
              deltaTForDump = 1.d10
           end if
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d11)) then
              deltaTForDump = 1.d11
-	  end if
+          end if
           !if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d12)) then
           !   deltaTForDump = 1.d12
 	  !end if
@@ -457,12 +444,12 @@ contains
 
 !Track the evolution of the ionization front with time
        if(grid%geometry == "hii_test") then
-	  write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
-	  call dumpValuesAlongLine(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
-	        VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
+          write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
+          call dumpValuesAlongLine(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
+               VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-	  call dumpStromgrenRadius(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
                VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
        end if
 
@@ -713,17 +700,17 @@ contains
 
 
 		!re-weighting for corner sources, edges still need work
-		if(source(iSource)%onCorner) then
+                if(source(iSource)%onCorner) then
                    if (grid%octreeRoot%threeD) then
                       photonPacketWeight = photonPacketWeight * 1.d0/8.d0
-		   else if (grid%octreeRoot%twoD) then
-		      photonPacketWeight = photonPacketWeight * 1.d0 /4.d0
+                   else if (grid%octreeRoot%twoD) then
+                      photonPacketWeight = photonPacketWeight * 1.d0 /4.d0
                    end if
                 !else if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
                 !   photonPacketWeight = 1.d0/2.d0
                 else
-		   photonPacketWeight = photonPacketWeight * 1.d0
-		end if
+                   photonPacketWeight = photonPacketWeight * 1.d0
+                end if
                 tPhoton = 0.d0
 !                write(*,*) inOctal(grid%octreeRoot, rVec), "rvec ",rVec," dir ",uhat
  !               call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -764,7 +751,7 @@ contains
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
                 enddo
                 nEscaped = SUM(nEscapedArray(1:nThreads-1))
-		nEscapedGlobal = nEscaped
+                nEscapedGlobal = nEscaped
                 if (nEscaped == nMonte) photonsStillProcessing = .false.
 
 
@@ -782,7 +769,7 @@ contains
 	     
 	     !needNewPhotonArray = .true.	     
              do while(.not.endLoop)
-	        crossedMPIboundary = .false.
+                crossedMPIboundary = .false.
 		!readyToSend = .false.
                 !HERE:CHECK STACK FOR PHOTONS - IF NONE THEN GET MORE
                 !THAW
@@ -847,7 +834,7 @@ contains
                    goto 777
                 endif
                 if (iSignal == 1) then
-                   call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)		   
+                   call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
                    goto 777
                 endif
 
@@ -869,8 +856,8 @@ contains
                       
                       if (crossedMPIBoundary) then
 		         !OLD STUFF
-			 call sendMPIPhoton(rVec, uHat, thisFreq,tPhoton,photonPacketWeight, newThread)
-                         goto 777			 
+                         call sendMPIPhoton(rVec, uHat, thisFreq,tPhoton,photonPacketWeight, newThread)
+                         goto 777
 
                          !HERE: SEND PHOTONS AS BEFORE
 !THAW =============================================================================================
@@ -1193,15 +1180,15 @@ if (.false.) then
     if (myRank /= 0) then
       do iOctal =  iOctal_beg, iOctal_end
           thisOctal => octalArray(iOctal)%content
-	  do subcell = 1, thisOctal%maxChildren
+          do subcell = 1, thisOctal%maxChildren
              if (.not.thisOctal%hasChild(subcell)) then
         
-	        if (niter == 1) then
+                if (niter == 1) then
                    thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-		   thisThreadConverged = .false.
-	        else
+                   thisThreadConverged = .false.
+                else
                    deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
-		      thisOctal%TLastIter(subcell)  
+                        thisOctal%TLastIter(subcell)  
                    deltaT = abs(deltaT)                 
 
 !		   if(deltaT > 1.d-2) then
@@ -1216,23 +1203,23 @@ if (.false.) then
                       endif
                    end if
 
-		   if(deltaT < 1.d-2 .and. .not. failed) then
-	     	      thisThreadConverged = .true.
+                   if(deltaT < 1.d-2 .and. .not. failed) then
+                      thisThreadConverged = .true.
                    else 
-	                 thisThreadConverged = .false.  
+                      thisThreadConverged = .false.  
 			 
-		         if(deltaT /= 0.d0 .and. .not. failed) then
-		            print *, "deltaT = ", deltaT
-			    print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-		            print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-			    print *, "cell center ", subcellCentre(thisOctal,subcell)
-			    print *, "nCrossings ", thisOctal%nCrossings(subcell)
-		         end if
-		         failed = .true.
-	           end if 
+                      if(deltaT /= 0.d0 .and. .not. failed) then
+                         print *, "deltaT = ", deltaT
+                         print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+                         print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+                         print *, "cell center ", subcellCentre(thisOctal,subcell)
+                         print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                      end if
+                      failed = .true.
+                   end if
 	        
-	           thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-	        end if
+                   thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
+                end if
              end if  
           end do
        !Send result to master rank 
@@ -1248,38 +1235,38 @@ if (.false.) then
         failed = .false.
         underSamFailed = .false.
 	!!!Rank 0, collate results and decide if converged 
-	   converged = .false.
-	   do iThread = 1 , (nThreadsGlobal-1)
-	      call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
-              call MPI_RECV(anyUndersampled, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-	      if(thisThreadConverged .and. .not. failed) then
-	         converged = .true.
-	      else 
-	         converged = .false.
-		 failed = .true.
-             end if
-	      if(anyUndersampled) then
-                 undersampledTOT=.true.
-              end if
-	   end do 
+        converged = .false.
+        do iThread = 1 , (nThreadsGlobal-1)
+           call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
+           call MPI_RECV(anyUndersampled, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+           if(thisThreadConverged .and. .not. failed) then
+              converged = .true.
+           else 
+              converged = .false.
+              failed = .true.
+           end if
+           if(anyUndersampled) then
+              undersampledTOT=.true.
+           end if
+        end do
 
-	   do iThread = 1, (nThreadsGlobal-1)
-              call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
-              call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
-	   end do
-    end if
+        do iThread = 1, (nThreadsGlobal-1)
+           call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
+           call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
+        end do
+     end if
 
-    if(myRank /= 0) then
-       call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
-       call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+     if(myRank /= 0) then
+        call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+        call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
 
-    end if
+     end if
 
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
- deallocate(octalArray)    
+     deallocate(octalArray)    
 
- converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !    converged = .true.
@@ -1584,7 +1571,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then
              call updateGrid(grid, thisOctal, subcell, thisFreq, &
-	     dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
+                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
           endif
 
           oldOctal => thisOctal
@@ -2208,11 +2195,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
-	  thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
-<<<<<<< photoionAMR_mod.F90
-!	  thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
-=======
->>>>>>> 1.89
+          thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
+!          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
        endif
 
     enddo
@@ -3633,8 +3617,8 @@ recursive subroutine quickSublimate(thisOctal)
                 thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
              endif
 
-	  else
-	     thisOctal%dustTypeFraction(subcell,:) = 0.d0
+          else
+             thisOctal%dustTypeFraction(subcell,:) = 0.d0
           end if
        endif
     enddo
@@ -4847,7 +4831,7 @@ end subroutine readHeIIrecombination
     tempStorage(6) =        direction%z  
     tempStorage(7) =        frequency    
     tempStorage(8) =        tPhoton
-    tempStorage(9) =	    photonPacketWeight
+    tempStorage(9) =        photonPacketWeight
     if (iThread == myRankGlobal) then
        write(*,*) "sending to self bug ", ithread
        stop
@@ -5177,6 +5161,8 @@ end subroutine readHeIIrecombination
     if (myrankGlobal == 0) then
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
+#else
+    call writeInfo("FITS not enabled, not writing "//trim(imageFilename),FORINFO)
 #endif
     call freeImage(thisImage)
   end subroutine createImageSplitGrid
