@@ -15,6 +15,7 @@ ln -s ${TEST_DIR}/torus/* .
 case ${SYSTEM} in
     g95)  /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
     gfortran) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes cfitsio=no >> ${log_file} 2>&1;;
+    ompiosx) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes cfitsio=no >> ${log_file} 2>&1;;
     *) /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
 esac
 
@@ -74,6 +75,7 @@ ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 
 case ${SYSTEM} in
     ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
+    ompiosx) mpirun -np 2 torus.ompiosx > run_log_${THIS_BENCH}.txt 2>&1 ;;
     zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
     *) ./torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1 ;;
 esac
@@ -101,11 +103,8 @@ ln -s ${TEST_DIR}/torus/isochrones/iso* .
 
 case ${SYSTEM} in
     ompi) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1;; 
-
     g95) ./sphbench > run_log_sphbench.txt 2>&1;;
-
     zen) mpirun -np 8 sphbench > run_log_sphbench.txt 2>&1 ;;
-
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
@@ -190,6 +189,12 @@ for sys in ${SYS_TO_TEST}; do
     cd    ${WORKING_DIR} 
     cp -r ${TEST_DIR}/torus/benchmarks . 
 
+    if [[ $SYSTEM == ompiosx ]]; then
+	export OLD_PATH=${PATH}
+	export PATH=/opt/ompi/gfortran/bin:${PATH}
+	export OMP_NUM_THREADS=2
+    fi
+
 # Build code
     if [[ ${DO_BUILD} == yes ]]; then
 	make_build
@@ -251,6 +256,11 @@ for sys in ${SYS_TO_TEST}; do
 #	check_benchmark > check_log_sphbench.txt 2>&1 
 
 	fi
+    fi
+
+    if [[ $SYSTEM == ompiosx ]]; then
+	export PATH=${OLD_PATH}
+	unset OMP_NUM_THREADS 
     fi
 
 done
@@ -323,7 +333,7 @@ done
 
 case ${MODE} in 
 
-    daily) export SYS_TO_TEST="ompi gfortran"
+    daily) export SYS_TO_TEST="ompi gfortran ompiosx"
            export BUILD_ONLY="g95 nagfor"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
