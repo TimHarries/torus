@@ -548,7 +548,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 #endif
 
              if (writeoutput) write(*,*) "Recalculating statistical equilibrium after changing grid" 
-             call amrStateq(grid, newContFluxFile, lte, nLower, nUpper,  &
+             call amrStateq(grid, lte, nLower, nUpper,  &
                    starSurface, recalcPrevious=.true.)
              call torus_mpi_barrier('returned from amrStatEq. Waiting to sync...')
 
