@@ -116,10 +116,14 @@ contains
     grid%currentTime = 0.d0
     grid%iDump = 0
     tDump = 0.005d0
+<<<<<<< photoionAMR_mod.F90
+    deltaTforDump = 2.d11
+=======
     deltaTforDump = 2.d10
 
+>>>>>>> 1.89
     nextDumpTime = deltaTforDump
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d7
+    if (grid%geometry == "hii_test") deltaTforDump = 1.d10
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -191,13 +195,23 @@ contains
     looplimitTime = deltaTForDump
     !looplimitTime = 0.1375d10
     do irefine = 1, 1
-       loopLimitTime = 1.d20       
+       if(grid%geometry == "hii_test") then
+          loopLimitTime = deltaTForDump
+       else 
+          loopLimitTime = 1.d16       
+       end if
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
+<<<<<<< photoionAMR_mod.F90
+	  !if(grid%geometry /= "bonnor") then
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 500, loopLimitTime)	       
+          !end if
+=======
 	  if(grid%geometry /= "bonnor") then
              call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 700, loopLimitTime,0.d0)	       
           end if
+>>>>>>> 1.89
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
@@ -205,6 +219,9 @@ contains
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, 0.d0)
           call writeInfo("Done",TRIVIAL)
        endif
+
+!THAW!!!!!!!!!!!!!!!!!!
+       stop
 
 !Track the evolution of the ionization front with time
     !      write(datFilename, '(a, i4.4, a)') "Ifront.dat"
@@ -341,7 +358,11 @@ contains
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
 	  call setupNeighbourPointers(grid, grid%octreeRoot)
+<<<<<<< photoionAMR_mod.F90
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 100, loopLimitTime)
+=======
           call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, dt)
+>>>>>>> 1.89
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -448,7 +469,7 @@ contains
        if(grid%geometry == "bonnor") then
           write(datFilename, '(a, i4.4, a)') "bonnor",grid%iDump,".dat"
           call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0,0.d0), &
-               VECTOR(-3.d9, -3.d9, 3.d9), 1000)
+               VECTOR(-1.5d9, -1.5d9, 1.5d9), 1000)
 
        end if
 	 
@@ -527,15 +548,19 @@ contains
     logical :: photonsStillProcessing
     integer, allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
+
+!================TOMS VARIABLES=======================
     real(double) :: deltaT  
 !    integer :: nFailedRank, nFailedTotal, nFailedLast
 !    integer :: deltaFails
-    real :: unconTLastIter = 0.0
-    real :: unconTThisIter, unconTThisIterRank
-    integer :: failCount
+!    real :: unconTLastIter = 0.0
+!    real :: unconTThisIter, unconTThisIterRank
+!    integer :: failCount
+    logical :: anyUndersampled, undersampledTOT
+    character(len=80) :: vtkFilename
+    logical :: underSamFailed
 
-    !character(len=80) :: vtkFilename
-    !Thaw-optimisation
+    !optimisation variables
     !1integer :: nSaved, pSend
     !integer, parameter :: maxStore=1000
     !type(VECTOR) :: rVecStore(maxStore)
@@ -552,6 +577,8 @@ contains
     !real(double) :: photonStackppw(maxStore)
     !integer :: photonStackDestination(maxStore)
     !logical :: readyToSend
+
+!====================================================
 
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
@@ -620,14 +647,14 @@ contains
        
        if(tlimit == 1.d20) then
           !waymaker photoionization loop
-          nmonte = 1000000
+          nmonte = 100000
        else
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
                 nMonte = 10000.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 100.d0 * (8.d0**(maxDepthAMR))
-		!nmonte = 1000000
+                nMonte = 10.d0 * (8.d0**(maxDepthAMR))
+		!nmonte = 100000
              else
                 nMonte = 10000.d0 * 2**(maxDepthAMR)
              end if
@@ -1158,8 +1185,10 @@ if (.false.) then
     failed = .false.
 !    nFailedRank = 0
  !   nFailedTotal = 0
-     unconTThisIter = 0.
-     unconTThisIterRank = 0.
+ !    unconTThisIter = 0.
+ !    unconTThisIterRank = 0.
+     anyUndersampled = .false.
+
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
     if (myRank /= 0) then
       do iOctal =  iOctal_beg, iOctal_end
@@ -1174,15 +1203,19 @@ if (.false.) then
                    deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
 		      thisOctal%TLastIter(subcell)  
                    deltaT = abs(deltaT)                 
-		   !if(deltaT > 1.d-2) then
-                   !   nFailedRank = nFailedRank + 1
-		   !end if
 
-		   if(deltaT > 1.d-2) then
-                      unconTThisIterRank = unconTThisIterRank + thisOctal%temperature(subcell) 
-		   end if
+!		   if(deltaT > 1.d-2) then
+!                      unconTThisIterRank = unconTThisIterRank + thisOctal%temperature(subcell) 
+!		   end if
 
-!Thaw - think the problem is here in catching the "fails"
+
+                   if(deltaT > 1.d-2) then
+                      if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
+                         print *, "rank ", myrank, "Undersampled"
+                         anyUndersampled = .true.
+                      endif
+                   end if
+
 		   if(deltaT < 1.d-2 .and. .not. failed) then
 	     	      thisThreadConverged = .true.
                    else 
@@ -1193,6 +1226,7 @@ if (.false.) then
 			    print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
 		            print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
 			    print *, "cell center ", subcellCentre(thisOctal,subcell)
+			    print *, "nCrossings ", thisOctal%nCrossings(subcell)
 		         end if
 		         failed = .true.
 	           end if 
@@ -1208,71 +1242,37 @@ if (.false.) then
 !       print *, "thisThreadConverged = ", thisThreadConverged
        !Send converged information
        call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
-       
-       !Send nCells unconverged
-       !call MPI_SEND(nFailedRank, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, ierr)
-
-       !Send sum temperature of unconverged cells
-       call MPI_SEND(unconTThisIterRank, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(anyUndersampled, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, ierr)
 
     else
         failed = .false.
+        underSamFailed = .false.
 	!!!Rank 0, collate results and decide if converged 
-           failCount = 0
 	   converged = .false.
 	   do iThread = 1 , (nThreadsGlobal-1)
 	      call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
-         !     call MPI_RECV(nFailedRank, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
-              call MPI_RECV(unconTThisIterRank, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-	       failCount = failCount + 1
-         !     nFailedTotal = nFailedTotal + 1
-              unconTThisIter = unconTThisIter + unconTThisIterRank
-	      if(.not. thisThreadConverged) then
-	      end if
+              call MPI_RECV(anyUndersampled, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
 	      if(thisThreadConverged .and. .not. failed) then
 	         converged = .true.
 	      else 
 	         converged = .false.
 		 failed = .true.
              end if
-	   end do
-
-           unConTThisIter = UnConTTHisIter / real(failCount)
-
-           print *,"(unconTThisIter-unconTLastIter)/(unconTLastIter) ", (unconTThisIter-unconTLastIter)/(unconTLastIter)
-           print *, "unconTThisIter ", unconTThisIter
-           print *, "unconTLastIter ", unconTLastIter
-
-           if(abs((unconTThisIter-unconTLastIter)/(unconTLastIter)) < 1.d-3 .and. niter /= 1) then
-              converged = .true.
-           end if
-
-           unconTLastIter = unconTThisIter
-
-!	   deltaFails = nFailedTotal - nFailedLast
-	  
-      !     print *, "(8.**maxDepthAMR) ", (8.**maxDepthAMR)
-      !     print *, "real(nFailedTotal) ", real(nFailedTotal)
-      !     print *, "real(nFailedTotal)/(8.**maxDepthAMR) ", real(nFailedTotal)/(8.**maxDepthAMR)
-	!   print *, "(real(nFailedTotal) ", real(nFailedTotal)
-	!   print *, "real(nFailedLast) ", real(nFailedLast)
-	!   print *, "real(deltaFails)/real(nFailedLast) ", real(deltaFails)/real(nFailedLast)	  
-
-!           if(real(nFailedTotal)/(8.**maxDepthAMR) < 1.d-2 .and. niter /= 1) then
-        !   if( (real(deltaFails)/real(nFailedLast)) < 1.d-2 .and. niter /= 1) then
-        !      converged = .true.
-        !      print *, "converged"
-        !   end if
-
-	 !  nFailedLast = nFailedTotal
+	      if(anyUndersampled) then
+                 undersampledTOT=.true.
+              end if
+	   end do 
 
 	   do iThread = 1, (nThreadsGlobal-1)
-              call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
+              call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
+              call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
 	   end do
     end if
 
     if(myRank /= 0) then
        call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+
     end if
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -1289,6 +1289,9 @@ if (.false.) then
      if(myRank == 0) then
       print *, "photoionization loop converged at iteration ", niter
      end if
+  else if(underSampledTOT .and. nMonte < 2.5d9) then
+      print *, "Undersampled cell, increasing nMonte"
+      nMonte = nMonte *2.d0
   end if
   
 !  call quickSublimate(grid%octreeRoot) ! do dust sublimation
@@ -1296,10 +1299,10 @@ if (.false.) then
     call torus_mpi_barrier
 
 ! if(tlimit /= 1.d20) then
-!  write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
-!  call writeVtkFile(grid, vtkFilename, &
-!      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-!      "dust1        ","radmom       "/))
+   write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+  call writeVtkFile(grid, vtkFilename, &
+      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+      "dust1        ","radmom       "/))
 ! call writeAMRgrid("tmp.grid",.false.,grid)
 ! end if
 enddo
@@ -2206,6 +2209,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        if (.not.thisOctal%hasChild(subcell)) then
 	  thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
+<<<<<<< photoionAMR_mod.F90
+!	  thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+=======
+>>>>>>> 1.89
        endif
 
     enddo
