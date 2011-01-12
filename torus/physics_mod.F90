@@ -160,12 +160,8 @@ contains
                 source(iSource)%onCorner = .false.
              end if
           end if
-<<<<<<< physics_mod.F90
           
           if(source(iSource)%onCorner .and. myRankGlobal == 1) then
-=======
-          if(source(iSource)%onCorner) then
->>>>>>> 1.50
              write(*,*) "SOURCE ON CORNER!"
           end if
           if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)
