@@ -7,7 +7,7 @@ mkdir build
 cd    build 
 
 echo "Building Torus for ${SYSTEM}"
-log_file=compile_log.txt
+log_file=compile_log_${SYSTEM}.txt
 ln -s ${TEST_DIR}/torus/* .
 /usr/bin/make depends > ${log_file} 2>&1 
 
@@ -70,18 +70,19 @@ echo
 run_bench()
 {
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
-ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
+ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
+log_file=run_log_${SYSTEM}_${THIS_BENCH}.txt
 #export TORUS_JOB_DIR=`pwd`/
 
 case ${SYSTEM} in
-    ompi) mpirun -np 4 torus.ompi > run_log_${THIS_BENCH}.txt 2>&1 ;;
-    ompiosx) mpirun -np 2 torus.ompiosx > run_log_${THIS_BENCH}.txt 2>&1 ;;
-    zen) mpirun -np 8 torus.zen > run_log_${THIS_BENCH}.txt 2>&1 ;;
-    *) ./torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1 ;;
+    ompi) mpirun -np 4 torus.ompi > ${log_file} 2>&1 ;;
+    ompiosx) mpirun -np 2 torus.ompiosx > ${log_file} 2>&1 ;;
+    zen) mpirun -np 8 torus.zen > ${log_file} 2>&1 ;;
+    *) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
 esac
 
 #Tag the tune.dat file 
-ln -s tune.dat tune_${THIS_BENCH}.txt 
+ln -s tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt 
 
 }
 
@@ -212,33 +213,34 @@ for sys in ${SYS_TO_TEST}; do
     case ${SYSTEM} in
 	ompi|zen)  echo "Running hydro benchmark"
 	    run_hydro
-	    check_hydro  > check_log_hydro.txt 2>&1 
-	    cat check_log_hydro.txt
+	    check_hydro  > check_log_${SYSTEM}_hydro.txt 2>&1 
+	    cat check_log_${SYSTEM}_hydro.txt
 	    echo ;;
-	*) echo "Hydro benchmark does not run on this system. Skipping";;
+	*) echo "Hydro benchmark does not run on this system. Skipping"
+	    echo ;;
     esac
 
 # Run 2D disc
     echo "Running disc benchmark"
     export THIS_BENCH=disc
     run_bench 
-    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${THIS_BENCH}.txt
+    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
     echo
 
     echo "Running HII region benchmark"
     export THIS_BENCH=HII_region
     run_bench
-    check_hII > check_log_hII.txt 2>&1 
-    cat check_log_hII.txt
+    check_hII > check_log_${SYSTEM}_hII.txt 2>&1 
+    cat check_log_${SYSTEM}_hII.txt
     echo
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
     mkdir ${WORKING_DIR}/benchmarks/molebench/plots 
     run_bench
-    check_molebench > check_log_${THIS_BENCH}.txt 2>&1 
-    tail check_log_${THIS_BENCH}.txt # Lots of output so tail this file
+    check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    tail check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
     echo
 
 # Only run these tests for MPI systems and not in the daily test
@@ -247,8 +249,8 @@ for sys in ${SYS_TO_TEST}; do
 	    echo "Running cylindrical polar disc benchmark"
 	    export THIS_BENCH=disc_cylindrical
 	    run_bench
-	    check_benchmark > check_log_${THIS_BENCH}.txt 2>&1
-	    cat check_log_${THIS_BENCH}.txt
+	    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
+	    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
 	    echo 
 
 #	echo "Running SPH-Bench"
