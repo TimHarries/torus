@@ -4279,7 +4279,7 @@ CONTAINS
    case ("cluster","molcluster","theGalaxy")
 
 ! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 45.1)) then
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine )) then
          split = .true.
          splitInAzimuth = .true.
       endif

@@ -136,7 +136,7 @@ if [[ ${make_links} -eq 1 ]]; then
 fi
 
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
-make ${debug_flag} sphtorus
+make ${debug_flag} ${openmp_flag} sphtorus
 if [[ -e sphtorus ]]; then
     echo "INFO: moving executable sphtorus to ${sphtorus_dir}/bin"
     mv sphtorus ${sphtorus_dir}/bin

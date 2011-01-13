@@ -636,6 +636,8 @@ contains
           if ( geometry == "cluster" ) then 
              call getReal("removeradius", rCore, 1.0, cLine, fLine, nLines, &
                   "Clearing radius (Torus units): ","(a,f7.3,a)", 2000.0, ok, .false.)
+             call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
+                  "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 45.d0, ok, .false.)
           end if
 
     case("shakara")
