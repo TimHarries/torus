@@ -491,18 +491,19 @@ endif
 
 # Set OpenMP flags
 ifeq ($(openmp), yes)
+  OPENMPFLAG = -openmp
   ifeq ($(SYSTEM), gfortran)
-     ETCFLAG += -fopenmp 
+     OPENMPFLAG = -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
      STARLIBS += -static-libgcc
      FASTFLAG = 
-  else   ifeq ($(SYSTEM), ompiosx)
-     ETCFLAG += -fopenmp 
+  endif
+  ifeq ($(SYSTEM), ompiosx)
+     OPENMPFLAG = -fopenmp 
      STARLIBS += -static-libgcc
      FASTFLAG = 
-  else
-     ETCFLAG += -openmp
   endif
+  ETCFLAG += $(OPENMPFLAG)
 endif
 
 
