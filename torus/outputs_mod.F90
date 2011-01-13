@@ -42,7 +42,7 @@ contains
     type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
     type(VECTOR) :: viewVec, observerDirection
-    real, pointer :: xArray(:)
+    real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     integer :: i
