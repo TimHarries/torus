@@ -198,7 +198,6 @@ contains
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-
 	  !if(grid%geometry /= "bonnor") then
              call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 500, loopLimitTime, 0.d0)
           !end if
@@ -211,8 +210,6 @@ contains
           call writeInfo("Done",TRIVIAL)
        endif
 
-!THAW!!!!!!!!!!!!!!!!!!
-       stop
 
 !Track the evolution of the ionization front with time
     !      write(datFilename, '(a, i4.4, a)') "Ifront.dat"
@@ -1172,9 +1169,11 @@ if (.false.) then
     failed = .false.
 !    nFailedRank = 0
  !   nFailedTotal = 0
+
  !    unconTThisIter = 0.
  !    unconTThisIterRank = 0.
      anyUndersampled = .false.
+     minCrossings = 15000
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
     if (myRank /= 0) then
@@ -1191,20 +1190,15 @@ if (.false.) then
                         thisOctal%TLastIter(subcell)  
                    deltaT = abs(deltaT)                 
 
-!		   if(deltaT > 1.d-2) then
-!                      unconTThisIterRank = unconTThisIterRank + thisOctal%temperature(subcell) 
-!		   end if
-
-
                    if(deltaT > 1.d-2) then
                       if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
-                         print *, "rank ", myrank, "Undersampled"
                          anyUndersampled = .true.
                       endif
                    end if
 
-                   if(deltaT < 1.d-2 .and. .not. failed) then
-                      thisThreadConverged = .true.
+		   if(deltaT < 1.d-2 .and. .not. failed) then
+	     	      thisThreadConverged = .true.
+
                    else 
                       thisThreadConverged = .false.  
 			 
@@ -1217,7 +1211,6 @@ if (.false.) then
                       end if
                       failed = .true.
                    end if
-	        
                    thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                 end if
              end if  
@@ -1234,33 +1227,35 @@ if (.false.) then
     else
         failed = .false.
         underSamFailed = .false.
+        underSampledTOT = .false.
+
 	!!!Rank 0, collate results and decide if converged 
-        converged = .false.
-        do iThread = 1 , (nThreadsGlobal-1)
-           call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
-           call MPI_RECV(anyUndersampled, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-           if(thisThreadConverged .and. .not. failed) then
-              converged = .true.
-           else 
-              converged = .false.
-              failed = .true.
-           end if
-           if(anyUndersampled) then
-              undersampledTOT=.true.
-           end if
-        end do
+	   converged = .false.
+	   do iThread = 1 , (nThreadsGlobal-1)
+	      call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
+              call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+	      if(thisThreadConverged .and. .not. failed) then
+	         converged = .true.
+	      else 
+	         converged = .false.
+		 failed = .true.
+             end if
+	      if(anyUndersampled) then
+                 undersampledTOT=.true.
+              end if
+	   end do 
 
-        do iThread = 1, (nThreadsGlobal-1)
-           call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
-           call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
-        end do
-     end if
+	   do iThread = 1, (nThreadsGlobal-1)
+              call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
+              call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
+	   end do
+    end if
 
-     if(myRank /= 0) then
-        call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
-        call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+    if(myRank /= 0) then
+       call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
 
-     end if
+    end if
 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -2197,6 +2192,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (.not.thisOctal%hasChild(subcell)) then
           thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
 !          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+
        endif
 
     enddo
