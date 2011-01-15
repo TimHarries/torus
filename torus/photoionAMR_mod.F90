@@ -200,14 +200,14 @@ contains
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
 	  !if(grid%geometry /= "bonnor") then
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime)
           !end if
 
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, 0.d0)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime)
           call writeInfo("Done",TRIVIAL)
        endif
 
@@ -347,7 +347,7 @@ contains
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 100, loopLimitTime, dt)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 60, loopLimitTime, dt)
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -428,14 +428,14 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-!          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-!          call writeAmrGrid(mpiFilename, .false., grid)
-!          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
-!          call writeVtkFile(grid, mpiFilename, &
-!               valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-!               "hydrovelocity","dust1        ","pressure    "/))
-
-	  
+          if(grid%geometry /= "hii_test") then
+             write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
+             call writeAmrGrid(mpiFilename, .false., grid)
+             write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
+             call writeVtkFile(grid, mpiFilename, &
+                  valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+                  "hydrovelocity","dust1        ","pressure    "/))
+          end if
 
 
 
@@ -1236,7 +1236,7 @@ if (.false.) then
               call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
 	      if(thisThreadConverged .and. .not. failed) then
 	         converged = .true.
-	      else 
+	      else
 	         converged = .false.
 		 failed = .true.
              end if
@@ -1261,7 +1261,7 @@ if (.false.) then
 
      deallocate(octalArray)    
 
-     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !    converged = .true.
@@ -2575,13 +2575,29 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (coolingRate < 0.) then
           write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
        endif
-       
+
+       if(coolingRate < 0.) then
+          print *, "coolingRate ", coolingRate
+       end if
+
        call locate(logT, 31, thisLogT, n)
        fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
        
        thisRootTbetaH = rootTbetaH(n) + (rootTbetaH(n+1)-rootTbetaH(n)) * fac
-       
-       
+
+       if(thisRootTbetaH < 0.d0) then
+          print *, "=========================================="
+          print *, "n ", n
+          print *, "rootTbetaH(n) ", rootTbetaH(n)
+          print *, "rootTbetaH(n+1) ", rootTbetaH(n+1)
+          print *, "fac ", fac
+          print *, "thisLogT ", thisLogT
+          print *, "logT(n) ", logT(n)
+          print *, "logT(n+1) ", logT(n+1)
+          print *, "=========================================="
+          stop
+       end if
+
        if (thisLogT < logT(18)) then
           thisRootTbetaHe = rootTbetaHe(n) + (rootTbetaHe(n+1)-rootTbetaHe(n)) * fac
        else
@@ -2595,15 +2611,20 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        
        coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
        
-       
+       if(coolingRate < 0.d0) then
+          print *, "coolingRate 2 ", coolingRate
+          stop
+       end if
+ !betaH is negative in my model!
        
        if (ne * nhii * kerg * temperature * betaH < 0.) then
           write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
        endif
        
-       
-       coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
-       
+       if(.not. hOnly) then
+          coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
+       end  if
+
        if (ne * nheii * kerg * temperature * betaHe < 0.) then
           write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
        endif
