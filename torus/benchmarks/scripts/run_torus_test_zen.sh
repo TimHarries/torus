@@ -13,6 +13,7 @@ cat <<EOF > torus.pbs
 export NUMBEROFNODES=1
 export NUMPROCS=3
 
+export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
 
 mpdboot -n \$NUMBEROFNODES -r ssh -f \$PBS_NODEFILE
@@ -37,6 +38,7 @@ cat << EOF > torus.pbs
 export NUMBEROFNODES=8
 export NUMPROCS=64
 
+export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
 
 mpdboot -n \$NUMBEROFNODES -r ssh -f \$PBS_NODEFILE
@@ -61,6 +63,7 @@ cat << EOF > torus.pbs
 export NUMBEROFNODES=8
 export NUMPROCS=64
 
+export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
 
 mpdboot -n \$NUMBEROFNODES -r ssh -f \$PBS_NODEFILE
@@ -82,6 +85,7 @@ cat << EOF > torus.pbs
 #PBS -e stderr_torus
 #PBS -N Torus_OpenMP
 
+export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
 ./torus.zensingle > log 
 
@@ -95,6 +99,7 @@ export CVS_RSH=ssh
 test_list="mpi mpi_db openmp openmp_db hybrid hybrid_db"
 test_dir=torus_tests
 base_dir=/scratch/acreman
+export TORUS_DATA=${base_dir}/${test_dir}/torus/data
 
 echo "Running Torus tests for Zen"
 
