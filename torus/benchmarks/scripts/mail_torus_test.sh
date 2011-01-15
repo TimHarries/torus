@@ -42,9 +42,9 @@ echo  >> ${LOG_FILE}
 subject_line=" " 
 
 # Test for success of disc benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc/check_log_disc.txt | /usr/bin/wc -l`
-num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc/check_log_disc.txt | /usr/bin/wc -l`
-num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc/check_log_disc.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc/check_log_ompi_disc.txt | /usr/bin/wc -l`
+num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc/check_log_gfortran_disc.txt | /usr/bin/wc -l`
+num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
     subject_line="${subject_line} Disc benchmark successful."
 else
@@ -52,9 +52,9 @@ else
 fi
 
 # Test for success of molebench
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/molebench/check_log_molebench.txt | /usr/bin/wc -l`
-num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_molebench.txt | /usr/bin/wc -l`
-num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_molebench.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/molebench/check_log_ompi_molebench.txt | /usr/bin/wc -l`
+num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_gfortran_molebench.txt | /usr/bin/wc -l`
+num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     subject_line="${subject_line} Molecular benchmark successful."
 else
@@ -62,7 +62,7 @@ else
 fi
 
 # Test for success of hydro benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/hydro/check_log_hydro.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/hydro/check_log_ompi_hydro.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} Hydro benchmark successful. "
 else
@@ -70,9 +70,9 @@ else
 fi
 
 # Test for success of hII region benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/HII_region/check_log_hII.txt | /usr/bin/wc -l`
-num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/HII_region/check_log_hII.txt | /usr/bin/wc -l`
-num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/HII_region/check_log_hII.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/HII_region/check_log_ompi_hII.txt | /usr/bin/wc -l`
+num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/HII_region/check_log_gfortran_hII.txt | /usr/bin/wc -l`
+num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/HII_region/check_log_ompiosx_hII.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     subject_line="${subject_line} HII region benchmark successful. "
 else
