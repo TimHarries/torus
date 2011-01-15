@@ -1,4 +1,5 @@
 ! photoionization module - started on October 4th 2005 by th
+
 module photoionAMR_mod
 
 #ifdef MPI
@@ -116,7 +117,7 @@ contains
     grid%currentTime = 0.d0
     grid%iDump = 0
     tDump = 0.005d0
-    deltaTforDump = 2.d11
+    deltaTforDump = 1.574d11 !5kyr
     nextDumpTime = deltaTforDump
     if (grid%geometry == "hii_test") deltaTforDump = 1.d10
     iunrefine = 0
@@ -193,13 +194,13 @@ contains
        if(grid%geometry == "hii_test") then
           loopLimitTime = deltaTForDump
        else 
-          loopLimitTime = 1.d16       
+          loopLimitTime = 2.d11       
        end if
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
 	  !if(grid%geometry /= "bonnor") then
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 500, loopLimitTime, 0.d0)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime)
           !end if
 
           call writeInfo("Done",TRIVIAL)
@@ -346,7 +347,7 @@ contains
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 100, loopLimitTime, 0.d0)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 100, loopLimitTime, dt)
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -1001,10 +1002,7 @@ contains
           endif
        endif
 
-
        call  identifyUndersampled(grid%octreeRoot)
-
-
 
     np = 1
     firstTime = .true.
@@ -1035,8 +1033,6 @@ contains
        write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
     endif
 
-
-
     if (myRank /= 0) then
        do iOctal =  iOctal_beg, iOctal_end
           
@@ -1051,8 +1047,10 @@ contains
                    thisOctal%temperature(subcell) = ((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25d0
                 endif
              enddo
+
           else             
              do i = 1, nTimes
+
                 call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
                 if (quickThermal) then
                    call quickThermalCalc(thisOctal)
@@ -1190,6 +1188,8 @@ if (.false.) then
                         thisOctal%TLastIter(subcell)  
                    deltaT = abs(deltaT)                 
 
+               !    print *, "deltaT = ", deltaT
+
                    if(deltaT > 1.d-2) then
                       if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                          anyUndersampled = .true.
@@ -1222,7 +1222,7 @@ if (.false.) then
 !       print *, "thisThreadConverged = ", thisThreadConverged
        !Send converged information
        call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(anyUndersampled, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
 
     else
         failed = .false.
@@ -1564,7 +1564,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
-          if (.not.outOfTime) then
+          if (.not.outOfTime) then 
              call updateGrid(grid, thisOctal, subcell, thisFreq, &
                   dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
           endif
@@ -2150,6 +2150,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
+               
              else
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
@@ -2173,6 +2174,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalanceTimeDep(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT, deltaT)
+                
              else
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
@@ -2190,8 +2192,12 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
-          thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
-!          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+!          thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
+          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+
+          !if(thisOctal%ionFrac(subcell,2) /= 0.d0 .and. thisOctal%ionFrac(subcell, 2) /= 1.d-30) then
+          !   print *, thisOctal%ionFrac(subcell,2)
+          !end if
 
        endif
 
@@ -2718,9 +2724,9 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
              chargeExchangeIonization)
         
         
-        write(*,*) "Photoionization rate ", (epsOverDeltaT / (v*1.d30))*thisOctal%photoIonCoeff(subcell,iIon)
-        write(*,*) "Recombination rate ",recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell)
-        write(*,*) " " 
+!        write(*,*) "Photoionization rate ", (epsOverDeltaT / (v*1.d30))*thisOctal%photoIonCoeff(subcell,iIon)
+!        write(*,*) "Recombination rate ",recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell)
+!        write(*,*) " " 
         
         xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
              max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
@@ -2791,6 +2797,10 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
         
+!        write(*,*) "Photoionization rate ", (epsOverDeltaT / (v*1.d30))*thisOctal%photoIonCoeff(subcell,iIon)
+!        write(*,*) "Recombination rate ",recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell)
+!        write(*,*) " "
+
         xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
              max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
 !        if ((myRankGlobal==1).and.(grid%ion(iion)%species(1:2) =="H ")) &
@@ -2816,6 +2826,7 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
         k = iEnd + 1
      end do
 
+!There is something wrong in this subroutine
 
   k = 1
   
@@ -2839,16 +2850,46 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
         
-        
+
+!PhotoIonRate is currently zero
+!This is because both chargeExchangeIonization and photoioncoeff are both zero!
+!can ignore the charge exchange bits, they are wacky - focus on photoiocoeff
+
+
         photoIonRate = (epsOverDeltaT / (v*1.d30))*thisOctal%photoIonCoeff(subcell,iIon) + chargeExchangeIonization
+        
+
         recombinationRate = recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination
 
         recombTime = 1.d0/recombinationRate
-        
+!        print *, "recombTime", recombTime
+
+!        print *, "================================================"
+!        print *, "recombinationRate ", recombinationRate
+!        print *, "photoIonRate ", photoIonRate
+!        print *, "thisOctal%ionFrac(subcell,iion) ", thisOctal%ionFrac(subcell,iion)
+!        print *, "================================================"
         thisOctal%ionFrac(subcell,iion) = thisOctal%ionFrac(subcell,iion) + deltaT * (recombinationRate - photoIonRate)
 
-        thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
+!        print *, "=============================================="
+!        print *, "iion ", iion
+!        print *, "thisOc%ionfrac ", thisOctal%ionFrac(subcell, iIon)
+!        print *, "ionFrac(iIon) ", ionFrac(iIon)
+!        print *, "=============================================="
 
+
+!THAW=================
+
+     if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
+        thisOctal%ionFrac(subcell,iStart:iEnd) = &
+             max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+     else
+        thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
+     endif
+
+!====================
+
+        thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
         
      enddo
 

@@ -7421,6 +7421,9 @@ CONTAINS
     real(double), save :: r(nr), rho(nr)
     integer :: i
 
+
+!Parameters changed to agree with Gritschender et al. 2009 iVINE paper.
+
     if (firstTime) then
        firstTime = .false.
        r = 0.d0; rho = 0.d0
@@ -7459,7 +7462,8 @@ CONTAINS
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
     !thisOctal%gamma(subcell) = 1.d01
-    thisOctal%gamma(subcell) = 5./3.
+!    thisOctal%gamma(subcell) = 5./3.
+    thisOctal%gamma(subcell) = 1.0
     thisOctal%iEquationOfState(subcell) = 0
       
     !Stuff is commented out for stability testing
@@ -7478,19 +7482,19 @@ CONTAINS
        endif
        thisOctal%etaCont(subcell) = 0.
 
-    zplusbound = 4
-    zminusbound = 4
-    xplusbound = 4
-    xminusbound = 4
-    yplusbound = 4
-    yminusbound = 4
-
 !    zplusbound = 2
 !    zminusbound = 2
-!    xplusbound = 4
-!    xminusbound = 4
-!    yplusbound = 4
-!    yminusbound = 4
+!    xplusbound = 2
+!    xminusbound = 2
+!    yplusbound = 2
+!    yminusbound = 2
+
+    zplusbound = 2
+    zminusbound = 2
+    xplusbound = 4
+    xminusbound = 4
+    yplusbound = 2
+    yminusbound = 2
   end subroutine calcBonnorEbertDensity
 
   subroutine calcUniformSphere(thisOctal,subcell)
