@@ -33,7 +33,10 @@ contains
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
-    use input_variables, only : rCore, rInner, rOuter, lamline
+    use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance
+    use sph_data_class, only: sphdata
+    use wr104_mod, only : readwr104particles
+  
     use disc_class, only:  new
     use discwind_class, only:  new
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data, sph_mass_within_grid
@@ -57,6 +60,7 @@ contains
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass
     real(double) :: minRho, maxRho, totalmasstrap, removedMass
+    real(double) :: objectDistance
     character(len=80) :: message
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
@@ -164,6 +168,8 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("wr104")
+          objectDistance = griddistance * pctocm
+          call readWR104Particles("harries_wr104.txt", sphdata , objectDistance)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)

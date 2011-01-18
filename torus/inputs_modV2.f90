@@ -640,6 +640,13 @@ contains
                   "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 45.d0, ok, .false.)
           end if
 
+          if (geometry == "wr104") then
+             
+             call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
+                  "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .true.)
+
+          endif
+
     case("shakara")
 
        oneKappa = .true.
