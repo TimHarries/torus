@@ -65,7 +65,7 @@ contains
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
     logical :: ok
-    real(double) :: distToEdge, fac
+    real(double) :: distToEdge, fac, sumSurfaceLuminosity
     character(len=80) :: message
 
     do iSource = 1, nSource
@@ -186,7 +186,7 @@ contains
        call buildSphere(source(isource)%position, dble(source(isource)%radius), &
             source(isource)%surface, 400, source(isource)%teff, &
             source(isource)%spectrum)
-       call sumSurface(source(isource)%surface, source(isource)%luminosity)
+       call sumSurface(source(isource)%surface, sumSurfaceluminosity)
        fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
 !       if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
 !          if (myrankGlobal==0) then
@@ -201,7 +201,7 @@ contains
 !       endif
 
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
-       write(message,*) "Lum from spectrum / lum from teff ",source(isource)%luminosity/fac
+       write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac
        call writeInfo(message, TRIVIAL)
 
     end do
@@ -216,7 +216,7 @@ contains
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics, cmf, lte, nlower, nupper
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
-    use input_variables, only : lucyfilenameOut, lucyFilenamein
+    use input_variables, only : lucyfilenameOut, lucyFilenamein, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0
     !use input_variables, only : radiationHydrodynamics
     use cmf_mod, only : atomloop
@@ -243,7 +243,6 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     type(GRIDTYPE) :: grid
-    real :: massEnvelope
 
 
      if (dustPhysics.and.radiativeEquilibrium) then

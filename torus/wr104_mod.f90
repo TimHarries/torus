@@ -3,6 +3,7 @@ module wr104_mod
   use kind_mod
   use sph_data_class
   use vector_mod
+  use cluster_class
 
   implicit none
 
@@ -90,8 +91,14 @@ contains
 
   end subroutine readWR104Particles
 
+  subroutine assign_grid_values_wr104(thisOctal, subcell)
+    type(octal), pointer  :: thisOctal
+    real(double) :: rhoAv
+    integer :: subcell, i
+    
+    call find_n_particle_in_subcell(i, rhoav, thisOctal, subcell)
+    thisOctal%rho(subcell) = (max(dble(i),1.d-10))/cellVolume(thisOctal, subcell)
 
-
-
+  end subroutine assign_grid_values_wr104
 
 end module wr104_mod

@@ -33,7 +33,7 @@ contains
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
-    use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance
+    use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use sph_data_class, only: sphdata
     use wr104_mod, only : readwr104particles
   
@@ -61,6 +61,7 @@ contains
     real(double) :: astar, mass_accretion_old, totalMass
     real(double) :: minRho, maxRho, totalmasstrap, removedMass
     real(double) :: objectDistance
+    real :: scalefac
     character(len=80) :: message
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
@@ -169,7 +170,7 @@ contains
 
        case("wr104")
           objectDistance = griddistance * pctocm
-          call readWR104Particles("harries_wr104.txt", sphdata , objectDistance)
+          call readWR104Particles(sphdatafilename, sphdata , objectDistance)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -365,6 +366,16 @@ contains
              call remove_too_close_cells(young_cluster, grid%octreeRoot, real(rCore,db), removedMass, 1.0d-37, 'z')
              write(message,*) "Mass removed by remove_too_close_cells: ", removedMass / mSol, " solar masses"
              call writeInfo(message, TRIVIAL)
+
+          case("wr104")
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             write(*,*) "mass envelope ",massEnvelope
+             write(*,*) "total mass ",totalmass
+             scaleFac = massEnvelope / totalMass
+             if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+             call scaleDensityAMR(grid%octreeRoot, scaleFac)
+
 
           case DEFAULT
        end select

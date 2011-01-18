@@ -1772,6 +1772,7 @@ contains
              else
                 newT = thisOctal%temperature(subcell)
              endif
+
              deltaT = newT - thisOctal%temperature(subcell)
              if ((deltaT > 20000.).and.(thisOctal%nCrossings(subcell) .ge. minCrossings)) then
                 if (nwarning < nmaxwarning) then
@@ -1803,6 +1804,9 @@ contains
                    nUnderSampled = nUndersampled + 1
                    thisOctal%undersampled(subcell) = .true.
                 endif
+
+                thisOctal%temperature(subcell) = min(thisOctal%temperature(subcell), 10000.)
+
              endif
 
 

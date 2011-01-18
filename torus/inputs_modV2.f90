@@ -644,7 +644,8 @@ contains
              
              call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
                   "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .true.)
-
+             call getReal("massenv", massEnvelope, real(mMoon), cLine, fLine,  nLines, &
+                  "Envelope dust mass (Moon masses): ","(a,f5.2,a)", 10., ok, .true.)
           endif
 
     case("shakara")

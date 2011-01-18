@@ -1247,6 +1247,7 @@ CONTAINS
     
     USE input_variables, ONLY : cylindrical, amr3d !, useHartmannTemp
     USE cluster_class, ONLY:    assign_grid_values 
+    use wr104_mod, only :       assign_grid_values_wr104
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -1289,8 +1290,11 @@ CONTAINS
        CASE ("romanova")
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
         
-       CASE ("cluster","wr104")
+       CASE ("cluster")
           call assign_grid_values(thisOctal,subcell)
+
+       CASE ("wr104")
+          call assign_grid_values_wr104(thisOctal,subcell)
           
        CASE ("molcluster", "theGalaxy")
           if(thisoctal%haschild(subcell)) then 
