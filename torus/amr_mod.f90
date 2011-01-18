@@ -286,6 +286,9 @@ CONTAINS
     CASE("gaussian")
        CALL assign_gaussian(thisOctal,subcell)
 
+    CASE("radHydro")
+       CALL assign_radHydro(thisOctal, subcell)
+
     CASE("hii_test")
        CALL assign_hii_test(thisOctal,subcell)
 
@@ -4057,6 +4060,9 @@ CONTAINS
 !Thaw
    case("gaussian")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+   case("radHydro")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.      
 
    case("sedov")
       rInner = 0.02d0
@@ -8574,6 +8580,45 @@ end function readparameterfrom2dmap
 
   end subroutine assign_gaussian
 
+!Thaw 1D radiation hydrodynamics test
+  subroutine assign_radHydro(thisOctal,subcell)
+    use input_variables, only : xplusbound, xminusbound
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: x, gd, z, eThermal
+
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+
+    x = 0.d0
+    z = 0.d0
+    xplusbound = 2
+    xminusbound = 2
+    rVec = subcellCentre(thisOctal, subcell)
+    x = rVec%x
+    z = rVec%z
+    gd = 0.5d0
+    thisOctal%rho(subcell) = 10.d0 * mHydrogen
+    thisOctal%boundaryCondition(subcell) = 1
+    thisOctal%gamma(subcell) = 3.d0/5.d0
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = 0.d0
+    thisOctal%iEquationOfState(subcell) = 1
+
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%ionFrac(subcell,1) = 1.
+    thisOctal%ionFrac(subcell,2) = 1.e-10
+
+  end subroutine assign_radHydro
 
 
   subroutine assign_hii_test(thisOctal,subcell)
@@ -8582,8 +8627,6 @@ end function readparameterfrom2dmap
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
     real(double) :: eThermal!, numDensity
-
-    ! commented out Parameters are those of Iliev et al 2006 MNRAS, 371, 1057-1086
    
     rVec = subcellCentre(thisOctal,subcell)
     !thisOctal%rho(subcell) = (1.d-3)*mHydrogen
@@ -8622,7 +8665,6 @@ end function readparameterfrom2dmap
     xminusbound = 1
     yplusbound = 4
     yminusbound = 1
-
   end subroutine assign_hii_test
 
   subroutine assign_whitney(thisOctal,subcell,grid)

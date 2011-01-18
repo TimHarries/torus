@@ -1,4 +1,4 @@
-! photoionization module - started on October 4th 2005 by th
+!Photoionization module - started on October 4th 2005 by th
 
 module photoionAMR_mod
 
@@ -117,9 +117,11 @@ contains
     grid%currentTime = 0.d0
     grid%iDump = 0
     tDump = 0.005d0
-    deltaTforDump = 1.574d11 !5kyr
+    deltaTforDump = 3.14d10 !1kyr
     nextDumpTime = deltaTforDump
     if (grid%geometry == "hii_test") deltaTforDump = 1.d10
+    if(grid%geometry == "bonnor") deltaTforDump = 1.574d11 !5kyr
+
     iunrefine = 0
     startFromNeutral = .false.
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
@@ -428,14 +430,14 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-          if(grid%geometry /= "hii_test") then
+!          if(grid%geometry /= "hii_test") then
              write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
              call writeAmrGrid(mpiFilename, .false., grid)
              write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
              call writeVtkFile(grid, mpiFilename, &
                   valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-                  "hydrovelocity","dust1        ","pressure    "/))
-          end if
+                  "hydrovelocity","dust1        ","pressure     "/))
+!          end if
 
 
 
@@ -451,10 +453,23 @@ contains
                VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
        end if
 
+
+       if(grid%geometry == "radHydroTest") then
+          write(datFileName,'(a,i4.4,a)') "radHydro",grid%iDump,".dat"
+          call  dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,0.d0,0.0d0), &
+          VECTOR(3.0d9, 0.d0, 0.0d0), 1000)
+
+          write(datFilename, '(a, i4.4, a)') "Ifront.dat"
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(0.0d0,  0.0d0, 0.0d0), &
+               VECTOR(3.0d9, 0.0d0, 0.0d0), 1000)
+
+       end if
+
+
        if(grid%geometry == "bonnor") then
           write(datFilename, '(a, i4.4, a)') "bonnor",grid%iDump,".dat"
           call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0,0.d0), &
-               VECTOR(-1.5d9, -1.5d9, 1.5d9), 1000)
+               VECTOR(-1.5d9, -0.d0, 0.d0), 1000)
 
        end if
 	 
@@ -641,7 +656,8 @@ contains
                 nMonte = 10.d0 * (8.d0**(maxDepthAMR))
 		!nmonte = 100000
              else
-                nMonte = 10000.d0 * 2**(maxDepthAMR)
+                !nMonte = 100.d0 * 2**(maxDepthAMR)
+                nmonte = 10000
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -709,6 +725,7 @@ contains
                 else
                    photonPacketWeight = photonPacketWeight * 1.d0
                 end if
+
                 tPhoton = 0.d0
 !                write(*,*) inOctal(grid%octreeRoot, rVec), "rvec ",rVec," dir ",uhat
  !               call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -853,7 +870,7 @@ contains
 
                       
                       if (crossedMPIBoundary) then
-		         !OLD STUFF
+                            !OLD STUFF
                          call sendMPIPhoton(rVec, uHat, thisFreq,tPhoton,photonPacketWeight, newThread)
                          goto 777
 
@@ -1060,6 +1077,7 @@ contains
              enddo
           endif
        enddo
+
 
     endif
 
@@ -1339,7 +1357,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
    logical :: ok, outofTime
-
+   
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     stillinGrid = .true.
@@ -1484,13 +1502,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          write(*,*) "disttocell rvec ", inSubcell(thisOCtal, subcell, rVec)
 !          write(*,*) "disttocell octvec ", inSubcell(thisOCtal, subcell, octVec)
 
-          if (.not. inSubcell(thisOctal, subcell, rVec)) then
-             write(*,*) "rvec ",rVec
-             write(*,*) "octvec ", octvec
-             write(*,*) "xmin xmax ", thisOctal%xmin, thisOctal%xmax
-             write(*,*) "ymin ymax ", thisOctal%ymin, thisOctal%ymax
-             write(*,*) "zmin zmax ", thisOctal%zmin, thisOctal%zmax
-          endif
+
+          !if (.not. inSubcell(thisOctal, subcell, rVec)) then
+          !   write(*,*) "rvec ",rVec
+          !   write(*,*) "octvec ", octvec
+          !   write(*,*) "xmin xmax ", thisOctal%xmin, thisOctal%xmax
+          !   write(*,*) "ymin ymax ", thisOctal%ymin, thisOctal%ymax
+          !   write(*,*) "zmin zmax ", thisOctal%zmin, thisOctal%zmax
+          !endif
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
 
 
@@ -2154,7 +2173,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              else
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
-!                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
        endif
@@ -2595,7 +2614,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           print *, "logT(n) ", logT(n)
           print *, "logT(n+1) ", logT(n+1)
           print *, "=========================================="
-          stop
+          print *, "thisRootBetaH < 0.d0"
        end if
 
        if (thisLogT < logT(18)) then
@@ -2613,7 +2632,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        
        if(coolingRate < 0.d0) then
           print *, "coolingRate 2 ", coolingRate
-          stop
+          !stop
        end if
  !betaH is negative in my model!
        
@@ -2890,6 +2909,8 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 !        print *, "photoIonRate ", photoIonRate
 !        print *, "thisOctal%ionFrac(subcell,iion) ", thisOctal%ionFrac(subcell,iion)
 !        print *, "================================================"
+
+
         thisOctal%ionFrac(subcell,iion) = thisOctal%ionFrac(subcell,iion) + deltaT * (recombinationRate - photoIonRate)
 
 !        print *, "=============================================="
@@ -2909,13 +2930,22 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
      endif
 
 !====================
+     
+     print *, max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon))
+     print *, "thisOctal%ionFrac(subcell,iIon)", thisOctal%ionFrac(subcell,iIon)
+     print *, "ionFrac(iIon) ", ionFrac(iIon)
+     stop
 
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
         
      enddo
 
+!THaw -----------------------------need to check if this is valid
+!This final state is not given the same option as above.
      thisOctal%ionFrac(subcell, iEnd) = 1.d0 - SUM(thisOctal%ionFrac(subcell,iStart:iEnd-1))
-
+!Now it is
+        thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
+        
         k = iEnd + 1
      end do
 
