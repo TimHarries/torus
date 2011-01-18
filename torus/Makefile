@@ -38,7 +38,7 @@ ifeq ($(SYSTEM), nagfor)
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
     CFITSIOLIBS = 
-    EXE = torus.nag
+    EXE = torus.nagfor
     KNOWN_SYSTEM = yes
     memcheck = no
 endif
