@@ -7476,7 +7476,7 @@ CONTAINS
     thisOctal%gamma(subcell) = 1.0
     thisOctal%iEquationOfState(subcell) = 0
       
-    !Stuff is commented out for stability testing
+
     thisOctal%inFlow(subcell) = .true.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
@@ -7484,11 +7484,12 @@ CONTAINS
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
     
-       thisOctal%ionFrac(subcell,1) = 1.
-       thisOctal%ionFrac(subcell,2) = 1.e-10
-       if (SIZE(thisOctal%ionFrac,2) > 2) then
-          thisOctal%ionFrac(subcell,3) = 1.
-          thisOctal%ionFrac(subcell,4) = 1.e-10       
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
        endif
        thisOctal%etaCont(subcell) = 0.
 

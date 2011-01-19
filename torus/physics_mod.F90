@@ -124,8 +124,11 @@ contains
 
 
 ! Find distance of source from upper or lower z boundary, whichever is smaller.
+
+
        distToedge = min ( abs( source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
                           abs( source(iSource)%position%z - (grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize) ) )
+
 
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
           source(isource)%outsideGrid = .true.
@@ -162,14 +165,21 @@ contains
                 source(iSource)%onCorner = .false.
              end if
           end if
-          
+
           if(source(iSource)%onCorner .and. myRankGlobal == 1) then
-             write(*,*) "SOURCE ON CORNER!"
+             write(*,*) "Source on corner!"
+          else  if(source(iSource)%outsideGrid) then
+             write(*,*) "Source outside grid!"
           end if
+
           if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)
           if(source(iSource)%onedge)   call writeinfo("Source is on edge",   TRIVIAL)
 
        endif
+
+       if(source(iSource)%outsideGrid .and. myRankGlobal == 1) then
+         write(*,*) "Source outside grid!"
+       end if
 
        select case(inputContFluxFile(isource))
           case("blackbody")
@@ -318,7 +328,7 @@ contains
              lucyfileNameout, lucyfileNamein)
         else
 #ifdef MPI
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, 0.d0, sublimate=.false.)
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, 0.d0, .False., .true., sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif

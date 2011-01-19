@@ -82,7 +82,7 @@ contains
     real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
     integer :: iUnrefine
     integer :: myRank, ierr
-    real(double) :: tDump, nextDumpTime
+    real(double) :: tDump, nextDumpTime, tEnd
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: thread1(200), thread2(200), nBound(1000), nPairs
@@ -202,14 +202,14 @@ contains
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
 	  !if(grid%geometry /= "bonnor") then
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime, .True., .true.)
           !end if
 
           call writeInfo("Done",TRIVIAL)
        else
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .true., .true.)
           call writeInfo("Done",TRIVIAL)
        endif
 
@@ -278,7 +278,9 @@ contains
 
     endif
 
-    do while(.true.)
+    tEnd = 200.d0*3.14d10 !200kyr 
+
+    do while(grid%currentTime < tEnd)
        tc = 0.d0
        tc(myrank+1) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRank+1))
@@ -286,7 +288,7 @@ contains
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
 
-
+       
 
        !Dump at every step for now
        !if(grid%geometry == "hii_test") then
@@ -349,11 +351,11 @@ contains
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 60, loopLimitTime, dt)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 60, loopLimitTime, loopLimitTime, .True., .true.)
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, dt)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, dt, .True., .true.)
        end if
           call writeInfo("Done",TRIVIAL)
        !end if
@@ -479,14 +481,14 @@ contains
   end subroutine radiationHydro
 
 
-  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, sublimate)
+  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
     integer :: nMonte
     logical, optional :: sublimate
-    logical :: doSublimate
+    logical :: doSublimate, timeDep, monteCheck
     real(double) :: tLimit
     real(double) :: deltaTime
     type(GRIDTYPE) :: grid
@@ -645,7 +647,7 @@ contains
     !nmonte selector: Only works for fixed grids at present
     if (inputnMonte == 0) then
        
-       if(tlimit == 1.d20) then
+       if(.not. monteCheck) then
           !waymaker photoionization loop
           nmonte = 100000
        else
@@ -1067,14 +1069,25 @@ contains
 
           else             
              do i = 1, nTimes
-
-                call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
-                if (quickThermal) then
-                   call quickThermalCalc(thisOctal)
+                if(timeDep) then
+                   call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
+                   if (quickThermal) then
+                      call quickThermalCalc(thisOctal)
+                   else
+                      call calculateThermalBalanceTimeDep(grid, thisOctal, epsOverDeltaT, deltaTime)
+                   end if
                 else
-                   call calculateThermalBalanceTimeDep(grid, thisOctal, epsOverDeltaT, deltaTime)
-                endif
+                   call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
+                   if (quickThermal) then
+                      call quickThermalCalc(thisOctal)
+                   else
+                      call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+
+                   endif
+                end if
              enddo
+
+             
           endif
        enddo
 
@@ -1189,51 +1202,52 @@ if (.false.) then
  !    unconTThisIter = 0.
  !    unconTThisIterRank = 0.
      anyUndersampled = .false.
-     minCrossings = 15000
+   !  minCrossings = 15000
+     minCrossings = 500
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
-    if (myRank /= 0) then
-      do iOctal =  iOctal_beg, iOctal_end
-          thisOctal => octalArray(iOctal)%content
-          do subcell = 1, thisOctal%maxChildren
-             if (.not.thisOctal%hasChild(subcell)) then
-        
-                if (niter == 1) then
-                   thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-                   thisThreadConverged = .false.
-                else
-                   deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
-                        thisOctal%TLastIter(subcell)  
-                   deltaT = abs(deltaT)                 
-
-               !    print *, "deltaT = ", deltaT
-
-                   if(deltaT > 1.d-2) then
-                      if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
-                         anyUndersampled = .true.
-                      endif
-                   end if
-
-		   if(deltaT < 1.d-2 .and. .not. failed) then
-                      thisThreadConverged = .true.
-                   else 
-                      thisThreadConverged = .false.  
-			 
-                      if(deltaT /= 0.d0 .and. .not. failed) then
-                         print *, "deltaT = ", deltaT
-                         print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-                         print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-                         print *, "cell center ", subcellCentre(thisOctal,subcell)
-                         print *, "nCrossings ", thisOctal%nCrossings(subcell)
+       if (myRank /= 0) then
+          do iOctal =  iOctal_beg, iOctal_end
+             thisOctal => octalArray(iOctal)%content
+             do subcell = 1, thisOctal%maxChildren
+                if (.not.thisOctal%hasChild(subcell)) then
+                   
+                   if (niter == 1) then
+                      thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
+                      thisThreadConverged = .false.
+                   else
+                      deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
+                           thisOctal%TLastIter(subcell)  
+                      deltaT = abs(deltaT)                 
+                      
+                      !    print *, "deltaT = ", deltaT
+                      
+                      if(deltaT > 1.d-2) then
+                         if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
+                            anyUndersampled = .true.
+                         endif
                       end if
-                      failed = .true.
+                      
+                      if(deltaT < 1.d-2 .and. .not. failed) then
+                         thisThreadConverged = .true.
+                      else 
+                         thisThreadConverged = .false.  
+			 
+                         if(deltaT /= 0.d0 .and. .not. failed) then
+                            print *, "deltaT = ", deltaT
+                            print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+                            print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+                            print *, "cell center ", subcellCentre(thisOctal,subcell)
+                            print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                         end if
+                         failed = .true.
+                      end if
+                      thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                    end if
-                   thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                 end if
-             end if  
+             end do
+             !Send result to master rank 
           end do
-       !Send result to master rank 
-       end do
 
 !       print *, "RANK ", myRank, " SENDS  DATA TO RANK 0"
 !       print *, "thisThreadConverged = ", thisThreadConverged
@@ -1288,8 +1302,10 @@ if (.false.) then
      if(myRank == 0) then
       print *, "photoionization loop converged at iteration ", niter
      end if
-  else if(underSampledTOT .and. nMonte < 2.5d9) then
-      print *, "Undersampled cell, increasing nMonte"
+  else if(underSampledTOT .and. nMonte < 2.5d9 .and. monteCheck) then
+     if(myRank == 0) then
+        print *, "Undersampled cell, increasing nMonte"
+     end if 
       nMonte = nMonte *2.d0
   end if
   
@@ -2172,7 +2188,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              else
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
-                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                if(thisOctal%nCrossings(subcell) /= 0) then
+                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                end if
              endif
           endif
        endif
@@ -2196,7 +2214,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              else
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
-!                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                if(thisOctal%nCrossings(subcell) /= 0) then
+                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                end if
              endif
           endif
        endif
@@ -2901,23 +2921,7 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
         recombinationRate = recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination
 
         recombTime = 1.d0/recombinationRate
-!        print *, "recombTime", recombTime
-
-!        print *, "================================================"
-!        print *, "recombinationRate ", recombinationRate
-!        print *, "photoIonRate ", photoIonRate
-!        print *, "thisOctal%ionFrac(subcell,iion) ", thisOctal%ionFrac(subcell,iion)
-!        print *, "================================================"
-
-
         thisOctal%ionFrac(subcell,iion) = thisOctal%ionFrac(subcell,iion) + deltaT * (recombinationRate - photoIonRate)
-
-!        print *, "=============================================="
-!        print *, "iion ", iion
-!        print *, "thisOc%ionfrac ", thisOctal%ionFrac(subcell, iIon)
-!        print *, "ionFrac(iIon) ", ionFrac(iIon)
-!        print *, "=============================================="
-
 
 !THAW=================
 
@@ -2931,15 +2935,19 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 !====================
      
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
-        
+        if(thisOctal%ionFrac(subcell, iIon) == 0) then
+           print *, ionFrac(iend)
+           stop
+        end if
+
+
      enddo
 
-!THaw -----------------------------need to check if this is valid
-!This final state is not given the same option as above.
+!Thaw
      thisOctal%ionFrac(subcell, iEnd) = 1.d0 - SUM(thisOctal%ionFrac(subcell,iStart:iEnd-1))
-!Now it is
-        thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
-        
+
+     thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
+
         k = iEnd + 1
      end do
 
@@ -4638,6 +4646,8 @@ end subroutine readHeIIrecombination
     type(octal), pointer  :: child 
     integer :: subcell, i
   
+    minCrossings = 300
+
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
