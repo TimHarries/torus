@@ -67,7 +67,7 @@ export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
 
 mpdboot -n \$NUMBEROFNODES -r ssh -f \$PBS_NODEFILE
-mpiexec -genv I_MPI_DEVICE rdssm:OpenIB-cma  -genv I_MPI_PIN_DOMAIN node -np \$NUMPROCS torus.zen < input
+mpiexec -genv I_MPI_DEVICE rdssm:OpenIB-cma  -genv I_MPI_PIN_DOMAIN node -np \$NUMPROCS torus.zen > log
 mpdallexit
 
 EOF
@@ -129,13 +129,13 @@ echo "Building Torus for openmp test"
 cd ${base_dir}/${test_dir}/openmp/build 
 export SYSTEM=zensingle
 make depends > compile_log
-#make debug=no openmp=yes >> compile_log
+make debug=no openmp=yes >> compile_log
 
 echo "Building Torus for openmp_db test"
 cd ${base_dir}/${test_dir}/openmp_db/build
 export SYSTEM=zensingle
 make depends > compile_log
-#make debug=yes openmp=yes >> compile_log
+make debug=yes openmp=yes >> compile_log
 
 echo "Building Torus for mpi test"
 cd ${base_dir}/${test_dir}/mpi/build
@@ -147,19 +147,19 @@ echo "Building Torus for mpi_db test"
 cd ${base_dir}/${test_dir}/mpi_db/build
 export SYSTEM=zen
 make depends > compile_log
-#make debug=yes openmp=no >> compile_log
+make debug=yes openmp=no >> compile_log
 
 echo "Building Torus for hybrid test"
 cd ${base_dir}/${test_dir}/hybrid/build
 export SYSTEM=zen
 make depends > compile_log
-#make debug=no openmp=yes >> compile_log
+make debug=no openmp=yes >> compile_log
 
 echo "Building Torus for hybrid_db test"
 cd ${base_dir}/${test_dir}/hybrid_db/build
 export SYSTEM=zen
 make depends > compile_log
-#make debug=yes openmp=yes >> compile_log
+make debug=yes openmp=yes >> compile_log
 
 # Submit jobs
 echo "Submitting jobs to queue"
@@ -175,8 +175,6 @@ cd ${base_dir}/${test_dir}/mpi/benchmarks/hydro
 ln -s ../../build/torus.zen
 write_qsub_hydro
 qsub torus.pbs
-
-exit
 
 echo "Submitting mpi_db runs"
 for bench in disc disc_cylindrical HII_region molebench; do
@@ -208,7 +206,7 @@ done
 
 echo "Submitting hybrid runs"
 for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${base_dir}/${test_dir}/hybrid/benchmarks/disc
+    cd ${base_dir}/${test_dir}/hybrid/benchmarks/${bench}
     ln -s ../../build/torus.zen
     write_qsub_hybrid
     qsub torus.pbs
@@ -216,7 +214,7 @@ done
 
 echo "Submitting hybrid_db runs"
 for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${base_dir}/${test_dir}/hybrid_db/benchmarks/disc
+    cd ${base_dir}/${test_dir}/hybrid_db/benchmarks/${bench}
     ln -s ../../build/torus.zen
     write_qsub_hybrid
     qsub torus.pbs
