@@ -25,6 +25,7 @@ module source_mod
      logical :: outsideGrid
      logical :: onEdge
      logical :: onCorner
+     logical :: pointSource
      real(double) :: distance
      real(double) :: prob ! probability of packet from this source
   end type SOURCETYPE
@@ -279,19 +280,50 @@ module source_mod
     end subroutine getMelvinPositionDirection
 
 
-    subroutine getPhotonPositionDirection(source, position, direction, rHat, grid)
-      use input_variables, only : pointSource
+    subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
+      use input_variables, only : biasPhiDirection, biasPhiProb, biasPhiInterval
       type(GRIDTYPE) :: grid
-      real(double) :: r 
+      real(double) :: r, t, u, v, w, ang
+      real(double), optional :: weight
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
       type(VECTOR) :: cornerDir
 
+      if (PRESENT(weight)) weight = 1.d0
+
       if (.not.source%outsideGrid) then
-         if (pointSource) then
+         if (source%pointSource) then
             !      ! simply treating as a point source
             position = source%position
             direction = randomUnitVector()
+            if (biasPhiDirection > 0.d0) then
+               if (.not.PRESENT(weight)) then
+                  call writeFatal("getPhotonPositionDirection called without weight when weighted direction required")
+               endif
+               call randomNumberGenerator(getDouble=r)
+               w = 2.d0*r-1.d0
+               call randomNumberGenerator(getDouble=r)
+               if (r < biasPhiProb) then
+                  call randomNumberGenerator(getDouble=r)
+                  ang = biasPhiDirection + (2.d0*r-1.d0) * biasPhiInterval
+                  weight = (biasPhiInterval/twoPi) / biasPhiProb
+               else
+                  ang = biasPhiDirection
+                  do while (abs(ang-biasPhiDirection) < biasPhiInterval/2.d0)
+                     call randomNumberGenerator(getDouble=r)
+                     ang = r * twoPi
+                  enddo
+                  weight = (1.d0-(biasPhiInterval/twoPi)) / (1.d0-biasPhiProb)
+               endif
+               t = sqrt(1.d0-w*w)
+               u = t*cos(ang)
+               v = t*sin(ang)
+               direction = VECTOR(u, v, w)
+               
+            endif
+
+                  
+               
          else
             rHat = randomUnitVector()
             position = source%position + source%radius*rHat

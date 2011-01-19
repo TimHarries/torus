@@ -121,7 +121,7 @@ contains
     integer :: nVoxels, nOctals
 
     integer :: icritupper, icritlower
-    real(double) :: logt
+    real(double) :: logt, weight
     real(double) :: logNu1, logNuN, dlogNu, scaleNu
     real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
@@ -433,7 +433,7 @@ contains
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
-                !$OMP PRIVATE(thermalPhoton, scatteredPhoton) &
+                !$OMP PRIVATE(thermalPhoton, scatteredPhoton, weight) &
                 !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
                 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
@@ -457,7 +457,8 @@ contains
                    thisPhotonAbs = 0
                    call randomSource(source, nSource, iSource, packetWeight)
                    thisSource = source(iSource)
-                   call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
+                   call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid, weight=weight)
+                   packetWeight = packetWeight * weight
                    thermalphoton = .true.
                    directPhoton = .true.
                    call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &

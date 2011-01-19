@@ -304,6 +304,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   sourcesubcell = 0; spotPhoton = .false.
   call define_rotation_axis
 
+  biasPhiDirection = -1.d0
+
   objectDistance = griddistance * pctocm
 
   probLinePhoton = 1. - probContPhoton

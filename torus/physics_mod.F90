@@ -78,6 +78,7 @@ contains
        source(isource)%luminosity = fourPi * stefanBoltz * &
             (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
        source(iSource)%prob = sourceProb(iSource)
+       source(iSource)%pointSource = pointSourceArray(iSource)
 
        source(isource)%outsideGrid = .false.
        source(isource)%onEdge      = .false. 

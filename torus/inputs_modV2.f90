@@ -646,9 +646,9 @@ contains
           if (geometry == "wr104") then
              
              call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
-                  "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .true.)
+                  "Grid distance (pc): ","(a,f8.1,1x,a)", 100., ok, .true.)
              call getReal("massenv", massEnvelope, real(mMoon), cLine, fLine,  nLines, &
-                  "Envelope dust mass (Moon masses): ","(a,f5.2,a)", 10., ok, .true.)
+                  "Envelope dust mass (Moon masses): ","(a,f8.2,a)", 10., ok, .true.)
           endif
 
     case("shakara")
@@ -957,8 +957,24 @@ contains
        call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
             "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
 
+       write(keyword, '(a,i1)') "pointsource",i
+       call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
+            "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
     enddo
 
+    call getDouble("biasphidir", biasPhiDirection, degtorad, cLine, fLine, nLines, &
+            "Azimuthal direction of photon bias: ","(a,f5.0,a)",-1.d0, ok, .false.)
+
+    if (biasPhiDirection > 0.d0) then
+
+       call getDouble("biasphiprob", biasPhiProb, 1.d0, cLine, fLine, nLines, &
+            "Probability of photon in bias direction: ","(a,f5.1,a)",-1.d0, ok, .true.)
+
+       call getDouble("biasphiint", biasPhiInterval, degtorad, cLine, fLine, nLines, &
+            "Azimuthal interval for biased direction: ","(a,f5.0,a)",-1.d0, ok, .false.)
+    endif
   end subroutine readSourceParameters
 
   subroutine readMolecularPhysicsParameters(cLine, fLine, nLines)
