@@ -1575,6 +1575,8 @@ contains
     real(double) :: tot
     real(double) :: fac1, fac2
 
+!$OMP THREADPRIVATE(i)
+
     if (n == debug) write(*,*) " "
 
     ! we have one IF statement to decide whether we use the block containin the
@@ -2860,6 +2862,7 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
+    use source_mod, only : globalSourceArray
     USE amr_mod
     USE input_variables, ONLY: LyContThick, statEq1stOctant
 #ifdef MPI
@@ -2940,7 +2943,7 @@ contains
     ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
     call map_transition_arrays(maxLevels)
     
-    starCentre = grid%starPos1
+    starCentre = globalSourceArray(1)%position
 
       nNu1 = starSurface%nNuHotFlux
       nNu2 = nNu1
@@ -3219,8 +3222,8 @@ contains
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
 !$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
-!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i, starCentre) &
-!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface) & 
+!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i) &
+!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface, starCentre) & 
 !$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
 !$OMP SHARED(visFrac1, visFrac2, isBinary) & 
 !$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
@@ -4624,6 +4627,9 @@ contains
     real(double) :: freq    
     logical, save         :: alreadyDone = .false.
     
+!$OMP THREADPRIVATE(alreadyDone)
+
+
     if (alreadyDone) return
     
     if (maxLevels > 20) then
@@ -4759,6 +4765,8 @@ contains
     ! Be smart. For speed.
     real(double) :: b_nm, b_cnm, c_nm, Ne, Gm, C_mk
 
+!$OMP THREADPRIVATE(i)
+
     ! 
     if (binary) then
        write(*,*) "Error:: binary option not yet implmented in [stateq_mod::rate_alpha_mn]."
@@ -4863,6 +4871,9 @@ contains
     ! Be smart. For speed.
     real(double) :: b_nm,  b_cnm, c_mn, c_nm  
     real(double) :: sum_Nm_LTE, sum_Nm_nLTE
+
+
+!$OMP THREADPRIVATE(i)
 
     ! 
     if (binary) then

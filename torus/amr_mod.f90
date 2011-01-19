@@ -15635,7 +15635,7 @@ IF ( .NOT. gridConverged ) RETURN
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, nAtom, &
-         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics!, storeScattered
+         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -15699,18 +15699,6 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
 
-    if (sobolev) then
-       call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
-       ALLOCATE(thisOctal%N(8,1:stateqMaxLevels))
-       ALLOCATE(thisOctal%kappaAbs(8,1))
-    endif
 
     if (atomicPhysics) then
        call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
@@ -15725,7 +15713,17 @@ IF ( .NOT. gridConverged ) RETURN
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaAbs, thisOctal%maxChildren,1)
        call allocateAttribute(thisOctal%kappaSca, thisOctal%maxChildren,1)
+
+
+       if (.not.cmf) then
+          call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%N, thisOctal%maxChildren,stateqMaxLevels)
+       endif
     endif
+
+
+
 
     if (molecular) then
        call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
