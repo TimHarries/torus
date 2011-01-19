@@ -119,7 +119,7 @@ contains
     tDump = 0.005d0
     deltaTforDump = 3.14d10 !1kyr
     nextDumpTime = deltaTforDump
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d10
+    if (grid%geometry == "hii_test") deltaTforDump = 1.d8
     if(grid%geometry == "bonnor") deltaTforDump = 1.574d11 !5kyr
 
     iunrefine = 0
@@ -1215,8 +1215,7 @@ if (.false.) then
                    end if
 
 		   if(deltaT < 1.d-2 .and. .not. failed) then
-	     	      thisThreadConverged = .true.
-
+                      thisThreadConverged = .true.
                    else 
                       thisThreadConverged = .false.  
 			 
@@ -1248,25 +1247,25 @@ if (.false.) then
         underSampledTOT = .false.
 
 	!!!Rank 0, collate results and decide if converged 
-	   converged = .false.
+        converged = .false.
 	   do iThread = 1 , (nThreadsGlobal-1)
-	      call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
+              call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
               call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-	      if(thisThreadConverged .and. .not. failed) then
+              if(thisThreadConverged .and. .not. failed) then
 	         converged = .true.
-	      else
-	         converged = .false.
-		 failed = .true.
+              else
+                 converged = .false.
+                 failed = .true.
              end if
-	      if(anyUndersampled) then
+             if(anyUndersampled) then
                  undersampledTOT=.true.
               end if
-	   end do 
+           end do
 
-	   do iThread = 1, (nThreadsGlobal-1)
+           do iThread = 1, (nThreadsGlobal-1)
               call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
               call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
-	   end do
+           end do
     end if
 
     if(myRank /= 0) then
@@ -2931,11 +2930,6 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 
 !====================
      
-     print *, max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon))
-     print *, "thisOctal%ionFrac(subcell,iIon)", thisOctal%ionFrac(subcell,iIon)
-     print *, "ionFrac(iIon) ", ionFrac(iIon)
-     stop
-
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
         
      enddo
