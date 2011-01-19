@@ -1486,7 +1486,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
         nFromEnv = 0
-!$OMP DO SCHEDULE(static)
+!$OMP DO SCHEDULE(DYNAMIC,10)
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
 !           write(*,*) omp_get_thread_num(), i

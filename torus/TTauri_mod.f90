@@ -627,7 +627,6 @@ contains
     grid%rho = grid%rho / meanParticleMass
 
   end subroutine fillGridFlaredDisk
-
   
 
 end module ttauri_mod

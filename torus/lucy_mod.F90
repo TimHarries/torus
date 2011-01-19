@@ -446,7 +446,7 @@ contains
                  nAbs_sub = 0
                  nDiffusion_sub = 0
 
-                !$OMP DO SCHEDULE(static)
+                !$OMP DO SCHEDULE(DYNAMIC,10)
                 photonloop: do iMonte = imonte_beg, imonte_end
 !                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
@@ -2126,6 +2126,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    use diffusion_mod, only: randomwalk
+   use input_variables, only : scatteredLightWavelength, storeScattered
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec
@@ -2158,10 +2159,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    real(double), parameter :: fudgeFac = 1.d-2
    integer, optional :: ilamIn
    real(double), optional :: kappaScaOut, kappaAbsOut
-!   integer, save :: iLamScat
-!   logical, save :: firstTime = .true.
+   integer, save :: iLamScat
+   logical, save :: firstTime = .true.
     real :: test  
     logical :: test2
+
+!$OMP THREADPRIVATE(firstTime, iLamScat)
+
+
     test = lamArray(1)
     test2 = scatteredPhoton
    endSubcell = 0
@@ -2172,10 +2177,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
    topOctal => grid%octreeRoot
 
-!   if (firstTime) then
-!      call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
-!      firstTime = .false.
-!   endif
+
+   if (firstTime) then
+      call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
+      firstTime = .false.
+   endif
 
 
    if(.not. present(ilamIn)) then
@@ -2320,7 +2326,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 ! ifort (v11 and earlier) has problems with type conversion in atomic statements.
     tval_db = real(tval,db)
 !$OMP ATOMIC
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb * packetWeight
 !$OMP ATOMIC
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
     if (directPhoton) then
@@ -2333,8 +2339,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
-!          if (storeScattered.and.(iLam==iLamScat)) &
-!               call addMeanIntensity(octVec, thisOctal, subcell, uHat, tVal*1.d10)
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
 
 
 
@@ -2463,8 +2469,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
 
-!          if (storeScattered.and.(iLam==iLamScat)) &
-!               call addMeanIntensity(octVec, thisOctal, subcell, uHat, 1.d10*dble(tVal)*dble(tau)/thisTau)
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
 
 
@@ -2574,7 +2580,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     integer :: nOctals, nVoxels
     real, allocatable :: nCrossings(:)
     real, allocatable :: tempRealArray(:)
-    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:), scatteredIntensity(:)
+    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:), meanIntensity(:)
     real, allocatable :: nDiffusion(:)
     integer, parameter :: nTheta = 11, nPhi = 10
     integer :: ierr, nIndex, nIndexScattered
@@ -2586,13 +2592,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     allocate(nCrossings(1:nVoxels))
     allocate(nDiffusion(1:nVoxels))
     allocate(distanceGrid(1:nVoxels))
-
-    allocate(scatteredIntensity(1:(nVoxels*nTheta*nPhi)))
+    allocate(meanIntensity(1:nVoxels))
 
     nIndex = 0
     nIndexScattered = 0 
     call packValues(grid%octreeRoot,nIndex,nIndexScattered, &
-         distanceGrid,nCrossings,ndiffusion, scatteredIntensity)
+         distanceGrid,nCrossings,ndiffusion, meanIntensity)
 
 
 
@@ -2616,6 +2621,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
          MPI_SUM,MPI_COMM_WORLD,ierr)
     distanceGrid = tempDoubleArray 
 
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(meanIntensity,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    meanIntensity = tempDoubleArray 
+
     tempRealArray = 0.0
     call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
@@ -2633,9 +2643,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     nIndex = 0
     nIndexScattered = 0
     call unpackValues(grid%octreeRoot,nIndex,nIndexScattered, &
-         distanceGrid,nCrossings,nDiffusion,scatteredIntensity)
+         distanceGrid,nCrossings,nDiffusion, meanIntensity)
 
-    deallocate(nCrossings, nDiffusion, distanceGrid, scatteredIntensity)
+    deallocate(nCrossings, nDiffusion, distanceGrid, meanIntensity)
 
   end subroutine updateGridMPI
 #endif
@@ -2816,12 +2826,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine calculateEtaCont
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
-       distanceGrid,nCrossings, nDiffusion, scatteredIntensity)
+       distanceGrid,nCrossings, nDiffusion, meanIntensity)
 !    use input_variables, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
-  real(double) :: scatteredIntensity(:)
+  real(double) :: meanIntensity(:)
   real :: nCrossings(:)
   real :: nDiffusion(:)
   integer :: nIndex, nIndexScattered
@@ -2834,13 +2844,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call packvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings,nDiffusion, scatteredIntensity)
+                call packvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings,nDiffusion, meanIntensity)
                 exit
              end if
           end do
        else
           nIndex = nIndex + 1
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
+          meanIntensity(nIndex) = thisOctal%meanIntensity(subcell)
           nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
 !          if (storeScattered) then
@@ -2856,11 +2867,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     enddo
   end subroutine packvalues
 
-  recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,nCrossings, nDiffusion, scatteredIntensity)
+  recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,nCrossings, nDiffusion, meanIntensity)
 !    use input_variables, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(double) :: distanceGrid(:), scatteredIntensity(:)
+  real(double) :: distanceGrid(:), meanIntensity(:)
   real :: ncrossings(:)
   real :: ndiffusion(:)
   integer :: nIndex
@@ -2875,13 +2886,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call unpackvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings, &
-                     nDiffusion, scatteredIntensity)
+                     nDiffusion, meanIntensity)
                 exit
              end if
           end do
        else
           nIndex = nIndex + 1
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
+          thisOctal%meanIntensity(subcell) = meanIntensity(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
 !          if (storescattered) then
@@ -3381,6 +3393,7 @@ subroutine setBiasOnTau(grid, iLambda)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tVal
+!$OMP ATOMIC
     thisOctal%meanIntensity(subcell) = thisOctal%meanIntensity(subcell) + tVal
     
   end subroutine addMeanIntensity

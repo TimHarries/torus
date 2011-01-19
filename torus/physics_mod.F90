@@ -54,6 +54,7 @@ contains
     do iatom = 1, nAtom
        call readAtom(atomArray(iatom), atomFilename(iatom))
     end do
+
   end subroutine setupAtoms
 
   subroutine setupSources(nSource, source, grid)
@@ -217,7 +218,7 @@ contains
          lucy_undersampled, molecularPhysics, hydrodynamics, cmf, lte, nlower, nupper
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein, massEnvelope
-    use input_variables, only : mCore, solveVerticalHydro, sigma0
+    use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     !use input_variables, only : radiationHydrodynamics
     use cmf_mod, only : atomloop
     use photoion_mod, only : photoionizationLoop
@@ -259,6 +260,9 @@ contains
 
         if (.not.variableDustSublimation) call doSmoothOnTau(grid)
 
+        
+        scatteredlightWavelength = 2.2d4 ! 2.2 microns
+        storeScattered = .true.
 #ifdef MPI
         call randomNumberGenerator(randomSeed=.true.)
 #endif
@@ -357,7 +361,9 @@ contains
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
-     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
+     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, calcDataCube
+     use input_variables, only : iTransAtom, iTransLine
+     use modelatom_mod, only : globalAtomArray
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
@@ -421,9 +427,10 @@ contains
 
      endif
 
-     if (atomicPhysics) then
+     if (atomicPhysics.and.calcDataCube) then
         nLambda = nv
        allocate(xArray(1:nLambda))
+       lamLine = 21655. !!!!!!!(cspeed/globalAtomArray(iTransAtom)%transFreq(iTransLine))/angstromtocm
        lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
        lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
        do i = 1, nLambda

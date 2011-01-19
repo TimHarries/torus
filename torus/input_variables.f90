@@ -306,6 +306,7 @@ module input_variables
   real :: rho, rho0
   real :: scale, rscale
   real :: mCore, diskTemp, mDisc
+  real :: epsilonDisc
   real :: alphaDisc, betaDisc
   real :: scaleDensity
   real :: vRot

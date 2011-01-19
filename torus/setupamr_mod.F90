@@ -243,7 +243,6 @@ contains
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
-          
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
@@ -252,8 +251,8 @@ contains
           mdot = 2.d-8 * msol * secstoyears
           call zeroDensity(grid%octreeRoot)
           astar = accretingAreaMahdavi(grid)
-          ttauriwind = .false.
-          ttauridisc = .false.
+!          ttauriwind = .false.
+!          ttauridisc = .false.
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
           call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
           if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
@@ -383,6 +382,8 @@ contains
        call fixParentPointers(grid%octreeRoot)
        call postSetupChecks(grid)
        call writeVTKfile(grid, "rho.vtk")
+
+
     endif
 #ifdef MPI
         if (grid%splitOverMPI) then

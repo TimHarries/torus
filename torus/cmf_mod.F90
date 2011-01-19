@@ -476,7 +476,7 @@ contains
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
 
-    call randomRayDirection(0.5d0, position, source, nSource, direction, weightOmega)
+    call randomRayDirection(0.9d0, position, source, nSource, direction, weightOmega)
 
 
     call randomNumberGenerator(getDouble=r)
@@ -1059,6 +1059,7 @@ contains
     use input_variables, only : debug, rcore, lte, vturb
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
+    use utils_mod, only : ngstep
     use random_mod
     use amr_mod, only: getOctalArray, sortOctalArray
 #ifdef MEMCHECK
@@ -1081,14 +1082,14 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 500, maxRay = 200000
+    integer, parameter :: maxIter = 1000, maxRay = 200000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
     real(double), parameter :: underCorrect = 1.d0
-    real(double), parameter :: underCorrectne = 1.0d0
+    real(double), parameter :: underCorrectne = 1.d0
     real(double) :: dne
 
     real(double) :: fac
@@ -1096,7 +1097,7 @@ contains
     integer :: ioctal_beg, ioctal_end
     real(double) :: maxFracChange
     logical :: fixedRays
-    integer(bigint) :: iseed
+    integer(bigint) :: iseed, iCellSeed
     integer, allocatable :: sourceNumber(:)
 !    type(VECTOR) :: posVec
 !    real(double) :: r
@@ -1114,14 +1115,16 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-3, tolerance = 1.d-3
+    real(double), parameter :: convergeTol = 1.d-4, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
     real :: r
     logical :: ionized
-    integer :: iLev, nIter, iLab, idump, nt, nInuse
-    real(double) :: lev1, lev2
+    integer :: nIter, idump, nt, nInuse, nConverged
+    real(double) :: percentageConverged
+    real(double), save, allocatable :: oldpops1(:,:), oldpops2(:,:), oldpops3(:,:), oldpops4(:,:)
+    integer, parameter :: iNgStep = 5
 
 #ifdef MPI
     ! For MPI implementations
@@ -1136,6 +1139,7 @@ contains
 #ifdef _OPENMP
     integer :: omp_get_thread_num
 #endif
+!$OMP THREADPRIVATE (oldpops1, oldpops2, oldpops3, oldpops4)
 
 
 
@@ -1150,9 +1154,9 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+
     freq = 0.d0
     indexRBBTrans = 0
-    ilev = 0; ilab = 0; indexAtom = 0; lev1 = 0; lev2 = 0
     nfreq = 0; nRBBTrans = 0; tauAv = 0.d0
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
@@ -1240,13 +1244,13 @@ contains
 
 ! Lyman continuum in detailed balance
 
-!    do iAtom = 1, nAtom
-!       do iTrans = 1, thisAtom(iAtom)%nTrans
-!          if (thisAtom(iAtom)%name == "HI".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
-!             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-!          endif
-!       enddo
-!    enddo
+    do iAtom = 1, nAtom
+       do iTrans = 1, thisAtom(iAtom)%nTrans
+          if (thisAtom(iAtom)%name == "HI".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+          endif
+       enddo
+    enddo
 !!!
 
 ! Lyman continuum in detailed balance
@@ -1314,12 +1318,12 @@ contains
      if (myRankisZero) then
         open(69, file="cmf_convergence.dat", status="unknown", form="formatted")
         write(69,'(a)') &
-!             012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-             "      Iter Max Frac      Tol      Subcell    Level  New pop   Old pop      nRays   Fix ray"
+!             01234567890123456789012345678901234567890123456789
+             "       Iter    Tol  %Converged   nRays     Fix ray"
         close(69)
      endif
 
-    nRay = 100
+     nRay = 100
     do iStage = 1, 2
 
 
@@ -1347,10 +1351,7 @@ contains
 
           if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
 
-             
-
-
-
+          
           ! default loop indecies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
@@ -1381,13 +1382,13 @@ contains
 
 
             !$OMP PARALLEL DEFAULT (NONE) &
-            !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction, nt) &
+            !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction, nt, iCellSeed) &
 	    !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
 	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
 	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
-	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans)&
+	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans) &
             !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
-	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom, myrankGlobal)
+	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom, myrankGlobal, writeoutput)
 
             !$OMP MASTER
             call randomNumberGenerator(getIseed=iseed)
@@ -1413,7 +1414,11 @@ contains
             allocate(position(1:nray))
             allocate(direction(1:nray))
 
-
+            allocate(oldpops1(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(oldpops2(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(oldpops3(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
+            allocate(oldpops4(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
+            
             if (fixedRays) then
                call randomNumberGenerator(putIseed = iseed)
                call randomNumberGenerator(reset = .true.)
@@ -1426,17 +1431,23 @@ contains
 
 
 
-            !$OMP DO SCHEDULE(STATIC,1)
+            !$OMP DO SCHEDULE(DYNAMIC,1)
           do iOctal = ioctal_beg, ioctal_end
+
+             thisOctal => octalArray(iOctal)%content
+
              nt = 0
 #ifdef _OPENMP
              nt = omp_get_thread_num()
+             iCellSeed = iseed + thisOctal%label(1)*10000
+            if (fixedRays) then
+               call randomNumberGenerator(putIseed = iCellSeed)
+               call randomNumberGenerator(reset = .true.)
+            endif
 #endif
-
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
              
-             thisOctal => octalArray(iOctal)%content
 !             do subcell = thisOctal%maxChildren,1,-1
              do subcell = 1, thisOctal%maxChildren
 
@@ -1531,7 +1542,27 @@ contains
                             where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-30)
                                thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-30
                             end where
-                            
+
+                            oldpops1 = oldpops2
+                            oldpops2 = oldpops3
+                            oldpops3 = oldpops4
+                            oldpops4(1:nAtom,:) = thisOctal%newAtomLevel(subcell,1:nAtom,:)
+
+                            if (mod(iter, iNgStep) == 0) then
+!                               if (writeoutput) write(*,*) "Doing Ng acceleration step"
+                               do iAtom = 1, nAtom
+!                                  if (writeoutput) then
+!                                     write(*,*) "oldpops 1",real(oldpops1(iatom, 1:6))
+!                                     write(*,*) "oldpops 2",real(oldpops2(iatom, 1:6))
+!                                     write(*,*) "oldpops 3",real(oldpops3(iatom, 1:6))
+!                                     write(*,*) "oldpops 4",real(oldpops4(iatom, 1:6))
+!                                  endif
+                                  call ngStep(thisOctal%newAtomLevel(subcell, iAtom, :), &
+                                       oldpops1(iAtom, :), oldpops2(iAtom, :), &
+                                       oldpops3(iAtom, :), oldpops4(iAtom, :), length=thisAtom(iAtom)%nLevels)
+!                               if (writeoutput) write(*,*) "newpops ",real(thisOctal%newAtomLevel(subcell, iAtom, 1:6))
+                               enddo
+                            endif
                             newNe = tiny(newNe)
                             do iAtom = 1, nAtom
                                if (iAtom /= nAtom) then
@@ -1554,6 +1585,10 @@ contains
                                        * dble((thisAtom(iAtom)%charge+1))
                                endif
                             enddo
+                            if (newNe < 0.d0) then
+                               write(*,*) "newNe is negative"
+                               newNE = TINY(newNE)
+                            endif
 
                            ntot = 0.d0
                            ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,1, &
@@ -1707,6 +1742,7 @@ contains
             deallocate(iCont)
             deallocate(position)
             deallocate(direction)
+            deallocate(oldpops1, oldpops2, oldpops3, oldpops4)
 
           !$OMP END PARALLEL
 
@@ -1747,11 +1783,12 @@ contains
 #endif
 
           maxFracChange = -1.d30
-          call swapPops(grid%octreeRoot, maxFracChange, lev1, lev2, ilev, ilab)
-          if (writeoutput) write(*,*) "Maximum fractional change this iteration",maxFracChange
-          if (writeoutput) write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
-               "fixed rays",fixedrays,"nray",nray
-          if (writeoutput) write(*,*) "iLevel ", iLev, " new pops ", lev1, " old pops ", lev2
+          nInUse = 0 ; nConverged = 0
+          call swapPops(grid%octreeRoot, gridtolerance, nInUse, nConverged)
+          percentageConverged = 100.d0 * dble(nConverged)/dble(nInUse)
+          write(ifilename,'(a,i2.2,a)') "fracchange",idump,".vtk"
+          call writeVTKfile(grid,ifilename, valueTypeString = (/"adot"/))
+          if (writeoutput) write(*,*) "Percentage converged: ",percentageConverged
 
           if (myRankIsZero) &
                call writeAmrGrid("atom_tmp.grid",.false.,grid)
@@ -1759,12 +1796,12 @@ contains
 
           if (myRankisZero) then
              open(69, file="cmf_convergence.dat", status="old", position = "append", form="formatted")
-             write(69,'(i10, 1p, 2e10.2, 2i10, 2e10.2, i10, l10)') &
-                  nIter, maxFracChange, tolerance, ilab, ilev, lev1, lev2, nRay, fixedRays
+             write(69,'(i10, 1p, e10.2, 0p,  f10.2, i10, l10)') &
+                  nIter,  gridtolerance, real(percentageConverged), nRay, fixedRays
              close(69)
           endif
 
-          if (maxFracChange < tolerance) then
+          if (percentageConverged > 99.d0) then
              gridConverged = .true.
           endif
 !          gridconverged = .true.
@@ -1791,15 +1828,16 @@ contains
        enddo
     enddo
 666 continue
+
     call writeInfo( "ATOM loop done.")
   end subroutine atomLoop
 
-  recursive  subroutine  swapPops(thisOctal, maxFracChange, lev1, lev2, ilev,ilab)
+  recursive  subroutine  swapPops(thisOctal, tolerance, nInuse, nConverged)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, j, iAtom
-    real(double) :: maxFracChange, temp, lev1, lev2
-    integer :: ilev, ilab
+    real(double) :: maxFrac, temp, tolerance
+    integer :: nInUse, nConverged
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1807,32 +1845,41 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call swapPops(child, maxFracChange, lev1, lev2, ilev, ilab)
+                call swapPops(child, tolerance, nInUse, nConverged)
                 exit
              end if
           end do
        else
-          do iAtom = 1, size(thisOctal%newAtomLevel,2)
-             do j = 1 , 6
-                if (thisOctal%atomLevel(subcell,iAtom,j) /= 0.d0) then
-                   temp = abs((thisOctal%newatomLevel(subcell,iAtom,j) - &
-                        thisOctal%atomLevel(subcell,iAtom,j)) / &
-                        thisOctal%atomLevel(subcell,iAtom,j))
-                   if (temp > maxFracChange) then
-                      maxFracChange = temp
-                      ilev = j
-                      lev1 = thisOctal%newatomLevel(subcell,iAtom,j)
-                      lev2 = thisOctal%atomLevel(subcell,iAtom,j)
-                      ilab = thisOctal%label(subcell)
+
+          if (.not.associated(thisOctal%adot)) then
+             allocate(thisOctal%adot(1:thisOctal%maxChildren))
+             thisOctal%adot = 0.d0
+          endif
+          
+          if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then
+             nInuse = nInuse + 1
+             do iAtom = 1, size(thisOctal%newAtomLevel,2)
+                maxFrac = -1.d30
+                do j = 1 , 6
+                   if (thisOctal%atomLevel(subcell,iAtom,j) /= 0.d0) then
+                      temp = abs((thisOctal%newatomLevel(subcell,iAtom,j) - &
+                           thisOctal%atomLevel(subcell,iAtom,j)) / &
+                           thisOctal%atomLevel(subcell,iAtom,j))
+                      thisOctal%adot(subcell) = temp
+                      maxFrac = max(temp, maxFrac)
                    endif
-                endif
+                enddo
              enddo
-          enddo
+             if (maxFrac < tolerance) then
+                nConverged = nConverged + 1
+             endif
+          endif
           thisOctal%atomLevel(subcell,:,:) = &
                thisOctal%newatomLevel(subcell,:,:)
        endif
     enddo
   end subroutine swapPops
+
 
   recursive  subroutine  calcEtaLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
     type(MODELATOM) :: thisAtom(:)
@@ -1862,7 +1909,7 @@ contains
           etaLine = hCgs * a * thisAtom(iatom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom,iUpper)
 	  
-          thisOctal%etaLine(subcell) = etaLine 
+          thisOctal%etaLine(subcell) = etaLine * 1.d10
           
        endif
     enddo
@@ -1901,11 +1948,52 @@ contains
           call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
 
           alphanu = alphanu * (nLower * Blu - nUpper * Bul) !/thisAtom(iatom)%transFreq(iTrans)
-          thisOctal%chiLine(subcell) = alphanu
+          thisOctal%chiLine(subcell) = alphanu * 1.d10
           
        endif
     enddo
   end subroutine calcChiLine
+
+
+  recursive  subroutine calcContinuumOpacities(thisOctal, thisAtom, nAtom, freq)
+    type(MODELATOM) :: thisAtom(:)
+    real(double) :: freq
+    real(double) :: nstar(10,50)
+    integer :: nAtom
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iAtom, iLevel
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcContinuumOpacities(child, thisAtom, nAtom, freq)
+                exit
+             end if
+          end do
+       else
+
+          do iatom = 1, size(thisAtom)
+             do iLevel = 1, thisAtom(iatom)%nLevels-1
+                nStar = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
+                     dble(thisOctal%temperature(subcell))) * &
+                     thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+             enddo
+          enddo
+
+          thisOctal%kappaAbs(subcell, 1) = bfOpacity(freq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                     thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) * 1.d10
+
+          thisOctal%kappaSca(subcell, 1) = thisOctal%ne(subcell) * sigmaE * 1.d10
+          thisOctal%etaCont(subcell)  = bfEmissivity(freq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
+                     dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell)) * 1.d10
+          
+       endif
+    enddo
+  end subroutine calcContinuumOpacities
 
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
     use stateq_mod, only : z_hi
@@ -2432,10 +2520,340 @@ contains
 
   end function intensityAlongRay
 
+
+  function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, &
+      forceFreq, occultingDisc) result (i0)
+    use input_variables, only : lineOff,  mie, lamLine
+    use amr_mod, only: distanceToGridFromOutside, returnKappa
+    use utils_mod, only : findIlambda
+    use atom_mod, only : bnu
+    logical ::     justPhotosphere
+    type(VECTOR) :: position, direction, pvec, photoDirection
+    type(GRIDTYPE) :: grid
+    logical, optional :: occultingDisc
+    integer :: nSource
+    real(double), optional :: forceFreq
+    type(SOURCETYPE) :: source(:)
+    real(double) :: transitionFreq
+    real(double) :: disttoGrid
+    real(double) :: totDist
+    logical :: hitSource
+    real(double) :: i0
+    type(OCTAL), pointer :: thisOctal, startOctal !, endOctal
+    !    integer :: endSubcell
+    integer :: subcell
+    real(double) :: costheta
+    type(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
+    type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
+    real(double) :: alphanu, snu, jnu
+    real(double) :: dv, deltaV
+    integer :: i, icount
+    real(double) :: distArray(1000), tval
+    integer :: nTau
+    real(double) :: dTau, etaline, tau
+    real(double) :: intensityIntegral
+    real(double) :: dvAcrossCell
+    real(double) :: dv1, dv2
+    real(double) :: a, bul, blu
+    real(double) :: distToSource,disttoDisc
+    integer :: sourcenumber
+    integer :: iElement
+    logical :: endLoopAtPhotosphere
+    real(double) ::  rhoCol
+    real(double) :: bfOpac, bfEmiss, x1, x2, fac
+    real(double) :: dustOpac, dustEmiss
+    integer :: ilambda
+    real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
+    logical :: passThroughResonance, velocityIncreasing, ok
+
+    i0 = tiny(i0)
+    justPhotosphere = .false.
+
+    hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
+    a = 0.d0; blu = 0.d0; bul = 0.d0
+
+
+    if (PRESENT(forceFreq)) then
+       transitionFreq = forceFreq
+    endif
+
+
+    transitionLambda = lamLine 
+
+    transitionFreq = cSpeed / (lamLine * angstromtocm)
+    iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
+
+
+    distToGrid = distanceToGridFromOutside(grid, position, direction)
+
+    currentposition = position
+    distToDisc = 1.d30
+    if ((currentposition.dot.direction) < 0.d0) then
+       if (direction%z /= 0.d0) then
+          distToDisc = abs(currentPosition%z/direction%z)
+          oldPosition = currentPosition + distToDisc * direction
+          if (sqrt(oldPosition%x**2 + oldPosition%y**2) < (2.d0*grid%octreeRoot%subcellSize)) then
+             distToDisc = 1.d30
+          endif
+       else
+          distToDisc = 1.d30
+       endif
+    endif
+    if (present(OccultingDisc)) then
+       if (occultingDisc) then
+          if (distToDisc < distToGrid) then
+             i0 = tiny(i0)
+             goto 666
+          endif
+       endif
+    endif
+
+    if (distToGrid > 1.e29) then
+!              write(*,*) "ray does not intersect grid",position,direction
+       i0 = tiny(i0)
+       goto 666
+    endif
+
+    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
+ 
+ 
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
+       write(*,*) "initial position not in grid"
+       write(*,*) "curre pos",currentPosition
+       write(*,*) "dir",direction
+       write(*,*) "pos",position
+       write(*,*) "modulsu",modulus(currentPosition - position)
+       stop
+    endif
+
+    totDist = 0.d0
+    call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
+
+    if ((.not.hitsource).and.justPhotosphere) goto 666
+    if (hitSource) then
+       pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
+       call normalize(pVec)
+       cosTheta = -1.d0*(pVec.dot.direction)
+       photoDirection = pVec
+       call normalize(photoDirection)
+    endif
+
+
+    !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
+    !         inOctal(grid%octreeRoot, currentPosition),distTogrid
+    i0 = tiny(i0)!0.d0
+    intensityIntegral = 0.0
+    tau = 0.d0
+    rayVel = VECTOR(0.d0, 0.d0, 0.d0)
+
+    thisOctal => grid%octreeRoot
+    icount = 0
+    rhoCol = 0.d0
+    endLoopAtPhotosphere = .false.
+
+    !    if (hitSource) endLoopAtphotosphere = .true.
+
+    !    write(*,*) lineoff,hitsource,endloopatphotosphere
+
+
+
+       do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
+          icount = icount + 1 
+          call findSubcellLocal(currentPosition, thisOctal, subcell)
+
+          !       rVec = subcellCentre(thisOctal,subcell)
+
+          call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+
+          if ((totDist + tval) > distTosource) then
+             tVal = distToSource - totDist
+             endLoopAtPhotosphere = .true.
+          endif
+
+
+          if (.not.lineOff) then
+             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+
+             endPosition = currentPosition + tval * direction
+             endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+
+             dv1 = deltaV + (startVel .dot. direction)
+             dv2 = deltaV + (endVel .dot. direction)
+
+             dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
+
+             distArray(1) = 0.d0
+             distArray(2) = tVal
+             nTau = 2
+
+             passThroughResonance =.false.
+
+
+             if (dv1*dv2 < 0.d0) passThroughResonance = .true.
+
+             if (modulus(endVel)==0.d0) passThroughResonance = .false.
+
+             if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
+
+                if (dv1 <= dv2) then
+                   velocityIncreasing = .true.
+                else
+                   velocityIncreasing = .false.
+                endif
+
+                if ( (dv2 - dv1) /= 0.d0) then
+                   if (velocityIncreasing) then
+                      x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                      x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                   else
+                      x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                      x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                   endif
+                else
+                   x1 = 0.d0
+                   x2 = tVal
+                endif
+
+                if (x1 > x2) then
+                   fac = x1
+                   x1 = x2
+                   x2 = fac
+                endif
+                x1 = max(0.d0, x1)
+                x2 = min(x2, tVal)
+                nTau = 100
+                distArray(1) = 0.d0
+                do i = 1, nTau-1
+                   distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
+                enddo
+                distArray(nTau) = tVal
+             endif
+
+             if (.not.thisOctal%inflow(subcell)) then
+                distArray(1) = 0.d0
+                distArray(2) = tVal
+                nTau = 2
+             endif
+          else
+             distArray(1) = 0.d0
+             distArray(2) = tVal
+             nTau = 2
+          endif
+
+
+          bfOpac = 0.d0
+          bfEmiss = 0.d0
+
+          do i = 2, nTau
+
+             startOctal => thisOctal
+             thisPosition = currentPosition + distArray(i)*direction
+
+
+
+
+             if (.not.lineoff) then
+                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+                thisVel= thisVel - rayVel
+                dv = (thisVel .dot. direction) + deltaV
+                alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal%microturb(subcell))
+             else
+                alphanu = 0.d0
+             endif
+
+
+             if (i == 2) then
+                bfOpac = thisOctal%kappaAbs(subcell,1)
+                bfEmiss = thisOctal%etaCont(subcell)
+                dustOpac = 0.d0
+                dustEmiss = 0.d0
+                if (mie) then
+                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                   kappaExt = kappaAbs + kappaSca
+                   dustOpac = kappaExt
+                   dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))
+                   dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)
+                endif
+             endif
+
+
+             if (.not.lineoff) then
+                etaLine = thisOctal%etaLine(subcell)
+                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))
+             else
+                jnu = 0.d0
+                etaline = 0.d0
+             endif
+
+             if (associated(thisOctal%fixedTemperature)) then
+                if (.not.thisOctal%fixedTemperature(subcell)) then
+                   jnu = 0.d0
+                   etaline = 0.d0
+                endif
+             endif
+
+             if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
+                bfOpac = 1.d30
+                bfEmiss = 0.d0
+                alphanu = 1.d30
+                etaLine = 0.d0
+                jnu = 0.d0
+                snu = 0.d0
+             endif
+
+             alphanu = alphanu + bfOpac + dustOpac
+
+             ! add continuous bf and ff emissivity of hydrogen
+
+             jnu = jnu + bfEmiss + dustEmiss
+
+             if (alphanu /= 0.d0) then
+                snu = jnu/alphanu
+             else
+                snu = tiny(snu)
+             endif
+
+
+             dTau = alphaNu *  (distArray(i)-distArray(i-1))
+
+
+             if (thisOctal%inflow(subcell)) then
+                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+             endif
+             tau = tau + dtau
+          enddo
+          rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
+          oldPosition = currentPosition
+          currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
+          totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+
+          if (PRESENT(occultingDisc)) then
+             if (occultingDisc) then
+                if ((oldPosition%z >= 0.d0).and.(currentPosition%z < 0.d0)) then
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > (2.d0*grid%octreeRoot%subcellSize)) then
+                      goto 666
+                   endif
+                endif
+             endif
+          endif
+       enddo
+
+    if (endLoopAtPhotosphere) then
+
+       iElement = getElement(source(sourcenumber)%surface, photoDirection)
+
+       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement)*exp(-tau)
+    endif
+666 continue 
+
+  end function intensityAlongRayGeneric
+
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda, occultingDisc)
-    use input_variables, only : vturb, lineoff, nv, calcDataCube
+    use input_variables, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
 #ifdef USECFITSIO
@@ -2490,8 +2908,13 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
-    call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+    if (cmf) then
+       transitionFreq = thisAtom(iAtom)%transfreq(iTrans)
+       lamLine  = (cspeed / transitionFreq) / angstromtocm
+       call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+       call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+       call calcContinuumOpacities(grid%octreeRoot, thisAtom, nAtom, transitionfreq)
+    endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
     call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline"/))
@@ -2517,7 +2940,7 @@ contains
 
 
     if (myRankIsZero.and.(.not.PRESENT(forcelambda))) &
-         write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
+         write(*,*) "Calculating spectrum for: ",lamLine
 
     if (doCube) then
        call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray, &
@@ -2709,7 +3132,7 @@ contains
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
     use input_variables, only : npixels, nv, imageSide, maxVel, &
-         positionAngle
+         positionAngle, cmf
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'
@@ -2795,8 +3218,8 @@ contains
     endif
 
 
-    call addSpatialAxes(cube, -dble(imageSide), dble(imageSide), &
-         -dble(imageSide), dble(imageSide))
+    call addSpatialAxes(cube, -dble(imageSide/2.), dble(imageSide/2.), &
+         -dble(imageSide/2.), dble(imageSide/2.))
 
 
     if (myRankGlobal == 0) then
@@ -2822,7 +3245,7 @@ contains
        !$OMP SHARED (deltaV, source, nSource, nFreqArray, freqArray, occultingDisc) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte)
 
-       !$OMP DO SCHEDULE(STATIC,2)
+       !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
           write(*,*) "ix ",ix
           do iy = 1, cube%ny
@@ -2839,13 +3262,18 @@ contains
                 rayPos =  (xval * xProj) + (yval * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
  
-                if (PRESENT(occultingDisc)) then
-                   cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
-                        iTrans, -deltaV, source, nSource, nFreqArray, freqArray, occultingDisc=.true.)
-                else
-                   cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
-                        iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
-                endif
+!                if (cmf) then
+!                   if (PRESENT(occultingDisc)) then
+!                      cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
+!                           iTrans, -deltaV, source, nSource, nFreqArray, freqArray, occultingDisc=.true.)
+!                   else
+!                      cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
+!                           iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
+!                   endif
+!                else
+                   cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+                        -deltaV, source, nSource)
+!                endif
              enddo
           enddo
        enddo

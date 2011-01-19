@@ -139,11 +139,12 @@ module source_mod
             if (nLambda > 1) then
                do i = 1, nSource
                   prob(i) = integrateSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
-                       dble(lamArray(nLambda))) /lsol
+                       dble(lamArray(nLambda))) * (fourPi * (source(i)%radius*1.d10)**2) /lsol
                enddo
             else
                do i = 1, nSource
-                  prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaImage(1)))
+                  prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaImage(1))) * &
+                       (fourPi * (source(i)%radius*1.d10)**2)
                enddo
             endif
             prob(1:nSource) = prob(1:nSource)/SUM(prob(1:nSource))

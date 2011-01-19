@@ -441,6 +441,9 @@ contains
                case("convergence")
                   write(lunit, *) mod(thisOctal%convergence(subcell),1.0)
 
+               case("adot")
+                  write(lunit, *) real(thisOctal%adot(subcell))
+
                case("slowestlevel")
                   write(lunit, *) floor(mod(thisoctal%convergence(subcell),100.0))
 

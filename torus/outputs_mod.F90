@@ -51,17 +51,18 @@ contains
 !    real(double) :: ang
     type(VECTOR) :: tvec(1)
 
+    call writeBanner("Creating outputs","-",TRIVIAL)
+
+    if (writegrid) then
+       call writeAMRgrid(gridOutputFilename,.false.,grid)
+    endif
+
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
          (.not.calcDataCube) ) then
        goto 666
     endif
 
-    call writeBanner("Creating outputs","-",TRIVIAL)
-
-    if (writegrid) then
-       call writeAMRgrid(gridOutputFilename,.false.,grid)
-    endif
 
     call setupXarray(grid, xArray, nLambda)
 

@@ -3580,6 +3580,9 @@ contains
       print *, '**************************************************'
     end if
     ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
+
+    call setInuseOnTemperature(grid%octreeRoot)
+
     call map_transition_arrays(maxLevels)
     
     starCentre = grid%starPos1
@@ -3719,6 +3722,7 @@ contains
     !if (grid%statEq2d .and. (.not. lte) .and. (.not. recalcPrevious)) &
     !  call removeDepartCoeffs(grid%octreeRoot)
 
+    call torus_mpi_barrier
     call generateOpacitiesAMR(grid, nLower, nUpper)
     
   contains
@@ -4179,7 +4183,7 @@ contains
                 
   subroutine generateOpacitiesAMR(grid, nLower, nUpper)
     ! for all the cells in the grid.
-  
+    use input_variables, only : vTurb, lamLine
     type(GRIDTYPE),intent(inout):: grid      
     integer,intent(in)          :: nLower, nUpper! level populations
     real(double)                :: chil
@@ -4203,7 +4207,8 @@ contains
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
   
     transe = abs(eTrans(nUpper)-eTrans(nLower))
-    write(*,'(a,f8.1)') "   generating opacities for ",lambdaTrans(nLower, nUpper)*1.e8
+    write(*,'(a,f8.1)') "   generating opacities for ", lambdaTrans(nLower, nUpper)*1.e8
+    lamLine = lambdaTrans(nLower, nUpper)*1.e8
 
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
@@ -4287,6 +4292,8 @@ contains
              
              octalArray(iOctal)%content%etaCont(iSubcell) = eta*1.e10
              
+
+
              if (octalArray(iOctal)%content%etaCont(iSubcell) < 0.0) then              
                 octalArray(iOctal)%content%etaCont(iSubcell) = 1.e-20
                 print *, ' in amrStatEq, negative kappaAbs value fixed!'
@@ -4300,6 +4307,16 @@ contains
                 octalArray(iOctal)%content%kappaAbs(iSubcell,1) = 1.e-20
                 octalArray(iOctal)%content%kappaSca(iSubcell,1) = 1.e-20
              endif
+
+          else
+
+                octalArray(iOctal)%content%chiLine(iSubcell)    = 1.e-30
+                octalArray(iOctal)%content%etaLine(iSubcell)    = 1.e-30
+                octalArray(iOctal)%content%etaCont(iSubcell)    = 1.e-30
+                octalArray(iOctal)%content%kappaAbs(iSubcell,1) = 1.e-30
+                octalArray(iOctal)%content%kappaSca(iSubcell,1) = 1.e-30
+                octalArray(iOctal)%content%microTurb(isubcell) = vturb/cspeed
+
 
           endif
        enddo
@@ -5101,6 +5118,31 @@ contains
     f = 0.5 * (Tr/Te)*exp(-hydE0Ev/(kEv*Tr))/(exp(-hydE0Ev/(Kev*Te)))
   end function approxIonization
 
+
+  recursive subroutine setInuseOnTemperature(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setInuseOnTemperature(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%temperature(subcell) > 3000.) then
+             thisOctal%inFlow(subcell) = .true.
+          else
+             thisOctal%inFlow(subcell) = .false.
+          endif
+       endif
+    enddo
+  end subroutine setInuseOnTemperature
 
 end module stateq_mod
 

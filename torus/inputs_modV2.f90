@@ -395,6 +395,9 @@ contains
           call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
                "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
 
+          call getReal("epsilon", epsilonDisc, 1., cLine, fLine, nLines, &
+               "Isella and Natta epsilon value: ","(a,f6.4,a)", 1., ok, .false.)
+
           call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
                "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
 
@@ -895,6 +898,10 @@ contains
     call writeBanner("Atomic physics data","#",TRIVIAL)
 
 
+
+    call getLogical("cmf", cmf, cLine, fLine, nLines, &
+         "Perform co-moving frame calculation ","(a,1l,1x,a)", .false., ok, .true.)
+
     if (cmf) then
        call getInteger("natom", nAtom, cLine, fLine, nLines, &
             "Number of model atoms to solve for: ","(a,i1,a)",1,ok,.true.)
@@ -1091,9 +1098,6 @@ contains
 
     call getLogical("lte", lte, cLine, fLine, nLines, &
          "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getLogical("cmf", cmf, cLine, fLine, nLines, &
-         "Perform co-moving frame calculation ","(a,1l,1x,a)", .false., ok, .true.)
 
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
          "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
