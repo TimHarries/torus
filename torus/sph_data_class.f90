@@ -564,7 +564,7 @@ contains
     integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
     REAL(kind=8)     :: r1, dummy
     integer :: intarray(8)
-    CHARACTER*100 fileident
+    CHARACTER(len=100) ::  fileident
 
     integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
 

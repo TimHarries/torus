@@ -25,7 +25,9 @@ contains
     implicit none
 
     character(len=*), parameter :: infile="vh1.dat"
-    character :: head1*7, head2*6, head3*4
+    character(len=7) :: head1
+    character(len=6) :: head2
+    character(len=4) :: head3
     integer :: vh1_cycle
     real :: time, dt
 

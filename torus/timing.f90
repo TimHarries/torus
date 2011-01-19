@@ -37,14 +37,14 @@ contains
     
     integer, parameter :: max_id=500      ! max # of IDs
     integer :: lu_error                   ! file unit # for error messages
-    character*(*) :: id                   ! ID name 
-    character*30  :: id_stored(max_id)    ! names of id stored
-    integer :: N_th_call(max_id)          ! stores how many time this routine
+    character(len=*) :: id                   ! ID name 
+    character(len=30),save  :: id_stored(max_id)    ! names of id stored
+    integer,save :: N_th_call(max_id)          ! stores how many time this routine
                                           !  was called with a given ID
-    real :: cpu_start(max_id)             ! time at the first tuning pt
+    real,save :: cpu_start(max_id)             ! time at the first tuning pt
     real :: cputime                       ! elapsed CPU time
     logical :: found
-    logical :: very_first_time            ! true if this routine is called
+    logical,save :: very_first_time            ! true if this routine is called
                                           !  very first time
 
 !    real :: time_array(2)                 ! dummy array to get cpu time
@@ -54,7 +54,6 @@ contains
     integer :: minutes
     real ::  seconds
     
-    save id_stored,very_first_time,cpu_start, N_th_call
 
 !    real :: etime
 !    external etime  ! libarary function
