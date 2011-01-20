@@ -565,9 +565,10 @@ contains
 
   subroutine initgridstateq(grid, contfile1, contfile2, popFileName, &
        readPops, writePops, lte, nLower, nUpper)
+
     implicit none
+    integer, parameter :: maxLevels =  stateqMaxLevels
     type(gridtype) :: grid
-    integer, parameter :: maxLevels = statEqMaxLevels
     integer :: nLower, nUpper
     logical :: lte, debugInfo
     real :: sinTheta
@@ -2323,6 +2324,7 @@ contains
        beta(maxLevels+1) = -equation14(maxLevels, grid, i1, i2, i3, thisOctal, thisSubcell)
    
    !    write(*,*) "beta",real(beta(1:7))
+
        do i = 1, maxLevels
           do j = 1, maxLevels
              tmp = thisOctal%N(thisSubcell,j)
@@ -2345,6 +2347,7 @@ contains
    !       grid%N(i1,i2,i3,j) = tmp
    !    enddo
    
+
        alpha(maxLevels+1,1:maxLevels) = 1.e0_db
    
        tmp = thisOctal%Ne(thisSubcell)
@@ -2377,7 +2380,6 @@ contains
  !         enddo
  !      enddo
    
-
 
 
     else ! grid not adaptive
@@ -3148,7 +3150,7 @@ contains
              if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then 
 
                 call LTElevels(thisOctal%temperature(iSubcell),  &
-                               thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
+                               thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell), &
                                thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
                 if (.not. associated(thisOctal%departCoeff)) then
                   allocate(thisOctal%departCoeff(8,maxLevels+1))
@@ -3239,6 +3241,7 @@ contains
           do iSubcell = 1,  thisOctal%maxChildren, 1
              if (octalArray(iOctal)%inUse(iSubcell) .and. ((thisOctal%inFlow(iSubcell) .and. &
                 thisOctal%nTot(iSubcell) > 1.0) )) then
+
                 if (recalcPrevious .and. .not. firstTime) then
                   ! calculate LTE values, and then scale by old coefficients
                   
@@ -3268,7 +3271,6 @@ contains
                 
                 xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
-                
                 if (.not. propogateCoeffs .and. .not. firstTime) &
                        previousXall = xAll(1:maxLevels)
                        
@@ -3284,6 +3286,8 @@ contains
                   print *, 'Binary geometry not implemented for amrStateq surface models'
                   stop
                 end if
+
+
                   
 !                call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
                 call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
@@ -3507,9 +3511,6 @@ contains
 
     USE amr_mod
     USE input_variables, ONLY: LyContThick, statEq1stOctant
-#ifdef MPI
-    USE input_variables, ONLY: blockHandout
-#endif
     use parallel_mod
 
     implicit none
@@ -3566,7 +3567,6 @@ contains
     integer       ::   ioctal_beg, ioctal_end  
 #ifdef MPI
     ! For MPI implementations
-    integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
 #endif
@@ -3627,7 +3627,7 @@ contains
        ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
        !   coefficients as a starting point.
        ! 'firstTime' must be on
-       call calcAMRstatEqNew(planeOctals, setupCoeffs=.true., propogateCoeffs=.true., &
+       call calcAMRstatEqNew(planeOctals, setupCoeffs=.true., propogateCoeffs=.false., &
             firstTime=.true.,NeFactor=NeFactor)
        deallocate(planeOctals) ! no longer need the pointers to that plane.
        
@@ -3659,7 +3659,7 @@ contains
        ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
        !   coefficients as a starting point.
        ! 'firstTime' must be on
-       call calcAMRstatEqNew(subsetOctals, setupCoeffs=.true., propogateCoeffs=.true., &
+       call calcAMRstatEqNew(subsetOctals, setupCoeffs=.true., propogateCoeffs=.false., &
             firstTime=.true.,NeFactor=NeFactor)
        deallocate(subsetOctals) ! no longer need the pointers to that plane.
        
@@ -3703,7 +3703,7 @@ contains
       else
                 
         ! we solve from scratch for all the cells
-        call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.true., &
+        call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.false., &
                            firstTime=.true.,NeFactor=NeFactor)
 
       end if 
@@ -3758,11 +3758,9 @@ contains
 !    integer, parameter :: ntrial_max = 20
     integer, parameter :: ntrial_max = 50
 #ifdef MPI
-     logical :: dcAllocated
-     integer, dimension(:), allocatable :: octalsBelongRank
-     logical :: rankComplete
+     integer :: n_rmdr, m, tempInt, nTemp, nVoxels, nOctal
      integer :: tag = 0
-     integer :: tempInt
+     real(double), allocatable :: tArrayd(:), tempArrayd(:)
 #endif
 
     if ( firstTime .and.  (  &
@@ -3796,7 +3794,7 @@ contains
                                thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
                                thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
                 if (.not. associated(thisOctal%departCoeff)) then
-                  allocate(thisOctal%departCoeff(8,maxLevels+1))
+                  allocate(thisOctal%departCoeff(thisOCtal%maxChildren,maxLevels+1))
                   thisOctal%departCoeff = 1.0
                 end if
 
@@ -3826,28 +3824,6 @@ contains
        ioctal_end = SIZE(octalArray)       
 
 
-#ifdef MPI 
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-    
-    ! we will use an array to store the rank of the process
-    !   which will calculate each octal's variables
-    allocate(octalsBelongRank(size(octalArray)))
-    
-    if (my_rank == 0) then
-       print *, ' '
-       print *, 'calcAMRstatEq routine  computed by ', np-1, ' processors.'
-       print *, ' '
-       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-                            maxBlockSize=10,setDebug=.false.)
-    
-    endif
-    ! ============================================================================
-#endif
 
        
        ! initialize some variables
@@ -3855,11 +3831,23 @@ contains
        previousXall = -9.9
        previousNeRatio = 1.0
 
+          
+
 #ifdef MPI
- if (my_rank /= 0) then
-  blockLoop: do     
- call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-   if (rankComplete) exit blockLoop 
+    
+            ! Set the range of index for octal loop used later.     
+            np = nThreadsGlobal
+            n_rmdr = MOD(SIZE(octalArray),np)
+            m = SIZE(octalArray)/np
+            
+            if (myRankGlobal .lt. n_rmdr ) then
+               ioctal_beg = (m+1)*myRankGlobal + 1
+               ioctal_end = ioctal_beg + m
+            else
+               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+               ioctal_end = ioctal_beg + m - 1
+            end if
+            
 #endif
 
 !!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
@@ -3867,18 +3855,17 @@ contains
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
 !$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
-!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i, starCentre) &
-!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface) & 
+!$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i) &
+!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface, starCentre) & 
 !$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
 !$OMP SHARED(visFrac1, visFrac2, isBinary) & 
 !$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
 !$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo) 
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
-
           print *, 'Octal #',iOctal
           thisOctal => octalArray(iOctal)%content
-          if (setupCoeffs) allocate (thisOctal%departCoeff(8,maxLevels+1))
+          if (setupCoeffs) allocate (thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
             ! departCoeff(maxLevels+1) is the LTE/nonLTE Ne ratio
           
           do iSubcell = 1,  thisOctal%maxChildren, 1
@@ -3910,10 +3897,10 @@ contains
                                       boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
                                       real(thisOctal%temperature(iSubcell),kind=db))
                 end if
+
                 
                 xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
-                
                 if (.not. propogateCoeffs .and. .not. firstTime) &
                        previousXall = xAll(1:maxLevels)
                        
@@ -4061,7 +4048,7 @@ contains
                 
              else if (setupCoeffs) then
                 
-                if (.not. associated(thisOctal%departCoeff)) allocate (thisOctal%departCoeff(8,maxLevels+1))
+                if (.not. associated(thisOctal%departCoeff)) allocate (thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
                 thisOctal%departCoeff(iSubcell,:) = 1.0
                 
              endif
@@ -4072,65 +4059,37 @@ contains
 !$OMP END PARALLEL
 
 #ifdef MPI
- if (.not.blockHandout) exit blockloop
- end do blockLoop        
- end if ! (my_rank /= 0)
 
-     print *,'Process ',my_rank,' waiting to update values in calcAMRstatEq...' 
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
-     ! have to send out the 'octalsBelongRank' array
-     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
+     call torus_mpi_barrier
        !
        ! Update the values (N and Ne) of grid computed by all processors.
        !
-       do iOctal = 1, SIZE(octalArray)
-          !print *,'Process ',my_rank,' starting octal ',iOctal 
 
-          !if (my_rank==0)   print *,'Root reports rank ',octalsBelongRank(ioctal), 'for octal',ioctal
-          thisOctal => octalArray(iOctal)%content
-          
-          ! we may need to allocate departure coefficients
-          if (my_rank == octalsBelongRank(iOctal)) then
-            dcAllocated = associated(thisOctal%departCoeff)
-            !print *, 'rank ',my_rank,'broadcasting dcAllocated:',dcAllocated
-          end if
-          
-          call MPI_BCAST(dcAllocated, 1, &
-               MPI_LOGICAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-          
-          if (dcAllocated .and. .not. associated(thisOctal%departCoeff)) then 
-            allocate(thisOctal%departCoeff(8,maxLevels+1))
-            !print *, 'process ',my_rank,'allocating dc'
-          end if
-          
-          do iSubcell = 1, thisOctal%maxChildren
-             if (octalArray(iOctal)%inUse(iSubcell)) then
-                
-                call MPI_BCAST(thisOctal%nTot(iSubcell), 1, MPI_DOUBLE_PRECISION,&
-                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-                call MPI_BCAST(thisOctal%Ne(iSubcell), 1, MPI_DOUBLE_PRECISION, &
-                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-                call MPI_BCAST(thisOctal%N(iSubcell, 1:maxlevels), maxlevels, &
-                     MPI_DOUBLE_PRECISION, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-             end if
-          
-             if (dcAllocated) then
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-                call MPI_BCAST(thisOctal%departCoeff(iSubcell, 1:maxlevels+1), maxlevels+1, &
-                     MPI_REAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-             end if   
-          end do
-       end do
-          
+     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     allocate(tArrayd(1:nVoxels))
+     allocate(tempArrayd(1:nVoxels))
+     tArrayd = 0.d0
+     tempArrayd = 0.d0
+     do i = 1, maxLevels
+        tArrayd = 0.d0
+        call packAtomLevel(octalArray, nTemp, tArrayd,  i, ioctal_beg, ioctal_end)
+        call MPI_ALLREDUCE(tArrayd,tempArrayd,nTemp,MPI_DOUBLE_PRECISION,&
+             MPI_SUM,MPI_COMM_WORLD,ierr)
+        tArrayd = tempArrayd
+        call unpackAtomLevel(octalArray, nTemp, tArrayd, i)
+     enddo
+     tArrayd = 0.d0
+     call packNe(octalArray, nTemp, tArrayd, ioctal_beg, ioctal_end)
+     call MPI_ALLREDUCE(tArrayd,tempArrayd,nTemp,MPI_DOUBLE_PRECISION,&
+          MPI_SUM,MPI_COMM_WORLD,ierr)
+     tArrayd = tempArrayd
+     call unpackNe(octalArray, nTemp, tArrayd)
+
+
      tempInt = 0
      call MPI_REDUCE(numLTEsubcells,tempInt,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
      numLTEsubcells = tempInt
           
-     print *,'Process ',my_rank,' finished updating values in calcAMRstatEq...' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 #endif
       
@@ -4139,7 +4098,7 @@ contains
          print *, numLTEsubcells,' subcells were fixed at LTE values'
       end if
        
-    endif
+   endif
 
     end subroutine calcAMRstatEqNew
 
@@ -4162,7 +4121,7 @@ contains
       thisOctal => octalArray(iOctal)%content
     
       if (.not. associated(thisoctal%departCoeff)) &
-        allocate(thisOctal%departCoeff(8,(stateqMaxLevels+1)))
+        allocate(thisOctal%departCoeff(thisOctal%maxChildren,(stateqMaxLevels+1)))
       
       thisOctal%departCoeff = 1.0  
       
@@ -4485,7 +4444,7 @@ contains
                          real(thisOctal%temperature(iSubcell),kind=db))
              
       if (.not. associated(thisOctal%departCoeff)) &
-        allocate(thisOctal%departCoeff(8,maxLevels+1))
+        allocate(thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
 
       thisOctal%departCoeff(iSubcell,:) = departCoeff
       thisOctal%changed(iSubcell) = .false.
@@ -4599,7 +4558,7 @@ contains
                          real(thisOctal%temperature(iSubcell),kind=db))
              
       if (.not. associated(thisOctal%departCoeff)) &
-        allocate(thisOctal%departCoeff(8,maxLevels+1))
+        allocate(thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
 
       thisOctal%departCoeff(iSubcell,:) = departCoeff
       thisOctal%changed(iSubcell) = .false.
@@ -5154,6 +5113,127 @@ contains
        endif
     enddo
   end subroutine setInuseOnTemperature
+
+
+#ifdef MPI
+      subroutine packAtomLevel(octalArray, nTemps, tArray, iLevel, ioctal_beg, ioctal_end)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nTemps
+        integer :: ioctal_beg, ioctal_end
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iLevel
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                   tArray(nTemps) = thisOctal%N(isubcell, iLevel)
+                 else 
+                   tArray(nTemps) = 0.d0
+                 endif
+              endif
+          end do
+       end do
+     end subroutine packAtomLevel
+
+      subroutine unpackAtomLevel(octalArray, nTemps, tArray, iLevel)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iLevel
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 thisOctal%N(isubcell,iLevel) = tArray(nTemps) 
+              endif
+          end do
+       end do
+     end subroutine unpackAtomLevel
+
+      subroutine packNe(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nTemps
+        integer :: ioctal_beg, ioctal_end
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                   tArray(nTemps) = thisOctal%Ne(isubcell)
+                 else 
+                   tArray(nTemps) = 0.d0
+                 endif
+              endif
+          end do
+       end do
+     end subroutine packNe
+
+      subroutine unpackNe(octalArray, nTemps, tArray)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 thisOctal%Ne(isubcell) = tArray(nTemps) 
+              endif
+          end do
+       end do
+     end subroutine unpackNe
+
+#endif
+
 
 end module stateq_mod
 

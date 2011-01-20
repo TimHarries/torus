@@ -15635,7 +15635,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, sobolev, h21cm, timeDependentRT, nAtom, &
+         photoionization, hydrodynamics, h21cm, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal

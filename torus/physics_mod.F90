@@ -313,8 +313,8 @@ contains
      endif
 
      if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
-        call amrStateqNew(grid, lte, nLower, nUpper, globalSourceArray(1)%surface,&
-                       .false.)
+        call amrStateqnew(grid, lte, nLower, nUpper, globalSourceArray(1)%surface,&
+                       recalcPrevious=.false.)
      endif
 
 
@@ -373,7 +373,6 @@ contains
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
      use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, calcDataCube
-     use input_variables, only : iTransAtom, iTransLine
      use modelatom_mod, only : globalAtomArray
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid

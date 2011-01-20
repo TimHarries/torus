@@ -1097,7 +1097,7 @@ contains
     integer :: ioctal_beg, ioctal_end
     real(double) :: maxFracChange
     logical :: fixedRays
-    integer(bigint) :: iseed, iCellSeed
+    integer(bigint) :: iseed
     integer, allocatable :: sourceNumber(:)
 !    type(VECTOR) :: posVec
 !    real(double) :: r
@@ -3132,7 +3132,7 @@ contains
        nFreqArray, freqArray, occultingDisc)
     use mpi_global_mod
     use input_variables, only : npixels, nv, imageSide, maxVel, &
-         positionAngle, cmf
+         positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     include 'mpif.h'

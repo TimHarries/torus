@@ -102,7 +102,7 @@ ifeq ($(SYSTEM), gfortran)
     else
         F95COMP = gfortran
     endif
-    DEBUGFLAG= -g -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
 #    F2CLIB   = -L/usr/local/lib -lg2c
