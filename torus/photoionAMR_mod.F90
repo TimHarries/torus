@@ -1263,11 +1263,11 @@ if (.false.) then
 
 	!!!Rank 0, collate results and decide if converged 
         converged = .false.
-	   do iThread = 1 , (nThreadsGlobal-1)
+        do iThread = 1 , (nThreadsGlobal-1)
               call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
               call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
               if(thisThreadConverged .and. .not. failed) then
-	         converged = .true.
+                 converged = .true.
               else
                  converged = .false.
                  failed = .true.
