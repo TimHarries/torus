@@ -338,7 +338,6 @@ module input_variables
   ! raman scattering model parameters
 
   logical :: doRaman
-  real :: vo6
   real :: o6width
   character(len=20) :: ramanDist          ! raman distortion type
   real :: ramVel

@@ -391,15 +391,14 @@ contains
 
 
   subroutine initPhoton(thisPhoton, Grid, nLambda, lambda, sourceSpectrum, &
-       lineEmission, lamLine,  &
-       weightLinePhoton, weightContPhoton, contPhoton, flatspec, vRot, &
-       pencilBeam, secondSource, secondSourcePosition, &
-       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
-       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, weightSource,&
-       narrowBandImage, source, nSource, rHatInStar, energyPerPhoton, &
+       lamLine, weightLinePhoton, weightContPhoton, contPhoton, flatspec, &
+       secondSource, secondSourcePosition, ramanSourceVelocity, contWindPhoton, directionalWeight, &
+       chanceSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, weightSource,&
+       source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
-    use input_variables, only : photoionization
+    use input_variables, only : photoionization, pencilbeam, lineEmission, vRot, useBias, &
+         narrowBandImage, nspot, thetaSpot, phiSpot
     use atom_mod, only: bLambda
     use amr_mod
     use phasematrix_mod
@@ -415,24 +414,22 @@ contains
     type(SURFACETYPE) :: starSurface
     type(PHOTON) :: thisPhoton                 ! the photon
     type(GRIDTYPE) :: grid                     ! the opacity grid
-    integer :: nLambda, iLambda                ! wavelength indices
-    logical :: useBias
-    real :: weightContPhoton, weightLinePhoton ! the photon weights
-    integer :: iLambdaPhoton
+    integer, intent(in) :: nLambda
+    integer :: iLambda    ! wavelength indices
+    real, intent(in) :: weightContPhoton, weightLinePhoton ! the photon weights
+    integer, intent(in) :: iLambdaPhoton
     real, optional :: dopShift
     real :: vTherm
     logical :: contWindPhoton                  ! is this continuum photon produced in the wind
     logical :: ok
-    logical :: narrowBandImage
     real(double) :: energyPerPhoton
-    real :: vo6
     real :: x,y,z
     type(VECTOR) :: octalCentre, octVec
     type(OCTAL), pointer :: thisOctal, sourceOctal
     integer :: sourceSubcell, subcell
     type(filter_set) :: filterSet
     real :: directionalWeight
-    real :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
+    real, intent(in) :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
     real :: dlam(1000)
     real :: r1,r2,r3                              ! radii
     real(double) :: randomDouble         ! a real(double) random number
@@ -447,15 +444,12 @@ contains
     real(double) :: kabs
     real :: ang                                ! angle
     logical :: contPhoton                      ! is this a continuum photon?
-    logical :: lineEmission                    ! is there line emission?
     real :: lamLine                            ! wavelength of the line
     logical :: flatspec                        ! is the spectrum flat
-    real :: vRot                               ! rotational velocity
     integer :: i1, i2, i3                      ! position indices
     type(VECTOR) :: rHat, perp                 ! radial unit vector
     type(VECTOR) :: rHatInStar
     type(VECTOR) :: rotatedVec                 ! rotated vector
-    logical :: pencilBeam                      ! beamed radiation
     type(VECTOR), parameter :: zAxis = VECTOR(0.0,0.0,1.0) ! the z axis
     logical :: secondSource                    ! second photon source?
     type(VECTOR) :: secondSourcePosition       ! the position of it
@@ -470,9 +464,7 @@ contains
 
     ! Spot stuff
   
-    integer :: nSpot                       ! number of spots
     real :: fSpot                          ! factional area coverage of spots
-    real :: thetaSpot, phiSpot             ! spot coords
     logical :: spotPhoton
   
     real :: fac
@@ -533,7 +525,6 @@ contains
 
     if (grid%resonanceLine) thisPhoton%resonanceLine = .true.
 
-    vo6 = 0.
     ramanSourceVelocity = VECTOR(0.,0.,0.)
 
     directionalWeight = 1.

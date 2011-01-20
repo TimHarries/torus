@@ -112,13 +112,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: escProb
   real :: nuStart, nuEnd
   real(oct) :: t1, t2, t3
-  logical :: hitcore
-  integer :: intPathError
   integer(kind=bigint) :: nContPhotons
-  real :: chanceHotRing
-  type(VECTOR) :: positionOc    ! photon position position
-  real :: observedLambda
-  type(VECTOR) :: rHatinStar, rHat
+  type(VECTOR) :: rHat
   type(VECTOR) :: slitPosition
   real(double) :: tau_bnd
   real :: dlambda, thisTau
@@ -128,13 +123,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   logical :: redRegion
   logical :: contWindPhoton
   logical :: contPhoton
-  logical :: thrustar
-  real :: ramanWeight
   real :: thisVel
-  real(double) :: vRay, vOverCsqr
-  real :: directionalWeight
   real :: obs_weight, tau_tmp, exp_minus_tau
-  real :: nu, junk
+  real :: nu
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
   integer(kind=bigInt) :: nInnerLoop
@@ -152,11 +143,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: meanr0_line = 0., meanr0_cont = 0.
 !  real :: meanr_line = 0., meanr_cont = 0.
 
-  logical :: escaped, absorbed
   real(double) :: albedo
   real :: phi
-
-  type(VECTOR) :: zeroVec
 
   real, allocatable,save :: tauExt(:)
   real, allocatable,save :: tauAbs(:)
@@ -168,7 +156,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   real, allocatable :: splineArray(:)
 
-  real, allocatable :: statArray(:)
   real, allocatable :: sourceSpectrum(:)
   real, allocatable :: sourceSpectrum2(:)
 
@@ -195,7 +182,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer :: i1, i2, i3
 
   integer :: iLambdaPhoton
-  integer :: nScat
   integer :: iOuterLoop
   real(double) :: lCore
   real :: weightDust=1.0, weightPhoto=1.0
@@ -211,7 +197,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real, allocatable,save :: contWeightArray(:)
 
   real(double) :: thisChi, thisSca
-  real :: fac1, fac2, fac3
 
   real(double) :: energyPerPhoton
 
@@ -225,7 +210,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double) :: totDustContinuumEmission, totEnvelopeEmission
 
   integer :: nFromEnv
-  logical :: photonFromEnvelope
   integer(kind=bigInt) :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
   integer :: i, iSlit, istep, ispline 
@@ -244,13 +228,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   logical :: ok
   type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
   integer :: sourceSubcell, currentSubcell, tempSubcell
-
-  ! photons
-
-  type(PHOTON) :: thisPhoton
-  type(PHOTON) :: outPhoton
-  type(PHOTON) :: obsPhoton
-  type(PHOTON) :: tempPhoton
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -293,14 +270,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   phaseTime = 0.0
   phaseOffset = 0.0
-
-  intPathError = 0
-  hitCore = .false.
-  chanceHotRing = 0.
   dopshift = 0.
-  outPhoton%lambda = 0.; obsPhoton%lambda = 0.
-  ok = .true.; photonFromEnvelope = .true.
-  rhatinStar = VECTOR(0.d0, 0.d0, 0.d0)
+  ok = .true.
   sourcesubcell = 0; spotPhoton = .false.
   call define_rotation_axis
 
@@ -338,11 +309,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   allocate(errorArray(nOuterLoop,1:nLambda))
   allocate(varianceArray(1:nLambda))
-  allocate(statArray(1:nLambda))
   allocate(sourceSpectrum(1:nLambda))
   allocate(sourceSpectrum2(1:nLambda))
 
-  statArray = 0.
   sourceSpectrum = 1.
   sourceSpectrum2 = 1.
 
@@ -355,8 +324,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! Choose whether to rotate the view
   call choose_view( grid%geometry,   nPhase,          distortionType, doRaman, & ! Intent in
                     rotateview, rotateDirection, tiltView)                  ! Intent out
-
-  zeroVec = VECTOR(0.,0.,0.)
 
 
   ! prepare the filters for images here.
@@ -938,7 +905,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
            totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
            write (*,'(a,e12.3)') 'T Tauri total core continuum emission: ',totCoreContinuumEmission
-           ! chanceHotRing = fAccretion/totCoreContinuumEmission ! no longer used
         endif
 
         if (grid%geometry == "luc_cir3d".or. grid%geometry == "romanova") then
@@ -1402,9 +1368,345 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
-        ! default inner loop indices
-        iInner_beg = 1
-        iInner_end = nInnerLoop
+        call do_one_outer_photon_loop
+
+        if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
+
+!        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
+        do i = 1, nLambda
+           errorArray(iOuterLoop,1:nLambda) = yArray(i) - oldyArray(i)
+        enddo
+         oldyArray = yArray  
+  
+
+
+     end do outerPhotonLoop ! outer photon loop
+
+#ifdef _OPENMP
+
+#else
+   deallocate(lambda)
+   deallocate(tauSca)
+   deallocate(tauExt)
+   deallocate(tauAbs)
+   deallocate(linePhotonalbedo)
+   deallocate(contTau)
+   deallocate(contWeightArray)
+#endif
+
+
+     if (doTuning) call tune(6, "All Photon Loops")  ! Stop a stopwatch
+
+#ifdef MPI
+     tempInt = 0
+     call MPI_REDUCE(tooFewSamples,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     tooFewSamples = tempInt
+
+     call MPI_REDUCE(boundaryProbs,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     boundaryProbs = tempInt
+
+     call MPI_REDUCE(negativeOpacity,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     negativeOpacity = tempInt
+
+     call MPI_REDUCE(nTot,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     nTot = tempInt
+
+ if (stokesimage) then
+   do i = 1, nImageLocal
+     allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
+     allocate(tempRealArray2(SIZE(obsImageSet(i)%pixel)))
+     allocate(tempDoubleArray(SIZE(obsImageSet(i)%pixel)))
+     allocate(tempDoubleArray2(SIZE(obsImageSet(i)%pixel)))
+     tempRealArray = 0.0
+     tempRealArray2 = 0.0
+     tempDoubleArray = 0.0_db
+     tempDoubleArray2 = 0.0_db
+
+     tempDoubleArray = reshape(obsImageSet(i)%pixel%i,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     obsImageSet(i)%pixel%i = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%i))
+
+     tempDoubleArray = reshape(obsImageSet(i)%pixel%q,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     obsImageSet(i)%pixel%q = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%q))
+
+     tempDoubleArray = reshape(obsImageSet(i)%pixel%u,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     obsImageSet(i)%pixel%u = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%u))
+
+     tempDoubleArray = reshape(obsImageSet(i)%pixel%v,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     obsImageSet(i)%pixel%v = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%v))
+
+
+     tempRealArray = reshape(obsImageSet(i)%vel,(/SIZE(tempRealArray)/))
+     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     obsImageSet(i)%vel = reshape(tempRealArray2,SHAPE(obsImageSet(i)%vel))
+
+     tempRealArray = reshape(obsImageSet(i)%totWeight,(/SIZE(tempRealArray)/))
+     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     obsImageSet(i)%totWeight = reshape(tempRealArray2,SHAPE(obsImageSet(i)%totWeight))
+
+     deallocate(tempRealArray)
+     deallocate(tempRealArray2)
+     deallocate(tempDoubleArray)
+     deallocate(tempDoubleArray2)
+   end do
+     if (doRaman) then
+        print *, 'MPI o6Image not implemented!'
+        stop
+     endif
+  endif ! (stokesimage)
+
+ if (doPvimage) then
+   do iSlit = 1, nSlit
+     allocate(tempDoubleArray(SIZE(pvImage(i)%pixel)))
+     allocate(tempDoubleArray2(SIZE(pvImage(i)%pixel)))
+
+     tempDoubleArray = reshape(pvImage(i)%pixel,(/SIZE(tempDoubleArray)/))
+     tempDoubleArray2 = 0.0_db
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     pvImage(i)%pixel = reshape(tempDoubleArray2,SHAPE(pvImage(i)%pixel))
+
+     deallocate(tempDoubleArray)
+     deallocate(tempDoubleArray2)
+
+     allocate(tempRealArray(SIZE(pvImage(i)%vAxis)))
+     tempRealArray = 0.0
+     call MPI_REDUCE(pvImage(i)%vAxis,tempRealArray,SIZE(pvImage(i)%vAxis),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     pvImage(i)%vAxis = tempRealArray
+     deallocate(tempRealArray)
+
+     allocate(tempRealArray(SIZE(pvImage(i)%pAxis)))
+     tempRealArray = 0.0
+     call MPI_REDUCE(pvImage(i)%pAxis,tempRealArray,SIZE(pvImage(i)%pAxis),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     pvImage(i)%pAxis = tempRealArray
+     deallocate(tempRealArray)
+
+   end do ! iSlit 
+endif ! (doPvimage)
+#endif
+
+ if (myRankIsZero) then 
+
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a)') "Model summary"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a)') "-------------"
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+
+     
+     if (grid%adaptive) then
+        write(message,*)  tooFewSamples, ' rays had 2 or less samples.'
+        call writeInfo(message, TRIVIAL)
+        write(message,*) BoundaryProbs, ' rays had numerical problems with octal boundaries.'
+        call writeInfo(message, TRIVIAL)
+        write(message,*) negativeOpacity, ' rays had problems with negative opacity values.'
+        call writeInfo(message, TRIVIAL)
+     end if
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+     write(message,*) "Average # of scattering per photon:: ", real(nTot)/real(nPhotons)
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " " 
+     call writeInfo(message, TRIVIAL)
+
+ end if 
+
+!     if (.not.grid%cartesian.and.(grid%rCore /= 0.)) then
+!        if (wtot_line /= 0.) write(*,*) "Mean radius of line formation",meanr_line/wtot_line/grid%rCore
+!        if (wtot0_line /= 0.) write(*,*) "Mean radius of line zero",meanr0_line/wtot0_line/grid%rCore
+!        if (wtot_cont /= 0.) write(*,*) "Mean radius of cont formation",meanr_cont/wtot_cont/grid%rCore
+!        if (wtot0_cont /=0.) write(*,*) "Mean radius of cont zero",meanr0_cont/wtot0_cont/grid%rCore
+!     endif
+
+ varianceArray = STOKESVECTOR(0.d0, 0.d0, 0.d0, 0.d0)
+! do i = 1, nLambda
+!    do j = 1, nOuterLoop
+!    varianceArray(i)%i = varianceArray(i)%i + (errorArray(j,i)%i - yArray(i)%i/dble(nOuterLoop))**2
+!    varianceArray(i)%q = varianceArray(i)%q + (errorArray(j,i)%q - yArray(i)%q/dble(nOuterLoop))**2
+!    varianceArray(i)%u = varianceArray(i)%u + (errorArray(j,i)%u - yArray(i)%u/dble(nOuterLoop))**2
+!    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
+! enddo
+!enddo
+ if (myRankIsZero) then 
+    if (PRESENT(overrideFilename)) outfile = overrideFilename
+    if (nLambda > 1) then
+       if (nPhase == 1) then
+          
+          call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, varianceArray,&
+               .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
+          specFile = trim(outfile)//"_stellar_direct"
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, varianceArray,&
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
+          specFile = trim(outfile)//"_stellar_scattered"
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, varianceArray,&
+               .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
+          specFile = trim(outfile)//"_thermal_direct"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect, varianceArray,&
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+
+       specFile = trim(outfile)//"_thermal_scattered"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, varianceArray,&
+            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
+          
+       
+       if (velocitySpace) then
+          specFile = trim(outfile)//"_v"
+          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, varianceArray,&
+               .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+       endif
+       
+    else
+       write(tempChar,'(i3.3)') iPhase
+       specFile = trim(outfile)//trim(tempChar)
+       
+        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, varianceArray, &
+             .false., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+        
+        if (velocitySpace) then
+           tempChar = trim(specFile)//"_v"
+           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, varianceArray,&
+                .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+        endif
+     endif
+        
+        if (doRaman) then
+           write(tempChar,'(i3.3)') iPhase
+           o6filename = trim(outfile)//"_o6_"//trim(tempChar)//".dat"
+           open(20,file=o6filename,status="unknown",form="formatted")
+           do i = 1, no6pts
+              t1 = 1./(o6xArray(2)-o6xArray(1))
+              write(20,*) o6xarray(i),o6yarray(i)*t1,1.e-20,1.e-30,1.e-20,1.e-30
+           enddo
+           close(20)
+        endif
+     endif
+
+     if (stokesimage) then
+        do i = 1, nImageLocal
+           name_filter = get_filter_name(filters, i)
+           bandwidth = 0.5*FWHM_filters(filters, i)  ! 1/2 of FWHM  [A]
+           lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
+!           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
+!           call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
+           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
+           if (torusVersion(2:2) == "2") specfile = originaloutfile
+
+
+#ifdef USECFITSIO
+           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
+#endif
+
+!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
+!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
+!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"
+!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
+!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_u",iPhase,".fits"
+!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
+        end do
+        if (doRaman) then
+           write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
+           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+           ! Check the the effectieve wavelength and the 
+           ! bandwith of O6 image here later and replace 5000 and 1.0d0 below!
+           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!           call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
+        endif
+        if (get_filter_set_name(filters) == "pn") then
+           write(specFile,'(a,a,i3.3,a)') trim(outfile),"_image",iPhase,".ppm"
+           call writeFalseColourPPM(trim(specfile), obsImageSet)
+        endif
+
+     endif
+
+     if (doPvimage) then
+        do iSlit = 1, nSlit
+           write(specFile,'(a,a,i3.3,a,i2.2)') trim(outfile),"_pvimage",iPhase,"_slit_",iSlit
+
+           call smoothPVimage(pvImage(iSlit), vfwhm/2.35, pfwhm/2.35)
+
+        enddo
+     endif
+  end if ! (myRankIsZero)
+
+     if (stokesImage) then
+        do i = 1, nImageLocal
+           call freeImage(obsImageSet(i))
+        end do
+     end if
+
+     if (doPVimage) then
+        do iSlit = 1, nSlit
+           call freePVimage(pvImage(iSlit))
+        enddo
+     endif
+
+777  continue
+     end do incLoop ! end of multiple inclination loop
+     
+     if (associated(starSurface%element)) then
+       call emptySurface(starSurface)
+     end if
+
+#ifdef MPI
+! No need to free the grid if there is only one trip on phaseloop
+ if (myRankGlobal /= 0 .and. .not.noPhaseUpdate .and. nStartPhase /= nEndPhase ) call freeGrid(grid)
+#endif
+  call torus_mpi_barrier !('waiting inside end of phase loop...')
+  enddo phaseLoop
+
+  deallocate(sourceSpectrum)
+  deallocate(sourceSpectrum2)
+
+CONTAINS
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  subroutine do_one_outer_photon_loop
+
+    implicit none
+
+    logical :: hitcore
+    logical :: thrustar
+    logical :: escaped, absorbed
+    logical :: photonFromEnvelope
+
+    type(VECTOR) :: rHatinStar
+    integer :: nScat
+    real :: directionalWeight
+    real :: junk
+    real :: fac1, fac2, fac3
+    real(double) :: vRay, vOverCsqr
+    real :: observedLambda
+    real :: ramanWeight
+    type(PHOTON) :: obsPhoton
+    type(VECTOR) :: positionOc    ! photon position position
+
+  ! photons
+    type(PHOTON) :: outPhoton
+    type(PHOTON) :: tempPhoton
+    type(PHOTON) :: thisPhoton
+    integer :: intPathError
+
+    ! default inner loop indices
+    iInner_beg = 1
+    iInner_end = nInnerLoop
 
 #ifdef MPI
   !====================================================================================
@@ -1415,8 +1717,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
  !    print *, ' '
  ! endif
   
-  iInner_beg = myRankGlobal * (nInnerLoop/nThreadsGlobal) + 1
-  iInner_end = (myrankGlobal+1) * (nInnerLoop/nThreadsGlobal) 
+    iInner_beg = myRankGlobal * (nInnerLoop/nThreadsGlobal) + 1
+    iInner_end = (myrankGlobal+1) * (nInnerLoop/nThreadsGlobal) 
 !  write(*,*) "rank ", myrankglobal, " doing ", iInner_beg, " to " , iinner_end
 
 
@@ -1447,47 +1749,45 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
 !$OMP PRIVATE(thisPhoton, directionalWeight) &
-!$OMP PRIVATE(ilambda, sourceSpectrum, ok) &
+!$OMP PRIVATE(ilambda, ok) &
 !$OMP PRIVATE(hitCore, junk, thisLam, j, obs_weight, thisVel) &
 !$OMP PRIVATE(i1, i2, i3, t1, t2, t3, vray, vovercsqr, fac, observedLambda) &
 !$OMP PRIVATE(t, rHat, islit, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
 !$OMP PRIVATE(escaped, currentScat, absorbed, dlambda, thisChi, thisSca) &
 !$OMP PRIVATE(albedo, tempPhoton, redRegion, thrustar, ramanWeight) &
-!$OMP PRIVATE(outPhoton,intPathError) &
-!$OMP PRIVATE(nTau, escProb, spotPhoton) &
+!$OMP PRIVATE(outPhoton,intPathError, nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
 !$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
-!$OMP PRIVATE(tempOctal, tempsubcell, thistaudble) &
-!$OMP PRIVATE(finaltau) &
-!$OMP SHARED(doTuning, iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
-!$OMP SHARED(grid) &
-!$OMP SHARED(ntot) &
-!$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
-!$OMP SHARED(weightLinePhoton, weightSource, flatSpec, vRot, secondSource, secondSourcePosition) &
-!$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
-!$OMP SHARED(weightContPhoton, useBias, pencilBeam, outVec)&
-!$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, rStar, coolStarPosition) &
-!$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image, screened) &
-!$OMP SHARED(yArray, statArray, stokesImage, obsImageSet, doPvimage) &
+!$OMP PRIVATE(tempOctal, tempsubcell, thistaudble, finaltau ) &
+!$OMP SHARED(iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
+!$OMP SHARED(grid, nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
+!$OMP SHARED(weightLinePhoton, weightSource, flatSpec, secondSource, secondSourcePosition) &
+!$OMP SHARED(ramanSourceVelocity, doRaman) &
+!$OMP SHARED(weightContPhoton, outVec)&
+!$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, coolStarPosition) &
+!$OMP SHARED(viewVec, o6xArray, rotationAxis, o6image, screened) &
+!$OMP SHARED(stokesImage, obsImageSet, doPvimage) &
 !$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
-!$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, mie, noScattering) &
-!$OMP SHARED(miePhase, zeroVec, theta1, theta2, chanceHotRing) &
-!$OMP SHARED(nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, chanceDust) &
-!$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
-!$OMP SHARED(useInterp, photLine,tooFewSamples,boundaryProbs) &
+!$OMP SHARED(sourceSpectrum, sourceSpectrum2, meanr0_cont,wtot0_cont, mie, noScattering) &
+!$OMP SHARED(miePhase, nSpot, chanceSpot, fSpot, gridUsesAMR) &
+!$OMP SHARED(useInterp, photLine ) &
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
 !$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImageLocal) &
-!$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
+!$OMP SHARED(iInner_beg, iInner_end) &
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
-!$OMP SHARED(yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) 
+!$OMP SHARED(o6yArray, yArray, yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) &
+!$OMP REDUCTION(+: ntot,tooFewSamples, boundaryProbs, negativeOpacity)
 
-
-
-
-        nFromEnv = 0
+    rhatinStar = VECTOR(0.d0, 0.d0, 0.d0)
+    hitCore = .false.
+    obsPhoton%lambda = 0.
+    outPhoton%lambda = 0.
+    intPathError = 0
+    photonFromEnvelope = .true.
+    nFromEnv = 0
 !$OMP DO SCHEDULE(DYNAMIC,10)
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
@@ -1548,12 +1848,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  contWindPhoton = .true.
               case DEFAULT
                  call initPhoton(thisPhoton, grid, nLambda, grid%lamArray, sourceSpectrum, &
-                      lineEmission, lamLine, weightLinePhoton, &
-                      weightContPhoton, contPhoton, flatspec, vRot, pencilBeam, &
+                      lamLine, weightLinePhoton, &
+                      weightContPhoton, contPhoton, flatspec, &
                       secondSource, secondSourcePosition, &
-                      ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, &
-                      nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto, weightSource, &
-                      narrowBandImage,source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
+                      ramanSourceVelocity, contWindPhoton, directionalWeight, &
+                      chanceSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto, weightSource, &
+                      source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
 !                 write(*,*) "r, weight ", modulus(thisPhoton%position)/rcore,thisPhoton%weight, weightContPhoton
@@ -1627,6 +1927,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
               j = findIlambda(thisLam, o6xArray, no6pts, ok)
               if (ok) then
                  obs_weight = oneOnFourPi * exp(-tauExt(nTau))
+!$OMP ATOMIC
                  o6yArray(j) = o6yArray(j) + obs_weight
                  thisVel = (thisLam-lamLine)/lamLine
 
@@ -1758,11 +2059,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                  
                  iLambda = findIlambda(observedlambda, grid%lamArray,  nLambda, ok)
                  if (ok) then
-
+!$OMP CRITICAL ( updateYarray )
 !                    write(*,*) "addingPhoton",thisPhoton%stokes%i,obs_weight
-                    yArray(iLambda) = yArray(iLambda) + &
-                         (thisPhoton%stokes * obs_weight)
-                    statArray(iLambda) = statArray(iLambda) + 1.
+                    yArray(iLambda) = yArray(iLambda) + thisPhoton%stokes * obs_weight
 
                     if (thisPhoton%stellar) then
                        if (thisPhoton%scattered) then
@@ -1779,7 +2078,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                           yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (thisPhoton%stokes * obs_weight)
                        endif
                     endif
-
+!$OMP END CRITICAL ( updateYarray )
                  endif
                  if (stokesImage) then
                     thisVel = 0. ! no velocity for dust continuum
@@ -1801,9 +2100,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !                    if (thisPHoton%resonanceline) fac2 = directionalWeight
                     iLambda = findIlambda(observedlambda, grid%lamArray, nLambda, ok)
                     if (ok) then
+!$OMP CRITICAL ( updateYarray )
                        yArray(iLambda) = yArray(iLambda) + &
                             (thisPhoton%stokes * (fac2 * oneOnFourPi * escProb * exp(-tauExt(nTau))))
-                       statArray(iLambda) = statArray(iLambda) + 1.
+!$OMP END CRITICAL ( updateYarray )
                     endif
 
                     obs_weight = oneOnFourPi * escProb * exp(-tauExt(nTau))*fac2
@@ -1863,8 +2163,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        fac3 = contTau(nTau,i1)
                        if (thinLine) fac3 = 0.
                        obs_weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
-                       yArray(iLambda) = yArray(iLambda) + &
-                                           (thisPhoton%stokes * obs_weight)
+!$OMP CRITICAL ( updateYarray )
+                       yArray(iLambda) = yArray(iLambda) + (thisPhoton%stokes * obs_weight)
 
                        if (thisPhoton%stellar) then
                           if (thisPhoton%scattered) then
@@ -1881,10 +2181,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                              yArrayThermalDirect(iLambda) = yArrayThermalDirect(iLambda) + (thisPhoton%stokes * obs_weight)
                           endif
                        endif
-
-
-
-                       statArray(iLambda) = statArray(iLambda) + 1.
+!$OMP END CRITICAL ( updateYarray )
 
                        meanr0_cont = meanr0_cont + modulus(thisPhoton%position) &
                             * thisPhoton%stokes%i*obs_weight
@@ -2217,6 +2514,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
                     j = findIlambda(observedLambda, o6xArray, no6pts, ok)
                     if (ok) then
+!! !$OMP ATOMIC
                        o6yArray(j) = o6yArray(j) + obs_weight
                     endif
 
@@ -2292,6 +2590,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                       
 
                     if (ok) then
+!$OMP CRITICAL ( updateYarray )
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
 
 
@@ -2316,7 +2615,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                           endif
                        endif
 !                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
-                       statArray(iLambda) = statArray(iLambda) + 1.
+!$OMP END CRITICAL ( updateYarray )
                     endif
                     if (doRaman) then
                        thisVel = (1./(1./observedLambda  + 1./1215.67))/1031.928-1.
@@ -2357,8 +2656,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                        if (obsPhoton%resonanceLine) obs_weight = obs_weight * directionalWeight
 
                        if (ok) then
+!$OMP CRITICAL ( updateYarray )
                           yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
-                          statArray(iLambda) = statArray(iLambda) + 1.
+!$OMP END CRITICAL ( updateYarray )
                        endif
 
                        thisVel = observedLambda
@@ -2409,7 +2709,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                           obs_weight = exp(-(tauExt(nTau)+fac3)) * oneOnFourpi & 
                           * fac2 * directionalWeight * contWeightArray(i1)
 
-                          
+!$OMP CRITICAL ( updateYarray )
                           if (ok) then
                              yArray(iLambda) = yArray(iLambda) + &
                                   (obsPhoton%stokes*obs_weight)
@@ -2455,8 +2755,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                                         (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
                                 endif
                              endif
-
                           endif
+!$OMP END CRITICAL ( updateYarray )
 
 
                           thisVel = (observedlambda-lamLine)/lamLine
@@ -2473,12 +2773,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
                           endif
 
 
-                          statArray(iLambda) = statArray(iLambda) + 1.
                        enddo
                     endif
                  endif
                  
-                 call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
+                 call scatterPhoton(grid,thisPhoton, zeroVector, outPhoton, mie, &
                        miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc, &
                        currentOctal, currentSubcell)
                  thisPhoton = outPhoton
@@ -2698,320 +2997,15 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         call torus_mpi_barrier
 
-        if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
+      end subroutine do_one_outer_photon_loop
 
-!        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
-        do i = 1, nLambda
-           errorArray(iOuterLoop,1:nLambda) = yArray(i) - oldyArray(i)
-        enddo
-         oldyArray = yArray  
-  
-
-
-     end do outerPhotonLoop ! outer photon loop
-
-#ifdef _OPENMP
-
-#else
-   deallocate(lambda)
-   deallocate(tauSca)
-   deallocate(tauExt)
-   deallocate(tauAbs)
-   deallocate(linePhotonalbedo)
-   deallocate(contTau)
-   deallocate(contWeightArray)
-#endif
-
-
-     if (doTuning) call tune(6, "All Photon Loops")  ! Stop a stopwatch
-
-#ifdef MPI
-     tempInt = 0
-     call MPI_REDUCE(tooFewSamples,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-     tooFewSamples = tempInt
-
-     call MPI_REDUCE(boundaryProbs,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-     boundaryProbs = tempInt
-
-     call MPI_REDUCE(negativeOpacity,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-     negativeOpacity = tempInt
-
-     call MPI_REDUCE(nTot,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-     nTot = tempInt
-
- if (stokesimage) then
-   do i = 1, nImageLocal
-     allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
-     allocate(tempRealArray2(SIZE(obsImageSet(i)%pixel)))
-     allocate(tempDoubleArray(SIZE(obsImageSet(i)%pixel)))
-     allocate(tempDoubleArray2(SIZE(obsImageSet(i)%pixel)))
-     tempRealArray = 0.0
-     tempRealArray2 = 0.0
-     tempDoubleArray = 0.0_db
-     tempDoubleArray2 = 0.0_db
-
-     tempDoubleArray = reshape(obsImageSet(i)%pixel%i,(/SIZE(tempDoubleArray)/))
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%pixel%i = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%i))
-
-     tempDoubleArray = reshape(obsImageSet(i)%pixel%q,(/SIZE(tempDoubleArray)/))
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%pixel%q = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%q))
-
-     tempDoubleArray = reshape(obsImageSet(i)%pixel%u,(/SIZE(tempDoubleArray)/))
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%pixel%u = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%u))
-
-     tempDoubleArray = reshape(obsImageSet(i)%pixel%v,(/SIZE(tempDoubleArray)/))
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%pixel%v = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%v))
-
-
-     tempRealArray = reshape(obsImageSet(i)%vel,(/SIZE(tempRealArray)/))
-     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%vel = reshape(tempRealArray2,SHAPE(obsImageSet(i)%vel))
-
-     tempRealArray = reshape(obsImageSet(i)%totWeight,(/SIZE(tempRealArray)/))
-     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%totWeight = reshape(tempRealArray2,SHAPE(obsImageSet(i)%totWeight))
-
-     deallocate(tempRealArray)
-     deallocate(tempRealArray2)
-     deallocate(tempDoubleArray)
-     deallocate(tempDoubleArray2)
-   end do
-     if (doRaman) then
-        print *, 'MPI o6Image not implemented!'
-        stop
-     endif
-  endif ! (stokesimage)
-
- if (doPvimage) then
-   do iSlit = 1, nSlit
-     allocate(tempDoubleArray(SIZE(pvImage(i)%pixel)))
-     allocate(tempDoubleArray2(SIZE(pvImage(i)%pixel)))
-
-     tempDoubleArray = reshape(pvImage(i)%pixel,(/SIZE(tempDoubleArray)/))
-     tempDoubleArray2 = 0.0_db
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     pvImage(i)%pixel = reshape(tempDoubleArray2,SHAPE(pvImage(i)%pixel))
-
-     deallocate(tempDoubleArray)
-     deallocate(tempDoubleArray2)
-
-     allocate(tempRealArray(SIZE(pvImage(i)%vAxis)))
-     tempRealArray = 0.0
-     call MPI_REDUCE(pvImage(i)%vAxis,tempRealArray,SIZE(pvImage(i)%vAxis),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     pvImage(i)%vAxis = tempRealArray
-     deallocate(tempRealArray)
-
-     allocate(tempRealArray(SIZE(pvImage(i)%pAxis)))
-     tempRealArray = 0.0
-     call MPI_REDUCE(pvImage(i)%pAxis,tempRealArray,SIZE(pvImage(i)%pAxis),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     pvImage(i)%pAxis = tempRealArray
-     deallocate(tempRealArray)
-
-   end do ! iSlit 
-endif ! (doPvimage)
-#endif
-
- if (myRankIsZero) then 
-
-     write(message,*) " "
-     call writeInfo(message, TRIVIAL)
-     write(message,'(a)') "Model summary"
-     call writeInfo(message, TRIVIAL)
-     write(message,'(a)') "-------------"
-     call writeInfo(message, TRIVIAL)
-     write(message,*) " "
-     call writeInfo(message, TRIVIAL)
-
-     
-     if (grid%adaptive) then
-        write(message,*)  tooFewSamples, ' rays had 2 or less samples.'
-        call writeInfo(message, TRIVIAL)
-        write(message,*) BoundaryProbs, ' rays had numerical problems with octal boundaries.'
-        call writeInfo(message, TRIVIAL)
-        write(message,*) negativeOpacity, ' rays had problems with negative opacity values.'
-        call writeInfo(message, TRIVIAL)
-     end if
-     write(message,*) " "
-     call writeInfo(message, TRIVIAL)
-     write(message,*) "Average # of scattering per photon:: ", real(nTot)/real(nPhotons)
-     call writeInfo(message, TRIVIAL)
-     write(message,*) " " 
-     call writeInfo(message, TRIVIAL)
-
- end if 
-
-!     if (.not.grid%cartesian.and.(grid%rCore /= 0.)) then
-!        if (wtot_line /= 0.) write(*,*) "Mean radius of line formation",meanr_line/wtot_line/grid%rCore
-!        if (wtot0_line /= 0.) write(*,*) "Mean radius of line zero",meanr0_line/wtot0_line/grid%rCore
-!        if (wtot_cont /= 0.) write(*,*) "Mean radius of cont formation",meanr_cont/wtot_cont/grid%rCore
-!        if (wtot0_cont /=0.) write(*,*) "Mean radius of cont zero",meanr0_cont/wtot0_cont/grid%rCore
-!     endif
-
- varianceArray = STOKESVECTOR(0.d0, 0.d0, 0.d0, 0.d0)
-! do i = 1, nLambda
-!    do j = 1, nOuterLoop
-!    varianceArray(i)%i = varianceArray(i)%i + (errorArray(j,i)%i - yArray(i)%i/dble(nOuterLoop))**2
-!    varianceArray(i)%q = varianceArray(i)%q + (errorArray(j,i)%q - yArray(i)%q/dble(nOuterLoop))**2
-!    varianceArray(i)%u = varianceArray(i)%u + (errorArray(j,i)%u - yArray(i)%u/dble(nOuterLoop))**2
-!    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
-! enddo
-!enddo
- if (myRankIsZero) then 
-    if (PRESENT(overrideFilename)) outfile = overrideFilename
-    if (nLambda > 1) then
-       if (nPhase == 1) then
-          
-          call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, varianceArray,&
-               .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-          
-          specFile = trim(outfile)//"_stellar_direct"
-          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, varianceArray,&
-            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-          
-          specFile = trim(outfile)//"_stellar_scattered"
-          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarScattered, varianceArray,&
-               .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-          
-          specFile = trim(outfile)//"_thermal_direct"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalDirect, varianceArray,&
-            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-
-       specFile = trim(outfile)//"_thermal_scattered"
-       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, varianceArray,&
-            .false., sed, objectDistance, jansky, SIsed, .false., lamLine)
-          
-       
-       if (velocitySpace) then
-          specFile = trim(outfile)//"_v"
-          call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, varianceArray,&
-               .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
-       endif
-       
-    else
-       write(tempChar,'(i3.3)') iPhase
-       specFile = trim(outfile)//trim(tempChar)
-       
-        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArray, varianceArray, &
-             .false., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
-        
-        if (velocitySpace) then
-           tempChar = trim(specFile)//"_v"
-           call writeSpectrum(tempChar,  nLambda, grid%lamArray, yArray, varianceArray,&
-                .true., sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
-        endif
-     endif
-        
-        if (doRaman) then
-           write(tempChar,'(i3.3)') iPhase
-           o6filename = trim(outfile)//"_o6_"//trim(tempChar)//".dat"
-           open(20,file=o6filename,status="unknown",form="formatted")
-           do i = 1, no6pts
-              t1 = 1./(o6xArray(2)-o6xArray(1))
-              write(20,*) o6xarray(i),o6yarray(i)*t1,1.e-20,1.e-30,1.e-20,1.e-30
-           enddo
-           close(20)
-        endif
-     endif
-
-     if (stokesimage) then
-        do i = 1, nImageLocal
-           name_filter = get_filter_name(filters, i)
-           bandwidth = 0.5*FWHM_filters(filters, i)  ! 1/2 of FWHM  [A]
-           lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
-!           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
-!           call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
-           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
-           if (torusVersion(2:2) == "2") specfile = originaloutfile
-
-
-#ifdef USECFITSIO
-           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
-#endif
-
-!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
-!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
-!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"
-!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
-!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_u",iPhase,".fits"
-!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
-        end do
-        if (doRaman) then
-           write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
-           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-           ! Check the the effectieve wavelength and the 
-           ! bandwith of O6 image here later and replace 5000 and 1.0d0 below!
-           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!           call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
-        endif
-        if (get_filter_set_name(filters) == "pn") then
-           write(specFile,'(a,a,i3.3,a)') trim(outfile),"_image",iPhase,".ppm"
-           call writeFalseColourPPM(trim(specfile), obsImageSet)
-        endif
-
-     endif
-
-     if (doPvimage) then
-        do iSlit = 1, nSlit
-           write(specFile,'(a,a,i3.3,a,i2.2)') trim(outfile),"_pvimage",iPhase,"_slit_",iSlit
-
-           call smoothPVimage(pvImage(iSlit), vfwhm/2.35, pfwhm/2.35)
-
-        enddo
-     endif
-  end if ! (myRankIsZero)
-
-     if (stokesImage) then
-        do i = 1, nImageLocal
-           call freeImage(obsImageSet(i))
-        end do
-     end if
-
-     if (doPVimage) then
-        do iSlit = 1, nSlit
-           call freePVimage(pvImage(iSlit))
-        enddo
-     endif
-
-777  continue
-     end do incLoop ! end of multiple inclination loop
-     
-     if (associated(starSurface%element)) then
-       call emptySurface(starSurface)
-     end if
-
-#ifdef MPI
-! No need to free the grid if there is only one trip on phaseloop
- if (myRankGlobal /= 0 .and. .not.noPhaseUpdate .and. nStartPhase /= nEndPhase ) call freeGrid(grid)
-#endif
-  call torus_mpi_barrier !('waiting inside end of phase loop...')
-  enddo phaseLoop
-
-  deallocate(statArray)
-  deallocate(sourceSpectrum)
-  deallocate(sourceSpectrum2)
-
-CONTAINS
 
   subroutine define_rotation_axis
 
     type(VECTOR) :: tempVec
     type(VECTOR) :: normToRotation
-    type(VECTOR), parameter :: yAxis = VECTOR(0.,1.,0.)
 
-    rotationAxis = VECTOR(0., 0., 1.)
+    rotationAxis = zHat
 
     !
     ! Redefining the rotation axis here.
@@ -3036,7 +3030,7 @@ CONTAINS
        rotationAxis = rotateX(rotationAxis, dble(dipoleOffset))
     endif
 
-    normToRotation = rotationAxis .cross. yAxis
+    normToRotation = rotationAxis .cross. yHat
     call normalize(normToRotation)
 
 ! Second argument was inclination parameter in version 1. Removed in version 2 as 

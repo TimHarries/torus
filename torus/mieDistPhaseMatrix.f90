@@ -37,6 +37,7 @@ contains
       type(sphereEntry) :: sphereTable(nDist-1)
       real :: x
       integer :: nc, nci, max_nci = 0
+!$OMP THREADPRIVATE (max_nci)
       real :: cosTheta
       real, allocatable :: pnmllg(:,:)
 
@@ -201,6 +202,7 @@ contains
       real :: p11tot, pltot, p33p11tot, p34p11tot
 
       complex :: ci = (0.0,1.0)
+!$OMP THREADPRIVATE (ci)
 
       p11tot = 0.
       pltot = 0.

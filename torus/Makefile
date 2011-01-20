@@ -287,7 +287,7 @@ endif
 
 ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort
-    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+    FASTFLAG= -O3 -xT
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=

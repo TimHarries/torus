@@ -909,11 +909,8 @@ contains
             "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
        call getReal("beta", beta, cLine, nLines, &
             "Wind velocity law index (beta): ","(a,f3.1,a)",0.,ok,.true.)
-       call getReal("vo6", vo6, cLine, nLines, &
-            "Vel width of O6 source (km/s): ","(a,1pe8.2,a)",20.,ok,.true.)
        call getReal("ramvel", ramVel, cLine, nLines, &
             "Absolute speed of O6 source (km/s): ","(a,1pe8.2,a)",0.,ok,.true.)
-       vo6 = vo6 * 1.e5
        ramVel = ramVel * 1.e5
        vterm = vterm  * 1.e5
        doRaman = .true.

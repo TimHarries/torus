@@ -1138,6 +1138,7 @@ contains
 
 #ifdef _OPENMP
     integer :: omp_get_thread_num
+    integer(bigInt) ::  iCellSeed
 #endif
 !$OMP THREADPRIVATE (oldpops1, oldpops2, oldpops3, oldpops4)
 
