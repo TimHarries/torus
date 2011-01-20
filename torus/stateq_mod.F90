@@ -3759,7 +3759,6 @@ contains
     integer, parameter :: ntrial_max = 50
 #ifdef MPI
      integer :: n_rmdr, m, tempInt, nTemp, nVoxels, nOctal
-     integer :: tag = 0
      real(double), allocatable :: tArrayd(:), tempArrayd(:)
 #endif
 
