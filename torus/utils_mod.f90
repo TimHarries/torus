@@ -3870,6 +3870,7 @@ END SUBROUTINE GAUSSJ
   end subroutine convertToFnu
 
   subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
+    use input_variables, only : zetacutoff
     use constants_mod
     implicit none
     real(double) :: t, rho0
@@ -3879,7 +3880,7 @@ END SUBROUTINE GAUSSJ
     real(double) ::  r0
     real(double) :: mu, soundSpeed, mass, zinner, eThermal, eGrav, dv
     integer :: i
-    real(double), parameter :: zetaCrit = 5.d0
+    real(double), parameter :: zetaCrit = 1.2353d0
     real(double) :: dr, drhodr, d2rhodr2
     character(len=80) :: message
 
@@ -3889,14 +3890,14 @@ END SUBROUTINE GAUSSJ
     phi = 0.d0
 
     do i = 1, nr
-      zeta(i) = log10(zinner) + (log10(zetaCrit)-log10(zinner))*dble(i-1)/dble(nr-1)
+      zeta(i) = log10(zinner) + (log10(zetacutoff)-log10(zinner))*dble(i-1)/dble(nr-1)
    enddo
    zeta(1:nr) = 10.d0**zeta(1:nr)
    zeta(1) = 0.d0
    soundSpeed = sqrt((kErg*t) /(mu*mHydrogen))
 
-!Thaw - changed to match gritschneder
-!   r0 = 0.89d0 * soundSpeed / sqrt(bigG * rho0)
+!Thaw - Gritschneder is @ 1.6pc
+!  r0 = 0.89d0 * soundSpeed / sqrt(bigG * rho0)
    r0 = 1.6d0*pctocm
 
 
@@ -3929,20 +3930,20 @@ END SUBROUTINE GAUSSJ
    enddo
 
 !=== Thaw - this could be a massive fudge, wanting to replicate Gritschneder and need a 96SolMass BES ====
-   do i = 2, nr
-      rho(i) = rho(i)*(96.d0*mSol/mass)
-   end do
+!   do i = 2, nr
+!      rho(i) = rho(i)*(96.d0*mSol/mass)
+!   end do
    
-   eThermal = 0.d0
-   eGrav = 0.d0
-   mass = 0.d0
-   do i = 2, nr
+!   eThermal = 0.d0
+!   eGrav = 0.d0
+!   mass = 0.d0
+!   do i = 2, nr
 !   do i = 1, nr
-      dv = fourPi*r(i)**2*(r(i)-r(i-1))
-      mass = mass + rho(i)*dv
-      eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
-      eThermal = eThermal + (dv*rho(i)/(mu*mHydrogen))*kerg*t
-   enddo
+!      dv = fourPi*r(i)**2*(r(i)-r(i-1))
+!      mass = mass + rho(i)*dv
+!      eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
+!      eThermal = eThermal + (dv*rho(i)/(mu*mHydrogen))*kerg*t
+!   enddo
 
 !============================================================================
 
@@ -3950,7 +3951,7 @@ END SUBROUTINE GAUSSJ
     call writeInfo(message, TRIVIAL)
     !print *, "mass", mass
     !print *, "msol", msol
-    write(message,'(a,f5.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
+    write(message,'(a,f7.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
    call writeInfo(message, TRIVIAL)
    write(message,'(a,1pe12.3)') "Gravitational p.e.  contained in Bonnor-Ebert sphere is: ",eGrav
    call writeInfo(message, TRIVIAL)
@@ -3958,7 +3959,6 @@ END SUBROUTINE GAUSSJ
    call writeInfo(message, TRIVIAL)
    write(message,'(a,f6.3)') "Ratio of thermal enery/grav energy: ",eThermal/eGrav
    call writeInfo(message, TRIVIAL)
-
  end subroutine bonnorEbertRun
       
   subroutine regular_tri_quadint(t1,t2,t3,weights)

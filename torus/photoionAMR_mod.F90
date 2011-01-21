@@ -120,7 +120,7 @@ contains
     deltaTforDump = 3.14d10 !1kyr
     nextDumpTime = deltaTforDump
     if (grid%geometry == "hii_test") deltaTforDump = 1.d8
-    if(grid%geometry == "bonnor") deltaTforDump = 1.574d11 !5kyr
+    if(grid%geometry == "bonnor") deltaTforDump = 1.57d11 !5kyr
 
     iunrefine = 0
     startFromNeutral = .false.
@@ -202,7 +202,9 @@ contains
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
 	  !if(grid%geometry /= "bonnor") then
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime, .True., .true.)
+          print *, "nlambda ", nlambda
+          stop
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 100, loopLimitTime, looplimittime, .True., .true.)
           !end if
 
           call writeInfo("Done",TRIVIAL)
@@ -592,9 +594,9 @@ contains
     allocate(nEscapedArray(1:nThreads-1))
     
 !    write(*,*) "abundances ",grid%ion(1:5)%abundance
-    
-    nuStart = cSpeed / (1000.e4 * 1.d-8)
-    nuEnd =  cSpeed / (10. * 1.d-8) ! 2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
+
+       nuStart = cSpeed / (1000.e4 * 1.d-8)
+       nuEnd =  cSpeed / (10. * 1.d-8) ! 2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
 
     do i = 1, nFreq
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
@@ -650,7 +652,7 @@ contains
        
        if(.not. monteCheck) then
           !waymaker photoionization loop
-          nmonte = 100000
+          nmonte = 3000000
        else
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
@@ -675,6 +677,10 @@ contains
 
     nIter = 0
     
+    if(grid%geometry == "Lexington") then
+       maxIter = 20
+    end if
+
     converged = .false.
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
@@ -1121,7 +1127,9 @@ contains
 !    call writeVtkFile(grid, "current.vtk", &
 !         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
-!    if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
+    if(grid%geometry == "lexington") then
+       if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
+    end if
 if (.false.) then
        call dumpLexington(grid, epsoverdeltat)
        fac = 2.06e37
@@ -1197,15 +1205,13 @@ if (.false.) then
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     thisThreadConverged = .false.    
     failed = .false.
-!    nFailedRank = 0
- !   nFailedTotal = 0
 
- !    unconTThisIter = 0.
- !    unconTThisIterRank = 0.
      anyUndersampled = .false.
-   !  minCrossings = 15000
-     minCrossings = 500
-
+     if(grid%geometry == "hii_test") then
+        minCrossings = 15000
+     else
+        minCrossings = 15000
+     end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
           do iOctal =  iOctal_beg, iOctal_end
@@ -1315,10 +1321,10 @@ if (.false.) then
     call torus_mpi_barrier
 
 ! if(tlimit /= 1.d20) then
-   write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
-  call writeVtkFile(grid, vtkFilename, &
-      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-      "dust1        ","radmom       "/))
+!   write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+!  call writeVtkFile(grid, vtkFilename, &
+!      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+!      "dust1        ","radmom       "/))
 ! call writeAMRgrid("tmp.grid",.false.,grid)
 ! end if
 enddo
@@ -2910,12 +2916,6 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
         
-
-!PhotoIonRate is currently zero
-!This is because both chargeExchangeIonization and photoioncoeff are both zero!
-!can ignore the charge exchange bits, they are wacky - focus on photoiocoeff
-
-
         photoIonRate = (epsOverDeltaT / (v*1.d30))*thisOctal%photoIonCoeff(subcell,iIon) + chargeExchangeIonization
         
 
@@ -2936,11 +2936,14 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 !====================
      
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
-        if(thisOctal%ionFrac(subcell, iIon) == 0) then
+        if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
            print *, ionFrac(iend)
            stop
         end if
 
+        if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
+           thisOctal%ionFrac(subcell, iIon) = 1.d-50
+        end if
 
      enddo
 
@@ -2948,6 +2951,10 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
      thisOctal%ionFrac(subcell, iEnd) = 1.d0 - SUM(thisOctal%ionFrac(subcell,iStart:iEnd-1))
 
      thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
+
+     if(thisOctal%ionFrac(subcell, iend) == 0.d0) then
+        thisOctal%ionFrac(subcell, iend) = 1.d-50
+     end if
 
         k = iEnd + 1
      end do

@@ -192,6 +192,10 @@ contains
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
     
+    !Thaw
+    call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
+            "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)
+
     !Thaw --- user friendly boundaries
   !  call getString("xplusbound", xplusboundString, cLine, fLine, nLines, &
   !       "positive x boundary condition:  ","(a,a,a)","free",ok, .true.)

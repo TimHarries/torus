@@ -7474,7 +7474,8 @@ CONTAINS
     !thisOctal%gamma(subcell) = 1.d01
 !    thisOctal%gamma(subcell) = 5./3.
     thisOctal%gamma(subcell) = 1.0
-    thisOctal%iEquationOfState(subcell) = 0
+!    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%iEquationOfState(subcell) = 1
       
 
     thisOctal%inFlow(subcell) = .true.

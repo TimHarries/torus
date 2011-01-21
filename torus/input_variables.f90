@@ -718,6 +718,9 @@ module input_variables
 
   logical :: timeDependentRT
   
+!Dimensionless cutoff radius for Bonnor-Ebert Sphere
+  real(double) :: zetacutoff 
+
 end module input_variables
 
 

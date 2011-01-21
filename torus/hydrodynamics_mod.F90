@@ -1294,16 +1294,16 @@ contains
 !             if (iequationofstate == 0) then
 
 
-             if (thisoctal%iequationofstate(subcell) /= 1) then 
+             !Thaw - apply similar rhie-chow interpolation here?
+             if (thisoctal%iequationofstate(subcell) /= 1) then             
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * &!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) * thisoctal%u_i_plus_1(subcell) - &
                      thisoctal%pressure_i_minus_1(subcell) * thisoctal%u_i_minus_1(subcell)) / dx
                      
-
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0)* & !gravity
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
-
+             
 
 
 !             endif
