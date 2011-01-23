@@ -204,7 +204,8 @@ contains
 	  !if(grid%geometry /= "bonnor") then
           print *, "nlambda ", nlambda
           stop
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 100, loopLimitTime, looplimittime, .True., .true.)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 100, loopLimitTime, looplimittime, .True.,&
+                  .true.)
           !end if
 
           call writeInfo("Done",TRIVIAL)
@@ -562,7 +563,7 @@ contains
 !    real :: unconTThisIter, unconTThisIterRank
 !    integer :: failCount
     logical :: anyUndersampled, undersampledTOT
-    character(len=80) :: vtkFilename
+!    character(len=80) :: vtkFilename
     logical :: underSamFailed
 
     !optimisation variables
