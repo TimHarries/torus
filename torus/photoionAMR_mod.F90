@@ -1,5 +1,6 @@
 !Photoionization module - started on October 4th 2005 by th
 
+
 module photoionAMR_mod
 
 #ifdef MPI
@@ -201,12 +202,10 @@ contains
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-	  !if(grid%geometry /= "bonnor") then
-          print *, "nlambda ", nlambda
-          stop
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 100, loopLimitTime, looplimittime, .True.,&
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime, .True.,&
+               .false.)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .True.,&
                   .true.)
-          !end if
 
           call writeInfo("Done",TRIVIAL)
        else
@@ -354,7 +353,7 @@ contains
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 60, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -563,7 +562,7 @@ contains
 !    real :: unconTThisIter, unconTThisIterRank
 !    integer :: failCount
     logical :: anyUndersampled, undersampledTOT
-!    character(len=80) :: vtkFilename
+    character(len=80) :: vtkFilename
     logical :: underSamFailed
 
     !optimisation variables
@@ -663,7 +662,7 @@ contains
 		!nmonte = 100000
              else
                 !nMonte = 100.d0 * 2**(maxDepthAMR)
-                nmonte = 10000
+                nmonte = 300000
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -1209,9 +1208,11 @@ if (.false.) then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 15000
+        minCrossings = 10000
+     else if(grid%geometry == "lexington") then
+        minCrossings = 10000
      else
-        minCrossings = 15000
+        minCrossings = 10000
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
@@ -1230,13 +1231,13 @@ if (.false.) then
                       
                       !    print *, "deltaT = ", deltaT
                       
-                      if(deltaT > 1.d-2) then
+                      if(deltaT > 1.5d-2) then
                          if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                             anyUndersampled = .true.
                          endif
                       end if
                       
-                      if(deltaT < 1.d-2 .and. .not. failed) then
+                      if(deltaT < 1.5d-2 .and. .not. failed) then
                          thisThreadConverged = .true.
                       else 
                          thisThreadConverged = .false.  
@@ -4655,7 +4656,7 @@ end subroutine readHeIIrecombination
     type(octal), pointer  :: child 
     integer :: subcell, i
   
-    minCrossings = 300
+    minCrossings = 100
 
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

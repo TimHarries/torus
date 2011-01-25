@@ -214,6 +214,8 @@ contains
 
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
        write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac
+       print *, "Lum from spectrum", dble(sumSurfaceLuminosity)
+       print *, "fac", fac
        call writeInfo(message, TRIVIAL)
 
     end do
@@ -328,7 +330,7 @@ contains
              lucyfileNameout, lucyfileNamein)
         else
 #ifdef MPI
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 5, 1.d30, 0.d0, .False., &
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 100, 1.d30, 0.d0, .False., &
                 .true., sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
