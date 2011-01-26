@@ -555,7 +555,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
 
 !================TOMS VARIABLES=======================
-    real(double) :: deltaT  
+    real(double) :: deltaT, fluctuationCheck 
 !    integer :: nFailedRank, nFailedTotal, nFailedLast
 !    integer :: deltaFails
 !    real :: unconTLastIter = 0.0
@@ -652,17 +652,22 @@ contains
        
        if(.not. monteCheck) then
           !waymaker photoionization loop
-          nmonte = 3000000
+          if(grid%octreeRoot%twoD) then
+                nMonte = (4.d0**(maxDepthAMR))
+             else if(grid%octreeRoot%threeD) then
+                nMonte = (8.d0**(maxDepthAMR))
+             else
+                !nMonte = 2**(maxDepthAMR)
+                nMonte = 100000
+             end if
        else
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
                 nMonte = 10000.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
                 nMonte = 10.d0 * (8.d0**(maxDepthAMR))
-		!nmonte = 100000
              else
-                !nMonte = 100.d0 * 2**(maxDepthAMR)
-                nmonte = 300000
+                nMonte = 1.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -677,10 +682,6 @@ contains
 
     nIter = 0
     
-    if(grid%geometry == "Lexington") then
-       maxIter = 20
-    end if
-
     converged = .false.
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
@@ -1128,10 +1129,10 @@ contains
 !         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
     if(grid%geometry == "lexington") then
-       if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
+       call dumpLexingtonMPI(grid, epsoverdeltat)
     end if
 if (.false.) then
-       call dumpLexington(grid, epsoverdeltat)
+       call dumpLexingtonMPI(grid, epsoverdeltat)
        fac = 2.06e37
 
        luminosity1 = 0.d0
@@ -1212,7 +1213,7 @@ if (.false.) then
      else if(grid%geometry == "lexington") then
         minCrossings = 10000
      else
-        minCrossings = 10000
+        minCrossings = 300
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
@@ -1231,25 +1232,49 @@ if (.false.) then
                       
                       !    print *, "deltaT = ", deltaT
                       
-                      if(deltaT > 1.5d-2) then
+                      if(deltaT > 1.0d-2) then
                          if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                             anyUndersampled = .true.
                          endif
                       end if
                       
-                      if(deltaT < 1.5d-2 .and. .not. failed) then
+                      if(deltaT < 1.0d-2 .and. .not. failed) then
                          thisThreadConverged = .true.
                       else 
-                         thisThreadConverged = .false.  
+                         if(niter > 2) then
+                            fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
+                                 thisOctal%TLastLastIter(subcell))
+
+                            if(fluctuationCheck < 1.0d-2 .and. .not. failed) then
+                               thisThreadConverged = .true.
+                            else
+                               thisThreadConverged = .false.                             
+                               if(deltaT /= 0.d0 .and. .not. failed) then
+                               print *, "deltaT = ", deltaT
+                               print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+                               print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+                               print *, "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
+                               print *, "cell center ", subcellCentre(thisOctal,subcell)
+                               print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                            end if
+                               failed = .true.
+                            end if
+                         else
+                            thisThreadConverged = .false.  
 			 
-                         if(deltaT /= 0.d0 .and. .not. failed) then
-                            print *, "deltaT = ", deltaT
-                            print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-                            print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-                            print *, "cell center ", subcellCentre(thisOctal,subcell)
-                            print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                            if(deltaT /= 0.d0 .and. .not. failed) then
+                               print *, "deltaT = ", deltaT
+                               print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+                               print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+                               print *, "cell center ", subcellCentre(thisOctal,subcell)
+                               print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                            end if
+                            failed = .true.
                          end if
-                         failed = .true.
+                      end if
+                      !Check for temperature oscillations
+                      if(niter > 1) then
+                         thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
                       end if
                       thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                    end if
@@ -1311,7 +1336,7 @@ if (.false.) then
      if(myRank == 0) then
       print *, "photoionization loop converged at iteration ", niter
      end if
-  else if(underSampledTOT .and. nMonte < 2.5d9 .and. monteCheck) then
+  else if(underSampledTOT .and. nMonte < 1.d9 .and. monteCheck) then
      if(myRank == 0) then
         print *, "Undersampled cell, increasing nMonte"
      end if 
@@ -2198,7 +2223,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                   !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -2224,7 +2249,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                 !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -3380,6 +3405,240 @@ function svs1982(t, alpharad, xrad) result (rate)
 end function svs1982
 
 
+
+!Thaw - dumpLexington is incompatiable with MPI - will possibly move this subroutine to mpi_amr_mod
+subroutine dumpLexingtonMPI(grid, epsoverdt)
+  include 'mpif.h'
+  type(GRIDTYPE) :: grid
+  type(OCTAL), pointer :: thisOctal, sOctal
+  integer :: subcell
+  integer :: i, j
+  real(double) :: r, theta, phi
+  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+  real(double) :: oirate, oiirate, oiiirate, oivrate
+  real(double) :: v, epsoverdt
+  real :: fac
+  real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
+  real(double) :: cooling, dustHeating
+  real :: netot
+
+  !dumpLexingtonMPI specific variables
+  integer :: ierr
+  integer, parameter :: nStorage = 26, tag=50
+  real(double) :: tempStorage(nStorage), tval
+  integer :: status(MPI_STATUS_SIZE)
+  integer :: sendThread
+  integer, parameter :: nPoints = 500
+  type(VECTOR) :: position, startPoint, endPoint, direction, cen, octVec
+  logical :: stillLooping
+
+
+  startPoint = vector(0.d0, 0.d0, 0.d0)
+  endPoint = vector(4.4d9, 0.d0, 0.d0)
+
+  thisOctal => grid%octreeRoot
+  position = startPoint
+  direction = endPoint - startPoint
+  call normalize(direction)
+
+  !Collate results to write to file in rank 0
+  if(myRankGlobal == 0) then
+        open(20,file="lexington.dat",form="formatted",status="unknown")
+        open(21,file="orates.dat",form="formatted",status="unknown")
+        open(22,file="ne.dat",form="formatted",status="unknown")
+
+
+        do i=1, 500
+           r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
+           position = vector(r, 0.d0, 0.d0)
+           call findSubcellLocal(position, thisOctal, subcell)
+           sendThread = thisOctal%mpiThread(subcell)
+           
+           t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
+           oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
+           heating = 0.d0; cooling = 0.d0
+           
+
+
+           call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+           call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+
+!           cen%x = tempStorage(1)
+!           cen%x = tempStorage(2)
+!           cen%x = tempStorage(3)
+           hi = tempStorage(1)
+           hei = tempStorage(2)
+           oii = tempStorage(3)
+           oiii = tempStorage(4)
+           cii = tempStorage(5)
+           ciii = tempStorage(6)
+           civ = tempStorage(7)
+           nii = tempStorage(8)
+           niii = tempStorage(9)
+           niv = tempStorage(10)
+           nei = tempStorage(11)
+           neii = tempStorage(12)
+           neiii = tempStorage(13)
+           neiv = tempStorage(14)
+           ne = tempStorage(15)
+           oirate = tempStorage(16)
+           oiirate = tempStorage(17)
+           oiiirate = tempStorage(18)
+           oivrate = tempStorage(19)
+           heating = tempStorage(20)
+           cooling = tempStorage(21)
+           netot = tempStorage(22)
+           tVal = tempStorage(23)
+           t = tempStorage(24)
+
+        write(21,'(f5.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
+
+        write(20,'(f5.3,f9.1,  14f8.3)') &
+             r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+        write(22,*) r*1.e10/pctocm,netot
+        
+     end do
+     do sendThread = 1, nThreadsGlobal-1
+        r = 1.d30
+        !loc(1) = 1.d30
+        !loc(2) = 1.d30
+        !loc(3) = 1.d30
+        call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+     enddo
+     close(20)
+     close(21)
+     close(22)
+     goto 555
+
+  !Other ranks send data to 0 for collation
+  else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(r, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+          if (r > 1.d29) then
+             stillLooping = .false.
+          else
+         !    position = vector(r, 0.d0, 0.d0)
+         !    call findSubcellLocal(position, thisOctal, subcell)
+         !    sOctal => thisOctal
+         !    cen = subcellCentre(thisOctal, subcell)
+         !    call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+
+     do j = 1, 1000
+        call randomNumberGenerator(getDouble=theta)
+        theta = theta * Pi
+        call randomNumberGenerator(getDouble=phi)
+        phi = phi * twoPi
+
+        octVec = VECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
+
+         call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
+
+
+        nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+        nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+        nh = thisOctal%nh(subcell)
+        ne = thisOctal%ne(subcell)
+
+        v = cellVolume(thisOctal, subcell)
+
+        HI = HI + thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+        HeI = HeI + thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon))
+        OII = OII + thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
+        OIII = OIII + thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon))
+        CII = CII + thisOctal%ionfrac(subcell,returnIonNumber("C II", grid%ion, grid%nIon))
+        CIII = CIII + thisOctal%ionfrac(subcell,returnIonNumber("C III", grid%ion, grid%nIon))
+        CIV = CIV + thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
+        NII = NII + thisOctal%ionfrac(subcell,returnIonNumber("N II", grid%ion, grid%nIon))
+        NIII = NIII + thisOctal%ionfrac(subcell,returnIonNumber("N III", grid%ion, grid%nIon))
+        NIV = NIV + thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon))
+        NeI = NeI + thisOctal%ionfrac(subcell,returnIonNumber("Ne I", grid%ion, grid%nIon))
+        NeII = NeII + thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon))
+        NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
+        NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
+        netot = netot + thisOctal%ne(subcell)
+        call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDT)
+        heating = heating + totalHeating
+!        fac = thisOctal%nh(subcell) * returnAbundance(8) !* thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon))
+        fac = 1.
+        oirate = oirate + &
+             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O I", grid%ion,grid%nIon)))
+        oiirate = oiirate + &
+             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O II", grid%ion, grid%nIon)))
+        oiiirate = oiiirate + &
+             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
+!        oivrate = oivrate + &
+!             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O IV", grid%ion, grid%nIon)))
+        t  = t + thisOctal%temperature(subcell)
+     enddo
+
+     hi = hi / 1000.; hei = hei/1000.; oii = oii/1000.; oiii = oiii/1000.; cii=cii/1000.
+     ciii = ciii/1000; civ=civ/1000.; nii =nii/1000.; niii=niii/1000.; niv=niv/1000.
+     nei=nei/1000.;neii=neii/1000.; neiii=neiii/1000.; neiv=neiv/1000.;t=t/1000.
+     netot = netot / 1000.
+
+     oirate = oirate / 1000.
+     oiirate = oiirate / 1000.
+     oiiirate = oiiirate / 1000.
+     oivrate = oivrate / 1000.
+     heating = heating / 1000.
+     cooling = cooling / 1000.
+
+     hi = log10(max(hi, 1e-10))
+     hei = log10(max(hei, 1e-10))
+     oii = log10(max(oii, 1e-10))
+     oiii = log10(max(oiii, 1e-10))
+     cii = log10(max(cii, 1e-10))
+     ciii = log10(max(ciii, 1e-10))
+     civ = log10(max(civ, 1e-10))
+     nii = log10(max(nii, 1e-10))
+     niii = log10(max(niii, 1e-10))
+     niv= log10(max(niv, 1e-10))
+     nei = log10(max(nei, 1e-10))
+     neii = log10(max(neii, 1e-10))
+     neiii = log10(max(neiii, 1e-10))
+     neiv = log10(max(neiv, 1e-10))
+     ne = log10(max(ne,1.d-10))
+
+     !Store quantities to send to rank 0
+     !tempStorage(1) = cen%x
+     !tempStorage(2) = cen%y
+     !tempStorage(3) = cen%z
+     tempStorage(1) = hi
+     tempStorage(2) = hei
+     tempStorage(3) = oii
+     tempStorage(4) = oiii
+     tempStorage(5) = cii
+     tempStorage(6) = ciii
+     tempStorage(7) = civ
+     tempStorage(8) = nii
+     tempStorage(9) = niii
+     tempStorage(10) = niv
+     tempStorage(11) = nei
+     tempStorage(12) = neii
+     tempStorage(13) = neiii
+     tempStorage(14) = neiv
+     tempStorage(15) = ne
+     tempStorage(16) = oirate
+     tempStorage(17) = oiirate
+     tempStorage(18) = oiiirate
+     tempStorage(19) = oivrate
+     tempStorage(20) = heating
+     tempStorage(21) = cooling
+     tempStorage(22) = netot
+     tempStorage(23) = tVal
+     tempStorage(24) = t
+
+     call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+  endif
+enddo
+
+end if
+555 continue
+end subroutine dumpLexingtonMPI
+
+
+
 subroutine dumpLexington(grid, epsoverdt)
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal
@@ -3398,8 +3657,9 @@ subroutine dumpLexington(grid, epsoverdt)
   open(21,file="orates.dat",form="formatted",status="unknown")
   open(22,file="ne.dat",form="formatted",status="unknown")
 
-  do i = 1, 50
-     r = (1.+7.d0*dble(i-1)/49.d0)*pctocm/1.e10
+!Thaw - modified to 500 points so that the comparison program can be run
+  do i = 1, 500
+     r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
 
      t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
 

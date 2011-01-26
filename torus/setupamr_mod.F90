@@ -388,10 +388,16 @@ contains
 #ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
+           !Thaw
+           call checkThreadNumber(grid)
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif
         call torus_mpi_barrier
+
+
+
+
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif

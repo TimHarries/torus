@@ -2185,8 +2185,6 @@ end subroutine dumpStromgrenRadius
 
 ! setup mpiThread values
 
-
-
     if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
          ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
          ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
@@ -2843,7 +2841,6 @@ end subroutine dumpStromgrenRadius
          
     end subroutine distributeSphDataOverMPI
 
-    
 
 #else
 
