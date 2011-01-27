@@ -562,7 +562,7 @@ contains
 !    real :: unconTThisIter, unconTThisIterRank
 !    integer :: failCount
     logical :: anyUndersampled, undersampledTOT
-    character(len=80) :: vtkFilename
+!    character(len=80) :: vtkFilename
     logical :: underSamFailed
 
     !optimisation variables
@@ -667,7 +667,7 @@ contains
              else if(grid%octreeRoot%threeD) then
                 nMonte = 10.d0 * (8.d0**(maxDepthAMR))
              else
-                nMonte = 1.d0 * 2**(maxDepthAMR)
+                nMonte = 2.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -1211,7 +1211,7 @@ if (.false.) then
      if(grid%geometry == "hii_test") then
         minCrossings = 10000
      else if(grid%geometry == "lexington") then
-        minCrossings = 10000
+        minCrossings = 50000
      else
         minCrossings = 300
      end if
@@ -2223,7 +2223,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                   !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -2249,7 +2249,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                 !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -3410,7 +3410,7 @@ end function svs1982
 subroutine dumpLexingtonMPI(grid, epsoverdt)
   include 'mpif.h'
   type(GRIDTYPE) :: grid
-  type(OCTAL), pointer :: thisOctal, sOctal
+  type(OCTAL), pointer :: thisOctal
   integer :: subcell
   integer :: i, j
   real(double) :: r, theta, phi
@@ -3429,7 +3429,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
   integer :: status(MPI_STATUS_SIZE)
   integer :: sendThread
   integer, parameter :: nPoints = 500
-  type(VECTOR) :: position, startPoint, endPoint, direction, cen, octVec
+  type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
 
 
