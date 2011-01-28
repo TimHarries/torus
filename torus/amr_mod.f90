@@ -400,6 +400,7 @@ CONTAINS
     
     ! allocate any variables that need to be 
 
+    grid%octreeRoot%cylindrical = .false.
 
     if (oneD) then
        grid%octreeRoot%oneD = .true.
@@ -414,7 +415,6 @@ CONTAINS
        grid%octreeRoot%threeD = .false.
        grid%octreeRoot%maxChildren = 4
     else if (threed) then
-       grid%octreeRoot%cylindrical = .false.
        grid%octreeRoot%oneD = .false.
        grid%octreeRoot%twoD = .false.
        grid%octreeRoot%threeD = .true.
