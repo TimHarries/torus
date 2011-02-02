@@ -1584,8 +1584,6 @@ end subroutine photoIonizationloop
     betaH = thisrootTbetaH / sqrt(temperature)
     betaHe = thisrootTbetaHe / sqrt(temperature)
 
-
-
     coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
 
 

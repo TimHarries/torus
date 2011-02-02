@@ -70,9 +70,9 @@ contains
     ! th added this
 
     if (.not.BlockHandout) then
-       blockSize = nUnits / (nProc-1)
-       iRank = 0
-     endif
+          blockSize = nUnits / (nProc-1)
+          iRank = 0
+    endif
     endUnit = startUnit + (blockSize - 1)
        
     allocate(rankComplete(nProc-1)) ! we don't need a status value for rank 0

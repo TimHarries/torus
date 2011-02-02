@@ -120,7 +120,7 @@ contains
     tDump = 0.005d0
     deltaTforDump = 3.14d10 !1kyr
     nextDumpTime = deltaTforDump
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d8
+    if (grid%geometry == "hii_test") deltaTforDump = 1.d10
     if(grid%geometry == "bonnor") deltaTforDump = 1.57d11 !5kyr
 
     iunrefine = 0
@@ -202,9 +202,9 @@ contains
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime, .True.,&
-               .false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .True.,&
+!          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime, .True.,&
+               !.false.)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 50, loopLimitTime, looplimittime, .True.,&
                   .true.)
 
           call writeInfo("Done",TRIVIAL)
@@ -353,7 +353,7 @@ contains
        !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 5, loopLimitTime, loopLimitTime, .True., .true.)
 
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -489,7 +489,7 @@ contains
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
-    integer :: nMonte
+    integer(bigint) :: nMonte
     logical, optional :: sublimate
     logical :: doSublimate, timeDep, monteCheck
     real(double) :: tLimit
@@ -506,7 +506,7 @@ contains
     integer :: iSource
     type(VECTOR) :: rVec, uHat, rHat
     real(double) :: lCore
-    integer :: iMonte
+    integer(bigint) :: iMonte
     integer :: subcell
     integer :: i, j
     logical :: escaped
@@ -515,7 +515,7 @@ contains
     type(VECTOR) :: octVec
     real(double) :: r
     integer :: ilam
-    integer :: nInf
+    integer(bigint) :: nInf
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
     integer :: nIter
@@ -538,20 +538,20 @@ contains
     real :: kappaP
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
-    integer :: iMonte_beg, iMonte_end, nSCat
+    integer(bigint) :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
     integer :: iThread, nThreads
     logical :: endLoop
     logical :: crossedMPIboundary
     integer :: tag = 41
-    integer :: nTotScat, nPhot
+    integer(bigint) :: nTotScat, nPhot
     integer :: newThread
     logical, save :: firstTimeTables = .true.
     integer :: nEscaped, iSignal
-    integer, parameter :: nTimes = 1
+    integer, parameter :: nTimes = 3
     logical :: photonsStillProcessing
-    integer, allocatable :: nEscapedArray(:)
+    integer(bigint), allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 
 !================TOMS VARIABLES=======================
@@ -663,11 +663,11 @@ contains
        else
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
-                nMonte = 10000.d0 * (4.d0**(maxDepthAMR))
+                nMonte = 1000.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 10.d0 * (8.d0**(maxDepthAMR))
+                nMonte = 1.d0 * (8.d0**(maxDepthAMR))
              else
-                nMonte = 2.d0 * 2**(maxDepthAMR)
+                nMonte = 1000.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -1128,12 +1128,14 @@ contains
 !    call writeVtkFile(grid, "current.vtk", &
 !         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
-    if(grid%geometry == "lexington") then
-       call dumpLexingtonMPI(grid, epsoverdeltat)
-    end if
-if (.false.) then
-       call dumpLexingtonMPI(grid, epsoverdeltat)
+!    if(grid%geometry == "lexington") then
+!       call dumpLexingtonMPI(grid, epsoverdeltat)
+!    end if
+if (grid%geometry == "lexington") then
+       call dumpLexingtonMPI(grid, epsoverdeltat, niter)
        fac = 2.06e37
+
+!Thaw - need to make sum across ranks here
 
        luminosity1 = 0.d0
        call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)
@@ -1213,7 +1215,7 @@ if (.false.) then
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 300
+        minCrossings = 10000
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
@@ -1232,20 +1234,20 @@ if (.false.) then
                       
                       !    print *, "deltaT = ", deltaT
                       
-                      if(deltaT > 1.0d-2) then
+                      if(deltaT > 2.0d-2) then
                          if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                             anyUndersampled = .true.
                          endif
                       end if
                       
-                      if(deltaT < 1.0d-2 .and. .not. failed) then
+                      if(deltaT < 2.0d-2 .and. .not. failed) then
                          thisThreadConverged = .true.
                       else 
                          if(niter > 2) then
                             fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
                                  thisOctal%TLastLastIter(subcell))
 
-                            if(fluctuationCheck < 1.0d-2 .and. .not. failed) then
+                            if(fluctuationCheck < 2.0d-2 .and. .not. failed) then
                                thisThreadConverged = .true.
                             else
                                thisThreadConverged = .false.                             
@@ -1336,9 +1338,9 @@ if (.false.) then
      if(myRank == 0) then
       print *, "photoionization loop converged at iteration ", niter
      end if
-  else if(underSampledTOT .and. nMonte < 1.d9 .and. monteCheck) then
+  else if(underSampledTOT .and. monteCheck) then
      if(myRank == 0) then
-        print *, "Undersampled cell, increasing nMonte"
+!        print *, "Undersampled cell, increasing nMonte"
      end if 
       nMonte = nMonte *2.d0
   end if
@@ -2223,7 +2225,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                   !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -2249,7 +2251,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                 !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -2284,7 +2286,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     integer :: subcell
     logical :: converged, found
     real :: t1, t2, tm
-    real, parameter :: Tlow = 100.
+!    real, parameter :: Tlow = 100.
+    real, parameter :: Tlow = 3.
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
     real :: underCorrection = 1.
@@ -2310,14 +2313,22 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    nIter = 0
                    converged = .false.
                    
+!Thaw - something has broken the cooling, Testing...
+!Reverting to an old format
+!Previously forced the following:
+       t1 = 100.
+       t2 = 30000.
+!
 
 !                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
 !                      t1 = tlow
 !                      t2 = 2000.
 !                   else
-                      t1 = 100.
-                      t2 = 30000.
- !                  endif
+!                      t1 = 100.
+!                      t2 = 30000.
+!                      t1 = 5000.
+!                      t1 = 20000.
+!                   endif
 !                   t1 = tLow
 !                   t2 = 50000.
                    found = .true.
@@ -2392,7 +2403,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     real(double) :: totalHeating
     integer :: subcell
     logical :: converged, found
-    real, parameter :: Tlow = 100.
+    real, parameter :: Tlow = 3.
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     integer :: nIter
     real :: t1, t2, tm
@@ -2402,9 +2413,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     nIter = 0
     converged = .false.
     
-    
+!THAW !!!!!!!!!!!!!!!! change back to 100. and 50000.
     t1 = 100.
     t2 = 30000.
+!    t1 = 3.
+!    t2 = 50000.
        found = .true.
        
        if (found) then
@@ -2678,9 +2691,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        
        betaH = thisrootTbetaH / sqrt(temperature)
        betaHe = thisrootTbetaHe / sqrt(temperature)
-       
-       
-       
+
        coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
        
        if(coolingRate < 0.d0) then
@@ -2706,9 +2717,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (crate < 0.) then
           write(*,*) "total negative metal cooling",crate
        endif
-       !    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
+!           write(*,*) log(coolingRate),log(crate),coolingRate/(coolingrate+crate)
        coolingRate = coolingRate + crate
-       
+ 
     endif
 
     call returnKappa(grid, thisOctal, subcell, kappap=kappap)
@@ -2918,8 +2929,6 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 
         k = iEnd + 1
      end do
-
-!There is something wrong in this subroutine
 
   k = 1
   
@@ -3407,7 +3416,7 @@ end function svs1982
 
 
 !Thaw - dumpLexington is incompatiable with MPI - will possibly move this subroutine to mpi_amr_mod
-subroutine dumpLexingtonMPI(grid, epsoverdt)
+subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   include 'mpif.h'
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal
@@ -3421,6 +3430,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
   real(double) :: cooling, dustHeating
   real :: netot
+  character(len=80) :: datFilename
+  integer :: nIter
 
   !dumpLexingtonMPI specific variables
   integer :: ierr
@@ -3432,6 +3443,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
 
+  write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
 
   startPoint = vector(0.d0, 0.d0, 0.d0)
   endPoint = vector(4.4d9, 0.d0, 0.d0)
@@ -3443,7 +3455,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
 
   !Collate results to write to file in rank 0
   if(myRankGlobal == 0) then
-        open(20,file="lexington.dat",form="formatted",status="unknown")
+        open(20,file=datFileName,form="formatted",status="unknown")
         open(21,file="orates.dat",form="formatted",status="unknown")
         open(22,file="ne.dat",form="formatted",status="unknown")
 
@@ -3524,7 +3536,12 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
          !    cen = subcellCentre(thisOctal, subcell)
          !    call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
 
-     do j = 1, 1000
+           t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
+           oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
+           heating = 0.d0; cooling = 0.d0
+
+
+     do j = 1, 100
         call randomNumberGenerator(getDouble=theta)
         theta = theta * Pi
         call randomNumberGenerator(getDouble=phi)
@@ -3532,7 +3549,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
 
         octVec = VECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
 
-         call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
+        call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
 
 
         nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
@@ -3572,18 +3589,27 @@ subroutine dumpLexingtonMPI(grid, epsoverdt)
         t  = t + thisOctal%temperature(subcell)
      enddo
 
-     hi = hi / 1000.; hei = hei/1000.; oii = oii/1000.; oiii = oiii/1000.; cii=cii/1000.
-     ciii = ciii/1000; civ=civ/1000.; nii =nii/1000.; niii=niii/1000.; niv=niv/1000.
-     nei=nei/1000.;neii=neii/1000.; neiii=neiii/1000.; neiv=neiv/1000.;t=t/1000.
-     netot = netot / 1000.
+     hi = hi / 100.; hei = hei/100.; oii = oii/100.; oiii = oiii/100.; cii=cii/100.
+     ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100.; niv=niv/100.
+     nei=nei/100.;neii=neii/100.; neiii=neiii/100.; neiv=neiv/100.;t=t/100.
+     netot = netot / 100.
 
-     oirate = oirate / 1000.
-     oiirate = oiirate / 1000.
-     oiiirate = oiiirate / 1000.
-     oivrate = oivrate / 1000.
-     heating = heating / 1000.
-     cooling = cooling / 1000.
+     oirate = oirate / 100.
+     oiirate = oiirate / 100.
+     oiiirate = oiiirate / 100.
+     oivrate = oivrate / 100.
+     heating = heating / 100.
+     cooling = cooling / 100.
 
+
+     if(hi < 1.e-10) then
+        print *, "H I frac is low! ! ! ! ! !"
+        print *, "hi ", hi
+     else if (hei < 1.e-10) then
+        print *, "HE I frac is low! ! ! ! ! !"
+        print *, "hei", hei
+        
+     end if
      hi = log10(max(hi, 1e-10))
      hei = log10(max(hei, 1e-10))
      oii = log10(max(oii, 1e-10))
@@ -3638,7 +3664,7 @@ end if
 end subroutine dumpLexingtonMPI
 
 
-
+!Incompatable with domain decomposed model.
 subroutine dumpLexington(grid, epsoverdt)
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal
