@@ -173,6 +173,31 @@ module stateq_mod
 
 contains
 
+  subroutine identifyTransitionStateq(lamLine, nLower, nUpper)
+    real(double) :: lamLine
+    integer :: nLower, nUpper
+    logical :: found
+    integer :: i, j
+    character(len=80) :: message
+    found = .false.
+    do i = 1, SIZE(lambdaTrans,1)
+       do j = 1, SIZE(lambdaTrans, 2)
+          if ( (abs((lambdaTrans(i,j)*1.d8)-lamLine)/lamLine) < 0.01d0) then
+             found = .true.
+             nLower = j
+             nUpper = i
+          endif
+       enddo
+    enddo
+    if (found) then
+       write(message, '(a,i2, a, i2)') "Transition found: nUpper=",nUpper, ", nLower=",nLower
+       call writeInfo(message,TRIVIAL)
+    else
+       write(message,*) "Transition not found in identifyTransition: ",lamLine
+       call writeFatal(message)
+    endif
+  end subroutine identifyTransitionStateq
+
   real function beta_mn(m, n, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
     use amr_mod, only: AMRGRIDDIRECTIONALDERIV
 
@@ -2308,7 +2333,7 @@ contains
     integer, intent(inout), optional   :: negativeErrors
     
     real(double)              :: tmp, incr
-    real(double), parameter   :: fac = 1.e-3_db
+    real(double), parameter   :: fac = 1.e-4_db
     integer                            :: i, j
     integer, parameter                 :: maxLevels = statEqMaxLevels
     
@@ -2444,8 +2469,8 @@ contains
     end if ! (grid%adaptive)
   
     if (any(x < 0.0_db)) then 
-      print *, "x = ",x
-      print *, 'Warning: in setupMatrices, negative value detected'
+!      print *, "x = ",x
+!      print *, 'Warning: in setupMatrices, negative value detected'
       if (present(negativeErrors)) then
         negativeErrors = negativeErrors + 1
       else
@@ -2554,7 +2579,7 @@ contains
         ! now compute the maximum fractional change of all level 
         ! population
         dx_max = 1.0d-100                                     
-        do i = 1, n                                           
+        do i = 1, n
            if (x(i) /= 0.0d0) dx = beta(i)/x(i)               
            dx_max = max(ABS(dx), dx_max)                           
         end do    
@@ -2864,6 +2889,7 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
+    use input_variables, only : lamLine
     use source_mod, only : globalSourceArray
     USE amr_mod
     USE input_variables, ONLY: LyContThick, statEq1stOctant
@@ -3083,6 +3109,7 @@ contains
     !if (grid%statEq2d .and. (.not. lte) .and. (.not. recalcPrevious)) &
     !  call removeDepartCoeffs(grid%octreeRoot)
 
+    call identifyTransitionStateq(dble(lamLine), nLower, nUpper)
     call generateOpacitiesAMR(grid, nLower, nUpper)
     
   contains
@@ -3510,7 +3537,7 @@ contains
     !   adaptive octal grid.
 
     USE amr_mod
-    USE input_variables, ONLY: LyContThick, statEq1stOctant
+    USE input_variables, ONLY: LyContThick, statEq1stOctant, lamLine
     use parallel_mod
 
     implicit none
@@ -3572,7 +3599,7 @@ contains
 #endif
 
     isBinary = .false.
-    debugInfo = .false.
+    debugInfo = .true.
     if ( trim(grid%geometry) == "binary" ) isBinary = .true.
 
     numLTEsubcells = 0
@@ -3726,6 +3753,7 @@ contains
     !  call removeDepartCoeffs(grid%octreeRoot)
 
     call torus_mpi_barrier
+    call identifyTransitionStateq(dble(lamLine), nLower, nUpper)
     call generateOpacitiesAMR(grid, nLower, nUpper)
     
   contains
@@ -4169,7 +4197,6 @@ contains
   
     transe = abs(eTrans(nUpper)-eTrans(nLower))
     write(*,'(a,f8.1)') "   generating opacities for ", lambdaTrans(nLower, nUpper)*1.e8
-    lamLine = lambdaTrans(nLower, nUpper)*1.e8
 
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
@@ -4179,7 +4206,8 @@ contains
              
              if (octalArray(iOctal)%content%kappaSca(iSubcell,1) < 0.0) then              
                 octalArray(iOctal)%content%kappaSca(iSubcell,1) = 1.e-20
-                print *, ' in amrStatEq, negative kappaAbs value fixed!'
+                print *, ' in amrStatEq, negative kappaSca value fixed!', &
+                     octalArray(ioctal)%content%ne(isubcell)
              end if
 
              ! calculate the line opacity and emissivity
@@ -4205,7 +4233,7 @@ contains
              
              if (octalArray(iOctal)%content%etaLine(iSubcell) < 0.0) then              
                 octalArray(iOctal)%content%etaLine(iSubcell) = 1.e-20
-                print *, ' in amrStatEq, negative kappaAbs value fixed!'
+                print *, ' in amrStatEq, negative etaline value fixed!'
              end if
              
              ! continuous opacity.. bound-free and free-free processes (+es)
@@ -4228,7 +4256,7 @@ contains
              !                chi=chi+grid%ne(i1,i2,i3)*sigmaE
              if (chi < 0.0) then              
                 chi = 1.e-30
-                print *, ' in amrStatEq, negative kappaAbs value fixed!'
+                print *, ' in amrStatEq, negative chi value fixed!'
              end if
              octalArray(iOctal)%content%kappaAbs(iSubcell,1) = chi * 1.e10
 
@@ -4257,7 +4285,7 @@ contains
 
              if (octalArray(iOctal)%content%etaCont(iSubcell) < 0.0) then              
                 octalArray(iOctal)%content%etaCont(iSubcell) = 1.e-20
-                print *, ' in amrStatEq, negative kappaAbs value fixed!'
+                print *, ' in amrStatEq, negative etacont value fixed!'
              end if
              
              if (octalArray(iOctal)%content%chiLine(iSubcell) < 0.) then

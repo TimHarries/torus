@@ -63,6 +63,35 @@ module modelatom_mod
 
 contains
 
+
+  subroutine identifyTransitionCmf(lamLine, atomArray, iAtom, iTrans)
+    real(double) :: lamLine, lamTrans
+    type(MODELATOM) :: atomArray(:)
+    integer :: iAtom, iTrans
+    logical :: found
+    integer :: i, j
+    character(len=80) :: message
+    found = .false.
+    do i = 1, SIZE(atomArray)
+       do j = 1, atomArray(i)%nTrans
+          if (atomArray(i)%transType(j)=="RBB") then
+             lamTrans = (cspeed/atomArray(i)%transfreq(j))*1d8
+             if ( (abs(lamTrans-lamLine)/lamLine) < 0.01d0) then
+                found = .true.
+                iAtom = i
+                iTrans = j
+             endif
+          endif
+       enddo
+    enddo
+    if (found) then
+       write(message, '(a,i2, a, i2)') "Transition found: iAtom=",iAtom, ", iTrans=",iTrans
+       call writeInfo(message,TRIVIAL)
+    else
+       call writeFatal("Transition not found in identiftyTransition")
+    endif
+  end subroutine identifyTransitionCmf
+
   subroutine readAtom(thisAtom, atomfilename)
     character(len=*) :: atomfilename
     character(len=200) :: dataDirectory, thisfilename

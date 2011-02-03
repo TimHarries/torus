@@ -957,10 +957,12 @@ contains
 
   recursive subroutine fillDustUniform(grid, thisOctal)
 
-    use input_variables, only : nDustType, grainFrac
+    use input_variables, only : nDustType, grainFrac, rSublimation
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
+    type(VECTOR) :: rVec
+    real(double) :: r, fac
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -974,7 +976,19 @@ contains
              end if
           end do
        else
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+          fac = 1.
+
+          if (grid%geometry == "shakara") then
+              rVec = subCellCentre(thisOctal, Subcell)
+              r = sqrt(rVec%x**2 + rVec%y**2)
+              if (r < 1.01d0*rSublimation) then
+                 fac = (1.01d0*rSublimation - r)/(0.01d0*rSublimation)
+                 fac = 5.d0*fac
+                 fac = exp(-fac)
+              endif
+           endif
+
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType) * fac
        end if
     end do
 
@@ -1005,9 +1019,8 @@ contains
           if (temperature > tThresh) then
              frac = exp(-dble((temperature-tThresh)/subRange))
           endif
-          thisOctal%dustTypeFraction(subcell,1) = frac
+          thisOctal%dustTypeFraction(subcell,1) = max(1.d-20, frac)
        endif
-       thisOctal%dustTypeFraction(subcell,1) = max(1.d-20, frac)
     end do
   end subroutine sublimateDustWR104
 

@@ -4,6 +4,7 @@ module wr104_mod
   use sph_data_class
   use vector_mod
   use cluster_class
+  use messages_mod, only : writeoutput
 
   implicit none
 
@@ -30,10 +31,10 @@ contains
 
 
 
-    write(*,'(a,a)') "Reading particles from: ",trim(filename)
+    if (writeoutput) write(*,'(a,a)') "Reading particles from: ",trim(filename)
     open(20,file=filename,status="old",form="unformatted")
     read(20) npart
-    write(*,*) "Reading ",npart," particles"
+    if (writeoutput) write(*,*) "Reading ",npart," particles"
 ! assume that the units are 1 mil
     uDist = 1.e-3/3600. ! from milliarcsec to degrees
     uDist = sphData%uDist * degtorad ! to radians

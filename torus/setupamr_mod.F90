@@ -456,7 +456,7 @@ contains
 
        call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
        call locate(grid%lamArray, grid%nLambda,lambdaSmooth,ismoothlam)
-       do j = iSmoothLam,  grid%nLambda, 20
+       do j = iSmoothLam,  grid%nLambda, 5
           write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
           call writeInfo(message, TRIVIAL)
           do
@@ -787,7 +787,7 @@ contains
 
 ! *** parameters for grid configuration
 ! *** imax,jmax,kmax: grid size, lmax: max of levels
-      integer, parameter :: imax=64, jmax=64, kmax=64, lmax=20
+      integer, parameter :: imax=64, jmax=64, kmax=32, lmax=20
 ! *** ibl,jbl,kbl: offset between coarse and fine levels
 ! *** relation between coarse and fine levels is:
 ! *** rho(ibl+i,jbl+j,kbl+k,l-1)=
@@ -795,7 +795,7 @@ contains
 !      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
 
 ! *** conversion factors from computational units to cgs units.
-      real(double), parameter :: rho0=1d-18, l0=2.07636d16
+      real(double), parameter :: rho0=1.104d-18, l0=2.01318d16
 
 ! *** input/output variables
       integer levmin,levmax
@@ -815,9 +815,9 @@ contains
       type(VECTOR) :: point
       type(OCTAL), pointer :: thisOctal
       levmin = 1
-      levmax = 5
+      levmax = 9
       do l=levmin,levmax
-         write(fn,'(a,i1,a,i1,a)') "st",0,".",l,".d"
+         write(fn,'(a,i1,a)') "disk9233776.",l,".d"
          open(11,file=fn,form='unformatted')
          read(11) version,i,j,k,level,lstep(l),time(l)
          write(*,*) version, i, j, k,level,lstep(l),time(l)
@@ -833,7 +833,7 @@ contains
          do k=1,kmax
             z(k)=ztmp(k)*l0/1.d10
          enddo
-         if (Writeoutput) write(*,*) "Grid size is ",(x(64)-x(1))+(x(2)-x(1))
+         if (Writeoutput) write(*,*) "Grid size is ",(x(64)-x(1))+(x(2)-x(1)),2.d0*(x(64)-x(1))+(x(2)-x(1))
          read(11) arrtmp
          do k=1,kmax
             do j=1,jmax
@@ -977,6 +977,10 @@ contains
     fac = abs(actualMass-massWanted)/massWanted
     if (fac > 0.01d0) then
        write(message,'(a,f7.1,a)') "Grid mass differs from required mass by: ",100.d0*fac, " %"
+       call writeWarning(message)
+       write(message,'(a,f7.5,a)') "Mass requested is: ",massWanted/msol, " solar masses"
+       call writeWarning(message)
+       write(message,'(a,f7.5,a)') "Grid mass is: ",actualMass/mSol, " solar masses"
        call writeWarning(message)
     endif
   end subroutine testAMRmass

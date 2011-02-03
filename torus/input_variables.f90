@@ -82,6 +82,7 @@ module input_variables
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   integer :: initnray ! number of rays to use in fixed ray case (stage 1)
   integer :: setmaxlevel ! Subsonic turbulent velocity
+  logical :: setSubRadius
   real :: vturb ! Subsonic turbulent velocity
   logical :: noturb ! Subsonic turbulent velocity
   logical :: lineEmission
@@ -201,6 +202,7 @@ module input_variables
   ! variables to do with dust
   !
   integer :: nSpiral
+  logical :: doSpiral
   ! size distribution of dust grain is now assumed to have 
   ! the following form:
   !  
@@ -435,7 +437,7 @@ module input_variables
   real(double) :: hOverR
   real :: ThinDiskRin      ! (in R_star units)
   real :: curtainsPhi1s ! accretion curtains from (s)tart... 
-  real(double) :: phiRefine, dphiRefine
+  real(double) :: phiRefine, dphiRefine, minPhiResolution
   real :: curtainsPhi1e ! ... to (e)nd angle
   real :: curtainsPhi2s ! (all in degrees)
   real :: curtainsPhi2e ! must be: phi1s<phi1e<phi2s<phi2e

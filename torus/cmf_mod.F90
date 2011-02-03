@@ -1907,7 +1907,7 @@ contains
 
           call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
           iUpper = thisAtom(iatom)%iUpper(iTrans)
-          etaLine = hCgs * a * thisAtom(iatom)%transFreq(iTrans)
+          etaLine = (hCgs/fourPi) * a * thisAtom(iatom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom,iUpper)
 	  
           thisOctal%etaLine(subcell) = etaLine * 1.d10
@@ -1981,7 +1981,7 @@ contains
              do iLevel = 1, thisAtom(iatom)%nLevels-1
                 nStar = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
                      dble(thisOctal%temperature(subcell))) * &
-                     thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+                     thisOctal%atomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
              enddo
           enddo
 
@@ -2675,10 +2675,10 @@ contains
 
 
           if (.not.lineOff) then
-             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, linearInterp=.false.) 
 
              endPosition = currentPosition + tval * direction
-             endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+             endVel = amrGridVelocity(grid%octreeRoot, endPosition, linearInterp=.false.)
 
              dv1 = deltaV + (startVel .dot. direction)
              dv2 = deltaV + (endVel .dot. direction)
@@ -2756,7 +2756,7 @@ contains
 
 
              if (.not.lineoff) then
-                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, linearInterp=.false.) 
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
                 alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal%microturb(subcell))
@@ -2782,7 +2782,7 @@ contains
 
              if (.not.lineoff) then
                 etaLine = thisOctal%etaLine(subcell)
-                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))
+                jnu = etaLine * phiProf(dv, thisOctal%microturb(subcell))
              else
                 jnu = 0.d0
                 etaline = 0.d0
@@ -2857,6 +2857,7 @@ contains
     use input_variables, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
+    use modelatom_mod, only : identifyTransitionCmf
 #ifdef USECFITSIO
     use input_variables, only : dataCubeFilename
     use datacube_mod, only : writedataCube
@@ -2910,8 +2911,8 @@ contains
 #endif
 
     if (cmf) then
+       call identifyTransitionCmf(dble(lamLine), thisAtom, iAtom, iTrans)
        transitionFreq = thisAtom(iAtom)%transfreq(iTrans)
-       lamLine  = (cspeed / transitionFreq) / angstromtocm
        call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
        call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
        call calcContinuumOpacities(grid%octreeRoot, thisAtom, nAtom, transitionfreq)
@@ -3135,6 +3136,7 @@ contains
     use input_variables, only : npixels, nv, imageSide, maxVel, &
          positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
+    use amr_mod, only : countVoxels
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -3157,6 +3159,15 @@ contains
     integer ::  i
     integer :: nMonte, imonte
     integer :: iv1, iv2, nx, ny
+    integer :: nPoints, nVoxels, nOctals
+    real(double), allocatable :: xPoints(:), yPoints(:)
+    real(double) :: dx, dy
+    integer :: nRay
+    integer, parameter :: maxRay = 10000
+    real(double) :: xRay(maxray), yRay(maxray)
+    real :: area(maxray)
+    real(double) :: totArea
+    integer :: iRay
 
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
@@ -3237,53 +3248,66 @@ contains
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
 
+    call countVoxels(grid%octreeRoot, nOctals, nVoxels)
+    nPoints = nVoxels + 1000 * nSource + cube%nx*cube%ny
+    allocate(xPoints(1:nPoints),yPoints(1:nPoints))
+    call createRayGridGeneric(grid, nSource, source, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    do ix = 1, cube%nx
+       do iy = 1, cube%ny
+          nPoints = nPoints + 1
+          xPoints(nPoints) = cube%xAxis(ix)
+          yPoints(nPoints) = cube%yAxis(iy)
+       enddo
+    enddo
+
+!    do i = 1, nPoints
+!       write(76,*) xpoints(i),ypoints(i)
+!    enddo
+    
+    dx = cube%xAxis(2)-cube%xAxis(1)
+    dy = cube%yAxis(2)-cube%yAxis(1)
 
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (ix, iy, iMonte, r, xval, yval, rayPos) &
+       !$OMP PRIVATE (ix, iy, iMonte, r, xval, yval, rayPos, nRay, xRay, yRay, area,totArea) &
        !$OMP SHARED (cube, viewVec, grid, thisAtom, nAtom, iAtom, iTrans) &
        !$OMP SHARED (deltaV, source, nSource, nFreqArray, freqArray, occultingDisc) &
-       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte)
+       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
-          write(*,*) "ix ",ix
           do iy = 1, cube%ny
-             do iMonte = 1, nMonte
-                if (nMonte > 1) then
-                   call randomNumberGenerator(getDouble=r)
-                   xVal = cube%xAxis(ix) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
-                   call randomNumberGenerator(getDouble=r)
-                   yVal = cube%yAxis(iy) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
-                else
-                   xVal = cube%xAxis(ix)
-                   yVal = cube%yAxis(iy)
-                endif
-                rayPos =  (xval * xProj) + (yval * yProj)
+             call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
+                 nPoints,  nRay, xRay, yRay, area)
+             
+             totArea = 0.d0
+             cube%intensity(ix,iy,iv-iv1+1) = 0.d0
+             do iRay = 1, nRay
+                
+                rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
- 
-!                if (cmf) then
-!                   if (PRESENT(occultingDisc)) then
-!                      cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
-!                           iTrans, -deltaV, source, nSource, nFreqArray, freqArray, occultingDisc=.true.)
-!                   else
-!                      cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
-!                           iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
-!                   endif
-!                else
-                   cube%intensity(ix,iy,iv-iv1+1) = intensityAlongRayGeneric(rayPos, viewVec, grid,  &
-                        -deltaV, source, nSource)
-!                endif
+                
+                cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
+                     + intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+                     -deltaV, source, nSource) * area(iRay)
+                totArea = totArea + Area(iray)
              enddo
+!             write(*,*) "Pixel done with ",nRay, " rays. check on area ",totArea/(dx**2)
+             cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) / SUM(area(1:nRay))
+             
           enddo
        enddo
-
        !$OMP END DO
        !$OMP BARRIER
        !$OMP END PARALLEL
-       cube%intensity(:,:,iv-iv1+1) = cube%intensity(:,:,iv-iv1+1) / dble(nMonte)
+       write(*,*) "Velocity bin ",iv, " done."
+
     enddo
+
+    deallocate(xPoints, yPoints)
+
+
 #ifdef MPI
     write(*,*) "Process ",my_rank, " done. awaiting reduce"
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -3327,6 +3351,47 @@ contains
 
   end subroutine createDataCube
 
+
+  subroutine findRaysInPixel(xcen, yCen, dx, dy, xPoints, yPoints, nPoints, &
+                  nRay, xRay, yRay, area)
+    use utils_mod, only : voron2
+
+    real(double) :: xCen, yCen, dx, dy
+    real(double) :: xPoints(:), yPoints(:)
+    integer :: nPoints
+    integer :: nRay, i
+    real(double) :: xRay(:), yRay(:)
+    real :: area(:)
+    real, allocatable :: xTmp(:), yTmp(:)
+    nRay = 0
+    do i = 1, nPoints
+       if ((abs(xCen-xPoints(i)) < dx/2.d0).and. &
+            (abs(yCen-yPoints(i)) < dy/2.d0)) then
+          nRay = nRay + 1
+          xRay(nRay) = xPoints(i)
+          yRay(nRay) = yPoints(i)
+          if (nRay == SIZE(xRay)) then
+             write(*,*) "max array sized reached for nray"
+             exit
+          endif
+       endif
+    enddo
+    if (nRay == 1) then
+       area(1) = dx*dy
+    else if (nRay == 2) then
+       area(1:2) = 0.5*dx*dy
+    else if (nRay == 3) then
+       area(1:2) = 0.33333*dx*dy
+    else
+       allocate(xtmp(1:nray),ytmp(1:nRay))
+       xtmp = xRay - (xcen-dx/2.d0)
+       ytmp = yRay - (yCen-dy/2.d0)
+       call voron2(nRay, xTmp, yTmp, real(dx), area(1:nRay))
+       deallocate(xTmp, yTmp)
+    endif
+  end subroutine findRaysInPixel
+          
+          
 
 
 #ifdef MPI
@@ -3508,4 +3573,90 @@ contains
        write(*,*) "nray ",nray, "j_nu ",i0/dble(nray)
     enddo
   end subroutine testRays
+
+
+  subroutine createRayGridGeneric(grid, nSource, SourceArray, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: sourceArray(:)
+    type(VECTOR) :: viewVec, xProj, yProj
+    integer :: nPoints, i, j
+    real(double) :: xPoints(:), yPoints(:)
+    integer :: nr, nphi
+    real(double) :: r, phi, rStar, rMin, rMax, dphi
+    nr = 10
+    nphi = 20
+
+    nPoints = 0
+    rStar = 1.1*sourceArray(1)%radius
+    rMin = rStar/20.
+    do i = 1, nr
+       r = rMin + (rStar-rMin)*real(i-1)/real(nr-1)
+       call randomNumberGenerator(getDouble=dphi)
+       dphi = dphi * twoPi
+       do j = 1, nPhi
+          phi = dphi + twoPi * real(j-1)/real(nPhi)
+
+          nPoints = nPoints + 1
+          xPoints(nPoints) = r * cos(phi)
+          yPoints(nPoints) = r * sin(phi)
+       enddo
+    enddo
+
+    nr = 100
+    nphi = 50
+    rMin = 1.2 * rStar
+    rMax = grid%octreeRoot%subcellSize*2.d0
+
+    do i = 1, nr
+       r = log10(rMin) + log10(rMax/rmin)*real(i-1)/real(nr-1)
+       r = 10.d0**r
+       call randomNumberGenerator(getDouble=dphi)
+       dphi = dphi * twoPi
+       do j = 1, nPhi
+          phi = dphi + twoPi * real(j-1)/real(nPhi)
+
+          nPoints = nPoints + 1
+          xPoints(nPoints) = r * cos(phi)
+          yPoints(nPoints) = r * sin(phi)
+       enddo
+    enddo
+    
+  end subroutine createRayGridGeneric
+
+  recursive  subroutine  getProjectedPoints(thisOctal, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    integer :: nPoints
+    type(VECTOR) :: xProj, yProj, viewVec, rVec
+    real(double) :: xPoints(:), yPoints(:)
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getProjectedPoints(child, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+                exit
+             end if
+          end do
+       else
+          nPoints = nPoints + 1
+          rVec = subcellCentre(thisOctal, subcell)
+          xPoints(nPoints) = xProj.dot.rVec
+          yPoints(nPoints) = yProj.dot.rVec
+       endif
+    enddo
+  end subroutine getProjectedPoints
+
+  subroutine getSurfacePoints(source, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    type(SOURCETYPE) :: source
+    type(VECTOR) :: viewVec, xProj, yProj
+    real(double) :: xPoints(:), yPoints(:)
+    integer :: nPoints, i
+
+  end subroutine getSurfacePoints
+
 end module cmf_mod

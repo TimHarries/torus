@@ -490,9 +490,14 @@ contains
                            directPhoton, scatteredPhoton,  &
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
-                      If (escaped) nInf_sub = nInf_sub + 1
+                      If (escaped) then
+
+                      !$OMP ATOMIC
+                         nInf_sub = nInf_sub + 1
+                      endif
 
                       if (photonInDiffusionZone) then
+                         !$OMP ATOMIC
                          nDiffusion_sub = nDiffusion_sub + 1
                          cycle photonloop
                       endif
@@ -540,14 +545,17 @@ contains
                             uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
                                  thisOctal%dustTypeFraction(subcell, 1:nDusttype))
 
+                            !%OMP ATOMIC
                             nScat_sub = nScat_sub + 1
                             uHat = uNew
 
                          else
 
+                            !%OMP ATOMIC
                             nAbs_sub = nAbs_sub + 1
                             thisPhotonAbs = thisPhotonAbs + 1
                             if (thisPhotonAbs > 50000) then
+                            !%OMP ATOMIC
                                nKilled = nKilled + 1
                                cycle photonLoop
                             endif
@@ -641,11 +649,10 @@ contains
                 enddo photonLoop
                 !$OMP END DO
                 !$OMP CRITICAL (update)
-
-          nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
-          nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
-          nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
-          nDiffusion = nDiffusion_sub   + nDiffusion    ! sum from each thread for OpenMP
+                  nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
+                  nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
+                  nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
+                  nDiffusion = nDiffusion_sub   + nDiffusion    ! sum from each thread for OpenMP
           !$OMP END CRITICAL (update)
 
           !$OMP BARRIER
@@ -919,14 +926,13 @@ contains
 
 
 
-       if (grid%geometry == "wr104") then
-
+       if (grid%geometry.eq."wr104") then
           totalMass = 0.
           call findTotalMass(grid%octreeRoot, totalMass)
           scaleFac = massEnvelope / totalMass
-          if (myRankIsZero) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+          if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
           call scaleDensityAMR(grid%octreeRoot, scaleFac)
-
+          call sublimateDustWR104(grid%octreeRoot)
        endif
 
 
@@ -3120,15 +3126,20 @@ subroutine setBiasOnTau(grid, iLambda)
      integer :: nDir
 #ifdef MPI
 ! Only declared in MPI case
-     integer, dimension(:), allocatable :: octalsBelongRank
-     logical :: rankComplete
      integer :: tag = 0
      real(double), allocatable :: eArray(:), tArray(:)
      integer :: nVoxels, ierr
      integer :: nBias
 #endif
+
+#ifdef MPI
+     integer :: np, n_rmdr, m
+#endif
+
+
      kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
 
+     call writeInfo("Computing bias on tau...",TRIVIAL)
      if (cylindrical) then
         nDir = 6
      else
@@ -3150,34 +3161,35 @@ subroutine setBiasOnTau(grid, iLambda)
        stop
     endif
 
-#ifdef MPI
-    ! FOR MPI IMPLEMENTATION=======================================================
-    
-    ! we will use an array to store the rank of the process
-    !   which will calculate each octal's variables
-    allocate(octalsBelongRank(size(octalArray)))
-    
-    if (myRankGlobal == 0) then
-       print *, ' '
-       print *, 'Tau bias  computed by ', nThreadsGlobal-1, ' processors.'
-       print *, ' '
-       call mpiBlockHandout(nThreadsGlobal,octalsBelongRank,blockDivFactor=1,tag=tag,&
-                            setDebug=.false.)
-    
-    endif
-    ! ============================================================================
-#endif
     
     ! default loop indices
     ioctal_beg = 1
     ioctal_end = nOctal
 
 #ifdef MPI
- if (myRankGlobal /= 0) then
-  blockLoop: do     
- call mpiGetBlock(myRankGlobal,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-   if (rankComplete) exit blockLoop 
+    
+            ! Set the range of index for octal loop used later.     
+            np = nThreadsGlobal
+            n_rmdr = MOD(SIZE(octalArray),np)
+            m = SIZE(octalArray)/np
+            
+            if (myRankGlobal .lt. n_rmdr ) then
+               ioctal_beg = (m+1)*myRankGlobal + 1
+               ioctal_end = ioctal_beg + m
+            else
+               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+               ioctal_end = ioctal_beg + m - 1
+            end if
+            
 #endif
+
+
+!$OMP PARALLEL DEFAULT (NONE) &
+!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau, nDir, arrayVec, thisOctal, direction, thisTau) &
+!$OMP SHARED (iOctal_beg, iOctal_end, rVec, octalArray, grid, cylindrical, ilambda)
+
+
+!$OMP DO SCHEDULE (DYNAMIC, 1)
     do iOctal =  iOctal_beg, iOctal_end
        thisOctal => octalArray(iOctal)%content
 
@@ -3232,42 +3244,36 @@ subroutine setBiasOnTau(grid, iLambda)
 
        enddo
     enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 #ifdef MPI
- if (.not.blockHandout) exit blockloop
- end do blockLoop       
- end if ! (myRankGlobal /= 0)
-
-
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
-     ! have to send out the 'octalsBelongRank' array
-     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
      allocate(eArray(1:nVoxels))
      allocate(tArray(1:nVoxels))
      eArray = 0.d0
-     call packBias(octalArray, nBias, eArray,octalsBelongRank)
+     call packBias(octalArray, nBias, eArray, ioctal_beg, ioctal_end)
      call MPI_ALLREDUCE(eArray,tArray,nBias,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
      eArray = tArray
      call unpackBias(octalArray, nBias, eArray)
-     deallocate(eArray, tArray, octalsBelongRank)
+     deallocate(eArray, tArray)
 #endif
 
     deallocate(octalArray)
 !    call writeVtkFile(grid, "bias.vtk", &
 !            valueTypeString=(/"bias"/))
+     call writeInfo("Done.",TRIVIAL)
 
   end subroutine setBiasOnTau
 
-  subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)
+  subroutine packBias(octalArray, nBias, eArray, iOctal_beg, iOctal_end)
     USE mpi_global_mod, ONLY: myRankGlobal
     type(OCTALWRAPPER) :: octalArray(:)
-    integer :: octalsBelongRank(:)
+    integer :: iOctal_beg, iOctal_end
     integer :: nBias
     real(double) :: eArray(:)
     integer :: iOctal, iSubcell
@@ -3285,7 +3291,7 @@ subroutine setBiasOnTau(grid, iLambda)
                 
           if (.not.thisOctal%hasChild(iSubcell)) then
              nBias = nBias + 1
-             if (octalsBelongRank(iOctal) == myRankGlobal) then
+             if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
                 eArray(nBias) = octalArray(iOctal)%content%Biascont3d(iSubcell)
              else 
                 eArray(nBias) = 0.d0

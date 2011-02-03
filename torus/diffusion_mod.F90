@@ -582,7 +582,9 @@ contains
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
                    DeltaT = DeltaT * 0.1
                 else
-                   deltaX = min(DeltaR, deltaZ, r * DeltaPhi)
+!                   deltaX = min(DeltaR, deltaZ, r * DeltaPhi)
+
+                   deltaX = min(DeltaR, deltaZ) ! TJH Changed 21/1/11
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
                    DeltaT = DeltaT * 0.1
                 endif
@@ -602,14 +604,22 @@ contains
                            + dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) &
                            - dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))
                    else                      
-                      enplus1 = eDens(0,0,0) + deltaT * ( &
-                           (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0))- &
-                           dCoeffHalf(-1,0,0)*(eDens(0,0,0)-eDens(-1,0,0)))/DeltaR**2 + &
-                           (1.d0/r)*(dCoeffHalf(0,0,0) * (eDens(1,0,0)-eDens(-1,0,0)) / (2.d0 * DeltaR)) + &
-                           (1.d0/r**2)*(dCoeffHalf(0,1,0)*(eDens(0,1,0)-eDens(0,0,0)) - &
-                           dCoeffHalf(0,-1,0)*(eDens(0,0,0)-eDens(0,-1,0)))/DeltaPhi**2 + &
-                           (dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) - &
-                           dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))/deltaZ**2 )
+!                      enplus1 = eDens(0,0,0) + deltaT * ( &
+!                           (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0))- &
+!                           dCoeffHalf(-1,0,0)*(eDens(0,0,0)-eDens(-1,0,0)))/DeltaR**2 + &
+!                           (1.d0/r)*(dCoeffHalf(0,0,0) * (eDens(1,0,0)-eDens(-1,0,0)) / (2.d0 * DeltaR)) + &
+!                           (1.d0/r**2)*(dCoeffHalf(0,1,0)*(eDens(0,1,0)-eDens(0,0,0)) - &
+!                           dCoeffHalf(0,-1,0)*(eDens(0,0,0)-eDens(0,-1,0)))/DeltaPhi**2 + &
+!                           (dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) - &
+!                           dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))/deltaZ**2 )
+
+
+ ! TJH Changed 21/1/11
+                   enplus1 = eDens(0,0,0) + (DeltaT/DeltaR**2) * OverCorrect * (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0)) &
+                        - dCoeffHalf(-1,0,0)*(eDens(0,0,0)-eDens(-1,0,0)) &
+                        + dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) &
+                        - dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))
+
                    endif
                 endif
                 overcorrect = min(4.d0,overcorrect + 0.1d0)
@@ -1101,7 +1111,7 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use input_variables, only : tauForce, cylindrical
+    use input_variables, only : tauForce, cylindrical, rGapInner, rGapOuter
 #ifdef MPI
     use input_variables, only : blockHandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
@@ -1118,7 +1128,7 @@ subroutine setDiffOnTau(grid)
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
-    real(double) :: kappaAbs
+    real(double) :: kappaAbs, r 
     type(VECTOR) :: arrayVec(6)
      integer :: nDir
 #ifdef MPI
@@ -1196,8 +1206,16 @@ subroutine setDiffOnTau(grid)
           if (.not.thisOctal%hasChild(subcell)) then
 
              rVec = subcellCentre(thisOctal, subcell)
+
+             r = modulus(rVec)
+             if ((r > rGapInner).and.(r < rGapOuter)) then
+                thisOctal%diffusionApprox(subcell) = .false.
+                cycle
+             endif
+
+
              if (thisOctal%threed) then
-                rVec = rVec + 0.01d0*grid%halfSmallestSubcell*randomUnitVector()
+                rVec = rVec + 0.01d0*grid%halfSmallestSubcell * VECTOR(0.1d0,0.1d0,0.1d0)
              endif
 	
              call returnKappa(grid, thisOctal, subcell,  rosselandKappa = kappaAbs)
@@ -1223,11 +1241,11 @@ subroutine setDiffOnTau(grid)
                 endif
 
 
-
+                
 
                 do i = 1, nDir
                    direction = arrayVec(i)
-                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0, ross=.true.)
+                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0, ross=.true., stopAtGap=.true.)
                    tau = min(tau, thisTau)
                 enddo
                 thisOctal%chiLine(subcell) = tau

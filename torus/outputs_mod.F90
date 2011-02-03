@@ -30,6 +30,7 @@ contains
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
     use angularImage, only: make_angular_image, map_dI_to_particles
+    use lucy_mod, only : getSublimationRadius
     use input_variables, only : fastIntegrate
 #ifdef MPI
     use input_variables, only : outputImageType
@@ -37,7 +38,7 @@ contains
 #endif
 
     type(BLOBTYPE) :: tblob(1)
-    real(double) :: totalFlux
+    real(double) :: totalFlux, rSub
     type(SURFACETYPE) :: tsurface
     type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
@@ -50,6 +51,7 @@ contains
 !    type(VECTOR) :: thisVec,  axis
 !    real(double) :: ang
     type(VECTOR) :: tvec(1)
+    character(len=80) :: message
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
@@ -129,6 +131,13 @@ contains
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+          call getSublimationRadius(grid, rSub)
+          write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
+          call writeInfo(message, FORINFO)
+          write(message, '(a, f7.3,a )') "Final inner radius is: ",(rSub/globalSourceArray(1)%radius), " core radii"
+          call writeInfo(message, FORINFO)
+
+
           fastIntegrate=.true.
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &

@@ -3571,7 +3571,8 @@ CONTAINS
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          smoothInnerEdge, ttauriRinner, amr2d
-    use input_variables, only : phiRefine, dPhiRefine
+    use input_variables, only : doSpiral
+    use input_variables, only : phiRefine, dPhiRefine, minPhiResolution
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -3586,6 +3587,7 @@ CONTAINS
     TYPE(octal), intent(inout) :: thisOctal
 
 !    TYPE(octal), POINTER       :: thisOctal
+    real(double) :: rSpiralInner, rSpiralOuter
     INTEGER, INTENT(IN)        :: subcell
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
@@ -4561,26 +4563,38 @@ CONTAINS
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-      if (.not.smoothInnerEdge) then
-         if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-              (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+      if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
+           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
+           (.not.thisOctal%cylindrical)) split=.true.
+
+      if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
+         if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
+            if (.not.thisOctal%cylindrical) split = .true.
+         endif
       endif
 
-      if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter) .and. &
-           (thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0) ) split=.true.
-
-      if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
-      if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+      if ((r+cellsize/2.d0) < rInner) split = .false.
+      if ((r-cellsize/2.d0) > Router) split = .false.
 
 !      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
 !         if ((abs(cellcentre%z)/hr < 1.)) then
 !            if (cellsize > 5.d-1*grid%rinner) split = .true.
 !         endif
 !      endif
+
+      if (thisOctal%cylindrical) then
+         dphi = returndPhi(thisOctal)
+         if (dphi > minPhiResolution) then
+            split = .true.
+            splitinAzimuth = .true.
+         endif
+      endif
+
+
 !
 
       if (thisOctal%cylindrical) then
-         if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 2.d0*hr)) then
+         if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 5.d0*hr)) then
             phi = atan2(cellcentre%y, cellcentre%x)
             if (phi < 0.d0) phi = phi + twopi
             dphi = returndPhi(thisOctal)
@@ -4601,7 +4615,7 @@ CONTAINS
          endif
       endif
 !
-      if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
+      if (((r-cellsize/2.d0) > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
          split = .false.
          splitInAzimuth = .false.
       endif
@@ -7591,6 +7605,7 @@ CONTAINS
 
   subroutine calcProtoBinDensity(thisOctal,subcell)
 
+    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7674,7 +7689,15 @@ CONTAINS
     thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
-!    thisOctal%phi_i(subcell) = 0.d0
+
+    thisOctal%iEquationOfState(subcell) = 2
+
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 1
+    xminusbound = 1
+    yplusbound = 1
+    yminusbound = 1
 
   end subroutine calcProtoBinDensity
     
@@ -15092,12 +15115,13 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
-       xArray, tauArray, distanceToEdge, subRadius)
-    use input_variables, only : rGap
+       xArray, tauArray, distanceToEdge, subRadius, stopatGap)
+    use input_variables, only : rGap, rGapInner, rGapOuter
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     real(double), optional,intent(out) :: xArray(:), tauArray(:)
     integer, optional, intent(out) :: nTau
+    logical, optional :: stopAtGap
     integer :: iLambda
     real(double), optional :: subRadius
     real(double), intent(out) :: tau
@@ -15109,6 +15133,8 @@ IF ( .NOT. gridConverged ) RETURN
     integer, optional :: startSubcell
     real(double) :: fudgeFac = 1.d-1
     real(double) :: kappaSca, kappaAbs, kappaExt
+    real(double) :: r, rStart
+    logical :: outwards, inwards
     integer :: subcell
     logical, optional :: ross
     logical :: planetGap
@@ -15122,6 +15148,14 @@ IF ( .NOT. gridConverged ) RETURN
     endif
     planetGap  = .false.
     if (grid%geometry == "planetgap") planetgap = .true.
+    rStart = modulus(rVec)
+    if ((rVec .dot. direction) > 0.d0) then
+       outwards = .true.
+       inwards = .false.
+    else
+       inwards = .true.
+       outwards=.false.
+    endif
 
     if (PRESENT(startOctal)) then
        thisOctal => startOctal
@@ -15158,12 +15192,20 @@ IF ( .NOT. gridConverged ) RETURN
           exit
        endif
           
+
        if (planetGap) then
           if ((direction%x < 0.d0).and.(rVec%x > rGap*autocm/1.d10) &
                .and.(currentPosition%x < rGap*autocm/1.d10)) exit
           if ((direction%x > 0.d0).and.(rVec%x < rGap*autocm/1.d10) &
                .and.(currentPosition%x > rGap*autocm/1.d10)) exit
        endif
+
+       if (PRESENT(stopAtGap)) then
+          r = modulus(currentPosition)
+          if (inwards.and.(rStart > rGapOuter).and.(r < rGapOuter)) exit
+          if (outwards.and.(rStart < rGapInner).and.(r > rGapInner)) exit
+       endif
+
 
        tau = tau + distToNextCell*kappaExt
        if (PRESENT(nTau)) then

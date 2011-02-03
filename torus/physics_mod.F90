@@ -214,10 +214,10 @@ contains
 
        fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
        write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac
-       print *, "Lum from spectrum", dble(sumSurfaceLuminosity)
-       print *, "fac", fac
-       call writeInfo(message, TRIVIAL)
-
+      call writeInfo(message, TRIVIAL)
+       write(message,*) "Setting source luminosity to luminosity from spectrum: ",sumSurfaceLuminosity/lsol, " lsol"
+      call writeInfo(message, TRIVIAL)
+      source(iSource)%luminosity = sumSurfaceLuminosity
     end do
   end subroutine setupSources
 
@@ -271,6 +271,7 @@ contains
         call randomNumberGenerator(syncIseed=.true.)
 #endif
 
+        call fillDustUniform(grid, grid%octreeRoot)
         if (.not.variableDustSublimation) call doSmoothOnTau(grid)
 
         
@@ -443,7 +444,6 @@ contains
      if (atomicPhysics.and.calcDataCube) then
         nLambda = nv
        allocate(xArray(1:nLambda))
-       lamLine = 21655. !!!!!!!(cspeed/globalAtomArray(iTransAtom)%transFreq(iTransLine))/angstromtocm
        lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
        lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
        do i = 1, nLambda

@@ -305,10 +305,11 @@ contains
   end subroutine writeUnusedKeywords
 
   subroutine readGeometrySpecificParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=80) :: cLine(:), message
     integer :: nLines
     logical :: fLine(:)
     logical :: ok
+
 
     select case(geometry)
 
@@ -407,6 +408,7 @@ contains
 
           call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
                "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
        endif
 
        call getReal("curtainsphi1s", curtainsPhi1s, 1., cLine, fLine, nLines, &
@@ -653,6 +655,8 @@ contains
                   "Grid distance (pc): ","(a,f8.1,1x,a)", 100., ok, .true.)
              call getReal("massenv", massEnvelope, real(mMoon), cLine, fLine,  nLines, &
                   "Envelope dust mass (Moon masses): ","(a,f8.2,a)", 10., ok, .true.)
+             call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
+                  "Dust sublimation temperature (K): ","(a,f8.2,a)", 10., ok, .true.)
           endif
 
     case("shakara")
@@ -676,6 +680,23 @@ contains
        call getReal("rinner", rInner, rCore, cLine, fLine, nLines, &
             "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
 
+       call getReal("teff1", teff, 1., cLine, fLine, nLines, &
+            "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
+
+
+       call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
+            "Set sublimation radius empirically (Whitney et al 2004): ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (.not.setSubRadius) then
+          rSublimation = rInner
+       else
+          rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
+          write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+          call writeInfo(message,TRIVIAL)
+       endif
+
+
+
        call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
             "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
 
@@ -694,6 +715,10 @@ contains
 
        call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
             "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 10.d0, ok, .false.)
+
+       call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
+
 
        call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
@@ -715,6 +740,9 @@ contains
 
        call getLogical("opaquecore", opaqueCore, cLine, fLine, nLines, &
             "Opaque Core: ","(a,1l,a)", .true., ok, .false.)
+
+       call getLogical("dospiral", dospiral, cLine, fLine, nLines, &
+               "Add a spiral density wave: : ","(a,1l,1x,a)", .false., ok, .false.)
 
        if (solveVerticalHydro) then
           call getInteger("nhydro", nhydro,  cline, fLine, nLines, &
@@ -1251,7 +1279,7 @@ contains
          "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
 
     call getDouble("tdump", tDump, 1.d0, cLine, fLine, nLines, &
-         "Time between dump files: ","(a,e12.3,1x,a)", 1.d0, ok, .true.)
+         "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .true.)
 
 
   end subroutine readHydrodynamicsParameters
@@ -1288,19 +1316,10 @@ contains
          "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
 
     if (atomicPhysics) then
-       if (cmf) then
-          call getInteger("itrans", itransLine, cLine, fLine, nLines, &
-               "Index of line transition: ","(a,i4,a)",4,ok,.true.)
-          
-          call getInteger("iatom", itransAtom, cLine, fLine, nLines, &
-               "Atom of line transition: ","(a,i4,a)",4,ok,.true.)
-       else
-          call getInteger("nlower", nLower, cLine, fLine, nLines, &
-               "Lower level for transition: ","(a,i4,a)",4,ok,.true.)
-          call getInteger("nupper", nUpper, cLine, fLine, nLines, &
-               "Upper level for transition: ","(a,i4,a)",4,ok,.true.)
-       endif
-          
+          call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
+               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
+          call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
+               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
     endif
 
 
@@ -1440,9 +1459,13 @@ contains
     call getLogical("inarcsec", imageinArcsec, cLine, fLine, nLines, &
          "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getReal("imagesize", setImageSize, real(autocm), cLine, fLine, nLines, &
-         "Image size (AU): ", "(a,1pe10.2,1x,a)", 1.0, ok, .false.)
-
+    if (.not.imageinArcSec) then
+       call getReal("imagesize", setImageSize, real(autocm), cLine, fLine, nLines, &
+            "Image size (AU): ", "(a,1pe10.2,1x,a)", 1.0, ok, .true.)
+    else
+       call getReal("imagesize", setImageSize, 1., cLine, fLine, nLines, &
+            "Image size (arcsec): ", "(a,1pe10.2,1x,a)", 0.0, ok, .true.)
+    endif
 
     if (nimage == 1) then
 
@@ -1467,6 +1490,7 @@ contains
     else
        do i = 1, nImage
 
+          call writeInfo(" ")
           write(message,'(a,i1.1)') "Details for image: ",i
           call writeInfo(message)
           call writeInfo(" ")

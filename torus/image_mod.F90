@@ -209,6 +209,7 @@ module image_mod
      velIncgs = thisVel! * cSpeed/1.e5 
      xPix = 0; yPix = 0
 
+
      ! observed wavelength should be Doppler shifted by local gas velocity
      if (thisPhoton%contPhoton) then
         if (PRESENT(lambda0_cont)) then
@@ -469,6 +470,7 @@ module image_mod
        
        use input_variables, only: lamStart, ImageinArcSec
        type(IMAGETYPE),intent(in) :: image
+       type(IMAGETYPE)  :: tempimage
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
 
@@ -483,8 +485,9 @@ module image_mod
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
 
+       tempimage = image
 
-       call convertimagetoMJanskiesPerStr(image, dble(lamStart), objectDistance)
+       call convertimagetoMJanskiesPerStr(tempimage, dble(lamStart), objectDistance)
        
        
 
@@ -528,19 +531,19 @@ module image_mod
        array = 1.d-30
        select case(type)
           case("intensity")
-             array = image%pixel%i * scale
+             array = tempimage%pixel%i * scale
           case("stokesq")
-             where (image%pixel%i /= 0.d0) 
-                array = 100.*image%pixel%q /image%pixel%i 
+             where (tempimage%pixel%i /= 0.d0) 
+                array = tempimage%pixel%q * scale
              end where
           case("stokesu")
-             where (image%pixel%i /= 0.d0) 
-                array = 100.*image%pixel%u /image%pixel%i 
+             where (tempimage%pixel%i /= 0.d0) 
+                array = tempimage%pixel%u * scale 
              end where
           case("pol")
              array = 1.d-30
-             where (image%pixel%i /= 0.) 
-                array = 100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i
+             where (tempimage%pixel%i /= 0.) 
+                array = sqrt(tempimage%pixel%q**2 + tempimage%pixel%u**2)
              end where
           
           case DEFAULT

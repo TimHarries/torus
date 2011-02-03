@@ -865,7 +865,7 @@ contains
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use input_variables, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap
+         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -877,9 +877,13 @@ contains
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
-    type(VECTOR),save :: stream1(nStream), stream2(nStream)
+    type(VECTOR),save :: stream1(nStream), stream2(nStream), spiralVec
+    real(double) :: rSpiral, rSpiralInner, rSpiralOuter, rhoLocal
     logical :: ok
     real :: x1, x2
+
+    rSpiralInner = (rGapInner+rGapOuter)/2.d0
+    rSpiralOuter = 3.d0 * rSpiralInner
 
     if (firstTime) then
 
@@ -914,15 +918,10 @@ contains
     endif
 
 
-    nSpiral1 = 3
-    do i = 1, nspiral1
-       phase(i)=twoPi*real(i-1)/real(nSpiral1)
-    enddo
-
-
     rhoOut = tiny(rhoOut)
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
+    if (phi < 0.0d0) phi = phi + twopi
     warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
     if ((r < rOuter).and.(r>rinner)) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
@@ -940,7 +939,7 @@ contains
        endif
 
     endif
-
+    
 
     if (grid%geometry == "circumbin") then
        if (r < rInner) then
@@ -971,6 +970,8 @@ contains
        rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
     endif
 
+
+
 !    basic gap
 
     if ((r < rGapOuter*1.02).and.(r > rGapInner*0.98)) then
@@ -999,6 +1000,21 @@ contains
 
 
     endif
+
+    if (doSpiral) then
+       if (phi <= pi) then
+          h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+          fac = max(-50.d0,fac)
+          rhoLocal = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+          rSpiral = rSpiralInner + (rSpiralOuter - rSpiralInner) * dble(phi)/pi
+          spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
+          dist = modulus(VECTOR(spiralVec%x - point%x, spiralVec%y - point%y, 0.d0))
+          fac = (dist/(0.1d0*rSpiralInner))
+          rhoOut = rhoOut + rhoLocal * 9.d0 * exp(-fac)
+       endif
+    endif
+
 
     rhoOut = max(rhoOut, 1.d-30)
        

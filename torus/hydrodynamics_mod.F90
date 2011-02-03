@@ -2701,6 +2701,7 @@ contains
 
 
   subroutine doHydrodynamics3d(grid)
+    use input_variables, only : tdump, tend
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
@@ -2708,7 +2709,7 @@ contains
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=80) :: plotfile
-    real(double) :: tDump, nextDumpTime, tff,totalMass !, ang
+    real(double) :: nextDumpTime, tff,totalMass !, ang
     type(VECTOR) :: direction, viewVec
     integer :: nUnrefine
     integer :: thread1(200), thread2(200), nBound(200), nPairs
@@ -2740,13 +2741,17 @@ contains
     it = grid%iDump
     currentTime = grid%currentTime
     nextDumpTime = grid%currentTime
-    !    tDump = 0.01d0
-    tff = 1.d0 / sqrt(bigG * (1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
-    !tDump = 1.d-2 * tff
 
-    tff = sqrt((3.d0*pi)/(32.d0*bigG*3.466d-21))
-    !tDump = 0.01d0 * tff
-    tDump = 1.d0 * tff
+
+    tff = 1.d0 / sqrt(bigG * (1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
+    if (tdump == 0.d0) then
+       !    tDump = 0.01d0
+       !tDump = 1.d-2 * tff
+       
+!       tff = sqrt((3.d0*pi)/(32.d0*bigG*3.466d-21))
+       !tDump = 0.01d0 * tff
+       tDump = 1.d0 * tff
+    endif
 
 
 
@@ -2834,7 +2839,7 @@ contains
     call writeVtkFile(grid, plotfile, &
          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
-    do while(.true.)
+    do while(currentTime < tend)
        if (myrank /= 0) then
           tc(myrank) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
@@ -6186,9 +6191,9 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-6
+    real(double), parameter :: tol = 1.d-4
     integer :: it, ierr, i
-    character(len=30) :: plotfile
+!    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
@@ -6232,7 +6237,7 @@ end subroutine refineGridGeneric2
 
 	      !Thaw - trying to remove expansion by removing periodic gravity
              call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
-             call imposeboundary(grid%octreeroot)
+!             call imposeboundary(grid%octreeroot)
              call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
              
@@ -6244,7 +6249,7 @@ end subroutine refineGridGeneric2
                 call updatePhiTree(grid%octreeRoot, i)
              enddo
 
-             write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!             write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
 !             call writeVtkFile(grid, plotfile, &
 !                  valueTypeString=(/"rho          ",&
 !                  "hydrovelocity", &
@@ -6252,6 +6257,7 @@ end subroutine refineGridGeneric2
 !                  "u_i          ", &
 !                  "phi          "/))
 
+!             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
 
@@ -6285,14 +6291,14 @@ end subroutine refineGridGeneric2
        
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
-!       call periodBoundary(grid, justGrav = .true.)
-!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+       call periodBoundary(grid, justGrav = .true.)
+       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        
        fracChange = tempFracChange
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-!e           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 
