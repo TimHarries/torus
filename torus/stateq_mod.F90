@@ -4172,7 +4172,7 @@ contains
                 
   subroutine generateOpacitiesAMR(grid, nLower, nUpper)
     ! for all the cells in the grid.
-    use input_variables, only : vTurb, lamLine
+    use input_variables, only : vTurb
     type(GRIDTYPE),intent(inout):: grid      
     integer,intent(in)          :: nLower, nUpper! level populations
     real(double)                :: chil

@@ -3570,8 +3570,7 @@ CONTAINS
     use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
-         smoothInnerEdge, ttauriRinner, amr2d
-    use input_variables, only : doSpiral
+         ttauriRinner, amr2d
     use input_variables, only : phiRefine, dPhiRefine, minPhiResolution
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -3587,7 +3586,6 @@ CONTAINS
     TYPE(octal), intent(inout) :: thisOctal
 
 !    TYPE(octal), POINTER       :: thisOctal
-    real(double) :: rSpiralInner, rSpiralOuter
     INTEGER, INTENT(IN)        :: subcell
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision

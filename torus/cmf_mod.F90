@@ -2675,7 +2675,8 @@ contains
 
 
           if (.not.lineOff) then
-             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, linearInterp=.false.) 
+             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell,&
+                  linearInterp=.false.) 
 
              endPosition = currentPosition + tval * direction
              endVel = amrGridVelocity(grid%octreeRoot, endPosition, linearInterp=.false.)
@@ -2756,7 +2757,8 @@ contains
 
 
              if (.not.lineoff) then
-                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, linearInterp=.false.) 
+                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, &
+                     linearInterp=.false.) 
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
                 alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal%microturb(subcell))
@@ -3154,10 +3156,10 @@ contains
     real(double) :: deltaV
     integer :: iTrans
     integer :: ix, iy, iv
-    real(double) :: r, xval, yval, vstart,vend
+    real(double) :: vstart,vend
     real(double), allocatable :: vArray(:)
     integer ::  i
-    integer :: nMonte, imonte
+    integer :: nMonte
     integer :: iv1, iv2, nx, ny
     integer :: nPoints, nVoxels, nOctals
     real(double), allocatable :: xPoints(:), yPoints(:)
@@ -3270,7 +3272,7 @@ contains
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (ix, iy, iMonte, r, xval, yval, rayPos, nRay, xRay, yRay, area,totArea) &
+       !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea) &
        !$OMP SHARED (cube, viewVec, grid, thisAtom, nAtom, iAtom, iTrans) &
        !$OMP SHARED (deltaV, source, nSource, nFreqArray, freqArray, occultingDisc) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints)
@@ -3655,7 +3657,7 @@ contains
     type(SOURCETYPE) :: source
     type(VECTOR) :: viewVec, xProj, yProj
     real(double) :: xPoints(:), yPoints(:)
-    integer :: nPoints, i
+    integer :: nPoints
 
   end subroutine getSurfacePoints
 

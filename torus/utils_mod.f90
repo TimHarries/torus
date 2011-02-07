@@ -4293,9 +4293,9 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     INTEGER     NCAN, NVER, NCOORD, NEDGE
     INTEGER     I, J, CAN, VER, N
     REAL        BOX, BOXINV, RCUT, RCUTSQ, COORD
-    REAL        RXJ, RYJ, RZJ, RXIJ, RYIJ, RZIJ, RIJSQ
+    REAL        RXJ, RYJ, RXIJ, RYIJ, RIJSQ
     real        xc(maxn), yc(maxn), xp(maxn), yp(maxn), a,totArea
-    CHARACTER   CNFILE*30
+!    CHARACTER   CNFILE*30
     LOGICAL     OK
 
     !    *******************************************************************
@@ -4524,11 +4524,11 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 !          WRITE(*,'(/1X,'' AVERAGE COORDINATION NUMBER = '',F10.5)') COORD
 
 
-10001     FORMAT(/1X,'ATOM ',3X,'EDGE ', &
-                   /1X,'INDEX',3X,'VERTS',3X, &
-                   '      RELATIVE POSITION   ',3X,'  DISTANCE  ')
-10002     FORMAT(/1X,'   INDICES         RELATIVE POSITION ')
-10003     FORMAT(/1X,'INDEX    NABS    ... NEIGHBOUR INDICES ... ')
+!10001     FORMAT(/1X,'ATOM ',3X,'EDGE ', &
+!                   /1X,'INDEX',3X,'VERTS',3X, &
+!                   '      RELATIVE POSITION   ',3X,'  DISTANCE  ')
+!10002     FORMAT(/1X,'   INDICES         RELATIVE POSITION ')
+!10003     FORMAT(/1X,'INDEX    NABS    ... NEIGHBOUR INDICES ... ')
 
 
        end subroutine voron2

@@ -870,8 +870,6 @@ contains
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
-    integer :: nspiral1
-    real(double) :: phase(10)
     integer :: i
     real(double) :: phi, dist
     logical, save :: firstTime = .true.

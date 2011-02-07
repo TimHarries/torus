@@ -37,7 +37,6 @@ contains
     use gridio_mod, only: writeAMRgrid
 #ifdef MPI
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
-    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
 #endif
     implicit none
 #ifdef MPI
@@ -3106,8 +3105,6 @@ subroutine setBiasOnTau(grid, iLambda)
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
-    use input_variables, only : blockHandout
-    use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     include 'mpif.h'
 #endif
     type(gridtype) :: grid
@@ -3271,7 +3268,6 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine setBiasOnTau
 
   subroutine packBias(octalArray, nBias, eArray, iOctal_beg, iOctal_end)
-    USE mpi_global_mod, ONLY: myRankGlobal
     type(OCTALWRAPPER) :: octalArray(:)
     integer :: iOctal_beg, iOctal_end
     integer :: nBias
