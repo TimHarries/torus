@@ -3123,13 +3123,9 @@ subroutine setBiasOnTau(grid, iLambda)
      integer :: nDir
 #ifdef MPI
 ! Only declared in MPI case
-     integer :: tag = 0
      real(double), allocatable :: eArray(:), tArray(:)
      integer :: nVoxels, ierr
      integer :: nBias
-#endif
-
-#ifdef MPI
      integer :: np, n_rmdr, m
 #endif
 

@@ -67,7 +67,7 @@ contains
     type(SOURCETYPE) :: source(:)
     logical :: ok
     real(double) :: distToEdge, fac, sumSurfaceLuminosity
-    character(len=80) :: message
+    character(len=100) :: message
 
     do iSource = 1, nSource
    

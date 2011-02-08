@@ -3253,7 +3253,7 @@ contains
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)
     nPoints = nVoxels + 1000 * nSource + cube%nx*cube%ny
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
-    call createRayGridGeneric(grid, nSource, source, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    call createRayGridGeneric(grid, source, xPoints, yPoints, nPoints)
     do ix = 1, cube%nx
        do iy = 1, cube%ny
           nPoints = nPoints + 1
@@ -3577,11 +3577,9 @@ contains
   end subroutine testRays
 
 
-  subroutine createRayGridGeneric(grid, nSource, SourceArray, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+  subroutine createRayGridGeneric(grid, SourceArray, xPoints, yPoints, nPoints)
     type(GRIDTYPE) :: grid
-    integer :: nSource
     type(SOURCETYPE) :: sourceArray(:)
-    type(VECTOR) :: viewVec, xProj, yProj
     integer :: nPoints, i, j
     real(double) :: xPoints(:), yPoints(:)
     integer :: nr, nphi
@@ -3653,12 +3651,13 @@ contains
     enddo
   end subroutine getProjectedPoints
 
-  subroutine getSurfacePoints(source, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
-    type(SOURCETYPE) :: source
-    type(VECTOR) :: viewVec, xProj, yProj
-    real(double) :: xPoints(:), yPoints(:)
-    integer :: nPoints
-
-  end subroutine getSurfacePoints
+! Commented out so daily test builds (DMA 8/2/11)
+!  subroutine getSurfacePoints(source, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+!    type(SOURCETYPE) :: source
+!    type(VECTOR) :: viewVec, xProj, yProj
+!    real(double) :: xPoints(:), yPoints(:)
+!    integer :: nPoints
+!
+!  end subroutine getSurfacePoints
 
 end module cmf_mod
