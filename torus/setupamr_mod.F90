@@ -598,6 +598,21 @@ contains
 
   end subroutine setupFogel
 
+  subroutine unrefineGridOnTau(grid)
+    type(GRIDTYPE) :: grid
+    logical :: converged
+    integer :: i
+    i = 10
+    call writeInfo("Unrefining optically thin cells...")
+    do
+       converged = .true.
+       call unrefineThinCells(grid%octreeRoot, grid, i, converged)
+       if (converged) exit
+    end do
+    call writeInfo("Done.")
+  end subroutine unrefineGridOnTau
+
+
   recursive subroutine splitGridFogel(thisOctal, grid, r, z, nr, nz, rho, t, abundance)
     use input_variables, only : minDepthAMR, maxDepthAMR
     type(GRIDTYPE) :: grid

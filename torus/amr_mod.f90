@@ -10385,6 +10385,45 @@ end function readparameterfrom2dmap
 
   end subroutine unrefineThickCells
 
+  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, converged)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: ilambda
+    real(double) :: kappaAbs, kappaSca, tau
+    integer :: subcell, i
+    logical :: unrefine, converged
+    kappaAbs =0.d0; kappaSca = 0.d0
+    unrefine = .true.
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unrefineThinCells(child, grid, ilambda, converged)
+                exit
+             end if
+          end do
+       else
+          if (.not.ASSOCIATED(thisOctal%dustTypeFraction)) then
+             write(*,*) "unalloc dusttypefraction!!"
+          endif
+          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
+          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
+          if (tau > 1.e-10) unrefine = .false.
+       endif
+    enddo
+
+    if ((thisOctal%nChildren == 0).and.unrefine.and.converged) then
+       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+            grid = grid, adjustGridInfo = .true.)
+       converged = .false.
+    endif
+
+  end subroutine unrefineThinCells
+
   SUBROUTINE shrinkChildArray(parent, childrenToDelete, adjustParent )
     ! removes children from an octal.
     ! you probably don't want to call this directly - use the 'deleteChild' wrapper instead.

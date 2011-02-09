@@ -2675,11 +2675,12 @@ contains
 
 
           if (.not.lineOff) then
-             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell,&
+             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, &
                   linearInterp=.false.) 
 
              endPosition = currentPosition + tval * direction
-             endVel = amrGridVelocity(grid%octreeRoot, endPosition, linearInterp=.false.)
+             endVel = amrGridVelocity(grid%octreeRoot, endPosition, &
+                  linearInterp=.false.)
 
              dv1 = deltaV + (startVel .dot. direction)
              dv2 = deltaV + (endVel .dot. direction)

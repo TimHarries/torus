@@ -317,67 +317,63 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   logical, save :: firstTime = .true.
   real, allocatable,save :: rayScatter(:)
   real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
-  real(double) :: test
+  real(double) :: nh, nhi, ne,freq
   integer :: i
+  !$OMP THREADPRIVATE (firstTime, rayScatter)
 
-  test = temperature
-  test = rho
+!  Nh = rho/mHydrogen
+!  ne = Ne_lte(nh, dble(temperature))
+!  nHI = nh - ne
+
   if (PRESENT(kappaAbs)) kappaAbs = 0.d0
-  if (PRESENT(kappaAbsArray)) kappaAbsArray = 0.d0
-!  lookuptable = tioLookuptable
-!
-!  mu = 2.46
-!
-!  pressure = rho * kErg * temperature / (mu * mHydrogen)
-!
-!  if ((temperature < LookupTable%tempArray(1)).or.(temperature > LookupTable%tempArray(LookupTable%nTemps))) then
-!     write(*,*) "! temperature is outside opacity array bounds"
-!     write(*,*) "temperature",temperature,LookupTable%temparray(1),LookupTable%temparray(LookupTable%nTemps)
-!     stop
-!  endif
-!  
-!  call locate(LookupTable%tempArray, LookupTable%nTemps, temperature, i)
-!  t1 = (temperature-LookupTable%tempArray(i))/(LookupTable%tempArray(i+1)-LookupTable%tempArray(i))
-!
-!  if (present(lambda)) then
-!     call locate(LookupTable%lamArray, LookupTable%nLam, lambda, j)
-!     t2 = (lambda-LookupTable%lamArray(j))/(LookupTable%lamArray(j+1)-LookupTable%lamArray(j))
-!  endif
+  if (PRESENT(kappaAbsArray)) then
+     kappaAbsArray = 0.d0
+!     do i = 1, grid%nLambda
+!        freq = cspeed/(grid%lamArray(i)*angstromtocm)
+!        kappaAbsArray(i) = kappaAbsArray(i) +  ne * nhI * &
+!            alpkk_hyd(freq,dble(temperature)) * (1.d0-exp(-(hcgs*freq)/(kerg*temperature)))
 
-!  if (PRESENT(kappaAbsArray)) then
-!     call returnKappaArray(temperature, LookupTable, kappaAbs=kappaAbsArray)
-!  endif
-!  if (PRESENT(kappaScaArray)) then
-!     call returnKappaArray(temperature, LookupTable, kappaSca=kappaScaArray)
-!  endif
 
-!  if (PRESENT(kappaAbs)) then
-!     kappaAbs = (1.-t1) * (1.-t2) * lookupTable%kapArray(i  , j  ) + &
-!                (   t1) * (1.-t2) * lookupTable%kapArray(i+1, j  ) + &
-!                (1.-t1) * (   t2) * lookupTable%kapArray(i  , j+1) + &
-!                (   t1) * (   t2) * lookupTable%kapArray(i+1, j+1) 
-!     kappaAbs = kappaAbs * fracMolecule(temperature, pressure, 12)
-!!     write(*,*) fracMolecule(temperature, pressure, 12)
-!  endif
+
+!     enddo
+  endif
 
   if (PRESENT(kappaSca)) then
-     kappaSca = (atomhydrogenRayXsection(dble(lambda))/mHydrogen)*1.e10
+     kappaSca = nhI * atomhydrogenRayXsection(dble(lambda))*1.e10
+     kappaSca = kappaSca + ne * sigmaE * 1.d10
   endif
   if (PRESENT(kappaScaArray)) then
      if (firstTime) then
         allocate(rayScatter(1:grid%nLambda))
         do i = 1, grid%nLambda
-           rayScatter(i) = atomhydrogenRayXsection(dble(grid%lamArray(i)))/mHydrogen*1.d10
+           rayScatter(i) = nhi * atomhydrogenRayXsection(dble(grid%lamArray(i)))*1.d10
         enddo
         
         firstTime = .false.
      endif
      kappaScaArray = rayScatter
+     kappaSca = kappaSca + ne * sigmaE * 1.d10
   endif
 
 
 end subroutine returnGasKappaValue
   
+
+!function Ne_LTE(nh, T) result (ne)
+!  use stateq_mod, only : z_hi
+!  real(double) :: nh, T, ne, phiT
+!  real(double), parameter  :: CI = 2.07d-16   ! in cgs units
+
+!  phiT = CI*Z_HI(10,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
+!
+!  ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
+  ! nTot is the number density of particles includeing all species.
+  ! ==> phi(T)*ne^2 + ne - N_H =0
+  ! Th physical solution  is chosen out of two ...  
+  !    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
+!  Ne = (sqrt(4.0_db*NH*phiT+1.0_db) -1.0_db)/(2.0_db*phiT)
+!end function Ne_LTE
+
 real(double) function atomhydrogenRayXsection(lambda) result(tot)
 
 
