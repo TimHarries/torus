@@ -1208,11 +1208,12 @@ subroutine setDiffOnTau(grid)
              rVec = subcellCentre(thisOctal, subcell)
 
              r = modulus(rVec)
-             if ((r > rGapInner).and.(r < rGapOuter)) then
-                thisOctal%diffusionApprox(subcell) = .false.
-                cycle
-             endif
-
+             if (grid%geometry == "shakara") then 
+                if ((r > rGapInner).and.(r < rGapOuter)) then
+                   thisOctal%diffusionApprox(subcell) = .false.
+                   cycle
+                endif
+             end if
 
              if (thisOctal%threed) then
                 rVec = rVec + 0.01d0*grid%halfSmallestSubcell * VECTOR(0.1d0,0.1d0,0.1d0)
