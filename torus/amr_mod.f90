@@ -15136,6 +15136,12 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: subcell
     logical, optional :: ross
     logical :: planetGap
+
+! Set subradius to missing data in case tau > tauMax condition is never triggered
+    if (present(subradius)) then 
+       subradius=-1.0d30
+    end if
+
     kappaAbs = 0.d0; kappaSca = 0.d0
     tau = 0.d0
     currentPosition = rVec
