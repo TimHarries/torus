@@ -317,7 +317,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   logical, save :: firstTime = .true.
   real, allocatable,save :: rayScatter(:)
   real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
-  real(double) :: nh, nhi, ne,freq
+  real(double) :: nh, nhi !, ne,freq
   integer :: i
   !$OMP THREADPRIVATE (firstTime, rayScatter)
 
@@ -325,6 +325,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 !  ne = Ne_lte(nh, dble(temperature))
 !  nHI = nh - ne
 
+  nhi = rho/mhydrogen
   if (PRESENT(kappaAbs)) kappaAbs = 0.d0
   if (PRESENT(kappaAbsArray)) then
      kappaAbsArray = 0.d0
@@ -340,7 +341,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 
   if (PRESENT(kappaSca)) then
      kappaSca = nhI * atomhydrogenRayXsection(dble(lambda))*1.e10
-     kappaSca = kappaSca + ne * sigmaE * 1.d10
+!     kappaSca = kappaSca + ne * sigmaE * 1.d10
   endif
   if (PRESENT(kappaScaArray)) then
      if (firstTime) then
@@ -352,7 +353,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
         firstTime = .false.
      endif
      kappaScaArray = rayScatter
-     kappaSca = kappaSca + ne * sigmaE * 1.d10
+!     kappaSca = kappaSca + ne * sigmaE * 1.d10
   endif
 
 

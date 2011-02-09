@@ -622,6 +622,7 @@ module input_variables
   integer :: minCrossings
   logical :: forceLucyConv
   logical :: multiLucyFiles
+  logical :: polarizationImages
 
   !  Input parameters for bipolar jets geometry.
   !

@@ -1467,6 +1467,9 @@ contains
             "Image size (arcsec): ", "(a,1pe10.2,1x,a)", 0.0, ok, .true.)
     endif
 
+    call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
+         "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
+
     if (nimage == 1) then
 
        call getString("imagefile", imageFilename(1), cLine, fLine, nLines, &

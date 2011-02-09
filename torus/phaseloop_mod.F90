@@ -261,7 +261,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer, parameter :: maxIntPro = 1000
   integer :: nIntPro
   real :: lamIntPro(maxIntPro), intPro(maxIntPro)
-  character(len=80) :: message
+  character(len=80) :: message, header
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
@@ -1610,14 +1610,17 @@ endif ! (doPvimage)
 
 #ifdef USECFITSIO
            call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
+           if (polarizationImages) then
+              header = specfile(1:index(specfile,".fits")-1)
+              write(specFile,'(a,a)') trim(header)//"_pol.fits"
+              call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
+              write(specFile,'(a,a)') trim(header)//"_q.fits"
+              call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
+              write(specFile,'(a,a)') trim(header)//"_u.fits"
+              call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
+           endif
 #endif
 
-!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
-!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
-!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_q",iPhase,".fits"
-!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
-!           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_u",iPhase,".fits"
-!           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
