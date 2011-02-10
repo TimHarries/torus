@@ -130,7 +130,7 @@ contains
     tDump = 0.005d0
     deltaTforDump = 3.14d10 !1kyr
     nextDumpTime = deltaTforDump
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d10
+    if (grid%geometry == "hii_test") deltaTforDump = 1.d11
     if(grid%geometry == "bonnor") deltaTforDump = 1.57d11 !5kyr
 
     iunrefine = 0
@@ -199,7 +199,8 @@ contains
 
     endif
 
-    call neutralGrid(grid%octreeRoot)
+!Thaw 10/02/2010
+!    call neutralGrid(grid%octreeRoot)
 
     looplimitTime = deltaTForDump
     !looplimitTime = 0.1375d10
@@ -224,13 +225,6 @@ contains
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .true., .true.)
           call writeInfo("Done",TRIVIAL)
        endif
-
-
-!Track the evolution of the ionization front with time
-    !      write(datFilename, '(a, i4.4, a)') "Ifront.dat"
-    !      call dumpStromgrenRadius(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
-     !          VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
-
 
 
        call writeInfo("Dumping post-photoionization data", TRIVIAL)
@@ -300,8 +294,6 @@ contains
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
 
-       
-
        !Dump at every step for now
        !if(grid%geometry == "hii_test") then
        !   dt = 1.d11
@@ -324,9 +316,6 @@ contains
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
        if (myrank == 1) write(*,*) "Time step", dt
-              
-       
-
 
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
@@ -362,25 +351,15 @@ contains
        else
           looplimittime = deltaTForDump
        end if
-       !if(looplimittime < 1.d5) then       !  print *, "Running first photoionization sweep"
-       ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)
 
- !      else
-  !        call setupNeighbourPointers(grid, grid%octreeRoot)
-  !        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 10, loopLimitTime, looplimitTime, .True., .true.)
-   !    end if
           call writeInfo("Done",TRIVIAL)
-       !end if
-  
        
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot)
           call calculateRhoE(grid%octreeRoot, direction)
-       endif
-
-  
+       endif  
 
        if (myRank /= 0) then
 
@@ -1362,11 +1341,11 @@ if (grid%geometry == "tom") then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 1000
+        minCrossings = 2000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 100
+        minCrossings = 2000
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then

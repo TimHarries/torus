@@ -6355,11 +6355,12 @@ end subroutine refineGridGeneric2
 
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
           getPressure =  (thisOctal%rho(subcell)/(mu * mHydrogen))*kerg*thisOctal%temperature(subcell)
-          !getPressure = numDensity*kerg*thisOctal%temperature(subcell)
-	  !print *, "rho/2mH ", (thisOctal%rho(subcell)/(2.d0*mHydrogen))
-	  !print *, "numDensity ", numDensity
-	  !print *, "getPressure ", getPressure
 
+          if(getPressure == 0) then
+             print *, "ZERO PRESSURE - halting"
+             print *, "thisOctal%rho(subcell)", thisOctal%rho(subcell)
+             stop
+          end if
 
        case(2) !  equation of state from Bonnell 1994
           if (thisOctal%rho(subcell) < rhoCrit) then
