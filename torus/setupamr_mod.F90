@@ -381,7 +381,7 @@ contains
 
        call fixParentPointers(grid%octreeRoot)
        call postSetupChecks(grid)
-       call writeVTKfile(grid, "rho.vtk")
+!       call writeVTKfile(grid, "rho.vtk")
 
 
     endif
@@ -394,9 +394,6 @@ contains
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif
         call torus_mpi_barrier
-
-
-
 
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")

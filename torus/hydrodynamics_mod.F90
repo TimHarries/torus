@@ -3152,7 +3152,7 @@ contains
                "rhow         ", &
                "phi          "/))
           if (grid%geometry == "sedov") &
-          call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.55d0, 0.d0, 0.0d0), 1000)
+          call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
 
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)

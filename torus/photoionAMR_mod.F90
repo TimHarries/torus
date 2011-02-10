@@ -31,6 +31,16 @@ private
 public :: photoIonizationloopAMR, radiationHydro, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH
 
+
+type PHOTONPACKET
+    type(VECTOR) :: rVec
+    type(VECTOR) :: uHat
+    real(double) :: Freq
+    real(double) :: tPhot
+    real(double) :: ppw
+    integer :: destination
+end type PHOTONPACKET
+
 type SAHAMILNETABLE
    integer :: nFreq 
    integer :: nTemp 
@@ -197,12 +207,12 @@ contains
        if(grid%geometry == "hii_test") then
           loopLimitTime = deltaTForDump
        else 
-          loopLimitTime = 2.d11       
+          !loopLimitTime = 2.d11       
        end if
        if (irefine == 1) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
           call setupNeighbourPointers(grid, grid%octreeRoot)
-!          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 60, loopLimitTime, looplimittime, .True.,&
+!          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
                !.false.)
              call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 50, loopLimitTime, looplimittime, .True.,&
                   .true.)
@@ -349,16 +359,18 @@ contains
 
        if(dt /= 0.d0) then
           loopLimitTime = grid%currentTime + dt
-       !if(looplimittime < 1.d5) then
-       !  print *, "Running first photoionization sweep"
+       else
+          looplimittime = deltaTForDump
+       end if
+       !if(looplimittime < 1.d5) then       !  print *, "Running first photoionization sweep"
        ! loopLimitTime = 1.d15
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 5, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)
 
-       else
-          call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, dt, .True., .true.)
-       end if
+ !      else
+  !        call setupNeighbourPointers(grid, grid%octreeRoot)
+  !        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 10, loopLimitTime, looplimitTime, .True., .true.)
+   !    end if
           call writeInfo("Done",TRIVIAL)
        !end if
   
@@ -398,7 +410,7 @@ contains
 
        if (dumpThisTime) then
 
-          !Thaw, to match time dumps of other codes
+          !Thaw to match time dumps of other codes
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d5)) then
              deltaTForDump = 1.d5
           end if
@@ -556,34 +568,55 @@ contains
 
 !================TOMS VARIABLES=======================
     real(double) :: deltaT, fluctuationCheck 
-!    integer :: nFailedRank, nFailedTotal, nFailedLast
-!    integer :: deltaFails
-!    real :: unconTLastIter = 0.0
-!    real :: unconTThisIter, unconTThisIterRank
-!    integer :: failCount
     logical :: anyUndersampled, undersampledTOT
 !    character(len=80) :: vtkFilename
-    logical :: underSamFailed
+    logical :: underSamFailed, escapeCheck
 
     !optimisation variables
-    !1integer :: nSaved, pSend
-    !integer, parameter :: maxStore=1000
-    !type(VECTOR) :: rVecStore(maxStore)
-    !type(VECTOR) :: uHatStore(maxStore)
-    !real(double) :: thisFreqStore(maxStore) 
-    !real(double) :: tPhotonStore(maxStore) 
-    !real(double) :: ppwStore(maxStore)
-    !integer :: newThreadStore(maxStore) 
-    !integer :: photonStackSize
-    !type(VECTOR) :: photonStackrVec(maxStore)
-    !type(VECTOR) :: photonStackuHat(maxStore)
-    !real(double) :: photonStackFreq(maxStore)
-    !real(double) :: photonStacktPhot(maxStore)
-    !real(double) :: photonStackppw(maxStore)
-    !integer :: photonStackDestination(maxStore)
-    !logical :: readyToSend
+    integer, parameter :: stackLimit=200
+    integer, parameter :: ZerothstackLimit=200
+    integer :: optCounter, thisPacket, sendCounter
+    integer, allocatable :: nSaved(:)
+    integer :: stackSize, p
+    integer :: mpi_vector, mpi_photon_stack
+    logical :: sendAllPhotons = .false., donePanicking = .true.
+
+    type(PHOTONPACKET), allocatable :: photonPacketStack(:)
+    type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
+ 
+   !Custom MPI type variables
+    integer(MPI_ADDRESS_KIND) :: displacement(6)
+    integer :: count = 6
+    integer :: blocklengths(6) = (/ 6, 5, 4, 3, 2, 1/)
+    integer :: oldTypes(6) 
+    integer :: iDisp
 
 !====================================================
+
+
+    !Thaw - custom MPI data types for easier send/receiving
+    !MPI datatype for out TYPE(VECTOR) variables
+    call MPI_TYPE_CONTIGUOUS(3, MPI_DOUBLE_PRECISION, MPI_VECTOR, ierr)
+    call MPI_TYPE_COMMIT(MPI_VECTOR, ierr)
+
+
+    !MPI datatype for the photon_stack data type
+    oldTypes = (/ MPI_VECTOR, MPI_VECTOR, MPI_DOUBLE_PRECISION, &
+         MPI_DOUBLE_PRECISION, MPI_DOUBLE_PRECISION, MPI_INTEGER/)
+
+    call MPI_GET_ADDRESS(toSendStack(1)%rVec, displacement(1), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%uHat, displacement(2), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%freq, displacement(3), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%tPhot, displacement(4), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%ppw, displacement(5), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%destination, displacement(6), ierr)
+
+    do iDisp = 6, 1, -1
+       displacement(iDisp) = displacement(iDisp) - displacement(1)
+    end do
+
+    call MPI_TYPE_CREATE_STRUCT(count, blockLengths, displacement, oldTypes, MPI_PHOTON_STACK, ierr )
+    call MPI_TYPE_COMMIT(MPI_PHOTON_STACK, ierr)
 
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
@@ -592,7 +625,13 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
 
     allocate(nEscapedArray(1:nThreads-1))
-    
+    allocate(nSaved(nThreads))
+    allocate(photonPacketStack(stackLimit*nThreads))
+
+    photonPacketStack%Freq = 0.d0
+    photonPacketStack%Destination = 0
+    photonPacketStack%tPhot = 0.d0
+
 !    write(*,*) "abundances ",grid%ion(1:5)%abundance
 
        nuStart = cSpeed / (1000.e4 * 1.d-8)
@@ -667,7 +706,7 @@ contains
              else if(grid%octreeRoot%threeD) then
                 nMonte = 1.d0 * (8.d0**(maxDepthAMR))
              else
-                nMonte = 1000.d0 * 2**(maxDepthAMR)
+                nMonte = 1.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -709,15 +748,14 @@ contains
 
        nTotScat = 0
        nPhot = 0
-
-
+       nSaved = 0
+       photonPacketStack%destination = 0
+       photonPacketStack%freq = 0.d0
+       toSendStack%freq = 0.d0
+       toSendStack%destination = 0
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-
-!        photonStackppw = 0.d0
-!       nSaved = 0
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
-
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
@@ -750,108 +788,203 @@ contains
                 call getWavelength(thisSource%spectrum, wavelength)                
                 thisFreq = cSpeed/(wavelength / 1.e8)
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
-
                 iThread = thisOctal%mpiThread(subcell)
 
-		!readyToSend=.true.
-		!nSaved = 1
-		!call MPI_SEND(nSaved , 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)		
-		!call MPI_SEND(readyToSend , 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)		
-                call sendMPIPhoton(rVec, uHat, thisFreq, tPhoton,photonPacketWeight, iThread)
-		!readyToSend=.false.
-		!call MPI_SEND(readyToSend , 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
-		!write(*,*) "Rank 0 sending photon with rvec ",rvec," to ", iThread
-                nInf = nInf + 1
-		     
+
+                !Create a bundle of photon packets, only modify the first available array space
+                do optCounter = 1, (SIZE(photonPacketStack))
+                   if(photonPacketStack(optCounter)%freq == 0.d0) then
+                      photonPacketStack(optCounter)%rVec = rVec
+                      photonPacketStack(optCounter)%uHat = uHat
+                      photonPacketStack(optCounter)%freq = thisFreq
+                      photonPacketStack(optCounter)%tPhot = tPhoton
+                      photonPacketStack(optCounter)%ppw = photonPacketWeight
+                      photonPacketStack(optCounter)%destination = iThread
+                      exit
+                   end if
+                end do
+
+                !Keep track of how many packets are destined for each thread
+                nSaved(iThread) = nSaved(iThread) + 1
+
+                !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
+                do optCounter = 1, nThreads-1
+                   if(nSaved(optCounter) /= 0) then
+                      if(nSaved(optCounter) == (zerothstackLimit) .or. (nMonte - nInf) < (zerothstackLimit*nThreads)) then
+                         thisPacket = 1
+                         do sendCounter = 1, (stackLimit*nThreads)
+                            if(photonPacketStack(sendCounter)%destination == optCounter &
+                                 .and. photonPacketStack(sendCounter)%freq /= 0.d0) then                                                           
+                               toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+                               toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+                               toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+                               toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+                               toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+                               toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+                            
+                               thisPacket = thisPacket + 1
+                               nInf = nInf + 1
+                               
+                               !Reset the photon frequency so that this array entry can be overwritten
+                               photonPacketStack(sendCounter)%freq = 0.d0
+                               
+                               !Reset the destination so that it doesnt get picked up in subsequent sweeps!       
+                               photonPacketStack(sendCounter)%destination = 0
+                            
+                            end if
+                         end do
+
+                         call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+
+                         !reset the counter for this thread's bundle recieve 
+                         nSaved(optCounter) = 0
+                         toSendStack%destination = 0
+                         toSendStack%freq = 0.d0
+                      end if
+                   end if
+                end do
 
              end do mainloop
+             print *, "Rank 0 sent all initial bundles"
+             print *, "Telling Ranks to pass stacks ASAP "
+             
+             do iThread = 1, nThreads - 1
+                toSendStack(1)%destination = 500
+                call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
+                call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+             end do
+             
 
              photonsStillProcessing = .true.
              do while(photonsStillProcessing)                   
-
+                toSendStack%freq = 0.d0
                 do iThread = 1, nThreads - 1
-                   tempStorage(1) = HUGE(tempStorage(1))
-                   tempStorage(2) = 0.d0
-                   call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+
+                   toSendStack(1)%destination = 999
+                   call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
                 enddo
+
                 nEscaped = SUM(nEscapedArray(1:nThreads-1))
                 nEscapedGlobal = nEscaped
-                if (nEscaped == nMonte) photonsStillProcessing = .false.
-
+                if (nEscaped == nMonte) then
+                   photonsStillProcessing = .false.
+                else if(nEscaped > nMonte) then
+                   print *, "nEscaped greater than nMonte, Exiting..."
+                   do iThread = 1, nThreads -1
+                      print *, "nEscapedArray(iThread) ", iThread, nEscapedArray(iThread)
+                   end do
+                   stop
+                end if
 
              end do
 
              do iThread = 1, nThreads - 1
-                tempStorage(1) = HUGE(tempStorage(1))
-                tempStorage(2) = HUGE(tempStorage(2))
-                call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+                toSendStack(1)%destination = 999
+                toSendStack(2)%destination = 999
+                call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
              enddo
 
           else
              endLoop = .false.
              nEscaped = 0
-	     
+             photonPacketStack%freq = 0.d0
+             currentStack%freq = 0.d0
+             stackSize = 0
+             nSaved = 0
+             sendAllPhotons = .false.
 	     !needNewPhotonArray = .true.	     
              do while(.not.endLoop)
                 crossedMPIboundary = .false.
-		!readyToSend = .false.
-                !HERE:CHECK STACK FOR PHOTONS - IF NONE THEN GET MORE
-                !THAW
-		
-                !photonStackSize = SUM(photonStackppw)
-		!print *, photonStackSize
-		!i = 0
-!		!stop
-                !if(SUM(photonStackppw) == 0.d0) then
-		!   print *, "A "
-		!   
-		!   do iThread = 0, nThreads-1
-		!      print *, "Doing ", iThread, "of ", nThreads 
-		!      if(iThread /= myRank .and. myRank /= 0) then
-		
-                !       call MPI_RECV(readyToSend ,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-		!       
-		
-		!       if(readyToSend) then
-		
-                !        do While(readyToSend)
-                !           call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)
-		!           i = i + 1
-                !           photonStackrVec(i) = rVec
-                !           photonStackuHat(i) = uHat
-                !           photonStackFreq(i) = thisFreq
-                !           photonStackppw(i) = photonPacketWeight
-                !           photonStackDestination(i) = iSignal
-                !           call MPI_RECV(readyToSend, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)                           
-		!				   			   
-		!
-		!	end do
-		!	print *, "sad face :(", myrank
-                !       endif
-		!       photonStackSize = i
-		!      end if
-		!      print *, "Problem? ^_^"
-		!   end do
-		   
-                !else
-		
-		   !stop
-                !   rVec = photonStackrVec(photonStackSize-1)
-                !   uHat = photonStackuHat(photonStackSize-1)
-                !   thisFreq = photonStackFreq(photonStackSize-1)
-                !   tPhoton = photonStacktPhot(photonStackSize-1)
-                !   photonPacketWeight = photonStackppw(photonStackSize-1)
-                !   iSignal = photonStackDestination(photonStackSize-1)
-		!   photonStackSize = photonStackSize - 1
-		!   !Clear the array for another run
-		!   if (photonStackSize == 0) then
-		!      photonStackppw = 0.d0
-		!   end if 
-                !end if
-                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)
+!                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)		
 
-		
+                !Get a new photon stack
+                iSignal = -1
+                if(stackSize == 0) then
+                   call MPI_RECV(currentStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+                   
+                   !Check to see how many photons in stack are not null
+                   do p = 1, stackLimit
+                      if(currentStack(p)%freq /= 0.d0) then                            
+                         stackSize = stackSize + 1
+                      end if
+                   end do
+
+                   !Check to see if a special action is required
+                   escapeCheck = .false.
+                   !Escape checking
+                   if(currentStack(1)%destination == 999) then
+                      iSignal = 1
+                      escapeCheck = .true.
+                      stackSize = 0
+                      !End photoionization loop
+                     if(currentStack(2)%destination == 999) then
+                        iSignal = 0                    
+                      end if
+
+                   !Start sending all photon packets rather than bundles
+                   else if(currentStack(1)%destination == 500 .and. .not. sendAllPhotons) then
+                      sendAllPhotons = .true.
+                      stackSize = 0
+
+                      !Evacuate everything currently in need of sending
+                      do optCounter = 1, nThreads-1
+                         if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
+                            if(nSaved(optCounter) == (stackLimit) .or. sendAllPhotons) then
+                               thisPacket = 1
+                               toSendStack%freq = 0.d0
+                               do sendCounter = 1, (stackLimit*nThreads)
+                                  if(photonPacketStack(sendCounter)%destination /= 0 .and. photonPacketStack(sendCounter)%destination == optCounter) then
+                                    
+                                    toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+                                    toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+                                    toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+                                    toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+                                    toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+                                    toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+                                     
+                                     thisPacket = thisPacket + 1
+                                     !nInf = nInf + 1
+                                     
+                                    !Reset the photon frequency so that this array entry can be overwritten
+                                     photonPacketStack(sendCounter)%freq = 0.d0
+                                     
+                                     !Reset the destination so that it doesnt get picked up in subsequent sweeps!
+                                     photonPacketStack(sendCounter)%destination = 0
+                                     
+                                  end if
+                               end do
+                               call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+                               
+                               !reset the counter for this thread's bundle recieve
+                               nSaved(optCounter) = 0
+                               toSendStack%freq = 0.d0
+                               toSendStack%destination = 0
+                            end if
+                         end if
+                     end do
+                      call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+                      goto 777
+                   end if
+                   currentStack%destination = 0
+
+                end if
+
+                !Get the next available photon in the stack for processing
+                if(stackSize /= 0 .and. .not. escapeCheck) then
+                   do p = 1, stackLimit
+                      if(currentStack(p)%freq /= 0.d0) then
+                         rVec = currentStack(p)%rVec
+                         uHat = currentStack(p)%uHat
+                         thisFreq = currentStack(p)%Freq
+                         tPhoton = currentStack(p)%tPhot
+                         photonPacketWeight = currentStack(p)%ppw
+                         currentStack(p)%freq = 0.d0
+                         exit
+                      end if
+                   end do
+                   stackSize = stackSize - 1
+                end if
 
 
                 if (iSignal == 0) then
@@ -859,6 +992,7 @@ contains
                    goto 777
                 endif
                 if (iSignal == 1) then
+                !   print *, "rank ", myRank, "sending escapees", nEscaped
                    call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
                    goto 777
                 endif
@@ -870,62 +1004,79 @@ contains
 !                if (myrankGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
 
                 if (.not.endLoop) then
-
                    nScat = 0
                    escaped = .false.
                    do while(.not.escaped)
+
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
                            crossedMPIboundary, newThread)
 
+                      if (crossedMPIBoundary) then                         
+                         !Create a bundle of photon packets, only modify the first available array space
+                         do optCounter = 1, (SIZE(photonPacketStack))
+                            if(photonPacketStack(optCounter)%freq == 0.d0) then
+                               photonPacketStack(optCounter)%rVec = rVec
+                               photonPacketStack(optCounter)%uHat = uHat
+                               photonPacketStack(optCounter)%freq = thisFreq
+                               photonPacketStack(optCounter)%tPhot = tPhoton
+                               photonPacketStack(optCounter)%ppw = photonPacketWeight
+                               photonPacketStack(optCounter)%destination = newThread
+                               exit
+                            end if
+                         end do
+
+                         !Keep track of how many packets are destined for each thread
+                         nSaved(newThread) = nSaved(newThread) + 1
+                         
+                         !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
+                         do optCounter = 1, nThreads-1
+                            if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
+                               if(nSaved(optCounter) == (stackLimit) .or. sendAllPhotons) then
+                                  thisPacket = 1
+                                  toSendStack%freq = 0.d0
+                                  do sendCounter = 1, (stackLimit*nThreads)
+                                     if(photonPacketStack(sendCounter)%destination /= 0 .and. photonPacketStack(sendCounter)%destination == optCounter) then 
+                                        
+                                        toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+                                        toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+                                        toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+                                        toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+                                        toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+                                        toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+                                        
+                                        thisPacket = thisPacket + 1
+                                        !nInf = nInf + 1
+                                     
+                                        !Reset the photon frequency so that this array entry can be overwritten
+                                        photonPacketStack(sendCounter)%freq = 0.d0
+                                     
+                                        !Reset the destination so that it doesnt get picked up in subsequent sweeps!
+                                        photonPacketStack(sendCounter)%destination = 0
+                                        
+                                     end if
+                                  end do
+!                                  print *, "RANK ", myRank, "SENDS TO ", optCounter, "NORMSTACK"
+                                  call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+                                  nSaved(optCounter) = 0
+                                  toSendStack%freq = 0.d0
+                                  toSendStack%destination = 0
+                               end if
+                            end if
+                         end do
                       
-                      if (crossedMPIBoundary) then
-                            !OLD STUFF
-                         call sendMPIPhoton(rVec, uHat, thisFreq,tPhoton,photonPacketWeight, newThread)
                          goto 777
 
-                         !HERE: SEND PHOTONS AS BEFORE
-!THAW =============================================================================================
-			 !Store the photon details
-			 !nSaved = nSaved + 1
-			 !rVecStore(nSaved) = rVec
-			 !uHatStore(nSaved) = uHat
-           		 !thisFreqStore(nSaved) = thisFreq
-			 !tPhotonStore(nSaved) = tPhoton
-			 !ppwStore(nSaved) = photonPacketWeight
-			 !newThreadStore(nSaved) = newThread
-			 !
-			!!
-                         !!once storage limit is reached, send photons
-			 !if(nSaved /= 0) then
-			 !  if(nSaved == maxStore .or. (nMonte-nEscapedGlobal) < (nThreads*maxStore)) then
-			 !    readyToSend = .true.
-			 !    !call MPI_SEND(nSaved , 1, MPI_INTEGER, newThreadStore(pSend), tag, MPI_COMM_WORLD, ierr)
-			 !    do pSend=1, (nSaved)
-			 !     call MPI_SEND(readyToSend , 1, MPI_LOGICAL, newThreadStore(pSend), tag, MPI_COMM_WORLD, ierr)
-                         !     call sendMPIPhoton(rVecStore(pSend),uHatStore(pSend), thisFreqStore(pSend), & 
-			 !     tPhotonStore(pSend), ppwStore(pSend), newThreadStore(pSend))
-!
-!!!			    !print *, "rank ", myRank, "sends photon to thread", newThread
-			 !   end do
-                         !   readyToSend = .false.
-			 !   call MPI_SEND(readyToSend , 1, MPI_LOGICAL, newThreadStore(pSend), tag, MPI_COMM_WORLD, ierr)
-	  		 !   nSaved = 0
-			 !   goto 777
-           		 !  else
-			 !   readyToSend = .false.
-	           	 !   call MPI_SEND(readyToSend , 1, MPI_LOGICAL, newThreadStore(pSend), tag, MPI_COMM_WORLD, ierr)
-			 !  end if
-			 !end if
-	!		 !print *, nSaved
-                        !g!oto 777			 
-! =============================================================================================
+                         !THaw - old bit beneath
+!                         call MPI_SEND()
+!                         call sendMPIPhoton(rVec, uHat, thisFreq,tPhoton,photonPacketWeight, newThread)
+
                       endif
 
                       if (noDiffuseField) escaped = .true.
 		
                       if (escaped) nEscaped = nEscaped + 1
-		      
+
                       if (.not. escaped) then
                          
                          thisLam = (cSpeed / thisFreq) * 1.e8
@@ -1131,7 +1282,7 @@ contains
 !    if(grid%geometry == "lexington") then
 !       call dumpLexingtonMPI(grid, epsoverdeltat)
 !    end if
-if (grid%geometry == "lexington") then
+if (grid%geometry == "tom") then
        call dumpLexingtonMPI(grid, epsoverdeltat, niter)
        fac = 2.06e37
 
@@ -1211,11 +1362,11 @@ if (grid%geometry == "lexington") then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 10000
+        minCrossings = 1000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 10000
+        minCrossings = 100
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
@@ -1366,12 +1517,17 @@ enddo
 
  call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
+ call MPI_TYPE_FREE(mpi_vector, ierr)
+ call MPI_TYPE_FREE(mpi_photon_stack, ierr)
+ deallocate(nSaved)
+
 
 ! if (writelucy) then
 !    call writeAmrGrid(lucyfileout,.false.,grid)
 ! endif
-end subroutine photoIonizationloopAMR
 
+
+end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread)
@@ -3537,7 +3693,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
          !    call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
 
            t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
-           oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
+           oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0; netot = 0; tval = 0
            heating = 0.d0; cooling = 0.d0
 
 

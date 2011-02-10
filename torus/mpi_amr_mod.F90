@@ -1327,30 +1327,46 @@ contains
 
 
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+
     allocate(iArray(1:nThreads-1))
 
     nSubcells = 0
     if (myrank == 1) then
+  !
+!    print *, "START POINT FOR ", myRank
+ !   if (myrank == 0) then
+!       print *, "RANK ZERO MADE IT!"
        call countVoxelsMPI(grid%octreeRoot,nVoxels)
        nSubcells = nSubcells + nVoxels
        iArray(1) = nSubcells
        do iThread = 2, nThreads - 1
+!       do iThread = 1, nThreads - 1
+!          print *, "RANK 0 RECVS FROM ", iThread
           call MPI_RECV(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!          print *, "n = ", n
           iArray(iThread) = n
           nSubcells = nSubcells + n
        end do
     else
        call countVoxelsMPI(grid%octreeRoot,nVoxels)
+!       call MPI_SEND(nVoxels, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, ierr)
+
        call MPI_SEND(nVoxels, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
     endif
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+ !   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     iBuffer(1) = nSubcells
-    call MPI_BCAST(iBuffer, 1, MPI_INTEGER, 1, MPI_COMM_WORLD, ierr)
+!    call MPI_BCAST(iBuffer, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!   call MPI_BCAST(iBuffer, 1, MPI_INTEGER, 1, MPI_COMM_WORLD, ierr)
+    call MPI_BCAST(iBuffer, 1, MPI_INTEGER, 1, amrCOMMUNICATOR, ierr)
     nSubcells = iBuffer(1)
 
-    call MPI_BCAST(iArray, nThreads-1, MPI_INTEGER, 1, MPI_COMM_WORLD, ierr)
+!    call MPI_BCAST(iArray, nThreads-1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!    call MPI_BCAST(iArray, nThreads-1, MPI_INTEGER,1, MPI_COMM_WORLD, ierr)
+    call MPI_BCAST(iArray, nThreads-1, MPI_INTEGER,1, amrCOMMUNICATOR, ierr)
 
     if (present(nSubcellArray)) nSubcellArray = iArray
     deallocate(iArray)
@@ -2052,10 +2068,12 @@ end subroutine dumpStromgrenRadius
        end if
     endif
 
-
-
     nOctals=0; nVoxels=0
-    if (myrankglobal /= 0) call countSubcellsMPI(thisgrid, nVoxels)
+    if (myRankGlobal /= 0) call countSubcellsMPI(thisgrid, nVoxels)
+!    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+!    print *, "myRankGlobal ", myRankGlobal, "is counting subcells "
+!    call countSubcellsMPI(thisgrid, nVoxels)
+!    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call MPI_REDUCE(thisgrid%maxDepth, tempInt,1,MPI_INTEGER, MPI_MAX, 1, MPI_COMM_WORLD, ierr)
     maxDepth = tempInt(1)
     call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, MPI_COMM_WORLD, ierr)
