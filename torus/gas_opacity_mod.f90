@@ -317,7 +317,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   logical, save :: firstTime = .true.
   real, allocatable,save :: rayScatter(:)
   real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
-  real(double) :: nh, nhi !, ne,freq
+  real(double) :: nhi !, nh, ne,freq
   integer :: i
   !$OMP THREADPRIVATE (firstTime, rayScatter)
 
