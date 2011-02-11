@@ -1039,9 +1039,12 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
 
-
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
-          
+  !        if(thisOctal%pressure_i(subcell) == 0.d0) then
+  !           print *, "ERROR, pressure is zero"
+  !           stop
+  !        end if
+
           biggamma = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
              useviscosity = .false.
@@ -1064,6 +1067,7 @@ contains
           thisoctal%pressure_i(subcell) = thisoctal%pressure_i(subcell) + biggamma
 
 
+
           if (isnan(thisoctal%pressure_i(subcell))) then
              write(*,*) "pressureu has nan"
              write(*,*) thisoctal%rhou(subcell),thisoctal%rhov(subcell), thisoctal%rhow(subcell)
@@ -1073,6 +1077,12 @@ contains
           endif
 
        endif
+!                 if(thisOctal%pressure_i(subcell) == 0.d0) then
+!             print *, "ERROR, pressure is zero"
+!             stop
+ !         end if
+
+
     enddo
   end subroutine computepressureu
 
@@ -1106,6 +1116,13 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
+         ! if(thisOctal%pressure_i(subcell) == 0.d0) then
+         !    print *, "ERROR, pressure is zero"
+         !    stop
+         ! end if
+
+
+
 
           biggamma = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
@@ -1171,6 +1188,12 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
+          !if(thisOctal%pressure_i(subcell) == 0.d0) then
+          !   print *, "ERROR, pressure is zero"
+          !   stop
+          !end if
+
+
 
           biggamma = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
@@ -2069,18 +2092,17 @@ contains
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
+
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
-    !THAW
    if (selfGravity) then
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
-
 
     if (myrankglobal == 1) call tune(6,"X-direction step")
     direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -2089,13 +2111,16 @@ contains
     call setupUpm(grid%octreeRoot, grid, direction)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
     if(rhieChow) then
-       call computepressureu(grid, grid%octreeroot, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call computepressureu(grid, grid%octreeroot, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call setuppressure(grid%octreeroot, grid, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
        call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
     end if 
+
+
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2122,12 +2147,12 @@ contains
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     if(rhieChow) then
-       call rhiechowui(grid%octreeroot, grid, direction, dt)
+       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     end if
     call pressureForceU(grid%octreeRoot, dt/2.d0)
-    if (myrankglobal == 1) call tune(6,"X-direction step")
 
+    if (myrankglobal == 1) call tune(6,"X-direction step")
 
 
     if (myrankglobal == 1) call tune(6,"Y-direction step")
@@ -2138,10 +2163,10 @@ contains
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     if(rhieChow) then
-       call computepressurev(grid, grid%octreeroot, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call computepressurev(grid, grid%octreeroot, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call setuppressure(grid%octreeroot, grid, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
        call rhiechowui(grid%octreeroot, grid, direction, dt)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
@@ -2185,10 +2210,10 @@ contains
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     if(rhieChow) then
-       call computepressurew(grid, grid%octreeroot, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call computepressurew(grid, grid%octreeroot, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call setuppressure(grid%octreeroot, grid, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
        call rhiechowui(grid%octreeroot, grid, direction, dt)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
     end if
@@ -2234,10 +2259,10 @@ contains
     call setupUpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     if(rhieChow) then
-       call computepressurew(grid, grid%octreeroot, direction) !Thaw 
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call computepressurew(grid, grid%octreeroot, direction) !Thaw 
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+       !call setuppressure(grid%octreeroot, grid, direction) !Thaw
+       !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
        call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     end if
@@ -2265,7 +2290,7 @@ contains
     call setupPressure(grid%octreeRoot, grid, direction)
     if(rhieChow) then
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-       call rhiechowui(grid%octreeroot, grid, direction, dt)
+       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
    
@@ -2318,8 +2343,8 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     if(rhieChow) then
-     !call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-     !call computepressureu(grid, grid%octreeroot, direction) !Thaw
+     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+     call computepressureu(grid, grid%octreeroot, direction) !Thaw
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     
      call setuppressure(grid%octreeroot, grid, direction) !Thaw
@@ -2362,8 +2387,8 @@ contains
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
     if(rhieChow) then
-       !call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-       !call computepressurew(grid, grid%octreeroot, direction) !Thaw
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+       call computepressurew(grid, grid%octreeroot, direction) !Thaw
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
        call setuppressure(grid%octreeroot, grid, direction) !Thaw
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
@@ -2404,8 +2429,8 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
     if(rhieChow) then
-       !call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-       !call computepressureu(grid, grid%octreeroot, direction) !Thaw
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+       call computepressureu(grid, grid%octreeroot, direction) !Thaw
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
        call setuppressure(grid%octreeroot, grid, direction) !Thaw
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
@@ -2522,7 +2547,11 @@ contains
           cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
        case(1) ! isothermal
           cs = sqrt(getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
-	  !if(cs > 2200000.) then
+	  !!print *, "getPressure(thisOctal, subcell)", getPressure(thisOctal, subcell)
+          !print *, "thisOctal%rho(subcell)", thisOctal%rho(subcell)
+          !print *, "cs = ", cs
+          !stop
+          !if(cs > 2200000.) then
           !   print *, "cs ", cs
 	  !   stop
 	  !end if
@@ -6341,26 +6370,33 @@ end subroutine refineGridGeneric2
 !          write(*,*) "rhou,rhow ", thisOCtal%rhou(subcell), thisOctal%rhow(subcell)
 !          write(*,*) "etot, ekinetic, eThermal ",etot, ekinetic, ethermal
        case(1) ! isothermal
-	  !if(thisOctal%rho(subcell)/(mu) /= 0.5d0) then
-	  !if (thisOctal%rho(subcell)/(mu) /= 100.d0) then
-          !   print *, "rho/mu ", (thisOctal%rho(subcell)/(mu))
-	  !end if 
-
-         !   print *, "mu ", mu 
-          !   print *, "getPressure ", getPressure
-	  !end if
-
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
-	  !Thaw - needs to be more generic for species mass
 
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
-          getPressure =  (thisOctal%rho(subcell)/(mu * mHydrogen))*kerg*thisOctal%temperature(subcell)
+         ! print *, "mu = ", mu
 
-          if(getPressure == 0) then
-             print *, "ZERO PRESSURE - halting"
-             print *, "thisOctal%rho(subcell)", thisOctal%rho(subcell)
-             stop
-          end if
+          !stop
+
+          getPressure =  thisOctal%rho(subcell)
+          !print *, "A ", getpressure
+          getPressure =  getpressure/((mu*mHydrogen))
+          !print *, "B ", getpressure
+          getPressure =  getpressure*kerg*thisOctal%temperature(subcell)
+          !print *, "C ", getpressure
+
+!          getPressure =  (thisOctal%rho(subcell)/(mu*mHydrogen))*kerg*thisOctal%temperature(subcell)
+
+          !if(getPressure < 1.d-60) then
+          !   print *, "LOW PRESSURE - halting"
+         !    print *, "thisOctal%rho(subcell)", thisOctal%rho(subcell)
+          !   print *, "mu ", mu
+          !   print *, "thisOctal%temperature(subcell) ",thisOctal%temperature(subcell) 
+          !   print *, "getPressure ", getPressure 
+          !   print *, "mu*mHydrogen ", mu*mHydrogen!
+          !   print *, "kerg*thisOctal%temperature(subcell) ", kerg*thisOctal%temperature(subcell)
+          !    print *, "F", (thisOctal%rho(subcell)/mu*mHydrogen)*kerg*thisOctal%temperature(subcell)
+          !   stop
+          !end if
 
        case(2) !  equation of state from Bonnell 1994
           if (thisOctal%rho(subcell) < rhoCrit) then

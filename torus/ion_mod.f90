@@ -1022,19 +1022,56 @@ end function returnAbundance
 
 
 function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
-  real(double) :: mu, tot
+
+  real(double) :: mu, tot, ne, mA, mE
   integer :: subcell
   type(OCTAL) :: thisOctal
   type(IONTYPE) :: ionArray(:)
   integer :: nion, i
- 
+
   tot = 0.d0
+  ne = 0.d0
+  mu = 0.d0
+  mA = 0.d0
+
   do i = 1, nIon
+     !sum number of ions
      tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
-           dble(ionArray(i)%nucleons)
+          thisOctal%ionFrac(subcell, i)
+
+     !sum ion masses
+     mA = mA + ionArray(i)%abundance * thisOctal%nh(subcell) * &
+          dble(ionArray(i)%nucleons)*thisOctal%ionFrac(subcell, i)
   enddo
-  tot = tot + thisOctal%ne(subcell)/mElectron
-  mu = tot
+
+
+  !get number of free electrons
+  !do i = 1, nIon
+  !   ne = ne + ionArray(i)%abundance * thisOctal%nh(subcell) * &
+  !        thisOctal%ionFrac(subcell, i) * dble(ionArray(i)%z-ionArray(i)%n)
+  !enddo
+  mE = thisOctal%ne(subcell)*(mElectron/mHydrogen)
+
+  tot = tot + thisOctal%ne(subcell)
+  mu = (mA + mE) / tot
+  !print *, "mu = ", mu
+
+
+
+!  real(double) :: mu, tot
+!  integer :: subcell
+!  type(OCTAL) :: thisOctal
+!  type(IONTYPE) :: ionArray(:)
+!  integer :: nion, i
+ 
+!  tot = 0.d0
+!  do i = 1, nIon
+!     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
+!           dble(ionArray(i)%nucleons)*thisOctal%ionFrac(subcell, i)
+! enddo
+!  tot = tot + thisOctal%ne(subcell)*(mElectron/mHydrogen)
+!  mu = tot
+
 end function returnMu
 
 

@@ -200,7 +200,7 @@ contains
     endif
 
 !Thaw 10/02/2010
-!    call neutralGrid(grid%octreeRoot)
+    call neutralGrid(grid%octreeRoot)
 
     looplimitTime = deltaTForDump
     !looplimitTime = 0.1375d10
@@ -229,7 +229,7 @@ contains
 
        call writeInfo("Dumping post-photoionization data", TRIVIAL)
        call writeVtkFile(grid, "start.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
+         valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure         " /))
 
 
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
@@ -286,6 +286,10 @@ contains
 
     tEnd = 200.d0*3.14d10 !200kyr 
 
+    if(grid%geometry == "hii_test") then
+       tEnd = 3.14d13 !1x10^6 year
+    end if
+
     do while(grid%currentTime < tEnd)
        tc = 0.d0
        tc(myrank+1) = 1.d30
@@ -322,6 +326,7 @@ contains
 
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrank /= 0) call resetNh(grid%octreeRoot)
@@ -339,8 +344,6 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        endif
-
- 
 
        call writeInfo("Calling photoionization loop",TRIVIAL)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
@@ -445,7 +448,7 @@ contains
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
           call dumpStromgrenRadius(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
-               VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
+               VECTOR(1.5d9, 1.5d9, -1.5d9), 1000)
        end if
 
 
@@ -789,7 +792,8 @@ contains
                 !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
                 do optCounter = 1, nThreads-1
                    if(nSaved(optCounter) /= 0) then
-                      if(nSaved(optCounter) == (zerothstackLimit) .or. (nMonte - nInf) < (zerothstackLimit*nThreads)) then
+                      if(nSaved(optCounter) == (zerothstackLimit) .or. &
+                           (nMonte - nInf) < (zerothstackLimit*nThreads)) then
                          thisPacket = 1
                          do sendCounter = 1, (stackLimit*nThreads)
                             if(photonPacketStack(sendCounter)%destination == optCounter &
@@ -913,7 +917,8 @@ contains
                                thisPacket = 1
                                toSendStack%freq = 0.d0
                                do sendCounter = 1, (stackLimit*nThreads)
-                                  if(photonPacketStack(sendCounter)%destination /= 0 .and. photonPacketStack(sendCounter)%destination == optCounter) then
+                                  if(photonPacketStack(sendCounter)%destination /= 0 .and. &
+                                       photonPacketStack(sendCounter)%destination == optCounter) then
                                     
                                     toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
                                     toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
@@ -1015,7 +1020,8 @@ contains
                                   thisPacket = 1
                                   toSendStack%freq = 0.d0
                                   do sendCounter = 1, (stackLimit*nThreads)
-                                     if(photonPacketStack(sendCounter)%destination /= 0 .and. photonPacketStack(sendCounter)%destination == optCounter) then 
+                                     if(photonPacketStack(sendCounter)%destination /= 0 .and. &
+                                          photonPacketStack(sendCounter)%destination == optCounter) then 
                                         
                                         toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
                                         toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
@@ -2401,7 +2407,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
-!          thisOctal%temperature(subcell) = 100.d0 + (20000.d0-100.d0) * thisOctal%ionFrac(subcell,2)
+  !        thisOctal%temperature(subcell) = 10.d0 + (20000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
           thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
 
           !if(thisOctal%ionFrac(subcell,2) /= 0.d0 .and. thisOctal%ionFrac(subcell, 2) /= 1.d-30) then
