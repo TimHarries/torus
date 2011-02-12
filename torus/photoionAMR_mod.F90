@@ -130,7 +130,7 @@ contains
     tDump = 0.005d0
     deltaTforDump = 3.14d10 !1kyr
     nextDumpTime = deltaTforDump
-    if (grid%geometry == "hii_test") deltaTforDump = 1.d11
+    if (grid%geometry == "hii_test") deltaTforDump = 2.d10
     if(grid%geometry == "bonnor") deltaTforDump = 1.57d11 !5kyr
 
     iunrefine = 0
@@ -315,11 +315,41 @@ contains
           dumpThisTime = .true.
        endif
 
-
        if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", &
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
        if (myrank == 1) write(*,*) "Time step", dt
+
+       call writeInfo("Calling photoionization loop",TRIVIAL)
+       !       call testIonFront(grid%octreeRoot, grid%currentTime)
+              !call neutralGrid(grid%octreeRoot)
+
+       if(dt /= 0.d0) then
+          loopLimitTime = grid%currentTime+dt
+       else
+          looplimittime = deltaTForDump
+       end if
+          call setupNeighbourPointers(grid, grid%octreeRoot)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 15, loopLimitTime, loopLimitTime, .True., .true.)
+
+          call writeInfo("Done",TRIVIAL)
+
+       if (myrank /= 0) then
+          call calculateEnergyFromTemperature(grid%octreeRoot)
+          call calculateRhoE(grid%octreeRoot, direction)
+       endif
+
+       if (myRank /= 0) then
+
+          call evenUpGridMPI(grid,.false.,.true.)
+
+          call refineGridGeneric(grid, 1.d-2)
+
+          call writeInfo("Evening up grid", TRIVIAL)
+          call evenUpGridMPI(grid, .false.,.true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+       endif
 
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
@@ -345,36 +375,36 @@ contains
 
        endif
 
-       call writeInfo("Calling photoionization loop",TRIVIAL)
+!       call writeInfo("Calling photoionization loop",TRIVIAL)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
 	       !call neutralGrid(grid%octreeRoot)
 
-       if(dt /= 0.d0) then
-          loopLimitTime = grid%currentTime + dt
-       else
-          looplimittime = deltaTForDump
-       end if
-          call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)
+!       if(dt /= 0.d0) then
+!          loopLimitTime = grid%currentTime + dt
+!       else
+!          looplimittime = deltaTForDump
+!       end if
+!          call setupNeighbourPointers(grid, grid%octreeRoot)
+!          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)!
 
-          call writeInfo("Done",TRIVIAL)
-       
-       if (myrank /= 0) then
-          call calculateEnergyFromTemperature(grid%octreeRoot)
-          call calculateRhoE(grid%octreeRoot, direction)
-       endif  
+!          call writeInfo("Done",TRIVIAL)
+!       
+!       if (myrank /= 0) then
+!          call calculateEnergyFromTemperature(grid%octreeRoot)
+!          call calculateRhoE(grid%octreeRoot, direction)
+!       endif  !
 
-       if (myRank /= 0) then
+!       if (myRank /= 0) then!
 
-          call evenUpGridMPI(grid,.false.,.true.)
-       
-          call refineGridGeneric(grid, 1.d-2)
+!          call evenUpGridMPI(grid,.false.,.true.)
+!       
+!          call refineGridGeneric(grid, 1.d-2)
+!
+!          call writeInfo("Evening up grid", TRIVIAL)    
+!          call evenUpGridMPI(grid, .false.,.true.)
+!          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)!
 
-          call writeInfo("Evening up grid", TRIVIAL)    
-          call evenUpGridMPI(grid, .false.,.true.)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-       endif
+!       endif
 
 !       call writeVtkFile(grid, "current.vtk", &
 !            valueTypeString=(/"rho        ","HI        " ,"temperature" /))
@@ -414,12 +444,12 @@ contains
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d11)) then
              deltaTForDump = 1.d11
           end if
-          !if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d12)) then
-          !   deltaTForDump = 1.d12
-	  !end if
-          !if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d13)) then
-          !   deltaTForDump = 1.d13
-	  !end if
+          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d12)) then
+             deltaTForDump = 1.d12
+	  end if
+          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d13)) then
+             deltaTForDump = 1.d13
+	  end if
 !          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d14))then
 !             deltaTForDump = 1.d14
  !         end if
@@ -447,8 +477,8 @@ contains
                VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-          call dumpStromgrenRadius(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
-               VECTOR(1.5d9, 1.5d9, -1.5d9), 1000)
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+               VECTOR(1.75d9, 1.75d9, 1.75d9), 1000)
        end if
 
 
@@ -797,7 +827,7 @@ contains
                          thisPacket = 1
                          do sendCounter = 1, (stackLimit*nThreads)
                             if(photonPacketStack(sendCounter)%destination == optCounter &
-                                 .and. photonPacketStack(sendCounter)%freq /= 0.d0) then                                                           
+                                 .and. photonPacketStack(sendCounter)%freq /= 0.d0) then           
                                toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
                                toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
                                toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
@@ -3126,7 +3156,6 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 
 !Thaw
      thisOctal%ionFrac(subcell, iEnd) = 1.d0 - SUM(thisOctal%ionFrac(subcell,iStart:iEnd-1))
-
      thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
 
      if(thisOctal%ionFrac(subcell, iend) == 0.d0) then

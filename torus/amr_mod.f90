@@ -8685,10 +8685,10 @@ end function readparameterfrom2dmap
     thisOctal%iEquationOfState(subcell) = 1
 
     zplusbound = 1
-    zminusbound = 4
-    xplusbound = 4
+    zminusbound = 1
+    xplusbound = 1
     xminusbound = 1
-    yplusbound = 4
+    yplusbound = 1
     yminusbound = 1
   end subroutine assign_hii_test
 
