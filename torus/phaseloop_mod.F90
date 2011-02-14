@@ -261,7 +261,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer, parameter :: maxIntPro = 1000
   integer :: nIntPro
   real :: lamIntPro(maxIntPro), intPro(maxIntPro)
-  character(len=80) :: message, header
+  character(len=80) :: message
+#ifdef USECFITSIO
+  character(len=80) :: header
+#endif
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
