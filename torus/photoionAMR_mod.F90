@@ -215,7 +215,7 @@ contains
           call setupNeighbourPointers(grid, grid%octreeRoot)
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
                !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 50, loopLimitTime, looplimittime, .True.,&
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 70, loopLimitTime, looplimittime, .True.,&
                   .true.)
 
           call writeInfo("Done",TRIVIAL)
@@ -229,7 +229,7 @@ contains
 
        call writeInfo("Dumping post-photoionization data", TRIVIAL)
        call writeVtkFile(grid, "start.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure         " /))
+         valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure   " /))
 
 
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
@@ -330,7 +330,7 @@ contains
           looplimittime = deltaTForDump
        end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 15, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 5, loopLimitTime, loopLimitTime, .True., .true.)
 
           call writeInfo("Done",TRIVIAL)
 
@@ -444,12 +444,12 @@ contains
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d11)) then
              deltaTForDump = 1.d11
           end if
-          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d12)) then
-             deltaTForDump = 1.d12
-	  end if
-          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d13)) then
-             deltaTForDump = 1.d13
-	  end if
+        !  if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d12)) then
+        !     deltaTForDump = 1.d12
+	!  end if
+        !  if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d13)) then
+        !     deltaTForDump = 1.d13
+	!  end if
 !          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d14))then
 !             deltaTForDump = 1.d14
  !         end if
@@ -1377,11 +1377,11 @@ if (grid%geometry == "tom") then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 2000
+        minCrossings = 50000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 2000
+        minCrossings = 50000
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
@@ -1400,20 +1400,20 @@ if (grid%geometry == "tom") then
                       
                       !    print *, "deltaT = ", deltaT
                       
-                      if(deltaT > 2.0d-2) then
+                      if(deltaT > 5.0d-2) then
                          if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                             anyUndersampled = .true.
                          endif
                       end if
                       
-                      if(deltaT < 2.0d-2 .and. .not. failed) then
+                      if(deltaT < 5.0d-2 .and. .not. failed) then
                          thisThreadConverged = .true.
                       else 
                          if(niter > 2) then
                             fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
                                  thisOctal%TLastLastIter(subcell))
 
-                            if(fluctuationCheck < 2.0d-2 .and. .not. failed) then
+                            if(fluctuationCheck < 5.0d-2 .and. .not. failed) then
                                thisThreadConverged = .true.
                             else
                                thisThreadConverged = .false.                             
