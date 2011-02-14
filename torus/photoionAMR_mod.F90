@@ -135,6 +135,7 @@ contains
 
     iunrefine = 0
     startFromNeutral = .false.
+    call ionizeGrid(grid%octreeRoot)
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
 
 
@@ -215,7 +216,7 @@ contains
           call setupNeighbourPointers(grid, grid%octreeRoot)
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
                !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 70, loopLimitTime, looplimittime, .True.,&
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .True.,&
                   .true.)
 
           call writeInfo("Done",TRIVIAL)
@@ -557,7 +558,7 @@ contains
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
     integer, parameter :: nTemp = 9
-    real(double) :: tempstorage(nTemp)
+   ! real(double) :: tempstorage(nTemp)
     real(double) :: v, dustHeating
     real :: kappaP
     integer, parameter :: nFreq = 1000
@@ -581,7 +582,7 @@ contains
 !================TOMS VARIABLES=======================
     real(double) :: deltaT, fluctuationCheck 
     logical :: anyUndersampled, undersampledTOT
-!    character(len=80) :: vtkFilename
+    character(len=80) :: vtkFilename
     logical :: underSamFailed, escapeCheck
 
     !optimisation variables
@@ -716,7 +717,7 @@ contains
              if(grid%octreeRoot%twoD) then
                 nMonte = 1000.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 1.d0 * (8.d0**(maxDepthAMR))
+                nMonte = 1.d3 * (8.d0**(maxDepthAMR))
              else
                 nMonte = 1.d0 * 2**(maxDepthAMR)
              end if
