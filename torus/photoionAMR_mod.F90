@@ -135,7 +135,7 @@ contains
 
     iunrefine = 0
     startFromNeutral = .false.
-    call ionizeGrid(grid%octreeRoot)
+
 !    if (grid%geometry == "bonnor") startFromNeutral = .true.
 
 
@@ -201,8 +201,8 @@ contains
     endif
 
 !Thaw 10/02/2010
-    call neutralGrid(grid%octreeRoot)
-
+!    call neutralGrid(grid%octreeRoot)
+    call ionizeGrid(grid%octreeRoot)
     looplimitTime = deltaTForDump
     !looplimitTime = 0.1375d10
     do irefine = 1, 1
@@ -324,7 +324,7 @@ contains
        call writeInfo("Calling photoionization loop",TRIVIAL)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
               !call neutralGrid(grid%octreeRoot)
-
+       call ionizeGrid(grid%octreeRoot)
        if(dt /= 0.d0) then
           loopLimitTime = grid%currentTime+dt
        else
@@ -582,7 +582,7 @@ contains
 !================TOMS VARIABLES=======================
     real(double) :: deltaT, fluctuationCheck 
     logical :: anyUndersampled, undersampledTOT
-    character(len=80) :: vtkFilename
+    !character(len=80) :: vtkFilename
     logical :: underSamFailed, escapeCheck
 
     !optimisation variables
@@ -715,9 +715,9 @@ contains
        else
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
-                nMonte = 1000.d0 * (4.d0**(maxDepthAMR))
+                nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 1.d3 * (8.d0**(maxDepthAMR))
+                nMonte = 10.d0 * (8.d0**(maxDepthAMR))
              else
                 nMonte = 1.d0 * 2**(maxDepthAMR)
              end if
