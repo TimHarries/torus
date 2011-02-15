@@ -945,8 +945,8 @@ contains
        jbar = (jBarExternal + jBarInternal)
 
 
-       if ((thisAtom%name == "HeII").and.(ilower==1))&
-          write(*,*) ilower," line data ",jbarExternal,jbarInternal,jbar,tauav
+!       if ((thisAtom%name == "HeII").and.(ilower==1))&
+!          write(*,*) ilower," line data ",jbarExternal,jbarInternal,jbar,tauav
 
     endif
           
@@ -1118,11 +1118,11 @@ contains
     real(double), parameter :: convergeTol = 1.d-4, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
-    character(len=80) :: message, ifilename
+    character(len=80) :: message, ifilename, tfilename
     real :: r
     logical :: ionized
     integer :: nIter, idump, nt, nInuse, nConverged
-    real(double) :: percentageConverged
+    real(double) :: percentageConverged,x1,w
     real(double), save, allocatable :: oldpops1(:,:), oldpops2(:,:), oldpops3(:,:), oldpops4(:,:)
     integer, parameter :: iNgStep = 5
 
@@ -1671,33 +1671,33 @@ contains
 !                      write(*,*) "Main iteration route converged after ", iter, " iterations"
                       thisOctal%ne(subcell) = ne
                       
-!                        if (myRankisZero) then
-!                           open(69, file=ifilename, status="old", position = "append", form="formatted")
-!                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
-!
-!                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
-!
-!                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
-!                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
-!                                log10(thisOctal%rho(subcell))
-!                           close(69) 
-!                           itmp = itmp + 1
-!                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
-!                           open(69, file=tfilename, status="unknown",form="formatted")
-!                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
-!                           w = 0.5d0*(1.d0 - x1)
-!                           do i = 1, nFreq
-!                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1)
-!                           enddo
-!                           close(69)
-!
-!                        endif
+                        if (myRankisZero) then
+                           open(69, file=ifilename, status="old", position = "append", form="formatted")
+                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
+
+                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
+
+                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
+                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
+                                log10(thisOctal%rho(subcell))
+                           close(69) 
+                           itmp = itmp + 1
+                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
+                           open(69, file=tfilename, status="unknown",form="formatted")
+                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
+                           w = 0.5d0*(1.d0 - x1)
+                           do i = 1, nFreq
+                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1)
+                           enddo
+                           close(69)
+
+                        endif
 
                    endif
 

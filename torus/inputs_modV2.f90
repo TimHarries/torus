@@ -575,6 +575,26 @@ contains
                "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
        endif
 
+       case("wind")
+       call getReal("rcore", rCore, real(rSol/1.d10), cLine, fLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       call getReal("teff", teff, 1., cLine, fLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("twind", twind, teff, cLine, fLine, nLines, &
+            "Wind temperature (effective temp)): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v0", v0, 1.e5, cLine, fLine, nLines, &
+            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm", vTerm, 1.e5, cLine, fLine, nLines, &
+            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta", beta, 1., cLine, fLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("mdot", mdot, real(msol)/(365.25*24.*3600.), cLine, fLine, nLines, &
+            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+       call getString("contflux1", contFluxFile, cLine, fLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+
+
+
 
        case("fogel")
        call getString("asciifile", textFilename, cLine, fLine, nLines, &
@@ -943,6 +963,10 @@ contains
                "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
        enddo
     endif
+
+
+    call getLogical("thickcont", opticallyThickContinuum, cLine, fLine, nLines, &
+         "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
 
 
 

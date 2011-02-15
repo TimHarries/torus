@@ -468,8 +468,8 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
-          write(*,*) rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
-               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
+!          write(*,*) rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
+!               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
           stop
