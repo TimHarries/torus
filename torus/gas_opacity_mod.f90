@@ -329,6 +329,11 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   if (PRESENT(kappaAbs)) kappaAbs = 0.d0
   if (PRESENT(kappaAbsArray)) then
      kappaAbsArray = 0.d0
+     if (firsttime) then 
+        write(*,*) "returnGasKappaValue: kappaAbsArray is set to zero ", &
+        "temperature=", temperature, "is not used"
+        firstTime = .false.
+     end if
 !     do i = 1, grid%nLambda
 !        freq = cspeed/(grid%lamArray(i)*angstromtocm)
 !        kappaAbsArray(i) = kappaAbsArray(i) +  ne * nhI * &
