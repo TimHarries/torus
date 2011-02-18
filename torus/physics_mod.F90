@@ -377,7 +377,6 @@ contains
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
      use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, calcDataCube
-     use modelatom_mod, only : globalAtomArray
      use photoion_mod, only : refineLambdaArray
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
