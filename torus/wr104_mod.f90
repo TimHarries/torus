@@ -8,11 +8,6 @@ module wr104_mod
 
   implicit none
 
-  type particle_list
-     type(VECTOR), pointer :: position(:)
-     integer :: nParticles
-  end type particle_list
-
 contains
 
   subroutine readWR104Particles(filename, sphdata, objectDistance)
