@@ -3881,7 +3881,6 @@ END SUBROUTINE GAUSSJ
     real(double) ::  r0
     real(double) :: mu, soundSpeed, mass, zinner, eThermal, eGrav, dv
     integer :: i
-    real(double), parameter :: zetaCrit = 1.2353d0
     real(double) :: dr, drhodr, d2rhodr2
     character(len=80) :: message
 
