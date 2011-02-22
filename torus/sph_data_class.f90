@@ -1585,7 +1585,7 @@ contains
           endif
           return
        elseif(param .eq. 2) then
-          Clusterparameter = VECTOR(1d-37, tcbr, 0.d0)  ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density ! stays as vector for moment
           return
        elseif(param .eq. 3) then 
           Clusterparameter = VECTOR(1d-37, 0.d0, 0.d0)
