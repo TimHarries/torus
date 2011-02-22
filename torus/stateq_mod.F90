@@ -3703,6 +3703,7 @@ contains
        write(*,*) "Doing all cells..."
       ! get an array of octals comprising the entire tree
       allocate(octalArray(grid%nOctals))
+      nOctal = 0
       call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
       if ((grid%statEq2d .and. (.not. lte)) .or. recalcPrevious) then
@@ -4993,7 +4994,7 @@ contains
     integer :: j1, j2
     real(double) :: dx, dx_max
 
-    debug = .true.
+    debug = .false.
     ! Sanity check
     if (size(x) /= n) then 
       print *, 'In subroutine mnewt_stateq_v2, we are assuming argumnent ''n'' = SIZE(x),',&

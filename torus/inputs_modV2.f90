@@ -773,9 +773,6 @@ contains
        call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
-       call getLogical("dumpinneredge", dumpInnerEdge, cLine, fLine, nLines, &
-            "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .false., ok, .false.)
-
 
 
 !       rCore = rCore * rSol / 1.e10

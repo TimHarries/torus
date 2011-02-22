@@ -958,6 +958,7 @@ contains
   recursive subroutine fillDustUniform(grid, thisOctal)
 
     use input_variables, only : nDustType, grainFrac, rSublimation
+    use input_variables, only : ttauriDisc
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -978,7 +979,8 @@ contains
        else
           fac = 1.
 
-          if (grid%geometry == "shakara") then
+          if ((grid%geometry == "shakara").or. &
+               ((grid%geometry == "ttauri").and.ttauriDisc)) then
               rVec = subCellCentre(thisOctal, Subcell)
               r = sqrt(rVec%x**2 + rVec%y**2)
               if (r < 1.01d0*rSublimation) then

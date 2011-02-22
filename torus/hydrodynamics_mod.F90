@@ -6070,7 +6070,7 @@ end subroutine refineGridGeneric2
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
     real(double) :: sorFactor, deltaPhi
 
-    sorFactor = 1.5d0
+    sorFactor = 1.2d0
 
     gGrav = bigG
 
@@ -6172,7 +6172,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-4
+    real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-6
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -6186,7 +6186,7 @@ end subroutine refineGridGeneric2
 
        call updateDensityTree(grid%octreeRoot)
 
-       do iDepth = 4, maxDepthAmr-1
+       do iDepth = 3, maxDepthAmr-1
 
           call unsetGhosts(grid%octreeRoot)
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
@@ -6238,7 +6238,7 @@ end subroutine refineGridGeneric2
 !                  "u_i          ", &
 !                  "phi          "/))
 
-!             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
 
@@ -6264,7 +6264,7 @@ end subroutine refineGridGeneric2
 
     fracChange = 1.d30
     it = 0
-    do while (ANY(fracChange(1:nHydrothreads) > tol))
+    do while (ANY(fracChange(1:nHydrothreads) > tol2))
        fracChange = 0.d0
        it = it + 1
 
@@ -6279,7 +6279,7 @@ end subroutine refineGridGeneric2
        
        fracChange = tempFracChange
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 
