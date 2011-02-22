@@ -1343,6 +1343,59 @@ contains
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
     endif
 
+    call getLogical("internalView", internalView, cLine, fLine, nLines, &
+         "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .false.)
+
+    ! Read parameters used by galactic plane survey 
+    if ( internalView ) then 
+
+       call getLogical("obsVelFromGrid", obsVelFromGrid, cLine, fLine, nLines, &
+            "Set observer velocity from grid:", "(a,1l,1x,a)", .false., ok, .true.)
+
+       call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm)", &
+            "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+       call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm)", &
+            "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
+       call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm)", &
+            "(a,e10.4,1x,a)", 0.d0, ok, .false.)
+          
+       call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s)", &
+            "(a,f8.2x,a)", 0.d0, ok, .false.)
+       call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s)", &
+            "(a,f8.2x,a)", 0.d0, ok, .false.)
+       call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
+               "(a,f8.2x,a)", 0.d0, ok, .false.)
+
+       ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
+       ! Rotation about y-axis
+       call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, fLine, nLines, &
+            "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
+       ! Rotation about z-axis
+       call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
+            "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
+       
+       ! Rotate the centre of the grid so it covers the required domain
+       gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
+       write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
+       call writeInfo(message)
+       gridCentre     = rotateZ( gridCentre, galaxyPositionAngle*degToRad )
+       gridCentre     = rotateY( gridCentre, galaxyInclination*degToRad   )
+       write(message,'(a,3(ES12.3,2x),a)') "Modified grid centre is ", gridCentre
+       call writeInfo(message)
+       amrGridCentreX = gridCentre%x
+       amrGridCentreY = gridCentre%y
+       amrGridCentreZ = gridCentre%z
+          
+       ! When restarting particles are required for map_dI_to_particles
+       if ( readgrid ) then 
+          call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
+               "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
+          
+          call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
+               "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
+       end if
+
+    end if
 
     if ( h21cm ) then 
        call getInteger("nSubpixels", nSubpixels, cLine, fLine, nLines, &
@@ -1355,62 +1408,9 @@ contains
             "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
+       itrans = 1 ! always 1 for the 21cm line
 
-       call getLogical("internalView", internalView, cLine, fLine, nLines, &
-            "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .true.)
-
-       ! Read parameters used by galactic plane survey 
-       if ( internalView ) then 
-
-          call getLogical("obsVelFromGrid", obsVelFromGrid, cLine, fLine, nLines, &
-               "Set observer velocity from grid:", "(a,1l,1x,a)", .false., ok, .true.)
-
-          call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm)", &
-               "(a,e10.4,1x,a)", 0.d0, ok, .false.)
-          call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm)", &
-               "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
-          call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm)", &
-               "(a,e10.4,1x,a)", 0.d0, ok, .false.)
-          
-          call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s)", &
-               "(a,f8.2x,a)", 0.d0, ok, .false.)
-          call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s)", &
-               "(a,f8.2x,a)", 0.d0, ok, .false.)
-          call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
-               "(a,f8.2x,a)", 0.d0, ok, .false.)
-
-          ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
-          ! Rotation about y-axis
-          call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, fLine, nLines, &
-               "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
-          ! Rotation about z-axis
-          call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
-               "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
-
-          ! Rotate the centre of the grid so it covers the required domain
-          gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
-          write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
-          call writeInfo(message)
-          gridCentre     = rotateZ( gridCentre, galaxyPositionAngle*degToRad )
-          gridCentre     = rotateY( gridCentre, galaxyInclination*degToRad   )
-          write(message,'(a,3(ES12.3,2x),a)') "Modified grid centre is ", gridCentre
-          call writeInfo(message)
-          amrGridCentreX = gridCentre%x
-          amrGridCentreY = gridCentre%y
-          amrGridCentreZ = gridCentre%z
-          
-
-          ! When restarting particles are required for map_dI_to_particles
-          if ( readgrid ) then 
-             call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
-                  "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
-
-             call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
-                  "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
-          end if
-
-       else
-
+       if ( .not. internalView ) then 
           ! Far field h21cm case
           call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
                "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
