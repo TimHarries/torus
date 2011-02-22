@@ -410,9 +410,11 @@ module molecular_mod
         else
 ! MPI stuff
            if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
-! allocate space for n_H2
-           if (.not.associated(thisOctal%nh2)) allocate(thisOctal%nh2(1:thisOctal%maxChildren))
-           thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
+! Allocate space for n_H2 and initialise, if not already done
+           if (.not.associated(thisOctal%nh2)) then 
+              allocate(thisOctal%nh2(1:thisOctal%maxChildren))
+              thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
+           end if
 ! Temporary graph making code for molcluster. V1 code should ultimately be removed 
 !           if(plotlevels .and. molcluster) then
 !              if(firsttime2 .and. molcluster) then
@@ -889,6 +891,8 @@ module molecular_mod
 
      real(double) :: collmatrix(50,50), ctot(50)
 
+     logical :: warned_neg_dtau
+
      call writeinfo("molecular_mod 20100428.1400",TRIVIAL)
      
 ! logicals are quicker to access than strings 
@@ -1166,7 +1170,7 @@ module molecular_mod
 ! iterate over all octals, all rays, solving the system self-consistently
 
                 !$OMP PARALLEL DEFAULT(NONE) &
-                !$OMP PRIVATE(iOctal, thisOctal, iray) &
+                !$OMP PRIVATE(iOctal, thisOctal, iray, warned_neg_dtau) &
 		!$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix, subcell) &
 		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
 		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
@@ -1181,6 +1185,8 @@ module molecular_mod
             allocate(i0(1:maxray,1:maxtrans))
 ! set-up temporary arrays for ngstep
             allocate(oldPops1(1:maxlevel), oldPops2(1:maxlevel), oldPops3(1:maxlevel), oldPops4(1:maxlevel))
+
+            warned_neg_dtau = .false. 
 
             !$OMP DO SCHEDULE(static)
     do iOctal = ioctal_beg, ioctal_end
@@ -1205,11 +1211,10 @@ module molecular_mod
 
 ! First populate ds, phi and i0 so that they can be passed on to calculatejbar             
 
-
              do iRay = 1, nRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &
-                     thisMolecule,fixedrays) ! does the hard work - populates i0 etc
+                     thisMolecule,fixedrays, warned_neg_dtau) ! does the hard work - populates i0 etc
                 i0(iray,1:maxtrans) = i0temp(1:maxtrans)
 !                write(*,*) i0temp(1)
 !                write(*,*) thisoctal%molecularlevel(1:2,subcell)
@@ -1457,7 +1462,7 @@ module molecular_mod
 end subroutine molecularLoop
 
 !!! find the radiation incident at a point in a cell from a pencil beam along a particular direction
-   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays)
+   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays, warned_neg_dtau)
 !   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, thisMolecule, fixedrays)
 
      use input_variables, only : useDust, realdust, quasi
@@ -1499,6 +1504,8 @@ end subroutine molecularLoop
      real(double) :: dv, deltaV
      real(double) :: dist, dds, tval, dvAcrossCell, projVel, endprojVel, CellEdgeInterval, phiProfVal
      real(double) :: r, nmol 
+
+     logical :: warned_neg_dtau
 
 !$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
      antithetic = .true.
@@ -1718,8 +1725,9 @@ end subroutine molecularLoop
            attenuation = exp(-tau)
 ! Intensity along ray owing to line segment
            do iTrans = 1, maxtrans
-              if (dtau(itrans) < -1.d0) then
+              if (dtau(itrans) < -1.d0 .and. .not. warned_neg_dtau ) then
                  write(*,*) "dtau ERROR: ",dtau(itrans),alpha(itrans),dds,phiprofval
+                 warned_neg_dtau = .true. 
               endif
            enddo
            localradiationfield = exp(-dtau) 
@@ -4293,16 +4301,15 @@ end subroutine plotdiscValues
 !       type(octal), pointer :: thisoctal
        integer, optional :: subcell
 
-#ifdef _OPENMP
        type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
        integer, save :: savecounter = 0
+!$OMP THREADPRIVATE (oldposition, oldout, savecounter)
 
        if(oldposition .eq. position) then
           savecounter = savecounter + 1
           out = oldout
           return
        endif
-#endif
 
        if(molebench) then
           Out = Molebenchvelocity(Position) 
@@ -4322,10 +4329,8 @@ end subroutine plotdiscValues
                                 actualSubcell = subcell, linearinterp = .false.)
        endif
 
-#ifdef _OPENMP
        oldout = out
        oldposition = position
-#endif
 
   end function velocity
 

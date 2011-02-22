@@ -360,17 +360,14 @@ contains
     if ( h21cm ) then 
        call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
                    thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
-
-       if ( associated (sphData%rhoCO) ) then 
-          ! Store CO number density in molabundance
-          clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 3)
-          thisOctal%molabundance = clusterparam%x / ( 28.0_db * mhydrogen )
-       else
-          thisOctal%molabundance = 0.0_db
-       end if
-
+       thisOctal%molabundance = 0.0_db
     end if
-       
+
+! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
+    if ( associated (sphData%rhoCO) ) then 
+       clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 3)
+       thisOctal%molabundance(subcell) = ( clusterparam%x / ( 28.0_db * mhydrogen ) ) / thisOctal%nh2(subcell)
+    end if
 
   end subroutine assign_grid_values
 

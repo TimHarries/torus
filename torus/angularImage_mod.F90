@@ -38,9 +38,10 @@ module angularImage
       use h21cm_mod, only: h21cm_lambda
       use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
            galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid
+      use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
       use datacube_mod, only : writeDataCube
-      use input_variables, only : dataCubeFilename, wanttau
+      use input_variables, only : dataCubeFilename, wanttau, h21cm
 #endif
 
 
@@ -60,12 +61,14 @@ module angularImage
          nColOnly = .false.
       end if
 
+      if ( h21cm ) then 
 ! molecular weight is used for column density calculation
-      thisMolecule%molecularWeight = mHydrogen / amu
+         thisMolecule%molecularWeight = mHydrogen / amu
 
 ! Set up 21cm line
-      allocate( thisMolecule%transfreq(1) )
-      thisMolecule%transfreq(1) = cSpeed / (h21cm_lambda)
+         allocate( thisMolecule%transfreq(1) )
+         thisMolecule%transfreq(1) = cSpeed / (h21cm_lambda)
+      end if
 
 ! Set up the observer's position. Transform to rotated and tilted grid as required. 
       rayposition = VECTOR(intPosX, intPosY, intPosZ)
@@ -105,7 +108,11 @@ module angularImage
       call addvelocityAxis(cube, maxVel, minVel) 
 
       call writeinfo("Generating internal view", TRIVIAL)
-      call createAngImage(cube, grid, thisMolecule)
+      if ( h21cm ) then 
+         call createAngImage(cube, grid, thisMolecule)
+      else
+         call createAngImage(cube, grid, globalMolecule)
+      end if
 
       call process_cube_for_kvis(cube)
 
@@ -157,11 +164,10 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : npixels, nv, nsubpixels, splitCubes, wantTau
+      use input_variables, only : npixels, nv, nsubpixels, splitCubes, wantTau, itrans
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
-      use h21cm_mod, only: h21cm_lambda
 
 #ifdef MPI
       use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
@@ -175,10 +181,10 @@ module angularImage
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
      real(double) :: deltaV
-     integer :: iTrans = 1
      integer :: iv
      real(double) :: intensitysum
-     real(double), save :: background
+     real(double) :: background
+     real(double) :: thisLambda
      real, allocatable :: temp(:,:,:) 
      integer :: ix1, ix2
      integer, parameter :: temp_dim=5 ! number of elements in temp array
@@ -236,7 +242,8 @@ module angularImage
 #endif        
 
 ! Intensity as brightness temperature
-        cube%intensity(:,:,iv) = real(temp(:,:,1)) * (h21cm_lambda**2) / (2.0 * kErg)
+        thisLambda = cSpeed / thisMolecule%transfreq(itrans)
+        cube%intensity(:,:,iv) = real(temp(:,:,1)) * (thisLambda**2) / (2.0 * kErg)
         if (wantTau ) cube%tau(:,:,iv)       = real(temp(:,:,2))
         cube%nCol(:,:)         = real(temp(:,:,3)) 
         if ( splitCubes ) then 
@@ -252,7 +259,8 @@ module angularImage
 
         if(iv .eq. 1) then
            background = Bnu(thisMolecule%transfreq(itrans), Tcbr)
-           write(message, *) "Background Intensity: ",background
+           write(message, '(a,es11.4,a,es11.4,a)') &
+           "Background Intensity: ",background, " at " , thisLambda, " cm"
            call writeinfo(message, TRIVIAL)
         endif
 
@@ -465,7 +473,6 @@ module angularImage
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
      use molecular_mod, only: interpolated_Density, velocity, phiprof
-     use h21cm_mod, only: h21cm_lambda
      use utils_mod, only: gauss
 
      type(VECTOR) :: position, direction, dsvector, otherDirection
@@ -508,6 +515,8 @@ module angularImage
      real(double), optional, intent(out) :: rhomax
      real(double), optional, intent(in) :: i0max
      real(double) :: distToObs, gridSize
+
+     logical, parameter :: doWriteLosInfo=.false. 
 
      BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
 
@@ -646,9 +655,9 @@ module angularImage
            nCol_H2 = nCol_H2 + thisOctal%nH2(subcell) * tval * 1.d10
         end if
 
-! molabundance stores CO number density
+! molabundance stores CO abundance relative to H2
         if(present(nCol_CO)) then
-           nCol_CO = nCol_CO + thisOctal%molabundance(subcell) * tval * 1.d10
+           nCol_CO = nCol_CO + thisOctal%molabundance(subcell) * thisOctal%nH2(subcell) * tval * 1.d10
         end if
 
         dsvector = ds * otherDirection
@@ -723,7 +732,7 @@ module angularImage
         end do ntau_loop
 
         ! Change in brightness temperature over this cell
-        dIovercell = (i0 - previous_i0) * (h21cm_lambda**2) / (2.0 * kErg)
+        dIovercell = (i0 - previous_i0) * ( (cSpeed/thisMolecule%transfreq(itrans)) **2) / (2.0 * kErg)
 
         if ( dIovercell > 0 ) then 
            if (present(i0_pos)) i0_pos = i0_pos + dIovercell
@@ -748,7 +757,7 @@ module angularImage
 
         thisoctal%newmolecularlevel(4,subcell) = thisoctal%newmolecularlevel(4,subcell) + 1.d0
 
-        call write_los_info
+        if (doWriteLosInfo) call write_los_info
 
         currentPosition = currentPosition + (tval + origdeps) * otherDirection
         distToObs = (currentPosition - position) .dot. direction
