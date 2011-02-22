@@ -99,7 +99,11 @@ contains
           realdust = .true.
        endif
 !        call photoionChemistry(grid, grid%octreeRoot)
-       call calculateMoleculeSpectrum(grid, globalMolecule, dataCubeFilename)
+       if ( internalView ) then 
+          call make_angular_image(grid)
+       else
+          call calculateMoleculeSpectrum(grid, globalMolecule, dataCubeFilename)
+       end if
 !       viewVec = VECTOR(-0.5d0, 0.5d0, 1.d0/sqrt(2.d0))
 !       nAng = 240
 !       axis = VECTOR(0.d0, 0.d0, 1.d0)
