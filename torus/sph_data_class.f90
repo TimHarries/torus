@@ -1,14 +1,7 @@
 module sph_data_class
 
-
-  use kind_mod
   use vector_mod
-  use messages_mod
-  use utils_mod
-  use timing
-  use math_mod2
-  use octal_mod
-  use constants_mod, only : OneOnFourPi, mSol, degToRad
+  use constants_mod
 
   ! 
   ! Class definition for Mathew's SPH data.
@@ -1288,6 +1281,8 @@ contains
   end function isAlive
 
   subroutine sortbyx(xarray,ind)
+    use utils_mod, only: sortdouble2index
+
     real(double) :: xarray(:)
     integer :: ind(:)
     integer :: i
@@ -1301,7 +1296,8 @@ contains
   end subroutine sortbyx
 
   subroutine FindCriticalValue(array,critval,percentile,output)
-
+!    use timing
+    use utils_mod, only: dquicksort
     real(double) :: array(:), critval
     real(double), intent(in) :: percentile
     integer :: i
@@ -1345,6 +1341,7 @@ contains
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone)
     USE input_variables, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull
     USE constants_mod, only: tcbr
+    use octal_mod, only: OCTAL
 
     type(vector), intent(in) :: point
     type(vector) :: posvec
@@ -1730,6 +1727,7 @@ contains
   subroutine findnearestparticles(pos, partcount, r, shouldreuse)
 
     use input_variables, only : kerneltype
+    use utils_mod, only: locate_double_f90
 
     type(VECTOR) :: pos
     real(double) :: x,y,z
@@ -1993,17 +1991,17 @@ contains
    implicit none
 
    type(GRIDTYPE), intent(in) :: grid
-   real(dp)     :: sph_mass_within_grid
+   real(db)     :: sph_mass_within_grid
    integer      :: ipart
-   real(dp)     :: sphDistToTorus
-   real(dp)     :: thisMass
-   real(dp), parameter :: eta=1.2
+   real(db)     :: sphDistToTorus
+   real(db)     :: thisMass
+   real(db), parameter :: eta=1.2
    TYPE(VECTOR) :: thisPos
 
    sph_mass_within_grid = 0.0
    if ( .not. sphData%inUse ) return
 
-   sphDistToTorus = sphData%udist * 1.0e-10_dp
+   sphDistToTorus = sphData%udist * 1.0e-10_db
 
    do ipart=1, sphdata%npart
       thisPos = VECTOR(sphdata%xn(ipart), sphdata%yn(ipart), sphdata%zn(ipart))
