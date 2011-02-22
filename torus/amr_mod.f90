@@ -16769,6 +16769,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical, optional :: linearinterp
     logical :: linear
     integer :: i
+!$OMP THREADPRIVATE (firsttime, resultoctal)
 
     weights = 0.d0
     rho = 0.d0
