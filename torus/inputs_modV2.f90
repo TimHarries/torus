@@ -216,29 +216,28 @@ contains
     yplusboundString = "null"
     zminusboundString = "null"
     zplusboundString = "null"
-
     call getString("xplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive x boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+         "positive x boundary condition:  ","(a,a,a)","undefined",ok, .false.)
     if(xplusboundstring /= "null")  xplusbound = getBoundaryCode(xplusboundString)
 
     call getString("xminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative x boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+         "negative x boundary condition:  ","(a,a,a)","undefined",ok, .false.)
     if(xminusboundString /= "null") xminusbound = getBoundaryCode(xminusboundString)
 
     call getString("yplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive y boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+         "positive y boundary condition:  ","(a,a,a)","undefined",ok, .false.)
     if(yplusboundString /= "null") yplusbound = getBoundaryCode(yplusboundString)
 
     call getString("yminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative y boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+         "negative y boundary condition:  ","(a,a,a)","undefined",ok, .false.)
     if(yminusboundString /= "null") yminusbound = getBoundaryCode(yminusboundString)
 
     call getString("zplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive z boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+         "positive z boundary condition:  ","(a,a,a)","undefined",ok, .false.)
     if(zplusboundString /= "null") zplusbound = getBoundaryCode(zplusboundString)
 
     call getString("zminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative z boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+         "negative z boundary condition:  ","(a,a,a)","undefined",ok, .false.)
     if(zminusboundString /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
     !--- User friendly boundaries
