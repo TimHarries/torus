@@ -2281,7 +2281,6 @@ contains
     integer :: group(:), nGroup
     real(double) :: dt
     type(VECTOR) :: direction
-    character(len=30) :: plotfile
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
