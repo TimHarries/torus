@@ -543,6 +543,7 @@ contains
 
           call writeAttributePointerFlexi(20, "phiLimit", thisOctal%phiLimit, fileFormatted)
        
+
           call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
           call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
           call writeAttributePointerFlexi(20, "edgeCell", thisOctal%edgeCell, fileFormatted)
@@ -566,7 +567,9 @@ contains
           
           call writeAttributePointerFlexi(20, "rho_i_plus_1", thisOctal%rho_i_plus_1, fileFormatted)
           call writeAttributePointerFlexi(20, "rho_i_minus_1", thisOctal%rho_i_minus_1, fileFormatted)
-          
+
+!          print *, " write : thisOctal%boundaryCondition ", thisOctal%boundaryCondition
+!          print *, " write : ghostcell ", thisOctal%ghostCell
           call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
           call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
@@ -3126,7 +3129,7 @@ contains
          if (fileFormatted) then
             open(unit=20, iostat=error, file=gridFilename, form="formatted", status="old")
             if (error /=0) then
-               print *, 'Panic: file open error in readAMRgrid, file:',trim(gridFilename) ; stop
+               print *, 'Panic: file open error in readAMRgrid, file:',trim(gridFilename) ; stop               
             end if
             ! read the file's time stamp
             read(unit=20,fmt=*,iostat=error) timeValues 
@@ -3273,6 +3276,7 @@ contains
      logical :: fileFormatted
      character(len=20) :: tag
      character(len=80) :: message
+!     integer :: iThread
 
       do while (.true.)
 
@@ -3471,6 +3475,7 @@ contains
 
          case("ghostCell")
             call readPointerFlexi(20, thisOctal%ghostCell, fileFormatted)
+            !print *, "read ghostcell ", thisOctal%ghostCell 
          case("feederCell")
             call readPointerFlexi(20, thisOctal%feederCell, fileFormatted)
          case("edgeCell")
@@ -3512,6 +3517,22 @@ contains
 
          case("boundaryCondition")
             call readPointerFlexi(20, thisOctal%boundaryCondition, fileFormatted)
+            
+!#ifdef MPI 
+!            if(myRankGlobal == 0) then
+!               if(thisOctal%twoD) then
+!                  do iThread = 1, 4
+!                     if(thisOctal%boundaryCondition(iThread) == 0) then
+!                        thisOctal%boundaryCondition(iThread) = 1
+!                     end if
+!                  enddo
+!               end if
+!            end if
+!#endif
+!            print *, "myRankGlobal ", myRankGlobal
+!            print *, " read : thisOctal%boundaryCondition ", thisOctal%boundaryCondition
+!            print *, " read : ghostcell ", thisOctal%ghostCell
+
          case("boundaryPartner")
             call readPointerFlexi(20, thisOctal%boundaryPartner, fileFormatted)
 
@@ -3763,7 +3784,9 @@ contains
             call receivePointerFlexi(thisOctal%phiLimit)
 
          case("ghostCell")
+            
             call receivePointerFlexi(thisOctal%ghostCell)
+            
          case("feederCell")
             call receivePointerFlexi(thisOctal%feederCell)
          case("edgeCell")
@@ -3805,10 +3828,13 @@ contains
 
          case("boundaryCondition")
             call receivePointerFlexi(thisOctal%boundaryCondition)
+            !print *, "recv", thisOctal%boundaryCondition
          case("boundaryPartner")
             call receivePointerFlexi(thisOctal%boundaryPartner)
          case("gravboundaryPartner")
             call receivePointerFlexi(thisOctal%gravboundaryPartner)
+         case("radiationMomentum")
+            call receivePointerFlexi(thisOctal%radiationMomentum)
          case("changed")
             call receivePointerFlexi(thisOctal%changed)
          case("rLimit")
@@ -3987,9 +4013,13 @@ contains
       call sendAttributePointerFlexi(iThread, "rho_i_plus_1", thisOctal%rho_i_plus_1)
       call sendAttributePointerFlexi(iThread, "rho_i_minus_1", thisOctal%rho_i_minus_1)
 
+
       call sendAttributePointerFlexi(iThread, "boundaryCondition", thisOctal%boundaryCondition)
+      !print *, "send", thisOctal%boundaryCondition
+
       call sendAttributePointerFlexi(iThread, "boundaryPartner", thisOctal%boundaryPartner)
       call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
+      call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
       call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)
       call sendAttributePointerFlexi(iThread, "rLimit", thisOctal%rLimit)
 

@@ -180,43 +180,68 @@ contains
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
-    !Thaw
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    !Thaw
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
          "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
 
-    !Thaw
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
     
-    !Thaw
     call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
             "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)
 
-    !Thaw --- user friendly boundaries
-  !  call getString("xplusbound", xplusboundString, cLine, fLine, nLines, &
-  !       "positive x boundary condition:  ","(a,a,a)","free",ok, .true.)
-  !  
-  !  call getString("xminusbound", xplusboundString, cLine, fLine, nLines, &
-  !       "positive x boundary condition:  ","(a,a,a)","free",ok, .true.)
-!
-!    call getString("yplusbound", xplusboundString, cLine, fLine, nLines, &
-!         "positive y boundary condition:  ","(a,a,a)","free",ok, .true.)
-!
-!    call getString("yminusbound", xplusboundString, cLine, fLine, nLines, &
-!         "negative y boundary condition:  ","(a,a,a)","free",ok, .true.)
-!
-!    call getString("zplusbound", xplusboundString, cLine, fLine, nLines, &
-!         "positive z boundary condition:  ","(a,a,a)","free",ok, .true.)
-!
-!    call getString("zminusbound", xplusboundString, cLine, fLine, nLines, &
-!         "negative z boundary condition:  ","(a,a,a)","free",ok, .true.)
-!
-!    !--- User friendly boundaries
+    call getInteger("xplusbound", xplusbound, cLine, fLine, nLines, &
+         "+x boundary condition : ","(a,i1,a)", 1, ok, .false.)
 
+    call getInteger("xminusbound", xminusbound, cLine, fLine, nLines, &
+         "-x boundary condition : ","(a,i1,a)", 1, ok, .false.)
+
+    call getInteger("yplusbound", yplusbound, cLine, fLine, nLines, &
+         "+y boundary condition : ","(a,i1,a)", 1, ok, .false.)
+
+    call getInteger("yminusbound", yminusbound, cLine, fLine, nLines, &
+         "-y boundary condition : ","(a,i1,a)", 1, ok, .false.)
+
+    call getInteger("zplusbound", zplusbound, cLine, fLine, nLines, &
+         "+z boundary condition : ","(a,i1,a)", 1, ok, .false.)
+
+    call getInteger("zminusbound", zminusbound, cLine, fLine, nLines, &
+         "-z boundary condition : ","(a,i1,a)", 1, ok, .false.)
+
+    xplusboundString = "null"
+    xminusboundString = "null"
+    yminusboundString = "null"
+    yplusboundString = "null"
+    zminusboundString = "null"
+    zplusboundString = "null"
+
+    call getString("xplusboundstring", xplusboundString, cLine, fLine, nLines, &
+         "positive x boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+    if(xplusboundstring /= "null")  xplusbound = getBoundaryCode(xplusboundString)
+
+    call getString("xminusboundstring", xplusboundString, cLine, fLine, nLines, &
+         "negative x boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+    if(xminusboundString /= "null") xminusbound = getBoundaryCode(xminusboundString)
+
+    call getString("yplusboundstring", xplusboundString, cLine, fLine, nLines, &
+         "positive y boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+    if(yplusboundString /= "null") yplusbound = getBoundaryCode(yplusboundString)
+
+    call getString("yminusboundstring", xplusboundString, cLine, fLine, nLines, &
+         "negative y boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+    if(yminusboundString /= "null") yminusbound = getBoundaryCode(yminusboundString)
+
+    call getString("zplusboundstring", xplusboundString, cLine, fLine, nLines, &
+         "positive z boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+    if(zplusboundString /= "null") zplusbound = getBoundaryCode(zplusboundString)
+
+    call getString("zminusboundstring", xplusboundString, cLine, fLine, nLines, &
+         "negative z boundary condition:  ","(a,a,a)","freeOutNoIn",ok, .false.)
+    if(zminusboundString /= "null") zminusbound = getBoundaryCode(zminusboundString)
+
+    !--- User friendly boundaries
 
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
@@ -2132,8 +2157,29 @@ end subroutine getVector
   rVal = rVal * unitConversion
  end subroutine getRealArray
 
-         
-      
+!Return boundary code for input boundary strings
+ integer function getBoundaryCode(boundaryString)         
+   character(len=20) :: boundaryString
+   
+   select case (boundaryString)
+      case("reflecting")
+         getBoundaryCode = 1
+      case("periodic")
+         getBoundaryCode = 2
+      case("shock")
+         getBoundaryCode = 3
+      case("freeOutNoIn")
+         getBoundaryCode = 4
+      case("constDenNoVel")
+         getBoundaryCode = 5
+      case DEFAULT
+         print *, "Unrecognised boundary string:", boundaryString
+         print *, "Halting."
+         stop
+   end select
+
+
+ end function getBoundaryCode
 
 end module inputs_mod
 

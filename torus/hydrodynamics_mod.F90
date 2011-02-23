@@ -1070,8 +1070,8 @@ contains
 
           if (isnan(thisoctal%pressure_i(subcell))) then
              write(*,*) "pressureu has nan"
-             write(*,*) thisoctal%rhou(subcell),thisoctal%rhov(subcell), thisoctal%rhow(subcell)
-             write(*,*) thisoctal%rho(subcell)
+             write(*,*) "velocity: ",thisoctal%rhou(subcell),thisoctal%rhov(subcell), thisoctal%rhow(subcell)
+             write(*,*) "rho: ", thisoctal%rho(subcell)
              write(*,*) "cen ",subcellcentre(thisoctal, subcell)
              stop
           endif
@@ -2281,14 +2281,14 @@ contains
     integer :: group(:), nGroup
     real(double) :: dt
     type(VECTOR) :: direction
-
+    character(len=30) :: plotfile
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-
 
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
+
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2303,6 +2303,7 @@ contains
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
      call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
     end if
+
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2982,12 +2983,10 @@ contains
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
 
-
-
-
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
+
 
        if (it == 0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -3010,15 +3009,10 @@ contains
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
-
-
-          
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
           !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-
-          
        endif
     endif
 
@@ -3063,7 +3057,6 @@ contains
 !          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
 !       endif
           
-       
        if ((currentTime + dt).gt.tEnd) then
           nextDumpTime = tEnd
           dt = nextDumpTime - currentTime
@@ -3079,9 +3072,7 @@ contains
           call writeInfo("calling hydro step",TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-
+          
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
           call findEnergyOverAllThreads(grid, totalenergy)
@@ -3480,7 +3471,7 @@ contains
                 thisOctal%tempStorage = 0.d0
              endif
 
-	    
+
              select case(thisOctal%boundaryCondition(subcell))
                 case(1) ! reflecting
                    locator = thisOctal%boundaryPartner(subcell)
@@ -4010,7 +4001,7 @@ contains
                       endif
                    
                 case DEFAULT
-                   write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
+                   write(*,*) "Unknown boundary condition in setupghostcells2 A: ",thisOctal%boundaryCondition(subcell)
              end select
 
              ! gravity partner
@@ -4443,7 +4434,7 @@ contains
 
                    
                 case DEFAULT
-                   write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
+                   write(*,*) "Unknown boundary condition in setupghostcells2 B: ",thisOctal%boundaryCondition(subcell)
              end select
 
 
@@ -4657,7 +4648,7 @@ contains
 
                    
                 case DEFAULT
-                   write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
+                   write(*,*) "Unknown boundary condition in setupghostcells2 C: ",thisOctal%boundaryCondition(subcell)
              end select
 
 

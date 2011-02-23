@@ -715,8 +715,8 @@ module input_variables
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
 !Thaw
-  character :: xminusboundString, yminusboundString, zminusboundString
-  character :: xplusboundString, yplusboundString, zplusboundString
+  character(len=20) :: xminusboundString, yminusboundString, zminusboundString
+  character(len=20) :: xplusboundString, yplusboundString, zplusboundString
   real :: x1, x2
 
   logical :: timeDependentRT

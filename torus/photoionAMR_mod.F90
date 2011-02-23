@@ -82,7 +82,7 @@ contains
 
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use ion_mod, only : returnMu
-    use input_variables, only : iDump, doselfgrav !, hOnly
+    use input_variables, only : iDump, doselfgrav, readGrid !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -125,13 +125,25 @@ contains
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-    grid%currentTime = 0.d0
-    grid%iDump = 0
-    tDump = 0.005d0
-    deltaTforDump = 3.14d10 !1kyr
-    nextDumpTime = deltaTforDump
-    if (grid%geometry == "hii_test") deltaTforDump = 2.d10
-    if(grid%geometry == "bonnor") deltaTforDump = 1.57d11 !5kyr
+!    deltaTforDump = 3.14d10 !1kyr
+!    if (grid%geometry == "hii_test") deltaTforDump = 2.d10
+
+    if(.not. readGrid) then
+       grid%currentTime = 0.d0
+       grid%iDump = 0
+       tDump = 0.005d0
+       deltaTforDump = 3.14d10 !1kyr
+       nextDumpTime = deltaTforDump
+       if (grid%geometry == "hii_test") deltaTforDump = 2.d10
+       if(grid%geometry == "bonnor") deltaTforDump = 1.57d11 !5kyr
+       timeofNextDump = 0.d0       
+    else
+       deltaTforDump = 1.57d11 !5kyr
+       nextDumpTime = grid%currentTime + deltaTforDump
+       timeofNextDump = nextDumpTime
+    end if
+
+
 
     iunrefine = 0
     startFromNeutral = .false.
@@ -145,7 +157,7 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    timeofNextDump = 0.d0
+!    timeofNextDump = 0.d0
     !timeofNextDump = deltaTforDump
     
 
@@ -202,51 +214,53 @@ contains
 
 !Thaw 10/02/2010
 !    call neutralGrid(grid%octreeRoot)
-    call ionizeGrid(grid%octreeRoot)
-    looplimitTime = deltaTForDump
-    !looplimitTime = 0.1375d10
-    do irefine = 1, 1
-       if(grid%geometry == "hii_test") then
-          loopLimitTime = deltaTForDump
-       else 
-          !loopLimitTime = 2.d11       
-       end if
-       if (irefine == 1) then
-          call writeInfo("Calling photoionization loop",TRIVIAL)
-          call setupNeighbourPointers(grid, grid%octreeRoot)
-!          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
-               !.false.)
+    if(grid%currentTime == 0.d0) then
+
+       call ionizeGrid(grid%octreeRoot)
+       looplimitTime = deltaTForDump
+       !looplimitTime = 0.1375d10
+       do irefine = 1, 1
+          if(grid%geometry == "hii_test") then
+             loopLimitTime = deltaTForDump
+          else 
+             !loopLimitTime = 2.d11       
+          end if
+          if (irefine == 1) then
+             call writeInfo("Calling photoionization loop",TRIVIAL)
+             call setupNeighbourPointers(grid, grid%octreeRoot)
+             !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
+             !.false.)
              call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .True.,&
                   .true.)
+             
+             call writeInfo("Done",TRIVIAL)
+          else
+             call writeInfo("Calling photoionization loop",TRIVIAL)
+             call setupNeighbourPointers(grid, grid%octreeRoot)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .true., .true.)
+             call writeInfo("Done",TRIVIAL)
+          endif
+          
+          
+          call writeInfo("Dumping post-photoionization data", TRIVIAL)
+          call writeVtkFile(grid, "start.vtk", &
+               valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure   " /))
+          
+          
+          !       call testIonFront(grid%octreeRoot, grid%currentTime)
 
-          call writeInfo("Done",TRIVIAL)
-       else
-          call writeInfo("Calling photoionization loop",TRIVIAL)
-          call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .true., .true.)
-          call writeInfo("Done",TRIVIAL)
-       endif
-
-
-       call writeInfo("Dumping post-photoionization data", TRIVIAL)
-       call writeVtkFile(grid, "start.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure   " /))
-
-
-       !       call testIonFront(grid%octreeRoot, grid%currentTime)
-
-       if (myrank /= 0) then
-          call calculateEnergyFromTemperature(grid%octreeRoot)
-          call calculateRhoE(grid%octreeRoot, direction)
-       endif
-
-
-       if (myrank/=0) then
-
-          call writeInfo("Refining individual subgrids", TRIVIAL)
-          if (.not.grid%splitOverMpi) then
-             do
-                gridConverged = .true.
+          if (myrank /= 0) then
+             call calculateEnergyFromTemperature(grid%octreeRoot)
+             call calculateRhoE(grid%octreeRoot, direction)
+          endif
+          
+          
+          if (myrank/=0) then
+             
+             call writeInfo("Refining individual subgrids", TRIVIAL)
+             if (.not.grid%splitOverMpi) then
+                do
+                   gridConverged = .true.
                 call setupEdges(grid%octreeRoot, grid)
                 !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
                 call unsetGhosts(grid%octreeRoot)
@@ -259,31 +273,32 @@ contains
 
 
 
-       call evenUpGridMPI(grid,.false.,.true.)      
-       call refineGridGeneric(grid, 1.d-2)
-       call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid, .false.,.true.)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call evenUpGridMPI(grid,.false.,.true.)      
+          call refineGridGeneric(grid, 1.d-2)
+          call writeInfo("Evening up grid", TRIVIAL)    
+          call evenUpGridMPI(grid, .false.,.true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          
 
-
-    endif
+       endif
     enddo
 
-
+    
     if (myrank /= 0) then
-
+       
        call calculateEnergyFromTemperature(grid%octreeRoot)
-
+       
        call calculateRhoE(grid%octreeRoot, direction)
-
+       
        !       directi0on = VECTOR(1.d0, 0.d0, 0.d0)
        !       call calculateRhoU(grid%octreeRoot, direction)
        !       direction = VECTOR(0.d0, 1.d0, 0.d0)
        !       call calculateRhoV(grid%octreeRoot, direction)
        !       direction = VECTOR(0.d0, 0.d0, 1.d0)
        !       call calculateRhoW(grid%octreeRoot, direction)
-
+       
     endif
+ end if
 
     tEnd = 200.d0*3.14d10 !200kyr 
 
@@ -331,7 +346,7 @@ contains
           looplimittime = deltaTForDump
        end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 5, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 10, loopLimitTime, loopLimitTime, .True., .true.)
 
           call writeInfo("Done",TRIVIAL)
 
@@ -585,6 +600,7 @@ contains
     !character(len=80) :: vtkFilename
     logical :: underSamFailed, escapeCheck
 
+
     !optimisation variables
     integer, parameter :: stackLimit=200
     integer, parameter :: ZerothstackLimit=200
@@ -712,12 +728,14 @@ contains
                 !nMonte = 2**(maxDepthAMR)
                 nMonte = 100000
              end if
-       else
+          
+       else 
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
                 nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 10.d0 * (8.d0**(maxDepthAMR))
+                !nMonte = 20.d0 * (8.d0**(maxDepthAMR))
+                nMonte = 5242880/2.
              else
                 nMonte = 1.d0 * 2**(maxDepthAMR)
              end if
@@ -726,6 +744,7 @@ contains
              nMonte = 10000000
              write(*,*) "nMonte = ", nMonte
           end if
+          
        end if
        
     else
@@ -1378,11 +1397,11 @@ if (grid%geometry == "tom") then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 50000
+        minCrossings = 5000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 50000
+        minCrossings = 5000
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
