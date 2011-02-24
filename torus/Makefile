@@ -21,6 +21,7 @@ trace   = no
 openmp  = no 
 v2      = yes
 coverage = no
+withsphng = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -256,13 +257,13 @@ endif
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
 
-#    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
+#    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 
-    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
-#    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT -mcmodel=medium -i-dynamic #-ipo 
-    FASTFLAG= -O3 -mcmodel=medium -i-dynamic# -ipo
-#    FASTFLAG= -O3 -xS -mcmodel=medium -i-dynamic 
-#    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
+#    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
+    FASTFLAG= -O3 # -ipo
+#    FASTFLAG= -O3 -xS
+#    DEBUGFLAG=-g -O0 -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 
 # Include run-time error checking using ifort. Use environment variable to avoid clash with 
 # ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
@@ -288,7 +289,7 @@ endif
 ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort
     FASTFLAG= -O3 -xT
-    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zensingle
@@ -304,8 +305,8 @@ endif
 # Build using SGI's Message Passing Toolkit version of MPI. 
  ifeq ($(SYSTEM), zenmpt)
      F95COMP= ifort -lmpi
-     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
-     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+     FASTFLAG= -O3 -xT
+     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
      STATICFLAG=
      MATHTRAP=
      EXE=torus.mpt
@@ -506,6 +507,10 @@ ifeq ($(openmp), yes)
   ETCFLAG += $(OPENMPFLAG)
 endif
 
+# Add flags required for sphNG compatibility
+ifeq ($(withsphng), yes)
+  ETCFLAG +=  -mcmodel=medium -i-dynamic
+endif
 
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90
@@ -574,7 +579,7 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ)
 # Compilers and compiler flags
 #
 
-F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG) $(XMLINCLUDE)
+F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE)
 
 #
 #
