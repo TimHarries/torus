@@ -67,6 +67,7 @@ module input_variables
   real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
   logical :: internalView ! observer is internal to the galaxy
   logical :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
+  logical :: thermalLineWidth ! Use thermal line width? 
   real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
   real(double) :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
   logical :: cmf, sobolev

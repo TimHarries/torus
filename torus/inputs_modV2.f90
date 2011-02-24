@@ -1390,6 +1390,9 @@ contains
        call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
                "(a,f8.2x,a)", 0.d0, ok, .false.)
 
+       call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
+            "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
+
        ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
        ! Rotation about y-axis
        call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, fLine, nLines, &
