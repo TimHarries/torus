@@ -1397,11 +1397,11 @@ if (grid%geometry == "tom") then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 5000
+        minCrossings = 500
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 5000
+        minCrossings = 500
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
@@ -3163,10 +3163,10 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 !====================
      
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
-        if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
-           print *, ionFrac(iend)
-           stop
-        end if
+!        if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
+!           print *, ionFrac(iend)
+!           stop
+!        end if
 
         if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
            thisOctal%ionFrac(subcell, iIon) = 1.d-50

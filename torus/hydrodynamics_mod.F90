@@ -6162,7 +6162,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-6
+    real(double), parameter :: tol = 1.d-4,  tol2 = 5.d-5
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
