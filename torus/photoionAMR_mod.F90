@@ -230,7 +230,7 @@ contains
              call setupNeighbourPointers(grid, grid%octreeRoot)
              !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
              !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .True.,&
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 50, loopLimitTime, looplimittime, .True.,&
                   .true.)
              
              call writeInfo("Done",TRIVIAL)
@@ -734,8 +734,8 @@ contains
              if(grid%octreeRoot%twoD) then
                 nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                !nMonte = 20.d0 * (8.d0**(maxDepthAMR))
-                nMonte = 5242880/2.
+                nMonte = 20.d0 * (8.d0**(maxDepthAMR))
+                !nMonte = 5242880/2.
              else
                 nMonte = 1.d0 * 2**(maxDepthAMR)
              end if
@@ -2606,7 +2606,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     
 !THAW !!!!!!!!!!!!!!!! change back to 100. and 50000.
     t1 = 100.
-    t2 = 30000.
+    t2 = 50000.
 !    t1 = 3.
 !    t2 = 50000.
        found = .true.

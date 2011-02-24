@@ -210,35 +210,35 @@ contains
     call getInteger("zminusbound", zminusbound, cLine, fLine, nLines, &
          "-z boundary condition : ","(a,i1,a)", 1, ok, .false.)
 
-!    xplusboundString = "null"
-!    xminusboundString = "null"
-!    yminusboundString = "null"
-!    yplusboundString = "null"
-!    zminusboundString = "null"
-!    zplusboundString = "null"
+    xplusboundString = "null"
+    xminusboundString = "null"
+    yminusboundString = "null"
+    yplusboundString = "null"
+    zminusboundString = "null"
+    zplusboundString = "null"
     call getString("xplusboundstring", xplusboundString, cLine, fLine, nLines, &
          "positive x boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(xplusboundstring /= "undefined")  xplusbound = getBoundaryCode(xplusboundString)
+    if(xplusboundstring /= "null")  xplusbound = getBoundaryCode(xplusboundString)
 
     call getString("xminusboundstring", xplusboundString, cLine, fLine, nLines, &
          "negative x boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(xminusboundString /= "undefined") xminusbound = getBoundaryCode(xminusboundString)
+    if(xminusboundString /= "null") xminusbound = getBoundaryCode(xminusboundString)
 
     call getString("yplusboundstring", xplusboundString, cLine, fLine, nLines, &
          "positive y boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(yplusboundString /= "undefined") yplusbound = getBoundaryCode(yplusboundString)
+    if(yplusboundString /= "null") yplusbound = getBoundaryCode(yplusboundString)
 
     call getString("yminusboundstring", xplusboundString, cLine, fLine, nLines, &
          "negative y boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(yminusboundString /= "undefined") yminusbound = getBoundaryCode(yminusboundString)
+    if(yminusboundString /= "null") yminusbound = getBoundaryCode(yminusboundString)
 
     call getString("zplusboundstring", xplusboundString, cLine, fLine, nLines, &
          "positive z boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(zplusboundString /= "undefined") zplusbound = getBoundaryCode(zplusboundString)
+    if(zplusboundString /= "null") zplusbound = getBoundaryCode(zplusboundString)
 
     call getString("zminusboundstring", xplusboundString, cLine, fLine, nLines, &
          "negative z boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(zminusboundString /= "undefined") zminusbound = getBoundaryCode(zminusboundString)
+    if(zminusboundString /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
     !--- User friendly boundaries
 
