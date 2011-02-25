@@ -230,7 +230,7 @@ contains
              call setupNeighbourPointers(grid, grid%octreeRoot)
              !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
              !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 50, loopLimitTime, looplimittime, .True.,&
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 20, loopLimitTime, looplimittime, .True.,&
                   .true.)
              
              call writeInfo("Done",TRIVIAL)

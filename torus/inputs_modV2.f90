@@ -1276,35 +1276,29 @@ contains
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
          "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
 
-    xplusboundString = "null"
-    xminusboundString = "null"
-    yminusboundString = "null"
-    yplusboundString = "null"
-    zminusboundString = "null"
-    zplusboundString = "null"
     call getString("xplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive x boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(xplusboundstring /= "null")  xplusbound = getBoundaryCode(xplusboundString)
+         "positive x boundary condition:  ","(a,a,a)","null",ok, .true.)
+    if(xplusboundstring(1:4) /= "null")  xplusbound = getBoundaryCode(xplusboundString)
 
     call getString("xminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative x boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(xminusboundString /= "null") xminusbound = getBoundaryCode(xminusboundString)
+         "negative x boundary condition:  ","(a,a,a)","null",ok, .true.)
+    if(xminusboundString(1:4) /= "null") xminusbound = getBoundaryCode(xminusboundString)
 
     call getString("yplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive y boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(yplusboundString /= "null") yplusbound = getBoundaryCode(yplusboundString)
+         "positive y boundary condition:  ","(a,a,a)","null",ok, .true.)
+    if(yplusboundString(1:4) /= "null") yplusbound = getBoundaryCode(yplusboundString)
 
     call getString("yminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative y boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(yminusboundString /= "null") yminusbound = getBoundaryCode(yminusboundString)
+         "negative y boundary condition:  ","(a,a,a)","null",ok, .true.)
+    if(yminusboundString(1:4) /= "null") yminusbound = getBoundaryCode(yminusboundString)
 
     call getString("zplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive z boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(zplusboundString /= "null") zplusbound = getBoundaryCode(zplusboundString)
+         "positive z boundary condition:  ","(a,a,a)","null",ok, .true.)
+    if(zplusboundString(1:4) /= "null") zplusbound = getBoundaryCode(zplusboundString)
 
     call getString("zminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative z boundary condition:  ","(a,a,a)","undefined",ok, .true.)
-    if(zminusboundString /= "null") zminusbound = getBoundaryCode(zminusboundString)
+         "negative z boundary condition:  ","(a,a,a)","null",ok, .true.)
+    if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
 
   end subroutine readHydrodynamicsParameters

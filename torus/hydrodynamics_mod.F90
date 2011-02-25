@@ -1785,6 +1785,9 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
 
           thisoctal%ionFrac(subcell,iion) = thisoctal%q_i(subcell)
+          if(thisoctal%ionFrac(subcell,iion) > 1.d0) then
+             thisoctal%ionFrac(subcell,iion) = 1.d0
+          end if
        endif
     enddo
   end subroutine copyqtoIonfrac
