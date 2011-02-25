@@ -46,10 +46,9 @@ contains
 
 
 
-  subroutine initAMRgrid(newContFile,flatspec,grid,ok,theta1,theta2)
+  subroutine initAMRgrid(flatspec,grid,theta1,theta2)
 
     use input_variables
-    use cluster_class, only: initClusterAMR
     use cmfgen_class, only: get_cmfgen_data_array_element
     use jets_mod, only: initJetsAMR
     use amr_mod, only: initTTauriAMR, initWindTestAMR
@@ -59,22 +58,12 @@ contains
 
     ! grid%timeNow must be assigned before this routine is called!
 
-    character(len=80), intent(out) :: newContFile
     logical, intent(in) :: flatspec        ! is the spectrum flat
-    logical, intent(inout) :: ok           ! function done ok?
     type(GRIDTYPE), intent(inout) :: grid                 ! the grid
     real, intent(out)   :: theta1, theta2
-    
-    integer :: ilambda                   ! counters
     real :: rStar
     
-    ! ok for now
-    ok = .true.
-
-    iLambda = nLambda
     grid%oneKappa = oneKappa
-
-    newContFile = " "
     
     if (oneKappa) then
        allocate(grid%oneKappaAbs(nDustType,1:nLambda))
@@ -88,11 +77,8 @@ contains
     grid%lineEmission = lineEmission
     grid%maxLevels = statEqMaxLevels
 
-    ! if the spectrum is flat one only needs on wavelength point
-
     grid%flatspec = flatspec
     grid%statEq2d = statEq2d
-    if (flatspec) ilambda = 1
 
     grid%amr2dOnly = amr2dOnly
     grid%geometry = geometry
@@ -220,7 +206,8 @@ contains
        call initProtoAMR(grid)
 
     case("cluster","wr104","molcluster", "theGalaxy")
-       call initClusterAMR(grid)
+       grid%lineEmission = .false.
+       grid%rCore        = rCore
        
     case("spiralwind","wind")
        grid%rCore = rCore 

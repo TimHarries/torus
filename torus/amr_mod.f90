@@ -982,7 +982,7 @@ CONTAINS
 
 
   RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid,&
- stellar_cluster, setChanged, romData)
+       setChanged, romData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
@@ -997,9 +997,6 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
                                           !   routines that this subroutine calls
 
-    ! Object containg the output from the (Mattew's) SPH code.
-    ! This will be just passed to decideSplit routine.
-    TYPE(cluster), OPTIONAL,  intent(in) :: stellar_cluster
     LOGICAL, INTENT(IN), OPTIONAL :: setChanged
     !
     INTEGER              :: iSubcell, iIndex ! loop counters
@@ -1075,7 +1072,7 @@ CONTAINS
     DO iIndex = 1, thisOctal%nChildren
       
       CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
-                     stellar_cluster, setChanged, romData=romData)
+                     setChanged, romData=romData)
       
    END DO
 
@@ -12657,16 +12654,13 @@ end function readparameterfrom2dmap
 
 
   subroutine myScaleSmooth(factor, grid, converged, &
-       inheritProps, interpProps, stellar_cluster, romData)
+       inheritProps, interpProps)
     use memory_mod, only : globalMemoryFootprint
     use input_variables, only : maxMemoryAvailable
     type(gridtype) :: grid
     real :: factor
     integer :: nTagged
     logical, optional :: inheritProps, interpProps
-    !
-    TYPE(cluster), optional, intent(in)  :: stellar_cluster
-    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
     logical :: converged
 
@@ -12677,8 +12671,8 @@ end function readparameterfrom2dmap
     call zeroChiLineLocal(grid%octreeRoot)
     nTagged = 0
     call tagScaleSmooth(nTagged, factor, grid%octreeRoot, grid,  converged, &
-         inheritProps, interpProps, stellar_cluster, romData)
-    call splitTagged(grid%octreeRoot, grid, inheritProps, interpProps, stellar_cluster, romData)
+         inheritProps, interpProps)
+    call splitTagged(grid%octreeRoot, grid, inheritProps, interpProps)
     if (globalMemoryFootprint > maxMemoryAvailable) converged = .true.
 
   end subroutine myScaleSmooth
@@ -12948,7 +12942,7 @@ end function readparameterfrom2dmap
     enddo
   end subroutine convertToDensity
 
-  recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps, stellar_cluster, romData)
+  recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps)
     use memory_mod, only : globalMemoryFootprint, humanReadableMemory
     use input_variables, only : maxMemoryAvailable
     type(GRIDTYPE) :: grid
@@ -12959,9 +12953,6 @@ end function readparameterfrom2dmap
   integer :: subcell, i
     logical, optional :: inheritProps, interpProps
     character(len=80) :: message
-    !
-    TYPE(cluster), optional, intent(in)  :: stellar_cluster
-    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -12969,7 +12960,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call splitTagged(child, grid, inheritProps, interpProps, stellar_cluster, romData)
+                call splitTagged(child, grid, inheritProps, interpProps)
                 exit
              end if
           end do
@@ -12995,16 +12986,13 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine tagScaleSmooth(ntagged, factor, thisOctal, grid,  converged, &
-       inheritProps, interpProps, stellar_cluster, romData)
+       inheritProps, interpProps)
     type(gridtype) :: grid
     integer :: nTagged
     real :: factor
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
     logical, optional :: inheritProps, interpProps
-    !
-    TYPE(cluster), optional, intent(in)  :: stellar_cluster
-    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
     integer :: subcell, i
     logical :: converged
@@ -13020,8 +13008,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call tagScaleSmooth(nTagged, factor, child, grid, converged, inheritProps, interpProps, &
-                     stellar_cluster=stellar_cluster, romData=romData)
+                call tagScaleSmooth(nTagged, factor, child, grid, converged, inheritProps, interpProps)
                 exit
              end if
           end do

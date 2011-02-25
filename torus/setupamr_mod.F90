@@ -53,9 +53,8 @@ contains
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(cluster)   :: young_cluster
     type(VECTOR) :: amrGridCentre
-    character(len=80) :: newContFluxFile
     real :: theta1, theta2
-    logical :: ok, flatspec
+    logical :: flatspec
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass
@@ -81,7 +80,6 @@ contains
     else
        flatspec = .true.
     end if
-    call new(young_cluster, .false.)
 
     if (readgrid) then
        grid%splitOverMPI = splitOverMPI
@@ -106,7 +104,7 @@ contains
           case DEFAULT
        end select
 
-       call initAMRGrid(newContFluxFile,flatspec,grid,ok,theta1,theta2)
+       call initAMRGrid(flatspec,grid,theta1,theta2)
        grid%splitOverMPI = splitOverMPI
 
        amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
@@ -129,13 +127,11 @@ contains
 
 
        case("cluster")
-
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("theGalaxy")
-
           select case (inputFileFormat)
           case("binary")
              call read_galaxy_sph_data(sphdatafilename)
@@ -149,7 +145,7 @@ contains
           end select
 
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("molcluster")
@@ -165,7 +161,7 @@ contains
           endif
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, young_cluster)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("wr104")
@@ -222,8 +218,7 @@ contains
                 ! The following is Tim's replacement for soomthAMRgrid.
                 call myScaleSmooth(smoothfactor, grid, &
                      gridConverged,  inheritProps = .false., &
-                     interpProps = .false.,  &
-                     stellar_cluster=young_cluster, romData=romData)
+                     interpProps = .false.)
                 if (gridConverged) exit
              end do
              call writeInfo("...grid smoothing complete", TRIVIAL)
@@ -272,36 +267,6 @@ contains
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-          ! This section is getting rather long. Maybe this should be done in 
-          ! wrapper subroutine in amr_mod.f90.
-          if (geometry=="ttauri") then 
-             mdot = 2.d-8 * msol * secstoyears
-             !             do i = 1, 2
-             !                call zeroDensity(grid%octreeRoot)
-             !                call assignDensitiesMahdavi(grid, dble(mdot))
-             !                gridconverged = .false.
-             !                do while (.not.gridconverged)
-             !                   gridConverged = .true.
-             !                   call massSplit(grid%octreeRoot, grid, gridconverged, inheritProps=.true., interpProps=.false.)
-             !                   if (gridConverged) exit
-             !                enddo
-             !             enddo
-             call zeroDensity(grid%octreeRoot)
-             astar = accretingAreaMahdavi(grid)
-             if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
-             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
-             if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
-             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
-             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
-             ! Finding the total mass in the accretion flow
-             mass_accretion_old = 0.0d0
-             call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
-             write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
-             call writeInfo(message,FORINFO)
-
-          end if  ! gemoetry == "ttaruri"
-
-          ! 
           if (doSmoothGrid) then
              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
              do
@@ -309,8 +274,7 @@ contains
                 ! The following is Tim's replacement for soomthAMRgrid.
                 call myScaleSmooth(smoothFactor, grid, &
                      gridConverged,  inheritProps = .false., &
-                     interpProps = .false.,  &
-                     stellar_cluster=young_cluster, romData=romData)
+                     interpProps = .false.)
                 if (gridConverged) exit
              end do
              call writeInfo("...grid smoothing complete", TRIVIAL)
@@ -362,7 +326,9 @@ contains
 
           case("cluster")
              removedMass = 0.0
+             call new(young_cluster, .false.)
              call remove_too_close_cells(young_cluster, grid%octreeRoot, real(rCore,db), removedMass, 1.0d-37, 'z')
+             call kill_all(young_cluster)
              write(message,*) "Mass removed by remove_too_close_cells: ", removedMass / mSol, " solar masses"
              call writeInfo(message, TRIVIAL)
 
@@ -419,7 +385,7 @@ contains
 !           else
 !              do; enddo
 !              endif
-        call kill_all(young_cluster)
+
         call delete_particle_lists(grid%octreeRoot)
   end subroutine setupamrgrid
 

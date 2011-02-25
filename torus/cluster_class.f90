@@ -290,22 +290,6 @@ contains
 
   end subroutine build_cluster
 
-
-
-  !
-  ! Initialize some parameters in grid
-  !
-  subroutine initClusterAMR(grid)
-    use input_variables, only: rCore
-    use gridtype_mod, only: GRIDTYPE
-    implicit none    
-    type(GRIDTYPE), intent(inout)  :: grid
-    
-    grid%lineEmission = .false.
-    grid%rCore        = rCore
-
-  end subroutine initClusterAMR
-  
   !
   ! Assigns various values which are needed for the run.
   ! This routine should be called only after the grid has been constructed, namely
