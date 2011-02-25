@@ -1477,9 +1477,7 @@ endif
  endif
 
 
-#ifdef MPI
 666 continue
-#endif
 
   end subroutine writeVtkFileAMR
 
