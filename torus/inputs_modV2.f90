@@ -1298,23 +1298,23 @@ contains
          "positive x boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(xplusboundstring(1:4) /= "null")  xplusbound = getBoundaryCode(xplusboundString)
 
-    call getString("xminusboundstring", xplusboundString, cLine, fLine, nLines, &
+    call getString("xminusboundstring", xminusboundString, cLine, fLine, nLines, &
          "negative x boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(xminusboundString(1:4) /= "null") xminusbound = getBoundaryCode(xminusboundString)
 
-    call getString("yplusboundstring", xplusboundString, cLine, fLine, nLines, &
+    call getString("yplusboundstring", yplusboundString, cLine, fLine, nLines, &
          "positive y boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(yplusboundString(1:4) /= "null") yplusbound = getBoundaryCode(yplusboundString)
 
-    call getString("yminusboundstring", xplusboundString, cLine, fLine, nLines, &
+    call getString("yminusboundstring", yminusboundString, cLine, fLine, nLines, &
          "negative y boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(yminusboundString(1:4) /= "null") yminusbound = getBoundaryCode(yminusboundString)
 
-    call getString("zplusboundstring", xplusboundString, cLine, fLine, nLines, &
+    call getString("zplusboundstring", zplusboundString, cLine, fLine, nLines, &
          "positive z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zplusboundString(1:4) /= "null") zplusbound = getBoundaryCode(zplusboundString)
 
-    call getString("zminusboundstring", xplusboundString, cLine, fLine, nLines, &
+    call getString("zminusboundstring", zminusboundString, cLine, fLine, nLines, &
          "negative z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
