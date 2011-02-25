@@ -1869,42 +1869,41 @@ end function returnBase64Char
 
 
 
-
     if (writeheader) then
-       open(lunit, file=vtkFilename, form="formatted")
+       open(lunit, file=vtkFilename, form="unformatted",access="stream")
        buffer = '<?xml version="1.0"?>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '  <UnstructuredGrid>'//lf 
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        write(str1(1:8),'(i8)') nPoints
        write(str2(1:8),'(i8)') nCellsGlobal
-       buffer = '    <Piece NumberOfPoints="'//str1//'" NumberOfCells="'//str2//'">'//lf 
-       write(lunit,'(a)') trim(buffer)
+       buffer = '    <Piece NumberOfPoints="'//str1//'" NumberOfCells="'//str2//'">'//lf
+       write(lunit) trim(buffer)
        buffer = '      <Points>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        write(offset(1:8),'(i8)') ioff(1)
        buffer = '       <DataArray type="Float32" Name="coordinates" NumberOfComponents="3" format="appended" offset="'&
             //offset//'" />'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '      </Points>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '      <Cells>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        write(offset(1:8),'(i8)') ioff(2)
        buffer = '        <DataArray type="Int32" Name="connectivity" format="appended" offset="'//offset//'" />'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        write(offset(1:8),'(i8)') ioff(3)
        buffer = '        <DataArray type="Int32" Name="offsets" format="appended" offset="'//offset//'" />'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        write(offset(1:8),'(i8)') ioff(4)
        buffer = '        <DataArray type="UInt8" Name="types" format="appended" offset="'//offset//'" />'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '      </Cells>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '      <CellData>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
 
 
        do i = 1, nValueType
@@ -1922,7 +1921,7 @@ end function returnBase64Char
           if (scalarvalue) then
              buffer = '        <DataArray type="Float32" Name="'//trim(valueType(i))//&
                   '" format="appended" offset="'//offset//'" />'//lf
-             write(lunit,'(a)') trim(buffer)
+             write(lunit) trim(buffer)
           else
              buffer = '        <DataArray type="Float32" NumberOfComponents="3" Name="'//trim(valueType(i))//&
                   '" format="appended" offset="'//offset//'" />'//lf
@@ -1931,18 +1930,18 @@ end function returnBase64Char
 
 
        buffer = '     </CellData>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '    </Piece>'//lf
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
        buffer = '  </UnstructuredGrid>'//lf
-       write(lunit,'(a)') trim(buffer)
-       buffer = '  <AppendedData encoding="raw">'
-       write(lunit,'(a)') trim(buffer)
+       write(lunit) trim(buffer)
+       buffer = '  <AppendedData encoding="raw">'//lf
+       write(lunit) trim(buffer)
        close(lunit)
 
        open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
        buffer = '_'
-       write(lunit) trim(buffer)
+       write(lunit) buffer(1:1)
        write(lunit) nbytesPoints  , ((points(i,j),i=1,3),j=1,nPoints)
        write(lunit) nbytesConnect , (connectivity(i),i=1,nPoints)
        write(lunit) nbytesOffsets  , (offsets(i),i=1,nCellsGlobal)
@@ -1985,11 +1984,11 @@ end function returnBase64Char
        enddo
 
        if (writeheader) then
-          open(lunit, file=vtkFilename, form="formatted", position="append")
+          open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
           buffer = lf//'  </AppendedData>'//lf
-          write(lunit,'(a)') trim(buffer)
+          write(lunit) trim(buffer)
           buffer = '</VTKFile>'//lf
-          write(lunit,'(a)') trim(buffer)
+          write(lunit) trim(buffer)
           close(lunit)
        endif
        goto 666
