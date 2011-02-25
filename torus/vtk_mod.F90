@@ -1722,7 +1722,9 @@ end function returnBase64Char
     character(len=1) :: lf
     character(len=8) :: offset, str1, str2
     logical :: vectorValue, scalarValue
+#ifdef MPI
     integer, allocatable :: nSubcellArray(:)
+#endif
     float = 0.
     int = 0
     int1 = 0
@@ -1872,7 +1874,7 @@ end function returnBase64Char
        open(lunit, file=vtkFilename, form="formatted")
        buffer = '<?xml version="1.0"?>'//lf
        write(lunit,'(a)') trim(buffer)
-       buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="BigEndian">'//lf
+       buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf
        write(lunit,'(a)') trim(buffer)
        buffer = '  <UnstructuredGrid>'//lf 
        write(lunit,'(a)') trim(buffer)
@@ -1990,6 +1992,7 @@ end function returnBase64Char
           write(lunit,'(a)') trim(buffer)
           close(lunit)
        endif
+       goto 666
 
 666 continue
   end subroutine writeXMLVtkFileAMR
