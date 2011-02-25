@@ -53,6 +53,7 @@ contains
 
     do iatom = 1, nAtom
        call readAtom(atomArray(iatom), atomFilename(iatom))
+       call stripAtomLevels(atomArray(iAtom), 3)
     end do
 
   end subroutine setupAtoms
@@ -578,7 +579,7 @@ contains
        globalNSource = 1
     endif
 
-    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
+!    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
 
 
 end subroutine setupGlobalSources

@@ -381,7 +381,7 @@ contains
 
        call fixParentPointers(grid%octreeRoot)
        call postSetupChecks(grid)
-!       call writeVTKfile(grid, "rho.vtk")
+       call writeVTKfile(grid, "rho.vtk")
 
 
     endif

@@ -266,6 +266,8 @@ contains
 !       BluEinstein = (fourPi * pi * eCharge**2)/(mElectron * hCgs * thisAtom%transFreq(iTrans) * cspeed) * f
 
        aEinstein = fac * thisAtom%transFreq(iTrans)**2 * f * thisAtom%g(iLower) / thisAtom%g(iUpper)
+
+
        BluEinstein = fac2 /  thisAtom%transFreq(iTrans) * f
        BulEinstein = BluEinstein * thisAtom%g(iLower) / thisAtom%g(iUpper)
     case DEFAULT
@@ -426,6 +428,12 @@ contains
           rate =  5.465d-11 * sqrt(temperature) * (EH/(Hcgs*thisAtom%transFreq(iTrans)))**2 &
                * fij * exp(1.d0)* (u0*exp(-u0)*log(2.d0) + u0*expint(1,u0))
 
+
+          rate = 5.465d-11 * sqrt(temperature) * exp(1.d0) * fij * (1.d0/16.d0) * &
+               (1.d0/dble(thisAtom%ilower(itrans))**2 - 1.d0/dble(thisAtom%iUpper(itrans))**2) * &
+               (u0 * exp(-u0) * log(2.d0) + u0 * expint(1,u0))
+
+
        case DEFAULT
           call writeFatal("collisionRate: bound-bound collision type not implemented")
           stop
@@ -468,7 +476,9 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
-!          write(*,*) rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
+!          rate =  HeIICollisionalIonRates(thisAtom%ilower(itrans), &
+!               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
+!         write(*,*) "rate ",rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
 !               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
@@ -751,7 +761,7 @@ contains
      real :: t, coeff(:),  ut
      real :: logphi
 
-     logphi = 5040.0/t
+     logphi = log10(5040.0/t)
 
      ut = coeff(1) + coeff(2)*logphi
      ut = 10.**ut
@@ -1102,7 +1112,7 @@ contains
     nuStart = cSpeed / (8.d5 * 1.d-8)
     nuEnd = cSpeed / (5.d0 * 1.d-8)
 
-    nEven = 200
+    nEven = 100
 
 
     do i = 1, nEven
@@ -1462,7 +1472,9 @@ contains
     if (E > (E_ion - En)) then
 
 !       annu_hyd = 1.044d-26*gii(n,1.0d0,lam)*(lam**3)/dble(n)**5
+
        annu_hyd = 1.044d-26*gii(n,z,lam)*(lam**3)/dble(n)**5
+
        annu_hgi = annu_hyd*z2*z2  ! Z^4 factor 
     else
        annu_hgi = 1.d-30

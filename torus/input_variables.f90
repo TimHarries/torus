@@ -36,6 +36,7 @@ module input_variables
  ! globally applied minimum temperature
   real    :: TMinGlobal     
 
+  real(double) :: xAbundance, yAbundance
   ! variables for the grid
 
   logical :: debug
@@ -50,6 +51,7 @@ module input_variables
   character(len=10) :: object
   real :: bigomega, eddingtonGamma, alphaCAK
   logical :: uniformStar
+  logical :: useBinaryXMLVTKfiles
   character(len=80) :: absolutePath
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi

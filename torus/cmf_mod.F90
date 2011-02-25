@@ -66,6 +66,9 @@ contains
     integer, allocatable :: nCons(:)
     logical :: ok
     integer :: nDifferentElements
+
+
+
     
     blu = 0.d0; bul = 0.d0; a = 0.d0; ok = .true.
     nDifferentElements = 0
@@ -157,6 +160,7 @@ contains
           l = thisAtom(iAtom)%iLower(iTrans)
 
           NstarRatio = boltzSahaGeneral(thisAtom(iAtom),  l, ne, temperature)
+          
 
           if ((thisAtom(iAtom)%transType(iTrans) == "RBF").and.&
                (.not.thisAtom(iAtom)%inDetailedBalance(iTrans)))  then ! radiative recomb
@@ -166,16 +170,23 @@ contains
 
              call locate(freq, nfreq, nuStart, istart)
 
+
              do i = istart+1, nFreq
                 xSection = photoCrossSection(thisAtom(iAtom), l, freq(i-1))
                 xSection2 = photoCrossSection(thisAtom(iAtom), l, freq(i))
 
                 recombRatekl = recombRatekl + &
-                     0.5 * ( (fourPi/(hCgs*freq(i-1)))*xSection*((2.d0*hCgs*freq(i-1)**3)/cSpeed**2 + jnuCont(i-1)) * &
+                     0.5 * ( (fourPi/(hCgs*freq(i-1)))*xSection*((2.d0*hCgs*freq(i-1)**3)/cSpeed**2  + jnuCont(i-1)) * &
                      exp(-(hCgs*freq(i-1))/(kErg*temperature)) + &
-                             (fourPi/(hCgs*freq(i)))*xSection2*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
+                             (fourPi/(hCgs*freq(i)))*xSection2*((2.d0*hCgs*freq(i)**3)/cSpeed**2  + jnuCont(i)) * &
                      exp(-(hCgs*freq(i))/(kErg*temperature)) )*dfreq(i)
              enddo
+
+             if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Radiative recomb into level 2: ", &
+                  Nstarratio*recombratekl*npops(iatom,k)
+
+             if (thisAtom(iatom)%name == "HeII") write(*,*) "Radiative recomb out of continuum ", &
+                  Nstarratio*recombratekl*npops(iatom,k)
 
              matrixA(l + noffset(iatom), k+nOffset(iAtom)) = matrixA(l + noffset(iatom), k+nOffset(iAtom)) + &
                   NstarRatio * recombratekl
@@ -196,15 +207,18 @@ contains
 
 
           if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
-             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature) 
+             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
 
-             collex = tiny(collex)
+
+             if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Collisional recomb into level 2: ", &
+                  Nstarratio*collex*ne*npops(iatom,k)
 
 
              matrixA(l + noffset(iatom), k+nOffset(iAtom)) = matrixA(l + noffset(iatom), k+nOffset(iAtom)) + &
                   NstarRatio * collex * ne
 
              matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - NstarRatio*collEx*ne
+
 
 
              tot2 = tot2 + NstarRatio*collEx*ne
@@ -244,10 +258,24 @@ contains
              call locate(freq, nfreq, thisAtom(iatom)%transFreq(itrans), istart)
 
              jnu = jNuLine(iJnu)
-!             if ((thisAtom(iAtom)%name == "HeII").and.(l==1).and.(k==2)) write(*,*) "jnu ",jnu,ijnu
+
 
 
              if (.not.thisAtom(iAtom)%inDetailedBalance(iTrans)) then
+                
+
+                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Rad bound-bound out of  level 2: ", &
+                    (Blu * jnu) * npops(iatom,l)
+                if ((thisAtom(iatom)%name=="HeII").and.(k==2)) write(*,*) "Rad bound-bound into level 2 (lyman alpha): ", &
+                    (Blu * jnu) * npops(iatom,l)
+                if ((thisAtom(iatom)%name=="HeII").and.(k==2)) then 
+                   write(*,*) "Rad bound-bound out of   level 2 (ly alpha): ", &
+                        (Bul * jnu + a )*npops(iatom,k), blu*jnu,a
+                endif
+                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Rad bound-bound into  level 2 (recomb cascade): ", &
+                    (Bul * jnu + a )*npops(iatom,k) 
+
+                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Bul ",Bul * jnu, " a ",a
                 
 
                 matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
@@ -264,8 +292,16 @@ contains
 
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
+
+
              boltzFac =  exp(-abs(thisAtom(iAtom)%energy(k)-thisAtom(iAtom)%energy(l)) / (kev*temperature))
              colldeEx = collEx / (boltzFac * thisAtom(iAtom)%g(k)/thisAtom(iAtom)%g(l))
+
+
+             if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Col bound-bound out of  level 2: ", &
+                  (collex+colldeex) * ne *npops(iatom,l)
+             if ((thisAtom(iatom)%name=="HeII").and.(k==2)) write(*,*) "Col bound-bound into level 2: ", &
+                  (collex+colldeex) * ne * npops(iatom,k)
 	     
              matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - colldeex * ne
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - collex * ne
@@ -297,6 +333,13 @@ contains
                 photoRatelk = photoRatelk * fourPi
 
 
+                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Photoion out of  level 2: ", photoRatelk*npops(iatom,l)
+
+             if (thisAtom(iatom)%name == "HeII") write(*,*) "Photoion into continuum ", &
+                  photoRatelk * npops(iatom,l)
+
+
+
                 matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
                 matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
                 totphotoion=totphotoion + photoRatelk
@@ -315,6 +358,9 @@ contains
 
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
+
+
+             if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Coll ion out of  level 2: ", collex*ne*npops(iatom,l)
 
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - collex * ne
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + collex * ne
@@ -476,7 +522,7 @@ contains
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
 
-    call randomRayDirection(0.9d0, position, source, nSource, direction, weightOmega)
+    call randomRayDirection(0.5d0, position, source, nSource, direction, weightOmega)
 
 
     call randomNumberGenerator(getDouble=r)
@@ -605,12 +651,14 @@ contains
           distArray(nTau) = tVal
        endif
 
-       if (.not.thisOctal%inflow(subcell)) then
-          distArray(1) = 0.d0
-          distArray(2) = tVal
-          nTau = 2
-       endif
+!       if (.not.thisOctal%inflow(subcell)) then
+!          distArray(1) = 0.d0
+!          distArray(2) = tVal
+!          nTau = 2
+!          write(*,*) "not in flow"
+!       endif
 
+       
        do i = 2, nTau
 
           distArray(i) = tval * dble(i-1)/dble(nTau-1)
@@ -925,7 +973,8 @@ contains
           jBarInternal = jbarInternal + inu  * weight(iray)
           jBarExternal = jbarExternal + i0(iray) * exp(-tau) * weight(iray)
 
-          inuAv = inuAv + inu * weight(iray)
+ 
+         inuAv = inuAv + inu * weight(iray)
 
 !          if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2).and.(tau < 1.d0)) &
 !               write(*,*) "jext ",jbarExternal,i0(iray),tau,weight(iray),dv*cspeed/1.e5
@@ -938,15 +987,11 @@ contains
  
        jBarExternal = jBarExternal / sumWeight
        jBarInternal = jBarInternal / sumWeight
-
        
 
           
        jbar = (jBarExternal + jBarInternal)
 
-
-!       if ((thisAtom%name == "HeII").and.(ilower==1))&
-!          write(*,*) ilower," line data ",jbarExternal,jbarInternal,jbar,tauav
 
     endif
           
@@ -1082,7 +1127,7 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 1000, maxRay = 200000
+    integer, parameter :: maxIter = 100, maxRay = 200000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
@@ -1115,7 +1160,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-4, gridtolerance = 1.d-2
+    real(double), parameter :: convergeTol = 1.d-3, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename, tfilename
@@ -1232,26 +1277,28 @@ contains
 
 ! ly-alpha in detailed balance
 
-!    do iAtom = 1, nAtom
-!       do iTrans = 1, thisAtom(iAtom)%nTrans
-!          if (thisAtom(iAtom)%transType(iTrans) == "RBB") then 
-!             if ((thisAtom(iAtom)%iLower(iTrans) == 1).and.(thisAtom(iatom)%iUpper(itrans)==2)) then
-!                thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-!             endif
-!          endif
-!       enddo
-!    enddo
+ !   do iAtom = 1, nAtom
+ !      do iTrans = 1, thisAtom(iAtom)%nTrans
+ !         if (thisAtom(iAtom)%transType(iTrans) == "RBB") then 
+ !            if (thisAtom(iatom)%name == "HeII") then
+ !               if ((thisAtom(iAtom)%iLower(iTrans) == 1).and.(thisAtom(iatom)%iUpper(itrans)==2)) then
+ !                  thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+ !               endif
+ !            endif
+ !         endif
+ !      enddo
+ !   enddo
 
 
 ! Lyman continuum in detailed balance
 
-    do iAtom = 1, nAtom
-       do iTrans = 1, thisAtom(iAtom)%nTrans
-          if (thisAtom(iAtom)%name == "HI".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
-             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-          endif
-       enddo
-    enddo
+!    do iAtom = 1, nAtom
+!       do iTrans = 1, thisAtom(iAtom)%nTrans
+!          if (thisAtom(iAtom)%name == "HI".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+!             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+!          endif
+!       enddo
+!    enddo
 !!!
 
 ! Lyman continuum in detailed balance
@@ -1263,20 +1310,21 @@ contains
 !          endif
 !       enddo
 !    enddo
+
 !
 !! Lyman continuum in detailed balance
 
-!    do iAtom = 1, nAtom
-!       do iTrans = 1, thisAtom(iAtom)%nTrans
-!          if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
-!             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-!             write(*,*) "lyman cont detailed balance ",itrans
-!          endif
-!       enddo
-!    enddo
+    do iAtom = 1, nAtom
+       do iTrans = 1, thisAtom(iAtom)%nTrans
+          if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+             write(*,*) "lyman cont detailed balance ",itrans
+          endif
+       enddo
+    enddo
 
-!! Lyman lines in detailed balance
-!
+! Lyman lines in detailed balance
+
 !    do iAtom = 1, nAtom
 !       do iTrans = 1, thisAtom(iAtom)%nTrans
 !          if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBB") then ! photoionization
@@ -1289,6 +1337,7 @@ contains
     allocate(octalArray(grid%nOctals))
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    grid%starPos1 = VECTOR(1.d5,0.d0,0.d0)
     call  sortOctalArray(octalArray,grid)
 
     nInUse = 0 
@@ -1324,7 +1373,7 @@ contains
         close(69)
      endif
 
-     nRay = 100
+     nRay = 1000
     do iStage = 1, 2
 
 
@@ -1502,6 +1551,12 @@ contains
 
                             thisOctal%JnuCont(subcell, :) = jnuCont(:)
 
+!                            do i = 1, nfreq
+!                               r = modulus(subcellCentre(thisOctal,subcell))
+!                               w = 0.5d0*(1.d0 - sqrt(1.d0-source(1)%radius**2/r**2))
+!                               thisOctal%jnuCont(subcell,i) = i_nu(source(1),freq(i),1)*w
+!                            enddo
+
                             do iRBB = 1, nRBBTrans
                                iTrans = indexRBBTrans(iRBB)
                                iAtom =  indexAtom(iRBB)
@@ -1510,11 +1565,11 @@ contains
                                     i0(iRBB,1:nRay), iTrans, thisOctal%jnuLine(subcell,iRBB), &
                                     thisOctal%newAtomLevel(subcell,iAtom,1:), &
                                     weightFreq(1:nRay) * weightOmega(1:nRay), tauAv)
-!                               if  ( (thisAtom(iatom)%name == "HeII").and.(thisAtom(iatom)%ilower(itrans)==1)&
-!                                    .and.(thisAtom(iatom)%iupper(itrans)==2) ) then
-!                                  write(*,*) "after calc jbar ",thisOctal%jnuline(subcell,irBB),irbb
-!                               endif
                             enddo
+
+!                            call getSobolovJnuLine(grid, thisOctal, subcell, thisAtom, nAtom, &
+!                                 source(1), nRBBTrans, indexRBBTrans, indexAtom)
+
                          endif
 
 
@@ -1523,6 +1578,11 @@ contains
                             oldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
 
                             newpops = thisOctal%newatomLevel(subcell, 1:nAtom, 1:)
+
+
+
+
+
                             call solveLevels(thisOctal, subcell, newPops, &
                                  thisOctal%jnuLine(subcell,1:nRBBTrans),  &
                                  dble(thisOctal%temperature(subcell)), nAtom, thisAtom, ne, &
@@ -1642,7 +1702,8 @@ contains
                                 log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot)
                            if (nAtom > 2) &
                            write(*,*) "log(He III/ Ntot): ", &
-                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot)
+                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
+                                thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels)
                         endif
 
                          fac = -1.d30
@@ -1997,6 +2058,7 @@ contains
   end subroutine calcContinuumOpacities
 
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
+    use input_variables, only : Xabundance, Yabundance
     use stateq_mod, only : z_hi
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
@@ -2020,9 +2082,10 @@ contains
        end do
     end if
     call allocateAttribute(thisOctal%atomAbundance,thisOctal%maxchildren, nAtom)
-    thisOctal%atomAbundance(:, 1) = 1.d0 / mHydrogen
+    thisOctal%atomAbundance(:, 1) = Xabundance / ((Xabundance + 4.d0*Yabundance) * mHydrogen)
     if (nAtom > 1) then
-       thisOctal%atomAbundance(:, 2:nAtom) =  0.2d0 / mHydrogen !assume higher atoms are helium
+       thisOctal%atomAbundance(:, 2:nAtom) =  Yabundance / ((Xabundance + 4.d0 * Yabundance) * mHydrogen)
+ !assume higher atoms are helium
     endif
     call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
     call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
@@ -2071,7 +2134,7 @@ contains
        !          write(*,*) "ne ",thisOctal%ne(subcell),4.0_db*N_H*phiT+1.0_db, t,phit,n_h
        do iAtom = 1, nAtom
           thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
-               * thisOctal%atomAbundance(subcell, iAtom)/ thisAtom(iatom)%mass
+               * thisOctal%atomAbundance(subcell, iAtom)
 
           do i = 1, thisAtom(iatom)%nLevels-1
              thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaGeneral(thisAtom(iAtom), i, &
@@ -2114,7 +2177,7 @@ contains
     if (r < probTowardsSource) then
        weight = chanceSource/probTowardsSource
        call randomNumberGenerator(getDouble=r)
-       i = int(r*real(nSource))+1
+       i = int(r*real(nsource))+1
        toStar = source(i)%position - point
        call normalize(toStar)
        theta = asin(min(1.d0, max(-1.d0,source(i)%radius/modulus(point-source(i)%position))))
@@ -3358,6 +3421,7 @@ contains
   subroutine findRaysInPixel(xcen, yCen, dx, dy, xPoints, yPoints, nPoints, &
                   nRay, xRay, yRay, area)
     use utils_mod, only : voron2
+    
 
     real(double) :: xCen, yCen, dx, dy
     real(double) :: xPoints(:), yPoints(:)
@@ -3651,6 +3715,103 @@ contains
        endif
     enddo
   end subroutine getProjectedPoints
+
+
+  subroutine getSobolovJnuLine(grid, thisOctal, subcell, thisAtom, nAtom, source, nRBBTrans, indexRBBTrans, indexAtom)
+    use amr_mod, only : amrgridDirectionalDeriv
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nAtom, iAtom
+    type(SOURCETYPE) :: source
+    integer :: nRBBTrans, indexRBBTrans(:), indexAtom(:)
+    integer :: iRBB, iTrans
+    integer :: iUpper, iLower
+    real(double) :: nUpper, nLower, gUpper, gLower
+    real(double) :: transitionFreq, inu, chiline, a, blu, bul
+    real(double) :: betamn, betacmn, grad, tauij, theta, cosTheta, ang, fij, omega
+    real(double) :: sobJnuLine
+    integer :: i
+    logical :: hitcore
+    type(VECTOR) :: uHat, position, toStar
+
+    do iRBB = 1, nRBBTrans
+       iTrans = indexRBBTrans(iRBB)
+       iAtom =  indexAtom(iRBB)
+
+       iUpper = thisAtom(iAtom)%iUpper(iTrans)
+       iLower = thisAtom(iAtom)%iLower(iTrans)
+
+       nLower = thisOctal%newatomLevel(subcell,iAtom, iLower)
+       nUpper = thisOctal%newatomLevel(subcell,iAtom, iUpper)
+
+       gLower = thisAtom(iAtom)%g(iLower)
+       gUpper = thisAtom(iAtom)%g(iUpper)
+
+       transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
+          
+       inu = i_nu(source, transitionFreq, 1)
+
+       call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
+
+       fij = thisAtom(iatom)%fMatrix(ilower,iupper)
+
+
+       chiline = (pi * eCharge**2 * fij)/(mElectron * cSpeed)
+       chiLine = chiLine *  gLower * (Nlower/gLower - nUpper/gUpper)
+
+       betamn = 0.d0
+
+       position = subcellCentre(thisoctal,subcell)
+
+       do i = 1, 20
+          uHat = randomUnitVector()
+          grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
+          tauij = chiLine / grad 
+          tauij =  tauij / transitionFreq
+          betamn = betamn + (1.d0 - exp(-tauij))/tauij
+       enddo
+       betamn = betamn / 20.
+
+
+       betacmn = 0.d0
+
+       theta = asin(source%radius/modulus(position-source%position))
+       omega = twoPi * (1.d0 - cos(theta))
+       do i = 1, 10
+
+          toStar = source%position - position
+          call normalize(toStar)
+          theta = asin(min(1.d0, max(-1.d0,source%radius/modulus(position-source%position))))
+          cosTheta = cos(theta)
+          hitCore = .false.
+          do while(.not.hitCore)
+             uHat = randomUnitVector()
+             ang = acos(min(1.d0, max(-1.d0, uhat.dot.toStar)))
+             if (ang < theta) hitCore = .true.
+          enddo
+          grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
+          tauij = chiLine / grad 
+          tauij = tauij / transitionFreq
+          betacmn = betacmn + (1.d0 - exp(-tauij))/tauij
+       enddo
+       betacmn = (omega/fourPi) * betacmn / 10.d0
+
+
+
+       sobJnuLine = (1.d0 - betamn) * &
+            ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0) + betacmn * inu
+
+       if ( abs(sobJnuLine - thisOctal%jnuLine(subcell,iRbb))/sobJnuLine > 0.2d0 ) then
+          write(*,*) "Warning: Sobolev line intensity and CMF line intensity differ by more than 20%"
+          write(*,*) "Wavelength ",Cspeed/transitionFreq * 1.e8
+       endif
+       
+    enddo
+
+
+  end subroutine getSobolovJnuLine
 
 ! Commented out so daily test builds (DMA 8/2/11)
 !  subroutine getSurfacePoints(source, viewVec, xProj, yProj, xPoints, yPoints, nPoints)

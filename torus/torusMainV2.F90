@@ -96,7 +96,7 @@ program torus
   call setupMicrophysics(grid)
 
   call  setupamrgrid(grid)
-
+       call writeVTKfile(grid, "rho.vtk")
 !  call checkAMRgrid(grid, .false.)
 
   call setupGlobalSources(grid)

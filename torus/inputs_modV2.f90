@@ -96,6 +96,10 @@ contains
     call getInteger("verbosity", verbosityLevel, cLine, fLine, nLines, &
          "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
 
+
+    call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
+         "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
+
 ! the grid setup. Either we read the grid in or set it up from scratch
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
@@ -935,7 +939,13 @@ contains
 
     call getLogical("thickcont", opticallyThickContinuum, cLine, fLine, nLines, &
          "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+    onTheSpot = .false.
 
+    call getDouble("xabundance", Xabundance, 1.d0, cLine, fLine, nLines, &
+            "Hydrogen abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)
+
+    call getDouble("yabundance", Yabundance, 1.d0, cLine, fLine, nLines, &
+            "Helium abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)
 
 
   end subroutine readAtomicPhysicsParameters
