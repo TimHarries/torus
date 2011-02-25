@@ -1263,12 +1263,6 @@ CONTAINS
   
     INTEGER :: subcell, iChild
 
-    REAL :: T1, T2
-    real, save :: TSTART 
-
-    logical, save :: firsttime = .true.
-    integer, save :: counter = 0
-     
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren
    
@@ -1297,37 +1291,16 @@ CONTAINS
           call assign_grid_values_wr104(thisOctal,subcell)
           
        CASE ("molcluster", "theGalaxy")
-          if(thisoctal%haschild(subcell)) then 
-             continue
-          else
-
+          if( .not. thisoctal%haschild(subcell)) then 
              if ( amr3d .and. .not. cylindrical) then
-
-                if(firsttime) then
-                   call CPU_TIME(tstart)
-                   firsttime = .false.
-                endif
-
-                if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
-                   CALL CPU_TIME(T1)
+                 if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
                    if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
                    recentoctal => thisoctal
                    CALL fillDensityCorners(thisOctal, clusterdensity, clustervelocity)
                    thisOctal%velocity = thisoctal%cornervelocity(14)
                 endif
-
-                call assign_grid_values(thisOctal,subcell)
-
-                counter = counter + 1
-                CALL CPU_TIME(T2)
-                if (writeoutput) write(112, *) counter, t2 - t1, t2 - tstart
-          
-             else
-             
-                call assign_grid_values(thisOctal,subcell)
-
              end if
-
+             call assign_grid_values(thisOctal,subcell)
           end if
 
 !          CASE("molebench")
