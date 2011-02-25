@@ -134,8 +134,10 @@ contains
        if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
           source(isource)%outsideGrid = .true.
           source(isource)%distance = modulus(source(isource)%position)*1.d10
-          source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-               (fourPi*source(isource)%distance**2)
+          
+          
+          !source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+          !     (fourPi*source(isource)%distance**2)
        else if ( distToEdge < grid%halfSmallestSubcell) then          
           source(iSource)%onEdge = .true.
           source(iSource)%onCorner = .false.

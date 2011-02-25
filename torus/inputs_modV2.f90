@@ -1286,28 +1286,36 @@ contains
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
          "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
 
+
+    xplusboundstring = "null"
+    xminusboundstring = "null"
+    yplusboundstring = "null"
+    yminusboundstring = "null"
+    zplusboundstring = "null"
+    zminusboundstring = "null"
+
     call getString("xplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive x boundary condition:  ","(a,a,a)","null",ok, .true.)
+         "positive x boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(xplusboundstring(1:4) /= "null")  xplusbound = getBoundaryCode(xplusboundString)
 
     call getString("xminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative x boundary condition:  ","(a,a,a)","null",ok, .true.)
+         "negative x boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(xminusboundString(1:4) /= "null") xminusbound = getBoundaryCode(xminusboundString)
 
     call getString("yplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive y boundary condition:  ","(a,a,a)","null",ok, .true.)
+         "positive y boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(yplusboundString(1:4) /= "null") yplusbound = getBoundaryCode(yplusboundString)
 
     call getString("yminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative y boundary condition:  ","(a,a,a)","null",ok, .true.)
+         "negative y boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(yminusboundString(1:4) /= "null") yminusbound = getBoundaryCode(yminusboundString)
 
     call getString("zplusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "positive z boundary condition:  ","(a,a,a)","null",ok, .true.)
+         "positive z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zplusboundString(1:4) /= "null") zplusbound = getBoundaryCode(zplusboundString)
 
     call getString("zminusboundstring", xplusboundString, cLine, fLine, nLines, &
-         "negative z boundary condition:  ","(a,a,a)","null",ok, .true.)
+         "negative z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
 

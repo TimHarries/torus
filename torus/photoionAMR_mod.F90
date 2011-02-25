@@ -700,7 +700,25 @@ contains
 
     lCore = 0.d0
     do i = 1, nSource
-       lCore = lCore + source(i)%luminosity
+       !If outside the grid then correct for the flux attenuation due to distance of star from grid
+       if(source(i)%outsideGrid) then
+       lCore = lCore + source(i)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+               (fourPi*source(i)%distance**2)
+       !Solid angle formulation
+       !lCore = lCore + source(i)%luminosity * 4.d0*asin((grid%octreeRoot%subcellSize*1.d10)**2/ &
+       !     (4.d0*source(i)%distance**2 + (grid%octreeRoot%subcellSize*1.d10)**2)) * 4.d0 * pi * &
+       !     (grid%octreeRoot%subcellSize*1.d10)**2 / (fourPi*source(i)%distance**2)
+       !
+       !print *, "!!!!AREA COMPARISON!!!!"
+       !print *, "solid ",4.d0*asin((grid%octreeRoot%subcellSize*1.d10)**2/ &
+       !     (4.d0*source(i)%distance**2 + (grid%octreeRoot%subcellSize*1.d10)**2)) * 4.d0 * pi * &
+       !     (grid%octreeRoot%subcellSize*1.d10)**2
+!
+ !      print *,"square ", (2.d0*grid%octreeRoot%subcellSize*1.d10)**2
+       
+    else
+          lCore = lCore + source(i)%luminosity
+       end if
     enddo
 
 
@@ -1401,7 +1419,7 @@ if (grid%geometry == "tom") then
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 500
+        minCrossings = 1000
      end if
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
