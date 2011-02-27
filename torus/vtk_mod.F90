@@ -1397,7 +1397,7 @@ contains
     do iThread = 1, nThreadsGlobal
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        if (iThread == myRankGlobal) then
-           call writeOffsetsXML(grid, vtkFilename, nPoints, nCells, iOffsetArray(myRankGlobal))
+           call writeOffsetsXML(grid, vtkFilename,  iOffsetArray(myRankGlobal))
        endif
     enddo
  endif
@@ -1732,7 +1732,7 @@ end function returnBase64Char
 !
 #ifdef MPI
 ! just return if the grid is not decomposed and MPI job and not zero rank thread
-    if ((.not.grid%splitOverMpi).and.(myRankGlobal /= 0)) goto 666
+    if ((.not.grid%splitOverMpi).and.(myRankGlobal /= 1)) goto 666
 #endif
 !
 #ifdef MPI
@@ -1804,11 +1804,11 @@ end function returnBase64Char
 
     writeHeader = .true.
 #ifdef MPI
-    if (myRankGlobal /= 1 .and. grid%splitOverMpi) then
+    if (myRankGlobal /= 1) then
        writeHeader = .false.
     endif
 #endif
-
+    write(*,*) myrankGlobal ," writeheader ",writeheader
 
     allocate(points(1:3,1:nPoints))
     call getPoints(grid, nPoints, points)
@@ -1867,10 +1867,10 @@ end function returnBase64Char
        ioff(i+5) = ioff(i+4) + sizeof(int) + j
     enddo
 
-
+    write(*,*) myrankGlobal, " about to write file ",trim(vtkfilename)
 
     if (writeheader) then
-       open(lunit, file=vtkFilename, form="unformatted",access="stream")
+       open(lunit, file=vtkFilename, form="unformatted",access="stream",status="replace")
        buffer = '<?xml version="1.0"?>'//lf
        write(lunit) trim(buffer)
        buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf
@@ -1941,7 +1941,7 @@ end function returnBase64Char
 
        open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
        buffer = '_'
-       write(lunit) buffer(1:1)
+       write(lunit) iachar("_")
        write(lunit) nbytesPoints  , ((points(i,j),i=1,3),j=1,nPoints)
        write(lunit) nbytesConnect , (connectivity(i),i=1,nPoints)
        write(lunit) nbytesOffsets  , (offsets(i),i=1,nCellsGlobal)
@@ -1975,6 +1975,7 @@ end function returnBase64Char
                 write(lunit) ncellsGlobal*3*sizeof(float), &
                      ((rArray(i,j),i=1,3),j=1,nCellsGlobal)
              else
+                write(*,*) myrankGlobal," data ",ncellsGlobal*sizeof(float),myrankGlobal
                 write(lunit) ncellsGlobal*sizeof(float), &
                      (rArray(1,i),i=1,nCellsGlobal)
              endif
@@ -1989,6 +1990,7 @@ end function returnBase64Char
           write(lunit) trim(buffer)
           buffer = '</VTKFile>'//lf
           write(lunit) trim(buffer)
+          endfile(lunit)
           close(lunit)
        endif
        goto 666
