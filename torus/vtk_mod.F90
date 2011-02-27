@@ -508,10 +508,10 @@ contains
   end subroutine writeIndices
 
 
-  subroutine writeOffsetsXML(grid, vtkFilename, nPoints, nCells, iOffset)
+  subroutine writeOffsetsXML(grid, vtkFilename, iOffset)
     type(GRIDTYPE) :: grid
     integer :: lunit = 69
-    integer :: nCells, nPoints, iOffset, nCount
+    integer :: iOffset, nCount
     character(len=*) :: vtkFilename
 
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
@@ -1389,7 +1389,7 @@ contains
 #endif
 
  if (writexml) then
-    if (.not.grid%splitOverMPI) call writeOffsetsXML(grid, vtkFilename, nPoints, nCells, 0)
+    if (.not.grid%splitOverMPI) call writeOffsetsXML(grid, vtkFilename, 0)
 
 #ifdef MPI
     if (grid%splitOverMpi) then
@@ -1620,8 +1620,8 @@ endif
     implicit none
     integer :: j 
     integer :: i32array(:)
-    integer*1, allocatable :: iArray(:)
-    integer*1 :: i6
+    integer(kind=1), allocatable :: iArray(:)
+    integer(kind=1) :: i6
     integer :: iCount, lineCount
     integer :: i32temp
     character, pointer :: string(:)
@@ -1678,7 +1678,7 @@ endif
 
 function returnBase64Char(i) result(c)
   character(len=1) :: c
-  integer*1 :: i 
+  integer(kind=1) :: i 
 
   if ((i >= 0).and.(i<26)) then
      c = char(i + ichar("A")) 
