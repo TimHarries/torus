@@ -1722,12 +1722,22 @@ end function returnBase64Char
     character(len=1) :: lf
     character(len=10) :: offset, str1, str2
     logical :: vectorValue, scalarValue
+    integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
 #ifdef MPI
     integer, allocatable :: nSubcellArray(:)
 #endif
     float = 0.
     int = 0
     int1 = 0
+
+    sizeOfFloat = 4
+    sizeofInt = 4
+    sizeofint1 = 1
+#ifdef MEMCHECK
+    sizeOfFloat = sizeof(float)
+    sizeOfInt = sizeof(int)
+    sizeOfInt1 = sizeof(int1)
+#endif
 
 !
 #ifdef MPI
@@ -1836,17 +1846,20 @@ end function returnBase64Char
     if ((nPointOffset == 8).and.(cylindrical)) cellTypes = 12
     if (nPointOffset == 4) cellTypes = 8
 
-    nBytesPoints = sizeof(float) * 3 * nPoints
-    nBytesConnect =  sizeof(int) * nPoints
-    nBytesOffsets = sizeof(int) * nCellsGlobal
-    nBytesCellTypes = sizeof(int1) * nCellsGlobal
+
+
+
+    nBytesPoints = sizeofFloat * 3 * nPoints
+    nBytesConnect =  sizeofInt * nPoints
+    nBytesOffsets = sizeofint * nCellsGlobal
+    nBytesCellTypes = sizeofint1 * nCellsGlobal
     
 
     ioff(1) = 0
-    ioff(2) = ioff(1) + sizeof(int) + nBytesPoints
-    ioff(3) = ioff(2) + sizeof(int) + nBytesConnect
-    ioff(4) = ioff(3) + sizeof(int) + nBytesOffsets
-    ioff(5) = ioff(4) + sizeof(int) + nBytesCellTypes
+    ioff(2) = ioff(1) + sizeofint + nBytesPoints
+    ioff(3) = ioff(2) + sizeofint + nBytesConnect
+    ioff(4) = ioff(3) + sizeofint + nBytesOffsets
+    ioff(5) = ioff(4) + sizeofint + nBytesCellTypes
     
     do i = 1, nValueType
        select case (valueType(i))
@@ -1858,11 +1871,11 @@ end function returnBase64Char
           vectorvalue = .false.
        end select
        if (scalarvalue) then
-          j =  nCellsGlobal * sizeof(float)
+          j =  nCellsGlobal * sizeoffloat
        else
-          j =  nCellsGlobal * sizeof(float) * 3
+          j =  nCellsGlobal * sizeoffloat * 3
        endif
-       ioff(i+5) = ioff(i+4) + sizeof(int) + j
+       ioff(i+5) = ioff(i+4) + sizeofint + j
     enddo
 
 
@@ -1970,11 +1983,11 @@ end function returnBase64Char
           if (writeheader) then
              open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
              if (vectorvalue) then
-                nBytesData = ncellsGlobal*3*sizeof(float)
+                nBytesData = ncellsGlobal*3*sizeoffloat
                 write(lunit) nBytesData, &
                      ((rArray(i,j),i=1,3),j=1,nCellsGlobal)
              else
-                nBytesData = nCellsGlobal * sizeof(float)
+                nBytesData = nCellsGlobal * sizeoffloat
                 write(lunit) nBytesData, &
                      (rArray(1,i),i=1,nCellsGlobal)
              endif
