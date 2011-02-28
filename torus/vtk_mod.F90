@@ -43,9 +43,9 @@ contains
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
     if (writeHeader) then
        if (.not.xml) then
-          write(69,'(a,i10,a)') "POINTS ",nPoints, " float"
+          write(69,'(a,i12,a)') "POINTS ",nPoints, " float"
        else
-          write(69,'(a,i10,a,i10,a)') "<Piece NumberOfPoints='",nPoints,"' NumberOfCells='",nCells,"'>"
+          write(69,'(a,i12,a,i12,a)') "<Piece NumberOfPoints='",nPoints,"' NumberOfCells='",nCells,"'>"
           write(69,'(a)') "<Points>"
           write(69,'(a)') "<DataArray type='Float32' Name='Position' NumberOfComponents='3' format='ascii'>"
        endif
@@ -580,9 +580,9 @@ contains
     end subroutine recursivewriteOffsetsXML
   end subroutine writeOffsetsXML
 
-  subroutine getOffsets(grid, nPoints, nCells, offsets, iOffset)
+  subroutine getOffsets(grid, offsets, iOffset)
     type(GRIDTYPE) :: grid
-    integer :: nPoints, nCells,  iOffset, nCount
+    integer ::   iOffset, nCount
     integer :: offsets(:)
 
 
@@ -1669,7 +1669,7 @@ endif
        enddo
     enddo
     if (nPad == 2) then
-       string(iCount-1:iCount) = "=="
+!       string((iCount-1):iCount) = "=="
     endif
     if (nPad == 1) then
        string(iCount:iCount) = "="
@@ -1712,15 +1712,15 @@ end function returnBase64Char
     integer, allocatable :: offsets(:)
     integer, allocatable :: connectivity(:)
     real, pointer :: points(:,:)
-    integer :: ioff(10), nCellsGlobal
-    integer :: nBytesPoints, nBytesCellTypes, nBytesConnect, nBytesOffsets, nBytesRho
+    integer :: ioff(20), nCellsGlobal
+    integer :: nBytesPoints, nBytesCellTypes, nBytesConnect, nBytesOffsets, nBytesData
     real, pointer :: rArray(:,:)
     real :: float
     integer :: int, j, iValues, n
     integer(kind=1) :: int1
     Character(len=200) :: buffer
     character(len=1) :: lf
-    character(len=8) :: offset, str1, str2
+    character(len=10) :: offset, str1, str2
     logical :: vectorValue, scalarValue
 #ifdef MPI
     integer, allocatable :: nSubcellArray(:)
@@ -1808,7 +1808,6 @@ end function returnBase64Char
        writeHeader = .false.
     endif
 #endif
-    write(*,*) myrankGlobal ," writeheader ",writeheader
 
     allocate(points(1:3,1:nPoints))
     call getPoints(grid, nPoints, points)
@@ -1841,7 +1840,6 @@ end function returnBase64Char
     nBytesConnect =  sizeof(int) * nPoints
     nBytesOffsets = sizeof(int) * nCellsGlobal
     nBytesCellTypes = sizeof(int1) * nCellsGlobal
-    nBytesRho = sizeof(float) * nCellsGlobal
     
 
     ioff(1) = 0
@@ -1867,7 +1865,6 @@ end function returnBase64Char
        ioff(i+5) = ioff(i+4) + sizeof(int) + j
     enddo
 
-    write(*,*) myrankGlobal, " about to write file ",trim(vtkfilename)
 
     if (writeheader) then
        open(lunit, file=vtkFilename, form="unformatted",access="stream",status="replace")
@@ -1877,13 +1874,13 @@ end function returnBase64Char
        write(lunit) trim(buffer)
        buffer = '  <UnstructuredGrid>'//lf 
        write(lunit) trim(buffer)
-       write(str1(1:8),'(i8)') nPoints
-       write(str2(1:8),'(i8)') nCellsGlobal
+       write(str1(1:10),'(i10)') nPoints
+       write(str2(1:10),'(i10)') nCellsGlobal
        buffer = '    <Piece NumberOfPoints="'//str1//'" NumberOfCells="'//str2//'">'//lf
        write(lunit) trim(buffer)
        buffer = '      <Points>'//lf
        write(lunit) trim(buffer)
-       write(offset(1:8),'(i8)') ioff(1)
+       write(offset(1:10),'(i10)') ioff(1)
        buffer = '       <DataArray type="Float32" Name="coordinates" NumberOfComponents="3" format="appended" offset="'&
             //offset//'" />'//lf
        write(lunit) trim(buffer)
@@ -1891,13 +1888,13 @@ end function returnBase64Char
        write(lunit) trim(buffer)
        buffer = '      <Cells>'//lf
        write(lunit) trim(buffer)
-       write(offset(1:8),'(i8)') ioff(2)
+       write(offset(1:10),'(i10)') ioff(2)
        buffer = '        <DataArray type="Int32" Name="connectivity" format="appended" offset="'//offset//'" />'//lf
        write(lunit) trim(buffer)
-       write(offset(1:8),'(i8)') ioff(3)
+       write(offset(1:10),'(i10)') ioff(3)
        buffer = '        <DataArray type="Int32" Name="offsets" format="appended" offset="'//offset//'" />'//lf
        write(lunit) trim(buffer)
-       write(offset(1:8),'(i8)') ioff(4)
+       write(offset(1:10),'(i10)') ioff(4)
        buffer = '        <DataArray type="UInt8" Name="types" format="appended" offset="'//offset//'" />'//lf
        write(lunit) trim(buffer)
        buffer = '      </Cells>'//lf
@@ -1916,7 +1913,7 @@ end function returnBase64Char
              vectorvalue = .false.
           end select
 
-          write(offset(1:8),'(i8)') ioff(i+4)
+          write(offset(1:10),'(i10)') ioff(i+4)
 
           if (scalarvalue) then
              buffer = '        <DataArray type="Float32" Name="'//trim(valueType(i))//&
@@ -1941,7 +1938,8 @@ end function returnBase64Char
 
        open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
        buffer = '_'
-       write(lunit) iachar("_")
+!       write(lunit) iachar("_")
+       write(lunit) buffer(1:1)
        write(lunit) nbytesPoints  , ((points(i,j),i=1,3),j=1,nPoints)
        write(lunit) nbytesConnect , (connectivity(i),i=1,nPoints)
        write(lunit) nbytesOffsets  , (offsets(i),i=1,nCellsGlobal)
@@ -1972,11 +1970,12 @@ end function returnBase64Char
           if (writeheader) then
              open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
              if (vectorvalue) then
-                write(lunit) ncellsGlobal*3*sizeof(float), &
+                nBytesData = ncellsGlobal*3*sizeof(float)
+                write(lunit) nBytesData, &
                      ((rArray(i,j),i=1,3),j=1,nCellsGlobal)
              else
-                write(*,*) myrankGlobal," data ",ncellsGlobal*sizeof(float),myrankGlobal
-                write(lunit) ncellsGlobal*sizeof(float), &
+                nBytesData = nCellsGlobal * sizeof(float)
+                write(lunit) nBytesData, &
                      (rArray(1,i),i=1,nCellsGlobal)
              endif
              deallocate(rArray)
@@ -2041,7 +2040,6 @@ end function returnBase64Char
 #endif
 
             n = n + 1
-            rArray(1,n) = thisOctal%rho(subcell)
 
             select case (valueType)
                case("rho")

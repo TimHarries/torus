@@ -3011,8 +3011,7 @@ contains
          write(*,*) "Calculating spectrum for: ",lamLine
 
     if (doCube) then
-       call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray, &
-            occultingDisc)
+       call createDataCube(cube, grid, viewVec, nSource, source)
        
 #ifdef MPI
        write(*,*) "Process ",my_rank, " create data cube done"
@@ -3196,8 +3195,7 @@ contains
   end subroutine createRayGrid
 
 
-  subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
-       nFreqArray, freqArray, occultingDisc)
+  subroutine createDataCube(cube, grid, viewVec,nSource, source)
     use mpi_global_mod
     use input_variables, only : npixels, nv, imageSide, maxVel, &
          positionAngle
@@ -3206,19 +3204,12 @@ contains
 #ifdef MPI
     include 'mpif.h'
 #endif
-    logical, optional :: occultingDisc
     integer :: nSource
     type(SOURCETYPE) :: source(:)
-    type(MODELATOM) :: thisAtom(:)
-    real(double) :: freqArray(:)
-    integer :: nFreqArray
-    integer :: iAtom
-    integer :: nAtom
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
     type(VECTOR) :: viewvec, rayPos, xProj, yProj, northVec
     real(double) :: deltaV
-    integer :: iTrans
     integer :: ix, iy, iv
     real(double) :: vstart,vend
     real(double), allocatable :: vArray(:)
@@ -3717,13 +3708,13 @@ contains
   end subroutine getProjectedPoints
 
 
-  subroutine getSobolovJnuLine(grid, thisOctal, subcell, thisAtom, nAtom, source, nRBBTrans, indexRBBTrans, indexAtom)
+  subroutine getSobolovJnuLine(grid, thisOctal, subcell, thisAtom, source, nRBBTrans, indexRBBTrans, indexAtom)
     use amr_mod, only : amrgridDirectionalDeriv
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(MODELATOM) :: thisAtom(:)
-    integer :: nAtom, iAtom
+    integer :: iAtom
     type(SOURCETYPE) :: source
     integer :: nRBBTrans, indexRBBTrans(:), indexAtom(:)
     integer :: iRBB, iTrans

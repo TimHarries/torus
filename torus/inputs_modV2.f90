@@ -98,7 +98,7 @@ contains
 
 
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
-         "Use binary XML VTK files: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 
 ! the grid setup. Either we read the grid in or set it up from scratch
 
