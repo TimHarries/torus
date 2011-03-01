@@ -39,7 +39,7 @@ contains
   
     use disc_class, only:  new
     use discwind_class, only:  new
-    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data, sph_mass_within_grid
+    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
     use mpi_amr_mod
     use photoionAMR_mod, only : ionizeGrid, resetNh
@@ -57,8 +57,7 @@ contains
     logical :: flatspec
     type(GRIDTYPE) :: grid
     logical :: gridConverged
-    real(double) :: astar, mass_accretion_old, totalMass
-    real(double) :: minRho, maxRho, totalmasstrap, removedMass
+    real(double) :: astar, mass_accretion_old, totalMass, removedMass
     real(double) :: objectDistance
     real :: scalefac
     character(len=80) :: message
@@ -289,25 +288,7 @@ contains
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
-
-          if( geometry .eq. 'molcluster'.or. geometry == "theGalaxy" .or. geometry == "cluster") then
-             totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30
-             call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
-             write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
-             call writeInfo(message, TRIVIAL)
-             write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
-             call writeInfo(message, TRIVIAL)
-             write(message,*) "Mass of SPH particles within grid: ", sph_mass_within_grid(grid), " solar masses"
-             call writeInfo(message, TRIVIAL)
-             write(message,*) "Maximum Density: ",maxrho, " g/cm^3"
-             call writeInfo(message, TRIVIAL)
-             write(message,*) "Minimum Density: ",minrho, " g/cm^3"
-             call writeInfo(message, TRIVIAL)
-          endif
-
-
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
-        call howmanysplits()
 
        select case (geometry)
           case("cmfgen")
@@ -927,11 +908,14 @@ contains
 
 
   subroutine postSetupChecks(grid)
+    use sph_data_class, only: sph_mass_within_grid
     use input_variables, only : mDisc, geometry
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
-    
+    character(len=80) :: message
+    real(double) :: minRho, maxRho, totalmasstrap, totalmass
+
     call findTotalMemory(grid, i)
     call reportMemory(i)
 
@@ -939,6 +923,19 @@ contains
     select case (geometry)
     case ("shakara")
        call testAMRmass(grid, dble(mdisc))
+    case("molcluster", "theGalaxy", "cluster")
+       totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0
+       call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
+       write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Mass of SPH particles within grid: ", sph_mass_within_grid(grid), " solar masses"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Maximum Density: ",maxrho, " g/cm^3"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Minimum Density: ",minrho, " g/cm^3"
+       call writeInfo(message, TRIVIAL)
     case DEFAULT
     end select
   end subroutine postSetupChecks
