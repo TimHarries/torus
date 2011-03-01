@@ -3328,8 +3328,8 @@ contains
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
        !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea) &
-       !$OMP SHARED (cube, viewVec, grid, thisAtom, nAtom, iAtom, iTrans) &
-       !$OMP SHARED (deltaV, source, nSource, nFreqArray, freqArray, occultingDisc) &
+       !$OMP SHARED (cube, viewVec, grid ) &
+       !$OMP SHARED (deltaV, source, nSource) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
