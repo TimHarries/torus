@@ -2028,11 +2028,12 @@ end function returnBase64Char
       type(OCTAL), pointer :: thisOctal, child
       character(len=*) :: valueType
       real :: rArray(:,:)
-      integer :: i, subcell, n, iLambda
+      integer :: i, subcell, n
+      integer, save ::  iLambda
       real(double) :: ksca, kabs, value
       type(VECTOR) :: rVec, vel
       real, parameter :: min_single_prec = 1.0e-37
-      logical, save :: firstTime
+      logical, save :: firstTime=.true.
 
 !$OMP THREADPRIVATE (firstTime)
 
