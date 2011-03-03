@@ -7573,7 +7573,6 @@ CONTAINS
 
   subroutine calcProtoBinDensity(thisOctal,subcell)
 
-    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
