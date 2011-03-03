@@ -7660,13 +7660,6 @@ CONTAINS
 
     thisOctal%iEquationOfState(subcell) = 2
 
-    zplusbound = 1
-    zminusbound = 1
-    xplusbound = 1
-    xminusbound = 1
-    yplusbound = 1
-    yminusbound = 1
-
   end subroutine calcProtoBinDensity
     
 

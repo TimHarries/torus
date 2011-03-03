@@ -22,6 +22,7 @@
 program torus
   use torus_version_mod
   use input_variables         ! variables filled by inputs subroutine
+  use dimensionality_mod
   use constants_mod
   use messages_mod
   use mpi_global_mod
@@ -75,6 +76,7 @@ program torus
      if (myRankGlobal/=0) myRankIsZero = .false.
   end if
 
+  call initializeCodeUnits()
 
   call writeTorusBanner()
 

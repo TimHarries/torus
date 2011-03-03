@@ -10,6 +10,8 @@ module input_variables
 
   public
 
+  real(double) :: massUnit, timeUnit, lengthUnit
+
 
   logical :: readGrid, writeGrid
 

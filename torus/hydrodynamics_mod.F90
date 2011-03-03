@@ -4,6 +4,7 @@ module hydrodynamics_mod
 #ifdef MPI
 
   use input_variables
+  use dimensionality_mod
   use kind_mod
   use constants_mod
   use amr_mod
@@ -347,7 +348,7 @@ contains
              end if
           end do
        else
-          thisoctal%x_i(subcell) = (subcellcentre(thisoctal, subcell) .dot. direction) * griddistancescale
+          thisoctal%x_i(subcell) = returnCodeUnitLength(griddistancescale*(subcellcentre(thisoctal, subcell) .dot. direction))
        endif
     enddo
   end subroutine setupx
@@ -996,7 +997,7 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 		!if (.not.thisoctal%edgecell(subcell)) then
-             dx = thisoctal%subcellsize * griddistancescale
+             dx = returnCodeUnitLength(thisoctal%subcellsize*gridDistanceScale)
              thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
                   ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                   (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
@@ -1261,16 +1262,26 @@ contains
                     (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
 	    !print *, "rhou", thisoctal%rhou(subcell)
 
+!                write(*,*) "rhou pressure ", thisOctal%rhou(subcell),  (dt) * &
+!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
+!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
+!                    thisOctal%pressure_i(subcell)
+
+
              else 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
+
+
              end if
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
-	     
+!	     write(*,*) "rhou grav ",thisOctal%rhou(subcell),(dt/2.d0) * & !gravity
+!                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
+!                  thisoctal%phi_i_minus_1(subcell)) / dx 
 
 
              if (isnan(thisoctal%rhou(subcell))) then
@@ -1280,16 +1291,16 @@ contains
                 write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
              endif
 
-             if (thisoctal%rhou(subcell)/thisoctal%rho(subcell) > 1.d10) then
-                write(*,*) "u ",thisoctal%rhou(subcell)/thisoctal%rho(subcell)/1.d5
-                write(*,*) "rho ", thisoctal%rho(subcell)
-                write(*,*) "rho i+1", thisoctal%rho_i_plus_1(subcell)
-                write(*,*) "rho i-1", thisoctal%rho_i_minus_1(subcell)
-                write(*,*) "pressure i + 1 " ,thisoctal%pressure_i_plus_1(subcell)
-                write(*,*) "pressure i - 1 " ,thisoctal%pressure_i_minus_1(subcell)
-                write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
-                write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
-             endif
+!             if (thisoctal%rhou(subcell)/thisoctal%rho(subcell) > 1.d30) then
+!                write(*,*) "u ",thisoctal%rhou(subcell)/thisoctal%rho(subcell)/1.d5
+!                write(*,*) "rho ", thisoctal%rho(subcell)
+!                write(*,*) "rho i+1", thisoctal%rho_i_plus_1(subcell)
+!                write(*,*) "rho i-1", thisoctal%rho_i_minus_1(subcell)
+!                write(*,*) "pressure i + 1 " ,thisoctal%pressure_i_plus_1(subcell)
+!                write(*,*) "pressure i - 1 " ,thisoctal%pressure_i_minus_1(subcell)
+!                write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
+!                write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
+!             endif
 
                 
 !             write(*,*) thisoctal%rhou(subcell), thisoctal%pressure_i_plus_1(subcell), &
@@ -1375,6 +1386,12 @@ contains
                     (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
                     !print *, "rhou", thisoctal%rhou(subcell)
 
+!                write(*,*) "rhov pressure ", thisOctal%rhov(subcell),  (dt) * &
+!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
+!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
+!                    thisOctal%pressure_i(subcell)
+
+
             else
                     thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
                     (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
@@ -1391,16 +1408,16 @@ contains
                 write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
              endif
 
-             if (thisoctal%rhov(subcell)/thisoctal%rho(subcell) > 1.d10) then
-                write(*,*) "u ",thisoctal%rhov(subcell)/thisoctal%rho(subcell)/1.d5
-                write(*,*) "rho ", thisoctal%rho(subcell)
-                write(*,*) "rho i+1", thisoctal%rho_i_plus_1(subcell)
-                write(*,*) "rho i-1", thisoctal%rho_i_minus_1(subcell)
-                write(*,*) "pressure i + 1 " ,thisoctal%pressure_i_plus_1(subcell)
-                write(*,*) "pressure i - 1 " ,thisoctal%pressure_i_minus_1(subcell)
-                write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
-                write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
-             endif
+!             if (thisoctal%rhov(subcell)/thisoctal%rho(subcell) > 1.d10) then
+!                write(*,*) "u ",thisoctal%rhov(subcell)/thisoctal%rho(subcell)/1.d5
+!                write(*,*) "rho ", thisoctal%rho(subcell)
+!                write(*,*) "rho i+1", thisoctal%rho_i_plus_1(subcell)
+!                write(*,*) "rho i-1", thisoctal%rho_i_minus_1(subcell)
+!                write(*,*) "pressure i + 1 " ,thisoctal%pressure_i_plus_1(subcell)
+!                write(*,*) "pressure i - 1 " ,thisoctal%pressure_i_minus_1(subcell)
+!                write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
+!                write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
+!             endif
 
                 
 !             write(*,*) thisoctal%rhou(subcell), thisoctal%pressure_i_plus_1(subcell), &
@@ -1486,6 +1503,11 @@ contains
                ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
                !print *, "rhou", thisoctal%rhou(subcell)
+
+!                write(*,*) "rhow pressure ", thisOctal%rhow(subcell),  (dt) * &
+!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
+!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
+!                    thisOctal%pressure_i(subcell)
 
             else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
@@ -1739,6 +1761,7 @@ contains
           endif
           if (thisoctal%rho(subcell) < 0.d0) then
              write(*,*) "rho warning ", thisoctal%rho(subcell), subcellcentre(thisoctal, subcell)
+             write(*,*) "rhou, rhov, rhow ", thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
              write(*,*) "label ",thisoctal%label
              write(*,*) "direction ", direction
              write(*,*) "phi limit ", thisoctal%philimit(subcell)
@@ -2093,10 +2116,10 @@ contains
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
-    !call imposeboundary(grid%octreeroot)
-    !call periodboundary(grid)
-    !call transfertempstorage(grid%octreeroot)
-    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
 
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -2113,6 +2136,7 @@ contains
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     if (myrankglobal == 1) call tune(6,"X-direction step")
+
 
     if (myrankglobal == 1) call tune(6,"Y-direction step")
     direction = VECTOR(0.d0, 1.d0, 0.d0)
@@ -2139,10 +2163,10 @@ contains
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
 
-    !call imposeboundary(grid%octreeroot)
-    !call periodboundary(grid)
-    !call transfertempstorage(grid%octreeroot)
-    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
 
 
     call setupVi(grid%octreeRoot, grid, direction)
@@ -2185,10 +2209,10 @@ contains
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
-    !call imposeboundary(grid%octreeroot)
-    !call periodboundary(grid)
-    !call transfertempstorage(grid%octreeroot)
-    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
 
 
     call setupWi(grid%octreeRoot, grid, direction)
@@ -2233,10 +2257,10 @@ contains
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
-    !call imposeboundary(grid%octreeroot)
-    !call periodboundary(grid)
-    !call transfertempstorage(grid%octreeroot)
-    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
 
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -2454,11 +2478,13 @@ contains
           if (.not.thisOctal%ghostCell(subcell)) then
 
              cs = soundSpeed(thisOctal, subcell)
-!             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
-             dx = thisOctal%subcellSize * gridDistanceScale
-!             speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
+!             if (myrank == 1) write(*,*) "cs ", returnPhysicalUnitSpeed(cs)/1.d5, " km/s ",cs, " code"
+             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
+             speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
              speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
              speed = sqrt(speed)/thisOctal%rho(subcell)
+!             if (myrank == 1) write(*,*) "speed ", returnPhysicalUnitSpeed(speed)/1.d5, " km/s ",speed, " code"
+!             if (myrank == 1) write(*,*) "dx ", returnPhysicalUnitLength(dx), " cm ",dx," code"
 
              tc = min(tc, dx / (cs + speed) )
 !             if (myrank == 1) write(*,*) "tc ",tc
@@ -2472,7 +2498,7 @@ contains
   function soundSpeed(thisOctal, subcell) result (cs)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real(double) :: cs
+    real(double) :: cs, rhoPhys
     real(double) :: u2, eKinetic, eTot, eThermal
     logical, save :: firstTime = .true.
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
@@ -2511,8 +2537,9 @@ contains
 	  !   stop
 	  !end if
        case(2) ! barotropic
-          if (thisOctal%rho(subcell) < rhoCrit) then
-             cs = sqrt( getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
+          rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))
+          if (rhoPhys < rhoCrit) then
+             cs = sqrt(getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
           else
              cs = sqrt(gamma2 *  getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
           endif
@@ -2690,6 +2717,7 @@ contains
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
     real(double) :: currentTime !, smallTime
+    real(double) :: initialmass
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=80) :: plotfile
@@ -2737,8 +2765,15 @@ contains
        tDump = 1.d0 * tff
     endif
 
+          call writeVtkFile(grid, "onentry.vtk", &
+               valueTypeString=(/"rho          ","velocity     ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
+    call setCodeUnit(time=timeUnit)
+    call setCodeUnit(mass=massUnit)
+    call setCodeUnit(length=lengthUnit)
+    call writeCodeUnits()
 
+    tdump = returnCodeUnitTime(tdump)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
@@ -2763,6 +2798,11 @@ contains
        call calculateRhoV(grid%octreeRoot, direction)
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
+
+       call calculateRhoInCodeUnits(grid%octreeRoot)
+       call calculateEnergyInCodeUnits(grid%octreeRoot)
+       call calculatePhiInCodeUnits(grid%octreeRoot)
+
 
        call calculateRhoE(grid%octreeRoot, direction)
 
@@ -2806,8 +2846,13 @@ contains
     endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
 
+    if (firstStep) then
+       firstStep = .false.
+       dt = MINVAL(temptc(1:nHydroThreads)) * 1.d-5
+    else
+       dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
+    endif
 
-    dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
     if ((grid%geometry == "shakara").or.(grid%geometry=="rtaylor")) then
        tdump =  20.d0 * dt
     endif
@@ -2823,6 +2868,8 @@ contains
     call writeVtkFile(grid, plotfile, &
          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
+    call findMassoverAllThreads(grid, initialMass)
+
     do while(currentTime < tend)
        if (myrank /= 0) then
           tc(myrank) = 1.d30
@@ -2832,18 +2879,18 @@ contains
        !       write(*,*) "tc", tc(1:8)
        !       if (myrank==1)write(*,*) "temp tc",temptc(1:nHydroThreads)
 
-       if (firstStep) then 
-          cflNumber = 1.d-2
-          firstStep = .false.
-       else
-          cflNumber = 0.3d0
-       endif
+!       if (firstStep) then 
+!          cflNumber = 1.d-2
+!          firstStep = .false.
+!       else
+!          cflNumber = 0.3d0
+!       endif
 
        dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
 
-       if (myrank==1)write(*,*) "Current time is ",currentTime/tff, " free-fall times"
+       if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)/tff, " free-fall times"
        call findMassoverAllThreads(grid, totalmass)
-       if (myrank==1)write(*,*) "Current mass: ",totalmass/msol
+       if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass
 
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
@@ -3261,6 +3308,9 @@ contains
        else 
           thisOctal%rhoV(subcell) = thisOctal%rho(subcell) * &
                (cSpeed * (thisOctal%velocity(subcell).dot.direction))
+
+          thisOctal%rhoV(subcell) = returnCodeUnitRhoV(thisOctal%rhoV(subcell))
+
        endif
     enddo
   end subroutine calculateRhoV
@@ -3284,6 +3334,9 @@ contains
        else 
           thisOctal%rhoW(subcell) = thisOctal%rho(subcell) * &
                (cSpeed * (thisOctal%velocity(subcell).dot.direction))
+
+          thisOctal%rhoW(subcell) = returnCodeUnitRhoV(thisOctal%rhoW(subcell))
+
        endif
     enddo
   end subroutine calculateRhoW
@@ -3308,6 +3361,10 @@ contains
        else 
           thisOctal%rhoU(subcell) = thisOctal%rho(subcell) * &
                (cSpeed * (thisOctal%velocity(subcell).dot.direction))
+
+          thisOctal%rhoU(subcell) = returnCodeUnitRhoV(thisOctal%rhoU(subcell))
+
+
        endif
     enddo
   end subroutine calculateRhoU
@@ -3330,10 +3387,71 @@ contains
           end do
        else 
           thisOctal%rhoE(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-!          write(*,*) "rhoe", thisOctal%rhoe(subcell), thisOctal%rho(subcell), thisOctal%energy(subcell)
+
        endif
     enddo
   end subroutine calculateRhoE
+
+  recursive subroutine calculateRhoInCodeUnits(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: i
+  
+    do i = 1, thisOctal%maxChildren
+       thisOctal%rho(i) = returnCodeUnitDensity(thisOctal%rho(i))
+    enddo
+
+
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       DO i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          CALL calculateRhoInCodeUnits(child)
+       END DO
+    END IF
+  end subroutine calculateRhoInCodeUnits
+
+  recursive subroutine calculatePhiInCodeUnits(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: i
+  
+    do i = 1, thisOctal%maxChildren
+       thisOctal%Phi_i(i) = returnCodeUnitEnergy(thisOctal%phi_i(i))
+    enddo
+
+
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       DO i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          CALL calculatePhiInCodeUnits(child)
+       END DO
+    END IF
+  end subroutine calculatePhiInCodeUnits
+
+  recursive subroutine calculateEnergyinCodeUnits(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateEnergyinCodeUnits(child)
+                exit
+             end if
+          end do
+       else 
+
+          thisOctal%energy(subcell) = returnCodeUnitEnergy(thisOctal%energy(subcell))
+       endif
+    enddo
+  end subroutine calculateEnergyInCodeUnits
+
 
   recursive subroutine getArray(thisOctal, x, rho, rhou, v, n)
     type(octal), pointer   :: thisOctal
@@ -5824,7 +5942,7 @@ end subroutine refineGridGeneric2
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
 
-    gGrav = bigG
+    gGrav = bigG  * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -5928,7 +6046,7 @@ end subroutine refineGridGeneric2
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
 
-    gGrav = bigG
+    gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -6014,24 +6132,25 @@ end subroutine refineGridGeneric2
                 endif
 
 
-                g(n) =   (phi - thisOctal%phi_i(subcell))/(dx*gridDistanceScale)
+                g(n) =   (phi - thisOctal%phi_i(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
 
                 
              enddo
 
              if (thisOctal%twoD) then
-                d2phidx2(1) = (g(1) - g(2)) / (thisOctal%subcellSize*gridDistanceScale)
-                d2phidx2(2) = (g(3) - g(4)) / (thisOctal%subcellSize*gridDistanceScale)
+                d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
+                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:2))
              else
-                d2phidx2(1) = (g(1) - g(2)) / (thisOctal%subcellSize*gridDistanceScale)
-                d2phidx2(2) = (g(3) - g(4)) / (thisOctal%subcellSize*gridDistanceScale)
-                d2phidx2(3) = (g(5) - g(6)) / (thisOctal%subcellSize*gridDistanceScale)
+                d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
+                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
+                d2phidx2(3) = (g(5) - g(6)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
-             deltaT = (1.d0/6.d0)*(thisOctal%subcellSize*gridDistanceScale)**2
+             deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
+!             deltaT = deltaT * timeToCodeUnits
 
-             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT)
+             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
 
 !             if (myrankglobal == 1) write(*,*) newphi,thisOctal%phi_i(subcell),deltaT, sumd2phidx2, thisOctal%rho(subcell)
              if (thisOctal%phi_i(subcell) /= 0.d0) then
@@ -6065,7 +6184,7 @@ end subroutine refineGridGeneric2
 
     sorFactor = 1.2d0
 
-    gGrav = bigG
+    gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -6185,12 +6304,13 @@ end subroutine refineGridGeneric2
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
-          dx = grid%octreeRoot%subcellSize/dble(2.d0**(iDepth-1))
+          dx = returnCodeUnitLength(gridDistancescale*grid%octreeRoot%subcellSize/dble(2.d0**(iDepth-1)))
           if (grid%octreeRoot%twoD) then
-             deltaT =  (dx*gridDistanceScale)**2 / 4.d0
+             deltaT =  (dx)**2 / 4.d0
           else
-             deltaT =  (dx*gridDistanceScale)**2 / 6.d0
+             deltaT =  (dx)**2 / 6.d0
           endif
+!          deltaT = deltaT * timeToCodeUnits
           it = 0
           fracChange = 1.d30
           do while (ANY(fracChange(1:nHydrothreads) > tol))
@@ -6231,7 +6351,7 @@ end subroutine refineGridGeneric2
 !                  "u_i          ", &
 !                  "phi          "/))
 
-             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
 
@@ -6250,10 +6370,11 @@ end subroutine refineGridGeneric2
 !    call reapplyGhostCellPhi(grid%octreeRoot)
 
     if (grid%octreeRoot%twoD) then
-       deltaT =  (2.d0*grid%halfSmallestSubcell*gridDistanceScale)**2 / 4.d0
+       deltaT =  (2.d0*returnCodeUnitLength(gridDistancescale*grid%halfSmallestSubcell))**2 / 4.d0
     else
-       deltaT =  (2.d0*grid%halfSmallestSubcell*gridDistanceScale)**2 / 6.d0
+       deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*grid%halfSmallestSubcell))**2 / 6.d0
     endif
+!    deltaT = deltaT * timeToCodeUnits
 
     fracChange = 1.d30
     it = 0
@@ -6272,7 +6393,7 @@ end subroutine refineGridGeneric2
        
        fracChange = tempFracChange
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 
@@ -6291,7 +6412,7 @@ end subroutine refineGridGeneric2
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    real(double) :: mu
+    real(double) :: mu, rhoPhys
 
     mu = 0.d0
 
@@ -6338,16 +6459,18 @@ end subroutine refineGridGeneric2
           !end if
 
        case(2) !  equation of state from Bonnell 1994
-          if (thisOctal%rho(subcell) < rhoCrit) then
+          rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))
+          if (rhoPhys < rhoCrit) then
              K = 4.1317d8
-             getPressure = K * thisOctal%rho(subcell)
+             getPressure = K * rhoPhys
 !             write(*,*) "low density pressure called ",getPressure
           else
              K = (4.1317d8*rhoCrit)/(rhoCrit**gamma2)
-             getPressure = K * thisOctal%rho(subcell)**gamma2
+             getPressure = K * rhoPhys**gamma2
 !             write(*,*) "high density pressure called ",getpressure
           endif
-
+          getPressure = returnCodeUnitPressure(getPressure)
+!          getpressure = getpressure * 1.d-5
        case(3) ! polytropic
           getPressure = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
           
@@ -6463,4 +6586,5 @@ end subroutine minMaxDepth
   end subroutine createChildlessOctalArray
 
 #endif
+
 end module hydrodynamics_mod

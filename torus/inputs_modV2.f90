@@ -1318,6 +1318,14 @@ contains
          "negative z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
+    call getDouble("timeunit", timeUnit, 1.d0, cLine, fLine, nLines, &
+         "Code unit of time: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
+
+    call getDouble("massunit", massUnit, 1.d0, cLine, fLine, nLines, &
+         "Code unit of mass: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
+
+    call getDouble("lengthunit", lengthUnit, 1.d0, cLine, fLine, nLines, &
+         "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
 
   end subroutine readHydrodynamicsParameters
 

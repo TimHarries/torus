@@ -8,6 +8,7 @@ module vtk_mod
 
   use kind_mod
   use ion_mod
+  use dimensionality_mod
   use constants_mod
   use utils_mod
   use amr_mod
@@ -1935,6 +1936,7 @@ end function returnBase64Char
           else
              buffer = '        <DataArray type="Float32" NumberOfComponents="3" Name="'//trim(valueType(i))//&
                   '" format="appended" offset="'//offset//'" />'//lf
+             write(lunit) trim(buffer)
           endif
        enddo
 
@@ -2058,8 +2060,7 @@ end function returnBase64Char
             select case (valueType)
                case("rho")
 
-                     rArray(1, n) = thisOctal%rho(subcell)
-
+                  rArray(1, n) = returnPhysicalUnitDensity(thisOctal%rho(subcell))
 
                case("J=0")
                   rArray(1, n) = thisOctal%molecularlevel(1,subcell)
@@ -2209,13 +2210,13 @@ end function returnBase64Char
 
                case("hydrovelocity")
                   if (thisOctal%threeD) then
-                     rArray(1, n) = real(thisOctal%rhou(subcell)/thisOctal%rho(subcell))
-                     rArray(2, n) = real(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
-                     rArray(3, n) = real(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                     rArray(1, n) = real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(2, n) = real(returnPhysicalUnitSpeed(thisOctal%rhov(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(3, n) = real(returnPhysicalUnitSpeed(thisOctal%rhow(subcell)/thisOctal%rho(subcell))/1.e5)
                   else
-                     rArray(1, n) = real(thisOctal%rhou(subcell)/thisOctal%rho(subcell))
-                     rArray(2, n) = real(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-                     rArray(3, n) = real(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
+                     rArray(1, n) = real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(2, n) = real(returnPhysicalUnitSpeed(thisOctal%rhow(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(3, n) = real(returnPhysicalUnitSpeed(thisOctal%rhov(subcell)/thisOctal%rho(subcell))/1.e5)
                   endif
 
                case("radmom")
