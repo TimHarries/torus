@@ -1705,7 +1705,7 @@ end function returnBase64Char
     character(len=20) :: valueType(50)
     character(len=*), optional ::  valueTypeFilename
     character(len=*), optional ::  valueTypeString(:)
-    integer :: nCells, nPoints
+    integer :: nCells, nPoints, nPointsGlobal
     integer :: lunit = 69
     integer :: nOctals, nVoxels, i
     integer :: nPointOffset
@@ -1725,7 +1725,8 @@ end function returnBase64Char
     logical :: vectorValue, scalarValue
     integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
 #ifdef MPI
-    integer, allocatable :: nSubcellArray(:), ierr, ithread
+    integer, allocatable :: nSubcellArray(:)
+    integer :: ierr, ithread
 #endif
     float = 0.
     int = 0
@@ -1811,8 +1812,8 @@ end function returnBase64Char
     endif
 #endif
     nCellsGlobal = nVoxels
-    nPoints = nCellsGlobal * nPointOffset
-
+    nPointsGlobal = nCellsGlobal * nPointOffset
+    nPoints = ncells * nPointOffset
     writeHeader = .true.
 #ifdef MPI
     if (myRankGlobal /= 1) then
@@ -1823,15 +1824,10 @@ end function returnBase64Char
     allocate(points(1:3,1:nPoints))
     call getPoints(grid, nPoints, points)
 
-#ifdef MPI
-    if (grid%splitOverMpi)  &
-    call concatArrayOverAllThreads(points, nPoints)
-#endif
-
 
     allocate(offsets(1:nCellsGlobal))
-    allocate(connectivity(1:nPoints))
-    do i = 1, nPoints
+    allocate(connectivity(1:nPointsGlobal))
+    do i = 1, nPointsGlobal
        connectivity(i) = i-1
     enddo
 
@@ -1843,15 +1839,8 @@ end function returnBase64Char
     enddo
 
 
-    if ((nPointOffset == 8).and.(.not.cylindrical)) cellTypes = 11
-    if ((nPointOffset == 8).and.(cylindrical)) cellTypes = 12
-    if (nPointOffset == 4) cellTypes = 8
-
-
-
-
-    nBytesPoints = sizeofFloat * 3 * nPoints
-    nBytesConnect =  sizeofInt * nPoints
+    nBytesPoints = sizeofFloat * 3 * nPointsGlobal
+    nBytesConnect =  sizeofInt * nPointsGlobal
     nBytesOffsets = sizeofint * nCellsGlobal
     nBytesCellTypes = sizeofint1 * nCellsGlobal
     
@@ -1888,7 +1877,7 @@ end function returnBase64Char
        write(lunit) trim(buffer)
        buffer = '  <UnstructuredGrid>'//lf 
        write(lunit) trim(buffer)
-       write(str1(1:10),'(i10)') nPoints
+       write(str1(1:10),'(i10)') nPointsGlobal
        write(str2(1:10),'(i10)') nCellsGlobal
        buffer = '    <Piece NumberOfPoints="'//str1//'" NumberOfCells="'//str2//'">'//lf
        write(lunit) trim(buffer)
@@ -1955,8 +1944,32 @@ end function returnBase64Char
        buffer = '_'
 !       write(lunit) iachar("_")
        write(lunit) buffer(1:1)
-       write(lunit) nbytesPoints  , ((points(i,j),i=1,3),j=1,nPoints)
-       write(lunit) nbytesConnect , (connectivity(i),i=1,nPoints)
+       close(lunit)
+    endif
+
+#ifdef MPI
+    do ithread = 1, nHydroThreadsGlobal
+       if (iThread == myRankGlobal) then
+#endif          
+
+          if (writeheader) then
+             open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
+             write(lunit) nbytesPoints  , ((points(i,j),i=1,3),j=1,nPoints)
+             close(lunit)
+          else
+             open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
+             write(lunit) ((points(i,j),i=1,3),j=1,nPoints)
+             close(lunit)
+          endif
+#ifdef MPI
+       endif
+       call mpi_barrier(amrCommunicator, ierr)
+    enddo
+#endif          
+
+    if (writeheader) then
+       open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
+       write(lunit) nbytesConnect , (connectivity(i),i=1,nPointsGlobal)
        write(lunit) nbytesOffsets  , (offsets(i),i=1,nCellsGlobal)
        write(lunit) nbytesCellTypes    , (cellTypes(i),i=1,nCellsGlobal)
        close(lunit)
@@ -2001,11 +2014,9 @@ end function returnBase64Char
           else
              open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
              if (vectorvalue) then
-                nBytesData = ncellsGlobal*3*sizeoffloat
                 write(lunit) &
                      ((rArray(i,j),i=1,3),j=1,nCells)
              else
-                nBytesData = nCellsGlobal * sizeoffloat
                 write(lunit) &
                      (rArray(1,i),i=1,nCells)
              endif
