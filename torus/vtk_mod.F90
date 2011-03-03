@@ -1721,7 +1721,7 @@ end function returnBase64Char
     integer(kind=1) :: int1
     Character(len=200) :: buffer
     character(len=1) :: lf
-    character(len=10) :: offset, str1, str2
+    character(len=12) :: offset, str1, str2
     logical :: vectorValue, scalarValue
     integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
 #ifdef MPI
@@ -1883,7 +1883,7 @@ end function returnBase64Char
        write(lunit) trim(buffer)
        buffer = '      <Points>'//lf
        write(lunit) trim(buffer)
-       write(offset(1:10),'(i10)') ioff(1)
+       write(offset(1:12),'(i12)') ioff(1)
        buffer = '       <DataArray type="Float32" Name="coordinates" NumberOfComponents="3" format="appended" offset="'&
             //offset//'" />'//lf
        write(lunit) trim(buffer)
@@ -1891,13 +1891,13 @@ end function returnBase64Char
        write(lunit) trim(buffer)
        buffer = '      <Cells>'//lf
        write(lunit) trim(buffer)
-       write(offset(1:10),'(i10)') ioff(2)
+       write(offset(1:12),'(i12)') ioff(2)
        buffer = '        <DataArray type="Int32" Name="connectivity" format="appended" offset="'//offset//'" />'//lf
        write(lunit) trim(buffer)
-       write(offset(1:10),'(i10)') ioff(3)
+       write(offset(1:12),'(i12)') ioff(3)
        buffer = '        <DataArray type="Int32" Name="offsets" format="appended" offset="'//offset//'" />'//lf
        write(lunit) trim(buffer)
-       write(offset(1:10),'(i10)') ioff(4)
+       write(offset(1:12),'(i12)') ioff(4)
        buffer = '        <DataArray type="UInt8" Name="types" format="appended" offset="'//offset//'" />'//lf
        write(lunit) trim(buffer)
        buffer = '      </Cells>'//lf
@@ -1916,7 +1916,7 @@ end function returnBase64Char
              vectorvalue = .false.
           end select
 
-          write(offset(1:10),'(i10)') ioff(i+4)
+          write(offset(1:12),'(i12)') ioff(i+4)
 
           if (scalarvalue) then
              buffer = '        <DataArray type="Float32" Name="'//trim(valueType(i))//&
