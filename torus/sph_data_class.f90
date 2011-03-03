@@ -357,6 +357,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(filename)
+    use input_variables, only: internalView
     implicit none
 
     character(LEN=*), intent(in)  :: filename
@@ -459,6 +460,8 @@ contains
        vy = junkArray(ivy)
        vz = junkArray(ivz)
 
+       if (internalView) call rotate_particles
+
        u = junkArray(iu)
        rhon = junkArray(irho)
        h = junkArray(ih)
@@ -536,6 +539,24 @@ contains
     
  close(LUIN)
    
+ contains
+
+   subroutine rotate_particles
+     use input_variables, only: galaxyPositionAngle, galaxyInclination
+     TYPE(VECTOR) :: orig_sph, rot_sph
+
+     orig_sph = VECTOR(xn,  yn,  zn)
+     rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
+     xn = rot_sph%x; yn=rot_sph%y; zn=rot_sph%z
+
+     orig_sph = VECTOR(vx,  vy,  vz)
+     rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
+     vx = rot_sph%x; vy=rot_sph%y; vz=rot_sph%z
+
+   end subroutine rotate_particles
+
   end subroutine new_read_sph_data
 
 ! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
