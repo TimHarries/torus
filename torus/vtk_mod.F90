@@ -1725,7 +1725,7 @@ end function returnBase64Char
     logical :: vectorValue, scalarValue
     integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
 #ifdef MPI
-    integer, allocatable :: nSubcellArray(:)
+    integer, allocatable :: nSubcellArray(:), ierr, ithread
 #endif
     float = 0.
     int = 0
@@ -1962,6 +1962,13 @@ end function returnBase64Char
        close(lunit)
     end if
 
+#ifdef MPI
+
+    do ithread = 1, nHydroThreadsGlobal
+       if (iThread == myRankGlobal) then
+#endif          
+
+
     do iValues = 1, nValueType
        select case (valueType(iValues))
        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
@@ -1978,25 +1985,42 @@ end function returnBase64Char
           endif
           call getValues(grid, valueType(iValues), rarray)
           n = size(rarray,2)
-#ifdef MPI
-          if (grid%splitOverMPI)  &
-          call concatArrayOverAllThreads(rarray, n)
-#endif          
           if (writeheader) then
              open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
              if (vectorvalue) then
                 nBytesData = ncellsGlobal*3*sizeoffloat
                 write(lunit) nBytesData, &
-                     ((rArray(i,j),i=1,3),j=1,nCellsGlobal)
+                     ((rArray(i,j),i=1,3),j=1,nCells)
              else
                 nBytesData = nCellsGlobal * sizeoffloat
                 write(lunit) nBytesData, &
-                     (rArray(1,i),i=1,nCellsGlobal)
+                     (rArray(1,i),i=1,nCells)
+             endif
+             deallocate(rArray)
+             close(lunit)
+          else
+             open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
+             if (vectorvalue) then
+                nBytesData = ncellsGlobal*3*sizeoffloat
+                write(lunit) &
+                     ((rArray(i,j),i=1,3),j=1,nCells)
+             else
+                nBytesData = nCellsGlobal * sizeoffloat
+                write(lunit) &
+                     (rArray(1,i),i=1,nCells)
              endif
              deallocate(rArray)
              close(lunit)
           endif
        enddo
+
+#ifdef MPI
+    endif
+    call mpi_barrier(amrCommunicator, ierr)
+ enddo
+#endif          
+
+
 
        if (writeheader) then
           open(lunit, file=vtkFilename, form="unformatted", position="append", access="stream")
@@ -2021,13 +2045,14 @@ end function returnBase64Char
 
     n = 0 
 
-    call getValuesRecursive(grid%octreeRoot, valueType, rArray, n)
+    call getValuesRecursive(grid, grid%octreeRoot, valueType, rArray, n)
 
-  contains
+  end subroutine getValues
 
-    recursive subroutine getValuesRecursive(thisOctal, valueType, rArray, n)
+    recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n)
       use input_variables, only : lambdaSmooth
       type(OCTAL), pointer :: thisOctal, child
+      type(GRIDTYPE) :: grid
       character(len=*) :: valueType
       real :: rArray(:,:)
       integer :: i, subcell, n
@@ -2045,7 +2070,7 @@ end function returnBase64Char
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call getValuesRecursive(child, valueType, rArray, n)
+                  call getValuesRecursive(grid, child, valueType, rArray, n)
                   exit
                end if
             end do
@@ -2387,7 +2412,6 @@ end function returnBase64Char
          endif
       enddo
     end subroutine getValuesRecursive
-  end subroutine getValues
 
 #ifdef MPI
 
