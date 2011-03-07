@@ -1236,6 +1236,7 @@ contains
     if (useBinaryXMLVtkFiles) then
        xmlFilename = adjustl(vtkFilename)
        xmlFilename = xmlFilename(1:index(xmlFilename," ")-5)//".vtu"
+       if (.not.grid%octreeRoot%oned) &
        call writeXMLVtkFileAMR(grid, xmlFilename, valueTypeFilename, valueTypeString)
        goto 666
     endif
