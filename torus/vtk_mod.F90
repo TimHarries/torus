@@ -1950,7 +1950,9 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      deallocate(float32)
      close(lunit)
   else if (grid%splitOverMPI) then
+#ifdef MPI
      call writePointsDecomposed(grid, vtkFilename, lunit, nPoints, nPointsGlobal)
+#endif
   endif
 
   if (writeheader) then
