@@ -1219,7 +1219,6 @@ contains
     character(len=20) :: valueType(50)
     character(len=*), optional ::  valueTypeFilename
     character(len=*), optional ::  valueTypeString(:)
-    character(len=1), pointer :: string(:), headstring(:)
     logical, optional :: xml
     integer :: nCells, nPoints
     integer :: lunit = 69
@@ -1427,7 +1426,7 @@ endif
           isize(1) = nCells*4
 !          call base64encode(isize, headstring)
 !          call base64encode(icell, string)
-          write(lunit,'(10000a1)') headstring(1:8),string(1:SIZE(string))
+!          write(lunit,'(10000a1)') headstring(1:8),string(1:SIZE(string))
           write(lunit, '(a)') "</DataArray>"
           write(lunit, '(a)') "</Cells>"
           close(lunit)
