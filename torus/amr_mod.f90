@@ -274,6 +274,9 @@ CONTAINS
     CASE ("iras04158")
        CALL iras04158(thisOctal, subcell)
 
+    CASE ("turbbox")
+       CALL turbBox(thisOctal, subcell)
+
     CASE ("warpeddisc")
        CALL warpedDisk(thisOctal, subcell ,grid)
 
@@ -4639,6 +4642,9 @@ CONTAINS
          splitInAzimuth = .false.
       endif
 
+   case("turbbox")
+     if (thisOctal%nDepth < maxDepthAMR) split = .true.
+     if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("iras04158")
 
@@ -7962,6 +7968,18 @@ CONTAINS
 
 
   end subroutine ClumpyAgb
+
+  subroutine turbBox(thisOctal, subcell)
+
+    type(octal) :: thisOctal
+    integer :: subcell
+
+    thisOctal%rho(subcell) = 100.d0 * mHydrogen
+    thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%iEquationOfState(subcell) = 2
+
+  end subroutine turbBox
 
   subroutine iras04158(thisOctal, subcell)
 

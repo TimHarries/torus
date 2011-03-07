@@ -1877,8 +1877,8 @@ end function returnBase64Char
        write(lunit) trim(buffer)
        buffer = '  <UnstructuredGrid>'//lf 
        write(lunit) trim(buffer)
-       write(str1(1:10),'(i10)') nPointsGlobal
-       write(str2(1:10),'(i10)') nCellsGlobal
+       write(str1(1:12),'(i10)') nPointsGlobal
+       write(str2(1:12),'(i10)') nCellsGlobal
        buffer = '    <Piece NumberOfPoints="'//str1//'" NumberOfCells="'//str2//'">'//lf
        write(lunit) trim(buffer)
        buffer = '      <Points>'//lf

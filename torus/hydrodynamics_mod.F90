@@ -2733,6 +2733,8 @@ contains
 
     doSelfGrav = .true.
 
+
+
     if (grid%geometry == "shakara") doSelfGrav = .false.
     if (grid%geometry == "rtaylor") doSelfGrav = .false.
 
@@ -2764,9 +2766,6 @@ contains
        !tDump = 0.01d0 * tff
        tDump = 1.d0 * tff
     endif
-
-          call writeVtkFile(grid, "onentry.vtk", &
-               valueTypeString=(/"rho          ","velocity     ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
     call setCodeUnit(time=timeUnit)
     call setCodeUnit(mass=massUnit)

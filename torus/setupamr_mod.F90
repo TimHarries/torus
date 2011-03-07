@@ -322,6 +322,8 @@ contains
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, scaleFac)
 
+          case("turbbox")
+             call turbulentVelocityField(grid, 1.d0)
 
           case DEFAULT
        end select
@@ -1068,6 +1070,163 @@ contains
 
   end subroutine set_bias_cmfgen
 
+  subroutine turbulentVelocityField(grid, vDispersion)
+    use input_variables, only : maxDepthAMR
+    type(GRIDTYPE) :: grid
+    real(double) :: vDispersion
+    real(double) :: deltaV, wavenumber, vmag
+    type(VECTOR) :: vel
+    real(double) :: xmax, xmin, ymax, ymin, zmax, zmin, sigma, fac
+    integer :: i, j, k, idepth, iAcross
 
+    do iDepth = 1, maxDepthAmr
+       waveNumber = twoPi * dble(2**(iDepth-1))
+       deltaV  = wavenumber**(-4.d0)
+       vMag = deltaV * gasdev()
+       iAcross = 2**(iDepth)
+       do i = 1, iAcross
+          do j = 1, iAcross
+             do k = 1, iAcross
+
+                vel = vMag * randomUnitVector()
+                xmin = 2.d0 * grid%octreeRoot%subcellSize * dble(i-1)/dble(iAcross) - grid%octreeRoot%subcellSize
+                xmax = 2.d0 * grid%octreeRoot%subcellSize * dble(i)/dble(iAcross) - grid%octreeRoot%subcellSize
+                
+                ymin = 2.d0 * grid%octreeRoot%subcellSize * dble(j-1)/dble(iAcross) - grid%octreeRoot%subcellSize
+                ymax = 2.d0 * grid%octreeRoot%subcellSize * dble(j)/dble(iAcross) - grid%octreeRoot%subcellSize
+                
+                zmin = 2.d0 * grid%octreeRoot%subcellSize * dble(k-1)/dble(iAcross) - grid%octreeRoot%subcellSize
+                zmax = 2.d0 * grid%octreeRoot%subcellSize * dble(k)/dble(iAcross) - grid%octreeRoot%subcellSize
+                call applyVOverRange(grid%octreeRoot, vel, xmin, xmax, ymin, ymax, zmin, zmax)
+             enddo
+          enddo
+       enddo
+    enddo
+    vel = VECTOR(0.d0,0.d0,0.d0)
+    i = 0
+    call sumVelocity(grid%octreeRoot, vel, i)
+    vel = vel / dble(i)
+    call subtractVelocity(grid%octreeRoot,vel)
+    sigma = 0.d0
+    call findSigma(grid%octreeRoot, sigma)
+    sigma = sqrt(sigma / dble(i))
+    fac = vDispersion/sigma
+    call scaleVelocity(grid%octreeRoot, fac)
+  end subroutine turbulentVelocityField
+
+  recursive subroutine applyVoverRange(thisOctal,  vel, xmin, xmax, ymin, ymax, zmin, zmax)
+    type(octal), pointer :: thisOctal, child
+    type(VECTOR) :: vel,cvec
+    real(double) :: xmin, xmax, ymin, ymax, zmin, zmax
+    integer :: subcell , i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call applyVoverRange(child,  vel, xmin, xmax, ymin, ymax, zmin, zmax)
+                exit
+             end if
+          end do
+       else
+          cVec = subcellCentre(thisOctal, subcell)
+          if ( (cVec%x >= xmin).and.(cVec%x <= xmax).and. &
+               (cVec%y >= ymin).and.(cVec%y <= ymax).and. &
+               (cVec%z >= zmin).and.(cVec%z <= zmax)) then
+             thisOctal%velocity(subcell) = thisOctal%velocity(subcell) + vel
+          endif
+       endif
+    enddo
+  end subroutine applyVoverRange
+
+
+
+  recursive subroutine sumVelocity(thisOctal,vel,n)
+    type(octal), pointer :: thisOctal, child
+    integer :: n
+    type(VECTOR) :: vel
+    integer :: subcell , i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sumVelocity(child, vel,n)
+                exit
+             end if
+          end do
+       else
+          n = n + 1
+          vel = vel + thisOctal%velocity(subcell)
+       endif
+    enddo
+  end subroutine sumVelocity
+
+  recursive subroutine subtractVelocity(thisOctal,vel)
+    type(octal), pointer :: thisOctal, child
+    type(VECTOR) :: vel
+    integer :: subcell , i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call subtractVelocity(child, vel)
+                exit
+             end if
+          end do
+       else
+          thisOctal%velocity(subcell) = thisOctal%velocity(subcell) - vel
+       endif
+    enddo
+  end subroutine subtractVelocity
+
+  recursive subroutine scaleVelocity(thisOctal, fac)
+    type(octal), pointer :: thisOctal, child
+    real(double) :: fac
+    integer :: subcell , i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call scaleVelocity(child, fac)
+                exit
+             end if
+          end do
+       else
+          thisOctal%velocity(subcell) = thisOctal%velocity(subcell) * fac
+       endif
+    enddo
+  end subroutine scaleVelocity
+
+  recursive subroutine findSigma(thisOctal, sigma)
+    type(octal), pointer :: thisOctal, child
+    real(double) :: sigma
+    integer :: subcell , i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findSigma(child, sigma)
+                exit
+             end if
+          end do
+       else
+          sigma = sigma + thisOctal%velocity(subcell)%x**2
+       endif
+    enddo
+  end subroutine findSigma
 
 end module setupamr_mod
