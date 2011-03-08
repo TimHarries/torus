@@ -1043,6 +1043,8 @@ contains
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, fLine, nLines, &
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
+       call getLogical("constantabundance", constantAbundance, cLine, fLine, nLines, &
+            "Use a constant abundance: ", "(a,1l,1x,a)", .false., ok, .true.)
        call getReal("molAbundance", molAbundance, 1., cLine, fLine, nLines, &
             "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .false.)
        call getLogical("isinlte", isinlte, cLine, fLine, nLines, &
@@ -1076,7 +1078,7 @@ contains
           
        endif
 
-
+       
 
 
   end subroutine readMolecularPhysicsParameters
@@ -2090,6 +2092,7 @@ end subroutine getVector
 
  subroutine getLogical(name, rval, cLine, fLine, nLines, message, cformat, rdef, ok, &
                        musthave)
+   use parallel_mod, only: torus_abort
   character(len=*) :: name
   logical :: rval
   logical :: musthave
@@ -2102,6 +2105,7 @@ end subroutine getVector
   logical :: rdef
   character(len=6) :: trueOrFalse, cf
   logical :: ok, thisIsDefault
+  character (len=80) :: errorMessage
 
   cf = cformat
   ok = .true.
@@ -2110,8 +2114,8 @@ end subroutine getVector
   call findLogical(name, rval, cLine, fLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
-       if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       write(errorMessage,'(a,a)') name, " must be defined"
+       call torus_abort(errorMessage)
     endif
     rval = rdef
     default = " (default)"

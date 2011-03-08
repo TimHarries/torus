@@ -26,7 +26,7 @@ contains
     use lucy_mod
     use grid_mod
     use photoionAMR_mod, only : resizePhotoionCoeff
-    use input_variables, only : readgrid, gridinputfilename, geometry, mdot, constantAbundance
+    use input_variables, only : readgrid, gridinputfilename, geometry, mdot
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
     use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, dustPhysics
@@ -64,7 +64,6 @@ contains
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
 !    integer :: nUnrefine
-    constantAbundance = .true.
 
 #ifdef MPI
     call randomNumberGenerator(randomSeed=.true.)
@@ -112,14 +111,12 @@ contains
        select case (geometry)
 
        case("fogel")
-          constantAbundance = .false.
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call setupFogel(grid, textFilename, "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
        case("kengo")
-          constantAbundance = .false.
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call readgridKengo(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
