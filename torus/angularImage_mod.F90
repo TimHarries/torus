@@ -647,8 +647,14 @@ module angularImage
         ds = tval * OneOvernTauMinusOne
         
 ! Calculate column density. Factor of 1.d10 is to convert ds to cm 
+! For h21cm case the octal's rho is HI mass density
+! For other cases use the abundance relative to H2. 
         if (present(nCol)) then 
-           nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * tval * 1.d10
+           if (h21cm) then 
+              nCol = nCol + (thisOctal%rho(subcell) / (thisMolecule%molecularWeight * amu) ) * tval * 1.d10
+           else
+              nCol = nCol + ( thisOctal%molabundance(subcell) * thisOctal%nH2(subcell) )* tval * 1.d10
+           end if
         end if
 
         if (present(nCol_H2)) then 
