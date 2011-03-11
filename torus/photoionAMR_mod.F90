@@ -2263,12 +2263,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     TYPE(GRIDTYPE) :: grid
     TYPE(OCTAL),pointer :: thisOctal
     TYPE(OCTAL),pointer :: child
-    integer :: i, subcell, tag, ierr
+    integer :: i, subcell
     logical :: photoLoop
-    real(double) :: thisTau, thisLam, ksca, kabs, bigTau=0.d0
-    real(double) :: distance, velocity, dt, smallCell
+    real(double) :: thisTau, ksca, kabs
+    real(double) :: velocity, dt
     integer, save :: iLambda
-    real(double), save :: tauSinceLastPhot=0.d0
 
     photoLoop = .false.
 
@@ -2304,8 +2303,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 print *, "thisTau", thisTau 
                 print *, "subcellsize ", thisOctal%subcellSize
                 photoLoop = .true.
-                tauSinceLastPhot = 0.d0
-
+                
                 if(velocity*dt <= (thisTau)) then
                    print *, "velocity*dt", velocity*dt
                    print *, "thisTau", thisTau
