@@ -344,13 +344,14 @@ contains
     if ( h21cm ) then 
        call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
                    thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
-       thisOctal%molabundance = 0.0_db
+       thisOctal%molabundance = 0.0
     end if
 
 ! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
     if ( associated (sphData%rhoCO) ) then 
        clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 3)
-       thisOctal%molabundance(subcell) = ( clusterparam%x / ( 28.0_db * mhydrogen ) ) / thisOctal%nh2(subcell)
+       thisOctal%molabundance(subcell) = real(max( ( clusterparam%x / ( 28.0_db * mhydrogen ) ) / thisOctal%nh2(subcell), 1d-37))
+       write(115,*) thisOctal%molabundance(subcell), clusterparam%x, thisOctal%nh2(subcell)
     end if
 
   end subroutine assign_grid_values

@@ -1480,12 +1480,19 @@ contains
             "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
        call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, fLine, nLines, &
             "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
-       call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("centrevecz", centrevecz, 1.d0, cLine, fLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       if (internalView) then
+          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (lon): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
+       else
+          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecz", centrevecz, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       end if
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
     endif

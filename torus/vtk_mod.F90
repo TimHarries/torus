@@ -1635,7 +1635,7 @@ endif
     integer :: iCount
     integer :: ik, ik1, ik2, i32temp
     character, pointer :: string(:)
-    integer :: nBytes, k
+    integer(bigInt) :: nBytes, k
     logical :: write32, dopadend
 
     if (PRESENT(outnpad)) outnpad = 0

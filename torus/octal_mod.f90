@@ -169,7 +169,7 @@ MODULE octal_mod
     real, pointer, DIMENSION(:)        :: TLastIter=>null()     !Temperature at last iteration thaw
     real, pointer, dimension(:)        :: TLastLastIter=>null() !Temperature at -2 iterations
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
-    real(double), pointer :: h(:)=>null() ! used for cluster geometries where the smoothing length of a cell can be stored
+    real(double) :: h(8) ! used for cluster geometries where the smoothing length of a cell can be stored
 
     LOGICAL, DIMENSION(8)              :: inFlow
 

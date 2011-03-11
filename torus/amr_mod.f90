@@ -8926,7 +8926,7 @@ end function readparameterfrom2dmap
 
 
   !
-  ! Recursively deletes the sph_particle list and smoothing length
+  ! Recursively deletes the sph_particle list
   ! Call after the grid has been set up
   !
   recursive subroutine delete_particle_lists(thisoctal)
@@ -8942,11 +8942,6 @@ end function readparameterfrom2dmap
        nullify(thisOctal%gas_particle_list)
     endif
 
-    if (associated(thisOctal%h)) then 
-       deallocate(thisOctal%h)
-       nullify(thisOctal%h)
-    end if
-    
     if ( thisOctal%nChildren > 0) then
        do i = 1, thisOctal%nChildren
           pChild => thisOctal%child(i)
@@ -15708,7 +15703,6 @@ IF ( .NOT. gridConverged ) RETURN
          photoionization, hydrodynamics, h21cm, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
-    USE sph_data_class, only: isAlive
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10
@@ -15729,8 +15723,6 @@ IF ( .NOT. gridConverged ) RETURN
        call allocateAttribute(thisOctal%molabundance, thisOctal%maxChildren)
        return
     end if
-
-    if (isAlive() ) call allocateAttribute(thisOctal%h, thisOctal%maxChildren)
 
     if (mie.or.dustPhysics) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
