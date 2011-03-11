@@ -751,10 +751,6 @@ contains
                      write(lunit, *) thisOctal%rho(subcell)
 !                  endif
 
-! used for accuracy testing in molecular_mod
-               case("interprho")
-!                  write(lunit, *) thisOctal%interprho(subcell)
-
                case("J=0")
 !                  if(thisOctal%molecularlevel(subcell,1) .lt. 1.d-37) then
 !                     write(lunit, *) 1e-37

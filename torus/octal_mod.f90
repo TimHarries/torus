@@ -162,19 +162,19 @@ MODULE octal_mod
     real(double)                       :: xMax, xMin, yMax, yMin, zMax, zMin
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
-!    REAL(double), DIMENSION(8)         :: interprho            ! density testing
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
     integer, pointer :: iEquationOfState(:)  => null()
     real(double), pointer :: gamma(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
-    real, DIMENSION(8)                 :: TLastIter      !Temperature at last iteration thaw
-    real, dimension(8)                 :: TLastLastIter  !Temperature at -2 iterations
+    real, pointer, DIMENSION(:)        :: TLastIter=>null()     !Temperature at last iteration thaw
+    real, pointer, dimension(:)        :: TLastLastIter=>null() !Temperature at -2 iterations
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
-    real(double) :: h(8) ! used for cluster geometries where the smoothing length of a cell can be stored
+    real(double), pointer :: h(:)=>null() ! used for cluster geometries where the smoothing length of a cell can be stored
 
     LOGICAL, DIMENSION(8)              :: inFlow
 
-    INTEGER(KIND=BIGINT) :: iXbitstring(8), iYbitstring(8), iZbitstring(8)
+! Not used in Torus V2. Comment out to save memory (DMA, March 2011)
+!    INTEGER(KIND=BIGINT) :: iXbitstring(8), iYbitstring(8), iZbitstring(8)
     
     TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) => null() ! pointer to neighbour
     integer, pointer :: neighbourSubcell(:,:,:)  => null()

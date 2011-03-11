@@ -8926,7 +8926,8 @@ end function readparameterfrom2dmap
 
 
   !
-  ! Recursively deletes the sph_particle list in the grid.
+  ! Recursively deletes the sph_particle list and smoothing length
+  ! Call after the grid has been set up
   !
   recursive subroutine delete_particle_lists(thisoctal)
     implicit none
@@ -8938,7 +8939,13 @@ end function readparameterfrom2dmap
 
     IF (ASSOCIATED(thisOctal%gas_particle_list)) then
        DEALLOCATE(thisOctal%gas_particle_list)
+       nullify(thisOctal%gas_particle_list)
     endif
+
+    if (associated(thisOctal%h)) then 
+       deallocate(thisOctal%h)
+       nullify(thisOctal%h)
+    end if
     
     if ( thisOctal%nChildren > 0) then
        do i = 1, thisOctal%nChildren
@@ -9587,9 +9594,11 @@ end function readparameterfrom2dmap
     dest%threeD =   source%threeD 
     dest%twod = source%twoD  
     dest%oneD = source%oneD   
-    dest%iXbitString = source%iXbitString
-    dest%iYbitString = source%iYbitString
-    dest%iZbitString = source%iZbitString
+! Bitstrings not used in V2. Commented out DMA March 2011
+!    dest%iXbitString = source%iXbitString
+!    dest%iYbitString = source%iYbitString
+!    dest%iZbitString = source%iZbitString
+
     dest%cylindrical = source%cylindrical
     dest%splitAzimuthally = source%splitAzimuthally
     dest%maxChildren =  source%maxChildren
@@ -15696,6 +15705,7 @@ IF ( .NOT. gridConverged ) RETURN
          photoionization, hydrodynamics, h21cm, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
+    USE sph_data_class, only: isAlive
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10
@@ -15716,6 +15726,8 @@ IF ( .NOT. gridConverged ) RETURN
        call allocateAttribute(thisOctal%molabundance, thisOctal%maxChildren)
        return
     end if
+
+    if (isAlive() ) call allocateAttribute(thisOctal%h, thisOctal%maxChildren)
 
     if (mie.or.dustPhysics) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
@@ -15922,6 +15934,9 @@ IF ( .NOT. gridConverged ) RETURN
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
 
+       call allocateAttribute(thisOctal%TLastIter,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%TLastLastIter,thisOctal%maxChildren)
+
     endif
   end  subroutine allocateOctalAttributes
 
@@ -16037,6 +16052,9 @@ IF ( .NOT. gridConverged ) RETURN
        call deAllocateAttribute(thisOctal%boundaryPartner)
 
        call deAllocateAttribute(thisOctal%radiationMomentum)
+
+       call deAllocateAttribute(thisOctal%tLastIter)
+       call deAllocateAttribute(thisOctal%tLastLastIter)
 
        call deAllocateAttribute(thisOctal%gravboundaryPartner)
        call deAllocateAttribute(thisOctal%changed)
