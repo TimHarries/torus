@@ -141,6 +141,10 @@ contains
     call getLogical("photoionphysics", photoionPhysics, cLine, fLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if(photoionphysics) then
+       call getLogical("checkForPhoto", checkforphoto, cLine, fLine, nLines, &
+            "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)
+    end if
 
     if (molecularPhysics.and.atomicPhysics) then
        call writeFatal("Cannot conduct any calculation that simultaneously includes atoms and molecules")

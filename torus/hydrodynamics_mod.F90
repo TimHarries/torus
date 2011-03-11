@@ -2077,18 +2077,20 @@ contains
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
-
+!    print *, "o hai"
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call imposeBoundary(grid%octreeRoot)
+ !   print *, "trol"
     call periodBoundary(grid)
+  !  print *, "olol"
     call transferTempStorage(grid%octreeRoot)
-
+   ! print *, "trolol"
    if (selfGravity) then
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
-
+    
     if (myrankglobal == 1) call tune(6,"X-direction step")
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -5459,8 +5461,6 @@ end subroutine refineGridGeneric2
        call writeVtkFile(grid, vtkFilename)
     endif
 
-
-
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
@@ -5540,7 +5540,6 @@ end subroutine refineGridGeneric2
              endif
           enddo
 
-
           do iThread = 1, nThreadsGlobal-1
              if (myrankGlobal /= iThread) then
                 call hydroValuesServer(grid, iThread)
@@ -5552,8 +5551,6 @@ end subroutine refineGridGeneric2
              endif
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           enddo
-
-
 
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftersplit",dumpfiles,"_",iter,".vtk"

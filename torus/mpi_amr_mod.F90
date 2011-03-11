@@ -1519,15 +1519,17 @@ contains
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     do iThread = 1, nThreadsGlobal - 1
        if (iThread /= myRankGlobal) then
-!          write(*,*) myRankGlobal, " calling boundaryreceiverequests"
+          !write(*,*) myRankGlobal, " calling boundaryreceiverequests"
+          !print *, "alpha ", myRankGlobal, iThread
           call periodBoundaryReceiveRequests(grid, iThread, doJustGrav)
        else
-!          write(*,*) "now doing ", myRankGlobal
+          !write(*,*) "now doing ", myRankGlobal
+          !print *, "beta", myRankGlobal
           call recursivePeriodSend(grid%octreeRoot, doJustGrav)
           loc(1) = 1.d30
           do i = 1, nThreadsGlobal-1
              if (i /= iThread) then
-!                write(*,*) myRankGlobal, " sending terminate to ", i
+           !     write(*,*) myRankGlobal, " sending terminate to ", i
                 call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
              endif
           enddo
@@ -1624,12 +1626,12 @@ contains
              else
                 call findSubcellLocal(thisOctal%gravboundaryPartner(subcell), tOctal,tsubcell)
              endif
-!             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
-!             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
+            ! write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
+            ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
-!             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
+            ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
              call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
-!             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
+            ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
                    allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
@@ -1729,22 +1731,22 @@ contains
     logical :: doJustGrav
     type(VECTOR) :: octVec
     sendLoop = .true.
-!    write(*,*) myrankGlobal, " waiting for a locator"
+    !write(*,*) myrankGlobal, " waiting for a locator"
     do while (sendLoop)
        ! receive a locator
        
        call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, MPI_COMM_WORLD, status, ierr)
-!       write(*,*) myrankglobal, " received a locator from ", receiveThread 
+       !write(*,*) myrankglobal, " received a locator from ", receiveThread 
        if (loc(1) > 1.d20) then
           sendLoop = .false.
-!          write(*,*) myRankGlobal, " found the signal to end the send loop from ", receivethread
+        !  write(*,*) myRankGlobal, " found the signal to end the send loop from ", receivethread
        else
           octVec = VECTOR(loc(1), loc(2), loc(3))
           thisOctal => grid%octreeRoot
           subcell = 1
-!          write(*,*) myrankglobal," calling subscell local"
+         ! write(*,*) myrankglobal," calling subscell local"
           call findSubcellLocal(octVec, thisOctal, subcell)
-!          write(*,*) myrankglobal," subscell local done succesfully"
+         ! write(*,*) myrankglobal," subscell local done succesfully"
           
           if (.not.doJustGrav) then
              tempstorage(1) = thisOctal%rho(Subcell)
@@ -1761,7 +1763,7 @@ contains
           endif
        endif
     enddo
-!    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
+    !write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
   end subroutine periodBoundaryReceiveRequests
 
 
@@ -2062,11 +2064,10 @@ end subroutine dumpStromgrenRadius
 !    print *, "myRankGlobal ", myRankGlobal, "is counting subcells "
 !    call countSubcellsMPI(thisgrid, nVoxels)
 !    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(thisgrid%maxDepth, tempInt,1,MPI_INTEGER, MPI_MAX, 1, MPI_COMM_WORLD, ierr)
-    maxDepth = tempInt(1)
-    call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, MPI_COMM_WORLD, ierr)
-    halfSmallestSubcell = tempDouble(1)
-    
+       call MPI_REDUCE(thisgrid%maxDepth, tempInt,1,MPI_INTEGER, MPI_MAX, 1, MPI_COMM_WORLD, ierr)
+       maxDepth = tempInt(1)
+       call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, MPI_COMM_WORLD, ierr)
+       halfSmallestSubcell = tempDouble(1)
     
     if (myRankGlobal == 1) then
        write(UN,'(a)') ' '

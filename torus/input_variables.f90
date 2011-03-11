@@ -26,6 +26,7 @@ module input_variables
     logical :: statisticalEquilibrium
     logical :: photoionEquilibrium
     logical :: rhieChow !Thaw
+    logical :: checkForPhoto !thaw
 
     logical :: calcDataCube
     logical :: rgbCube

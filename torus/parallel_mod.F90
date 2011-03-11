@@ -272,9 +272,10 @@ contains
     if ( present(message) ) then
        print *, "Process ", myRankGlobal, ": ", message
     end if
-
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
+    !!Thaw - failing for rank 0 
+    !if(myRankGlobal /= 0) then
+      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    !end if 
   end subroutine torus_mpi_barrier
 
 

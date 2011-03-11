@@ -270,8 +270,9 @@ MODULE octal_mod
    
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
-
-
+    real(double), dimension(:,:), pointer :: sourceContribution => null()
+    real(double), dimension(:,:), pointer :: diffuseContribution => null()
+    real(double), dimension(:,:), pointer :: normSourceContribution => null()
 
 
       ! the subcell labels may be useful for debugging the code, but are not needed for

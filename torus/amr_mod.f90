@@ -9721,6 +9721,9 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%refinedLastTime, source%refinedLastTime)
 
     call copyAttribute(dest%photoIonCoeff, source%photoIonCoeff)
+    call copyAttribute(dest%sourceContribution, source%sourceContribution)
+    call copyAttribute(dest%diffuseContribution, source%diffuseContribution)
+    call copyAttribute(dest%normSourceContribution, source%normSourceContribution)
     call copyAttribute(dest%molecularLevel, source%molecularLevel)
 
     call copyAttribute(dest%molAbundance, source%molAbundance)
@@ -15848,6 +15851,10 @@ IF ( .NOT. gridConverged ) RETURN
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
+       allocate(thisOctal%sourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
+       allocate(thisOctal%diffuseContribution(1:thisOctal%maxchildren, 1:grid%nIon))
+       allocate(thisOctal%normSourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
+
     endif
 
     if (lineEmission) then
@@ -15860,6 +15867,9 @@ IF ( .NOT. gridConverged ) RETURN
     
     if (associated(thisOctal%photoIonCoeff)) then
        thisOctal%photoIonCoeff = 0.d0
+       thisOctal%sourceContribution = 0.d0
+       thisOctal%diffuseContribution = 0.d0
+       thisOctal%normSourceContribution = 0.d0
     endif
 
     if (timeDependentRT) then
@@ -15999,6 +16009,9 @@ IF ( .NOT. gridConverged ) RETURN
 
        call deAllocateAttribute(thisOctal%ionFrac)
        call deAllocateAttribute(thisOctal%PhotoIonCoeff)
+       call deAllocateAttribute(thisOctal%sourceContribution)
+       call deAllocateAttribute(thisOctal%diffuseContribution)
+       call deAllocateAttribute(thisOctal%normSourceContribution)
        call deAllocateAttribute(thisOctal%scatteredIntensity)
        
 

@@ -174,8 +174,9 @@ contains
        nIon = nIon + 1
        call createIon(ionArray(nIon), 7, 5, 14, 4.745e1) ! N III
 
-       nIon = nIon + 1
-       call createIon(ionArray(nIon), 7, 4, 14, 7.747e1) ! N IV
+!THAW - removed 03/03/2011 since no corresponding level data present.
+!       nIon = nIon + 1
+ !      call createIon(ionArray(nIon), 7, 4, 14, 7.747e1) ! N IV
 
        !    nIon = nIon + 1
        !    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
@@ -189,14 +190,15 @@ contains
        nIon = nIon + 1
        call createIon(ionArray(nIon), 8, 6, 16, 5.494e1) ! O III
 
-       nIon = nIon + 1
-       call createIon(ionArray(nIon), 8, 5, 16, 7.741e1) ! O IV
+!THAW
+!       nIon = nIon + 1
+!       call createIon(ionArray(nIon), 8, 5, 16, 7.741e1) ! O IV
 
        !    nIon = nIon + 1
        !    call createIon(ionArray(nIon), 8, 4, 16, 1.139e2) ! O V
 
-       nIon = nIon + 1
-       call createIon(ionArray(nIon), 10, 10, 20, 2.156e1) ! Ne I
+!       nIon = nIon + 1
+!       call createIon(ionArray(nIon), 10, 10, 20, 2.156e1) ! Ne I
 
        nIon = nIon + 1
        call createIon(ionArray(nIon), 10, 9, 20, 4.096e1) ! Ne II
@@ -204,14 +206,15 @@ contains
        nIon = nIon + 1
        call createIon(ionArray(nIon), 10, 8, 20, 6.342e1) ! Ne III
 
-       nIon = nIon + 1
-       call createIon(ionArray(nIon), 10, 7, 20, 9.712e1) ! Ne IV
+!       nIon = nIon + 1
+!       call createIon(ionArray(nIon), 10, 7, 20, 9.712e1) ! Ne IV
 
        !    nIon = nIon + 1
        !    call createIon(ionArray(nIon), 10, 6, 20, 1.262e2) ! Ne V
 
-       nIon = nIon + 1
-       call createIon(ionArray(nIon), 16, 16, 32, 1.036e1) ! S I
+!THAW
+!       nIon = nIon + 1
+!       call createIon(ionArray(nIon), 16, 16, 32, 1.036e1) ! S I
 
        nIon = nIon + 1
        call createIon(ionArray(nIon), 16, 15, 32, 2.334e1) ! S II

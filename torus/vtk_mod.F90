@@ -1,4 +1,5 @@
 module vtk_mod
+  
 !
 !
 
@@ -743,6 +744,9 @@ contains
 
             do j = 1, nVal
             select case (valueType)
+               
+               case("sourceCont")
+                  write(lunit, *) thisOctal%normSourceContribution(subcell, 1)
                case("rho")
 
 !                  if(thisOctal%rho(subcell) .lt. 1.d-37) then
@@ -1087,7 +1091,7 @@ contains
                   endif
 
                case DEFAULT
-                  write(*,*) "Cannot write vtk type ",trim(valueType)
+                  write(*,*) "Cannot write vtk type A",trim(valueType)
              end select
           enddo
 
@@ -2378,6 +2382,9 @@ end subroutine writeXMLVtkFileAMR
                case("OIII")
                   rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
 
+               case("sourceCont")
+                  rArray(1, n) = real(thisOctal%normSourceContribution(subcell, 1))
+
                case("temperature")
                   rArray(1, n) = real(thisOctal%temperature(subcell))
 
@@ -2469,7 +2476,7 @@ end subroutine writeXMLVtkFileAMR
                   endif
 
                case DEFAULT
-                  write(*,*) "Cannot write vtk type ",trim(valueType)
+                  write(*,*) "Cannot write vtk type B",trim(valueType)
              end select
 
 
