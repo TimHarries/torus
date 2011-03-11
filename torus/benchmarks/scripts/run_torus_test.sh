@@ -11,11 +11,9 @@ log_file=compile_log_${SYSTEM}.txt
 ln -s ${TEST_DIR}/torus/* .
 /usr/bin/make depends > ${log_file} 2>&1 
 
-# cfitsio libraries are built with g95 on daily test machine
 case ${SYSTEM} in
-    g95)  /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
-    gfortran) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes cfitsio=no >> ${log_file} 2>&1;;
-    ompiosx) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes cfitsio=no >> ${log_file} 2>&1;;
+    gfortran) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes >> ${log_file} 2>&1;;
+    ompiosx) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes >> ${log_file} 2>&1;;
     *) /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
 esac
 

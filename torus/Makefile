@@ -38,7 +38,7 @@ ifeq ($(SYSTEM), nagfor)
     F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN -DUSEUNIXENV
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
-    CFITSIOLIBS = 
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio_nagfor/lib -lcfitsio 
     EXE = torus.nagfor
     KNOWN_SYSTEM = yes
     memcheck = no
