@@ -1289,6 +1289,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      if (mie.or.photoionization.or.lineEmission) then
         nInnerLoop = nPhotons / nOuterLoop
+! Trap invalid ninnerloop. Can arise if nphotons < nouterloop
+        if (ninnerloop < 1 ) then
+           call writeFatal("phaseloop_mod: ninnerloop <1")
+        end if
      endif
 
 #ifdef MPI
