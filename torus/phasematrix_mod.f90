@@ -427,7 +427,6 @@ contains
 
   subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, varianceArray,&
        normalizeSpectrum, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
-    use input_variables, only: useNdf
     use utils_mod, only: convertToJanskies
 
     implicit none
@@ -574,33 +573,28 @@ contains
        tmpXarray(1:nLambda) = cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5 ! wavelength to km/s
     endif
 
-    if (useNdf) then
-       write(message,*) "Writing spectrum to ",trim(outfile),".sdf"
-       call writeInfo(message, TRIVIAL)
+    write(message,*) "Writing spectrum to ",trim(outfile),".dat"
+    call writeInfo(message, TRIVIAL)
+
+    open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+    if (sed) then
+       write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
+    else if (SI) then
+       write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
     else
-       write(message,*) "Writing spectrum to ",trim(outfile),".dat"
-       call writeInfo(message, TRIVIAL)
+       write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
+    end if
 
-       open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
-       if (sed) then
-          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
-       else if (SI) then
-          write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
-       else
-          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
-       end if
-
-33     format(6(1x, 1PE14.5))
+33  format(6(1x, 1PE14.5))
        !34   format(a1, a14, 5(a6))
        ! You should always put a header!
        !     write(20, "(a)") "# Writteng by writeSpectrum."
        !     write(20,34)  "#", "xaxis", "I", "Q", "QV", "U", "UV"
-       do i = 1, nLambda
-          write(20,33) tmpXarray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
-               stokes_u(i), stokes_uv(i)
-       enddo
-       close(20)
-    endif
+    do i = 1, nLambda
+       write(20,33) tmpXarray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
+            stokes_u(i), stokes_uv(i)
+    enddo
+    close(20)
 
     deallocate(ytmpArray)
     deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)

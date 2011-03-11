@@ -246,7 +246,6 @@ module input_variables
   character(len=80) :: intProFilename2
   character(len=80) :: opacityDataFile
   character(len=80) :: dustfilename(10)
-  logical :: useNdf 
 
   logical :: plot_maps
   logical :: plotlevels

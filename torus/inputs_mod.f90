@@ -2081,9 +2081,6 @@ contains
     endif
 
 
-    call getLogical("ndf", useNdf, cLine, nLines, &
-         "Use NDF format files: ","(a,1l,a)",.false., ok, .false.)
-
     call getLogical("plot_maps", plot_maps, cLine, nLines, &
          "Plot values on specified plane?: ","(a,1l,a)",.true., ok, .false.)
 
