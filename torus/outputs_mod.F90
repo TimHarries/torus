@@ -144,7 +144,7 @@ contains
 
           fastIntegrate=.true.
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
-               0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+               VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface, 0., 0., tdisc, tvec, 1,       &
                0., 0, .false., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
@@ -166,7 +166,7 @@ contains
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              fastIntegrate=.true.
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
-                  0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+                  VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                   tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
@@ -182,7 +182,7 @@ contains
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nVelocity)
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
-               0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+               VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface, 0., 0., tdisc, tvec, 1,       &
                0., 0, .true., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
@@ -203,7 +203,7 @@ contains
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
-                  0., 0., VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
+                  VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                   tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)

@@ -46,7 +46,7 @@ contains
 
 
 
-  subroutine initAMRgrid(flatspec,grid,theta1,theta2)
+  subroutine initAMRgrid(grid)
 
     use input_variables
     use cmfgen_class, only: get_cmfgen_data_array_element
@@ -58,9 +58,7 @@ contains
 
     ! grid%timeNow must be assigned before this routine is called!
 
-    logical, intent(in) :: flatspec        ! is the spectrum flat
     type(GRIDTYPE), intent(inout) :: grid                 ! the grid
-    real, intent(out)   :: theta1, theta2
     real :: rStar
     
     grid%oneKappa = oneKappa
@@ -77,7 +75,12 @@ contains
     grid%lineEmission = lineEmission
     grid%maxLevels = statEqMaxLevels
 
-    grid%flatspec = flatspec
+    if ( dustPhysics ) then 
+       grid%flatspec = .false.
+    else
+       grid%flatspec = .true.
+    end if
+
     grid%statEq2d = statEq2d
 
     grid%amr2dOnly = amr2dOnly
@@ -162,7 +165,7 @@ contains
        oneKappa = .true.
 
     case ("ttauri","magstream") 
-       call initTTauriAMR(grid,theta1,theta2)
+       call initTTauriAMR(grid)
     case ("windtest") 
        call initWindTestAMR(grid)
 

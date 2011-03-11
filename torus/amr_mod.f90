@@ -6545,7 +6545,7 @@ CONTAINS
 
   END SUBROUTINE writeHartmannValues    
     
-  subroutine initTTauriAMR(grid,theta1,theta2)
+  subroutine initTTauriAMR(grid)
 
     use constants_mod
     use vector_mod
@@ -6558,7 +6558,7 @@ CONTAINS
     implicit none
     
     type(GRIDTYPE), intent(inout)      :: grid                
-    real, intent(out) :: theta1, theta2
+    real :: theta1, theta2
    
     real :: rStar
 

@@ -7,7 +7,7 @@ module phaseloop_mod
 CONTAINS
 
 subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel,  &
-     theta1, theta2, coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
+     coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, maxTau, &
      miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename)
@@ -70,7 +70,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: meanDustParticleMass
   real :: rstar
   real :: vel
-  real :: theta1, theta2
   type(VECTOR) :: coolStarPosition
   real(double) :: Laccretion, finalTau
   real :: Taccretion, fAccretion, sAccretion
@@ -443,7 +442,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         case ("ttauri")
             call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
                      readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
-                     curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
+                     curtains, dipoleOffset, nLower, nUpper)
                      
 !       call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
 !       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)

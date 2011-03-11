@@ -29,7 +29,7 @@ contains
     use input_variables, only : readgrid, gridinputfilename, geometry, mdot
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
-    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics, dustPhysics
+    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
@@ -53,8 +53,6 @@ contains
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(cluster)   :: young_cluster
     type(VECTOR) :: amrGridCentre
-    real :: theta1, theta2
-    logical :: flatspec
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass, removedMass
@@ -73,11 +71,6 @@ contains
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
     totalmass = 0.
-    if ( dustPhysics ) then 
-       flatspec = .false.
-    else
-       flatspec = .true.
-    end if
 
     if (readgrid) then
        grid%splitOverMPI = splitOverMPI
@@ -102,7 +95,7 @@ contains
           case DEFAULT
        end select
 
-       call initAMRGrid(flatspec,grid,theta1,theta2)
+       call initAMRGrid(grid)
        grid%splitOverMPI = splitOverMPI
 
        amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)

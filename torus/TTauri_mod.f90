@@ -24,7 +24,7 @@ contains
   
   subroutine fillGridMagneticAccretion(grid,contfile1, popFileName, &
          readPops, writePops, lte, lamLine, Laccretion, Taccretion, &
-         sAccretion, curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
+         sAccretion, curtains, dipoleOffset, nLower, nUpper)
     use utils_mod, only: blackBody
 
     type(GRIDTYPE) :: grid
