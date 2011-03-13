@@ -272,7 +272,7 @@ ifeq ($(SYSTEM), zen)
     endif
 # Uncomment this line to include MPI correctness checking using ITC libraries
 # when using version 3.1 of the Intel MPI libraries
-   DEBUGFLAG += -check 
+#  DEBUGFLAG += -check 
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zen

@@ -77,7 +77,7 @@ end type GAMMATABLE
   real :: heIRecombinationNe(3)
   real :: heIIrecombinationLines(3:30, 2:16)
   type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
-  integer :: nEscapedGlobal=0
+
 
 contains
 
@@ -253,7 +253,7 @@ contains
           
           call writeInfo("Dumping post-photoionization data", TRIVIAL)
           call writeVtkFile(grid, "start.vtk", &
-               valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont   " /))
+               valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
           
           
           !       call testIonFront(grid%octreeRoot, grid%currentTime)
@@ -396,7 +396,7 @@ contains
    end if
        if(photoLoopGlobal) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
-          call ionizeGrid(grid%octreeRoot)
+         ! call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then
              loopLimitTime = grid%currentTime+dt
           else
@@ -404,7 +404,14 @@ contains
           end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 9, loopLimitTime, loopLimitTime, .True., .true.)
-          
+          !THAW _TEMPORARY ! ! ! !  ! ! ! ! ! ! ! ! ! ! !
+          !INVESTIGATING SPEED DIFFERENCES
+!       else
+!          call setupNeighbourPointers(grid, grid%octreeRoot)
+!          call writeInfo("Skipping photoionization loop",TRIVIAL)
+!
+!       end if          
+
           call writeInfo("Done",TRIVIAL)
 
           if (myrank /= 0) then
@@ -424,7 +431,7 @@ contains
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
       
           endif
- 
+
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call writeInfo("Skipping photoionization loop",TRIVIAL)
@@ -625,6 +632,7 @@ contains
     real(double) :: r
     integer :: ilam
     integer(bigint) :: nInf
+    integer(bigint) :: nEscapedGlobal=0
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
     integer :: nIter
@@ -655,9 +663,9 @@ contains
     logical :: crossedMPIboundary
     integer :: tag = 41
     integer(bigint) :: nTotScat, nPhot
-    integer :: newThread
+    integer :: newThread, iSignal
     logical, save :: firstTimeTables = .true.
-    integer :: nEscaped, iSignal
+    integer(bigint) :: nEscaped=0
     integer, parameter :: nTimes = 3
     logical :: photonsStillProcessing
     integer(bigint), allocatable :: nEscapedArray(:)
@@ -727,6 +735,7 @@ contains
     allocate(nSaved(nThreads))
     allocate(photonPacketStack(stackLimit*nThreads))
 
+    nescapedArray = 0
     photonPacketStack%Freq = 0.d0
     photonPacketStack%Destination = 0
     photonPacketStack%tPhot = 0.d0
@@ -968,24 +977,30 @@ contains
              print *, "Telling Ranks to pass stacks ASAP "
              
              do iThread = 1, nThreads - 1
+                print *, "SENDING ASAP"
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                print *, "DONE FOR ", iThread
              end do
              
              print *, "All ranks now passing ASAP"
 
              photonsStillProcessing = .true.
+             print *, "starting to recv"
              do while(photonsStillProcessing)                   
                 toSendStack%freq = 0.d0
                 do iThread = 1, nThreads - 1
-
                    toSendStack(1)%destination = 999
                    call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
+                   print *, "sent esc request to ", iThread
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                   print *, "escd ", nEscapedArray(iThread)
+                
                 enddo
-
+                
                 nEscaped = SUM(nEscapedArray(1:nThreads-1))
+                print *, "nescToT", nEscaped
                 nEscapedGlobal = nEscaped
                 if (nEscaped == nMonte) then
                    photonsStillProcessing = .false.
@@ -1016,22 +1031,21 @@ contains
              nSaved = 0
              sendAllPhotons = .false.
 	     !needNewPhotonArray = .true.	     
-             do while(.not.endLoop)
+             do while(.not.endLoop) 
                 crossedMPIboundary = .false.
 !                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)		
-
                 !Get a new photon stack
                 iSignal = -1
                 if(stackSize == 0) then
-                   call MPI_RECV(currentStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
-                   
+                   !call MPI_RECV(currentStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+                   call MPI_RECV(toSendStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+                   currentStack = toSendStack
                    !Check to see how many photons in stack are not null
                    do p = 1, stackLimit
                       if(currentStack(p)%freq /= 0.d0) then                            
                          stackSize = stackSize + 1
                       end if
                    end do
-
                    !Check to see if a special action is required
                    escapeCheck = .false.
                    !Escape checking
@@ -1049,7 +1063,7 @@ contains
                       sendAllPhotons = .true.
                       stackSize = 0
                       
-                      
+                      print *, "RANK ", myRank, "SENDING ALL"
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nThreads-1
                          if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
@@ -1077,48 +1091,46 @@ contains
                                      photonPacketStack(sendCounter)%destination = 0
                                      
                                   end if
-                               end do
-                               call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
-                               
-                               !reset the counter for this thread's bundle recieve
-                               nSaved(optCounter) = 0
-                               toSendStack%freq = 0.d0
-                               toSendStack%destination = 0
-                            end if
-                         end if
-                     end do
-                      call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
-                      goto 777
-                   end if
-                   currentStack%destination = 0
+                                end do
+                                call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
 
-                end if
+                                !reset the counter for this thread's bundle recieve
+                                nSaved(optCounter) = 0
+                                toSendStack%freq = 0.d0
+                                toSendStack%destination = 0
+                             end if
+                          end if
+                      end do
+                       call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+                       goto 777
+                    end if
+                    currentStack%destination = 0
 
-                !Get the next available photon in the stack for processing
-                if(stackSize /= 0 .and. .not. escapeCheck) then
-                   do p = 1, stackLimit
-                      if(currentStack(p)%freq /= 0.d0) then
-                         rVec = currentStack(p)%rVec
-                         uHat = currentStack(p)%uHat
-                         thisFreq = currentStack(p)%Freq
-                         tPhoton = currentStack(p)%tPhot
-                         photonPacketWeight = currentStack(p)%ppw
-                         sourcePhoton = currentStack(p)%sourcePhoton
-                         currentStack(p)%freq = 0.d0
-                         exit
-                      end if
-                   end do
-                   stackSize = stackSize - 1
-                end if
+                 end if
+                 !Get the next available photon in the stack for processing
+                 if(stackSize /= 0 .and. .not. escapeCheck) then
+                    do p = 1, stackLimit
+                       if(currentStack(p)%freq /= 0.d0) then
+                          rVec = currentStack(p)%rVec
+                          uHat = currentStack(p)%uHat
+                          thisFreq = currentStack(p)%Freq
+                          tPhoton = currentStack(p)%tPhot
+                          photonPacketWeight = currentStack(p)%ppw
+                          sourcePhoton = currentStack(p)%sourcePhoton
+                          currentStack(p)%freq = 0.d0
+                          exit
+                       end if
+                    end do
+                    stackSize = stackSize - 1
+                 end if
 
 
-                if (iSignal == 0) then
-                   endLoop = .true.
-                   goto 777
-                endif
-                if (iSignal == 1) then
-                !   print *, "rank ", myRank, "sending escapees", nEscaped
-                   call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+                 if (iSignal == 0) then
+                    endLoop = .true.
+                    goto 777
+                 endif
+                 if (iSignal == 1) then
+                    call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
                    goto 777
                 endif
 
@@ -1202,7 +1214,10 @@ contains
 
                       if (noDiffuseField) escaped = .true.
 		
-                      if (escaped) nEscaped = nEscaped + 1
+                      if (escaped) then
+                         nEscaped = nEscaped + 1
+                      end if
+
 
                       if (.not. escaped) then
                          thisLam = (cSpeed / thisFreq) * 1.e8
@@ -1496,17 +1511,20 @@ if (grid%geometry == "tom") then
      else
         minCrossings = 5000
      end if
+
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRank /= 0) then
           do iOctal =  iOctal_beg, iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
                 if (.not.thisOctal%hasChild(subcell)) then
-                   
+                
                    if (niter == 1) then
                       thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                       thisThreadConverged = .false.
+                      
                    else
+                      
                       deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
                            thisOctal%TLastIter(subcell)  
                       deltaT = abs(deltaT)                 
@@ -1526,7 +1544,7 @@ if (grid%geometry == "tom") then
                             fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
                                  thisOctal%TLastLastIter(subcell))
 
-                            if(fluctuationCheck < 5.0d-2 .and. .not. failed) then
+                            if(fluctuationCheck < 5.0d-2 .and. .not. failed) then!
                                thisThreadConverged = .true.
                             else
                                thisThreadConverged = .false.                             
@@ -1543,7 +1561,7 @@ if (grid%geometry == "tom") then
                          else
                             thisThreadConverged = .false.  
 			 
-                            if(deltaT /= 0.d0 .and. .not. failed) then
+                           if(deltaT /= 0.d0 .and. .not. failed) then
                                print *, "deltaT = ", deltaT
                                print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
                                print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
@@ -1553,6 +1571,7 @@ if (grid%geometry == "tom") then
                             failed = .true.
                          end if
                       end if
+                      
                       !Check for temperature oscillations
                       if(niter > 1) then
                          thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
@@ -1560,10 +1579,12 @@ if (grid%geometry == "tom") then
                       thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                    end if
                 end if
+               
              end do
+             
              !Send result to master rank 
           end do
-
+         
 !       print *, "RANK ", myRank, " SENDS  DATA TO RANK 0"
 !       print *, "thisThreadConverged = ", thisThreadConverged
        !Send converged information
@@ -1576,7 +1597,7 @@ if (grid%geometry == "tom") then
         underSampledTOT = .false.
 
 	!!!Rank 0, collate results and decide if converged 
-        converged = .false.
+       converged = .false.
         do iThread = 1 , (nThreadsGlobal-1)
               call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
               call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
@@ -1618,9 +1639,9 @@ if (grid%geometry == "tom") then
       print *, "photoionization loop converged at iteration ", niter
      end if
   else if(underSampledTOT .and. monteCheck) then
-!     if(myRank == 0) then
-!        print *, "Undersampled cell, increasing nMonte"
-!     end if 
+     if(myRank == 0) then
+        print *, "Undersampled cell, increasing nMonte"
+     end if 
       nMonte = nMonte *2.d0
   end if
   
