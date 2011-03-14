@@ -193,7 +193,7 @@ ifeq ($(SYSTEM), ompi)
     F95FLAG  = -Wno=155
     DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
-    CFITSIOLIBS =  -L/Users/${USER}/cfitsio/lib -lcfitsio
+    CFITSIOLIBS = -lcfitsio
     EXE = torus.ompi
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
