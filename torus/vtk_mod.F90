@@ -747,6 +747,9 @@ contains
                
                case("sourceCont")
                   write(lunit, *) thisOctal%normSourceContribution(subcell, 1)
+               
+               case("logRho")
+                  write(lunit, *) log10(thisOctal%rho(subcell))
                case("rho")
 
 !                  if(thisOctal%rho(subcell) .lt. 1.d-37) then
@@ -2384,6 +2387,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("sourceCont")
                   rArray(1, n) = real(thisOctal%normSourceContribution(subcell, 1))
+
+               case("logRho")
+                  rArray(1, n) = returnPhysicalUnitDensity(thisOctal%rho(subcell))
 
                case("temperature")
                   rArray(1, n) = real(thisOctal%temperature(subcell))

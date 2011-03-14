@@ -138,7 +138,7 @@ contains
        tDump = 0.005d0
        deltaTforDump = 3.14d10 !1kyr
        nextDumpTime = deltaTforDump
-       if (grid%geometry == "hii_test") deltaTforDump = 2.d10
+       if (grid%geometry == "hii_test") deltaTforDump = 2.d11
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        timeofNextDump = 0.d0       
     else
@@ -239,14 +239,14 @@ contains
              call setupNeighbourPointers(grid, grid%octreeRoot)
              !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
              !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 9, loopLimitTime, looplimittime, .True.,&
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 8, loopLimitTime, looplimittime, .True.,&
                   .true.)
              
              call writeInfo("Done",TRIVIAL)
           else
              call writeInfo("Calling photoionization loop",TRIVIAL)
              call setupNeighbourPointers(grid, grid%octreeRoot)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 9, loopLimitTime, looplimittime, .true., .true.)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 8, loopLimitTime, looplimittime, .true., .true.)
              call writeInfo("Done",TRIVIAL)
           endif
           
@@ -358,18 +358,19 @@ contains
           photoLoopGlobal = .false.
           if(myRankGlobal /= 0) then
              !   print *, "rank ", myrankglobal, "checking for photon loop"
-             call checkForPhotoLoop(grid, grid%octreeRoot, photoLoop, dt)
+            ! call checkForPhotoLoop(grid, grid%octreeRoot, photoLoop, dt)
+             call advancedCheckForPhotoLoop(grid, grid%octreeRoot, photoLoop, dt)
              !   print *, "rank ", myRankGLobal, "sending to zero"
              call MPI_SEND(photoLoop, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD,  ierr)
              !   print *, "rank ", myRankGLobal, "sent"      
              call MPI_RECV(photoLoopGlobal, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
              !   print *, "rank ", myRankGLobal, "recvd from zero"
           else
-             print *, "rank 0 recving from threads"
+!             print *, "rank 0 recving from threads"
              photoLoop = .false.
              do i = 1, nThreadsGlobal-1
                 call MPI_RECV(photoLoop, 1, MPI_LOGICAL, i, tag, MPI_COMM_WORLD, status, ierr)
-                print *, "rank 0 recvd from", i, photoLoop
+ !               print *, "rank 0 recvd from", i, photoLoop
                 if (photoLoop) then
                    photoLoopGlobal = .true.
                 else if(.not. photoLoopGlobal) then
@@ -396,7 +397,7 @@ contains
    end if
        if(photoLoopGlobal) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
-         ! call ionizeGrid(grid%octreeRoot)
+          call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then
              loopLimitTime = grid%currentTime+dt
           else
@@ -404,13 +405,6 @@ contains
           end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 9, loopLimitTime, loopLimitTime, .True., .true.)
-          !THAW _TEMPORARY ! ! ! !  ! ! ! ! ! ! ! ! ! ! !
-          !INVESTIGATING SPEED DIFFERENCES
-!       else
-!          call setupNeighbourPointers(grid, grid%octreeRoot)
-!          call writeInfo("Skipping photoionization loop",TRIVIAL)
-!
-!       end if          
 
           call writeInfo("Done",TRIVIAL)
 
@@ -552,7 +546,7 @@ contains
              !print *, "STAGE G", stageCounter
              write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
              call writeVtkFile(grid, mpiFilename, &
-                  valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+                  valueTypeString=(/"rho          ","logRho    ", "HI           " , "temperature  ", &
                   "hydrovelocity","sourceCont   ","pressure     "/))
 !          end if
              !print *, "STAGE H", myRankGlobal, stageCounter
@@ -821,7 +815,7 @@ contains
              if(grid%octreeRoot%twoD) then
                 nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 100.d0 * (8.d0**(maxDepthAMR))
+                nMonte = 50.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
                 nMonte = 1.d0 * 2**(maxDepthAMR)
@@ -1509,7 +1503,7 @@ if (grid%geometry == "tom") then
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 5000
+        minCrossings = 10000
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
@@ -2276,8 +2270,77 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     end do
   end subroutine clearContributions
 
+recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt)
+    use constants_mod, only : cspeed
+    include 'mpif.h'
+    TYPE(GRIDTYPE) :: grid
+    TYPE(OCTAL),pointer :: thisOctal
+    TYPE(OCTAL),pointer :: child
+    integer :: i, subcell, iIon
+    logical :: photoLoop
+    real(double) :: thisTau, ksca, kabs, chargeExchangeRecombination
+    real(double) :: velocity, dt, temperature
+    integer, save :: iLambda
+    real(double) :: recombRateArray(grid%nIon), bigRecombRate(grid%nIon), recombTime(grid%nIon)
+
+    photoLoop = .false.
+
+    recombRateArray = 0.d0
+    bigRecombRate = 0.d0
+    recombTime = 0.d0
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+                  if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call advancedCheckForPhotoLoop(grid, child, photoLoop, dt)
+                exit
+             end if
+          end do
+       else
+
+          !Find biggest recomb rates across grid for all species
+          do iion = 1, grid%nIon
+
+        call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
+             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+             chargeExchangeRecombination)
+
+          
+             recombRateArray(iIon) = recombRate(grid%ion(iIon), thisOctal%temperature(subcell))*thisOctal%ne(subcell) &
+                  + chargeExchangeRecombination
+
+             if(bigRecombRate(iIon) < recombRateArray(iIon)) then
+                bigRecombRate(iIon) = recombRateArray(iIon)
+             end if
+          end do
+
+          !Convert to recomb timescales
+          do iion = 1, grid%nIon
+             recombTime(iIon) = 1.d0 / bigRecombRate(iIon) 
+          end do
+          print *, "H recomb Timescale = ", recombTime(1)
+          print *, "Or is it = ", recombTime(2)
+
+          !If the recomb timescale is less than the dynamical step, then a photoion loop is necessary
+          do iIon = 1, grid%nIon
+             if(recombTime(iIon) < dt) then 
+                photoLoop = .true.
+             else 
+                photoLoop = .false.
+             end if
+          end do
+
+       end if
+
+    end do
+
+end subroutine advancedCheckForPhotoLoop
+
+
 !Thaw
-!This routine will compare the 
   recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     use constants_mod, only : cspeed
     include 'mpif.h'
