@@ -1396,8 +1396,12 @@ contains
        call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
                "(a,f8.2x,a)", 0.d0, ok, .false.)
 
+       call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
+            "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
             "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
+       call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
+            "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.0, ok, .false.)
 
        ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
        ! Rotation about y-axis
@@ -1419,13 +1423,17 @@ contains
        amrGridCentreY = gridCentre%y
        amrGridCentreZ = gridCentre%z
           
-       ! When restarting particles are required for map_dI_to_particles
        if ( readgrid ) then 
+       ! When restarting particles are required for map_dI_to_particles
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
           
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
+       else
+          ! Option for agressive splitting
+          call getLogical("sphonepercell", SphOnePerCell, cLine, fLine, nLines, &
+            "Split to one particle per cell:", "(a,1l,1x,a)", .false., ok, .false.)
        end if
 
     end if

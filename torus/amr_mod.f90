@@ -3544,7 +3544,7 @@ CONTAINS
     use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          ttauriRinner, amr2d
-    use input_variables, only : phiRefine, dPhiRefine, minPhiResolution
+    use input_variables, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4403,9 +4403,9 @@ CONTAINS
 ! SPH particles per grid cell or split if >1 particle per cell
        if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
           split = .false.
-!       elseif (nparticle > 1) then
-!          split = .true. 
-       elseif (.not. split) then
+       elseif (nparticle > 1 .and. SphOnePerCell) then
+          split = .true. 
+       elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero )then
           write(113,*) nparticle
        end if
 

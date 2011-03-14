@@ -468,7 +468,7 @@ module angularImage
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
         rhomax, i0max, nCol, nCol_H2, nCol_CO, observerVelocity)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth
+     use input_variables, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth, vturb
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
@@ -627,8 +627,10 @@ module angularImage
         dvAcrossCell = (veldiff.dot.direction)
 
         if ( thermalLineWidth ) then 
-           ! Calculate line width in cm/s.
+           ! Calculate thermal line width in cm/s.
            sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / (thisMolecule%molecularWeight * amu) )
+           ! Add turbulent line width 
+           sigma_thermal = sigma_thermal + ( vturb * 1.0d5) 
            ! Convert to Torus units (v/c)
            sigma_thermal = sigma_thermal / cspeed
            dvAcrossCell = abs(dvAcrossCell / sigma_thermal)

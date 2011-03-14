@@ -357,7 +357,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(filename)
-    use input_variables, only: internalView
+    use input_variables, only: internalView, convertRhoToHI
     implicit none
 
     character(LEN=*), intent(in)  :: filename
@@ -374,7 +374,7 @@ contains
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=500) :: namestring, unitString
-    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, ih2frac
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
     read(LUIN,*)
@@ -425,7 +425,7 @@ contains
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
     iitype = indexWord("itype",word,nWord)
-
+    ih2frac = indexWord("column 14",word,nWord)
 
 
     write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
@@ -463,7 +463,11 @@ contains
        if (internalView) call rotate_particles
 
        u = junkArray(iu)
-       rhon = junkArray(irho)
+       if ( convertRhoToHI ) then 
+          rhon = (1.0-2.0*junkArray(ih2frac))*junkArray(irho)*5.0/7.0
+       else
+          rhon = junkArray(irho)
+       end if
        h = junkArray(ih)
        itype = junkArray(iitype)
        gaspartmass = junkArray(imass)
