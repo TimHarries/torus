@@ -312,32 +312,23 @@ contains
        tEnd = 3.14d13 !1x10^6 year
     end if
 
-    print *, "STARTING MAIN LOOP", myRank
     do while(grid%currentTime < tEnd)
        print *, "rank ", myRankGlobal, "on next loop", myRank
        tc = 0.d0
        tc(myrank+1) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRank+1))
-       !print *, "STAGE B", myrankglobal, stageCounter
-       
+              
        call MPI_ALLREDUCE(tc, tempTc, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
       ! stop
-       !print *, "STAGE C", myrankglobal, stageCounter
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
-       !print *, "STAGE D", myrankglobal, stageCounter
-       !Dump at every step for now
-       !if(grid%geometry == "hii_test") then
-       !   dt = 1.d11
-	!  !dumpThisTime = .true.
-      ! e!nd if       
-       !print *, "STAGE E", myrankglobal, stageCounter
+  
        if (myrank == 1) then
           write(*,*) tc(1:9)
           write(*,*) "courantTime", dt
        endif
        dumpThisTime = .false.
-       !print *, "STAGE F", myrankglobal, stageCounter
+
        if ((grid%currentTime + dt) >= timeOfNextDump) then
           dt =  timeofNextDump - grid%currentTime
           dumpThisTime = .true.
@@ -391,7 +382,8 @@ contains
        else
           photoLoopGlobal = .true.
        end if
-
+!THAW _TEMPORARY
+!WANT TO SEE EFFECT ON TEMPERATURE OF NOT DOING PHOTOION STEP
    if(dumpThisTime) then
       photoLoopGlobal = .true.
    end if
@@ -429,6 +421,7 @@ contains
        else
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call writeInfo("Skipping photoionization loop",TRIVIAL)
+       
        end if
 
        if (myRank == 1) call tune(6,"Hydrodynamics step")
@@ -971,30 +964,26 @@ contains
              print *, "Telling Ranks to pass stacks ASAP "
              
              do iThread = 1, nThreads - 1
-                print *, "SENDING ASAP"
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-                print *, "DONE FOR ", iThread
+                
              end do
              
-             print *, "All ranks now passing ASAP"
-
              photonsStillProcessing = .true.
-             print *, "starting to recv"
+             
              do while(photonsStillProcessing)                   
                 toSendStack%freq = 0.d0
                 do iThread = 1, nThreads - 1
                    toSendStack(1)%destination = 999
                    call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
-                   print *, "sent esc request to ", iThread
-                   call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
-                   print *, "escd ", nEscapedArray(iThread)
                 
+                   call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                               
                 enddo
                 
                 nEscaped = SUM(nEscapedArray(1:nThreads-1))
-                print *, "nescToT", nEscaped
+             
                 nEscapedGlobal = nEscaped
                 if (nEscaped == nMonte) then
                    photonsStillProcessing = .false.
@@ -1057,7 +1046,6 @@ contains
                       sendAllPhotons = .true.
                       stackSize = 0
                       
-                      print *, "RANK ", myRank, "SENDING ALL"
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nThreads-1
                          if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
@@ -1499,11 +1487,11 @@ if (grid%geometry == "tom") then
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 5000
+        minCrossings = 1000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
      else
-        minCrossings = 10000
+        minCrossings = 5000
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
@@ -2281,6 +2269,8 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: chargeExchangeRecombination
     real(double) :: dt
     real(double) :: recombRateArray(grid%nIon), bigRecombRate(grid%nIon), recombTime(grid%nIon)
+    integer :: iStart, iEnd, nIonizatioNStages, k 
+    
 
     photoLoop = .false.
 
@@ -2299,43 +2289,59 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt)
              end if
           end do
        else
-
-          !Find biggest recomb rates across grid for all species
-          do iion = 1, grid%nIon
-
-        call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
-             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
-             chargeExchangeRecombination)
-
           
-             recombRateArray(iIon) = recombRate(grid%ion(iIon), thisOctal%temperature(subcell))*thisOctal%ne(subcell) &
-                  + chargeExchangeRecombination
+          !Thaw -at present only considering H at ionization front
+          if(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)) > 0.05d0 .and.  &
+               thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)) < 0.95d0) then
 
-             if(bigRecombRate(iIon) < recombRateArray(iIon)) then
-                bigRecombRate(iIon) = recombRateArray(iIon)
-             end if
-          end do
+             do while(k <= grid%nIon)
 
-          !Convert to recomb timescales
-          do iion = 1, grid%nIon
-             recombTime(iIon) = 1.d0 / bigRecombRate(iIon) 
-          end do
-          print *, "H recomb Timescale = ", recombTime(1)
-          print *, "Or is it = ", recombTime(2)
-
-          !If the recomb timescale is less than the dynamical step, then a photoion loop is necessary
-          do iIon = 1, grid%nIon
-             if(recombTime(iIon) < dt) then 
-                photoLoop = .true.
-             else 
-                photoLoop = .false.
-             end if
-          end do
-
+                !Find biggest recomb rates across grid for all species
+                iStart = k
+                iEnd = k+1
+                do while(grid%ion(istart)%z == grid%ion(iEnd)%z)
+                   iEnd = iEnd + 1
+                enddo
+                iEnd = iEnd - 1
+                nIonizationStages = iEnd - iStart + 1
+                
+                do iion = 1, nIonizationStages
+                   
+                   call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
+                        thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+                        chargeExchangeRecombination)
+                   
+                   recombRateArray(iIon) = recombRate(grid%ion(iIon), thisOctal%temperature(subcell))*thisOctal%ne(subcell) &
+                        + chargeExchangeRecombination
+                   
+                   if(bigRecombRate(iIon) < recombRateArray(iIon)) then
+                      bigRecombRate(iIon) = recombRateArray(iIon)
+                   end if
+                end do
+                
+                !Convert to recomb timescales
+                do iion = 1, grid%nIon
+                   recombTime(iIon) = 1.d0 / bigRecombRate(iIon) 
+                end do
+                
+                !If the recomb timescale is less than the dynamical step, then a photoion loop is necessary
+                do iIon = 1, grid%nIon
+                   if(recombTime(iIon) < dt) then 
+                      photoLoop = .true.
+                      print *, "photoLoop needed for rank ", myRankGlobal
+                      print *, "H recomb Timescale = ", recombTime(1)
+                      print *, "dt", dt
+                      exit
+                   else 
+                      photoLoop = .false.
+                   end if
+                end do
+                if(photoLoop) exit
+             end do
+             
+          end if
        end if
-
     end do
-
 end subroutine advancedCheckForPhotoLoop
 
 

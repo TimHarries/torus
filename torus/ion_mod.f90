@@ -175,8 +175,8 @@ contains
        call createIon(ionArray(nIon), 7, 5, 14, 4.745e1) ! N III
 
 !THAW - removed 03/03/2011 since no corresponding level data present.
-!       nIon = nIon + 1
- !      call createIon(ionArray(nIon), 7, 4, 14, 7.747e1) ! N IV
+!±       nIon = nIon + 1
+!       call createIon(ionArray(nIon), 7, 4, 14, 7.747e1) ! N IV
 
        !    nIon = nIon + 1
        !    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
@@ -324,6 +324,13 @@ subroutine addLevels(thisIon)
      call addLevel(thisIon, "4P_1/2", 7.09030d0, 0.5)
      call addLevel(thisIon, "4P_3/2", 7.09770d0, 1.5)
      call addLevel(thisIon, "4P_5/2", 7.10776d0, 2.5)
+
+!  case("N IV")
+!     call addLevel(thisIon, "1S_0", 0.d0, 0.)
+!     call addLevel(thisIon, "3P^0_0", ???, 0.)
+!     call addLevel(thisIon, "3P^0_1", ???, 1.)
+!     call addLevel(thisIon, "3P^0_2", ???, 2.)
+!     call addLevel(thisIon, "1P^0_1", ???, 1.)
 
   case("O I")
      call addLevel(thisIon, "3P_2", 0.d0, 2.)
@@ -587,6 +594,14 @@ subroutine addTransitions(thisIon)
      gamma = (/1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26 /)
      call addTransition2(thisIon,"4P_5/2","4P_3/2", 1.23e6, 1.e-20, t, gamma, 11)
      deallocate(t, gamma)
+
+!  case("N IV")
+!     allocate(t(4), gamma(4))
+!     t = (/5000, 10000, 15000, 20000 /)
+!     gamma = (/0.937, 0.905, 0.879, 0.858 /)
+!     call addTransition2(thisIon,"3P^0_2","1S_0", 1483.3, 1.15e-2, t, gamma, 11)
+!     deallocate(t, gamma)
+
 
   case("O I")
      allocate(t(5), gamma(5))

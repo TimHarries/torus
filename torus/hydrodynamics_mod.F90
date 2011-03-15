@@ -2488,6 +2488,17 @@ contains
 !             if (myrank == 1) write(*,*) "speed ", returnPhysicalUnitSpeed(speed)/1.d5, " km/s ",speed, " code"
 !             if (myrank == 1) write(*,*) "dx ", returnPhysicalUnitLength(dx), " cm ",dx," code"
 
+             if(myRank == 1) then
+                tc = min(tc, dx / (cs + speed))
+                write(*,*) "tc = min(tc, dx / (cs + speed) )", tc
+
+                tc = returnPhysicalUnitLength(dx)/ (returnPhysicalUnitSpeed(cs) + returnPhysicalUnitSpeed(speed))
+
+
+                write(*,*) "min(tc, returnPhysicalUnitLength(dx)/(returnPhysicalUnitSpeed(cs) + &
+                     returnPhysicalUnitSpeed(speed))", tc
+             end if
+             
              tc = min(tc, dx / (cs + speed) )
 !             if (myrank == 1) write(*,*) "tc ",tc
 
@@ -2658,9 +2669,9 @@ contains
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-!       if (myrank == 1) write(*,*) "courantTime", dt
+       if (myrank == 1) write(*,*) "courantTime", dt, it
        if (myrank == 1) call tune(6,"Hydrodynamics step")
-!       call writeInfo("calling hydro step",TRIVIAL)
+       call writeInfo("calling hydro step",TRIVIAL)
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)

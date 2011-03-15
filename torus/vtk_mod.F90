@@ -2389,7 +2389,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%normSourceContribution(subcell, 1))
 
                case("logRho")
-                  rArray(1, n) = returnPhysicalUnitDensity(thisOctal%rho(subcell))
+                  rArray(1, n) = log10(returnPhysicalUnitDensity(thisOctal%rho(subcell)))
 
                case("temperature")
                   rArray(1, n) = real(thisOctal%temperature(subcell))
