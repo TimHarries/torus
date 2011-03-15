@@ -546,7 +546,7 @@ contains
              !print *, "STAGE G", stageCounter
              write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
              call writeVtkFile(grid, mpiFilename, &
-                  valueTypeString=(/"rho          ","logRho    ", "HI           " , "temperature  ", &
+                  valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                   "hydrovelocity","sourceCont   ","pressure     "/))
 !          end if
              !print *, "STAGE H", myRankGlobal, stageCounter
@@ -2278,9 +2278,8 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt)
     TYPE(OCTAL),pointer :: child
     integer :: i, subcell, iIon
     logical :: photoLoop
-    real(double) :: thisTau, ksca, kabs, chargeExchangeRecombination
-    real(double) :: velocity, dt, temperature
-    integer, save :: iLambda
+    real(double) :: chargeExchangeRecombination
+    real(double) :: dt
     real(double) :: recombRateArray(grid%nIon), bigRecombRate(grid%nIon), recombTime(grid%nIon)
 
     photoLoop = .false.
