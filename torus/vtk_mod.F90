@@ -1638,7 +1638,7 @@ endif
     integer :: iCount
     integer :: ik, ik1, ik2, i32temp
     character, pointer :: string(:)
-    integer(bigInt) :: nBytes, k
+    integer :: nBytes, k
     logical :: write32, dopadend
 
     if (PRESENT(outnpad)) outnpad = 0
@@ -1678,8 +1678,8 @@ endif
 
 
     nPad = 0
-    if (mod(nBytes,3_bigInt) /= 0) then
-       nPad = 3-mod(nBytes,3_bigInt)
+    if (mod(nBytes,3) /= 0) then
+       nPad = 3-mod(nBytes,3)
     endif
 
 !    write(*,*) iArray
