@@ -4034,7 +4034,7 @@ contains
     tostar = tostar / dble(disttostar)
 
     sinang = source%radius / disttostar
-    ang = asin(min(1.,max(-1.,sinAng)))
+    ang = asin(min(1.d0,max(-1.d0,sinAng)))
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
     ntheta = 4
