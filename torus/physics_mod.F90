@@ -53,7 +53,7 @@ contains
 
     do iatom = 1, nAtom
        call readAtom(atomArray(iatom), atomFilename(iatom))
-       call stripAtomLevels(atomArray(iAtom), 3)
+!       call stripAtomLevels(atomArray(iAtom), 4)
     end do
 
   end subroutine setupAtoms
@@ -199,7 +199,7 @@ contains
 !       lamEnd = 1000.d4
 !       nlambda = 1000
        call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-            source(isource)%surface, 400, source(isource)%teff, &
+            source(isource)%surface, 100, source(isource)%teff, &
             source(isource)%spectrum)
        call sumSurface(source(isource)%surface, sumSurfaceluminosity)
        fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4

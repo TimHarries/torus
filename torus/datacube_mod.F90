@@ -971,5 +971,30 @@ subroutine freeDataCube(thiscube)
 #endif
 
 
+  subroutine dumpCubeToSpectrum(thisCube, specFile)
+    type(DATACUBE) :: thisCube
+    character(len=*) :: specFile
+
+    real(double), allocatable :: v(:),y(:)
+    integer :: i
+
+
+    allocate(v(1:thisCube%nv))
+    allocate(y(1:thisCube%nv))
+    do i = 1, thisCube%nv
+       v(i) = thisCube%vAxis(i)
+       y(i) = SUM(thisCube%intensity(:,:,i))
+    enddo
+    y = y / y (1)
+    open(38, file=specfile, status="unknown",form="formatted")
+    do i = 1, thisCube%nv
+       write(38,*) v(i), y(i)
+    enddo
+    deallocate(v, y)
+    close(38)
+  end subroutine dumpCubeToSpectrum
+       
+    
+
 end module datacube_mod
 

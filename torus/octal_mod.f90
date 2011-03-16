@@ -243,6 +243,7 @@ MODULE octal_mod
     real(double), pointer :: photonEnergyDensity(:) => null()
     real(double), pointer :: oldphotonEnergyDensity(:) => null()
 
+
     REAL, DIMENSION(:), pointer                 :: temperaturedust=> null() ! grid subcell dust temperatures
     REAL, DIMENSION(:), pointer                 :: temperaturegas => null() ! grid subcell gas temperatures
     real(double), DIMENSION(:), pointer :: NH2 => null()           ! total H2 no density

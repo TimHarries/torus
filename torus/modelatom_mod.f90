@@ -75,17 +75,19 @@ contains
     do i = 1, SIZE(atomArray)
        do j = 1, atomArray(i)%nTrans
           if (atomArray(i)%transType(j)=="RBB") then
-             lamTrans = (cspeed/atomArray(i)%transfreq(j))*1d8
-             if ( (abs(lamTrans-lamLine)/lamLine) < 0.01d0) then
+             lamTrans = ((cspeed/atomArray(i)%transfreq(j))*1d8)/nAir
+             if ( (abs(lamTrans-lamLine)) < 1.d0) then
                 found = .true.
                 iAtom = i
                 iTrans = j
+                exit
              endif
           endif
        enddo
+       if (found) exit
     enddo
     if (found) then
-       write(message, '(a,i2, a, i2)') "Transition found: iAtom=",iAtom, ", iTrans=",iTrans
+       write(message, '(a, a, a, i2)') "Transition found: name=",trim(AtomArray(iAtom)%name), ", iTrans=",iTrans 
        call writeInfo(message,TRIVIAL)
     else
        call writeFatal("Transition not found in identiftyTransition")
@@ -239,6 +241,17 @@ contains
     endif
   end function getLevel
 
+  function returnNe(pops, thisAtom) result(ne)
+    real(double) :: pops(:,:), ne
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nAtom, iAtom
+    
+    ne = 0.d0
+    nAtom = size(thisAtom)
+    do iAtom = 1,nAtom
+       ne = ne + pops(iAtom,thisatom(iatom)%nlevels) * (dble(thisAtom(iatom)%charge)+1.d0)
+    enddo
+  end function returnNe
 
 
   subroutine returnEinsteinCoeffs(thisAtom, iTrans, aEinstein, BulEinstein, BluEinstein)
@@ -674,7 +687,7 @@ contains
           0.30103e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
           0.07460e0, -0.75759e0, 2.58494e0, -3.53170e0, 1.65240e0, &
           0.34383e0, -0.41472e0, 1.01550e0,  0.31930e0, 0.00000e0  &
-           /), shape=(/5,5/))
+           /), shape=(/5,5/), order=(/2,1/))
     real(double) :: u0, u1, u2, N1overN0, N2overN1, pe, ci
     real(double) :: n0overn1,n1overn2
        pe = ne * kerg * t
@@ -755,6 +768,138 @@ contains
 !       stop
 !    endif
    end function BoltzSahaGeneral
+
+  function BoltzSahaEquationAbsolute(thisAtom, nTotal, level, Ne, t) result(pop)
+  
+    type(MODELATOM) :: thisAtom
+    real(double) :: Ne, t, pop, nTotal
+    real :: tReal
+    integer :: level
+    real(double) :: c
+    real, parameter ::  Ucoeff(5,5) =  reshape(source=  &
+        (/0.30103e0, -0.00001e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.00000e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.30103e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.07460e0, -0.75759e0, 2.58494e0, -3.53170e0, 1.65240e0, &
+          0.34383e0, -0.41472e0, 1.01550e0,  0.31930e0, 0.00000e0  &
+           /), shape=(/5,5/),order=(/2,1/))
+    real(double) :: u0, u1, u2, N1overN0,  pe, ci
+    real(double) :: n0overn1,n1overn2
+       pe = ne * kerg * t
+       tReal = t
+       select case(thisAtom%nz)
+       case(1)
+          u0 = getUT(treal, uCoeff(1,:))
+          u1 = 1.d0
+          N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+          if ((t > 3.).and.(pe /= 0.d0)) then
+             N1overN0 = (10.d0**N1overN0)/pe
+          else
+             N1overN0 = 0.d0
+          endif
+          
+          pop = nTotal / (1.d0+n1OverN0)
+          pop = pop * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))/u0
+       case(2)
+
+          ci = 2.07d-16
+          u0 = getUT(treal, uCoeff(2,:))
+          u1 = getUT(treal, uCoeff(3,:))
+          u2 = 1.d0
+
+
+          if (t > 3.) then
+             N0overN1 = ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5
+             n1overn2 = ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5
+             c = 1.d0 / ( 1.d0 + n1overn2 + n0overn1 * n1overn2)
+          else
+             n0overn1 = 1.d10
+             n1overn2 = 1.d10
+          endif
+
+          select case(thisAtom%charge)
+          case(0)
+             pop = (nTotal * c) * n1overn2 * n0overn1
+             pop = pop * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))/u0
+          case(1)
+             pop = (nTotal * c) * n1overn2
+             pop = pop * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))/u1
+          case DEFAULT
+             write(*,*) "wrong charge for He"
+             stop
+          end select
+       case(20)
+             write(*,*) "wrong charge for Ca"
+             stop
+       case DEFAULT
+          write(*,*) "atom not recognised in sahaEquationAbsolute ",thisAtom%name
+          stop
+       end select
+   end function BoltzSahaEquationAbsolute
+
+  function SahaEquationNextIon(thisAtom, nTotal, Ne, t) result(pop)
+  
+    type(MODELATOM) :: thisAtom
+    real(double) :: Ne, t, pop, nTotal
+    real :: tReal
+    real(double) :: c
+    real, parameter ::  Ucoeff(5,5) =  reshape(source=  &
+        (/0.30103e0, -0.00001e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.00000e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.30103e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.07460e0, -0.75759e0, 2.58494e0, -3.53170e0, 1.65240e0, &
+          0.34383e0, -0.41472e0, 1.01550e0,  0.31930e0, 0.00000e0  &
+           /), shape=(/5,5/), order=(/2,1/))
+    real(double) :: u0, u1, u2, N1overN0,  pe, ci
+    real(double) :: n0overn1,n1overn2
+       pe = ne * kerg * t
+       tReal = t
+       select case(thisAtom%nz)
+       case(1)
+          u0 = getUT(treal, uCoeff(1,:))
+          u1 = 1.d0
+          N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+          if ((t > 3.).and.(pe /= 0.d0)) then
+             N1overN0 = (10.d0**N1overN0)/pe
+          else
+             N1overN0 = 1.d-30
+          endif
+          
+          pop = nTotal / (1.d0 + 1.d0/ n1OverN0)
+       case(2)
+
+          ci = 2.07d-16
+          u0 = getUT(treal, uCoeff(2,:))
+          u1 = getUT(treal, uCoeff(3,:))
+          u2 = 1.d0
+
+
+          if (t > 3.) then
+             N0overN1 = ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5
+             n1overn2 = ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5
+             c = 1.d0 / ( 1.d0 + n1overn2 + n0overn1 * n1overn2)
+          else
+             n0overn1 = 1.d10
+             n1overn2 = 1.d10
+          endif
+
+          select case(thisAtom%charge)
+          case(0)
+             pop = (nTotal * c) * n1overn2
+          case(1)
+             pop = (nTotal * c)
+          case DEFAULT
+             write(*,*) "wrong charge for He"
+             stop
+          end select
+       case(20)
+             write(*,*) "wrong charge for Ca"
+             stop
+       case DEFAULT
+          write(*,*) "atom not recognised in sahaEquationAbsolute ",thisAtom%name
+          stop
+       end select
+   end function SahaEquationNextIon
           
 
    function getUT(t, coeff) result (ut)

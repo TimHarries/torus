@@ -73,10 +73,10 @@ contains
     if (atomicPhysics.and.calcDataCube) then
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
-       gridDistance = 140.d0* pctocm/1.d10
+!       gridDistance = 140.d0* pctocm/1.d10
        call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
             viewVec, dble(gridDistance), &
-            globalSourceArray, globalnsource, 1, totalflux, occultingDisc=.true.)
+            globalSourceArray, globalnsource, 1, totalflux)
     endif
 
     if (photoionPhysics.and.splitoverMPI.and.calcImage) then

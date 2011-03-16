@@ -4247,7 +4247,7 @@ CONTAINS
          if (i == nr) i = nr-1
 
          dR = ABS(R_cmfgen(i+1)-R_cmfgen(i))
-         thisScale = cellsize/2.d0
+         thisScale = cellsize
          
          if ( thisScale > dR) then
             split = .true.

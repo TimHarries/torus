@@ -103,6 +103,10 @@ module constants_mod
   ! unit conversions
   real(double), parameter :: kmsToC = 1.d5/cSpeed
 
+  ! refractive indices
+
+  real(double) :: nAir = 1.000277
+
 end module constants_mod
 
 
