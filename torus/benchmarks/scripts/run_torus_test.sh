@@ -14,7 +14,7 @@ ln -s ${TEST_DIR}/torus/* .
 case ${SYSTEM} in
     gfortran) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes >> ${log_file} 2>&1;;
     ompiosx) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes >> ${log_file} 2>&1;;
-    *) /usr/bin/make debug=${USEDEBUGFLAGS} cfitsio=no >> ${log_file} 2>&1;;
+    *) /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
 esac
 
 if [[ $? -eq 0 ]]; then
@@ -240,7 +240,6 @@ for sys in ${SYS_TO_TEST}; do
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
-    mkdir ${WORKING_DIR}/benchmarks/molebench/plots 
     run_bench
     if [[ ${SYSTEM} != "nagfor" ]]; then
 	check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
