@@ -2029,7 +2029,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            close(lunit)
         endif
 
-        if (writeoutput.and.(.not.grid%splitOverMPI)) then
+        if (writeheader.and.(.not.grid%splitOverMPI)) then
            allocate(rArray(1:1, 1:nCellsGlobal))
            call getValues(grid, valueType(iValues), rarray)
            allocate(float32(1:nCellsGlobal))
@@ -2062,11 +2062,11 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            close(lunit)
         endif
 
-        if (writeoutput.and.(.not.grid%splitOverMPI)) then
+        if (writeheader.and.(.not.grid%splitOverMPI)) then
            allocate(rArray(1:3, 1:nCells))
            call getValues(grid, valueType(iValues), rarray)
            allocate(float32(1:nCellsGlobal*3))
-           float32 = RESHAPE(points, (/SIZE(float32)/))
+           float32 = RESHAPE(rarray, (/SIZE(float32)/))
            call base64encode(writeheader,pstring, nString, float32=float32)
            open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
            write(lunit) pstring(1:nString)

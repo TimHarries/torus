@@ -865,7 +865,7 @@ contains
              N1overN0 = 1.d-30
           endif
           
-          pop = nTotal / (1.d0 + 1.d0/ n1OverN0)
+          pop = nTotal / (1.d0 + 1.d0/ max(1.d-20,n1OverN0))
        case(2)
 
           ci = 2.07d-16
@@ -1121,12 +1121,12 @@ contains
      end function giii_hyd
 
 
-     function bfOpacity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(kappa)
+     function bfOpacity(freq, nAtom, thisAtom, pops, nstar, ne, temperature, ifreq) result(kappa)
        real(double) :: freq
        integer, optional :: ifreq
        type(MODELATOM) :: thisAtom(:)
        integer :: nAtom
-       real(double) :: pops(:,:)
+       real(double) :: pops(:,:), nstar(:,:)
        integer :: iAtom
        integer :: iTrans
        real(double) :: kappa, fac, ne, temperature
@@ -1142,18 +1142,16 @@ contains
              stop
           endif
              ilower = thisAtom(iAtom)%iLower(iTrans)
-             if (ilower < 6) then
+             if (ilower < 10) then
                 fac = exp(-hCgs*freq / (kerg * temperature))
                 if (present(iFreq)) then
-!                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
-!                        (pops(iAtom, ilower)-nstar(iatom,ilower)*fac)
+                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
+                        (pops(iAtom, ilower))! -nstar(iatom,ilower)*fac)
 
-                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * pops(iAtom, ilower)
                 else
-!                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, ilower, freq) * &
-!                        (pops(iAtom, ilower) - nstart(iatom,ilower)*fac)
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom),  ilower, freq) * &
+                        (pops(iAtom, ilower))! - nstar(iatom,ilower)*fac)
 
-                   kappa = kappa + photoCrossSection(thisAtom(iAtom), ilower, freq) * pops(iatom,ilower)
                 endif
              endif
           enddo
@@ -1162,6 +1160,8 @@ contains
        kappa = kappa +  ne * pops(1,thisAtom(1)%nlevels) * &
             alpkk_hyd(freq,dble(temperature)) * (1.d0-exp(-(hcgs*freq)/(kerg*temperature)))
        kappa = kappa + ne * sigmae
+
+       kappa = kappa /2.
 
        if (kappa < 0.d0) then
           if (firstTime) then
@@ -1188,7 +1188,7 @@ contains
     real(double) :: eta, fac
     integer :: iAtom, i, iLower, iUpper
     real(double) :: ne
-    real(double) :: thresh, photonEnergy, expFac, thisFac
+    real(double) :: thresh, photonEnergy, expFac
     logical, save :: firsttime = .true.
     real(double) :: pops(:,:)
 
@@ -1209,15 +1209,14 @@ contains
              write(*,*) "transtype bug in bfemissivity"
              stop
           endif
-          if (iLower < 6) then
+          if (iLower < 10) then
              thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(iLower))
              photonEnergy = freq * hCgs * ergtoEv
              if (photonEnergy.ge.thresh) then
-                thisFac = exp(-(hCgs*freq)/(kerg*temperature))
                 if (present(ifreq)) then
-                   eta = eta + fac * nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * thisFac
+                   eta = eta + fac * nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
                 else
-                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iLower, freq) * thisFac
+                   eta = eta + fac * nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iLower, freq) * expFac
                 endif
              endif
           endif
@@ -1228,7 +1227,6 @@ contains
     eta = eta + fac *  ne *  pops(1,thisAtom(1)%nlevels) * alpkk_hyd(freq,dble(temperature)) * expFac
 
 
-
     if (eta < 0.d0) then
        if (firstTime)  then
           write(*,*) "negative bf emissivity"
@@ -1236,6 +1234,7 @@ contains
        endif
        eta = 0.d0
     endif
+
 
   end function bfEmissivity
 

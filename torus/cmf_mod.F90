@@ -31,12 +31,14 @@ contains
   subroutine solveLevels(grid, source, thisOctal, subcell, nPops, jnuLine,  &
        temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, dfreq, nfreq, sobolevApprox)
 !    use input_variables, only : debug
+    use input_variables, only : rcore, opticallyThickContinuum
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(OCTAL), pointer :: thisOctal
+    real :: r, eps
     integer :: subcell
     logical :: sobolevApprox
-    integer :: nFreq
+    integer :: nFreq, ifreq
     integer :: num(100)
     real(double) :: freq(:), dfreq(:), jnuCont(:)
     real(double), allocatable :: hCgsFreq(:)
@@ -79,7 +81,11 @@ contains
     rate03 = 0.d0
     rate04 = 0.d0
 
+!    r = modulus(subcellCentre(thisOctal,subcell))
 
+!    eps =  (r - rcore)/(49.*rcore)
+
+!    if (r < 5.*rCore) eps = 0.
 
     blu = 0.d0; bul = 0.d0; a = 0.d0; ok = .true.
     nDifferentElements = 0
@@ -193,6 +199,8 @@ contains
                      exp(-(hCgs*freq(i))/(kErg*temperature)) )*dfreq(i)
              enddo
 
+
+!             if ((thisAtom(iatom)%name=="HeII").and.(l==1)) recombratekl = recombratekl * eps
 
 
 !             if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Radiative recomb into level 2: ", &
@@ -332,6 +340,10 @@ contains
 !                   write(*,*) "jnu cmf ",jnu
 !                   write(*,*) "jnu sob ",jnusob
                    Jnu = inu_times_betacmn
+                   if (opticallyThickContinuum) then
+                      call locate(freq, nfreq, thisAtom(iatom)%transFreq(itrans), ifreq)
+                      jnu = betamn * jnucont(ifreq)
+                   endif
                 endif
 
 
@@ -407,7 +419,7 @@ contains
 
 
 
-
+!                if ((thisAtom(iatom)%name=="HeII").and.(l==1)) photoRatelk = photoRatelk * eps
 
 !
 !             if (thisAtom(iatom)%name == "HeII") write(*,*) "Photoion into continuum ", &
@@ -459,8 +471,8 @@ contains
 !       if (iatom == 2) write(*,*) "total photoionization: " , totphotoion, totcion
 
     enddo
-    write(*,'(a,1p,3e10.2)') "N(HeII) ",npops(3,1:3)
-    write(*,'(a,1p,5e10.2)') "Rates ",rate01, rate02, rate03, rate04, rate01+rate02+rate03+rate04
+!    write(*,'(a,1p,3e10.2)') "N(HeII) ",npops(3,1:3)
+!    write(*,'(a,1p,5e10.2)') "Rates ",rate01, rate02, rate03, rate04, rate01+rate02+rate03+rate04
 !
 !    if (debug) then
 !       write(*,'(4x,100i9)') num(1:nMatrix)
@@ -574,7 +586,8 @@ contains
     real(double) :: dustOpac, dustEmiss
     Integer :: ilambda
     integer, allocatable,save :: iFreqRBB(:)
-    integer, save :: iflagRBB 
+    integer, save :: iflagRBB
+    integer :: iTestFreq
 
     !$OMP THREADPRIVATE (firstWarning, firstTime, ifreqRBB, iflagRBB)
 
@@ -593,6 +606,8 @@ contains
     endif
 
 
+    call locate(freq,nfreq, cspeed/ 200.d-8, iTestFreq)
+
     distToSource = 0.d0; hitSource = .false.
     a = 0.d0; blu = 0.d0; bul =0.d0
     allocate(tauCont(1:nFreq))
@@ -609,9 +624,9 @@ contains
     call findSubcellLocal(position, thisOctal, subcell)
 
     if (sobolevApprox) then
-       call randomRayDirection(0.99d0, position, source, nSource, direction, weightOmega, fracRay)
+       call randomRayDirection(0.8d0, position, source, nSource, direction, weightOmega, fracRay)
     else
-       call randomRayDirection(0.9d0, position, source, nSource, direction, weightOmega, fracRay)
+       call randomRayDirection(0.5d0, position, source, nSource, direction, weightOmega, fracRay)
     endif
 
     call randomNumberGenerator(getDouble=r)
@@ -748,7 +763,6 @@ contains
 !          nTau = 2
 !          write(*,*) "not in flow"
 !       endif
-
        if (sobolevApprox) ntau = 2
        
        do i = 2, nTau
@@ -778,7 +792,7 @@ contains
              do iFreq = 1, nFreq
 
                 alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                     thisOctal%ne(subcell),  dble(thisOctal%temperature(subcell)), ifreq=ifreq)
+                     nstar, thisOctal%ne(subcell),  dble(thisOctal%temperature(subcell)), ifreq=ifreq)
 
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                      thisOctal%atomLevel(subcell, :, :), nStar, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
@@ -809,7 +823,8 @@ contains
           if (opticallyThickContinuum.and.(.not.onTheSpot)) then
              deltaDist = (distArray(i)-distArray(i-1)) * 1.d10
              do iFreq = 1, nFreq
-                dTau = alphaNuCont(iFreq) *  deltaDist + thisOctal%ne(subcell) * sigmaE * deltaDist
+                dTau = alphaNuCont(iFreq) *  deltaDist
+
                 iCont(iFreq) = iCont(ifreq) + exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snuCont(iFreq)
                 if (icont(ifreq) < 0.d0) then
                    write(*,*) "icont negative ",icont(ifreq)
@@ -915,7 +930,11 @@ contains
        endif
 
        if (firstSubcell) then
-          phi = phiAv / phiNorm
+          if (phiNorm /= 0.d0) then
+             phi = phiAv / phiNorm
+          else
+             phi = 0.d0
+          endif
           firstSubcell = .false.
        endif
 
@@ -957,6 +976,7 @@ contains
        enddo
     endif
 
+!    write(*,*) "test tau ",tauCont(iTestFreq),icont(itestFreq)
     deallocate(tau)
   end subroutine getRay
 
@@ -1154,6 +1174,7 @@ contains
   subroutine calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, ne, nray, ds, freq, nfreq, &
        iCont, jBarCont, weight)
     use input_variables, only : opticallyThickContinuum, onTheSpot
+    use atom_mod, only : bnu
     real(double) :: iCont(:,:), jBarCont(:), ds(:), ne
     integer :: nAtom
     type(OCTAL), pointer :: thisOctal
@@ -1168,9 +1189,12 @@ contains
     integer :: iFreq
     real(double) :: jnu, snu
     real(double) :: nstar(10,50), expMinusTau
-    integer :: iAtom, j
+    integer :: iAtom, j, itestfreq
     allocate(jBarContExternal(1:nFreq))
     allocate(jBarContInternal(1:nFreq))
+
+
+    call locate(freq,nfreq, cspeed/ 200.d-8, iTestFreq)
 
     jBarCont = 0.d0
     jBarContInternal = 0.d0
@@ -1198,13 +1222,13 @@ contains
           tau = 0.d0
           snu = 0.d0
           if (opticallyThickContinuum) then
-             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ne, &
+             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), nstar, ne, &
                   dble(thisOctal%temperature(subcell)),ifreq=ifreq)
              jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                   thisOctal%atomLevel(subcell,:,:), nstar, &
                   dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
                   ifreq=ifreq)
-             tau = alphaNu * ds(iray) + thisOctal%ne(subcell) * sigmaE * ds(iRay)
+             tau = alphaNu * ds(iray)
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
              else
@@ -1240,6 +1264,8 @@ contains
     jBarContInternal = jBarContInternal / SUM(weight(1:nRay))
     if (onthespot) jbarcontinternal = 0.d0
     jbarCont = jBarContExternal + jBarContInternal
+
+!    write(*,*) "test ",jbarcont(itestfreq),jbarcontExternal(itestfreq),jbarcontInternal(itestfreq)
 
     if (any(jbarCont < 0.d0)) then
        write(*,*) "fatal jbar cont bug"
@@ -1334,6 +1360,7 @@ contains
     integer       ::   n_rmdr, m
     integer       ::   ierr           ! error flag
     integer       ::   nVoxels
+    integer       ::   isubcell
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
@@ -1472,14 +1499,14 @@ contains
 !
 !! Lyman continuum in detailed balance
 
-!    do iAtom = 1, nAtom
-!       do iTrans = 1, thisAtom(iAtom)%nTrans
-!          if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
-!             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-!             write(*,*) "lyman cont detailed balance ",itrans
-!          endif
-!       enddo
-!    enddo
+    do iAtom = 1, nAtom
+       do iTrans = 1, thisAtom(iAtom)%nTrans
+          if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+             write(*,*) "lyman cont detailed balance ",itrans
+          endif
+       enddo
+    enddo
 
 ! Lyman lines in detailed balance
 
@@ -1492,25 +1519,13 @@ contains
 !       enddo
 !    enddo
 
-    allocate(octalArray(grid%nOctals))
-    nOctal = 0
-    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    nInUse = 0
+    call getOctalArrayLocal(grid%octreeRoot,octalArray, nInUse, .true.)
+    allocate(octalArray(nInUse))
+    nInUse = 0
+    call getOctalArrayLocal(grid%octreeRoot,octalArray, nInUse, .false.)
+!    grid%starpos1 = vector(1.d5,0.d0,0.d0)
     call  sortOctalArray(octalArray,grid)
-
-    nInUse = 0 
-    do iOctal = 1, SIZE(octalArray)
-       thisOctal => octalArray(iOctal)%content
-       do subcell = 1, thisOctal%maxChildren
-          if (.not.thisOctal%hasChild(subcell)) then
-             
-             thisOctal%inFlow(subcell) = &
-                  thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
-             
-             if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) nInuse = nInUse + 1
-          endif
-       enddo
-    enddo
-    if (writeoutput) write(*,*) "Total number of cells in use ",nInuse
 
 
     call randomNumberGenerator(randomSeed=.true.)
@@ -1551,7 +1566,7 @@ contains
 
           nIter = nIter + 1
           idump = idump + 1
-          write(ifilename,'(a,i2.2,a)') "ionization",idump,".dat"
+          write(ifilename,'(a,i2.2,a)') "ionization",01,".dat"
           if (myRankisZero) then
              open(69, file=ifilename, status="unknown", form="formatted")
              write(69,'(a)') &
@@ -1565,11 +1580,11 @@ contains
           ! default loop indecies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
-
           
 
 #ifdef MPI
     
+
             ! Set the range of index for octal loop used later.     
             np = nThreadsGlobal
             n_rmdr = MOD(SIZE(octalArray),np)
@@ -1595,9 +1610,9 @@ contains
             !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction, nt, iCellSeed) &
 	    !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
 	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
-	    !$OMP PRIVATE(fac,dne,message,ifilename,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
+	    !$OMP PRIVATE(fac,dne,message,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
 	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans,tfilename,x1,w) &
-            !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom) &
+            !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom, sobolevApprox, ifilename) &
 	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom, myrankGlobal, writeoutput)
 
             !$OMP MASTER
@@ -1958,6 +1973,7 @@ contains
                       
                         if (myRankisZero) then
                            open(69, file=ifilename, status="old", position = "append", form="formatted")
+                           rCore = source(1)%radius
                            if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
                                 log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
 
@@ -1973,15 +1989,15 @@ contains
                                 log10(thisOctal%rho(subcell))
                            close(69) 
                            itmp = itmp + 1
-                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
-                           open(69, file=tfilename, status="unknown",form="formatted")
-                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
-                           w = 0.5d0*(1.d0 - x1)
-                           do i = 1, nFreq
-                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1), &
-                                   bnu(freq(i),dble(thisOctal%temperature(subcell)))
-                           enddo
-                           close(69)
+!                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
+!                           open(69, file=tfilename, status="unknown",form="formatted")
+!                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
+!                           w = 0.5d0*(1.d0 - x1)
+!                           do i = 1, nFreq
+!                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1), &
+!                                   bnu(freq(i),dble(thisOctal%temperature(subcell)))
+!                           enddo
+!                           close(69)
 
                         endif
 
@@ -2042,6 +2058,18 @@ contains
        if(my_rank == 0) write(*,*) "Updating MPI grids"
 
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     nVoxels = 0
+     do i = 1, SIZE(octalArray)
+
+        thisOctal => octalArray(i)%content
+          
+        do iSubcell = 1, thisOctal%maxChildren
+           if (.not.thisOctal%hasChild(iSubcell)) then
+              nVoxels = nVoxels + 1
+           endif
+        end do
+     enddo
+
      allocate(tArrayd(1:nVoxels))
      allocate(tempArrayd(1:nVoxels))
      tArrayd = 0.d0
@@ -2094,7 +2122,7 @@ contains
 !          gridconverged = .true.
 !          write(*,*) "forcing convergence !!!!!!!!!!"
 
-          if (sobolevApprox) gridConverged = .true.
+          if (sobolevApprox.and.(istage==nstage)) gridConverged = .true.
 
 !         deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
 !               weightFreq, weightOmega, hcol, heicol, heiicol, iCont)
@@ -2198,7 +2226,7 @@ contains
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom,iUpper)/ thisAtom(iatom)%transFreq(iTrans)
 	  
           thisOctal%etaLine(subcell) = etaLine * 1.d10
-          
+!          write(45,*) modulus(subcellCentre(thisOctal,subcell)), thisOctal%etaline(subcell)
        endif
     enddo
   end subroutine calcEtaLine
@@ -2231,12 +2259,14 @@ contains
        iLower = thisAtom(iatom)%iLower(iTrans)
           nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
           nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-          alphanu = (hCgs*thisAtom(iatom)%transFreq(iTrans)/fourPi)/ thisAtom(iatom)%transFreq(iTrans)
 
+          alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi)  &
+               /thisAtom(iAtom)%transFreq(iTrans)          
           call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
 
-          alphanu = alphanu * (nLower * Blu - nUpper * Bul) !/thisAtom(iatom)%transFreq(iTrans)
+          alphanu = alphanu * (nLower * Blu - nUpper * Bul)
           thisOctal%chiLine(subcell) = alphanu * 1.d10
+!          write(45,*) modulus(subcellCentre(thisOctal,subcell)), thisOctal%chiline(subcell)
           
        endif
     enddo
@@ -2244,6 +2274,7 @@ contains
 
 
   recursive  subroutine calcContinuumOpacities(thisOctal, thisAtom, nAtom, freq)
+    use input_variables, only : opticallyThickContinuum
     type(MODELATOM) :: thisAtom(:)
     real(double) :: freq
     real(double) :: nstar(10,50)
@@ -2272,16 +2303,19 @@ contains
              enddo
           enddo
 
-          thisOctal%kappaAbs(subcell, 1) = bfOpacity(freq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                     thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) * 1.d10
-
-          thisOctal%kappaSca(subcell, 1) = thisOctal%ne(subcell) * sigmaE * 1.d10
-          thisOctal%etaCont(subcell)  = bfEmissivity(freq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
-                     dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell)) * 1.d10
 
           thisOctal%kappaAbs(subcell,1) = 1.d-30
-!          thisOctal%kappaSca(subcell,1) = 1.d-30
+          thisOctal%kappaSca(subcell,1) = 1.d-30
           thisOctal%etaCont(subcell) = 1.d-30
+
+          if (opticallyThickContinuum) then
+             thisOctal%kappaAbs(subcell, 1) = bfOpacity(freq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), nstar, &
+                  thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) * 1.d10
+
+             thisOctal%kappaSca(subcell, 1) = 1.d-30 !e-scattering inc in absorption
+             thisOctal%etaCont(subcell)  = bfEmissivity(freq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
+                  dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell)) * 1.d10
+          endif
 
           
        endif
@@ -2732,7 +2766,7 @@ contains
                    enddo
                 enddo
                 bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                     thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
+                     nstar, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
                 bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
                      dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell))
                 dustOpac = 0.d0
@@ -3225,8 +3259,12 @@ contains
     if (cmf) then
        call identifyTransitionCmf(dble(lamLine), thisAtom, iAtom, iTrans)
        transitionFreq = thisAtom(iAtom)%transfreq(iTrans)
+!       open(45,file="chiline.dat",form="formatted",status="unknown")
        call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+!       close(45)
+!       open(45,file="etaline.dat",form="formatted",status="unknown")
        call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+!       close(45)
        call calcContinuumOpacities(grid%octreeRoot, thisAtom, nAtom, transitionfreq)
     endif
 
@@ -3464,7 +3502,7 @@ contains
     integer :: nMonte
     integer :: iv1, iv2, nx, ny
     integer :: nPoints, nVoxels, nOctals
-    real(double), allocatable :: xPoints(:), yPoints(:)
+    real(double), pointer :: xPoints(:), yPoints(:)
     real(double) :: dx, dy
     integer :: nRay
     integer, parameter :: maxRay = 10000
@@ -3472,6 +3510,7 @@ contains
     real :: area(maxray)
     real(double) :: totArea
     integer :: iRay
+    character(len=80) :: message
 
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
@@ -3552,22 +3591,13 @@ contains
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
 
-    call countVoxels(grid%octreeRoot, nOctals, nVoxels)
-    nPoints = nVoxels + 10000 * nSource + cube%nx*cube%ny
-    allocate(xPoints(1:nPoints),yPoints(1:nPoints))
-    call createRayGridGeneric(grid, source, xPoints, yPoints, nPoints)
-    do ix = 1, cube%nx
-       do iy = 1, cube%ny
-          nPoints = nPoints + 1
-          xPoints(nPoints) = cube%xAxis(ix)
-          yPoints(nPoints) = cube%yAxis(iy)
-       enddo
-    enddo
-
-!    do i = 1, nPoints
-!       write(76,*) xpoints(i),ypoints(i)
-!    enddo
+    call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, viewVec, xProj, yProj)
     
+    write(message,'(a,i7)') "Total number of rays: ",nPoints
+    call writeInfo(message)
+    do i = 1, npoints
+       write(55,*) xpoints(i), ypoints(i)
+    enddo
     dx = cube%xAxis(2)-cube%xAxis(1)
     dy = cube%yAxis(2)-cube%yAxis(1)
 
@@ -3880,60 +3910,84 @@ contains
   end subroutine testRays
 
 
-  subroutine createRayGridGeneric(grid, SourceArray, xPoints, yPoints, nPoints)
+  subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, viewVec, xProj, yProj)
+    use amr_mod, only : countVoxels
+    use datacube_mod, only : datacube
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: sourceArray(:)
+    type(DATACUBE) :: cube
+    type(VECTOR) :: viewVec, xProj, yProj
     integer :: nPoints, i, j
-    real(double) :: xPoints(:), yPoints(:)
+    integer :: nOctals, nVoxels
+    real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nr, nphi
     real(double) :: r, phi, rStar, rMin, rMax, dphi
-    nr = 10
-    nphi = 20
+    integer :: ix, iy, iSource
+    logical :: enhanced 
+    enhanced = .true.
 
-    nPoints = 0
-    rStar = 1.0*sourceArray(1)%radius
-    rMin = rStar/20.
-    do i = 1, nr
-       r = rMin + (rStar-rMin)*real(i-1)/real(nr-1)
-       call randomNumberGenerator(getDouble=dphi)
-       dphi = dphi * twoPi
-       do j = 1, nPhi
-          phi = dphi + twoPi * real(j-1)/real(nPhi)
-
-          nPoints = nPoints + 1
-          xPoints(nPoints) = r * cos(phi)
-          yPoints(nPoints) = r * sin(phi)
-       enddo
-    enddo
-
-    nr = 100
     nphi = 50
-    rMin = 1.001 * rStar
-    rMax = grid%octreeRoot%subcellSize*2.d0
+    nr = 10
+    npoints = 0
+    if (enhanced) then
+       call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+       if ((grid%octreeRoot%oneD).or.(grid%octreeRoot%twoD)) then
+          nPoints = nVoxels * 50
+       else
+          nPoints = nVoxels
+       endif
+       nPoints = nPoints + size(sourceArray) * nr * nphi
+    endif
+    nPoints = nPoints + cube%nx*cube%ny
 
-    do i = 1, nr
-       r = log10(rMin) + log10(rMax/rmin)*real(i-1)/real(nr-1)
-       r = 10.d0**r
-       call randomNumberGenerator(getDouble=dphi)
-       dphi = dphi * twoPi
-       do j = 1, nPhi
-          phi = dphi + twoPi * real(j-1)/real(nPhi)
-
+    allocate(xPoints(1:nPoints),yPoints(1:nPoints))
+    npoints = 0
+    if (enhanced) then
+       call  getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    
+       do iSource = 1, size(sourceArray)
+          do i = 1, nr
+             r = (dble(i)/dble(nr-1)) * sourceArray(iSource)%radius
+             call randomNumberGenerator(getDouble=dphi)
+             dphi = dphi * twoPi
+             do j = 1, nphi
+                phi = twoPi * dble(j)/dble(nPhi-1)+dphi
+                nPoints = nPoints + 1
+                xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+                yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+             enddo
+          enddo
+       enddo
+    endif
+    do ix = 1, cube%nx
+       do iy = 1, cube%ny
           nPoints = nPoints + 1
-          xPoints(nPoints) = r * cos(phi)
-          yPoints(nPoints) = r * sin(phi)
+          xPoints(nPoints) = cube%xAxis(ix)
+          yPoints(nPoints) = cube%yAxis(iy)
        enddo
     enddo
-    
+
+
   end subroutine createRayGridGeneric
 
-  recursive  subroutine  getProjectedPoints(thisOctal, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+  subroutine getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    type(GRIDTYPE) :: grid
+    integer :: nPoints, nOctals, nVoxels
+    type(VECTOR) :: xProj, yProj, viewVec, rVec
+    real(double), pointer :: xPoints(:), yPoints(:)
+
+
+    call getProjectedPointsRecursive(grid%octreeRoot,  viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+
+  end subroutine getProjectedPoints
+
+  recursive  subroutine  getProjectedPointsRecursive(thisOctal, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i
+    integer :: subcell, i,j
     integer :: nPoints
     type(VECTOR) :: xProj, yProj, viewVec, rVec
-    real(double) :: xPoints(:), yPoints(:)
+    real(double) :: xPoints(:), yPoints(:), phi, dphi
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3941,18 +3995,40 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call getProjectedPoints(child, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+                call getProjectedPointsRecursive(child, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
                 exit
              end if
           end do
        else
-          nPoints = nPoints + 1
-          rVec = subcellCentre(thisOctal, subcell)
-          xPoints(nPoints) = xProj.dot.rVec
-          yPoints(nPoints) = yProj.dot.rVec
+          call randomNumberGenerator(getDouble=dphi)
+          dphi = dphi * twoPi
+          if (thisOctal%threeD) then
+             nPoints = nPoints + 1
+             rVec = subcellCentre(thisOctal, subcell)
+             xPoints(nPoints) = xProj.dot.rVec
+             yPoints(nPoints) = yProj.dot.rVec
+          else if (thisOctal%twoD) then
+             do j = 1, 50
+                phi = dble(j-1)/49.d0 * twoPi + dphi
+                rVec =  subcellCentre(thisOctal, subcell)
+                rVec = rotateZ(rVec, phi)
+                nPoints = nPoints + 1
+                xPoints(nPoints) = xProj.dot.rVec
+                yPoints(nPoints) = yProj.dot.rVec
+             enddo
+          else if (thisOctal%oneD) then
+             do j = 1, 50
+                phi = dble(j)/50.d0 * twoPi + dphi
+                rVec =  subcellCentre(thisOctal, subcell)
+                rVec = rotateZ(rVec, phi)
+                nPoints = nPoints + 1
+                xPoints(nPoints) = rVec%x
+                yPoints(nPoints) = rVec%y
+             enddo
+          endif
        endif
     enddo
-  end subroutine getProjectedPoints
+  end subroutine getProjectedPointsRecursive
 
 
   subroutine getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, source, &
@@ -4034,7 +4110,7 @@ contains
     tostar = tostar / dble(disttostar)
 
     sinang = source%radius / disttostar
-    ang = asin(min(1.d0,max(-1.d0,sinAng)))
+    ang = asin(min(1.,max(-1.,sinAng)))
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
     ntheta = 4
@@ -4082,6 +4158,51 @@ contains
 !    integer :: nPoints
 !
 !  end subroutine getSurfacePoints
+
+  RECURSIVE SUBROUTINE getOctalArrayLocal(thisOctal,array,counter, docountOnly) 
+    ! returns an array of pointers to all of the subcells in the grid.
+    ! NB because fortran cannot create arrays of pointers, the output
+    !   array is actually of a derived type which *contains* the 
+    !   pointer to an octal.
+    ! counter should be set to 0 before this routine is called
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER                            :: thisOctal
+    TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array 
+    INTEGER, INTENT(INOUT)                          :: counter 
+    logical :: docountOnly
+    INTEGER              :: i
+    TYPE(octal), POINTER :: child
+
+
+    ! if this is the root of the tree, we initialize the counter
+    IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
+    
+    if (thisOctal%nChildren == 0) then
+       if (ANY(thisOctal%inFlow).and.ANY(thisOctal%temperature > 3000.)) then
+          counter = counter + 1 
+          if (.not.doCountOnly) then
+             array(counter)%content => thisOctal
+             !array(counter)%inUse = .TRUE. 
+             array(counter)%inUse = .NOT. thisOctal%hasChild 
+          endif
+       endif
+    endif
+
+
+    
+    IF ( thisOctal%nChildren > 0 ) THEN
+      DO i = 1, thisOctal%nChildren, 1
+        
+        ! call this subroutine recursively on each of its children
+        child => thisOctal%child(i)
+        CALL getOctalArrayLocal(child,array,counter, docountOnly)
+        
+      END DO
+    END IF
+
+  END SUBROUTINE getOctalArrayLocal
 
 
 
