@@ -263,7 +263,7 @@ contains
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
-        call setupXarray(grid, xarray, nLambda)
+        call setupXarray(grid, xarray, nLambda, dustRadeq=.true.)
         if (globalnSource > 0) then
            call randomSource(globalsourcearray, globalnSource, &
                 i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
@@ -305,7 +305,7 @@ contains
         endif
 #endif
         if (dustPhysics) then
-           call setupXarray(grid, xarray, nLambda)
+           call setupXarray(grid, xarray, nLambda,dustRadeq=.true.)
            call setupDust(grid, xArray, nLambda, miePhase, nMumie)
            usedust = .true.
            realdust = .true.
@@ -314,19 +314,19 @@ contains
         call molecularLoop(grid, globalMolecule)
      endif
      
-     if (atomicPhysics.and.statisticalEquilibrium.and.cmf) then
+     if (atomicPhysics.and.statisticalEquilibrium) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
 
-     if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
-        call amrStateqnew(grid, lte, nLower, nUpper, globalSourceArray(1)%surface,&
-                       recalcPrevious=.false.)
-     endif
+!     if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
+!        call amrStateqnew(grid, lte, nLower, nUpper, globalSourceArray(1)%surface,&
+!                       recalcPrevious=.false.)
+!     endif
 
 
      if (photoionPhysics.and.photoionEquilibrium) then 
 
-        call setupXarray(grid, xArray, nLambda)
+        call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
         if (.not.grid%splitOverMPI) then
@@ -352,7 +352,7 @@ contains
         stop
 #endif
      else 
-        call setupXarray(grid, xArray, nLambda)
+        call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
 #ifdef MPI 
@@ -377,10 +377,12 @@ contains
 
    end subroutine doPhysics
 
-   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam)
+   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
      use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
      use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, calcDataCube
      use photoion_mod, only : refineLambdaArray
+
+     logical, optional :: dustRadeq, photoion, atomicDataCube
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
      integer :: nLambda
@@ -392,97 +394,86 @@ contains
 
      if (associated(xarray)) deallocate(xarray)
 
-     if (molecularPhysics) then
-        nLambda = 100
-        allocate(xarray(1:nLambda))
-        lamStart = 1200.d0
-        lamEnd = 1.d7
-        logLamStart = log10(lamStart)
-        logLamEnd = log10(lamEnd)
-        do i = 1, nlambda
-           fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           xArray(i) = fac
-        enddo
-     endif
+     
+     if (PRESENT(dustRadEq)) then
+        if (dustRadEq) then
+              
+           if ( present(numLam) ) then 
+              nLambda = numLam
+           else
+              nLambda = 1000
+           end if
 
-     if (dustPhysics) then
 
-        if ( present(numLam) ) then 
-           nLambda = numLam
-        else
-           nLambda = 1000
-        end if
-        allocate(xarray(1:nLambda))
-
-        if ( present(lamMin) ) then 
-           lamStart = lamMin
-        else
-           lamStart = 10.d0
-        end if
-        if ( present(lamMax) ) then 
-           lamEnd = lamMax
-        else
-           lamEnd = 1.d7
-        end if
-
-        if ( present(wavLin) ) then 
-           if (wavLin) then 
-              call setupLinSpacing
+           allocate(xarray(1:nLambda))
+           
+           if ( present(lamMin) ) then 
+              lamStart = lamMin
+           else
+              lamStart = 10.d0
+           end if
+           if ( present(lamMax) ) then 
+              lamEnd = lamMax
+           else
+              lamEnd = 1.d7
+           end if
+           
+           if ( present(wavLin) ) then 
+              if (wavLin) then 
+                 call setupLinSpacing
+              else
+                 call setupLogSpacing
+              endif
            else
               call setupLogSpacing
+           end if
+           
+           if (lamFile) then
+              call setupLamFile
            endif
-        else
-           call setupLogSpacing
-        end if
-
-        if (lamFile) then
-           call setupLamFile
         endif
-
-
+     endif
+     
+     if (PRESENT(atomicDataCube)) then
+        if (atomicDataCube) then
+           nLambda = nv
+           allocate(xArray(1:nLambda))
+           lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
+           lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
+           do i = 1, nLambda
+              xArray(i) = lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1)
+           enddo
+        endif
      endif
 
-     if (atomicPhysics.and.calcDataCube) then
-        nLambda = nv
-       allocate(xArray(1:nLambda))
-       lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
-       lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
-       do i = 1, nLambda
-          xArray(i) = lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1)
-       enddo
+    if (PRESENT(photoion)) then
+       if (photoion) then
+          nLambda = 1000
+          allocate(xarray(1:nLambda))
+          lamStart = 10.d0
+          lamEnd = 1.d7
+          logLamStart = log10(lamStart)
+          logLamEnd = log10(lamEnd)
+          xArray(1) = lamStart
+          xArray(2) = lamEnd
+          nCurrent = 2
+          call refineLambdaArray(xArray, nCurrent, grid)
+          nt = nLambda - nCurrent
+          do i = 1, nt
+             fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+             fac = 10.**fac
+             nCurrent=nCurrent + 1
+             xArray(nCurrent) = fac
+             call sort(nCurrent, xArray)
+          enddo
+       endif
     endif
 
-     if (photoionPhysics) then
-        nLambda = 1000
-        allocate(xarray(1:nLambda))
-        lamStart = 10.d0
-        lamEnd = 1.d7
-        logLamStart = log10(lamStart)
-        logLamEnd = log10(lamEnd)
-        xArray(1) = lamStart
-        xArray(2) = lamEnd
-        nCurrent = 2
-        call refineLambdaArray(xArray, nCurrent, grid)
-        nt = nLambda - nCurrent
-        do i = 1, nt
-           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           nCurrent=nCurrent + 1
-           xArray(nCurrent) = fac
-           call sort(nCurrent, xArray)
-        enddo
-     endif
 
-
-
-
-     if (dustPhysics.or.photoIonPhysics.or.atomicPhysics.or.molecularPhysics) then
-        grid%nLambda = nLambda
-        if (associated(grid%lamArray)) deallocate(grid%lamArray)
-        allocate(grid%lamArray(1:nLambda))
-        grid%lamArray = xarray
-     endif
+    grid%nLambda = nLambda
+    if (associated(grid%lamArray)) deallocate(grid%lamArray)
+    allocate(grid%lamArray(1:nLambda))
+    grid%lamArray = xarray
 
      contains
 

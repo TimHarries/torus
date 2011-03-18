@@ -66,11 +66,11 @@ contains
     endif
 
 
-    call setupXarray(grid, xArray, nLambda)
 
 
 
     if (atomicPhysics.and.calcDataCube) then
+       call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
 !       gridDistance = 140.d0* pctocm/1.d10
@@ -80,6 +80,7 @@ contains
     endif
 
     if (photoionPhysics.and.splitoverMPI.and.calcImage) then
+       call setupXarray(grid, xArray, nLambda, photoion=.true.)
        observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
 #ifdef MPI
        do i = 1, nImage
@@ -93,7 +94,7 @@ contains
 
     if (molecularPhysics.and.calcDataCube) then
        if (dustPhysics) then
-          call setupXarray(grid, xarray, nLambda)
+          call setupXarray(grid, xarray, nLambda, dustRadEq = .true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
           usedust = .true.
           realdust = .true.
@@ -133,7 +134,7 @@ contains
        mie = .true.
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
-               wavLin=SEDwavLin, numLam=SEDnumLam)
+               wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
           call getSublimationRadius(grid, rSub)
           write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
@@ -161,7 +162,7 @@ contains
              lamStart = lambdaImage(i)
              lamEnd = lambdaImage(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
-                  wavLin=.true., numLam=1)
+                  wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              fastIntegrate=.true.
@@ -180,7 +181,7 @@ contains
        lineEmission = .true.
        grid%lineEmission = .true.
        if ( calcspectrum ) then 
-          call setupXarray(grid, xarray, nVelocity)
+          call setupXarray(grid, xarray, nVelocity, atomicDataCube=.true.)
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface, 0., 0., tdisc, tvec, 1,       &
@@ -199,7 +200,7 @@ contains
              lamStart = lambdaImage(i)
              lamEnd = lambdaImage(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
-                  wavLin=.true., numLam=1)
+                  wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
