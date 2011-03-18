@@ -1302,7 +1302,7 @@ contains
     type(MODELATOM) :: thisAtom(:)
     type(VECTOR), allocatable :: position(:), direction(:)
     real(double), allocatable :: rayDeltaV(:)
-    integer :: nOctal, iOctal, subcell
+    integer :: iOctal, subcell
     real(double), allocatable :: ds(:), phi(:), i0(:,:)
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
@@ -1343,11 +1343,11 @@ contains
     real(double), parameter :: convergeTol = 1.d-6, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
-    character(len=80) :: message, ifilename, tfilename
+    character(len=80) :: message, ifilename
     real :: r
     logical :: ionized
     integer :: nIter, idump, nt, nInuse, nConverged
-    real(double) :: percentageConverged,x1,w
+    real(double) :: percentageConverged
     real(double), save, allocatable :: oldpops1(:,:), oldpops2(:,:), oldpops3(:,:), oldpops4(:,:)
     integer, parameter :: iNgStep = 5
     integer :: nStage
