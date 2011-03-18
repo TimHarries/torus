@@ -1173,7 +1173,6 @@ contains
   subroutine calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, ne, nray, ds, freq, nfreq, &
        iCont, jBarCont, weight)
     use input_variables, only : opticallyThickContinuum, onTheSpot
-    use atom_mod, only : bnu
     real(double) :: iCont(:,:), jBarCont(:), ds(:), ne
     integer :: nAtom
     type(OCTAL), pointer :: thisOctal
@@ -1284,9 +1283,8 @@ contains
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
     use utils_mod, only : ngstep
-    use atom_mod, only : bnu
     use random_mod
-    use amr_mod, only: getOctalArray, sortOctalArray
+    use amr_mod, only: sortOctalArray
 #ifdef MEMCHECK
     use memory_mod, only : resetGlobalMemory
 #endif
@@ -1611,8 +1609,10 @@ contains
 	    !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
 	    !$OMP PRIVATE(fac,dne,message,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
 	    !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,r,iatom,itrans,tfilename,x1,w) &
-            !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans, indexRbbtrans, indexatom, sobolevApprox, ifilename) &
-	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays, source, thisAtom, myrankGlobal, writeoutput)
+            !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans) &
+            !$OMP SHARED(indexRbbtrans, indexatom, sobolevApprox, ifilename) &
+	    !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays) &
+	    !$OMP SHARED(source, thisAtom, myrankGlobal, writeoutput)
 
             !$OMP MASTER
             call randomNumberGenerator(getIseed=iseed)
@@ -3203,9 +3203,10 @@ contains
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
     use modelatom_mod, only : identifyTransitionCmf
+    use datacube_mod, only : dumpCubeToSpectrum
 #ifdef USECFITSIO
     use input_variables, only : dataCubeFilename
-    use datacube_mod, only : writedataCube, dumpCubeToSpectrum
+    use datacube_mod, only : writedataCube
 #endif
 #ifdef MPI
     include 'mpif.h'
@@ -3484,7 +3485,6 @@ contains
     use input_variables, only : npixels, nv, imageSide, maxVel, &
          positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
-    use amr_mod, only : countVoxels
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -4109,7 +4109,7 @@ contains
     tostar = tostar / dble(disttostar)
 
     sinang = source%radius / disttostar
-    ang = asin(min(1.,max(-1.,sinAng)))
+    ang = asin(min(1.d0,max(-1.d0,sinAng)))
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
     ntheta = 4
