@@ -1,4 +1,3 @@
-!Wibbel wibbel
 !
 !            T   O   R   U  S
 !
