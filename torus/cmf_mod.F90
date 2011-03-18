@@ -31,11 +31,10 @@ contains
   subroutine solveLevels(grid, source, thisOctal, subcell, nPops, jnuLine,  &
        temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, dfreq, nfreq, sobolevApprox)
 !    use input_variables, only : debug
-    use input_variables, only : rcore, opticallyThickContinuum
+    use input_variables, only : opticallyThickContinuum
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(OCTAL), pointer :: thisOctal
-    real :: r, eps
     integer :: subcell
     logical :: sobolevApprox
     integer :: nFreq, ifreq
