@@ -231,7 +231,7 @@ contains
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics, cmf, lte, nlower, nupper
+         lucy_undersampled, molecularPhysics, hydrodynamics
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
@@ -378,8 +378,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
-     use input_variables, only : photoionPhysics, dustPhysics, molecularPhysics, atomicPhysics
-     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, calcDataCube
+     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
      use photoion_mod, only : refineLambdaArray
 
      logical, optional :: dustRadeq, photoion, atomicDataCube

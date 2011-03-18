@@ -3500,7 +3500,7 @@ contains
     integer ::  i
     integer :: nMonte
     integer :: iv1, iv2, nx, ny
-    integer :: nPoints, nVoxels, nOctals
+    integer :: nPoints
     real(double), pointer :: xPoints(:), yPoints(:)
     real(double) :: dx, dy
     integer :: nRay
@@ -3920,7 +3920,7 @@ contains
     integer :: nOctals, nVoxels
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nr, nphi
-    real(double) :: r, phi, rStar, rMin, rMax, dphi
+    real(double) :: r, phi, dphi
     integer :: ix, iy, iSource
     logical :: enhanced 
     enhanced = .true.
@@ -3971,8 +3971,8 @@ contains
 
   subroutine getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
     type(GRIDTYPE) :: grid
-    integer :: nPoints, nOctals, nVoxels
-    type(VECTOR) :: xProj, yProj, viewVec, rVec
+    integer :: nPoints
+    type(VECTOR) :: xProj, yProj, viewVec
     real(double), pointer :: xPoints(:), yPoints(:)
 
 
