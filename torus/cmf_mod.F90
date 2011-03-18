@@ -1357,6 +1357,7 @@ contains
     integer       ::   n_rmdr, m
     integer       ::   ierr           ! error flag
     integer       ::   nVoxels
+    integer       :: nOCtal
     integer       ::   isubcell
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif

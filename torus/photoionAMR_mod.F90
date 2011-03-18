@@ -2269,7 +2269,7 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: chargeExchangeRecombination
     real(double) :: dt
     real(double) :: recombRateArray(grid%nIon), bigRecombRate(grid%nIon), recombTime(grid%nIon)
-    integer :: iStart, iEnd, nIonizatioNStages, k 
+    integer :: iStart, iEnd, nIonizatioNStages, k
     
 
     photoLoop = .false.
@@ -2293,7 +2293,7 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt)
           !Thaw -at present only considering H at ionization front
           if(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)) > 0.05d0 .and.  &
                thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)) < 0.95d0) then
-
+	     k = 1
              do while(k <= grid%nIon)
 
                 !Find biggest recomb rates across grid for all species

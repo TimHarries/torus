@@ -2495,8 +2495,8 @@ contains
                 tc = returnPhysicalUnitLength(dx)/ (returnPhysicalUnitSpeed(cs) + returnPhysicalUnitSpeed(speed))
 
 
-                write(*,*) "min(tc, returnPhysicalUnitLength(dx)/(returnPhysicalUnitSpeed(cs) + &
-                     returnPhysicalUnitSpeed(speed))", tc
+                write(*,*) "min(tc, returnPhysicalUnitLength(dx)/(returnPhysicalUnitSpeed(cs) +", &
+                     "returnPhysicalUnitSpeed(speed))", tc
              end if
              
              tc = min(tc, dx / (cs + speed) )
