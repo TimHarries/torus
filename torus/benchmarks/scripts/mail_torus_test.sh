@@ -8,7 +8,7 @@ cd  ${TORUS_TEST_DIR}
 
 attach_list=""
 
-for file in cvs_log.txt build_only_*/*/compile_log* benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt
+for file in svn_log.txt build_only_*/*/compile_log* benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt
  
 do
     if [[ ! -e ${file} ]]; then 

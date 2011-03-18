@@ -170,8 +170,8 @@ echo "Working directory is ${TEST_DIR}"
 mkdir -p ${TEST_DIR}
 cd ${TEST_DIR}
 
-echo Checking out torus from CVS archive...
-    /usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
+echo Checking out torus from SVN archive...
+    /usr/bin/svn checkout https://repository.astro.ex.ac.uk/torus/trunk/torus/ torus > svn_log.txt 2>&1 
 }
 
 run_torus_test_suite()
@@ -393,8 +393,6 @@ case ${MODE} in
 esac
 
 
-export CVSROOT=:ext:${USER}@reduce.astro.ex.ac.uk:/home/cvs/th
-export CVS_RSH=ssh
 if [[ $DO_BUILD == no ]]; then
     if [[ ! -x ${TORUS_BINARY} ]]; then
 	echo "ERROR: ${TORUS_BINARY} is not an executable file"
