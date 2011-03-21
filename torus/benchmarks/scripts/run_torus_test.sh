@@ -24,7 +24,7 @@ if [[ $? -eq 0 ]]; then
     echo "Compilation completed with ${num_warn} warnings."
 else
     echo "Compilation failed."
-    exit 1
+    exit 2
 fi
 
 cd ..
@@ -323,6 +323,7 @@ echo ""
 echo "Use the -d option to run the daily tests (default)."
 echo "Use the -s option to run the stable version tests."
 echo "Use the -z option to run the tests on zen."
+echo "Use the -b option to run build tests only"
 echo "Use -e followed by full path to a torus executable to use a pre-built binary"
 echo ""
 }
@@ -350,6 +351,7 @@ do
 	-s) export MODE=stable;;
 	-d) export MODE=daily;;
 	-z) export MODE=zen;;
+	-b) export MODE=build;;
 	-e) export DO_BUILD=no
 	    export CLOBBEROK=no
 	    shift 
@@ -369,6 +371,16 @@ case ${MODE} in
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   export NAG_KUSARI_FILE=${HOME}/NAG/nag.licence
 	   echo TORUS daily test suite started on `date`
+	   echo -------------------------------------------------------------------
+	   echo;;
+
+    build) export SYS_TO_TEST=" "
+           export BUILD_ONLY="g95 nagfor ompi gfortran ompiosx"
+	   export DEBUG_OPTS="yes"
+	   export TORUS_FC="g95"
+	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
+	   export NAG_KUSARI_FILE=${HOME}/NAG/nag.licence
+	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
 
@@ -415,6 +427,7 @@ for opt in ${DEBUG_OPTS}; do
 	daily)  export TEST_DIR=${HOME}/SCRATCH/torus_daily_test;;
 	stable) export TEST_DIR=${HOME}/SCRATCH/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
 	zen)    export TEST_DIR=/scratch/${USER}/torus_tests/debug=${USEDEBUGFLAGS};;
+	build)  export TEST_DIR=${HOME}/SCRATCH/torus_build_tests
     esac
 
     export TORUS_DATA=${TEST_DIR}/torus/data
