@@ -304,6 +304,11 @@ echo
 
 for sys in ${BUILD_ONLY}; do
 
+    if [[ $SYSTEM == ompiosx ]]; then
+	export OLD_PATH=${PATH}
+	export PATH=/opt/ompi/gfortran/bin:${PATH}
+    fi
+
     export SYSTEM=${sys}
     export WORKING_DIR=${TEST_DIR}/build_only_${SYSTEM}
     mkdir ${WORKING_DIR}
@@ -311,6 +316,10 @@ for sys in ${BUILD_ONLY}; do
 
     make_build
 #    make_lib
+
+    if [[ $SYSTEM == ompiosx ]]; then
+	export PATH=${OLD_PATH}
+    fi
 
 done
 }
