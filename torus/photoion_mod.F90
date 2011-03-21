@@ -2186,7 +2186,7 @@ subroutine dumpLexington(grid, epsoverdt)
   integer :: subcell
   integer :: i, j
   real(double) :: r, theta
-  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,nei
   real(double) :: oirate, oiirate, oiiirate, oivrate
   real(double) :: v, epsoverdt
   type(VECTOR) :: octVec
@@ -2207,7 +2207,7 @@ subroutine dumpLexington(grid, epsoverdt)
   do i = 1, 500
      r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
 
-     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
+     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;neii=0;neiii=0;ne=0. !;niv=0;nei=0;neiv=0
 
      oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
      heating = 0.d0; cooling = 0.d0; netot = 0.d0
@@ -2237,11 +2237,11 @@ subroutine dumpLexington(grid, epsoverdt)
         CIV = CIV + thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
         NII = NII + thisOctal%ionfrac(subcell,returnIonNumber("N II", grid%ion, grid%nIon))
         NIII = NIII + thisOctal%ionfrac(subcell,returnIonNumber("N III", grid%ion, grid%nIon))
-        NIV = NIV + thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon))
-        NeI = NeI + thisOctal%ionfrac(subcell,returnIonNumber("Ne I", grid%ion, grid%nIon))
+!        NIV = NIV + thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon))
+!        NeI = NeI + thisOctal%ionfrac(subcell,returnIonNumber("Ne I", grid%ion, grid%nIon))
         NeII = NeII + thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon))
         NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
-        NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
+!        NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
         netot = netot + thisOctal%ne(subcell)
         call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDT)
         heating = heating + totalHeating
@@ -2253,16 +2253,16 @@ subroutine dumpLexington(grid, epsoverdt)
              fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O II", grid%ion, grid%nIon)))
         oiiirate = oiiirate + &
              fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
-        oivrate = oivrate + &
-             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O IV", grid%ion, grid%nIon)))
+!        oivrate = oivrate + &
+!             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O IV", grid%ion, grid%nIon)))
 
         t  = t + thisOctal%temperature(subcell)
      enddo
 
 
      hi = hi / 100.; hei = hei/100.; oii = oii/100; oiii = oiii/100.; cii=cii/100.
-     ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100.; niv=niv/100.
-     nei=nei/100.;neii=neii/100.; neiii=neiii/100.; neiv=neiv/100.;t=t/100.
+     ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100. !; niv=niv/100.
+     neii=neii/100.; neiii=neiii/100.;t=t/100. !nei=nei/100.; neiv=neiv/100.
      netot = netot / 100
 
      oirate = oirate / 100.
@@ -2281,18 +2281,18 @@ subroutine dumpLexington(grid, epsoverdt)
      civ = log10(max(civ, 1e-10))
      nii = log10(max(nii, 1e-10))
      niii = log10(max(niii, 1e-10))
-     niv= log10(max(niv, 1e-10))
-     nei = log10(max(nei, 1e-10))
+!     niv= log10(max(niv, 1e-10))
+!     nei = log10(max(nei, 1e-10))
      neii = log10(max(neii, 1e-10))
      neiii = log10(max(neiii, 1e-10))
-     neiv = log10(max(neiv, 1e-10))
+!     neiv = log10(max(neiv, 1e-10))
      ne = log10(max(ne,1.d-10))
 
 
      write(21,'(f5.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
 
      write(20,'(f5.3,f9.1,  14f8.3)') &
-          r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+          r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,,nei
      write(22,*) r*1.e10/pctocm,netot
   enddo
   close(20)
