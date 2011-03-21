@@ -171,7 +171,8 @@ mkdir -p ${TEST_DIR}
 cd ${TEST_DIR}
 
 echo Checking out torus from SVN archive...
-    /usr/bin/svn checkout https://repository.astro.ex.ac.uk/torus/trunk/torus/ torus > svn_log.txt 2>&1 
+/usr/bin/svn checkout https://repository.astro.ex.ac.uk/torus/trunk/torus/ torus > svn_log.txt 2>&1 
+grep "Checked out revision" svn_log.txt
 }
 
 run_torus_test_suite()
