@@ -2488,16 +2488,16 @@ contains
 !             if (myrank == 1) write(*,*) "speed ", returnPhysicalUnitSpeed(speed)/1.d5, " km/s ",speed, " code"
 !             if (myrank == 1) write(*,*) "dx ", returnPhysicalUnitLength(dx), " cm ",dx," code"
 
-             if(myRank == 1) then
-                tc = min(tc, dx / (cs + speed))
-                write(*,*) "tc = min(tc, dx / (cs + speed) )", tc
+            ! if(myRank == 1) then
+            !    tc = min(tc, dx / (cs + speed))
+            !    write(*,*) "tc = min(tc, dx / (cs + speed) )", tc!
 
-                tc = returnPhysicalUnitLength(dx)/ (returnPhysicalUnitSpeed(cs) + returnPhysicalUnitSpeed(speed))
+             !   tc = returnPhysicalUnitLength(dx)/ (returnPhysicalUnitSpeed(cs) + returnPhysicalUnitSpeed(speed))
 
 
-                write(*,*) "min(tc, returnPhysicalUnitLength(dx)/(returnPhysicalUnitSpeed(cs) +", &
-                     "returnPhysicalUnitSpeed(speed))", tc
-             end if
+            !    write(*,*) "min(tc, returnPhysicalUnitLength(dx)/(returnPhysicalUnitSpeed(cs) +", &
+            !         "returnPhysicalUnitSpeed(speed))", tc
+            ! end if
              
              tc = min(tc, dx / (cs + speed) )
 !             if (myrank == 1) write(*,*) "tc ",tc
