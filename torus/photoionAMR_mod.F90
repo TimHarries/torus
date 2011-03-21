@@ -2274,12 +2274,12 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt, t
     TYPE(GRIDTYPE) :: grid
     TYPE(OCTAL),pointer :: thisOctal
     TYPE(OCTAL),pointer :: child
-    integer :: i, subcell, iIon
+    integer :: i, subcell
     logical :: photoLoop
     real(double) :: chargeExchangeRecombination
     real(double) :: dt, timeSinceLastRecomb
     real(double) :: recombRateArray(grid%nIon), bigRecombRate(grid%nIon), recombTime(grid%nIon)
-    integer :: iStart, iEnd, nIonizatioNStages, k 
+    integer :: k 
     
 
     photoLoop = .false.
