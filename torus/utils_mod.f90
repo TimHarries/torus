@@ -4281,20 +4281,21 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     INTEGER     MAXN, MAXCAN, MAXVER
     PARAMETER ( MAXN = 1080, MAXCAN = 1000, MAXVER = 500 )
 
-    REAL        RX(:), RY(:), AREA(:)
+    REAL(double)        RX(:), RY(:), AREA(:)
 
-    REAL        PX(MAXCAN), PY(MAXCAN), PS(MAXCAN)
+    REAL(double)        PX(MAXCAN), PY(MAXCAN), PS(MAXCAN)
     INTEGER     TAG(MAXCAN), VERTS(MAXCAN)
 
-    REAL        RXVER(MAXVER), RYVER(MAXVER)
+    REAL(double)        RXVER(MAXVER), RYVER(MAXVER)
     INTEGER     IVER(MAXVER), JVER(MAXVER)
     INTEGER     NABLST(MAXVER,MAXN), NNAB(MAXN), INAB, JNAB
 
     INTEGER     NCAN, NVER, NCOORD, NEDGE
     INTEGER     I, J, CAN, VER, N
-    REAL        BOX, BOXINV, RCUT, RCUTSQ, COORD
-    REAL        RXJ, RYJ, RXIJ, RYIJ, RIJSQ
-    real        xc(maxn), yc(maxn), xp(maxn), yp(maxn), a,totArea
+    logical :: success
+    REAL(double)        BOX, BOXINV, RCUT, RCUTSQ, COORD
+    REAL(double)        RXJ, RYJ, RXIJ, RYIJ, RIJSQ
+    real(double)        xc(maxn), yc(maxn), xp(maxn), yp(maxn), a,totArea
 !    CHARACTER   CNFILE*30
     LOGICAL     OK
 
@@ -4423,7 +4424,14 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
           CALL WORK ( MAXCAN, MAXVER, NCAN, NVER, NEDGE, &
                            PX, PY, PS, VERTS, &
-                           RXVER, RYVER, IVER, JVER )
+                           RXVER, RYVER, IVER, JVER , SUCCESS)
+
+          if (.not.success) then
+             do i = 1, n
+                write(*,*) "rx ",rx(i),ry(i)
+             enddo
+             stop
+          endif
 
           !       ** WRITE OUT RESULTS **
 
@@ -4461,11 +4469,11 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
              enddo
              call  sortConvex(nver, xp, yp, xc, yc)
                         write(33,*) "plot ""-"" using 1:2 w l"
-             do ver = 1, nver
-                write(33,*) xc(ver), yc(ver)
-             enddo
-             write(33,*) xc(1), yc(1)
-             write(33,*) "end"
+!             do ver = 1, nver
+!                write(33,*) xc(ver), yc(ver)
+!             enddo
+!             write(33,*) xc(1), yc(1)
+!             write(33,*) "end"
              call areaPolygon(nver,xc,yc,a)
              totArea = totArea + a
              area(j) = a
@@ -4519,7 +4527,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
           enddo
 
-          COORD = REAL ( NCOORD ) / REAL ( N )
+          COORD = dble ( NCOORD ) / dble ( N )
 
 !          WRITE(*,'(/1X,'' AVERAGE COORDINATION NUMBER = '',F10.5)') COORD
 
@@ -4570,7 +4578,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
 
        SUBROUTINE WORK ( MAXCAN, MAXV, NN, NV, NE, RX, RY, RS, VERTS, &
-            VX, VY, IV, JV )
+            VX, VY, IV, JV , SUCCESS)
 
          !    *******************************************************************
          !    ** ROUTINE TO PERFORM VORONOI ANALYSIS                           **
@@ -4581,26 +4589,29 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
          INTEGER     MAXCAN, NN, MAXV, NV, NE
          INTEGER     VERTS(MAXCAN)
-         REAL        RX(MAXCAN), RY(MAXCAN), RS(MAXCAN)
-         REAL        VX(MAXV), VY(MAXV)
+         REAL(double)        RX(MAXCAN), RY(MAXCAN), RS(MAXCAN)
+         REAL(double)        VX(MAXV), VY(MAXV)
          INTEGER     IV(MAXV), JV(MAXV)
 
          LOGICAL     OK
          INTEGER     I, J, L, NN1, N, V
-         REAL        AI, BI, CI, AJ, BJ, CJ, DET, DETINV
-         REAL        VXIJ, VYIJ
-         REAL        TOL
-         PARAMETER ( TOL = 1.E-6 )
+         REAL(double)        AI, BI, CI, AJ, BJ, CJ, DET, DETINV
+         REAL(double)        VXIJ, VYIJ
+         REAL(double)        TOL
+         logical :: success
+         PARAMETER ( TOL = 1.d-10 )
 
          !    *******************************************************************
 
          !    ** IF THERE ARE LESS THAN 3 POINTS GIVEN **
          !    ** WE CANNOT CONSTRUCT A POLYGON         **
 
+         success = .true.
+
          IF ( NN .LT. 3 ) THEN
 
             WRITE(*,'('' LESS THAN 3 POINTS GIVEN TO WORK '',I5)') NN
-            STOP
+            Stop
 
          ENDIF
 
@@ -4629,7 +4640,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
                   !             ** THE EDGES INTERSECT **
 
-                  DETINV = 1.0 / DET
+                  DETINV = 1.d0 / DET
 
                   VXIJ = ( BI * CJ - BJ * CI ) * DETINV
                   VYIJ = ( AJ * CI - AI * CJ ) * DETINV
@@ -4681,7 +4692,12 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
          IF ( NV .LT. 3 ) THEN
 
             WRITE(*,'('' LESS THAN 3 VERTICES FOUND IN WORK '',I5)') NV
-            STOP
+            do  i = 1, nn
+               write(*,*) i, rx(i), ry(i)
+            enddo
+
+            SUCCESS = .false.
+            goto 666
 
          ENDIF
 
@@ -4736,6 +4752,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
          ENDIF
 
+666 continue
        end SUBROUTINE WORK
 
 
@@ -4748,12 +4765,12 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
          !    *******************************************************************
 
          INTEGER MAXCAN, NN
-         REAL    RX(MAXCAN), RY(MAXCAN), RS(MAXCAN)
+         REAL(double)    RX(MAXCAN), RY(MAXCAN), RS(MAXCAN)
          INTEGER TAG(MAXCAN)
 
          LOGICAL CHANGE
          INTEGER I, ITOP, I1, TAGI
-         REAL    RXI, RYI, RSI
+         REAL(double)    RXI, RYI, RSI
 
          !    *******************************************************************
 
@@ -4801,10 +4818,10 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
        subroutine sortConvex(n, xp, yp, xc, yc)
          implicit none
          integer n
-         real xp(*), yp(*)
-         real xc(*), yc(*)
-         real cosTheta(100)
-         real xs, ys, ts
+         real(double) xp(*), yp(*)
+         real(double) xc(*), yc(*)
+         real(double) cosTheta(100)
+         real(double) xs, ys, ts
          logical swap
          integer i, ip
          ip = 1
@@ -4843,8 +4860,8 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
        subroutine areaPolygon(n,x,y,area)
          implicit none
          integer  n, i, nt
-         real x(*), y(*), xt(1000), yt(1000)
-         real area, sum1, sum2
+         real(double) x(*), y(*), xt(1000), yt(1000)
+         real(double) area, sum1, sum2
          do i = 1, n
             xt(i) = x(i)
             yt(i) = y(i)

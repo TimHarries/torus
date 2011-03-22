@@ -3067,7 +3067,7 @@ contains
                 endif
                 x1 = max(0.d0, x1)
                 x2 = min(x2, tVal)
-                nTau = 100
+                nTau = 20
                 distArray(1) = 0.d0
                 do i = 1, nTau-1
                    distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
@@ -3507,7 +3507,7 @@ contains
     integer :: nRay
     integer, parameter :: maxRay = 10000
     real(double) :: xRay(maxray), yRay(maxray)
-    real :: area(maxray)
+    real(double) :: area(maxray)
     real(double) :: totArea
     integer :: iRay
     character(len=80) :: message
@@ -3593,7 +3593,7 @@ contains
 
     call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, viewVec, xProj, yProj)
     
-    write(message,'(a,i7)') "Total number of rays: ",nPoints
+    write(message,*) "Total number of rays: ",nPoints
     call writeInfo(message)
     do i = 1, npoints
        write(55,*) xpoints(i), ypoints(i)
@@ -3696,8 +3696,8 @@ contains
     integer :: nPoints
     integer :: nRay, i
     real(double) :: xRay(:), yRay(:)
-    real :: area(:)
-    real, allocatable :: xTmp(:), yTmp(:)
+    real(double) :: area(:)
+    real(double) , allocatable:: xTmp(:), yTmp(:)
     nRay = 0
     do i = 1, nPoints
        if ((abs(xCen-xPoints(i)) < dx/2.d0).and. &
@@ -3716,12 +3716,12 @@ contains
     else if (nRay == 2) then
        area(1:2) = 0.5*dx*dy
     else if (nRay == 3) then
-       area(1:2) = 0.33333*dx*dy
+       area(1:3) = 0.33333*dx*dy
     else
        allocate(xtmp(1:nray),ytmp(1:nRay))
        xtmp = xRay - (xcen-dx/2.d0)
        ytmp = yRay - (yCen-dy/2.d0)
-       call voron2(nRay, xTmp, yTmp, real(dx), area(1:nRay))
+       call voron2(nRay, xTmp, yTmp, dx, area(1:nRay))
        deallocate(xTmp, yTmp)
     endif
   end subroutine findRaysInPixel
@@ -3921,13 +3921,13 @@ contains
     integer :: nOctals, nVoxels
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nr, nphi
-    real(double) :: r, phi, dphi
-    integer :: ix, iy, iSource
+    real(double) :: r, phi, dphi, dx, dy
+    integer :: ix, iy, iSource, nr1, nr2
     logical :: enhanced 
     enhanced = .true.
 
     nphi = 50
-    nr = 10
+    nr = 100
     npoints = 0
     if (enhanced) then
        call countVoxels(grid%octreeRoot,nOctals,nVoxels)
@@ -3938,37 +3938,116 @@ contains
        endif
        nPoints = nPoints + size(sourceArray) * nr * nphi
     endif
-    nPoints = nPoints + cube%nx*cube%ny
+    nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
     if (enhanced) then
        call  getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
     
+       nr1 = 20
+       nr2 = nr - nr1
        do iSource = 1, size(sourceArray)
-          do i = 1, nr
-             r = (dble(i)/dble(nr-1)) * sourceArray(iSource)%radius
+          do i = 1, nr1
+             r = (dble(i)/dble(nr1)) * sourceArray(iSource)%radius
              call randomNumberGenerator(getDouble=dphi)
              dphi = dphi * twoPi
              do j = 1, nphi
-                phi = twoPi * dble(j)/dble(nPhi-1)+dphi
+                phi = twoPi * dble(j)/dble(nPhi)+dphi
                 nPoints = nPoints + 1
                 xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
                 yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
              enddo
           enddo
        enddo
+       do iSource = 1, size(sourceArray)
+          do i = 1, nr2
+             r = log10(sourceArray(iSource)%radius) + &
+                  (log10(20.d0*sourceArray(iSource)%radius)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
+             r = 10.d0**r
+             call randomNumberGenerator(getDouble=dphi)
+             dphi = dphi * twoPi
+             do j = 1, nphi
+                phi = twoPi * dble(j)/dble(nPhi)+dphi
+                nPoints = nPoints + 1
+                xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+                yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+             enddo
+          enddo
+       enddo
+
     endif
+    dx = cube%xAxis(2) - cube%xAxis(1)
+    dy = cube%yAxis(2) - cube%yAxis(1)
     do ix = 1, cube%nx
        do iy = 1, cube%ny
           nPoints = nPoints + 1
-          xPoints(nPoints) = cube%xAxis(ix)
-          yPoints(nPoints) = cube%yAxis(iy)
+          xPoints(nPoints) = cube%xAxis(ix) - dx / 4.d0
+          yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0
+
+          nPoints = nPoints + 1
+          xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0
+          yPoints(nPoints) = cube%yAxis(iy) + dy / 4.d0
+
+          nPoints = nPoints + 1
+          xPoints(nPoints) = cube%xAxis(ix) - dx / 4.d0
+          yPoints(nPoints) = cube%yAxis(iy) + dy / 4.d0
+
+          nPoints = nPoints + 1
+          xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0
+          yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0
+
        enddo
     enddo
 
+    call writeInfo("Removing identical rays from generic grid...",TRIVIAL)
+    call removeIdenticalPoints(nPoints, xPoints, yPoints)
+    call writeInfo("Done.",TRIVIAL)
 
   end subroutine createRayGridGeneric
+
+  subroutine removeIdenticalPoints(n, x, y)
+    integer :: n
+    real(double), pointer :: x(:), y(:)
+    real(double), pointer :: xt(:), yt(:), d(:)
+    integer :: nt, i, j
+    real(double) :: d1, eps
+    character(len=80) :: message
+
+    eps = EPSILON(d1)
+
+    allocate(d(1:n))
+    d = 1.d30
+    do i = 1, n
+       do j = 1, n
+          if (i /= j) then
+             d1 =  sqrt((x(i)-x(j))**2 + (y(i)-y(j))**2)
+             d(i) = min(d1, d(i))
+          endif
+       enddo
+    enddo
+    nt = 0
+    do i = 1, n
+       if (d(i) < eps) then
+          nt = nt + 1
+       endif
+    enddo
+    write(message,'(a,i7,a)') "Removing ",n - nt, " points"
+    call writeInfo(message,TRIVIAL)
+    allocate(xt(nt), yt(nt))
+    nt = 0
+    do i = 1, n
+       if (d(i) < eps) then
+          nt = nt + 1
+          xt(nt) = x(i)
+          yt(nt) = y(i)
+       endif
+    enddo
+    deallocate(x,y)
+    n = nt
+    x => xt
+    y => yt
+  end subroutine removeIdenticalPoints
 
   subroutine getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
     type(GRIDTYPE) :: grid
@@ -3977,12 +4056,13 @@ contains
     real(double), pointer :: xPoints(:), yPoints(:)
 
 
-    call getProjectedPointsRecursive(grid%octreeRoot,  viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    call getProjectedPointsRecursive(grid, grid%octreeRoot,  viewVec, xProj, yProj, xPoints, yPoints, nPoints)
 
   end subroutine getProjectedPoints
 
-  recursive  subroutine  getProjectedPointsRecursive(thisOctal, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
     type(octal), pointer   :: thisOctal
+    type(GRIDTYPE) :: grid
     type(octal), pointer  :: child 
     integer :: subcell, i,j
     integer :: nPoints
@@ -3995,7 +4075,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call getProjectedPointsRecursive(child, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+                call getProjectedPointsRecursive(grid, child, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
                 exit
              end if
           end do
