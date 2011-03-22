@@ -4028,7 +4028,6 @@ contains
     enddo
     nt = 0
     do i = 1, n
-       write(*,*) x(i),y(i),d(i)
        if (d(i) > eps) then
           nt = nt + 1
        endif
