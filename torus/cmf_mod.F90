@@ -3614,6 +3614,8 @@ contains
           do iy = 1, cube%ny
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
                  nPoints,  nRay, xRay, yRay, area)
+
+
              
              totArea = 0.d0
              cube%intensity(ix,iy,iv-iv1+1) = 0.d0
@@ -3718,9 +3720,10 @@ contains
     else if (nRay == 3) then
        area(1:3) = 0.33333*dx*dy
     else
+       call removeIdenticalPoints(nRay, xRay, yRay)
        allocate(xtmp(1:nray),ytmp(1:nRay))
-       xtmp = xRay - (xcen-dx/2.d0)
-       ytmp = yRay - (yCen-dy/2.d0)
+       xtmp(1:nRay) = xRay(1:nray) - (xcen-dx/2.d0)
+       ytmp(1:nray) = yRay(:nRay) - (yCen-dy/2.d0)
        call voron2(nRay, xTmp, yTmp, dx, area(1:nRay))
        deallocate(xTmp, yTmp)
     endif
@@ -3938,12 +3941,13 @@ contains
        endif
        nPoints = nPoints + size(sourceArray) * nr * nphi
     endif
+    nPoints = 0
     nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
     if (enhanced) then
-       call  getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+!       call  getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
     
        nr1 = 20
        nr2 = nr - nr1
@@ -4000,29 +4004,28 @@ contains
        enddo
     enddo
 
-    call writeInfo("Removing identical rays from generic grid...",TRIVIAL)
-    call removeIdenticalPoints(nPoints, xPoints, yPoints)
-    call writeInfo("Done.",TRIVIAL)
 
   end subroutine createRayGridGeneric
 
   subroutine removeIdenticalPoints(n, x, y)
     integer :: n
-    real(double), pointer :: x(:), y(:)
-    real(double), pointer :: xt(:), yt(:), d(:)
+    real(double) :: x(:), y(:)
+    real(double), allocatable :: xt(:), yt(:), d(:)
     integer :: nt, i, j
     real(double) :: d1, eps
     character(len=80) :: message
 
-    eps = EPSILON(d1)
+    eps = 1.d-6
 
+    write(*,*) "starting with n ", n
     allocate(d(1:n))
     d = 1.d30
     do i = 1, n
-       do j = 1, n
+       do j = i, n
           if (i /= j) then
              d1 =  sqrt((x(i)-x(j))**2 + (y(i)-y(j))**2)
              d(i) = min(d1, d(i))
+             d(j) = min(d1, d(j))
           endif
        enddo
     enddo
@@ -4032,21 +4035,22 @@ contains
           nt = nt + 1
        endif
     enddo
-    write(message,'(a,i7,a)') "Removing ",n - nt, " points"
-    call writeInfo(message,TRIVIAL)
-    allocate(xt(nt), yt(nt))
+    write(*,'(a,i7,a)') "Removing ",n - nt, " points"
+!    call writeInfo(message,TRIVIAL)
+    allocate(xt(n), yt(n))
+
+    xt = x
+    yt = y
     nt = 0
     do i = 1, n
        if (d(i) < eps) then
           nt = nt + 1
-          xt(nt) = x(i)
-          yt(nt) = y(i)
+          x(nt) = xt(i)
+          y(nt) = yt(i)
        endif
     enddo
-    deallocate(x,y)
+    deallocate(xt,yt,d)
     n = nt
-    x => xt
-    y => yt
   end subroutine removeIdenticalPoints
 
   subroutine getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
