@@ -1126,13 +1126,13 @@ contains
        integer, optional :: ifreq
        type(MODELATOM) :: thisAtom(:)
        integer :: nAtom
-       real(double) :: pops(:,:), nstar(:,:)
+       real(double) :: pops(:,:), nstar(:,:),test
        integer :: iAtom
        integer :: iTrans
        real(double) :: kappa, fac, ne, temperature
        integer :: ilower, j
        logical, save :: firstTime = .true.
-
+       test = nstar(1, 1)
        kappa = 0.d0
        do iAtom = 1, nAtom
           do j = 1, thisAtom(iAtom)%nRBFtrans
