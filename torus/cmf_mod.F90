@@ -3591,7 +3591,7 @@ contains
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
 
-    call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, viewVec, xProj, yProj)
+    call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, xProj, yProj)
     
     write(message,*) "Total number of rays: ",nPoints
     call writeInfo(message)
@@ -3913,13 +3913,13 @@ contains
   end subroutine testRays
 
 
-  subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, viewVec, xProj, yProj)
+  subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: sourceArray(:)
     type(DATACUBE) :: cube
-    type(VECTOR) :: viewVec, xProj, yProj
+    type(VECTOR) :: xProj, yProj
     integer :: nPoints, i, j
     integer :: nOctals, nVoxels
     real(double), pointer :: xPoints(:), yPoints(:)
@@ -3939,15 +3939,15 @@ contains
        else
           nPoints = nVoxels
        endif
+       nPoints = 0
        nPoints = nPoints + size(sourceArray) * nr * nphi
     endif
-    nPoints = 0
     nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
     if (enhanced) then
-!       call  getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+!       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
     
        nr1 = 20
        nr2 = nr - nr1
@@ -4013,37 +4013,33 @@ contains
     real(double), allocatable :: xt(:), yt(:), d(:)
     integer :: nt, i, j
     real(double) :: d1, eps
-    character(len=80) :: message
 
     eps = 1.d-6
 
-    write(*,*) "starting with n ", n
     allocate(d(1:n))
     d = 1.d30
     do i = 1, n
-       do j = i, n
+       do j = 1, n
           if (i /= j) then
              d1 =  sqrt((x(i)-x(j))**2 + (y(i)-y(j))**2)
              d(i) = min(d1, d(i))
-             d(j) = min(d1, d(j))
           endif
        enddo
     enddo
     nt = 0
     do i = 1, n
-       if (d(i) < eps) then
+       write(*,*) x(i),y(i),d(i)
+       if (d(i) > eps) then
           nt = nt + 1
        endif
     enddo
-    write(*,'(a,i7,a)') "Removing ",n - nt, " points"
-!    call writeInfo(message,TRIVIAL)
     allocate(xt(n), yt(n))
 
     xt = x
     yt = y
     nt = 0
     do i = 1, n
-       if (d(i) < eps) then
+       if (d(i) > eps) then
           nt = nt + 1
           x(nt) = xt(i)
           y(nt) = yt(i)
@@ -4053,24 +4049,24 @@ contains
     n = nt
   end subroutine removeIdenticalPoints
 
-  subroutine getProjectedPoints(grid, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+  subroutine getProjectedPoints(grid, xProj, yProj, xPoints, yPoints, nPoints)
     type(GRIDTYPE) :: grid
     integer :: nPoints
-    type(VECTOR) :: xProj, yProj, viewVec
+    type(VECTOR) :: xProj, yProj
     real(double), pointer :: xPoints(:), yPoints(:)
 
 
-    call getProjectedPointsRecursive(grid, grid%octreeRoot,  viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+    call getProjectedPointsRecursive(grid, grid%octreeRoot,  xProj, yProj, xPoints, yPoints, nPoints)
 
   end subroutine getProjectedPoints
 
-  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal,  xProj, yProj, xPoints, yPoints, nPoints)
     type(octal), pointer   :: thisOctal
     type(GRIDTYPE) :: grid
     type(octal), pointer  :: child 
     integer :: subcell, i,j
     integer :: nPoints
-    type(VECTOR) :: xProj, yProj, viewVec, rVec
+    type(VECTOR) :: xProj, yProj, rVec
     real(double) :: xPoints(:), yPoints(:), phi, dphi
   
     do subcell = 1, thisOctal%maxChildren
@@ -4079,7 +4075,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call getProjectedPointsRecursive(grid, child, viewVec, xProj, yProj, xPoints, yPoints, nPoints)
+                call getProjectedPointsRecursive(grid, child,  xProj, yProj, xPoints, yPoints, nPoints)
                 exit
              end if
           end do
