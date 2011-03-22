@@ -24,7 +24,7 @@ if [[ $? -eq 0 ]]; then
     echo "Compilation completed with ${num_warn} warnings."
 else
     echo "Compilation failed."
-    exit 2
+    export RETURN_CODE=2
 fi
 
 cd ..
@@ -207,6 +207,14 @@ for sys in ${SYS_TO_TEST}; do
 	cd ..
     fi
 
+# Check if we have an executable. If not proceed to the next SYSTEM
+    if [[ -x build/torus.${SYSTEM} ]]; then
+	echo "Found executable file torus.${SYSTEM}"
+    else
+	echo "Executable not found. Skipping ${SYSTEM}"
+	continue
+    fi
+
     make_comparespec
 
 # Run hydro benchmark
@@ -344,6 +352,7 @@ echo ""
 export MODE=daily
 export DO_BUILD=yes
 export CLOBBEROK=yes
+export RETURN_CODE=0 
 
 # If we're running on Zen then set the appropriate mode
 this_host=`hostname`
@@ -379,7 +388,7 @@ case ${MODE} in
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
-	   export NAG_KUSARI_FILE=${HOME}/NAG/nag.licence
+	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
@@ -389,7 +398,7 @@ case ${MODE} in
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
-	   export NAG_KUSARI_FILE=${HOME}/NAG/nag.licence
+	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
@@ -478,5 +487,5 @@ for opt in ${DEBUG_OPTS}; do
 
 done
 
-exit
+exit ${RETURN_CODE}
 
