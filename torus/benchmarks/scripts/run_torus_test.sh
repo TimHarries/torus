@@ -304,12 +304,13 @@ echo
 
 for sys in ${BUILD_ONLY}; do
 
+    export SYSTEM=${sys}
+
     if [[ $SYSTEM == ompiosx ]]; then
 	export OLD_PATH=${PATH}
 	export PATH=/opt/ompi/gfortran/bin:${PATH}
     fi
 
-    export SYSTEM=${sys}
     export WORKING_DIR=${TEST_DIR}/build_only_${SYSTEM}
     mkdir ${WORKING_DIR}
     cd    ${WORKING_DIR} 
