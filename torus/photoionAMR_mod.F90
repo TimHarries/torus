@@ -150,7 +150,7 @@ contains
        deltaTforDump = 3.14d10 !1kyr
        nextDumpTime = deltaTforDump
        if (grid%geometry == "hii_test") deltaTforDump = 9.d10
-       if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)/5.d0 !1kyr
+       if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !1kyr
        timeofNextDump = 0.d0       
      else
        deltaTforDump = 1.57d11 !5kyr
@@ -318,6 +318,8 @@ contains
  end if
 
     tEnd = 200.d0*3.14d10 !200kyr 
+    !THAW - for profiling
+    !tEnd = 5.d0*3.14d10 !5kyr
 
     if(grid%geometry == "hii_test") then
        tEnd = 3.14d13 !1x10^6 year
@@ -394,14 +396,14 @@ contains
 
        if(photoLoopGlobal) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
-          call ionizeGrid(grid%octreeRoot)
+          !call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then
              loopLimitTime = grid%currentTime+dt
           else
              looplimittime = deltaTForDump
           end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 9, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .True., .true.)
 
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
@@ -808,7 +810,7 @@ contains
              else if(grid%octreeRoot%threeD) then
                 !nMonte = (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
-                nMonte = 13107200
+                nMonte = 209715200
              else
                 !nMonte = 2**(maxDepthAMR)
                 nMonte = 100000
@@ -819,7 +821,8 @@ contains
              if(grid%octreeRoot%twoD) then
                 nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                nMonte = 100.d0 * (8.d0**(maxDepthAMR))
+                !nMonte = 1000000.d0
+                nMonte = 200.d0 * (8.d0**(maxDepthAMR))
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
@@ -872,7 +875,6 @@ contains
        photonPacketStack%freq = 0.d0
        toSendStack%freq = 0.d0
        toSendStack%destination = 0
-!       !THaw - wft is going on here?
 !       if(myRank /= 0) then
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !       end if   
@@ -1510,141 +1512,144 @@ if (grid%geometry == "tom") then
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
                 if (.not.thisOctal%hasChild(subcell)) then
-                
-                   if (niter == 1) then
-                      thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-                      thisThreadConverged = .false.
-                      
-                   else
-                      
-                      deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
-                           thisOctal%TLastIter(subcell)  
-                      deltaT = abs(deltaT)                 
-                      
-                      !    print *, "deltaT = ", deltaT
-                      
-                      if(deltaT > 5.0d-2) then
-                         if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
-                            anyUndersampled = .true.
-                         endif
-                      end if
-                      
-                      if(deltaT < 5.0d-2 .and. .not. failed) then
-                         thisThreadConverged = .true.
-                      else 
-                         if(niter > 2) then
-                            fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
-                                 thisOctal%TLastLastIter(subcell))
 
-                            if(fluctuationCheck < 5.0d-2 .and. .not. failed) then!
-                               thisThreadConverged = .true.
+                   if (.not.thisoctal%ghostcell(subcell)) then
+
+
+                      if (niter == 1) then
+                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
+                         thisThreadConverged = .false.
+                         
+                      else
+                         
+                         deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
+                              thisOctal%TLastIter(subcell)  
+                         deltaT = abs(deltaT)                 
+                         
+                         !    print *, "deltaT = ", deltaT
+                         
+                         if(deltaT > 5.0d-2) then
+                            if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
+                               anyUndersampled = .true.
+                            endif
+                         end if
+                         
+                         if(deltaT < 5.0d-2 .and. .not. failed) then
+                            thisThreadConverged = .true.
+                         else 
+                            if(niter > 2) then
+                               fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
+                                    thisOctal%TLastLastIter(subcell))
+                               
+                               if(fluctuationCheck < 5.0d-2 .and. .not. failed) then!
+                                  thisThreadConverged = .true.
+                               else
+                                  thisThreadConverged = .false.                             
+                                  if(deltaT /= 0.d0 .and. .not. failed) then
+                                     print *, "deltaT = ", deltaT
+                                     print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+                                     print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+                                     print *, "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
+                                     print *, "cell center ", subcellCentre(thisOctal,subcell)
+                                     print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                                  end if
+                                  failed = .true.
+                               end if
                             else
-                               thisThreadConverged = .false.                             
+                               thisThreadConverged = .false.  
+			 
                                if(deltaT /= 0.d0 .and. .not. failed) then
-                               print *, "deltaT = ", deltaT
-                               print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-                               print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-                               print *, "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
-                               print *, "cell center ", subcellCentre(thisOctal,subcell)
-                               print *, "nCrossings ", thisOctal%nCrossings(subcell)
-                            end if
+                                  print *, "deltaT = ", deltaT
+                                  print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+                                  print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+                                  print *, "cell center ", subcellCentre(thisOctal,subcell)
+                                  print *, "nCrossings ", thisOctal%nCrossings(subcell)
+                               end if
                                failed = .true.
                             end if
-                         else
-                            thisThreadConverged = .false.  
-			 
-                           if(deltaT /= 0.d0 .and. .not. failed) then
-                               print *, "deltaT = ", deltaT
-                               print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-                               print *, "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-                               print *, "cell center ", subcellCentre(thisOctal,subcell)
-                               print *, "nCrossings ", thisOctal%nCrossings(subcell)
-                            end if
-                            failed = .true.
                          end if
+                         
+                         !Check for temperature oscillations
+                         if(niter > 1) then
+                            thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
+                         end if
+                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                       end if
-                      
-                      !Check for temperature oscillations
-                      if(niter > 1) then
-                         thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
-                      end if
-                      thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                    end if
                 end if
-               
+                end do
+                
+                !Send result to master rank 
              end do
              
-             !Send result to master rank 
-          end do
-         
-!       print *, "RANK ", myRank, " SENDS  DATA TO RANK 0"
-!       print *, "thisThreadConverged = ", thisThreadConverged
-       !Send converged information
-       call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+             !       print *, "RANK ", myRank, " SENDS  DATA TO RANK 0"
+             !       print *, "thisThreadConverged = ", thisThreadConverged
+             !Send converged information
+             call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
 
-    else
-        failed = .false.
-        underSamFailed = .false.
-        underSampledTOT = .false.
-
-	!!!Rank 0, collate results and decide if converged 
-       converged = .false.
-        do iThread = 1 , (nThreadsGlobal-1)
-              call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
-              call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-              if(thisThreadConverged .and. .not. failed) then
-                 converged = .true.
-              else
-                 converged = .false.
-                 failed = .true.
-             end if
-             if(anyUndersampled) then
-                 undersampledTOT=.true.
-              end if
-           end do
-
-           do iThread = 1, (nThreadsGlobal-1)
-              call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
-              call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
-           end do
-    end if
-
-    if(myRank /= 0) then
-       call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
-       call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
-
-    end if
-
+          else
+             failed = .false.
+             underSamFailed = .false.
+             underSampledTOT = .false.
+             
+!!!Rank 0, collate results and decide if converged 
+             converged = .false.
+             do iThread = 1 , (nThreadsGlobal-1)
+                call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
+                call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                if(thisThreadConverged .and. .not. failed) then
+                   converged = .true.
+                else
+                   converged = .false.
+                   failed = .true.
+                end if
+                if(anyUndersampled) then
+                   undersampledTOT=.true.
+                end if
+             end do
+             
+             do iThread = 1, (nThreadsGlobal-1)
+                call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
+                call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
+             end do
+          end if
+          
+          if(myRank /= 0) then
+             call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+             
+          end if
+          
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-
+     
      deallocate(octalArray)    
-
-!     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!    converged = .true.
-! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-
-  if(converged) then
-     if(myRank == 0) then
-      print *, "photoionization loop converged at iteration ", niter
+     
+     !     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     
+     if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     !    converged = .true.
+     ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+     
+     if(converged) then
+        if(myRank == 0) then
+           print *, "photoionization loop converged at iteration ", niter
+        end if
+     else if(underSampledTOT .and. monteCheck) then
+        if(myRank == 0) then
+           print *, "Undersampled cell, increasing nMonte"
+        end if
+        nMonte = nMonte *2.d0
      end if
-  else if(underSampledTOT .and. monteCheck) then
-     if(myRank == 0) then
-        print *, "Undersampled cell, increasing nMonte"
-     end if 
-      nMonte = nMonte *2.d0
-  end if
-  
-!  call quickSublimate(grid%octreeRoot) ! do dust sublimation
-  
-    call torus_mpi_barrier
-
-! if(tlimit /= 1.d20) then
-!   write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
-!  call writeVtkFile(grid, vtkFilename, &
-!      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+     
+     !  call quickSublimate(grid%octreeRoot) ! do dust sublimation
+     
+     call torus_mpi_barrier
+     
+     ! if(tlimit /= 1.d20) then
+     !   write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+     !  call writeVtkFile(grid, vtkFilename, &
+     !      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
 !      "dust1        ","sourceCont   "/))
 ! call writeAMRgrid("tmp.grid",.false.,grid)
 ! end if
@@ -1673,7 +1678,8 @@ end subroutine photoIonizationloopAMR
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton)
   include 'mpif.h'
-  integer :: myRank, ierr
+!  include 'VT.inc'
+  integer :: myRank, ierr!, trackErr, sclHandle, classHandle, stateHandle, sclStart, sclEnd
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec
    type(OCTAL), pointer :: thisOctal, tempOctal
@@ -1707,7 +1713,21 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical :: ok, outofTime
    logical :: sourcePhoton 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+ !  call VTINIT(trackErr)
+
+!     call VTCLASSDEF("testClass", classHandle, trackErr)
+  ! call VTCLASSDEF("testClass", 1, trackErr
+
+!      call VTFUNCDEF("testSym", classHandle, stateHandle, trackErr)
+   ! call VTFUNCDEF("testSym", 1, 2, trackErr)
+ 
+ !  call VTSCLDEF("photoionAMR_mod.F90", 1726, sclStart ,trackErr)
+ !  call VTSCLDEF("photoionAMR_mod.F90", 1766, sclEnd ,trackErr)
+
+
+ !  call VTENTER(classHandle, sclStart, trackErr)
+   call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     stillinGrid = .true.
     escaped = .false.
@@ -1717,10 +1737,18 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     photonMomentum = epsOverDeltaT / cSpeed
     thisLam = (cSpeed / thisFreq) * 1.e8
+
+    !THAW - profiling
+ !   call VTBEGIN(stateHandle, trackErr)
+  !  call VTBEGIN(2, trackErr)
+
     call locate(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
        write(*,*) "ilam errro",ilam,thisLam
     endif
+
+!    call VTEND(stateHandle, trackErr)
+  !  call VTEND(2, trackErr)
 
 ! select an initial random tau and find distance to next cell
 
@@ -1735,6 +1763,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     octVec = rVec
     thisOctVec = rVec
+
+!   call VTLEAVE(sclEnd, trackErr)
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
 
