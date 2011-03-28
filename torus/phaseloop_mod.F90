@@ -33,8 +33,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
        lambda_eff_filters, info_filter_set, make_filter_set
   use grid_mod, only: fillgridbipolar, fillgridcollide, fillgriddustblob, fillgridellipse, fillgridraman, &
        fillgridshell,fillgridspheriod, fillgridspiral, fillgridstar, fillgridstateq, fillgridwr137, getIndices 
-  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues, tauAlongPathFast, &
-       taualongpath
+  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues, tauAlongPathFast
   use path_integral, only: integratePath, test_optical_depth
   use stateq_mod, only: amrStateq
   use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
