@@ -694,8 +694,8 @@ contains
  
    !Custom MPI type variables
     integer(MPI_ADDRESS_KIND) :: displacement(7)
-    integer :: count = 7
-    integer :: blocklengths(7) = (/ 7, 6, 5, 4, 3, 2, 1/)
+!    integer :: count = 7
+!    integer :: blocklengths(7) = (/ 7, 6, 5, 4, 3, 2, 1/)
     integer :: oldTypes(7) 
     integer :: iDisp
 
@@ -724,7 +724,8 @@ contains
        displacement(iDisp) = displacement(iDisp) - displacement(1)
     end do
 
-    call MPI_TYPE_CREATE_STRUCT(count, blockLengths, displacement, oldTypes, MPI_PHOTON_STACK, ierr )
+!    call MPI_TYPE_CREATE_STRUCT(count, blockLengths, displacement, oldTypes, MPI_PHOTON_STACK, ierr )
+    call MPI_TYPE_CREATE_RESIZED(oldTypes, 0, displacement, MPI_PHOTON_STACK, ierr)
     call MPI_TYPE_COMMIT(MPI_PHOTON_STACK, ierr)
 
     doSublimate = .true.
@@ -822,7 +823,7 @@ contains
                 nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
                 !nMonte = 1000000.d0
-                nMonte = 200.d0 * (8.d0**(maxDepthAMR))
+                nMonte = 100.d0 * (8.d0**(maxDepthAMR))
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
