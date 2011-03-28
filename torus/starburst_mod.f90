@@ -168,7 +168,8 @@ contains
          write(*,*) "Number of OB stars (>15 msol): ",nOB
       endif
       do i = 1, nSource
-         call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+!         write(*,*) i, " source mass, teff, radius, ",source(i)%mass, source(i)%teff, source(i)%radius*1.d10/rsol
+         call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass*msol, source(i)%radius*1.d10)
       enddo
       
 
