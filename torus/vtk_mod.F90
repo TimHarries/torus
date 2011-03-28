@@ -1762,7 +1762,6 @@ function returnBase64Char(i) result(c)
 end function returnBase64Char
 
 subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString)
-  use input_variables, only : cylindrical
 #ifdef MPI
   include 'mpif.h'
 #endif

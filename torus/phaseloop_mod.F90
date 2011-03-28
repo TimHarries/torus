@@ -72,7 +72,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: meanDustParticleMass
   real :: rstar
   real :: vel
-  type(VECTOR) :: coolStarPosition, uHat
+  type(VECTOR) :: coolStarPosition
   real(double) :: Laccretion, finalTau
   real :: Taccretion, fAccretion, sAccretion
   real(double) :: corecontinuumflux
