@@ -901,12 +901,12 @@ contains
 
   subroutine postSetupChecks(grid)
     use sph_data_class, only: sph_mass_within_grid
-    use input_variables, only : mDisc, geometry, rGapInner, rGapOuter
+    use input_variables, only : mDisc, geometry
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
     character(len=80) :: message
-    real(double) :: minRho, maxRho, totalmasstrap, totalmass,thistau
+    real(double) :: minRho, maxRho, totalmasstrap, totalmass
 
     call findTotalMemory(grid, i)
     call reportMemory(i)
