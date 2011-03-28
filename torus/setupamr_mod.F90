@@ -901,12 +901,12 @@ contains
 
   subroutine postSetupChecks(grid)
     use sph_data_class, only: sph_mass_within_grid
-    use input_variables, only : mDisc, geometry
+    use input_variables, only : mDisc, geometry, rGapInner, rGapOuter
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
     character(len=80) :: message
-    real(double) :: minRho, maxRho, totalmasstrap, totalmass
+    real(double) :: minRho, maxRho, totalmasstrap, totalmass,thistau
 
     call findTotalMemory(grid, i)
     call reportMemory(i)
@@ -915,6 +915,9 @@ contains
     select case (geometry)
     case ("shakara")
        call testAMRmass(grid, dble(mdisc))
+
+
+
     case("molcluster", "theGalaxy", "cluster")
        totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0
        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)

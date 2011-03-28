@@ -331,7 +331,7 @@ module input_variables
   real :: rSmooth, rHeight, sigmaPower
   real :: flaringPower, gapViscAlpha
   real :: rGap, mPlanet, gapWidth
-  real :: rGapInner, rGapOuter, rhoGap
+  real :: rGapInner, rGapOuter, rhoGap, deltaCav
   logical :: planetGap
 
 

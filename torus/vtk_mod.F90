@@ -397,7 +397,6 @@ contains
   contains
 
     recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset, grid, xml)
-      use input_variables, only : cylindrical
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
 
@@ -428,7 +427,7 @@ contains
             if (.not.xml) then
 
                if (thisOctal%threed) then
-                  if (.not.cylindrical) then
+                  if (.not.thisOctal%cylindrical) then
                      write(lunit, '(9i10)') 8, nCount + iOffset,&
                           nCount + iOffset + 1, &
                           nCount + iOffset + 2, &
@@ -465,7 +464,7 @@ contains
             else
 
                if (thisOctal%threed) then
-                  if (.not.cylindrical) then
+                  if (.not.thisOctal%cylindrical) then
                      write(lunit, '(8i10)') nCount + iOffset,&
                           nCount + iOffset + 1, &
                           nCount + iOffset + 2, &
@@ -531,7 +530,6 @@ contains
   contains
 
     recursive subroutine recursivewriteOffsetsXML(thisOctal,lunit, nCount, iOffset, grid)
-      use input_variables, only : cylindrical
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI
@@ -560,7 +558,7 @@ contains
 
 
             if (thisOctal%threed) then
-               if (.not.cylindrical) then
+               if (.not.thisOctal%cylindrical) then
                   nCount = nCount + 8
                   write(lunit, '(i10)') nCount
                else
@@ -595,7 +593,6 @@ contains
   contains
 
     recursive subroutine getOffsetsRecursive(thisOctal, nCount, offsets, iOffset, grid)
-      use input_variables, only : cylindrical
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI
@@ -624,7 +621,7 @@ contains
 
 
             if (thisOctal%threed) then
-               if (.not.cylindrical) then
+               if (.not.thisOctal%cylindrical) then
                   nCount = nCount + 8
                   iOffset = iOffset + 1
                   offsets(ioffset) =  nCount
@@ -702,7 +699,7 @@ contains
   contains
 
     recursive subroutine recursiveWriteValue(thisOctal, valueType, grid, xml)
-      use input_variables, only : lambdasmooth, cylindrical
+      use input_variables, only : lambdasmooth
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
 #ifdef MPI
@@ -737,7 +734,7 @@ contains
 #endif
 
             nVal = 1
-            if (thisOctal%threed.and.cylindrical) then
+            if (thisOctal%threed.and.thisOctal%cylindrical) then
                nVal = max(1, nint(returndPhi(thisOctal)/(10.d0*degtorad)))
             endif
 
@@ -1870,7 +1867,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
 
   call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
-  if (cylindrical) then
+  if (grid%octreeRoot%cylindrical) then
      nVoxels = 0
      call countVoxelsCylindrical(grid%octreeRoot, nVoxels)
   endif
@@ -1908,8 +1905,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
   allocate(cellTypes(1:nCellsGlobal))
 
-  if ((nPointOffset == 8).and.(.not.cylindrical)) cellTypes = 11
-  if ((nPointOffset == 8).and.(cylindrical)) cellTypes = 12
+  if ((nPointOffset == 8).and.(.not.grid%octreeRoot%cylindrical)) cellTypes = 11
+  if ((nPointOffset == 8).and.(grid%octreeRoot%cylindrical)) cellTypes = 12
   if (nPointOffset == 4) cellTypes = 8
 
 
@@ -2127,7 +2124,7 @@ end subroutine writeXMLVtkFileAMR
       type(GRIDTYPE) :: grid
       character(len=*) :: valueType
       real :: rArray(:,:)
-      integer :: i, subcell, n
+      integer :: i, subcell, n, iVal, nVal
       integer, save ::  iLambda
       real(double) :: ksca, kabs, value
       type(VECTOR) :: rVec, vel
@@ -2152,6 +2149,14 @@ end subroutine writeXMLVtkFileAMR
             if ( (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) .and. grid%splitOverMPI ) cycle
 #endif
 
+
+
+            nVal = 1
+            if (thisOctal%threed.and.thisOctal%cylindrical) then
+               nVal = max(1, nint(returndPhi(thisOctal)/(10.d0*degtorad)))
+            endif
+
+            do iVal = 1, nVal
             n = n + 1
 
             select case (valueType)
@@ -2484,6 +2489,7 @@ end subroutine writeXMLVtkFileAMR
                case DEFAULT
                   write(*,*) "Cannot write vtk type B",trim(valueType)
              end select
+          enddo
 
 
          endif

@@ -865,7 +865,8 @@ contains
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use input_variables, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral
+         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral, &
+         deltaCav
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -880,8 +881,8 @@ contains
     logical :: ok
     real :: x1, x2
 
-    rSpiralInner = (rGapInner+rGapOuter)/2.d0
-    rSpiralOuter = 3.d0 * rSpiralInner
+    rSpiralInner = (1.01*rGapInner)
+    rSpiralOuter = rGapOuter
 
     if (firstTime) then
 
@@ -972,44 +973,35 @@ contains
 
 !    basic gap
 
-    if ((r < rGapOuter*1.02).and.(r > rGapInner*0.98)) then
+    if ((r < rGapOuter).and.(r > rGapInner)) then
 
-       if (smoothInnerEdge) then
-          fac = 1.d0
-          if ((r < 1.02d0*rGapouter).and.(r > 0.5*(rGapInner+rGapOuter))) then
-             fac = (1.02d0*rGapouter - r)/(0.02d0*rGapouter)
-             fac = 10.d0*fac
-             fac = exp(-fac)
-             rhoOut = rhoOut * fac
-          endif
-          if ((r > 0.98*rGapInner).and.(r < 0.5*(rGapInner+rGapOuter))) then
-             fac = (r - 0.98*rGapInner)/(0.02d0*rGapInner)
-             fac = 10.d0*fac
-             fac = exp(-fac)
-             rhoOut = rhoOut * fac
-          endif
-       endif
 
 
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
-       rhoOut = max(rhoOut, rhoGap * exp(fac))
+       rhoOut =  rhoGap * exp(fac)
 
 
     endif
 
+    if (r < rGapInner) then
+       rhoOut = rhoOut * deltaCav
+    endif
+
     if (doSpiral) then
-       if (phi <= pi) then
-          h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
-          fac = max(-50.d0,fac)
-          rhoLocal = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
-          rSpiral = rSpiralInner + (rSpiralOuter - rSpiralInner) * dble(phi)/pi
-          spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
-          dist = modulus(VECTOR(spiralVec%x - point%x, spiralVec%y - point%y, 0.d0))
-          fac = (dist/(0.1d0*rSpiralInner))
-          rhoOut = rhoOut + rhoLocal * 9.d0 * exp(-fac)
+       if ((r > rGapInner).and.(r < rGapOuter)) then
+          if (phi <= pi) then
+             h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+             fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+             fac = max(-50.d0,fac)
+             rhoLocal = rhoGap * exp(fac)
+             rSpiral = rSpiralInner + (rSpiralOuter - rSpiralInner) * dble(phi)/pi
+             spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
+             dist = modulus(VECTOR(spiralVec%x - point%x, spiralVec%y - point%y, 0.d0))
+             fac = (dist/(0.1d0*r))
+             rhoOut = rhoOut + rhoLocal * 4.d0 * exp(-fac)
+          endif
        endif
     endif
 

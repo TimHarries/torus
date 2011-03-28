@@ -4555,9 +4555,11 @@ CONTAINS
 
       if (thisOctal%cylindrical) then
          dphi = returndPhi(thisOctal)
-         if (dphi > minPhiResolution) then
-            split = .true.
-            splitinAzimuth = .true.
+         if ((r > 0.9*rGapInner).and.(r < 1.1*rGapOuter)) then
+            if (dphi > minPhiResolution) then
+               split = .true.
+               splitinAzimuth = .true.
+            endif
          endif
       endif
 
@@ -15131,11 +15133,12 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
-       xArray, tauArray, distanceToEdge, subRadius, stopatGap)
+       xArray, tauArray, distanceToEdge, subRadius, stopatGap, stopatdistance)
     use input_variables, only : rGap, rGapInner, rGapOuter
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     real(double), optional,intent(out) :: xArray(:), tauArray(:)
+    real(double), optional :: stopAtDistance
     integer, optional, intent(out) :: nTau
     logical, optional :: stopAtGap
     integer :: iLambda
@@ -15226,6 +15229,11 @@ IF ( .NOT. gridConverged ) RETURN
           r = modulus(currentPosition)
           if (inwards.and.(rStart > rGapOuter).and.(r < rGapOuter)) exit
           if (outwards.and.(rStart < rGapInner).and.(r > rGapInner)) exit
+       endif
+
+       if (PRESENT(stopAtDistance)) then
+          r = modulus(currentPosition)
+          if (r > stopAtDistance) exit
        endif
 
 

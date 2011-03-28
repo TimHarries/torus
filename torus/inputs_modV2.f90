@@ -115,10 +115,10 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
-
+    
+    call readGridInitParameters(cLine, fLine, nLines)
 
     if (.not.readgrid) then
-       call readGridInitParameters(cLine, fLine, nLines)
        call readGeometrySpecificParameters(cLine, fLine, nLines)
     else
        call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
@@ -708,6 +708,9 @@ contains
 
        call getReal("rhogap", rhoGap, 1., cLine, fLine, nLines, &
             "Density in gap (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
+
+       call getReal("deltacav", deltaCav, 1., cLine, fLine, nLines, &
+            "Scaling factor for inner disc: ","(a,1p,e9.3,a)", 1., ok, .false.)
 
 
        call getDouble("phiref", phiRefine, 1.d0, cLine, fLine, nLines, &

@@ -42,6 +42,7 @@ module image_mod
 
   contains
 
+     
 
    function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax)
 
@@ -457,6 +458,30 @@ module image_mod
           enddo
        enddo
      end subroutine ConvertImageToMJanskiesPerStr
+
+     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, distance, angularScale)
+       real :: array(:,:)
+       real(double) :: lambda
+       real(double) :: distance, scale
+       real(double) :: angularScale, strad
+       integer :: i, j
+
+       scale = 1.d20 / distance**2 ! to per cm^2
+       strad = angularScale**2 ! str per pix
+
+       if ( strad == 0.0 ) then 
+          call writewarning( "ConvertImageToMJanskiesPerStr: strad = 0.0 no conversion performed")
+          return
+       end if
+
+       do i = 1, SIZE(array,1)
+          do j = 1, SIZE(array,2)
+
+! factor 1.d-6 to convert janskies to MJanskies
+             array(i,j) = 1.d-6*convertToJanskies(dble(scale*array(i,j)),lambda)/strad
+          enddo
+       enddo
+     end subroutine ConvertArrayToMJanskiesPerStr
 !
 !*******************************************************************************
 !
@@ -470,7 +495,6 @@ module image_mod
        
        use input_variables, only: lamStart, ImageinArcSec
        type(IMAGETYPE),intent(in) :: image
-       type(IMAGETYPE)  :: tempimage
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
 
@@ -478,18 +502,13 @@ module image_mod
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       real(double) :: scale,  dx, dy
+       real(double) :: scale,  dx, dy, angularScale
 
        logical :: simple,extend
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
 
-       tempimage = image
-
-       call convertimagetoMJanskiesPerStr(tempimage, dble(lamStart), objectDistance)
-       
-       
 
        allocate(array(1:image%nx, 1:image%ny))
        call writeInfo("Writing fits image to: "//trim(filename),TRIVIAL)
@@ -528,28 +547,29 @@ module image_mod
        nelements=naxes(1)*naxes(2)
 
        scale = 1.
-       array = 1.d-30
+       array = 1.e-30
        select case(type)
           case("intensity")
-             array = tempimage%pixel%i * scale
+             array = image%pixel%i * scale
           case("stokesq")
-             where (tempimage%pixel%i /= 0.d0) 
-                array = tempimage%pixel%q * scale
+             where (image%pixel%i /= 0.d0) 
+                array = image%pixel%q * scale
              end where
           case("stokesu")
-             where (tempimage%pixel%i /= 0.d0) 
-                array = tempimage%pixel%u * scale 
+             where (image%pixel%i /= 0.d0) 
+                array = image%pixel%u * scale 
              end where
           case("pol")
-             array = 1.d-30
-             where (tempimage%pixel%i /= 0.) 
-                array = sqrt(tempimage%pixel%q**2 + tempimage%pixel%u**2)
+             where (image%pixel%i /= 0.d0) 
+                array = sqrt(image%pixel%q**2 + image%pixel%u**2)
              end where
           
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type
        end select
 
+       angularScale =  (image%xAxisCentre(2) - image%xAxisCentre(1))*1.d10/objectdistance
+       call ConvertArrayToMJanskiesPerStr(array, dble(lamstart), objectdistance, angularScale)
        call ftppre(unit,group,fpixel,nelements,array,status)
        !
        !  Write another optional keyword to the header.

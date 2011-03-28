@@ -3133,18 +3133,6 @@ subroutine setBiasOnTau(grid, iLambda)
      kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
 
      call writeInfo("Computing bias on tau...",TRIVIAL)
-     if (cylindrical) then
-        nDir = 6
-     else
-        nDir = 4
-     endif
-
-     if (nDir == 4) then
-        arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
-        arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
-        arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
-        arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
-     endif
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -3178,8 +3166,21 @@ subroutine setBiasOnTau(grid, iLambda)
 
 
 !$OMP PARALLEL DEFAULT (NONE) &
-!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau, nDir, arrayVec, thisOctal, direction, thisTau) &
+!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec) &
 !$OMP SHARED (iOctal_beg, iOctal_end, rVec, octalArray, grid, cylindrical, ilambda)
+
+     if (cylindrical) then
+        nDir = 6
+     else
+        nDir = 4
+     endif
+
+     if (nDir == 4) then
+        arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
+        arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
+        arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
+        arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
+     endif
 
 
 !$OMP DO SCHEDULE (DYNAMIC, 1)

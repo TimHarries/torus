@@ -1,3 +1,4 @@
+
 module phaseloop_mod
 
   public :: do_phaseloop
@@ -32,7 +33,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
        lambda_eff_filters, info_filter_set, make_filter_set
   use grid_mod, only: fillgridbipolar, fillgridcollide, fillgriddustblob, fillgridellipse, fillgridraman, &
        fillgridshell,fillgridspheriod, fillgridspiral, fillgridstar, fillgridstateq, fillgridwr137, getIndices 
-  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues, tauAlongPathFast
+  use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues, tauAlongPathFast, &
+       taualongpath
   use path_integral, only: integratePath, test_optical_depth
   use stateq_mod, only: amrStateq
   use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
@@ -70,7 +72,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: meanDustParticleMass
   real :: rstar
   real :: vel
-  type(VECTOR) :: coolStarPosition
+  type(VECTOR) :: coolStarPosition, uHat
   real(double) :: Laccretion, finalTau
   real :: Taccretion, fAccretion, sAccretion
   real(double) :: corecontinuumflux
@@ -653,7 +655,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
              thinLine, lineResAbs, nUpper, nLower, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
 
-      call torus_mpi_barrier("Waiting to do phase loop")
+
+      call torus_mpi_barrier
 
 !      write(*,*) "calling scattering test"
 !      call testscatterPhoton(grid, miePhase, nDustType, nLambda, grid%lamArray, nMuMie)
@@ -1316,6 +1319,16 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (mie) then
 
            iLambdaPhoton = iOuterLoop
+
+!           if (rGapOuter > 0.d0) then
+!              uhat = VECTOR(1.d0, 0.d0, 0.d0)
+!              uHat = rotateZ(uHat, 1.d-4)
+!              call tauAlongPath(ilambdaPhoton, grid, VECTOR(1.01d0*rGapInner,0.d0,0.d0), uHat , tau=thistaudble, &
+!                   stopatdistance=dble(rGapOuter))
+!              write(message,*) "Tau to gap at ",grid%lamArray(ilambdaPhoton),"angstroms: ",thistaudble
+!              call writeInfo(message, TRIVIAL)
+!           endif
+
 
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
