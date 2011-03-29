@@ -568,9 +568,9 @@ contains
         do ithread = 0, nThreadsGlobal-1
            if (myrankGlobal == iThread) then
 #endif
-
-              call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d3, 1.d0)
-
+              write(*,*) myrankGlobal, " calling create sources"
+              call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d2, 1.d0)
+              write(*,*) myrankGlobal, " done"
 #ifdef MPI
            endif
            call torus_mpi_barrier
@@ -578,7 +578,7 @@ contains
 #endif
         call randomNumberGenerator(randomSeed = .true.)
         write(*,*) "Number of sources ",globalnSource
-	do i = 1, globalnSource
+        do i = 1, globalnSource
            write(*,*) "Spec ",i, " nlam ",SIZE(globalSourceArray(i)%spectrum%lambda,1), &
                 globalSourceArray(i)%spectrum%lambda(1), globalSourceArray(i)%spectrum%lambda(globalSourceArray(i)%spectrum%nlambda)
         enddo
