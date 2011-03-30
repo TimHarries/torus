@@ -1416,9 +1416,9 @@ contains
 !    call writeVtkFile(grid, "current.vtk", &
 !         valueTypeString=(/"rho        ","HI         " ,"temperature" /))
 
-!    if(grid%geometry == "lexington") then
-!       call dumpLexingtonMPI(grid, epsoverdeltat)
-!    end if
+    if(grid%geometry == "lexington") then
+       call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+    end if
 if (grid%geometry == "tom") then
        call dumpLexingtonMPI(grid, epsoverdeltat, niter)
        fac = 2.06e37
