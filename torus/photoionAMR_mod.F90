@@ -3971,7 +3971,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
 
-  write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
+!  write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
+  write(datFilename,'(a,i2.2,a)') "lexington.dat"
 
   startPoint = vector(0.d0, 0.d0, 0.d0)
   endPoint = vector(4.4d9, 0.d0, 0.d0)
