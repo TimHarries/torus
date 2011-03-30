@@ -694,8 +694,8 @@ contains
  
    !Custom MPI type variables
     integer(MPI_ADDRESS_KIND) :: displacement(7)
-!    integer :: count = 7
-!    integer :: blocklengths(7) = (/ 7, 6, 5, 4, 3, 2, 1/)
+    integer :: count = 7
+    integer :: blocklengths(7) = (/ 7, 6, 5, 4, 3, 2, 1/)
     integer :: oldTypes(7) 
     integer :: iDisp
 
@@ -724,8 +724,8 @@ contains
        displacement(iDisp) = displacement(iDisp) - displacement(1)
     end do
 
-!    call MPI_TYPE_CREATE_STRUCT(count, blockLengths, displacement, oldTypes, MPI_PHOTON_STACK, ierr )
-    call MPI_TYPE_CREATE_RESIZED(oldTypes, 0, displacement, MPI_PHOTON_STACK, ierr)
+    call MPI_TYPE_CREATE_STRUCT(count, blockLengths, displacement, oldTypes, MPI_PHOTON_STACK, ierr )
+!    call MPI_TYPE_CREATE_RESIZED(oldTypes, 0, displacement, MPI_PHOTON_STACK, ierr)
     call MPI_TYPE_COMMIT(MPI_PHOTON_STACK, ierr)
 
     doSublimate = .true.
@@ -1514,9 +1514,6 @@ if (grid%geometry == "tom") then
              do subcell = 1, thisOctal%maxChildren
                 if (.not.thisOctal%hasChild(subcell)) then
 
-                   if (.not.thisoctal%ghostcell(subcell)) then
-
-
                       if (niter == 1) then
                          thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                          thisThreadConverged = .false.
@@ -1577,7 +1574,7 @@ if (grid%geometry == "tom") then
                          thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
                       end if
                    end if
-                end if
+                   
                 end do
                 
                 !Send result to master rank 
