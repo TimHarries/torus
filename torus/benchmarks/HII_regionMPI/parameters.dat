@@ -1,0 +1,59 @@
+!
+! Grid set up
+!
+
+splitovermpi    T
+readgrid        F
+
+amr1d           T
+mindepthamr     8
+maxdepthamr     8
+amrgridcentrex  2.2e9
+amrgridcentrey  0.0000
+amrgridcentrez  0.0000
+amrgridsize     4.4e9
+geometry        lexington
+
+!
+! Physics 
+! Allow parameters to default for now
+! See readPhotoionPhysicsParameters for parameters
+!
+
+photoionphysics  T 
+dustphysics      T
+
+! Source parameters 
+
+nsource     1 
+radius1     18.67
+teff1       40000.0
+mass1       80.0
+contflux1   blackbody
+sourcepos1  0.0,0.0,0.0
+
+!
+! Type of calculation
+!
+
+photoioneq   T
+
+!
+! Dust parameters
+!
+
+dusttogas 1.e-20
+graintype1 sil_dl
+amin1 0.1
+amax1 0.11
+qdist1 0.0
+
+
+! Grid output 
+
+writegrid F
+
+! Geometry specific parameters
+
+rinner 30.0
+
