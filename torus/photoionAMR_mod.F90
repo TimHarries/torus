@@ -318,7 +318,7 @@ contains
  end if
 
     tEnd = 200.d0*3.14d10 !200kyr 
-    !THAW - for profiling
+    !!THAW - for profiling
     !tEnd = 5.d0*3.14d10 !5kyr
 
     if(grid%geometry == "hii_test") then
@@ -3964,7 +3964,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer :: ierr
   integer, parameter :: nStorage = 26, tag=50
   real(double) :: tempStorage(nStorage), tval
-  real(double) :: oldR, oldT, newR, newT
+  !real(double) :: oldR, oldT, newR, newT
   integer :: status(MPI_STATUS_SIZE)
   integer :: sendThread
   integer, parameter :: nPoints = 500
@@ -3988,8 +3988,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
         open(21,file="orates.dat",form="formatted",status="unknown")
         open(22,file="ne.dat",form="formatted",status="unknown")
 
-        oldR = 0.d0
-        oldT = 0.d0
+  !      oldR = 0.d0
+  !      oldT = 0.d0
         do i=1, 5000
            r = (1.+7.d0*dble(i-1)/4999.d0)*pctocm/1.e10
            position = vector(r, 0.d0, 0.d0)
@@ -4033,9 +4033,9 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
            tVal = tempStorage(23)
            t = tempStorage(24)
 
-           newR = r
-           newT = t
-           r = oldR + (newR - oldR)*((newT/2.d0)-oldT)/(newT-oldT)
+   !        newR = r
+   !        newT = t
+   !        r = oldR + (newR - oldR)*((newT/2.d0)-oldT)/(newT-oldT)
 
         write(21,'(f5.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
 
@@ -4043,8 +4043,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
              r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
         write(22,*) r*1.e10/pctocm,netot
 
-        oldR = newR
-        oldT = newT
+!        oldR = newR
+!        oldT = newT
 
   
      end do
