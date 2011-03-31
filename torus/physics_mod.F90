@@ -231,7 +231,7 @@ contains
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics, optimizeStack
+         lucy_undersampled, molecularPhysics, hydrodynamics
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
@@ -246,7 +246,7 @@ contains
     use molecular_mod, only : molecularLoop, globalMolecule
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
-    use input_variables, only : hydrovelocityconv
+    use input_variables, only : hydrovelocityconv, optimizeStack
 !    use mpi_amr_mod, only : fillVelocityCornersFromHydro
     use amr_mod, only : hydroVelocityConvert
 #endif
