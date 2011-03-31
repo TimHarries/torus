@@ -676,7 +676,7 @@ contains
 !================TOMS VARIABLES=======================
     real(double) :: deltaT, fluctuationCheck 
     logical :: anyUndersampled, undersampledTOT
-!    character(len=80) :: vtkFilename
+    character(len=80) :: vtkFilename
     logical :: underSamFailed, escapeCheck
     logical :: sourcePhoton
 
@@ -885,7 +885,6 @@ contains
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
 
-
 		!re-weighting for corner sources, edges still need work
                 if(source(iSource)%onCorner) then
                    if (grid%octreeRoot%threeD) then
@@ -911,6 +910,8 @@ contains
                                 
                 call getWavelength(thisSource%spectrum, wavelength)                
                 thisFreq = cSpeed/(wavelength / 1.e8)
+
+
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                 iThread = thisOctal%mpiThread(subcell)
 
@@ -1197,7 +1198,7 @@ contains
                                end if
                             end if
                          end do
-                      
+                         
                          goto 777
 
                          !THaw - old bit beneath
@@ -1645,10 +1646,10 @@ if (grid%geometry == "tom") then
      call torus_mpi_barrier
      
      ! if(tlimit /= 1.d20) then
-     !   write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
-     !  call writeVtkFile(grid, vtkFilename, &
-     !      valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-!      "dust1        ","sourceCont   "/))
+        write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
+       call writeVtkFile(grid, vtkFilename, &
+           valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+      "dust1        ","sourceCont   "/))
 ! call writeAMRgrid("tmp.grid",.false.,grid)
 ! end if
 enddo
@@ -1754,6 +1755,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     call randomNumberGenerator(getDouble=r)
     tau = -log(1.0-r)
+
 
     call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
     

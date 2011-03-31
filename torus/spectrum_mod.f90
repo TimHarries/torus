@@ -370,11 +370,12 @@ module spectrum_mod
 
     end function returnNormValue2
          
-    subroutine fillSpectrumKurucz(spectrum, teff, mass, radius)
+    subroutine fillSpectrumKurucz(spectrum, teff, mass, radius, freeup)
       type(SPECTRUMTYPE) :: spectrum, spec1, spec2
       real(double) :: teff, mass, radius
       real(double) :: logg
-      logical :: ok
+      logical, optional :: freeUp
+      logical :: ok1, ok2, ok
       integer, parameter :: nFiles = 60
       real,save :: teffArray(nFiles)
       integer :: i, j
@@ -385,11 +386,11 @@ module spectrum_mod
       character(len=80) :: label1, label2
       integer :: i1, i2
       integer, parameter :: nKurucz = 410
-      type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
+      type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
       character(len=80) :: klabel(nKurucz)
       character(len=200) :: message
       kLabel = " "
-      call  readKuruczGrid(klabel, kspectrum, nKurucz)
+      if (firstTime) call  readKuruczGrid(klabel, kspectrum, nKurucz)
 
 
       logg = log10(bigG * mass / radius**2)
@@ -427,18 +428,27 @@ module spectrum_mod
       write(message, '(a,a)') "                                        : ",trim(label2)
       call writeInfo(message, TRIVIAL)
 
-      call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok)
-      if (.not.ok) then
+      call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
+      if (.not.ok1) then
          if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile1
       endif
-      call readKuruczSpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok)
-      if (.not.ok) then
-         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile1
+      call readKuruczSpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok2)
+      if (.not.ok2) then
+         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile2
       endif
-      call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
-      do i = 1, nKurucz
-         call freeSpectrum(kspectrum(i))
-      enddo
+
+      if (ok1.and.ok2) then
+         call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+      else
+         call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+      endif
+      if (PRESENT(freeUp)) then
+         if (freeup) then
+            do i = 1, nKurucz
+               call freeSpectrum(kspectrum(i))
+            enddo
+         endif
+      endif
       call freeSpectrum(spec1)
       call freeSpectrum(spec2)
     end subroutine fillSpectrumKurucz

@@ -313,6 +313,7 @@ CONTAINS
    CASE ("fractal")
       thisOctal%rho = 100.d0 * mHydrogen
       thisOctal%temperature = 8000.
+      thisOctal%dustTypeFraction = 1.d-20
 
    CASE ("runaway")
       call assign_from_vh1(thisOctal, subcell)
