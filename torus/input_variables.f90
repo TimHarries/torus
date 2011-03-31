@@ -731,6 +731,12 @@ module input_variables
 !Dimensionless cutoff radius for Bonnor-Ebert Sphere
   real(double) :: zetacutoff 
 
+
+!Stack optimization
+  logical :: optimizeStack
+  integer :: dStack
+  integer :: stackLimit
+
 end module input_variables
 
 

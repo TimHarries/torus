@@ -231,7 +231,7 @@ contains
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics
+         lucy_undersampled, molecularPhysics, hydrodynamics, optimizeStack
     use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
     use input_variables, only : lucyfilenameOut, lucyFilenamein, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
@@ -260,6 +260,16 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     type(GRIDTYPE) :: grid
+
+
+#ifdef MPI
+    if(optimizeStack .and. photoionPhysics .and. photoionEquilibrium) then
+       call writeInfo("Optimizing photon stack size.", TRIVIAL)
+       call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
+            .true., sublimate=.false.)
+    end if
+
+#endif
 
 
      if (dustPhysics.and.radiativeEquilibrium) then

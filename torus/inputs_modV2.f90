@@ -186,6 +186,10 @@ contains
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
+         "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1250,6 +1254,12 @@ contains
 
     call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
          "Number of photons in image","(a,i8,a)", 0, ok, .false.)
+
+    call getInteger("stacklimit", stacklimit, cLine, fLine, nLines, &
+         "Maximum number of photons in a stack","(a,i8,a)", 200, ok, .false.)
+
+    call getInteger("dstack", dstack, cLine, fLine, nLines, &
+         "Optimization tweak level","(a,i8,a)", 100, ok, .false.)
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
