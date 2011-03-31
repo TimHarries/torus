@@ -3520,14 +3520,9 @@ end subroutine readHeIIrecombination
     real(double), allocatable :: photoIonCoeff(:,:)
     real(double), allocatable :: tempDoubleArray(:)
     real(double), allocatable :: distanceGrid(:)
-    integer :: np, ierr,my_rank, nIndex
+    integer :: ierr, nIndex
 
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     nOctals = 0
@@ -3978,15 +3973,13 @@ end subroutine readHeIIrecombination
 #ifdef MPI
 
       subroutine packTemperatures(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
-    include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real :: tArray(:)
         integer :: ioctal_beg, ioctal_end
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -4035,15 +4028,13 @@ end subroutine readHeIIrecombination
      end subroutine unpackTemperatures
 
       subroutine packNe(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
-    include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: ioctal_beg, ioctal_end
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -4092,16 +4083,14 @@ end subroutine readHeIIrecombination
      end subroutine unpackne
 
       subroutine packIonFrac(octalArray, nTemps, tArray, ioctal_beg, ioctal_end, iIon)
-        include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         integer :: ioctal_beg, ioctal_end
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         integer :: iIon
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -4124,15 +4113,13 @@ end subroutine readHeIIrecombination
      end subroutine packIonFrac
 
       subroutine unpackIonFrac(octalArray, nTemps, tArray, iIon)
-    include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         integer :: iIon
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
