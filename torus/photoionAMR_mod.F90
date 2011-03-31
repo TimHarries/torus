@@ -603,7 +603,8 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
-    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR,optimizeStack, stackLimit, dStack
+    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, &
+         optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
