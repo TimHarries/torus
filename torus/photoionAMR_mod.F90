@@ -317,9 +317,9 @@ contains
     endif
  end if
 
-    tEnd = 200.d0*3.14d10 !200kyr 
+    !tEnd = 200.d0*3.14d10 !200kyr 
     !!THAW - for profiling
-    !tEnd = 5.d0*3.14d10 !5kyr
+    tEnd = 5.d0*3.14d10 !5kyr
 
     if(grid%geometry == "hii_test") then
        tEnd = 3.14d13 !1x10^6 year
@@ -3994,8 +3994,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
 
   !      oldR = 0.d0
   !      oldT = 0.d0
-        do i=1, 5000
-           r = (1.+7.d0*dble(i-1)/4999.d0)*pctocm/1.e10
+        do i=1, 500
+           r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
            position = vector(r, 0.d0, 0.d0)
            call findSubcellLocal(position, thisOctal, subcell)
            sendThread = thisOctal%mpiThread(subcell)
