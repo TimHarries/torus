@@ -85,12 +85,13 @@ ln -s tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt
 
 }
 
-run_hydro()
+# Run Torus with a domain decomposed grid.  
+run_dom_decomp()
 {
-cd ${WORKING_DIR}/benchmarks/hydro
+cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
-mpirun -np 3 torus.${SYSTEM} > run_log_hydro.txt 2>&1
-ln -s tune.dat tune_hydro.txt
+mpirun -np 3 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
+ln -s tune.dat tune_${THIS_BENCH}.txt
 }
 
 run_sphbench()
@@ -220,11 +221,24 @@ for sys in ${SYS_TO_TEST}; do
 # Run hydro benchmark
     case ${SYSTEM} in
 	ompi|zen)  echo "Running hydro benchmark"
-	    run_hydro
+	    export THIS_BENCH=hydro
+	    run_dom_decomp
 	    check_hydro  > check_log_${SYSTEM}_hydro.txt 2>&1 
 	    cat check_log_${SYSTEM}_hydro.txt
 	    echo ;;
 	*) echo "Hydro benchmark does not run on this system. Skipping"
+	    echo ;;
+    esac
+
+# Domain decomposed Lexington benchmark
+    case ${SYSTEM} in
+	ompi|zen)  echo "Running domain decomposed HII region benchmark"
+	    export THIS_BENCH=HII_regionMPI
+	    run_dom_decomp
+	    check_hII > check_log_${SYSTEM}_hII_MPI.txt 2>&1 
+	    cat check_log_${SYSTEM}_hII_MPI.txt
+	    echo ;;
+	*) echo "Domain decomposed HII region does not run on this system. Skipping"
 	    echo ;;
     esac
 

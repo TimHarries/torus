@@ -79,6 +79,14 @@ else
     subject_line="${subject_line} HII region benchmark failed. "
 fi
 
+# Test for success of domain decomposed hII region benchmark                                                                  
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/HII_regionMPI/check_log_ompi_hII_MPI.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    subject_line="${subject_line} MPI HII region benchmark successful. "
+else
+    subject_line="${subject_line} MPI HII region benchmark failed. "
+fi
+
 # Move log file
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log 
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
