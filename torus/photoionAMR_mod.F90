@@ -84,7 +84,7 @@ contains
 
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use ion_mod, only : returnMu
-    use input_variables, only : iDump, doselfgrav, readGrid !, hOnly
+    use input_variables, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -95,7 +95,7 @@ contains
     real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
     integer :: iUnrefine
     integer :: myRank, ierr
-    real(double) :: tDump, nextDumpTime, tEnd
+    real(double) ::  nextDumpTime, tEnd
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: thread1(200), thread2(200), nBound(1000), nPairs
@@ -146,11 +146,11 @@ contains
     if(.not. readGrid) then
        grid%currentTime = 0.d0
        grid%iDump = 0
-       tDump = 0.005d0
        deltaTforDump = 3.14d10 !1kyr
        nextDumpTime = deltaTforDump
        if (grid%geometry == "hii_test") deltaTforDump = 9.d10
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !1kyr
+       if(grid%geometry == "starburst") deltaTforDump = tdump
        timeofNextDump = 0.d0       
      else
        deltaTforDump = 1.57d11 !5kyr
@@ -250,7 +250,7 @@ contains
              call setupNeighbourPointers(grid, grid%octreeRoot)
              !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
              !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 8, loopLimitTime, looplimittime, .True.,&
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, looplimittime, .True.,&
                   .true.)
              
              call writeInfo("Done",TRIVIAL)

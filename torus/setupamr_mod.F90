@@ -842,6 +842,7 @@ contains
     real :: rho, aFac
     integer :: subcell, i, j
     real, allocatable :: r(:), s(:)
+    real(double) :: ethermal
     real :: rmin, rmax, tot, fac, mean
     logical :: converged, split
 
@@ -890,6 +891,32 @@ contains
              do j = 1, thisOctal%maxChildren
                 child%rho(j) = s(j) * thisOctal%rho(subcell) * &
                      cellVolume(thisOctal, subcell)/cellVolume(child,j)
+
+                child%dustTypeFraction(j,:) = 1.d-20
+                child%temperature(j) = 10.d0
+                child%velocity(j) = VECTOR(0.d0, 0.d0, 0.d0)
+                !Thaw - will probably want to change this to use returnMu
+                ethermal = (1.d0/(mHydrogen))*kerg*child%temperature(j)
+                child%pressure_i(j) = child%rho(j)*ethermal
+                child%energy(j) = ethermal + 0.5d0*(cspeed*modulus(child%velocity(j)))**2
+                child%rhoe(j) = child%rho(j) * child%energy(j)
+                child%gamma(j) = 1.0
+                child%iEquationOfState(j) = 1
+      
+
+                child%inFlow(j) = .true.
+                child%nh(j) = child%rho(j) / mHydrogen
+                child%ne(j) = child%nh(j)
+                child%nhi(j) = 1.e-5
+                child%nhii(j) = child%ne(j)
+                child%nHeI(j) = 0.d0 !0.1d0 *  child%nH(j)
+    
+                child%ionFrac(j,1) = 1.               !HI
+                child%ionFrac(j,2) = 1.e-10           !HII
+                
+
+
+
              enddo
              deallocate(r, s)
              converged = .false.

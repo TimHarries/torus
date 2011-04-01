@@ -1347,6 +1347,13 @@ contains
     call getDouble("lengthunit", lengthUnit, 1.d0, cLine, fLine, nLines, &
          "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
 
+    call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
+         "Number of photons in image","(a,i8,a)", 0, ok, .false.)
+
+    call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
+         "Number of photons in image","(a,i8,a)", 8, ok, .false.)
+
+
   end subroutine readHydrodynamicsParameters
 
   subroutine readDataCubeParameters(cLine, fLine, nLines)

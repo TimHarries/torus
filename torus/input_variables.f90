@@ -50,6 +50,7 @@ module input_variables
   real(double) :: gridDistanceScale
   real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
+  integer :: maxPhotoIonIter
   character(len=10) :: geometry
   character(len=10) :: object
   real :: bigomega, eddingtonGamma, alphaCAK
