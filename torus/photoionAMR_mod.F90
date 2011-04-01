@@ -107,6 +107,7 @@ contains
     integer :: iRefine, nUnrefine
     logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
+    logical, save :: firstStep = .true.
     integer :: i, status, tag=30
     integer :: stageCounter=1, nTimes, nPhase
     real(double) :: timeSinceLastRecomb=0.d0
@@ -250,14 +251,15 @@ contains
              call setupNeighbourPointers(grid, grid%octreeRoot)
              !          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 15, loopLimitTime, looplimittime, .True.,&
              !.false.)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, looplimittime, .True.,&
-                  .true.)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                  looplimittime, .True.,.true.)
              
              call writeInfo("Done",TRIVIAL)
           else
              call writeInfo("Calling photoionization loop",TRIVIAL)
              call setupNeighbourPointers(grid, grid%octreeRoot)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 8, loopLimitTime, looplimittime, .true., .true.)
+             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
+                  loopLimitTime, looplimittime, .true., .true.)
              call writeInfo("Done",TRIVIAL)
           endif
           
@@ -337,6 +339,11 @@ contains
       ! stop
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
+
+       if (firstStep) then
+          dt = dt * 0.01d0
+          firstStep = .false.
+       endif
   
        if (myrank == 1) then
           write(*,*) tc(1:9)
