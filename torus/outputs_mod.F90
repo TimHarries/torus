@@ -20,7 +20,7 @@ contains
     use input_variables, only : h21cm, internalView
     use input_variables, only : lambdaImage, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
     use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
-    use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity
+    use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity, outputImageType
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
     use molecular_mod
@@ -34,7 +34,6 @@ contains
     use input_variables, only : fastIntegrate
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
-    use input_variables, only : outputImageType
     use photoionAMR_mod, only : createImageSplitGrid
 #endif
 
