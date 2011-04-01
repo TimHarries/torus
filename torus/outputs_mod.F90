@@ -32,6 +32,7 @@ contains
     use angularImage, only: make_angular_image, map_dI_to_particles
     use lucy_mod, only : getSublimationRadius
     use input_variables, only : fastIntegrate
+    use photoion_mod, only: createImagePhotoion
 #ifdef MPI
     use input_variables, only : outputImageType
     use photoionAMR_mod, only : createImageSplitGrid
@@ -79,17 +80,26 @@ contains
             globalSourceArray, globalnsource, 1, totalflux)
     endif
 
-    if (photoionPhysics.and.splitoverMPI.and.calcImage) then
+    if (photoionPhysics.and.calcImage) then
        call setupXarray(grid, xArray, nLambda, photoion=.true.)
-       observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
+       if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       if ( splitoverMPI ) then 
 #ifdef MPI
-       do i = 1, nImage
-          call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), lambdaImage(i), &
-               outputImageType(i), nPixelsArray(i))
-       enddo
+          observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
+          do i = 1, nImage
+             call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), & 
+                  lambdaImage(i), outputImageType(i), nPixelsArray(i))
+          enddo
 #else
-    call writeFatal("Cannot calculate an image from a domain decomposed grid without MPI")
+          call writeFatal("Cannot calculate an image from a domain decomposed grid without MPI")
 #endif
+       else
+          do i = 1, nImage
+             observerDirection = VECTOR(-1.0d0, 0.d0, -1.0d0)
+             call createImagePhotoion(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), &
+                  lambdaImage(i), outputImageType(i), nPixelsArray(i))
+          end do
+       end if
     endif
 
     if (molecularPhysics.and.calcDataCube) then
@@ -130,7 +140,7 @@ contains
        end if
     end if
 
-    if (dustPhysics.and.(calcspectrum.or.calcimage)) then
+    if (dustPhysics.and.(calcspectrum.or.calcimage).and.(.not.photoionPhysics)) then
        mie = .true.
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &

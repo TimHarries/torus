@@ -24,8 +24,8 @@ private
 #ifdef MPI
  private :: updateGridMPIphoto
 #endif
-public :: photoIonizationLoop, createImage, refineLambdaArray, addForbiddenEmissionLine, addForbiddenToEmission, &
-     addRecombinationEmissionLine, writeMultiImages
+public :: photoIonizationLoop, createImagePhotoion, refineLambdaArray, addForbiddenEmissionLine, addForbiddenToEmission, &
+     addRecombinationEmissionLine
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -4138,32 +4138,11 @@ end subroutine readHeIIrecombination
      end subroutine unpackIonFrac
 #endif
 
-  subroutine writeMultiImages(grid, nSource, source, observerDirection)
-    type(GRIDTYPE) :: grid
-    integer :: nSource
-    type(SOURCETYPE) :: source(:)
-    type(VECTOR) :: observerDirection
-    real(double) :: lambdaLine(7)
-    integer :: nLine , i
-    real(double) :: totalFlux
-
-    nLine = 7
-    lambdaLine(1) = 6300.d0
-    lambdaLine(2) = 6363.d0
-    lambdaLine(3) = 3726.d0
-    lambdaLine(4) = 3729.d0
-    lambdaLine(5) = 4959.d0
-    lambdaLine(6) = 5007.d0
-    lambdaLine(7) = 1.55d5 ! Ne III line
-
-    do i = 1, nLine
-       call createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine(i))
-    enddo
-  end subroutine writeMultiImages
-
-  subroutine createImage(grid, nSource, source, observerDirection, totalflux, lambdaLine)
-    use input_variables, only : nPhotons, npix, setimagesize
+  subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
+    use input_variables, only : nPhotons, setimagesize, mie, lamStart
     use image_mod, only: initImage, freeImage, IMAGETYPE
+    use lucy_mod, only: calcContinuumEmissivityLucyMono
+    use parallel_mod, only: torus_abort
 #ifdef USECFITSIO
     use image_mod, only: writeFitsImage
 #endif
@@ -4177,14 +4156,17 @@ end subroutine readHeIIrecombination
 #endif
     type(GRIDTYPE) :: grid
 #ifdef USECFITSIO
-    character(len=80) :: imageFilename
+    character(len=*), intent(in) :: imageFilename
 #endif
-    integer :: nSource
-    real(double) :: lambdaLine
+    integer, intent(in) :: nSource
+    real, intent(in) :: lambdaLine
+    character(len=*), intent(in) :: outputimageType
+    integer, intent(in) :: npix
+    real :: imageXsize, imageYsize
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
-    real(double), intent(out) :: totalFlux
+    real(double) :: totalFlux
     integer :: subcell
     integer :: iPhoton
     integer :: iSource
@@ -4207,22 +4189,58 @@ end subroutine readHeIIrecombination
 
     call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0
+    lamstart  = lambdaLine ! used by convertion to Janskies
 
-    thisImage = initImage(npix, npix, setimagesize/1.e10, &
-         setimagesize/1.e10, 0., 0.)
+! PhotoionAMR_mod version calls zeroEtaCont here
+    call quickSublimate(grid%OctreeRoot)
 
+    imageXsize=setimagesize/1.e10
+    imageYsize=setimagesize/1.e10
+    thisImage = initImage(npix, npix, imageXsize, imageYsize, 0., 0.)
+
+    select case (outputimageType)
     
-    call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaLine))
-    call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
+       case("forbidden")
+
+          call writeInfo("Generating forbidden line  image", FORINFO)
+          call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaLine))
+          call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
+
+          if (nSource > 0) then              
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
+          else
+             lcore = tiny(lcore)
+          endif
+
+       case("dustonly")
+
+          if ( mie ) then 
+             call writeInfo("Generating dust only image", FORINFO)
+          else
+             call torus_abort("Cannot generate dust image with mie=.false.")
+          end if
+
+          call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
+          write(message,*) "lambda=", lambdaLine, "index=", ilambdaPhoton, " nlambda= ", grid%nlambda
+          call writeInfo(message,FORINFO)
+          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%nlambda, grid%lamArray, real(lambdaLine),iLambdaPhoton)
+
+          if (nSource > 0) then              
+             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
+          else
+             lcore = tiny(lcore)
+          endif
+
+       case DEFAULT
+          call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
+          stop
+
+       end select
+
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
 
     totalEmission = totalEmission * 1.d30
 
-    if (nSource > 0) then              
-       lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
-    else
-       lcore = tiny(lcore)
-    endif
 
     write(message,*) "Total line emission ",totalEmission
     call writeInfo (message, FORINFO)
@@ -4237,10 +4255,8 @@ end subroutine readHeIIrecombination
     weightEnv = (1.d0 - chanceSource) / (1.d0 - probSource)
 
 
-    if (myRankGlobal == 0) then
-       write(*,*) "Probability of photon from sources: ", probSource
-    endif
-
+    write(message,*) "Probability of photon from sources: ", probSource
+    call writeInfo (message, FORINFO)
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     
@@ -4249,14 +4265,13 @@ end subroutine readHeIIrecombination
 
 
 #ifdef MPI
-    ibeg = myrankGlobal - 1
     i = nPhotons/nThreadsGlobal
     ibeg = (myrankGlobal * i) + 1
-    iend = ibeg + i
+    iend = ibeg + i -1
     if (myRankGlobal == (nThreadsGlobal-1)) iEnd = nPhotons
 #endif
 
-    mainloop: do iPhoton = 1, nPhotons
+    mainloop: do iPhoton = iBeg, iEnd
 
        thisPhoton%weight = 1.d0
        thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
@@ -4312,18 +4327,55 @@ end subroutine readHeIIrecombination
 
 #ifdef MPI
     call collateImages(thisImage)
-     call MPI_ALLREDUCE(totalFlux, tempTotalFlux, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-     totalFlux = tempTotalFlux
+    call MPI_ALLREDUCE(totalFlux, tempTotalFlux, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+    totalFlux = tempTotalFlux
 #endif
 
+    write(message,*) "Total flux =", totalFlux
+    call writeInfo(message,FORINFO)
+
 #ifdef USECFITSIO
-    if (writeoutput) then
-       write(imageFilename, '(a,i6.6,a)') "test_",nint(lambdaLine),".fits"
+    if (myRankIsZero) then
        call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
     endif
 #endif
     call freeImage(thisImage)
-  end subroutine createImage
+  end subroutine createImagePhotoion
+
+  recursive subroutine quickSublimate(thisOctal)
+    use input_variables, only : hOnly
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call quickSublimate(child)
+                exit
+             end if
+          end do
+       else
+
+          if(.not. hOnly) then
+             if ((thisOctal%ionFrac(subcell,1) < 0.1).or.(thisOctal%temperature(subcell) > 1500.)) then
+                thisOctal%dustTypeFraction(subcell,:) = 0.d0
+             else
+                thisOctal%dustTypeFraction(subcell,:) = 1.d0
+                thisOctal%ne(subcell) = tiny(thisOctal%ne(subcell))
+                thisOctal%ionFrac(subcell,1) = 1.d0
+                thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
+             endif
+
+          else
+             thisOctal%dustTypeFraction(subcell,:) = 0.d0
+          end if
+       endif
+    enddo
+  end subroutine quickSublimate
 
 
   subroutine scatterPhotonLocal(thisPhoton)
@@ -4511,7 +4563,7 @@ end subroutine readHeIIrecombination
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
      endif
      totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
-           
+
    end subroutine addPhotonToImageLocal
 
 
