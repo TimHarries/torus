@@ -469,7 +469,7 @@ contains
 
 !       call writeInfo("Calling photoionization loop",TRIVIAL)
        !       call testIonFront(grid%octreeRoot, grid%currentTime)
-	       !call neutralGrid(grid%octreeRoot)
+      !call neutralGrid(grid%octreeRoot)
 
 !       if(dt /= 0.d0) then
 !          loopLimitTime = grid%currentTime + dt
@@ -543,10 +543,10 @@ contains
           end if
         !  if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d12)) then
         !     deltaTForDump = 1.d12
-	!  end if
+          !  end if
         !  if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d13)) then
         !     deltaTForDump = 1.d13
-	!  end if
+          !  end if
 !          if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d14))then
 !             deltaTForDump = 1.d14
  !         end if
@@ -597,7 +597,7 @@ contains
  !              VECTOR(-1.5d9, -0.d0, 0.d0), 1000)
 !
  !      end if
-	 
+ 
        endif
        !print *, "STAGE I", myrankglobal, stageCounter
        stageCounter = stageCounter + 1
@@ -623,7 +623,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
 !    integer :: nCellsInDiffusion
-    character(len=80) :: message
+!    character(len=80) :: message
 !    integer :: tempSubcell
     integer :: nlambda
     real :: lamArray(:)
@@ -691,9 +691,9 @@ contains
     !optimisation variables
     integer, parameter :: stackLimit=200
     integer,parameter :: ZerothstackLimit=200
-    real :: startTime, endTime, newTime
-    real :: oldTime = 1.e10
-    integer :: newStackLimit= 0, oldStackLimit= 0
+  !  real :: startTime, endTime, newTime
+  !  real :: oldTime = 1.e10
+  !  integer :: newStackLimit= 0, oldStackLimit= 0
 
     integer :: optCounter, thisPacket, sendCounter
     integer, allocatable :: nSaved(:)
@@ -926,7 +926,7 @@ contains
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
 
-		!re-weighting for corner sources, edges still need work
+                !re-weighting for corner sources, edges still need work
                 if(source(iSource)%onCorner) then
                    if (grid%octreeRoot%threeD) then
                       photonPacketWeight = photonPacketWeight * 1.d0/8.d0
@@ -1067,10 +1067,10 @@ contains
              stackSize = 0
              nSaved = 0
              sendAllPhotons = .false.
-	     !needNewPhotonArray = .true.	     
+             !needNewPhotonArray = .true.    
              do while(.not.endLoop) 
                 crossedMPIboundary = .false.
-!                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)		
+!                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)
                 !Get a new photon stack
                 iSignal = -1
                 if(stackSize == 0) then
@@ -1249,7 +1249,7 @@ contains
                       endif
 
                       if (noDiffuseField) escaped = .true.
-		
+
                       if (escaped) then
                          nEscaped = nEscaped + 1
                       end if
@@ -1622,7 +1622,7 @@ if (grid%geometry == "tom") then
                                   failed = .true.
                                end if
                             else
-                               thisThreadConverged = .false.  		 
+                               thisThreadConverged = .false.  
                                if(deltaT /= 0.d0 .and. .not. failed) then
                                   print *, "deltaT = ", deltaT
                                   print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
@@ -2050,7 +2050,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (tPhoton > tLimit) then
           escaped = .true.
           outOfTime = .true.
-	  
+        
        endif
 
        if (.not.inOctal(grid%octreeRoot, rVec)) then  ! this is only needed due to floating point boundary issues
