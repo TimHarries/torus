@@ -610,8 +610,8 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
-    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, &
-         optimizeStack, stackLimit, dStack
+    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR!, &
+   !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
@@ -689,8 +689,8 @@ contains
     logical :: sourcePhoton
 
     !optimisation variables
-!    integer, parameter :: stackLimit=200
-    integer :: ZerothstackLimit
+    integer, parameter :: stackLimit=200
+    integer,parameter :: ZerothstackLimit=200
     real :: startTime, endTime, newTime
     real :: oldTime = 1.e10
     integer :: newStackLimit= 0, oldStackLimit= 0
@@ -717,10 +717,10 @@ contains
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
     !start with stack size of 1
-    if(optimizeStack) then 
-       stackLimit = 1
-       zerothStackLimit = 1
-    end if
+    !if(optimizeStack) then 
+    !   stackLimit = 1
+    !   zerothStackLimit = 1
+    !end if
 
 
     !Thaw - custom MPI data types for easier send/receiving
@@ -760,12 +760,12 @@ contains
     allocate(nSaved(nThreads))
     nescapedArray = 0    
 
-    if(.not. optimizeStack) then
+!    if(.not. optimizeStack) then
        allocate(photonPacketStack(stackLimit*nThreads))
        photonPacketStack%Freq = 0.d0
        photonPacketStack%Destination = 0
        photonPacketStack%tPhot = 0.d0
-    end if
+!    end if
 
 !    write(*,*) "abundances ",grid%ion(1:5)%abundance
 
@@ -873,9 +873,9 @@ contains
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
     do while(.not.converged)
 
-       if(optimizeStack) then
-          allocate(photonPacketStack(stackLimit*nThreads))
-       end if
+!       if(optimizeStack) then
+!          allocate(photonPacketStack(stackLimit*nThreads))
+!       end if
 
        photonPacketStack%Freq = 0.d0
        photonPacketStack%Destination = 0
@@ -902,9 +902,9 @@ contains
        if (myrank == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        !Thaw - stack optimization
-       if(optimizeStack) then
-          call wallTime(startTime)
-       end if
+      ! if(optimizeStack) then
+      !    call wallTime(startTime)
+      ! end if
 
 
        iMonte_beg = 1
@@ -1353,30 +1353,30 @@ contains
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        !Get the time for the iteration and see if it has improved with a new stack size
-       if(optimizeStack) then
-          deallocate(photonPacketStack)
-          call wallTime(endTime)
-          newTime = endTime - startTime
-          if (newTime < oldTime) then
-             oldStackLimit = stackLimit
-             stackLimit = stackLimit + dStack
-             print *, "stackLimit ", stackLimit
-          else
-             newStackLimit = int(oldStackLimit + (stackLimit - oldStackLimit)/2.)
-             oldStackLimit = stackLimit
-             stackLimit = newStackLimit
-             print *, "stackLimit B ", stackLimit
-             if(stackLimit == oldStackLimit) then
-                converged = .true.
-                optimizeStack = .false.
-                write(message,*) "Optimal Stack Size Is: ", stackLimit
-                call writeInfo(message,IMPORTANT)
-             end if
-          end if
-
-          oldTime = newTime
-       end if
-
+      ! i!f(optimizeStack) then
+      !    deallocate(photonPacketStack)
+     !     call wallTime(endTime)
+     !     newTime = endTime - startTime
+     !     if (newTime < oldTime) then
+     !        oldStackLimit = stackLimit
+     !        stackLimit = stackLimit + dStack
+     !        print *, "stackLimit ", stackLimit
+     !!     else
+      !       newStackLimit = int(oldStackLimit + (stackLimit - oldStackLimit)/2.)
+     !        oldStackLimit = stackLimit
+    !         stackLimit = newStackLimit
+     !        print *, "stackLimit B ", stackLimit
+     !        if(stackLimit == oldStackLimit) then
+     !!           converged = .true.
+   !             optimizeStack = .false.
+     !           write(message,*) "Optimal Stack Size Is: ", stackLimit
+     !           call writeInfo(message,IMPORTANT)
+     !!        end if
+  !        end if
+!
+!!          oldTime = newTime
+ !      end if
+!
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        epsOverDeltaT = (lCore) / dble(nMonte)
@@ -1622,8 +1622,7 @@ if (grid%geometry == "tom") then
                                   failed = .true.
                                end if
                             else
-                               thisThreadConverged = .false.  
-			 
+                               thisThreadConverged = .false.  		 
                                if(deltaT /= 0.d0 .and. .not. failed) then
                                   print *, "deltaT = ", deltaT
                                   print *, "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
