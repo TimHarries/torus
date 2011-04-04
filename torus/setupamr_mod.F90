@@ -182,11 +182,11 @@ contains
           gridconverged = .false.
           grid%octreeRoot%rho = 100.*mhydrogen
           grid%octreeRoot%temperature = 10.
-          call randomNumberGenerator(syncIseed=.true.)
+          call randomNumberGenerator(randomSeed = .true.)
           do while(.not.gridconverged) 
              call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
           enddo
-          call randomNumberGenerator(randomSeed = .true.)
+          call randomNumberGenerator(syncIseed=.true.)
 
           call ionizeGrid(grid%octreeRoot)
           call resetNH(grid%octreeRoot)

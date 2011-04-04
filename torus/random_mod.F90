@@ -31,7 +31,6 @@ contains
     if (PRESENT(reset)) then
        if (reset) then
           !$OMP PARALLEL
-          iseed=0
           r = ran3_double(iseed, reset=.true.)
           !$OMP END PARALLEL
        endif
@@ -423,7 +422,7 @@ contains
      nt = omp_get_num_threads()
 #endif
      
-    ibig = (j+myRankGlobal*nt)*ibig
+    ibig = (j+(myRankGlobal+1)*nt)*ibig
   END SUBROUTINE seedFromClockTime
 
 

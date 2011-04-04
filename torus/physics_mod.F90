@@ -543,6 +543,7 @@ contains
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
      use input_variables, only : inputNsource
+     integer(bigInt) :: itest
 #ifdef MPI
    include 'mpif.h'  
 #endif
@@ -564,8 +565,10 @@ contains
 
      if (grid%geometry == "starburst") then
 #ifdef MPI
+        call randomNumberGenerator(randomSeed = .true.)
         call randomNumberGenerator(syncIseed=.true.)
 #endif
+        call randomNumberGenerator(getIseed=itest)
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0

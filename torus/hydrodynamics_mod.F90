@@ -383,7 +383,7 @@ contains
 
   recursive subroutine setupqx(thisoctal, grid, direction)
     include 'mpif.h'
-    integer :: myrank, ierr
+    integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -392,8 +392,7 @@ contains
     integer :: subcell, i, neighboursubcell
     integer :: nd
     type(vector) :: direction, locator, reversedirection
-  
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
+
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -408,7 +407,7 @@ contains
        else
 
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
 !          if (associated(thisoctal%mpiboundarystorage)) then
 !             if (myrank == 1) then
@@ -421,6 +420,7 @@ contains
           thisoctal%x_i_minus_1(subcell) = 0.d0
           thisoctal%x_i_plus_1(subcell) = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
+
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
@@ -445,7 +445,7 @@ contains
 !             write(*,*) "q: ", thisoctal%q_i_minus_2(subcell), thisoctal%q_i_minus_1(subcell), thisoctal%q_i(subcell), &
 !                  thisoctal%q_i_plus_1(subcell)
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrank," error in setting up x_i values"
+                write(*,*) myrankGlobal," error in setting up x_i values"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell)
              endif
 
