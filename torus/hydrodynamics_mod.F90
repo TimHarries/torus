@@ -382,8 +382,6 @@ contains
   end subroutine dumpx
 
   recursive subroutine setupqx(thisoctal, grid, direction)
-    include 'mpif.h'
-    integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
