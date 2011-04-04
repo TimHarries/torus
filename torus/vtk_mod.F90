@@ -2005,6 +2005,10 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      close(lunit)
 
   endif
+
+
+  deallocate(points, celltypes, connectivity, offsets)
+
   do ivalues = 1, nValueType
      select case (valueType(iValues))
      case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
@@ -2035,6 +2039,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            close(lunit)
            deallocate(pString)
            deallocate(float32)
+           deallocate(rArray)
         else if (grid%splitOverMPI) then
 #ifdef MPI
            call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells, nCellsGlobal)
@@ -2068,6 +2073,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            close(lunit)
            deallocate(pString)
            deallocate(float32)
+           deallocate(rArray)
         else if (grid%splitOverMPI) then
 #ifdef MPI
            call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells, nCellsGlobal)
@@ -2552,6 +2558,7 @@ end subroutine writeXMLVtkFileAMR
               close(lunit)
               deallocate(pString)
               deallocate(float32)
+              deallocate(rArray)
            else
               allocate(rArray(1:3, 1:nCells))
               call getValues(grid, valueType, rarray)
@@ -2565,6 +2572,7 @@ end subroutine writeXMLVtkFileAMR
               close(lunit)
               deallocate(pString)
               deallocate(float32)
+              deallocate(rArray)
            endif
 
            if (myrankGlobal < nHydroThreadsGlobal) then
@@ -2629,7 +2637,6 @@ end subroutine writeXMLVtkFileAMR
                  tempInt(2:(1+outnPad)) = outipad(1:outnPad)
                  call MPI_SEND(tempInt, 3, MPI_INTEGER, iThread+1, tag, MPI_COMM_WORLD, ierr)
               endif
-              
            endif
         endif
      end do

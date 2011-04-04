@@ -387,10 +387,10 @@ module spectrum_mod
       integer :: i1, i2
       integer, parameter :: nKurucz = 410
       type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
-      character(len=80) :: klabel(nKurucz)
+      character(len=80),save :: klabel(nKurucz)
       character(len=200) :: message
-      kLabel = " "
       if (firstTime) call  readKuruczGrid(klabel, kspectrum, nKurucz)
+         
 
 
       logg = log10(bigG * mass / radius**2)
@@ -430,11 +430,17 @@ module spectrum_mod
 
       call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
       if (.not.ok1) then
-         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile1
+         if (writeoutput) then
+            write(*,*) "Can't find kurucz spectrum: ",trim(thisfile1)," ",trim(label1)
+!            do i = 1, nKurucz
+!               write(*,*) trim(label1), " and ", trim(klabel(i))
+!            enddo
+!            stop
+         endif
       endif
       call readKuruczSpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok2)
       if (.not.ok2) then
-         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",thisfile2
+         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",trim(thisfile2), " ", trim(label2)
       endif
 
       if (ok1.and.ok2) then

@@ -84,7 +84,7 @@ contains
 
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use ion_mod, only : returnMu
-    use input_variables, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump !, hOnly
+    use input_variables, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -95,7 +95,7 @@ contains
     real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
     integer :: iUnrefine
     integer :: myRank, ierr
-    real(double) ::  nextDumpTime, tEnd
+    real(double) ::  nextDumpTime
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: thread1(200), thread2(200), nBound(1000), nPairs
@@ -109,7 +109,7 @@ contains
     logical :: photoLoop, photoLoopGlobal=.false.
     logical, save :: firstStep = .true.
     integer :: i, status, tag=30
-    integer :: stageCounter=1, nTimes, nPhase
+    integer :: stageCounter=1, nTimes, nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
 
 
@@ -321,7 +321,7 @@ contains
 
     !tEnd = 200.d0*3.14d10 !200kyr 
     !!THAW - for profiling
-    tEnd = 5.d0*3.14d10 !5kyr
+!    tEnd = 5.d0*3.14d10 !5kyr
 
     if(grid%geometry == "hii_test") then
        tEnd = 3.14d13 !1x10^6 year
@@ -329,7 +329,9 @@ contains
 
     nPhase = 1
 
+    nstep = 0
     do while(grid%currentTime < tEnd)
+       nstep = nstep + 1
        print *, "rank ", myRankGlobal, "on next loop", myRank
        tc = 0.d0
        tc(myrank+1) = 1.d30
@@ -340,9 +342,8 @@ contains
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
 
-       if (firstStep) then
+       if (nstep < 3) then
           dt = dt * 0.01d0
-          firstStep = .false.
        endif
   
        if (myrank == 1) then
@@ -683,7 +684,7 @@ contains
     integer(bigint), allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 
-!================TOMS VARIABLES=======================
+! TOMS VARIABLES
     real(double) :: deltaT, fluctuationCheck 
     logical :: anyUndersampled, undersampledTOT
     character(len=80) :: vtkFilename
@@ -717,7 +718,6 @@ contains
     logical :: finished = .false.
     logical :: voidThread
 
-!====================================================
 
 
 
@@ -1749,9 +1749,9 @@ if (grid%geometry == "tom") then
      
      ! if(tlimit /= 1.d20) then
         write(vtkFilename,'(a,i2.2,a)') "photo",niter,".vtk"
-       call writeVtkFile(grid, vtkFilename, &
-           valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-      "dust1        ","sourceCont   "/))
+!       call writeVtkFile(grid, vtkFilename, &
+!           valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+!      "dust1        ","sourceCont   "/))
 ! call writeAMRgrid("tmp.grid",.false.,grid)
 ! end if
 enddo
@@ -1768,7 +1768,6 @@ enddo
  call MPI_TYPE_FREE(mpi_photon_stack, ierr)
  deallocate(nSaved)
  deallocate(photonPacketStack)
-
 ! if (writelucy) then
 !    call writeAmrGrid(lucyfileout,.false.,grid)
 ! endif
@@ -3285,7 +3284,7 @@ end subroutine advancedCheckForPhotoLoop
        thisRootTbetaH = rootTbetaH(n) + (rootTbetaH(n+1)-rootTbetaH(n)) * fac
 
        if(thisRootTbetaH < 0.d0) then
-          print *, "=========================================="
+          print *, " "
           print *, "n ", n
           print *, "rootTbetaH(n) ", rootTbetaH(n)
           print *, "rootTbetaH(n+1) ", rootTbetaH(n+1)
@@ -3293,7 +3292,7 @@ end subroutine advancedCheckForPhotoLoop
           print *, "thisLogT ", thisLogT
           print *, "logT(n) ", logT(n)
           print *, "logT(n+1) ", logT(n+1)
-          print *, "=========================================="
+          print *, " "
           print *, "thisRootBetaH < 0.d0"
        end if
 
@@ -3592,7 +3591,7 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
         recombTime = 1.d0/recombinationRate
         thisOctal%ionFrac(subcell,iion) = thisOctal%ionFrac(subcell,iion) + deltaT * (recombinationRate - photoIonRate)
 
-!THAW=================
+!THAW
 
      if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
         thisOctal%ionFrac(subcell,iStart:iEnd) = &
@@ -3601,7 +3600,7 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
         thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
      endif
 
-!====================
+!
      
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
 !        if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
@@ -5111,7 +5110,7 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
         
         e = freq(i) * hcgs* ergtoev
 
-!       print *, "====DEBUG===="
+!       print *, "DEBUG"
 !       print *, " i ", i
 !       print *, " e ", e
       ! print *, " grid%ion(iIon) ", grid%ion(iIon)

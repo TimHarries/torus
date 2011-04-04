@@ -90,7 +90,7 @@ program torus
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   ! set up a random seed
-  if (torusOpenMP) call run_random_test_suite
+  call run_random_test_suite
 
 !  call testSuiteRandom()  
   call inputs()
