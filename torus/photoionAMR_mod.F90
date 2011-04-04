@@ -107,7 +107,6 @@ contains
     integer :: iRefine, nUnrefine
     logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
-    logical, save :: firstStep = .true.
     integer :: i, status, tag=30
     integer :: stageCounter=1, nTimes, nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
