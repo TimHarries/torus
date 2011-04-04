@@ -1230,7 +1230,7 @@ contains
 #ifdef MPI
     integer :: ierr
     integer, allocatable :: iOffsetArray(:)
-    integer :: myRank, nThreads, iThread
+    integer :: iThread
 #endif
 
     if (useBinaryXMLVtkFiles) then
@@ -1259,7 +1259,7 @@ contains
 !
 #ifdef MPI
 ! just return if the grid is decomposed and MPI job and this is rank zero thread
-    if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+!    if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 #endif
 
 
@@ -1312,14 +1312,11 @@ contains
 
 #ifdef MPI
     if (grid%splitOverMpi) then
-       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-       call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-       call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
-       allocate(iOffsetArray(1:nThreads-1))
-       call countSubcellsMPI(grid, nVoxels, nSubcellArray = iOffsetArray)
-       iOffsetArray(2:nThreads-1) = iOffsetArray(1:nThreads-2)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       allocate(iOffsetArray(1:nHydroThreadsGlobal))
+       if (myrankGlobal /= 0) call countSubcellsMPI(grid, nVoxels, nSubcellArray = iOffsetArray)
        iOffsetArray(1) = 0
-       do i = 2, nThreads-1
+       do i = 2, nHydrothreadsGlobal-1
           iOffsetArray(i) = iOffsetArray(i) + iOffsetArray(i-1)
        enddo
        iOffsetArray = iOffsetArray * nPointOffset 
@@ -1366,7 +1363,7 @@ contains
 #ifdef MPI
     if (grid%splitOverMpi) then
     do iThread = 1, nThreadsGlobal
-       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (iThread == myRankGlobal) then
           call writePoints(grid, vtkFilename, nPoints, nCells, xml=writexml)
        endif
@@ -1380,7 +1377,7 @@ contains
     if (grid%splitOverMpi) then
 
     do iThread = 1, nThreadsGlobal
-       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (iThread == myRankGlobal) then
            call writeIndices(grid, vtkFilename, nPoints, nCells, iOffsetArray(myRankGlobal), xml=writexml)
        endif
@@ -1395,7 +1392,7 @@ contains
     if (grid%splitOverMpi) then
 
     do iThread = 1, nThreadsGlobal
-       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (iThread == myRankGlobal) then
            call writeOffsetsXML(grid, vtkFilename,  iOffsetArray(myRankGlobal))
        endif
@@ -1451,7 +1448,7 @@ endif
     if (grid%splitOverMpi) then
 
        do iThread = 1, nThreadsGlobal
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (iThread == myRankGlobal) then
              call writeValue(grid, vtkFilename, valueType(iType), writexml)
           endif
@@ -1819,7 +1816,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   !
 #ifdef MPI
   ! just return if the grid is decomposed and MPI job and this is rank zero thread
-  if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+!  if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 #endif
 
   lf = char(10)
@@ -1876,9 +1873,11 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef MPI
   if (grid%splitOverMpi) then
      allocate(nSubcellArray(1:nHydroThreadsGlobal))
-     call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray)
-     ncells = nSubcellArray(myRankGlobal)
-     deallocate(nSubcellArray)
+     if (myrankGlobal /= 0) then
+        call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray)
+        ncells = nSubcellArray(myRankGlobal)
+        deallocate(nSubcellArray)
+     endif
   endif
 #endif
   nCellsGlobal = nVoxels
@@ -2527,6 +2526,7 @@ end subroutine writeXMLVtkFileAMR
      end select
      
      do iThread = 1, nHydroThreadsGlobal
+        if (myrankGlobal /= 0) then
         if (iThread == myRankGlobal) then
 
            nPad = 0
@@ -2572,10 +2572,10 @@ end subroutine writeXMLVtkFileAMR
               tempInt(2:(1+outnPad)) = outipad(1:outnPad)
               call MPI_SEND(tempInt, 3, MPI_INTEGER, iThread+1, tag, MPI_COMM_WORLD, ierr)
            endif
-
         endif
-        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+        endif
      end do
+        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
    end subroutine writeDomainDecomposed
 
   subroutine writePointsDecomposed(grid, vtkFilename, lunit, nPoints, nPointsGlobal)
@@ -2598,40 +2598,42 @@ end subroutine writeXMLVtkFileAMR
 
      
      do iThread = 1, nHydroThreadsGlobal
-        if (iThread == myRankGlobal) then
-
-           nPad = 0
-           if (myRankGlobal /= 1) then
-              call MPI_RECV(tempInt, 3, MPI_INTEGER, iThread-1, tag, MPI_COMM_WORLD, status, ierr)
-              npad = tempInt(1) 
-              ipad(1:2) = tempInt(2:3)
+        if (myrankGlobal /= 0) then
+           if (iThread == myRankGlobal) then
+              
+              nPad = 0
+              if (myRankGlobal /= 1) then
+                 call MPI_RECV(tempInt, 3, MPI_INTEGER, iThread-1, tag, MPI_COMM_WORLD, status, ierr)
+                 npad = tempInt(1) 
+                 ipad(1:2) = tempInt(2:3)
+              endif
+              
+              outnpad = 0
+              padEnd = .false.
+              if (myRankGlobal == nHydroThreadsGlobal) padEnd = .true.
+              allocate(rArray(1:3, 1:nPoints))
+              call getPoints(grid, nPoints, rArray)
+              allocate(float32(1:nPoints*3))
+              float32 = RESHAPE(rarray, (/SIZE(float32)/))
+              call base64encode(writeheader, pstring, nString, float32=float32, inputNpad=npad, inputipad=ipad, &
+                   outnpad=outnpad, outipad=outipad, padEnd=padEnd, nBytesHeader=nPointsGlobal*4*3)
+              
+              open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
+              write(lunit) pstring(1:nString)
+              close(lunit)
+              deallocate(pString)
+              deallocate(float32)
+              
+              if (myrankGlobal < nHydroThreadsGlobal) then
+                 tempInt(1) = outnpad
+                 tempInt(2:(1+outnPad)) = outipad(1:outnPad)
+                 call MPI_SEND(tempInt, 3, MPI_INTEGER, iThread+1, tag, MPI_COMM_WORLD, ierr)
+              endif
+              
            endif
-           
-           outnpad = 0
-           padEnd = .false.
-           if (myRankGlobal == nHydroThreadsGlobal) padEnd = .true.
-           allocate(rArray(1:3, 1:nPoints))
-           call getPoints(grid, nPoints, rArray)
-           allocate(float32(1:nPoints*3))
-           float32 = RESHAPE(rarray, (/SIZE(float32)/))
-           call base64encode(writeheader, pstring, nString, float32=float32, inputNpad=npad, inputipad=ipad, &
-                outnpad=outnpad, outipad=outipad, padEnd=padEnd, nBytesHeader=nPointsGlobal*4*3)
-           
-           open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
-           write(lunit) pstring(1:nString)
-           close(lunit)
-           deallocate(pString)
-           deallocate(float32)
-
-           if (myrankGlobal < nHydroThreadsGlobal) then
-              tempInt(1) = outnpad
-              tempInt(2:(1+outnPad)) = outipad(1:outnPad)
-              call MPI_SEND(tempInt, 3, MPI_INTEGER, iThread+1, tag, MPI_COMM_WORLD, ierr)
-           endif
-
         endif
-        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
      end do
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
    end subroutine writePointsDecomposed
 #endif
 end module vtk_mod
