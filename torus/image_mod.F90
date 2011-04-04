@@ -44,13 +44,16 @@ module image_mod
 
      
 
-   function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax)
+   function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax, xOffset, yOffset)
 
      type(IMAGETYPE) :: initImage
      integer :: nx, ny
      real :: imagesizeX, imageSizeY
      real :: vmax, vmin
+     real, optional :: xOffset, yOffset
+
      integer :: i
+     real :: thisxOffset, thisyOffset
 
 ! Check the requested image size is sensible
 ! If not then set size to 1 to prevent problems with unallocated arrays
@@ -72,6 +75,19 @@ module image_mod
         call writeWarning ("initImage: imageSizeX = 0")
      end if
 
+! Set offsets if required
+     if ( present(xOffset) ) then 
+        thisxOffset=xOffset
+     else
+        thisxOffset = 0.0
+     end if
+
+     if ( present(yOffset) ) then 
+        thisyOffset=yOffset
+     else
+        thisyOffset = 0.0
+     end if
+
      allocate(initImage%pixel(1:nx,1:ny))
      allocate(initImage%vel(1:nx,1:ny))
      allocate(initImage%totWeight(1:nx,1:ny))
@@ -85,12 +101,12 @@ module image_mod
      initimage%dy = imageSizeY / real(ny)
      
      do i = 1, nx
-        initImage%xAxisCentre(i) = -imageSizeX/2. + initimage%dx/2. + initimage%dx*real(i-1)
-        initImage%xAxisLH(i) = -imageSizeX/2. + initimage%dx*real(i-1)
+        initImage%xAxisCentre(i) = -imageSizeX/2. + initimage%dx/2. + initimage%dx*real(i-1) + thisxOffset
+        initImage%xAxisLH(i) = -imageSizeX/2. + initimage%dx*real(i-1) + thisxOffset
      enddo
      do i = 1, ny
-        initImage%yAxisCentre(i) = -imageSizeY/2. + initimage%dy/2. + initimage%dy*real(i-1)
-        initImage%yAxisBottom(i) = -imageSizeY/2. + initimage%dy*real(i-1)
+        initImage%yAxisCentre(i) = -imageSizeY/2. + initimage%dy/2. + initimage%dy*real(i-1) + thisyOffset
+        initImage%yAxisBottom(i) = -imageSizeY/2. + initimage%dy*real(i-1) + thisyOffset
      enddo
 
      initImage%pixel = STOKESVECTOR(0.,0.,0.,0.)

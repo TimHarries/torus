@@ -4139,7 +4139,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
-    use input_variables, only : nPhotons, setimagesize, mie, lamStart
+    use input_variables, only : nPhotons, setimagesize, mie, lamStart, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE
     use lucy_mod, only: calcContinuumEmissivityLucyMono
     use parallel_mod, only: torus_abort
@@ -4162,6 +4162,7 @@ end subroutine readHeIIrecombination
     real, intent(in) :: lambdaLine
     character(len=*), intent(in) :: outputimageType
     integer, intent(in) :: npix
+    integer :: nXpix, nYpix
     real :: imageXsize, imageYsize
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
@@ -4192,11 +4193,26 @@ end subroutine readHeIIrecombination
     lamstart  = lambdaLine ! used by convertion to Janskies
 
 ! PhotoionAMR_mod version calls zeroEtaCont here
-    call quickSublimate(grid%OctreeRoot)
+    call writeVtkFile(grid, "before_sublimate.vtk", &
+         valueTypeString=(/"rho        ", "temperature", "dust1      "/))
+    call quickSublimate(grid%OctreeRoot, 7500.0, -99.0 )
+    call writeVtkFile(grid, "after_sublimate.vtk", &
+         valueTypeString=(/"rho        ", "temperature", "dust1      "/))
 
-    imageXsize=setimagesize/1.e10
-    imageYsize=setimagesize/1.e10
-    thisImage = initImage(npix, npix, imageXsize, imageYsize, 0., 0.)
+    if (amr2d) then 
+       imageXsize=2.0*setimagesize/1.e10
+       imageYsize=setimagesize/1.e10
+       nXpix = 2*npix
+       nYpix = npix
+       thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0., yOffset= 0.5*imageYsize)
+    else
+       imageXsize=setimagesize/1.e10
+       imageYsize=setimagesize/1.e10
+       nXpix = npix
+       nYpix = npix
+       thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0.)
+    end if
+
 
     select case (outputimageType)
     
@@ -4342,26 +4358,27 @@ end subroutine readHeIIrecombination
     call freeImage(thisImage)
   end subroutine createImagePhotoion
 
-  recursive subroutine quickSublimate(thisOctal)
+  recursive subroutine quickSublimate(thisOctal, temThres, ionThres)
     use input_variables, only : hOnly
     type(octal), pointer   :: thisOctal
+    real, intent(in) :: temThres, ionThres
     type(octal), pointer  :: child 
     integer :: subcell, i
-  
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call quickSublimate(child)
+                call quickSublimate(child, temThres, ionThres)
                 exit
              end if
           end do
        else
 
           if(.not. hOnly) then
-             if ((thisOctal%ionFrac(subcell,1) < 0.1).or.(thisOctal%temperature(subcell) > 1500.)) then
+             if ((thisOctal%ionFrac(subcell,1) < ionThres).or.(thisOctal%temperature(subcell) > temThres)) then
                 thisOctal%dustTypeFraction(subcell,:) = 0.d0
              else
                 thisOctal%dustTypeFraction(subcell,:) = 1.d0

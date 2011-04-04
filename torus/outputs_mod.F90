@@ -94,7 +94,7 @@ contains
 #endif
        else
           do i = 1, nImage
-             observerDirection = VECTOR(-1.0d0, 0.d0, -1.0d0)
+             observerDirection = VECTOR(-1.0d0, 0.d0, 0.d0)
              call createImagePhotoion(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), &
                   lambdaImage(i), outputImageType(i), nPixelsArray(i))
           end do
