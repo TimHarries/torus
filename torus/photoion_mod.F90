@@ -2799,7 +2799,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   real(double) :: hHeating, heHeating, totalHeating, v, epsOverDeltaT, dustHeating
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
-       * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
+       * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! eqation 21 of kenny's
   Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999

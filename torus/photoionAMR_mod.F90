@@ -5438,12 +5438,6 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 end subroutine addDustContinuum
 
 
-
-
-
-
-
-
 subroutine readHeIRecombinationLinesFit()
   character(len=200) :: filename, datadirectory
   integer :: i
