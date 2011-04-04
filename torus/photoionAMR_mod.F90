@@ -665,6 +665,8 @@ contains
     real :: kappaP
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
+    !$OMP THREADPRIVATE(firstTime)
+
     integer(bigint) :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
@@ -710,6 +712,10 @@ contains
     integer :: blocklengths(7) = (/ 7, 6, 5, 4, 3, 2, 1/)
     integer :: oldTypes(7) 
     integer :: iDisp
+
+    !OMP variables
+    logical :: finished = .false.
+    logical :: voidThread
 
 !====================================================
 
@@ -1070,7 +1076,7 @@ contains
              !needNewPhotonArray = .true.    
              do while(.not.endLoop) 
                 crossedMPIboundary = .false.
-!                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)
+                !                call getNewMPIPhoton(rVec, uHat, thisFreq, tPhoton, photonPacketWeight, iSignal)
                 !Get a new photon stack
                 iSignal = -1
                 if(stackSize == 0) then
@@ -1091,11 +1097,11 @@ contains
                       escapeCheck = .true.
                       stackSize = 0
                       !End photoionization loop
-                     if(currentStack(2)%destination == 999) then
-                        iSignal = 0                    
+                      if(currentStack(2)%destination == 999) then
+                         iSignal = 0                    
                       end if
-
-                   !Start sending all photon packets rather than bundles
+                      
+                      !Start sending all photon packets rather than bundles
                    else if(currentStack(1)%destination == 500 .and. .not. sendAllPhotons) then
                       sendAllPhotons = .true.
                       stackSize = 0
@@ -1109,66 +1115,92 @@ contains
                                do sendCounter = 1, (stackLimit*nThreads)
                                   if(photonPacketStack(sendCounter)%destination /= 0 .and. &
                                        photonPacketStack(sendCounter)%destination == optCounter) then
-                                    
-                                    toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+                                     
+                                     toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
                                     toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
                                     toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
                                     toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
                                     toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
                                     toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
                                     toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
-                                     thisPacket = thisPacket + 1
-                                     !nInf = nInf + 1
-                                     
+                                    thisPacket = thisPacket + 1
+                                    !nInf = nInf + 1
+                                    
                                     !Reset the photon frequency so that this array entry can be overwritten
-                                     photonPacketStack(sendCounter)%freq = 0.d0
-                                     
+                                    photonPacketStack(sendCounter)%freq = 0.d0
+                                    
                                      !Reset the destination so that it doesnt get picked up in subsequent sweeps!
-                                     photonPacketStack(sendCounter)%destination = 0
-                                     
-                                  end if
-                                end do
-                                call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+                                    photonPacketStack(sendCounter)%destination = 0
+                                    
+                                 end if
+                              end do
+                              call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
 
-                                !reset the counter for this thread's bundle recieve
-                                nSaved(optCounter) = 0
-                                toSendStack%freq = 0.d0
-                                toSendStack%destination = 0
-                             end if
-                          end if
-                      end do
-                       call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
-                       goto 777
-                    end if
-                    Currentstack%destination = 0
+                              !reset the counter for this thread's bundle recieve
+                              nSaved(optCounter) = 0
+                              toSendStack%freq = 0.d0
+                              toSendStack%destination = 0
+                           end if
+                        end if
+                     end do
+                     call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+                     goto 777
+                  end if
+                  Currentstack%destination = 0
+               else if (stackSize < 0) then
+                  write(*,*) "StackSize less than zero... aborting.", myRank, myRankGlobal
+                  stop
+               end if
+               
+               if (iSignal == 0) then
+                  endLoop = .true.
+                  goto 777
+               endif
+               if (iSignal == 1) then
+                  call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+                  goto 777
+               endif
 
-                 end if
-                 !Get the next available photon in the stack for processing
-                 if(stackSize /= 0 .and. .not. escapeCheck) then
-                    do p = 1, stackLimit
-                       if(currentStack(p)%freq /= 0.d0) then
-                          rVec = currentStack(p)%rVec
-                          uHat = currentStack(p)%uHat
-                          thisFreq = currentStack(p)%Freq
-                          tPhoton = currentStack(p)%tPhot
-                          photonPacketWeight = currentStack(p)%ppw
-                          sourcePhoton = currentStack(p)%sourcePhoton
-                          currentStack(p)%freq = 0.d0
-                          exit
-                       end if
-                    end do
-                    stackSize = stackSize - 1
-                 end if
-
-
-                 if (iSignal == 0) then
-                    endLoop = .true.
-                    goto 777
-                 endif
-                 if (iSignal == 1) then
-                    call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
-                   goto 777
-                endif
+               !$OMP PARALLEL DEFAULT(NONE) &
+               !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton) &
+               !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
+               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell) &
+               !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat ) &
+               !$OMP PRIVATE(r1, finished, voidThread) &
+               !$OMP SHARED(photonPacketStack, myRankGlobal, myRank, currentStack, escapeCheck) &
+               !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
+               !$OMP SHARED(nlambda, lamarray, tlimit, nThreads, sendAllPhotons,toSendStack) &
+               !$OMP SHARED(nTotScat, gammaTableArray, freq) &
+               !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
+               !$OMP SHARED(nSaved) &
+               !$OMP SHARED(stackSize) &
+               !$OMP SHARED(nPhot, nEscaped)
+               
+               finished = .false.
+               escaped = .false.
+               crossedMPIboundary=.false.
+               voidThread = .false.
+               
+               !Get the next available photon in the stack for processing
+               !$OMP CRITICAL (get_photon_stack)
+               if(stackSize /= 0 .and. .not. escapeCheck) then
+                  do p = 1, stackLimit
+                     if(currentStack(p)%freq /= 0.d0) then
+                        rVec = currentStack(p)%rVec
+                        uHat = currentStack(p)%uHat
+                        thisFreq = currentStack(p)%Freq
+                        tPhoton = currentStack(p)%tPhot
+                        photonPacketWeight = currentStack(p)%ppw
+                        sourcePhoton = currentStack(p)%sourcePhoton
+                        currentStack(p)%freq = 0.d0
+                        exit
+                     end if
+                  end do
+                  stackSize = stackSize - 1
+               else
+                  voidThread = .true.
+               end if
+               !$OMP END CRITICAL (get_photon_stack)
 
                 ! here a new photon has been received, and we add its momentum
 
@@ -1187,6 +1219,7 @@ contains
 
                       if (crossedMPIBoundary) then                         
                          !Create a bundle of photon packets, only modify the first available array space
+                         !$OMP CRITICAL (crossed_mpi_boundary)
                          do optCounter = 1, (SIZE(photonPacketStack))
                             if(photonPacketStack(optCounter)%freq == 0.d0) then
                                photonPacketStack(optCounter)%rVec = rVec
@@ -1239,113 +1272,115 @@ contains
                                end if
                             end if
                          end do
-                         
-                         goto 777
-
-                         !THaw - old bit beneath
-!                         call MPI_SEND()
-!                         call sendMPIPhoton(rVec, uHat, thisFreq,tPhoton,photonPacketWeight, newThread)
-
+                         !$OMP END CRITICAL (crossed_mpi_boundary)
+                         finished = .true.
                       endif
 
-                      if (noDiffuseField) escaped = .true.
 
-                      if (escaped) then
-                         nEscaped = nEscaped + 1
-                      end if
+                      if(.not. finished) then
+                         if (noDiffuseField) escaped = .true.
 
-
-                      if (.not. escaped) then
-                         thisLam = (cSpeed / thisFreq) * 1.e8
-                         call locate(lamArray, nLambda, real(thisLam), iLam)
-                         octVec = rVec 
-                         call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
-                              lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
-                         
-                         albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
-                         
-                         
-                         call randomNumberGenerator(getDouble=r)
-                         if (r < albedo) then
-                            uHat = randomUnitVector() ! isotropic scattering
-!                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
-                         else
+                         if (escaped) then
+                            !$OMP CRITICAL (update_escaped)
+                            nEscaped = nEscaped + 1
+                            !$OMP END CRITICAL (update_escaped)
+                         end if
 
 
-                            spectrum = 1.d-30
+                         if (.not. escaped) then
+                            thisLam = (cSpeed / thisFreq) * 1.e8
+                            call locate(lamArray, nLambda, real(thisLam), iLam)
+                            octVec = rVec 
+                            call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
+                                 lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                             
-!                            write(*,*) "calling return kappa ",myrank
-                            call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
-                                 kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
-!                            write(*,*) "done return kappa ", myrank
+                            albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
                             
-                            if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
-                               call randomNumberGenerator(getDouble=r1)
-
-                               if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
-                                  call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-                                  call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-                                  call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                                  !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-                                  call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                               else
+                            
+                            call randomNumberGenerator(getDouble=r)
+                            if (r < albedo) then
+                               uHat = randomUnitVector() ! isotropic scattering
+                               !                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
+                            else
+                               
+                               
+                               spectrum = 1.d-30
+                               
+                               !                            write(*,*) "calling return kappa ",myrank
+                               call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
+                                    kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+                                    kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                               !                            write(*,*) "done return kappa ", myrank
+                               
+                               if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+                                  call randomNumberGenerator(getDouble=r1)
+                                  
+                                  if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
+                                     call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                                     call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+                                     call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                                     !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                                     call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                                  else
+                                     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                                  endif
+                                  !THAW - subsequent progress is now a diffuse photon
+                                  sourcePhoton = .false.
+                               else ! non-ionizing photon must be absorbed by dust
                                   call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                                endif
-                               !THAW - subsequent progress is now a diffuse photon
-                               sourcePhoton = .false.
-                            else ! non-ionizing photon must be absorbed by dust
-                               call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                               if (firsttime.and.(myrankglobal==1)) then
+                                  firsttime = .false.
+                                  open(67,file="pdf.dat",status="unknown",form="formatted")
+                                  do i = 1, nfreq
+                                     write(67,*) freq(i), spectrum(i)
+                                  enddo
+                                  close(67)
+                               endif
+                               thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+                               uHat = randomUnitVector() ! isotropic emission
+                               !                            if (myrank == 1) write(*,*) "new uhat emission ",uhat
+                               
+                               nScat = nScat + 1
+                               
+                               
+                               !                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
+                               
+                               
                             endif
-                            if (firsttime.and.(myrankglobal==1)) then
-                               firsttime = .false.
-                               open(67,file="pdf.dat",status="unknown",form="formatted")
-                               do i = 1, nfreq
-                                  write(67,*) freq(i), spectrum(i)
-                               enddo
-                               close(67)
-                            endif
-                            thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
-                            uHat = randomUnitVector() ! isotropic emission
-!                            if (myrank == 1) write(*,*) "new uhat emission ",uhat
-
-                            nScat = nScat + 1
                             
                             
-!                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
-
-
                          endif
-                
-
-                      endif
-                      if (nScat > 100000) then
-                         write(*,*) "Nscat exceeded 10000, forcing escape"
-                         write(*,*) 1.e8*cspeed/thisFreq
-                         write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
-                         
-                         thisLam = (cSpeed / thisFreq) * 1.e8
-                         call locate(lamArray, nLambda, real(thisLam), iLam)
-                         
-                         call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
-                              Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                              kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
-                         write(*,*) "thislam",thislam,ilam, lamArray(ilam)
-                         write(*,*) lamArray(1:nLambda)
-                         write(*,*) "kappaAbsDust",kappaAbsDust
-                         write(*,*) "kappaAbsGas",kappaAbsGas
-                         write(*,*) "kappaSca",kappaScadb
-                         write(*,*) "kappaAbs",kappaAbsdb
-                         write(*,*) "onekappaabs",grid%oneKappaAbs(1,ilam)
-                         write(*,*) "onekappasca",grid%oneKappasca(1,ilam)
-                         
-
-                         escaped = .true.
-                      Endif
+                         if (nScat > 100000) then
+                            write(*,*) "Nscat exceeded 10000, forcing escape"
+                            write(*,*) 1.e8*cspeed/thisFreq
+                            write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
+                            
+                            thisLam = (cSpeed / thisFreq) * 1.e8
+                            call locate(lamArray, nLambda, real(thisLam), iLam)
+                            
+                            call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
+                                 Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                            write(*,*) "thislam",thislam,ilam, lamArray(ilam)
+                            write(*,*) lamArray(1:nLambda)
+                            write(*,*) "kappaAbsDust",kappaAbsDust
+                            write(*,*) "kappaAbsGas",kappaAbsGas
+                            write(*,*) "kappaSca",kappaScadb
+                            write(*,*) "kappaAbs",kappaAbsdb
+                            write(*,*) "onekappaabs",grid%oneKappaAbs(1,ilam)
+                            write(*,*) "onekappasca",grid%oneKappasca(1,ilam)
+                  
+                            escaped = .true.
+                            
+                         Endif
+                      end if
                    enddo
                    nTotScat = nTotScat + nScat
                    nPhot = nPhot + 1
-                endif
+                end if
+                !$OMP BARRIER
+                !$OMP END PARALLEL
 777             continue
              enddo
           endif
@@ -1354,7 +1389,7 @@ contains
 
        !Get the time for the iteration and see if it has improved with a new stack size
       ! i!f(optimizeStack) then
-      !    deallocate(photonPacketStack)
+
      !     call wallTime(endTime)
      !     newTime = endTime - startTime
      !     if (newTime < oldTime) then
@@ -1731,7 +1766,7 @@ enddo
  call MPI_TYPE_FREE(mpi_vector, ierr)
  call MPI_TYPE_FREE(mpi_photon_stack, ierr)
  deallocate(nSaved)
-
+ deallocate(photonPacketStack)
 
 ! if (writelucy) then
 !    call writeAmrGrid(lucyfileout,.false.,grid)
