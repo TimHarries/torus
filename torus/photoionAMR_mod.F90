@@ -1322,7 +1322,8 @@ contains
                                      !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                      call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                                   else
-                                     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                                     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, & 
+                                          nlambda, lamArray)
                                   endif
                                   !THAW - subsequent progress is now a diffuse photon
                                   sourcePhoton = .false.
