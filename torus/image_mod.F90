@@ -72,7 +72,7 @@ module image_mod
         call writeWarning ("initImage: imageSizeX = 0")
      end if
      if (imageSizeY == 0.0 ) then 
-        call writeWarning ("initImage: imageSizeX = 0")
+        call writeWarning ("initImage: imageSizeY = 0")
      end if
 
 ! Set offsets if required
@@ -873,7 +873,67 @@ module image_mod
 #endif
   end subroutine createLucyImage
 
-      
+#ifdef MPI
+! Gather an MPI distributed image. 
+  subroutine collateImages(thisImage)
+    implicit none
+    include 'mpif.h'
+    type(IMAGETYPE) :: thisImage
+    real, allocatable :: tempRealArray(:), tempRealArray2(:)
+    real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:)
+    integer :: ierr
+
+     allocate(tempRealArray(SIZE(thisImage%pixel)))
+     allocate(tempRealArray2(SIZE(thisImage%pixel)))
+     allocate(tempDoubleArray(SIZE(thisImage%pixel)))
+     allocate(tempDoubleArray2(SIZE(thisImage%pixel)))
+     tempRealArray = 0.0
+     tempRealArray2 = 0.0
+     tempDoubleArray = 0.0_db
+     tempDoubleArray2 = 0.0_db
+
+     call writeInfo ("Collating images...", FORINFO)
+     tempDoubleArray = reshape(thisImage%pixel%i,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%i = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%i))
+
+     tempDoubleArray = reshape(thisImage%pixel%q,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%q = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%q))
+
+     tempDoubleArray = reshape(thisImage%pixel%u,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%u = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%u))
+
+     tempDoubleArray = reshape(thisImage%pixel%v,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%pixel%v = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%v))
+
+
+     tempRealArray = reshape(thisImage%vel,(/SIZE(tempRealArray)/))
+     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%vel = reshape(tempRealArray2,SHAPE(thisImage%vel))
+
+     tempRealArray = reshape(thisImage%totWeight,(/SIZE(tempRealArray)/))
+     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%totWeight = reshape(tempRealArray2,SHAPE(thisImage%totWeight))
+
+     call writeInfo ("Done.", FORINFO)
+     deallocate(tempRealArray)
+     deallocate(tempRealArray2)
+     deallocate(tempDoubleArray)
+     deallocate(tempDoubleArray2)
+
+  end subroutine collateImages
+
+#endif
+
 end module image_mod
 
 
