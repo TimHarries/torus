@@ -247,7 +247,6 @@ module spectrum_mod
     end subroutine addToSpectrumBB
 
     subroutine readSpectrum(spectrum, filename, ok)
-      use input_variables, only : biasToLyman
       type(SPECTRUMTYPE) :: spectrum
       logical :: ok
       character(len=*) :: filename
