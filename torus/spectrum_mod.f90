@@ -234,7 +234,6 @@ module spectrum_mod
     end subroutine fillSpectrumBB
 
     subroutine addToSpectrumBB(spectrum, tBB, frac)
-      use input_variables, only : biasToLyman
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: tBB, frac
       integer :: i
