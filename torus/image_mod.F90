@@ -6,7 +6,6 @@ module image_mod
   use phasematrix_mod, only: STOKESVECTOR
   use photon_mod, only: PHOTON
   use source_mod, only: SOURCETYPE, I_nu, getElement
-  use utils_mod, only: sort, locate, convertToJanskies
 
   implicit none
 
@@ -153,6 +152,7 @@ module image_mod
 
    subroutine addPhotontoPVimage(thisImage, thisPhoton, viewVec, rotationAxis, thisVel, &
                                  weight, distance)
+     use utils_mod, only: locate
      type(PVIMAGETYPE) :: thisImage
      type(PHOTON) :: thisPhoton
      type(VECTOR) :: viewVec, rotationAxis
@@ -367,6 +367,7 @@ module image_mod
      end subroutine writePPMAimage
 
      subroutine writeFalseColourPPM(tfile, image)
+
        character(len=*) :: tfile
        type(IMAGETYPE) :: image(:)
        integer, allocatable :: rImage(:,:), gImage(:,:), bImage(:,:)
@@ -422,6 +423,7 @@ module image_mod
      end subroutine writeFalseColourPPM
 
      real function imagePercentile(image, limit) result (out)
+       use utils_mod, only: sort
        type(IMAGETYPE) :: image
        real :: limit
        real, allocatable :: values(:)
@@ -448,6 +450,7 @@ module image_mod
      end function imagePercentile
 
      subroutine ConvertImageToMJanskiesPerStr(image, lambda, distance)
+       use utils_mod, only: convertToJanskies
        type(IMAGETYPE) :: image
        real(double) :: lambda
        real(double) :: distance, scale
@@ -475,28 +478,23 @@ module image_mod
        enddo
      end subroutine ConvertImageToMJanskiesPerStr
 
-     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, distance, angularScale)
-       real :: array(:,:)
-       real(double) :: lambda
-       real(double) :: distance, scale
-       real(double) :: angularScale, strad
-       integer :: i, j
+! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
+! Note there is no distance dependance as this is per cm^2 AND per sr.
+     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx)
 
-       scale = 1.d20 / distance**2 ! to per cm^2
-       strad = angularScale**2 ! str per pix
+       real, intent(inout)      :: array(:,:)
+       real, intent(in)         :: lambda
+       real(double), intent(in) :: dx
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
+       real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
+       real(double), parameter :: PerAngstromToPerCm = 1.e8_db
+       real(double) :: nu, PerAngstromToPerHz
 
-       if ( strad == 0.0 ) then 
-          call writewarning( "ConvertImageToMJanskiesPerStr: strad = 0.0 no conversion performed")
-          return
-       end if
+       nu = cspeed / ( real(lambda,db) * angstromtocm)
+       PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
+       ! Factor of 1.0e20 converts dx to cm from Torus units
+       array = FluxToMegaJanskies * PerAngstromToPerHz  * array / (1.0e20_db * dx**2)
 
-       do i = 1, SIZE(array,1)
-          do j = 1, SIZE(array,2)
-
-! factor 1.d-6 to convert janskies to MJanskies
-             array(i,j) = 1.d-6*convertToJanskies(dble(scale*array(i,j)),lambda)/strad
-          enddo
-       enddo
      end subroutine ConvertArrayToMJanskiesPerStr
 !
 !*******************************************************************************
@@ -518,7 +516,7 @@ module image_mod
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       real(double) :: scale,  dx, dy, angularScale
+       real(double) :: scale,  dx, dy
 
        logical :: simple,extend
 
@@ -584,8 +582,7 @@ module image_mod
              write(*,*) "Unknown type in writefitsimage ",type
        end select
 
-       angularScale =  (image%xAxisCentre(2) - image%xAxisCentre(1))*1.d10/objectdistance
-       call ConvertArrayToMJanskiesPerStr(array, dble(lamstart), objectdistance, angularScale)
+       call ConvertArrayToMJanskiesPerStr(array, lamstart, dx)
        call ftppre(unit,group,fpixel,nelements,array,status)
        !
        !  Write another optional keyword to the header.
@@ -724,6 +721,7 @@ module image_mod
 #endif
 
      subroutine pixelLocate(image, xDist, yDist, ix, iy)
+       use utils_mod, only: locate
        type(IMAGETYPE) :: image
        real :: xDist, yDist
        integer :: ix, iy

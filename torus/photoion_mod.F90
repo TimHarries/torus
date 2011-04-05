@@ -4139,7 +4139,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
-    use input_variables, only : nPhotons, setimagesize, mie, lamStart, amr2d
+    use input_variables, only : nPhotons, setimagesize, mie, lamStart, amr2d, gridDistance
     use image_mod, only: initImage, freeImage, IMAGETYPE
     use lucy_mod, only: calcContinuumEmissivityLucyMono
     use parallel_mod, only: torus_abort
@@ -4346,7 +4346,7 @@ end subroutine readHeIIrecombination
 
 #ifdef USECFITSIO
     if (myRankIsZero) then
-       call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
+       call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity")
     endif
 #endif
     call freeImage(thisImage)
