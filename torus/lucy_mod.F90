@@ -475,7 +475,7 @@ contains
                    sOctal => thisOctal
 
                    escaped = .false.
-                   call getWavelength(thisSource%spectrum, wavelength)
+                   call getWavelength(thisSource%spectrum, wavelength, packetWeight)
                    thisFreq = cSpeed/(wavelength / 1.e8)
                    thislam = wavelength
 

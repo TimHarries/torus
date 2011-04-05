@@ -332,7 +332,7 @@ contains
           endif
 
 
-          call getWavelength(thisSource%spectrum, wavelength)
+          call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)
 
 
           thisFreq = cSpeed/(wavelength / 1.e8)

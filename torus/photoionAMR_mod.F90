@@ -610,7 +610,7 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
-    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR!, &
+    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
@@ -717,7 +717,10 @@ contains
     logical :: finished = .false.
     logical :: voidThread
 
-
+    !Energy cons variables
+    real(double) :: totalPower = 0.d0
+    real(double) :: lams(1000) = 0.d0
+    real(double) :: countArray(1000) = 0.d0
 
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
@@ -726,6 +729,8 @@ contains
     !   stackLimit = 1
     !   zerothStackLimit = 1
     !end if
+
+
 
 
     !Thaw - custom MPI data types for easier send/receiving
@@ -780,6 +785,7 @@ contains
     do i = 1, nFreq
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
        freq(i) = 10.d0**freq(i)
+       lams(nFreq-i+1) = cspeed/freq(i)
     enddo
     do i = 2, nFreq-1
        dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
@@ -825,10 +831,6 @@ contains
     if (writeoutput) then
        write(*,'(a,1pe12.1)') "Ionizing photons per cm^2 ", ionizingFlux(source(1))
     endif
-
-!    call writeVtkFile(grid, "start4.vtk", &
-!         valueTypeString=(/"rho        ", "HI         ","temperature", "dust1      " /))
-
 
     !nmonte selector: Only works for fixed grids at present
     if (inputnMonte == 0) then
@@ -915,6 +917,7 @@ contains
        iMonte_beg = 1
        iMonte_end = nMonte
 
+       totalPower = 0.d0
        nTotScat = 0
        nPhot = 0
        nSaved = 0
@@ -922,11 +925,14 @@ contains
        photonPacketStack%freq = 0.d0
        toSendStack%freq = 0.d0
        toSendStack%destination = 0
+
+       countArray = 0.d0
 !       if(myRank /= 0) then
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !       end if   
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
+
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
@@ -953,10 +959,20 @@ contains
  !                  call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
  !                  rVec = subcellCentre(thisOctal, subcell)
  !               endif
-                                
-                call getWavelength(thisSource%spectrum, wavelength)                
+
+                call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)                
                 thisFreq = cSpeed/(wavelength / 1.e8)
 
+                totalPower = totalPower + epsOverDeltaT*photonPacketWeight
+                
+                if(binPhotons) then
+                   do i = 1, nFreq
+                      if((wavelength/1.e8) < lams(i+1) .and. (wavelength/1.e8) > lams(i)) then
+                         countArray(i) = countArray(i) + 1.d0*photonPacketWeight
+                         exit
+                      end if
+                   end do
+                end if
 
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                 iThread = thisOctal%mpiThread(subcell)
@@ -1019,16 +1035,30 @@ contains
                 end do
 
              end do mainloop
+
+             print *, "lcore = ", lcore
+             print *, "totalPower = ", totalPower
+             print *, "ratio = ", lcore/totalPower
              print *, "Rank 0 sent all initial bundles"
              print *, "Telling Ranks to pass stacks ASAP "
-             
-             do iThread = 1, nThreads - 1
-                toSendStack(1)%destination = 500
-                call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
-                call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+
+
+             if(binPhotons) then
+                open(333, file="bins.dat", status="unknown")
+                do i=1, nFreq
+                   write(333,*), lams(i)*1.e8, countArray(i)/dble(nMonte)
+                end do
+                close(333)
+             end if
                 
-             end do
-             
+                do iThread = 1, nThreads - 1
+                   toSendStack(1)%destination = 500
+                   call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
+                   call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                   
+                end do
+
+
              photonsStillProcessing = .true.
              
              do while(photonsStillProcessing)                   
@@ -1057,6 +1087,7 @@ contains
              end do
 
              print *, "Finishing iteration..."
+
 
              do iThread = 1, nThreads - 1
                 toSendStack(1)%destination = 999
@@ -1201,6 +1232,7 @@ contains
                end if
                !$OMP END CRITICAL (get_photon_stack)
 
+
                 ! here a new photon has been received, and we add its momentum
 
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
@@ -1284,7 +1316,6 @@ contains
                             nEscaped = nEscaped + 1
                             !$OMP END CRITICAL (update_escaped)
                          end if
-
 
                          if (.not. escaped) then
                             thisLam = (cSpeed / thisFreq) * 1.e8
@@ -3358,7 +3389,6 @@ end subroutine advancedCheckForPhotoLoop
     
     kappaAbs = 0.d0; kappaAbsDust = 0.d0
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-
 
     fac = distance * photonPacketWeight / (hCgs * thisFreq)
 

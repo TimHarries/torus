@@ -185,8 +185,13 @@ contains
        end if
 
        select case(inputContFluxFile(isource))
-          case("blackbody")
+       case("blackbody")
+!          if(biasToLyman) then
+!!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
+!                  1000)
+!          else
              call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
+!          end if
           case("kurucz")
              call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
                   source(isource)%radius*1.d10)

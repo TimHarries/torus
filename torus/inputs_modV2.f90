@@ -189,6 +189,14 @@ contains
     call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
          "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("biasToLyman", biasToLyman, cLine, fLine, nLines, &
+         "Variance reduction, higher sampling of Lyman photons: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("binPhotons", biasToLyman, cLine, fLine, nLines, &
+         "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
+            "Variance reduction, extent of bias: ", "(a,es9.3,1x,a)", 100.d0, ok, .false.)
 
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)

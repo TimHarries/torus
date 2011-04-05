@@ -21,6 +21,7 @@ module input_variables
     logical :: dustPhysics
     logical :: hOnly !Thaw
 
+
     logical :: radiationHydrodynamics !Thaw
     logical :: radiativeEquilibrium
     logical :: statisticalEquilibrium
@@ -732,6 +733,10 @@ module input_variables
 !Dimensionless cutoff radius for Bonnor-Ebert Sphere
   real(double) :: zetacutoff 
 
+
+  logical :: biasToLyman
+  real(double) :: biasMagnitude
+  logical :: binPhotons
 
 !Stack optimization
   logical :: optimizeStack

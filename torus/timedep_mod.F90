@@ -423,6 +423,7 @@ contains
     logical :: radiativeEquPhoton, seedRun
     integer :: nEscaped
     integer :: nFromMatterThisThread
+    real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy. 
 #ifdef MPI
     include 'mpif.h'
     integer :: ierr
@@ -432,6 +433,8 @@ contains
     treal= dumpfromnow
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
+    
+
 
     useFileForStack = .true.
 
@@ -526,7 +529,7 @@ contains
              call randomSource(source, nSource, iSource, weightSource2)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid)
-             call getWavelength(thisSource%spectrum, wavelength)
+             call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)
              beenScattered = .false.
              freq = cSpeed/(wavelength / 1.e8)
              photonTime = 0.d0

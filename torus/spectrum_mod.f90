@@ -17,6 +17,7 @@ module spectrum_mod
      real(double), pointer :: prob(:) => null()
      real(double), pointer :: dlambda(:) => null()
      integer :: nLambda
+     real(double), pointer :: ppw(:) => null() !Thaw - photon packet weight
   end type SPECTRUMTYPE
   
 
@@ -30,21 +31,24 @@ module spectrum_mod
       if (associated(spectrum%prob)) deallocate(spectrum%prob)
       if (associated(spectrum%normflux)) deallocate(spectrum%normflux)
       if (associated(spectrum%normflux2)) deallocate(spectrum%normflux2)
+      if (associated(spectrum%ppw)) deallocate(spectrum%ppw)
       spectrum%nlambda = 0
     end subroutine freeSpectrum
 
-    subroutine getWavelength(spectrum, wavelength)
+    subroutine getWavelength(spectrum, wavelength, photonPacketWeight)
 
       type(SPECTRUMTYPE) :: spectrum
       real(double), intent(out) :: wavelength
-      real(double) :: r, t
+      real(double) :: r, t, s
+      real(double), intent(out) :: photonPacketWeight
       integer :: i
 
       call randomNumberGenerator(getDouble=r)
       call locate(spectrum%prob, spectrum%nLambda, r, i)
+!      photonPacketWeight = spectrum%ppw(i)
       t = (r - spectrum%prob(i))/(spectrum%prob(i+1)-spectrum%prob(i))
       wavelength = spectrum%lambda(i) + t*(spectrum%lambda(i+1)-spectrum%lambda(i))
-
+      photonPacketWeight = spectrum%ppw(i)! + t*(spectrum%ppw(i+1)-spectrum%ppw(i))
     end subroutine getWavelength
 
     function integrateNormSpectrumOverBand(spectrum, lam1 , lam2) result(tot)
@@ -183,26 +187,25 @@ module spectrum_mod
     end subroutine getWavelengthOverBand
 
 
-    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, lamArray, biasToLyman)
-
+    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, lamArray)
       type(SPECTRUMTYPE) :: spectrum
       integer :: nLambda
       real(double) :: lamStart, lamEnd, teff
-      logical, optional :: biasToLyman
       real, optional :: lamArray(:)
       real(double) :: logLamStart, logLamEnd
       integer :: i
-
-
+      
       if (associated(spectrum%flux)) deallocate(spectrum%flux)
       if (associated(spectrum%lambda)) deallocate(spectrum%lambda)
       if (associated(spectrum%dlambda)) deallocate(spectrum%dlambda)
       if (associated(spectrum%prob)) deallocate(spectrum%prob)
+      if (associated(spectrum%ppw)) deallocate(spectrum%ppw)
 
       allocate(spectrum%flux(1:nLambda))
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%dlambda(1:nLambda))
       allocate(spectrum%prob(1:nLambda))
+      allocate(spectrum%ppw(1:nLambda))
 
       logLamStart = log10(lamStart)
       logLamEnd = log10(lamEnd)
@@ -227,11 +230,11 @@ module spectrum_mod
       spectrum%nLambda = nLambda
       where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
 
-      call probSpectrum(spectrum, biasToLyman)
+      call probSpectrum(spectrum)
     end subroutine fillSpectrumBB
 
     subroutine addToSpectrumBB(spectrum, tBB, frac)
-
+      use input_variables, only : biasToLyman
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: tBB, frac
       integer :: i
@@ -245,6 +248,7 @@ module spectrum_mod
     end subroutine addToSpectrumBB
 
     subroutine readSpectrum(spectrum, filename, ok)
+      use input_variables, only : biasToLyman
       type(SPECTRUMTYPE) :: spectrum
       logical :: ok
       character(len=*) :: filename
@@ -310,26 +314,64 @@ module spectrum_mod
       a%prob = b%prob
     end subroutine copySpectrum
 
-    subroutine probSpectrum(spectrum, biasToLyman)
+    subroutine probSpectrum(spectrum)
+      use input_variables, only : biasToLyman, biasMagnitude
       type(SPECTRUMTYPE) :: spectrum
-      logical, optional :: biastolyman
       real(double) :: fac
       integer :: i
+      real(double) :: unbiasedProb(spectrum%nLambda)
       spectrum%prob = 0.d0
+      unbiasedProb = 0.d0
+      spectrum%ppw = 0.d0
+
+      open (101, file="unbiased.dat", status="unknown")
+      open (102, file="biased.dat", status="unknown")
+      open (103, file="unmodifiedBiased.dat", status="unknown")
+      open (104, file="coreWeights.dat", status="unknown")
+
       do i = 2, spectrum%nLambda
          fac = 1.d0
-         if (present(biasToLyman)) then
-            if (biasToLyman) then
-               if (spectrum%lambda(i) < 912.) then
-                  fac = 100.d0
-               else
-                  fac = 1.d0
-               endif
+         if (biasToLyman) then
+            if (spectrum%lambda(i) < 912.) then
+               fac = biasMagnitude
+            else
+               fac = 1.d0
             endif
+            !record both the biased and unbiased probabilities
+            spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
+            unbiasedProb(i) = unbiasedprob(i-1) + spectrum%flux(i) * spectrum%dLambda(i)
+         else
+            spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
+            spectrum%ppw(i) = 1.d0
          endif
-         spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
       enddo
+      
       spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
+
+      if(biasToLyman) then
+         !Normalize biased probability distribution if required
+         unbiasedProb(1:spectrum%nLambda) = unbiasedProb(1:spectrum%nLambda) / unbiasedProb(spectrum%nLambda)
+
+         !Packet weight is the ratio of normalised unbiased to biased probabilities
+         !These will be interpolated between later !Thaw
+         do i = 2, spectrum%nLambda
+               spectrum%ppw(i) = abs(unbiasedProb(i+1) - unbiasedProb(i)) / abs(spectrum%prob(i+1) - spectrum%prob(i))              
+         end do
+      end if
+      
+      if(biasToLyman .and. myRankGlobal == 0) then
+         write(*,*) "Dumping biased*weight and unbiased spectra, they should look the same"
+         do i=2, spectrum%nLambda
+            write(101,*) spectrum%lambda(i), unbiasedProb(i)
+            write(102,*) spectrum%lambda(i), spectrum%prob(i)*spectrum%ppw(i)
+            write(103,*) spectrum%lambda(i), spectrum%prob(i)
+            write(104,*) spectrum%lambda(i), spectrum%ppw(i)
+         end do
+         close (101)
+         close(102)
+         close (103)
+      end if
+
     end subroutine probSpectrum
 
     subroutine normalizedSpectrum(spectrum)
