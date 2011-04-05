@@ -4172,9 +4172,8 @@ end subroutine readHeIIrecombination
     integer :: iPhoton
     integer :: iSource
     type(VECTOR) :: rHat, observerDirection
-    logical :: endLoop
     type(IMAGETYPE) :: thisimage
-    logical :: escaped, absorbed, stillSCattering  
+    logical :: escaped, absorbed
     real(double) :: totalEmission
     integer :: iLambdaPhoton
     real(double) :: lCore, probsource, r
@@ -4290,7 +4289,7 @@ end subroutine readHeIIrecombination
     mainloop: do iPhoton = iBeg, iEnd
 
        thisPhoton%weight = 1.d0
-       thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
+       thisPhoton%stokes = STOKESVECTOR(powerPerPhoton, 0.d0, 0.d0, 0.d0)
        thisPhoton%iLam = iLambdaPhoton
        thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
        thisPhoton%observerPhoton = .false.
@@ -4320,16 +4319,9 @@ end subroutine readHeIIrecombination
        call propagateObserverPhoton(grid, observerPhoton)
        call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
 
-       stillScattering = .true.
-       endloop = .false.
-
-       do while ((.not.endLoop).and.stillScattering)
-          call moveToNextScattering(grid, thisPhoton, escaped, absorbed)
-                
-          if (escaped.or.absorbed) then
-             stillScattering = .false.
-             exit
-          endif
+       scatterloop: do 
+          call moveToNextScattering(grid, thisPhoton, escaped, absorbed)      
+          if (escaped.or.absorbed) exit scatterloop
           
           call scatterPhotonLocal(thisPhoton)
           observerPhoton = thisPhoton
@@ -4338,7 +4330,8 @@ end subroutine readHeIIrecombination
           observerPhoton%direction = observerDirection
           call propagateObserverPhoton(grid, observerPhoton)          
           call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
-       end do
+       end do scatterloop
+
     end do mainloop
 
 #ifdef MPI
@@ -4503,7 +4496,7 @@ end subroutine readHeIIrecombination
      tempDoubleArray = 0.0_db
      tempDoubleArray2 = 0.0_db
 
-     if (myrankGlobal == 1) write(*,*) "Collating images..."
+     call writeInfo ("Collating images...", FORINFO)
      tempDoubleArray = reshape(thisImage%pixel%i,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
@@ -4535,7 +4528,7 @@ end subroutine readHeIIrecombination
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      thisImage%totWeight = reshape(tempRealArray2,SHAPE(thisImage%totWeight))
 
-     if (myrankGlobal == 1) write(*,*) "Done."
+     call writeInfo ("Done.", FORINFO)
      deallocate(tempRealArray)
      deallocate(tempRealArray2)
      deallocate(tempDoubleArray)
