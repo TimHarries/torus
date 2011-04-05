@@ -324,11 +324,6 @@ module spectrum_mod
       unbiasedProb = 0.d0
       spectrum%ppw = 0.d0
 
-      open (101, file="unbiased.dat", status="unknown")
-      open (102, file="biased.dat", status="unknown")
-      open (103, file="unmodifiedBiased.dat", status="unknown")
-      open (104, file="coreWeights.dat", status="unknown")
-
       do i = 2, spectrum%nLambda
          fac = 1.d0
          if (biasToLyman) then
@@ -358,20 +353,7 @@ module spectrum_mod
                spectrum%ppw(i) = abs(unbiasedProb(i+1) - unbiasedProb(i)) / abs(spectrum%prob(i+1) - spectrum%prob(i))              
          end do
       end if
-      
-      if(biasToLyman .and. myRankGlobal == 0) then
-         write(*,*) "Dumping biased*weight and unbiased spectra, they should look the same"
-         do i=2, spectrum%nLambda
-            write(101,*) spectrum%lambda(i), unbiasedProb(i)
-            write(102,*) spectrum%lambda(i), spectrum%prob(i)*spectrum%ppw(i)
-            write(103,*) spectrum%lambda(i), spectrum%prob(i)
-            write(104,*) spectrum%lambda(i), spectrum%ppw(i)
-         end do
-         close (101)
-         close(102)
-         close (103)
-      end if
-
+     
     end subroutine probSpectrum
 
     subroutine normalizedSpectrum(spectrum)
