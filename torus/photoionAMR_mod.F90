@@ -1046,7 +1046,7 @@ contains
              if(binPhotons) then
                 open(333, file="bins.dat", status="unknown")
                 do i=1, nFreq
-                   write(333,*), lams(i)*1.e8, countArray(i)/dble(nMonte)
+                   write(333,*) lams(i)*1.e8, countArray(i)/dble(nMonte)
                 end do
                 close(333)
              end if
