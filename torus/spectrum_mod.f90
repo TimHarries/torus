@@ -39,7 +39,7 @@ module spectrum_mod
 
       type(SPECTRUMTYPE) :: spectrum
       real(double), intent(out) :: wavelength
-      real(double) :: r, t, s
+      real(double) :: r, t
       real(double), intent(out) :: photonPacketWeight
       integer :: i
 
