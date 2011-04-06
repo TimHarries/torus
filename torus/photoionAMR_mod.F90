@@ -858,7 +858,7 @@ contains
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
-                nMonte = 1.d0 * 2**(maxDepthAMR)
+                nMonte = 10.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
