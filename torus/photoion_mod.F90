@@ -3804,7 +3804,8 @@ end subroutine readHeIIrecombination
     totalFlux = 0.d0
     lamstart  = lambdaLine ! used by convertion to Janskies
 
-! PhotoionAMR_mod version calls zeroEtaCont here
+    call zeroEtaCont(grid%octreeRoot)
+    
     call writeVtkFile(grid, "before_sublimate.vtk", &
          valueTypeString=(/"rho        ", "temperature", "dust1      "/))
     call quickSublimate(grid%OctreeRoot, 7500.0, -99.0 )

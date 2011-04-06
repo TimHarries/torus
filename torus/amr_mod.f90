@@ -12717,6 +12717,24 @@ end function readparameterfrom2dmap
     enddo
   end subroutine zeroDensity
 
+  recursive subroutine zeroEtaCont(thisOctal)
+
+    implicit none
+    type(octal), pointer              :: thisOctal
+    integer :: subcell
+    type(octal), pointer  :: child 
+
+    if (thisOctal%nChildren > 0) then
+       ! call this subroutine recursively on each of its children
+       do subcell = 1, thisOctal%nChildren, 1 
+          child => thisOctal%child(subcell)
+          call zeroEtaCont(child)
+       end do 
+    end if
+    thisOctal%biasCont3D = 1.d0
+    thisOctal%etaCont = 0.d0
+  end subroutine zeroEtaCont
+
   recursive subroutine stripMahdavi(thisOctal)
     use magnetic_mod, only : inflowMahdavi
   type(octal), pointer   :: thisOctal
