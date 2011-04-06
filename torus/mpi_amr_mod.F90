@@ -2845,6 +2845,36 @@ end subroutine dumpStromgrenRadius
          
     end subroutine distributeSphDataOverMPI
 
+!Check that appropriate number of threads have been used
+    subroutine checkThreadNumber(grid)
+      integer :: nDimensions
+      type(gridtype) :: grid
+      
+      if(grid%octreeRoot%oneD) then
+         nDimensions = 1
+      else if(grid%octreeRoot%twoD) then
+         nDimensions = 2
+      else if(grid%octreeRoot%threeD) then
+         nDimensions = 3
+      else
+         if(myRankGlobal == 0) then
+            write(*,*) "Can't comprehend more than 3, or zero, dimensions!"
+         end if
+         stop
+      end if
+      
+      if((2**(nDimensions) + 1) /= nThreadsGlobal .and. (4**(nDimensions) + 1) /= nThreadsGlobal) then
+         if(myRankGlobal == 0) then
+            write(*,*) "An incorrect number of threads has been used:"
+            write(*,*) "For this model try: ", (2**(nDimensions) + 1), "or ", (4**(nDimensions) + 1), "threads"
+         end if
+         stop
+      else
+         if(myRankGlobal == 0) then
+            write(*,*) "Thread Check Complete"
+         end if
+      end if
+    end subroutine checkThreadNumber
 
 #else
 

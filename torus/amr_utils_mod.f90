@@ -1531,8 +1531,4 @@ module amr_utils_mod
 666 continue
   end function randomPositionInCell
 
-   
-
-
-
 end module amr_utils_mod
