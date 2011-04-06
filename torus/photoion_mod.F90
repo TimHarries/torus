@@ -15,6 +15,7 @@ use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcellloca
 use source_mod, only: SOURCETYPE, sumSourceLuminosityMonochromatic
 use ion_mod, only: IONTYPE
 use phfit_mod, only : phfit2
+use photoion_utils_mod
 #ifdef MPI
 use mpi_global_mod, only : myrankGlobal
 #endif
@@ -996,269 +997,6 @@ end subroutine photoIonizationloop
  end subroutine toNextEventPhoto
 
 
-  subroutine intersectCube(grid, posVec, i1,i2,i3,direction, tval)
-   use vector_mod
-   use grid_mod
-   implicit none
-   type(GRIDTYPE) :: grid
-   type(VECTOR) :: direction
-   type(VECTOR) :: posVec, norm(6), p3(6)
-   real(oct) :: t(6),tval,denom(6)
-   integer :: i,j
-   logical :: ok, thisOk(6)
-   integer :: i1, i2, i3
-
-   ok = .true.
-
-   norm(1) = VECTOR(1., 0., 0.)
-   norm(2) = VECTOR(0., 1., 0.)
-   norm(3) = VECTOR(0., 0., 1.)
-   norm(4) = VECTOR(-1., 0., 0.)
-   norm(5) = VECTOR(0., -1., 0.)
-   norm(6) = VECTOR(0., 0., -1.)
-
-   p3(1) = VECTOR(grid%xAxis(i1+1), 0., 0.)
-   p3(2) = VECTOR(0.,grid%yAxis(i2+1),0.)
-   p3(3) = VECTOR(0.,0.,grid%zAxis(i3+1))
-   p3(4) = VECTOR(grid%xAxis(i1), 0., 0.)
-   p3(5) = VECTOR(0.,grid%yAxis(i2),0.)
-   p3(6) = VECTOR(0.,0.,grid%zAxis(i3))
-
-   thisOk = .true.
-   
-   do i = 1, 6
-
-      denom(i) = norm(i) .dot. direction
-      if (denom(i) /= 0.) then
-         t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-      else
-         thisOk(i) = .false.
-         t(i) = 0.
-      endif
-      if (t(i) < 0.) thisOk(i) = .false.
-!      if (denom > 0.) thisOK(i) = .false.
- enddo
-
-
-
-
-  
-  j = 0
-  do i = 1, 6
-    if (thisOk(i)) j=j+1
-  enddo
-
-  if (j == 0) ok = .false.
-   
-  if (.not.ok) then
-     write(*,*) i1, i2, i3
-     write(*,*) direction%x,direction%y,direction%z
-     write(*,*) t(1:6)
-     stop
-  endif
-
-  tval = minval(t, mask=thisOk)
-  tval = max(tval * 1.001d0,dble((grid%xAxis(2)-grid%xAxis(1))/1000.))
-
-
-  if (tval == 0.) then
-     write(*,*) i1, i2, i3,tval
-     write(*,*) posVec
-     write(*,*) grid%xAxis(i1),grid%yAxis(i2),grid%zAxis(i3)
-     write(*,*) grid%xAxis(i1+1),grid%yAxis(i2+1),grid%zAxis(i3+1)
-     write(*,*) direction%x,direction%y,direction%z
-     write(*,*) t(1:6)
-     stop
-  endif
-
-  if (tval > 2.*(grid%xAxis(2)-grid%xAxis(1))) then
-!     write(*,*) "tval too big",tval,i1,i2,i3,posvec
-!     write(*,*) "direction",direction
-!     write(*,*) t(1:6)
-!     write(*,*) denom(1:6)
-  endif
-
-
-  end subroutine intersectCube 
-  subroutine intersectCubeAMR(grid, posVec, direction, tval)
-   implicit none
-   type(GRIDTYPE), intent(in)    :: grid
-   type(VECTOR), intent(in) :: posVec
-   type(VECTOR), intent(in) :: direction
-   real(oct), intent(out) :: tval
-   !
-   type(VECTOR) :: norm(6), p3(6)
-   type(OCTAL),pointer :: thisOctal
-   type(VECTOR) :: subcen, point
-   integer :: subcell
-   
-   real(oct) :: t(6),denom(6)
-   integer :: i,j
-   logical :: ok, thisOk(6)
-
-
-   point = posVec
-
-   call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
-   subcen =  subcellCentre(thisOctal,subcell)
-   ok = .true.
-
-   norm(1) = VECTOR(1.0d0, 0.d0, 0.0d0)
-   norm(2) = VECTOR(0.0d0, 1.0d0, 0.0d0)
-   norm(3) = VECTOR(0.0d0, 0.0d0, 1.0d0)
-   norm(4) = VECTOR(-1.0d0, 0.0d0, 0.0d0)
-   norm(5) = VECTOR(0.0d0, -1.0d0, 0.0d0)
-   norm(6) = VECTOR(0.0d0, 0.0d0, -1.0d0)
-
-   p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-   p3(2) = VECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-   p3(3) = VECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-   p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-   p3(5) = VECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-   p3(6) = VECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
-
-   thisOk = .true.
-
-   do i = 1, 6
-
-      denom(i) = norm(i) .dot. direction
-      if (denom(i) /= 0.0d0) then
-         t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-      else
-         thisOk(i) = .false.
-         t(i) = 0.0d0
-      endif
-      if (t(i) < 0.) thisOk(i) = .false.
-!      if (denom > 0.) thisOK(i) = .false.
- enddo
-
-  
-  j = 0
-  do i = 1, 6
-    if (thisOk(i)) j=j+1
-  enddo
-
-  if (j == 0) ok = .false.
-   
-  if (.not.ok) then
-     write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
-     write(*,*) direction%x,direction%y,direction%z
-     write(*,*) t(1:6)
-     stop
-  endif
-
-  tval = minval(t, mask=thisOk)
-  tval = max(tval * 1.001d0,dble(thisOctal%subCellSize/1000.))
-
-
-  if (tval == 0.) then
-     write(*,*) posVec
-     write(*,*) direction%x,direction%y,direction%z
-     write(*,*) t(1:6)
-     stop
-  endif
-
-  if (tval > sqrt(3.)*thisOctal%subcellsize) then
-!     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
-!     write(*,*) "direction",direction
-!     write(*,*) t(1:6)
-!     write(*,*) denom(1:6)
-  endif
-
-
-  end subroutine intersectCubeAMR
-
-  subroutine intersectCubeAMR2D(grid, posVec, direction, tval)
-    use utils_mod, only: solvequaddble
-
-! this is to find a cell intersection for a 2D AMR grid
-! which is essentially a 2D-grid that projects into
-! a 3D cylindrical coordinate system
-
-
-   implicit none
-   type(GRIDTYPE), intent(in)    :: grid
-   type(VECTOR), intent(in) :: posVec
-   type(VECTOR), intent(inout) :: direction
-   real(oct), intent(out) :: tval
-   !
-   type(OCTAL),pointer :: thisOctal
-   type(VECTOR) :: subcen, point
-   integer :: subcell
-   real(double) :: compZ, currentZ
-   real(double) :: distToZBoundary, distToXboundary
-   real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
-   logical :: ok
-   type(VECTOR) :: xHat, zHAt
-
-   point = posVec
-
-   call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
-   subcen =  subcellCentre(thisOctal,subcell)
-   ok = .true.
-
-
-   r1 = subcen%x - thisOctal%subcellSize/2.d0
-   r2 = subcen%x + thisOctal%subcellSize/2.d0
-   d = sqrt(point%x**2+point%y**2)
-   xHat = VECTOR(point%x, point%y,0.d0)
-   call normalize(xHat)
-
-   cosmu =((-1.d0)*xHat).dot.direction
-   call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-   if (.not.ok) then
-      write(*,*) "Quad solver failed in intersectcubeamr2d"
-      direction = randomUnitVector()
-      x1 = thisoctal%subcellSize/2.d0
-      x2 = 0.d0
-   endif
-   distTor2 = max(x1,x2)
-
-   theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-   cosmu = xHat.dot.direction
-   mu = acos(max(-1.d0,min(1.d0,cosmu)))
-   distTor1 = 1.e30
-   if (mu  < theta ) then
-      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-      if (.not.ok) then
-         write(*,*) "Quad solver failed in intersectcubeamr2d"
-         direction = randomUnitVector()
-         x1 = thisoctal%subcellSize/2.d0
-         x2 = 0.d0
-      endif
-      distTor1 = max(x1,x2)
-   endif
-         
-   distToXboundary = min(distTor1, distTor2)
-
-
-   zHat = VECTOR(0.d0, 0.d0, 1.d0)
-   compZ = zHat.dot.direction
-   currentZ = point%z
-
-   if (compZ /= 0.d0 ) then
-      if (compZ > 0.d0) then
-         distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
-      else
-         distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
-      endif
-   else
-      disttoZboundary = 1.e30
-   endif
-
-   tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
-   if (tVal > 1.e29) then
-      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
-      write(*,*) "subcen",subcen
-      write(*,*) "z",currentZ
-   endif
-   if (tval < 0.) then
-      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
-      write(*,*) "subcen",subcen
-      write(*,*) "z",currentZ
-   endif
-
-  end subroutine intersectCubeAMR2D
 
   recursive subroutine zeroDistanceGrid(thisOctal)
   type(octal), pointer   :: thisOctal
@@ -1435,25 +1173,6 @@ end subroutine photoIonizationloop
        endif
     enddo
   end subroutine calculateThermalBalance
-
-
-  function hRecombination(temperature) result (rate)
-    real :: temperature
-    real(double) :: rate, t0, t1, b
-
-    t0 = sqrt(temperature/3.148d0)
-    t1 = sqrt(temperature/7.036d5)
-    b = 0.7480
-
-    rate = 7.982d-11 / (t0*(1.d0+t0)**(1.d0-b) * (1.d0 + t1)**(1.d0+b))
-  end function hRecombination
-
-  function recombToGround(temperature) result (alpha1)
-    real :: temperature
-    real(double) :: alpha1
-
-    alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
-  end function recombToGround
 
   
   function HHeCooling(grid, thisOctal, subcell,  temperature, debug) result (coolingRate)
@@ -2118,67 +1837,6 @@ function recombRate(thisIon, temperature) result (rate)
   end select
 end function recombRate
 
-real function vernerFerland(a, t, t0, t1, b)
-  real(double):: a, t, t0, t1, b
-
-! based on Verner and Ferland (1996) ApJS 103 467
-
-  vernerFerland = a / (sqrt(t/t0) * (1.d0+sqrt(t/t0))**(1.d0-b) * (1.d0+sqrt(t/t1))**(1.d0+b))
-end function vernerFerland
-
-
-
-function nussbaumerStorey1983(t, a, b, c, d, f) result(rate)
-
-! based on Nussbaumer & Storey 1983 AA 126 75
-  real(double) :: t, a, b, c, d, f, rate
-
-  if (t < 0.05d0) then
-     rate = tiny(rate)
-  else
-     rate = (1.d-12) * ((a/t) + b + (c*t) + d*(t**2))*(t**(-1.5d0))*exp(-f/t)
-  endif
-
-end function nussbaumerStorey1983
-
-function ppb1991(z, a, b, c, d, temperature) result(rate)
-
-! radiative recombination rates
-! based on Pequignot, Petitjean & Boisson (1991) A&A 251 680
-
-  real(double) :: z, a, b, c, d, temperature, t, rate
-
-  t = 1.d-4 * temperature / z**2
-
-  rate = 1.d-13 * z * (a*t**b)/(1.d0+c*t**d)
-
-end function ppb1991
-
-function svs1982(t, alpharad, xrad) result (rate)
-
-! radiative recombination rates based on
-! Shull and Van Steenberg, 1992, ApJS, 48, 95
-
-  real(double) :: t, alpharad, xrad, rate
-
-  rate = alpharad * (t /1.d4)**(-xrad)
-end function svs1982
-
-function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
-  real(double) :: ne, tot
-  integer :: subcell
-  type(OCTAL) :: thisOctal
-  type(IONTYPE) :: ionArray(:)
-  integer :: nion, i
-
-  tot = 0.d0 
-  do i = 1, nIon
-     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
-          thisOctal%ionFrac(subcell, i) * dble(ionArray(i)%z-ionArray(i)%n)
-  enddo
-  ne = tot
-end function returnNe
-
 subroutine dumpLexington(grid, epsoverdt)
   use ion_mod, only: returnIonNumber, returnAbundance
   type(GRIDTYPE) :: grid
@@ -2492,8 +2150,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
        else
           v = cellVolume(thisOctal, subcell)
 
-          call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
-               thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+          call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
           rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
                grid%ion(iion)%transition(itrans)%a/ergtoev
           rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
@@ -2518,7 +2175,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   total = 0.d0
   do j = 5, nIons
      if (ionArray(j)%nTransitions > 0) then
-        call solvePops(ionArray(j), pops, ne, temperature, thisOctal%ionFrac(subcell,j), thisOctal%nh(subcell))
+        call solvePops(ionArray(j), pops, ne, temperature)
         rate = 0.d0
         do i = 1, ionArray(j)%nTransitions
            rate = rate + pops(ionArray(j)%transition(i)%j)*ionArray(j)%transition(i)%energy*ionArray(j)%transition(i)%a/ergtoev
@@ -2542,7 +2199,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
 end subroutine metalcoolingRate
   
 
-subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
+subroutine solvePops(thisIon, pops, ne, temperature, debug)
   use utils_mod, only: luSlv
   type(IONTYPE) :: thisIon
   real(double) :: ne
@@ -2551,7 +2208,6 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
   integer :: n, iTrans, i, j
   real :: excitation, deexcitation, arateji
-  real(double) :: nh, ionFrac
   logical :: ok
   logical, optional :: debug
   excitation  = 0.; deexcitation = 0.
@@ -2562,7 +2218,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   matrixB = 0.d0
 
 
-  call getRecombs(rates, thision, dble(temperature), ne, ionFrac, nh)
+  call getRecombs(rates, thision, dble(temperature))
 
   matrixA(1,:) = 1.d0
   matrixB(1) = 1.d0
@@ -2635,22 +2291,6 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   deallocate(matrixA, matrixB, tempMatrix, qeff, rates)
 
 end subroutine solvePops
-
-subroutine calcHeRecombs(te, alpha1, alpha21s, alpha21p, alpha23s)
-  real :: te, t
-  real(double) :: alpha1, alpha21s, alpha21p, alpha23s
-
-  t = te / 1.e4
-
-  alpha1 = 1.54e-13 * t**(-0.486)
-
-  alpha21s = 2.06e-14 * t**(-0.676)
-
-  alpha21p = 4.17e-14 * t**(-0.861)
-  
-  alpha23s = 2.10e-13 * t**(-0.778)
-end subroutine calcHeRecombs
-
 
 subroutine createSahaMilneTables(hTable, heTable)
   type(SAHAMILNETABLE) :: hTable, heTable
@@ -2771,27 +2411,6 @@ subroutine twoPhotonContinuum(thisFreq)
   enddo
 end subroutine twoPhotonContinuum
 
-subroutine getRecombs(rates, thision, temperature, ne, ionFrac, nh)  
-  real(double) :: rates(:)
-  type(IONTYPE) :: thisIon
-  real(double) :: temperature, ne, ionfrac, nh
-  real(double) :: test
-  test = ne
-  test = ionFrac
-  test = nh
-  select case(thisIon%species)
-     case("O II")
-        rates(1) = 0.d0
-        rates(2) = rateFit(7.218d0, -0.575d0, temperature)
-        rates(3) = rateFit(4.812d0, -0.575d0, temperature)
-        rates(4) = rateFit(3.581d0, -0.495d0, temperature)
-        rates(5) = rateFit(1.790d0, -0.495d0, temperature)
-     case DEFAULT
-        rates = 0.d0
-   end select
- end subroutine getRecombs
-
-
 subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
@@ -2806,12 +2425,6 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   totalHeating = (Hheating + HeHeating + dustHeating)
   
 end subroutine getHeating
-
-function rateFit(a,b,t) result (rate)
-  real(double) :: a, b, t, rate
-
-  rate = 1.d-13 * a * (t/1.d4)**b
-end function rateFit
 
 subroutine createRecombTable(table, tablefilename)
   type(RECOMBTABLE) :: table
@@ -3330,8 +2943,7 @@ subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 
   do iIon = 3, grid%nIon
      do iTrans = 1, grid%ion(iIon)%nTransitions
-        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
-             thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
         rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
              grid%ion(iion)%transition(itrans)%a/ergtoev
         rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
@@ -4555,8 +4167,7 @@ end subroutine readHeIIrecombination
            end do
         else
 
-           call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
-                thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+           call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
            rate =  pops(grid%ion(iion)%transition(iTransition)%j) * grid%ion(iion)%transition(itransition)%energy * &
                 grid%ion(iion)%transition(itransition)%a/ergtoev
            rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
@@ -4768,7 +4379,6 @@ end subroutine readHeIIrecombination
 
   end subroutine identifyRecombinationTransition
 
-     
 
 end module
 
