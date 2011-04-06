@@ -25,11 +25,10 @@ contains
     use amr_mod
     use lucy_mod
     use grid_mod
-    use photoionAMR_mod, only : resizePhotoionCoeff
     use input_variables, only : readgrid, gridinputfilename, geometry, mdot
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
-    use input_variables, only : amrGridSize, doSmoothGrid, photoionPhysics
+    use input_variables, only : amrGridSize, doSmoothGrid
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
@@ -42,7 +41,8 @@ contains
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
     use mpi_amr_mod
-    use photoionAMR_mod, only : ionizeGrid, resetNh
+    use input_variables, only : photoionPhysics
+    use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff
 #endif
     use vh1_mod, only: read_vh1
     use memory_mod
@@ -76,8 +76,9 @@ contains
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
+#ifdef MPI 
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
-
+#endif
        call findTotalMemory(grid, globalMemoryFootprint)
 
     else

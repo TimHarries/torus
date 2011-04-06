@@ -525,9 +525,7 @@ end subroutine radiationHydro
     real(double) :: epsOverDeltaT
     integer :: nIter
     logical :: converged, thisThreadConverged, failed
-    real(double) :: luminosity1, luminosity2, luminosity3
     real(double) :: photonPacketWeight
-    real(double) :: fac
     real(double) :: tPhoton
     real(double) :: albedo
     integer :: maxIter
@@ -561,7 +559,6 @@ end subroutine radiationHydro
 
     real(double) :: deltaT, fluctuationCheck 
     logical :: anyUndersampled, undersampledTOT
-    character(len=80) :: vtkFilename
     logical :: underSamFailed, escapeCheck
     logical :: sourcePhoton
 
@@ -5583,11 +5580,6 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     end do
 
   end subroutine addRadioContinuumEmissivity
-
-#else
-
-  if (myRankGlobal == 0) write(*,*) "Non domain-decomposed photoionization job using photoionAMR_mod... aborting"
-  stop
 
 #endif    
 end module photoionAMR_mod
