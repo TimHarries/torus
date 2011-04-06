@@ -6,7 +6,7 @@
 
 ! Structure Guide (quickSearchCode)
 ! 1. Recombination Rates (pu01)
-! 2. Intersect Cube Routines(pm02)
+! 2. Intersect Cube Routines(pu02)
 ! X. Unused routines (pu0X)
 
 !NOTE: Until this module is well established, routines will have either a P,
@@ -37,7 +37,6 @@ implicit none
 contains
 
 ! 1.Recombination Rates (pu01)
-
 
 ! Radiative recombination rate for HI, HeI, HeII and CIV (P)
   real function vernerFerland(a, t, t0, t1, b)
