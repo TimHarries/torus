@@ -184,7 +184,7 @@ contains
           grid%octreeRoot%temperature = 10.
           call randomNumberGenerator(randomSeed = .true.)
           do while(.not.gridconverged) 
-             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
+             call splitGridFractal(grid%octreeRoot, real(1000.*mHydrogen), 0.1, grid, gridconverged)
           enddo
           call randomNumberGenerator(syncIseed=.true.)
 

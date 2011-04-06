@@ -278,6 +278,7 @@ module spectrum_mod
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%dlambda(1:nLambda))
       allocate(spectrum%prob(1:nLambda))
+      allocate(spectrum%ppw(1:nLambda))
       spectrum%nLambda = nLambda
       spectrum%flux(1:nLambda) = fTemp(1:nLambda)
       spectrum%lambda(1:nLambda) = xTemp(1:nLambda)
@@ -305,11 +306,13 @@ module spectrum_mod
       allocate(a%lambda(1:nLambda))
       allocate(a%dlambda(1:nLambda))
       allocate(a%prob(1:nLambda))
+      allocate(a%ppw(1:nLambda))
       a%nLambda = nLambda
       a%flux = b%flux
       a%lambda = b%lambda
       a%dlambda = b%dlambda
       a%prob = b%prob
+      a%ppw = b%ppw
     end subroutine copySpectrum
 
     subroutine probSpectrum(spectrum)
