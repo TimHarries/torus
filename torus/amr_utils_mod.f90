@@ -925,7 +925,7 @@ module amr_utils_mod
              cosmu =((-1.d0)*xHat).dot.rdirection
              call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
              if (.not.ok) then
-                write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+                write(*,*) "Quad solver failed in distanceToCellBoundary I",d,cosmu,r2
                 write(*,*) "xhat",xhat
                 write(*,*) "dir",direction
                 write(*,*) "point",point
@@ -948,7 +948,7 @@ module amr_utils_mod
                    if (mu  < theta ) then
                       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
                       if (.not.ok) then
-                         write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
+                         write(*,*) "Quad solver failed in distanceToCellBoundary II",d,cosmu,r1,x1,x2
                          write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
                          write(*,*) "direction ",direction
                          write(*,*) "mu ",mu*radtodeg, "theta ",theta*radtodeg
@@ -1062,7 +1062,7 @@ module amr_utils_mod
              cosmu =((-1.d0)*xHat).dot.rdirection
              call solveQuadDble(1.d0, -2.d0*d*cosmu, d2-r2**2, x1, x2, ok)
              if (.not.ok) then
-                write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+                write(*,*) "Quad solver failed in distanceToCellBoundary I",d,cosmu,r2
                 write(*,*) "xhat",xhat
                 write(*,*) "dir",direction
                 write(*,*) "point",point
@@ -1089,7 +1089,7 @@ module amr_utils_mod
                    
                    if (.not.ok) then
                       write(*,*) "mu", mu, "theta", theta
-                      write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
+                      write(*,*) "Quad solver failed in distanceToCellBoundary IIb",d,cosmu,r1,x1,x2
                       write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
                       write(*,*) "xhat",xhat
                       write(*,*) "dir",direction
@@ -1257,7 +1257,7 @@ module amr_utils_mod
          cosmu =((-1.d0)*xHat).dot.direction
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
          if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            write(*,*) "Quad solver failed in distanceToGridEdge"
             x1 = subcellSize/2.d0
             x2 = 0.d0
          endif
@@ -1270,7 +1270,7 @@ module amr_utils_mod
          if (mu  < theta ) then
             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
             if (.not.ok) then
-               write(*,*) "Quad solver failed in intersectcubeamr2d"
+               write(*,*) "Quad solver failed in distanceToGridEdge"
                x1 = subcellSize/2.d0
                x2 = 0.d0
             endif
@@ -1367,7 +1367,7 @@ module amr_utils_mod
       cosmu =((-1.d0)*xHat).dot.direction
       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
       if (.not.ok) then
-         write(*,*) "Quad solver failed in intersectcubeamr2d"
+         write(*,*) "Quad solver failed in distanceToGridEdge"
          x1 = subcellSize/2.d0
          x2 = 0.d0
       endif
@@ -1380,7 +1380,7 @@ module amr_utils_mod
       if (mu  < theta ) then
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
          if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            write(*,*) "Quad solver failed in distanceToGridEdge"
             x1 = subcellSize/2.d0
             x2 = 0.d0
          endif

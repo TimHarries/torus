@@ -800,15 +800,6 @@ end subroutine photoIonizationloop
 
     call distanceToCellBoundary(grid, rVec, uHat, tval)
     tval = tval + 1.d-3*grid%halfSmallestSubcell
-
-
-!    if (grid%octreeRoot%threed) then
-!       call intersectCubeAMR(grid, rVec, uHat, tVal)
-!    else
-!       call intersectCubeAMR2D(grid, rVec, uHat, tVal)
-!    endif
-
-
     octVec = rVec
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -886,12 +877,6 @@ end subroutine photoIonizationloop
           call distanceToCellBoundary(grid, rVec, uHat, tval, sOctal=thisOctal)
 
           tval = tval + 1.d-3*grid%halfSmallestSubcell
-
-!          if (grid%octreeRoot%threed) then
-!             call intersectCubeAMR(grid, rVec, uHat, tVal)
-!          else
-!             call intersectCubeAMR2D(grid, rVec, uHat, tVal)
-!          endif
           octVec = rVec
 
 ! calculate the optical depth to the next cell boundary

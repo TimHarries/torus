@@ -13960,7 +13960,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (mu  < theta ) then
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
          if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            write(*,*) "Quad solver failed in distanceToGridFromOutside"
             x1 = thisoctal%subcellSize
             x2 = 0.d0
          endif
@@ -14032,7 +14032,7 @@ IF ( .NOT. gridConverged ) RETURN
 !         write(*,*) t(1:6),thisOK(1:6)
 
          if (tval == 0.) then
-            write(*,*) " tval=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+            write(*,*) " tval=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. "
             write(*,*) posVec
             write(*,*) direction%x,direction%y,direction%z
             write(*,*) t(1:6)
@@ -14072,7 +14072,7 @@ IF ( .NOT. gridConverged ) RETURN
             if (mu  < theta ) then
                call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
                if (.not.ok) then
-                  write(*,*) "Quad solver failed in intersectcubeamr2d"
+                  write(*,*) "Quad solver failed in distanceToGridFromOutside"
                   x1 = thisoctal%subcellSize
                   x2 = 0.d0
                endif

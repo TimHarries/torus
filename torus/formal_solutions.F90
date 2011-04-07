@@ -14,7 +14,6 @@ module formal_solutions
   use messages_mod
   use vector_mod             ! vector maths 
   use gridtype_mod, only: GRIDTYPE ! opacity grid
-  use path_integral, only: intersectCubeAMR
   use disc_class, only: alpha_disc, in_alpha_disc
   use utils_mod, only: locate, linearresample, linearresample_dble
 
@@ -67,6 +66,7 @@ contains
   !
   function formal_sol_dust_AMR(I0, tau0, wavelength, aVec, uHat, Grid, &
        contPhoton, offset, tau_inf)  RESULT (I1)
+    use path_integral, only: intersectCubeAMR
     use amr_mod, only: inOctal, amrGridValues
     use octal_mod, only: OCTAL 
 
