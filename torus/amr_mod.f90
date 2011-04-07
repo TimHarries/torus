@@ -597,14 +597,12 @@ CONTAINS
 
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
-    
-
+   
 
     if (globalMemoryChecking.and.(globalMemoryFootprint > maxMemoryAvailable)) then
        write(message,'(a)') "Child added while memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
        call writeWarning(message)
     endif
-
 
     doAMRhydroInterp = .false.
     if (PRESENT(amrHydroInterp)) doAMRhydroInterp = amrHydroInterp
@@ -674,12 +672,9 @@ CONTAINS
 !    ENDIF
     NULLIFY(parent%child(newChildIndex)%child)
 
-
     parent%child(newChildIndex)%nDepth = parent%nDepth + 1
 
 ! setup mpiThread values
-
-
 
     if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
          ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
@@ -726,16 +721,12 @@ CONTAINS
        endif
     endif
 
-
-
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
     parent%child(newChildIndex)%oneD = parent%oneD
     parent%child(newChildIndex)%maxChildren = parent%maxChildren
     parent%child(newChildIndex)%cylindrical = parent%cylindrical
-
-
     
     ! if splitAzimuthally is not present then we assume we are not
 
@@ -790,7 +781,6 @@ CONTAINS
           endif
        endif
     endif
-
 
     parent%child(newChildIndex)%inFlow = parent%inFlow
     parent%child(newChildIndex)%parent => parent

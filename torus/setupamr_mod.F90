@@ -62,6 +62,7 @@ contains
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
 !    integer :: nUnrefine
+    integer :: ierr
 
 #ifdef MPI
     call randomNumberGenerator(randomSeed=.true.)
@@ -77,6 +78,12 @@ contains
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI 
+       !label each cell with its appropriate MPI thread
+       if(myRankGlobal == 0) then
+!          write(*,*) "Distributing MPI Labels"
+!          call distributeMPIthreadLabels(grid%octreeRoot)
+!          write(*,*) "Label Distribution Completed"
+       end if
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 #endif
        call findTotalMemory(grid, globalMemoryFootprint)
@@ -331,8 +338,12 @@ contains
 #ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
-           !Thaw
+           !Check an appropriate no. of MPI threads is being used
            call checkThreadNumber(grid)
+     !      !label each cell with its appropriate MPI thread
+     !      write(*,*) "Distributing MPI Labels"
+     !      call distributeMPIthreadLabels(grid%octreeRoot)
+     !      write(*,*) "Label Distribution Completed"
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif

@@ -28,35 +28,6 @@ private
 public :: photoIonizationLoop, createImagePhotoion, refineLambdaArray, addForbiddenEmissionLine, addForbiddenToEmission, &
      addRecombinationEmissionLine
 
-type SAHAMILNETABLE
-   integer :: nFreq 
-   integer :: nTemp 
-   real(double), pointer :: temp(:)
-   real(double), pointer :: freq(:)
-   real(double), pointer :: Clyc(:, :)
-   real(double), pointer :: emissivity(:)
-end type SAHAMILNETABLE
-
-type RECOMBTABLE
-   integer :: nrho
-   integer :: nTemp 
-   real(double), pointer :: rho(:)
-   real(double),  pointer :: temp(:)
-   real(double), pointer :: emissivity(:, :)
-end type RECOMBTABLE
-
-
-type GAMMATABLE
-   integer :: nGamma
-   integer :: nFreq
-   integer :: nTemp
-   real(double), pointer :: freq(:)
-   real(double), pointer :: temp(:)
-   real(double), pointer :: gamma(:,:)
-end type GAMMATABLE
-
-
-
   real :: heIRecombinationFit(32, 3, 3)
   real :: heIRecombinationLambda(32)
   real :: heIRecombinationNe(3)
@@ -2277,86 +2248,6 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
 
 end subroutine solvePops
 
-subroutine createSahaMilneTables(hTable, heTable)
-  type(SAHAMILNETABLE) :: hTable, heTable
-  real(double) :: nu0_h, nu0_he, nufinal_h, nufinal_he
-  integer :: nFreq, nTemp
-  integer :: i, j
-  real :: e
-  real(double) :: t1, t2
-  real :: hxsec, hexsec
-  real(double) :: dfreq, jnu
-
-  nFreq = 10000
-  nTemp = 100
-  hTable%nFreq = nFreq
-  heTable%nFreq = nFreq
-  hTable%nTemp = nTemp
-  heTable%nTemp = nTemp
-
-  allocate(hTable%freq(1:nFreq), heTable%freq(1:nFreq))
-  allocate(hTable%emissivity(1:nTemp), heTable%emissivity(1:ntemp))
-  allocate(hTable%temp(1:ntemp), heTable%temp(1:ntemp))
-  allocate(hTable%Clyc(1:nTemp,1:nFreq))
-  allocate(heTable%Clyc(1:nTemp,1:nFreq))
-
-  nu0_h = 13.6d0/ergtoev/hcgs
-  nu0_he = 24.59d0/ergtoev/hcgs
-
-  nufinal_h = 2.d0*nu0_h
-  nufinal_he = 2.d0*nu0_he
-
-  do i = 1, nFreq
-     hTable%freq(i) = log10(nu0_h) + (log10(nuFinal_h)-log10(nu0_h))*dble(i-1)/dble(nFreq-1)
-     heTable%freq(i) = log10(nu0_he) + (log10(nuFinal_he)-log10(nu0_he))*dble(i-1)/dble(nFreq-1)
-  enddo
-  hTable%freq(1:hTable%nFreq) = 10.d0**hTable%freq(1:hTable%nfreq)
-  heTable%freq(1:hTable%nFreq) = 10.d0**heTable%freq(1:hTable%nfreq)
-
-  t1 = 5000.d0
-  t2 = 20000.d0
-
-  do i = 1, nTemp
-     hTable%temp(i) = t1 + (t2-t1)*dble(i-1)/dble(nTemp-1)
-     heTable%temp(i) = t1 + (t2-t1)*dble(i-1)/dble(nTemp-1)
-  enddo
-
-  do i = 1, nTemp
-     hTable%Clyc(i,1) = 0.d0
-     heTable%Clyc(i,1) = 0.d0
-     do j = 2, nFreq
-
-
-        e = hTable%freq(j) * hcgs* ergtoev
-        call phfit2(1, 1, 1 , e , hxsec)
-
-        dFreq = hTable%freq(j)-hTable%freq(j-1)
-        jnu = ((hcgs*hTable%freq(j)**3)/(cSpeed**2)) * ((hcgs**2) /(twoPi*mElectron*Kerg*hTable%temp(i)))**(1.5d0) * &
-             dble(hxsec/1.d10) *  exp(-hcgs*(hTable%freq(j)-nu0_h)/(kerg*hTable%temp(i)))
-        hTable%Clyc(i,j) = hTable%Clyc(i,j-1) + jnu * dfreq
-
-
-        e = heTable%freq(j) * hcgs * ergtoev
-        call phfit2(2, 2, 1 , e , hexsec)
-
-        dFreq = heTable%freq(j)-heTable%freq(j-1)
-        jnu = 2.d0*((hcgs*heTable%freq(j)**3)/(cSpeed**2)) * ((hCgs**2) / (twoPi*mElectron*kerg*heTable%temp(i)))**(1.5d0) * &
-             dble(hexsec/1.d10) * exp(-hcgs*(heTable%freq(j)-nu0_he)/(kerg*heTable%temp(i)))
-        heTable%Clyc(i,j) = heTable%Clyc(i,j-1) + jnu * dfreq
-     enddo
-     hTable%emissivity(i) = hTable%Clyc(i,hTable%nFreq)
-     heTable%emissivity(i) = heTable%Clyc(i,heTable%nFreq)
-     hTable%Clyc(i,1:hTable%nFreq) = hTable%Clyc(i,1:hTable%nFreq) / hTable%Clyc(i,hTable%nFreq)
-     heTable%Clyc(i,1:heTable%nFreq) = heTable%Clyc(i,1:heTable%nFreq) / heTable%Clyc(i,heTable%nFreq)
-  end do
-
-!  do j = 1, nFreq
-!     write(99  ,*) htable%freq(j),htable%clyc(50,j)
-!  enddo
-
-
-end subroutine createSahaMilneTables
-
 subroutine getSahaMilneFreq(table,temperature, thisFreq)
   type(SAHAMILNETABLE) :: table
   real(double) :: temperature, thisfreq, r, t, fac
@@ -2410,77 +2301,6 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   totalHeating = (Hheating + HeHeating + dustHeating)
   
 end subroutine getHeating
-
-subroutine createRecombTable(table, tablefilename)
-  type(RECOMBTABLE) :: table
-  character(len=*) :: tablefilename
-  character(len=200) :: filename, datadirectory
-  integer :: ia, ib, ne, ncut, i
-  real :: e(1000)
-
-  dataDirectory = " "
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//tablefilename
-
-  open(20,file=filename,status="old",form="formatted")
-  read(20,*) table%nTemp, table%nrho
-
-  allocate(table%rho(1:table%nRho))
-  allocate(table%temp(1:table%ntemp))
-  allocate(table%emissivity(1:table%ntemp,1:table%nrho))
-
-  do ia=1,table%ntemp
-     do ib=1,table%nrho
-        read(20,'(1x,e10.3,5x,e10.3,13x,i2)') table%rho(ib),table%temp(ia),ncut
-        ne=ncut*(ncut-1)/2
-        read(20,'(8e10.3)') e(1:ne)
-        table%emissivity(ia,ib) = SUM(e(1:ne-1))
-     enddo
-  enddo
-  close(20)
-end subroutine createRecombTable
-
-
-
-  
-subroutine createGammaTable(table, thisfilename)
-
-! Ferland 1980 PASP 92 596
-
-  type(GAMMATABLE), intent(out) :: table
-  character(len=*) :: thisfilename
-  character(len=200) :: dataDirectory, filename
-  integer :: i
-  dataDirectory = " "
-
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//thisfilename
-
-  open(40, file=filename, form="formatted", status="old")
-  read(40,*) table%nTemp, table%nFreq
-
-  allocate(table%freq(1:table%nFreq))
-  allocate(table%temp(1:table%nTemp))
-  allocate(table%gamma(table%nFreq, table%nTemp))
-
-  table%temp = 0.d0
-  read(40,*)  table%temp(1:table%nTemp)
-  do i = 1, table%nFreq 
-     read(40,*) table%freq(i), table%gamma(i,1:table%nTemp)
-  enddo
-  close(40)
-
-  do i = 1, table%nFreq
-     table%freq(i) = table%freq(i) * nuHydrogen
-  enddo
-
-  where (table%gamma(1:table%nFreq,1:table%nTemp) == 0.d0)
-     table%gamma(1:table%nFreq,1:table%nTemp) = 1.d-30
-  end where
-  table%gamma(1:table%nFreq,1:table%nTemp) =log10(table%gamma(1:table%nFreq,1:table%nTemp))
-  table%freq(1:table%nFreq) = log10(table%freq(1:table%nFreq))
-  table%temp(1:table%nTemp) = log10(table%temp(1:table%nTemp))
-end subroutine createGammaTable
 
 real(double) function returnGamma(table, temp, freq) result(out)
   type(GAMMATABLE) :: table

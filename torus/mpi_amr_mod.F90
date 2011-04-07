@@ -2876,6 +2876,87 @@ end subroutine dumpStromgrenRadius
       end if
     end subroutine checkThreadNumber
 
+
+!When reading in a grid that uses a different number of mpi threads to that of the current run
+!redistribute thread ID's to the appropriate cells
+recursive subroutine distributeMPIthreadLabels(thisOctal)
+  use mpi_global_mod, only: myRankGlobal
+  include 'mpif.h'
+  type(octal), pointer   :: thisoctal
+  type(octal), pointer  :: child
+  integer :: subcell, i
+
+!Go through grid and label MPI threads
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        do i = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(i) == subcell) then
+              call labelSingleSubcellMPI(thisOctal, subcell, i)
+              child => thisoctal%child(i)
+              call distributeMPIthreadLabels(child)
+              exit
+           end if
+        end do
+     end if
+  end do
+
+end subroutine distributeMPIthreadLabels
+
+
+!Label an individual subcell with its MPI thread
+subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
+  use mpi_global_mod, only: nThreadsGlobal
+  type(octal), pointer   :: parent
+  integer ::  i, iChild, newChildIndex
+
+    if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
+         ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
+         ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
+       parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+    else
+
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          if (parent%oneD) then
+             do i = 1, 2
+                parent%child(newChildIndex)%mpiThread(i) = 2 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          else if (parent%twoD) then
+             do i = 1, 4
+                parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          else if (parent%Threed) then
+             do i = 1, 8
+                parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          endif
+       endif
+    endif
+
+    if ((parent%twod).and.(nThreadsGlobal - 1) == 16) then
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 4
+             parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
+    if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 8
+             parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
+end subroutine labelSingleSubcellMPI
+
+
 #else
 
     use messages_mod
