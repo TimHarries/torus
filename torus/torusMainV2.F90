@@ -57,12 +57,6 @@ program torus
   !===============================================================================
 #endif
 
-  globalMemoryChecking = .false.
-#ifdef MEMCHECK
-  globalMemoryChecking = .true.
-#endif
-
-
   writeoutput    = .true.
   doTuning       = .true.
   outputwarnings = .true.

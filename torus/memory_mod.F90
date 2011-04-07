@@ -19,7 +19,11 @@ module memory_mod
 #endif  
 
   public
-  logical :: globalMemoryChecking
+#ifdef MEMCHECK
+  logical, parameter :: globalMemoryChecking=.true.
+#else
+  logical, parameter :: globalMemoryChecking=.false.
+#endif
   integer(kind=bigInt) :: globalMemoryFootprint
   
   contains

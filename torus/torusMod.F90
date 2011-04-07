@@ -42,13 +42,6 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   use amr_mod, only: returnKappa
   type(GRIDTYPE) :: grid
   type(VECTOR) :: dummy
-#ifdef MPI
-   include 'mpif.h'  
-#endif
-#ifdef MPI
-  ! For MPI implementations =====================================================
-  integer ::   ierr           ! error flag
-#endif
 
 ! Variables used when linking to sph code
   integer, intent(in)   :: b_idim, b_npart, b_nptmass
@@ -70,12 +63,6 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   !===============================================================================
 #endif
 
-  globalMemoryChecking = .false.
-#ifdef MEMCHECK
-  globalMemoryChecking = .true.
-#endif
-
-
   writeoutput    = .true.
   doTuning       = .true.
   outputwarnings = .true.
@@ -83,12 +70,13 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   myRankIsZero   = .true.
 
 
-#ifdef MPI
-  if (myRankGlobal/=1) writeoutput  = .false.
-  if (myRankGlobal/=1) doTuning     = .false.
-  if (myRankGlobal/=0) myRankIsZero = .false.
-#endif
+  if (TorusMpi) then
+     if (myRankGlobal/=1) writeoutput  = .false.
+     if (myRankGlobal/=1) doTuning     = .false.
+     if (myRankGlobal/=0) myRankIsZero = .false.
+  end if
 
+  call initializeCodeUnits()
 
   call writeTorusBanner()
 
@@ -96,21 +84,14 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   grid%version = torusVersion
   verbosityLevel = 5
   call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
-
+  call report_parallel_type
+  call writeInfo("Using SPH step "//file_tag, FORINFO)
 
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   ! set up a random seed
-  
-#ifdef _OPENMP
-  call randomNumberGenerator(randomSeed=.true.)
-  call test_random_hybrid()
-  call randomNumberGenerator(synciseed=.true.)
-  call test_same_hybrid()
-  call randomNumberGenerator(reset=.true.)
-  call test_same_hybrid()
-#endif
+  call run_random_test_suite
 
 !  call testSuiteRandom()  
   call inputs()
@@ -133,7 +114,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
 
   call doOutputs(grid)
 
-  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
+  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp)
 
   if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 
@@ -162,7 +143,7 @@ end subroutine torus
 !          Each process works on its own subset of the total number of particles.
 ! Author:  D. Acreman, November 2007
 
-  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp, b_num_gas)
+  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, grid, b_temp)
 
     USE vector_mod, only:     vector
     USE amr_mod, only:        amrGridValues
@@ -181,7 +162,7 @@ end subroutine torus
 #endif
 
 ! Arguments 
-    integer, intent(in)   :: b_idim, b_npart, b_num_gas
+    integer, intent(in)   :: b_idim, b_npart
     integer*1, intent(in) :: b_iphase(b_idim)
     real*8, intent(in)    :: b_xyzmh(5,b_idim)
     real*8, intent(inout) :: b_temp(b_idim)
