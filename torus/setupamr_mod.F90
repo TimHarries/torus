@@ -62,7 +62,7 @@ contains
     integer :: nVoxels, nOctals
 !    integer(bigInt) :: i
 !    integer :: nUnrefine
-    integer :: ierr
+
 
 #ifdef MPI
     call randomNumberGenerator(randomSeed=.true.)
