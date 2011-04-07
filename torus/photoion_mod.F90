@@ -3753,9 +3753,7 @@ end subroutine readHeIIrecombination
     include 'mpif.h'
 #endif
     type(GRIDTYPE) :: grid
-#ifdef USECFITSIO
     character(len=*), intent(in) :: imageFilename
-#endif
     integer, intent(in) :: nSource
     real, intent(in) :: lambdaLine
     character(len=*), intent(in) :: outputimageType
@@ -3946,6 +3944,8 @@ end subroutine readHeIIrecombination
     if (myRankIsZero) then
        call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity")
     endif
+#else
+    call writeInfo("FITSIO not enabled. Not writing "//trim(imageFilename),FORINFO)
 #endif
     call freeImage(thisImage)
   end subroutine createImagePhotoion
