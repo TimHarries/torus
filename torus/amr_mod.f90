@@ -209,6 +209,9 @@ CONTAINS
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell)
 
+    CASE("fluxTest")
+       call assign_gaussian(thisOctal,subcell)
+
     CASE("diagSod")
        call calcHydro1DDensity(thisOctal, subcell)
 
@@ -4000,12 +4003,21 @@ CONTAINS
       if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       if ( (r+cellsize) < rgrid(1)) split = .false.
 
+
+   case("fluxTest")
+      rVec = subcellCentre(thisOctal, subcell)
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if(rVec%x > 0.5 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+
    case("hydro1d")
 
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
       !Coarse to fine
       if(rVec%x > 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+    
+      !fine to coarse
+ !     if(rVec%x < 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
       !if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       !if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
@@ -8589,7 +8601,12 @@ end function readparameterfrom2dmap
     x = rVec%x
     z = rVec%z
     gd = 0.5d0
-    thisOctal%rho(subcell) =1.d0 + 0.3d0 * exp(-(((x-0.5d0)**2 + (z-0.5d0)**2))/gd**2)
+    if(thisOctal%twoD) then
+       thisOctal%rho(subcell) =1.d0 + 0.3d0 * exp(-(((x-0.5d0)**2 + (z-0.5d0)**2))/gd**2)
+    else if (thisOctal%oneD) then
+       thisOctal%rho(subcell) =1.d0 + 0.3d0 * exp(-(((x-0.5d0)**2)/gd**2))
+    end if
+
     thisOctal%energy(subcell) = 1.d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     thisOctal%pressure_i(subcell) = 1.d0

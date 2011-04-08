@@ -557,7 +557,6 @@ contains
 !                weight  = 0.333333333d0 ! coarse to fine
 !             endif
 
-
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
@@ -682,8 +681,6 @@ contains
     enddo
   end subroutine setupwi
 
-
-
   recursive subroutine setupflux(thisoctal, grid, direction)
     include 'mpif.h'
     integer :: myrank, ierr
@@ -751,8 +748,6 @@ contains
                    thisoctal%flux_i_minus_1(subcell) = flux ! flow is from neighbour into this one
                 endif
              endif
-
-
 
           endif
        endif
@@ -1977,6 +1972,154 @@ contains
   end subroutine advectq
 
 
+recursive subroutine sumFluxes(thisOctal, totalFlux, dt)
+  integer :: subcell, i
+  type(octal), pointer :: thisOctal
+  type(octal), pointer :: child
+ real(double) :: totalFlux, dt
+
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call sumFluxes(child, totalFlux, dt)
+              exit
+           end if
+        end do
+     else
+        call constructFlux(thisOctal, dt)
+        totalFlux = totalFlux + thisOctal%flux_i(subcell)
+     end if
+  end do
+
+end subroutine sumFluxes
+
+
+!This routine will advect in the +x, then advect in the -x direction to check that flux is conserved
+!on staggered grids
+  subroutine fluxTest1D(grid, dt, npairs, thread1, thread2, nbound, group, ngroup)
+    include 'mpif.h'
+    type(gridtype) :: grid
+    real(double) :: dt, dfluxOne, dfluxTwo
+    type(vector) :: direction
+    integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
+    integer :: ierr, tag=30, myRank
+
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank,  ierr)
+
+    dfluxOne = 0.d0
+    dfluxTwo = 0.d0
+
+    direction = vector(1.d0, 0.d0, 0.d0)
+
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+
+    direction = vector(1.d0, 0.d0, 0.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+
+    call setupui(grid%octreeroot, grid, direction)
+    call setupupm(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    if (rhieChow) then
+     call computepressureu(grid, grid%octreeroot, direction) !Thaw Rhie-Chow might just need setuppressureu
+     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+     call setuppressure(grid%octreeroot, grid, direction) !Thaw
+     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+     call rhiechowui(grid%octreeroot, grid, direction, dt)
+     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    end if
+
+    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call sumFLuxes(grid%octreeRoot, dfluxOne, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+!
+!Thaw - extra boundary impose
+
+   ! call imposeboundary(grid%octreeroot)
+   ! call periodboundary(grid)
+   ! call transfertempstorage(grid%octreeroot)
+   ! call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
+    call setupui(grid%octreeroot, grid, direction)
+    call setupupm(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call computepressureu(grid, grid%octreeroot, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    if(rhieChow) then
+       call rhiechowui(grid%octreeroot, grid, direction, dt)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    end if
+    call pressureforceu(grid%octreeroot, dt)
+!
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+
+    direction = vector(-1.d0, 0.d0, 0.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+
+    call setupui(grid%octreeroot, grid, direction)
+    call setupupm(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    if (rhieChow) then
+     call computepressureu(grid, grid%octreeroot, direction) !Thaw Rhie-Chow might just need setuppressureu
+     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+     call setuppressure(grid%octreeroot, grid, direction) !Thaw
+     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+     call rhiechowui(grid%octreeroot, grid, direction, dt)
+     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    end if
+    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call sumFLuxes(grid%octreeRoot, dfluxTwo, dt)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+!
+!Thaw - extra boundary impose
+
+   ! call imposeboundary(grid%octreeroot)
+   ! call periodboundary(grid)
+   ! call transfertempstorage(grid%octreeroot)
+   ! call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
+    call setupui(grid%octreeroot, grid, direction)
+    call setupupm(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call computepressureu(grid, grid%octreeroot, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    if(rhieChow) then
+       call rhiechowui(grid%octreeroot, grid, direction, dt)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    end if
+    call pressureforceu(grid%octreeroot, dt)
+!
+    call imposeboundary(grid%octreeroot)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
+
+    print *, "RANK ", myRank, "sending fluxes"
+    call MPI_SEND(dfluxOne, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(dfluxTwo, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+
+!    print *, "fluxOne ", abs(fluxOne)
+!    print *, "fluxTwo ", abs(fluxTwo)
+!    print *, "RATIO : ", abs(fluxOne/fluxTwo)
+
+  end subroutine fluxTest1D
+
+
+
   subroutine  hydrostep1d(grid, dt, npairs, thread1, thread2, nbound, group, ngroup)
     type(gridtype) :: grid
     real(double) :: dt
@@ -2478,8 +2621,10 @@ contains
              cs = soundSpeed(thisOctal, subcell)
 !             if (myrank == 1) write(*,*) "cs ", returnPhysicalUnitSpeed(cs)/1.d5, " km/s ",cs, " code"
              dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
+
+!Use max velocity not average
              speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
-             speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
+!             speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
              speed = sqrt(speed)/thisOctal%rho(subcell)
 !             if (myrank == 1) write(*,*) "speed ", returnPhysicalUnitSpeed(speed)/1.d5, " km/s ",speed, " code"
 !             if (myrank == 1) write(*,*) "dx ", returnPhysicalUnitLength(dx), " cm ",dx," code"
@@ -2571,14 +2716,20 @@ contains
     integer :: i
     type(VECTOR) :: direction
     integer :: nHydroThreads
-    real(double) :: tc(10)
+    real(double) :: tc(10), totalMass, totalEnergy
     integer :: it
     integer :: myRank, ierr
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(10)
     character(len=80) :: plotfile
+    real(double) :: dfluxOne, dfluxTwo, fluxOne, fluxTwo
+    integer :: tag=30, status, iThread
 
+    fluxOne = 0.d0
+    fluxTwo = 0.d0
+    dFluxOne = 0.d0
+    dFluxTwo = 0.d0
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -2621,20 +2772,17 @@ contains
        !    call calculateEnergy(grid%octreeRoot, gamma, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
-
-
-
-
-       call evenUpGridMPI(grid,.false.,.true.)
+       
+       call evenUpGridMPI(grid,.false.,dorefine)
        
        if(dorefine) then
           call refineGridGeneric(grid, 1.d-2)
-       end if
        call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid, .false.,.true.)
+       end if
+
+       call evenUpGridMPI(grid, .false., dorefine)
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
@@ -2654,7 +2802,15 @@ contains
     it = 0
     nextDumpTime = 0.d0
     iUnrefine = 0
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
     do while(currentTime <= tend)
+
+       call findEnergyOverAllThreads(grid, totalenergy)
+       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+       call findMassOverAllThreads(grid, totalmass)
+       if (writeoutput) write(*,*) "Total mass: ",totalMass
+
        tc = 0.d0
        if (myrank /= 0) then
           tc(myrank) = 1.d30
@@ -2672,9 +2828,13 @@ contains
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-          call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-        
+          
+          if(grid%geometry == "fluxTest") then
+             call fluxTest1D(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+             grid%currentTime = tend
+          else
+             call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          end if
           if(dounrefine) then
              iUnrefine = iUnrefine + 1
              
@@ -2684,20 +2844,45 @@ contains
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
                 !             write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
-                call evenUpGridMPI(grid, .true., .true.)
+                
                 iUnrefine = 0
              endif
           end if
+          call evenUpGridMPI(grid, .true., dorefine)
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
           call zeroRefinedLastTime(grid%octreeRoot)
-          call refineGridGeneric(grid, 1.d-2)
-
-          call evenUpGridMPI(grid, .true., .true.)
+          if(dorefine) then
+             call refineGridGeneric(grid, 1.d-2)
+           end if
+           call evenUpGridMPI(grid, .true., dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+       else
+          if(grid%geometry == "fluxTest") then
+             do iThread = 1, nThreadsGlobal - 1
+                print *, "RANK 0 RECVING FROM ", iThread
+                call MPI_RECV(dFluxOne, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                print *, "Got fluxOne From ", iThread
+                 fluxOne = fluxOne  + dFluxOne
+                call MPI_RECV(dFluxTwo, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                print *, "Got fluxTwo From ", iThread
+                fluxTwo = fluxTwo + dFluxTwo
+             end do
+          end if
        endif
+
+!       call findEnergyOverAllThreads(grid, totalenergy)
+!       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+!       call findMassOverAllThreads(grid, totalmass)
+!       if (writeoutput) write(*,*) "Total mass: ",totalMass
+
+       if(grid%geometry == "fluxTest") then
+          nextDumpTime = tend
+          currentTime = tend
+       end if
 
 
 !          if (myRank == 1) write(*,*) "current time ",currentTime,dt
@@ -2715,11 +2900,13 @@ contains
           grid%iDump = it
           grid%currentTime = currentTime
        endif
-
-
-   
-
     enddo
+
+    if(myRankGLobal == 0) then
+       print *, "fluxOne ", abs(fluxOne)
+       print *, "fluxTwo ", abs(fluxTwo)
+       print *, "RATIO : ", abs(fluxOne/fluxTwo)
+    end if
 
   end subroutine doHydrodynamics1d
 
