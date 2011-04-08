@@ -299,13 +299,13 @@ contains
         grid%nOctals = nOctals
         call howmanysplits()
 
-#ifdef MPI
-!       if(myRankGlobal == 0) then
-!          write(*,*) "Distributing MPI Labels"
-!          call distributeMPIthreadLabels(grid%octreeRoot)
-!          write(*,*) "Label Distribution Completed"
-!       end if
-#endif
+!#ifdef MPI
+!!       if(myRankGlobal == 0) then
+!!          write(*,*) "Distributing MPI Labels"
+!!          call distributeMPIthreadLabels(grid%octreeRoot)
+!!          write(*,*) "Label Distribution Completed"
+!!       end if
+!#endif
 
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
