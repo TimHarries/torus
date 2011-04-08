@@ -3116,7 +3116,7 @@ contains
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
-       write(444, *), jt, MINVAL(tc(1:nHydroThreads)), dt
+       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
 
 !       if ((jt < 2000).and.(grid%geometry=="sedov")) then
 !          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
