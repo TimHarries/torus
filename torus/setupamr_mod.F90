@@ -79,16 +79,25 @@ contains
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI 
        !label each cell with its appropriate MPI thread
-      ! if(myRankGlobal == 0) then
-      !    write(*,*) "Distributing MPI Labels"
-      !    call distributeMPIthreadLabels(grid%octreeRoot)
-      !    write(*,*) "Label Distribution Completed"
-      ! end if
+       !if(myRankGlobal == 0) then
+  !        write(*,*) "Distributing MPI Labels"
+  !        call distributeMPIthreadLabels(grid%octreeRoot)
+  !        write(*,*) "Label Distribution Completed"
+       !end if
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 #endif
        call findTotalMemory(grid, globalMemoryFootprint)
 
     else
+
+
+!#ifdef MPI
+!       if(myRankGlobal == 0) then
+!          write(*,*) "Distributing MPI Labels"
+!          call distributeMPIthreadLabels(grid%octreeRoot)
+!          write(*,*) "Label Distribution Completed"
+!       end if
+!#endif 
 
        grid%splitOverMPI = splitOverMPI
 
@@ -202,6 +211,9 @@ contains
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol
           call writeInfo(message,TRIVIAL)
+
+
+
 #endif
 
        case("runaway")
@@ -286,6 +298,15 @@ contains
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
         grid%nOctals = nOctals
         call howmanysplits()
+
+#ifdef MPI
+!       if(myRankGlobal == 0) then
+!          write(*,*) "Distributing MPI Labels"
+!          call distributeMPIthreadLabels(grid%octreeRoot)
+!          write(*,*) "Label Distribution Completed"
+!       end if
+#endif
+
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)

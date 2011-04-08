@@ -91,7 +91,7 @@ contains
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
                 
              case("vanleer")
-		!write(*,*) "vanleer"
+                !write(*,*) "vanleer"
                 thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
                 abs(thisoctal%rlimit(subcell))) / (1 + abs(thisoctal%rlimit(subcell)))
 
@@ -537,7 +537,7 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
 
-	   !thaw - edgecell is correct.
+          !thaw - edgecell is correct.
           if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -991,12 +991,12 @@ contains
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
-		!if (.not.thisoctal%edgecell(subcell)) then
+             !if (.not.thisoctal%edgecell(subcell)) then
              dx = returnCodeUnitLength(thisoctal%subcellsize*gridDistanceScale)
              thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
                   ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                   (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-		! write(*,*), "ui", thisoctal%u_interface(subcell)
+             ! write(*,*), "ui", thisoctal%u_interface(subcell)
           endif
        endif
     enddo
@@ -1251,14 +1251,14 @@ contains
 !             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
 !                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
-		   
-	    !Thaw - Rhie-Chow interpolation
-	    !print *, "rhou", thisoctal%rhou(subcell)
+  
+             !Thaw - Rhie-Chow interpolation
+             !print *, "rhou", thisoctal%rhou(subcell)
              if(rhieChow) then
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt) * &
                      ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
                     (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-	    !print *, "rhou", thisoctal%rhou(subcell)
+                !print *, "rhou", thisoctal%rhou(subcell)
 
 !                write(*,*) "rhou pressure ", thisOctal%rhou(subcell),  (dt) * &
 !                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
@@ -1277,7 +1277,7 @@ contains
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
-!	     write(*,*) "rhou grav ",thisOctal%rhou(subcell),(dt/2.d0) * & !gravity
+             !     write(*,*) "rhou grav ",thisOctal%rhou(subcell),(dt/2.d0) * & !gravity
 !                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
 !                  thisoctal%phi_i_minus_1(subcell)) / dx 
 
@@ -1437,7 +1437,6 @@ contains
              endif
 
 
-	
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "bug",thisoctal%rhov(subcell), &
                      thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
@@ -2538,14 +2537,14 @@ contains
           cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
        case(1) ! isothermal
           cs = sqrt(getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
-	  !!print *, "getPressure(thisOctal, subcell)", getPressure(thisOctal, subcell)
+          !!print *, "getPressure(thisOctal, subcell)", getPressure(thisOctal, subcell)
           !print *, "thisOctal%rho(subcell)", thisOctal%rho(subcell)
           !print *, "cs = ", cs
           !stop
           !if(cs > 2200000.) then
           !   print *, "cs ", cs
-	  !   stop
-	  !end if
+          !   stop
+          !end if
        case(2) ! barotropic
           rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))
           if (rhoPhys < rhoCrit) then
@@ -2564,7 +2563,7 @@ contains
   end function soundSpeed
 
   subroutine doHydrodynamics1d(grid)
-    use input_variables, only : tStart, tEnd, tDump
+    use input_variables, only : tStart, tEnd, tDump, dorefine
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt,  gamma, mu
@@ -2628,8 +2627,9 @@ contains
 
        call evenUpGridMPI(grid,.false.,.true.)
        
-       call refineGridGeneric(grid, 1.d-2)
-
+       if(dorefine) then
+          call refineGridGeneric(grid, 1.d-2)
+       end if
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid, .false.,.true.)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2674,18 +2674,20 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-
-          iUnrefine = iUnrefine + 1
-          if (iUnrefine == 100) then
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             nUnrefine = 0 
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
-!             write(*,*) "Unrefined ", nUnrefine, " cells"
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call evenUpGridMPI(grid, .true., .true.)
-             iUnrefine = 0
-          endif
-
+        
+          if(dounrefine) then
+             iUnrefine = iUnrefine + 1
+             
+             if (iUnrefine == 100) then
+                if (myrankglobal == 1) call tune(6, "Unrefine grid")
+                nUnrefine = 0 
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
+                !             write(*,*) "Unrefined ", nUnrefine, " cells"
+                if (myrankglobal == 1) call tune(6, "Unrefine grid")
+                call evenUpGridMPI(grid, .true., .true.)
+                iUnrefine = 0
+             endif
+          end if
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2702,10 +2704,10 @@ contains
        currentTime = currentTime + dt
        if (currentTime .gt. nextDumpTime) then
           !Thaw
-	  !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
+          !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-	    write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
@@ -2818,7 +2820,7 @@ contains
 
 
 
-	if(doRefine) then
+       if(doRefine) then
            if (myrank == 1) call tune(6, "Initial refine")
            call refineGridGeneric(grid, 1.d-2)
            call writeInfo("Evening up grid", TRIVIAL)    
@@ -3064,7 +3066,7 @@ contains
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call refinegridGeneric(grid, 1.d-1)          
-          end if	
+          end if
              call evenUpGridMPI(grid, .false.,dorefine)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -3159,7 +3161,7 @@ contains
 
 
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          if(doRefine) then	
+          if(doRefine) then
              call refinegridGeneric(grid, 1.d-1)
           end if
           call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
@@ -3619,10 +3621,10 @@ contains
 
                    dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
                    call normalize(dir)
-		   
-		   
+   
+   
                    Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
-		   
+   
                    thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
 
                    thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
@@ -4276,7 +4278,7 @@ contains
                 endif
              endif
           enddo
-	  
+ 
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = getBoundary(boundary)
@@ -6343,7 +6345,7 @@ end subroutine refineGridGeneric2
 !             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
 
-	      !Thaw - trying to remove expansion by removing periodic gravity
+            !Thaw - trying to remove expansion by removing periodic gravity
              call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
 !             call imposeboundary(grid%octreeroot)
              call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
