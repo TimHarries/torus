@@ -37,10 +37,10 @@ contains
     
   end subroutine dohydrodynamics
 
-  recursive subroutine fluxlimiter(thisoctal, limitertype)
+  recursive subroutine fluxlimiter(thisoctal)
+    use input_variables, only : limiterType
     include 'mpif.h'
     integer :: myrank, ierr
-    character(len=*) :: limitertype
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -55,7 +55,7 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call fluxlimiter(child, limitertype)
+                call fluxlimiter(child)
                 exit
              end if
           end do
@@ -1968,8 +1968,7 @@ contains
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupqx(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
-    call fluxlimiter(grid%octreeroot, "superbee")
-    !call fluxlimiter(grid%octreeroot, "vanleer")
+    call fluxlimiter(grid%octreeroot)
     call constructflux(grid%octreeroot, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupflux(grid%octreeroot, grid, direction)

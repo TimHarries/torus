@@ -186,6 +186,9 @@ contains
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getString("limitertype", limiterType, cLine, fLine, nLines, &
+         "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
+
     call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
          "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 

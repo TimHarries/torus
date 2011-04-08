@@ -717,13 +717,16 @@ module input_variables
   real :: molAbundance
   logical :: constantAbundance
 
+!Thaw
+
 !hydro stuff
   logical :: hydrodynamics
   real(double) :: tStart, tEnd, tDump
   logical :: hydrovelocityConv
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
-!Thaw
+  character(len=20) :: limiterType
+
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString
   character(len=20) :: xplusboundString, yplusboundString, zplusboundString
   real :: x1, x2
