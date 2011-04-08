@@ -2880,7 +2880,6 @@ end subroutine dumpStromgrenRadius
 !When reading in a grid that uses a different number of mpi threads to that of the current run
 !redistribute thread ID's to the appropriate cells
 recursive subroutine distributeMPIthreadLabels(thisOctal)
-  use mpi_global_mod, only: myRankGlobal
   include 'mpif.h'
   type(octal), pointer   :: thisoctal
   type(octal), pointer  :: child
