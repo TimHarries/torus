@@ -304,144 +304,137 @@ end subroutine createGammaTable
 !   End of pu02
 
 ! 3. Charge Exchange Routines (pu03)
-!Chageexchangerecomb
-!chargeexchangeion
-!kingdonferland
-
-!These routines differ subtly in photoion_mod
-!resolve with DA asap.
 
 !--Awaiting Comments                                         (U)
-!subroutine getChargeExchangeRecomb(parentIon, temperature, nhi, recombRate)
-!  type(IONTYPE) :: parentIon
-!  real(double) :: nhi
-!  real(double), intent(out) :: recombRate
-!  real :: t4, a, b, c, d
-!  real :: temperature
-!!
- ! recombRate  = 0.d0
-!
-!  select case(parentIon%z)
-!     case(7)
-!        select case(parentIon%n)
-!           case(4) ! N IV
-!              t4 = temperature / 1.e4
-!              a = 3.05e-10
-!              b = 0.60
-!              c = 2.65
-!              d = -0.93
-!              recombRate  = kingdonFerland96(t4, a, b, c, d)
-!        end select
-!     case(8)
-!        select case(parentIon%n)
-!           case(7) ! O II
-!              t4 = temperature / 1.e4
-!              a = 1.04e-9
-!!              b = 3.15e-2
-!              c = -0.61
-!              d = -9.73
-!              recombRate  = kingdonFerland96(t4, a, b, c, d)
-!           case(6) ! OIII
-!              t4 = temperature / 1.e4
-!              a = 1.04e-9
-!              b = 0.27
-!              c = 2.02
-!              d = -5.92
-!              recombRate  = kingdonFerland96(t4, a, b, c, d)
-!       end select
-!   end select
-!
-!  recombRate = recombRate * nhi
-!
-!end subroutine getChargeExchangeRecomb
-!
-!
-!!-- Awaiting Comments                                             (U)
-!subroutine getChargeExchangeIon(parentIon, temperature,  nHII, IonRate)
-!!  type(IONTYPE) :: parentIon
-!  real(double) :: nHII
-!  real(double), intent(out) :: ionRate
-!  real :: temperature
-!  real :: t4, a, b, c, d
-!!
- ! IonRate = 0.d0
-!
-!  select case(parentIon%z)
-!     case(7)
-!        select case(parentIon%n)
-!           case(7) ! N I charge exchange Ionization
-!              t4 = temperature / 1.e4
-!              a = 4.55e-12
-!              b = -0.29
-!              c = -0.92
-!              d = -8.38
-!              ionRate  = kingdonFerland96(t4, a, b, c, d)
-!        end select
-!     case(8)
-!        select case(parentIon%n)
-!           case(8) ! O I charge exchange ionization
-!              t4 = temperature / 1.e4
-!!              a = 7.40e-11
- !             b = 0.47
-!              c = 24.37
-!              d = -0.74
-!              ionRate  = kingdonFerland96(t4, a, b, c, d)
-!       end select
-!   end select
-!
-!  ionRate = ionRate * nhii
-!end subroutine getChargeExchangeIon
-!
-!
-!!--Awaiting comments                                (U)
-!function kingdonFerland96(t4, a, b, c, d) result (alpha)
-!  real :: alpha
-!  real :: t4, a, b, c, d
-!  alpha = a*(t4**b)*(1.+c*exp(d*t4))
-!end function kingdonFerland96
+subroutine getChargeExchangeRecomb(parentIon, temperature, nhi, recombRate)
+  type(IONTYPE) :: parentIon
+  real(double) :: nhi
+  real(double), intent(out) :: recombRate
+  real :: t4, a, b, c, d
+  real :: temperature
+  
+  recombRate  = 0.d0
+  
+  select case(parentIon%z)
+  case(7)
+     select case(parentIon%n)
+     case(4) ! N IV
+        t4 = temperature / 1.e4
+        a = 3.05e-10
+        b = 0.60
+        c = 2.65
+        d = -0.93
+        recombRate  = kingdonFerland96(t4, a, b, c, d)
+     end select
+  case(8)
+     select case(parentIon%n)
+     case(7) ! O II
+        t4 = temperature / 1.e4
+        a = 1.04e-9
+        b = 3.15e-2
+        c = -0.61
+        d = -9.73
+        recombRate  = kingdonFerland96(t4, a, b, c, d)
+     case(6) ! OIII
+        t4 = temperature / 1.e4
+        a = 1.04e-9
+        b = 0.27
+        c = 2.02
+        d = -5.92
+        recombRate  = kingdonFerland96(t4, a, b, c, d)
+     end select
+  end select
+  
+  recombRate = recombRate * nhi
+  
+end subroutine getChargeExchangeRecomb
 
+
+!-- Awaiting Comments                                             (U)
+subroutine getChargeExchangeIon(parentIon, temperature,  nHII, IonRate)
+  type(IONTYPE) :: parentIon
+  real(double) :: nHII
+  real(double), intent(out) :: ionRate
+  real :: temperature
+  real :: t4, a, b, c, d
+
+  IonRate = 0.d0
+
+  select case(parentIon%z)
+  case(7)
+     select case(parentIon%n)
+     case(7) ! N I charge exchange Ionization
+        t4 = temperature / 1.e4
+        a = 4.55e-12
+        b = -0.29
+        c = -0.92
+        d = -8.38
+        ionRate  = kingdonFerland96(t4, a, b, c, d)
+     end select
+  case(8)
+     select case(parentIon%n)
+     case(8) ! O I charge exchange ionization
+        t4 = temperature / 1.e4
+        a = 7.40e-11
+        b = 0.47
+        c = 24.37
+        d = -0.74
+        ionRate  = kingdonFerland96(t4, a, b, c, d)
+     end select
+  end select
+  
+  ionRate = ionRate * nhii
+end subroutine getChargeExchangeIon
+      
+
+!--Awaiting comments                                (U)
+function kingdonFerland96(t4, a, b, c, d) result (alpha)
+  real :: alpha
+  real :: t4, a, b, c, d
+  alpha = a*(t4**b)*(1.+c*exp(d*t4))
+end function kingdonFerland96
 
 ! End of pu03
 
 !   pu0X Unused routines
-
+      
 ! Currently never called. HI recombination rates (P)
-  function hRecombination(temperature) result (rate)
-    real :: temperature
-    real(double) :: rate, t0, t1, b
-
-    t0 = sqrt(temperature/3.148d0)
-    t1 = sqrt(temperature/7.036d5)
-    b = 0.7480
-
-    rate = 7.982d-11 / (t0*(1.d0+t0)**(1.d0-b) * (1.d0 + t1)**(1.d0+b))
-  end function hRecombination
+function hRecombination(temperature) result (rate)
+  real :: temperature
+  real(double) :: rate, t0, t1, b
+  
+  t0 = sqrt(temperature/3.148d0)
+  t1 = sqrt(temperature/7.036d5)
+  b = 0.7480
+  
+  rate = 7.982d-11 / (t0*(1.d0+t0)**(1.d0-b) * (1.d0 + t1)**(1.d0+b))
+end function hRecombination
 
 ! Currently never called. He recombination rates (P)
-  subroutine calcHeRecombs(te, alpha1, alpha21s, alpha21p, alpha23s)
-    real :: te, t
-    real(double) :: alpha1, alpha21s, alpha21p, alpha23s
-    
-    t = te / 1.e4
-    
-    alpha1 = 1.54e-13 * t**(-0.486)
-
-    alpha21s = 2.06e-14 * t**(-0.676)
-
-    alpha21p = 4.17e-14 * t**(-0.861)
-
-    alpha23s = 2.10e-13 * t**(-0.778)
-  end subroutine calcHeRecombs
-
-
-! Currently never called. Recomb rate into ground state. (P)
-  function recombToGround(temperature) result (alpha1)
-    real :: temperature
-    real(double) :: alpha1
-
-    alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
-  end function recombToGround
+subroutine calcHeRecombs(te, alpha1, alpha21s, alpha21p, alpha23s)
+  real :: te, t
+  real(double) :: alpha1, alpha21s, alpha21p, alpha23s
   
+  t = te / 1.e4
+  
+  alpha1 = 1.54e-13 * t**(-0.486)
+  
+  alpha21s = 2.06e-14 * t**(-0.676)
+  
+  alpha21p = 4.17e-14 * t**(-0.861)
+  
+  alpha23s = 2.10e-13 * t**(-0.778)
+end subroutine calcHeRecombs
+  
+  
+! Currently never called. Recomb rate into ground state. (P)
+function recombToGround(temperature) result (alpha1)
+  real :: temperature
+  real(double) :: alpha1
+  
+  alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
+end function recombToGround
+
 
 
 

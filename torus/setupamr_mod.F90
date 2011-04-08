@@ -79,11 +79,11 @@ contains
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI 
        !label each cell with its appropriate MPI thread
-       if(myRankGlobal == 0) then
-!          write(*,*) "Distributing MPI Labels"
-!          call distributeMPIthreadLabels(grid%octreeRoot)
-!          write(*,*) "Label Distribution Completed"
-       end if
+      ! if(myRankGlobal == 0) then
+      !    write(*,*) "Distributing MPI Labels"
+      !    call distributeMPIthreadLabels(grid%octreeRoot)
+      !    write(*,*) "Label Distribution Completed"
+      ! end if
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 #endif
        call findTotalMemory(grid, globalMemoryFootprint)
