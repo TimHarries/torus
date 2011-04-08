@@ -528,24 +528,24 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90 dimensionality_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
-            distortion_mod.f90  TTauri_mod.f90 puls_mod.f90 \
+            distortion_mod.f90  TTauri_mod.f90 \
             disc_hydro_mod.f90 gas_opacity_mod.f90 \
             integratePath.f90 readIntPro.f90 mieDistPhaseMatrix.f90 \
-            gridtype_mod.f90 getRefractiveIndex.f90 draineCrossSection.f90 \
-            readTioCrossSection.f90 rayleighCrossSection.f90 \
+            gridtype_mod.f90 draineCrossSection.f90 \
+            readTioCrossSection.f90  \
             fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 cont_read.f90 \
             getMeanMass.f90 input_variables.f90 amr_mod.f90 amr_utils_mod.f90 octal_mod.f90 \
             jets_mod.f90 h21cm_mod.f90 \
             dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
-            wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 \
+            wr104_mod.f90 density_mod.f90 \
             sph_data_class.f90 cluster_class.f90 vh1_mod.f90 \
-            linked_list_class.f90 timing.f90  isochrone_class.f90 \
+            timing.f90  isochrone_class.f90 \
             filter_set_class.f90 ostar_mod.f90  \
-            cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
+            surface_mod.f90  math_mod2.f90 disc_class.f90 \
             hyd_col_coeff.f90 flow_speed_variables.f90 clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
-            jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
+            cmfgen_class.f90  \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             nrtype.f90 nrutil.f90 magnetic_mod.f90 photoion_utils_mod.f90
