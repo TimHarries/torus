@@ -732,9 +732,6 @@ contains
                 endif
              endif
 
-
-
-
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
@@ -1007,7 +1004,7 @@ contains
   end subroutine rhiechowui
 
    recursive subroutine computepressureu(grid, thisoctal, direction)
-     use input_variables, only : etaViscosity
+     use input_variables, only : etaViscosity, useViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid 
@@ -1016,7 +1013,7 @@ contains
     integer :: subcell, i
     real(double) :: biggamma,eta
     type(vector) :: direction
-    logical :: useviscosity
+!    logical :: useviscosity
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -1045,23 +1042,22 @@ contains
   !        end if
 
           biggamma = 0.d0
-          if (.not.thisoctal%edgecell(subcell)) then
-             useviscosity = .false.
-             if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
-!             if ((thisoctal%u_i_plus_1(subcell) < 0.d0).and.(thisoctal%u_i_plus_1(subcell) .ge. thisoctal%u_i_minus_1(subcell))) &
-!                  useviscosity = .true.
 
 
-
-
-             if (useviscosity) then
+          if (useviscosity) then
+             if (.not.thisoctal%edgecell(subcell)) then
+                useviscosity = .false.
+                if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
+!     if ((thisoctal%u_i_plus_1(subcell) < 0.d0).and.(thisoctal%u_i_plus_1(subcell) .ge. thisoctal%u_i_minus_1(subcell))) &
+!     useviscosity = .true.
+                
                 biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
-                     * thisoctal%rho(subcell)
+                * thisoctal%rho(subcell)
              else
                 biggamma = 0.d0
              endif
           endif
-
+          
 
           thisoctal%pressure_i(subcell) = thisoctal%pressure_i(subcell) + biggamma
 
@@ -1081,7 +1077,7 @@ contains
   end subroutine computepressureu
 
    recursive subroutine computepressurev(grid, thisoctal, direction)
-     use input_variables, only : etaViscosity
+     use input_variables, only : etaViscosity, useViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid
@@ -1113,14 +1109,16 @@ contains
   
 
           biggamma = 0.d0
-          if (.not.thisoctal%edgecell(subcell)) then
-             if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) then
-                biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
-                     * thisoctal%rho(subcell)
-             else
-                biggamma = 0.d0
+          if(useViscosity) then
+             if (.not.thisoctal%edgecell(subcell)) then
+                if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) then
+                   biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
+                   * thisoctal%rho(subcell)
+                else
+                   biggamma = 0.d0
+                endif
              endif
-          endif
+          end if
 
 
 
@@ -1145,7 +1143,7 @@ contains
   end subroutine computepressurev
 
    recursive subroutine computepressurew(grid, thisoctal, direction)
-     use input_variables, only : etaViscosity
+     use input_variables, only : etaViscosity, useViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid
@@ -1179,14 +1177,16 @@ contains
 
 
           biggamma = 0.d0
-          if (.not.thisoctal%edgecell(subcell)) then
-             if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) then
-                biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
-                     * thisoctal%rho(subcell)
-             else
-                biggamma = 0.d0
+          if(useViscosity) then
+             if (.not.thisoctal%edgecell(subcell)) then
+                if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) then
+                   biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
+                   * thisoctal%rho(subcell)
+                else
+                   biggamma = 0.d0
+                endif
              endif
-          endif
+          end if
 !          if (myrankglobal == 1) write(*,*) biggamma/thisoctal%pressure_i(subcell), thisoctal%u_i_plus_1(subcell), &
 !               thisoctal%u_i_minus_1(subcell), thisoctal%rho(subcell)
 
@@ -2578,7 +2578,7 @@ contains
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(10)
-    !character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -2705,7 +2705,8 @@ contains
 	  !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          call  dumpValuesAlongLine(grid, "sod.dat", &
+	    write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
+          call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
@@ -2722,7 +2723,7 @@ contains
 
 
   subroutine doHydrodynamics3d(grid)
-    use input_variables, only : tdump, tend
+    use input_variables, only : tdump, tend, doRefine, doUnrefine
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
@@ -2737,7 +2738,7 @@ contains
     integer :: thread1(200), thread2(200), nBound(200), nPairs
     integer :: nHydroThreads
     integer :: nGroup, group(200)
-    logical :: doRefine
+!    logical :: doRefine
     logical :: doSelfGrav
     logical, save  :: firstStep = .true.
 
@@ -2748,7 +2749,7 @@ contains
     if (grid%geometry == "shakara") doSelfGrav = .false.
     if (grid%geometry == "rtaylor") doSelfGrav = .false.
 
-    dorefine = .true.
+!    dorefine = .true.
 
     nHydroThreads = nThreadsGlobal - 1
 
@@ -2816,19 +2817,16 @@ contains
        call calculateRhoE(grid%octreeRoot, direction)
 
 
-       if (myrank == 1) call tune(6, "Initial refine")
 
-
-
-       call refineGridGeneric(grid, 1.d-2)
-       call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid,.false., dorefine)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-
-       if (myrank == 1) call tune(6, "Initial refine")
-
+	if(doRefine) then
+           if (myrank == 1) call tune(6, "Initial refine")
+           call refineGridGeneric(grid, 1.d-2)
+           call writeInfo("Evening up grid", TRIVIAL)    
+           call evenUpGridMPI(grid,.false., dorefine)
+           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+        
+           if (myrank == 1) call tune(6, "Initial refine")
+        end if
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
@@ -2923,31 +2921,33 @@ contains
 
 
           iUnrefine = iUnrefine + 1
-          if (iUnrefine == 5) then
-             if (myrank == 1)call tune(6, "Unrefine grid")
-             nUnrefine = 0
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
-             !          write(*,*) "Unrefined ", nUnrefine, " cells"
-             if (myrank == 1)call tune(6, "Unrefine grid")
-             iUnrefine = 0
-          endif
-
+          if(doUnRefine) then
+             if (iUnrefine == 5) then
+                if (myrank == 1)call tune(6, "Unrefine grid")
+                nUnrefine = 0
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
+                                !          write(*,*) "Unrefined ", nUnrefine, " cells"
+                if (myrank == 1)call tune(6, "Unrefine grid")
+                iUnrefine = 0
+             endif
+          end if
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call writeInfo("Refining grid part 2", TRIVIAL)    
-          call refineGridGeneric(grid, 1.d-2)
+          if(doRefine) then
+             call writeInfo("Refining grid part 2", TRIVIAL)    
+             call refineGridGeneric(grid, 1.d-2)
           !          
-          call evenUpGridMPI(grid, .true., dorefine)
+             call evenUpGridMPI(grid, .true., dorefine)
 
           !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          if (myrank == 1) call tune(6, "Loop refine")
-
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-          if (myrank == 1) call tune(6, "Loop refine")
-          !
-
+             if (myrank == 1) call tune(6, "Loop refine")
+             
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             
+             if (myrank == 1) call tune(6, "Loop refine")
+                                !
+          end if
 
        endif
 
@@ -2986,7 +2986,7 @@ contains
   end subroutine doHydrodynamics3d
 
   subroutine doHydrodynamics2d(grid)
-    use input_variables, only : tEnd, tDump
+    use input_variables, only : tEnd, tDump, doRefine, doUnrefine
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), mu
@@ -3002,7 +3002,7 @@ contains
 
 !    logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
-    logical :: dorefine
+!    logical :: dorefine
     integer :: nUnrefine, jt
 
     nUnrefine = 0
@@ -3019,7 +3019,7 @@ contains
     endif
     if (myrankGlobal /= 0) then
 
-       dorefine = .true.
+!       dorefine = .true.
 
 
 
@@ -3058,15 +3058,17 @@ contains
           call calculateRhoE(grid%octreeRoot, direction)
           
           
-          call evenUpGridMPI(grid,.false., dorefine)
-          
-          
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          call refinegridGeneric(grid, 1.d-1)          
-          call evenUpGridMPI(grid, .false.,dorefine)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          
+             call evenUpGridMPI(grid,.false., dorefine)
+             
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          if(doRefine) then
+             call refinegridGeneric(grid, 1.d-1)          
+          end if	
+             call evenUpGridMPI(grid, .false.,dorefine)
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
@@ -3098,6 +3100,8 @@ contains
 
     jt = 0
 
+      !Thaw - trace courant time history
+      open (444, file="tcHistory.dat", status="unknown")
 
     do while(currentTime < tEnd)
        if (myrank == 1) write(*,*) "current time " ,currentTime
@@ -3110,6 +3114,7 @@ contains
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+       write(444, *), jt, MINVAL(tc(1:nHydroThreads)), dt
 
 !       if ((jt < 2000).and.(grid%geometry=="sedov")) then
 !          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
@@ -3137,26 +3142,29 @@ contains
           if (writeoutput) write(*,*) "Total energy: ",totalEnergy
           call findMassOverAllThreads(grid, totalmass)
           if (writeoutput) write(*,*) "Total mass: ",totalMass
-          iUnrefine = iUnrefine + 1
-          if (iUnrefine == 20) then
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-2)
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             iUnrefine = 0
-          endif
-
+          
+          if(doUnrefine) then
+             iUnrefine = iUnrefine + 1
+             if (iUnrefine == 20) then
+                if (myrankglobal == 1) call tune(6, "Unrefine grid")
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-2)
+                if (myrankglobal == 1) call tune(6, "Unrefine grid")
+                iUnrefine = 0
+             endif
+          end if
 
           if (myrank == 1) call tune(6,"Hydrodynamics step")
 
 
 
+
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          if(doRefine) then	
+             call refinegridGeneric(grid, 1.d-1)
+          end if
+          call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call refinegridGeneric(grid, 1.d-1)
-          call evenUpGridMPI(grid, .true., dorefine)!, dumpfiles=jt)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-
+          
 
        endif
 
@@ -3188,7 +3196,9 @@ contains
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
 
-    enddo
+      enddo
+      close(444)
+
   end subroutine doHydrodynamics2d
 
 

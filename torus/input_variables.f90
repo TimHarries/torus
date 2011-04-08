@@ -717,14 +717,13 @@ module input_variables
   real :: molAbundance
   logical :: constantAbundance
 
-!Thaw
-
 !hydro stuff
   logical :: hydrodynamics
   real(double) :: tStart, tEnd, tDump
   logical :: hydrovelocityConv
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
+  logical :: doRefine, doUnrefine, useViscosity
   character(len=20) :: limiterType
 
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString
@@ -736,7 +735,7 @@ module input_variables
 !Dimensionless cutoff radius for Bonnor-Ebert Sphere
   real(double) :: zetacutoff 
 
-
+!Variance Reduction
   logical :: biasToLyman
   real(double) :: biasMagnitude
   logical :: binPhotons

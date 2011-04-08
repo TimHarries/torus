@@ -209,6 +209,9 @@ CONTAINS
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell)
 
+    CASE("diagSod")
+       call calcHydro1DDensity(thisOctal, subcell)
+
     CASE("kelvin")
        call calcKelvinDensity(thisOctal, subcell,grid)
 
@@ -4001,8 +4004,16 @@ CONTAINS
 
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      !Coarse to fine
+      if(rVec%x > 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+      !if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      !if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+
+   case("diagSod")
+      rVec = subcellCentre(thisOctal, subcell)
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
    case("bonnor", "unisphere")
          
@@ -7248,6 +7259,19 @@ CONTAINS
           thisOctal%pressure_i(subcell) = 0.1d0
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
        endif
+
+    else if(thisOctal%twoD) then
+       if((rvec%x + rvec%z) <= 0.3) then
+          thisOctal%rho(subcell) = 1.d0
+          thisOctal%energy(subcell) = 2.5d0
+          thisOctal%pressure_i(subcell) = 1.d0
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+       else
+          thisOctal%rho(subcell) = 0.125d0
+          thisOctal%energy(subcell) = 2.d0
+          thisOctal%pressure_i(subcell) = 0.1d0
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+       end if
     endif
  
     thisOctal%phi_i(subcell) = 0.d0

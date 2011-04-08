@@ -189,6 +189,9 @@ contains
     call getString("limitertype", limiterType, cLine, fLine, nLines, &
          "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
 
+    call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
+         "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
+
     call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
          "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -833,6 +836,12 @@ contains
 
     call getInteger("maxdepthamr", maxDepthAMR, cLine, fLine, nLines, "Maximum cell depth of AMR grid: ", &
          & "(a,i3,a)",31,ok,.false.)
+
+    call getLogical("dorefine", dorefine, cLine, fLine, nLines, &
+         "Adaptively refine AMR grid?: ","(a,1l,1x,a)", .true., ok, .false.)
+
+    call getLogical("dounrefine", dounrefine, cLine, fLine, nLines, &
+         "Adaptively unrefine AMR grid?: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
