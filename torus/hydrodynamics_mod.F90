@@ -1,5 +1,6 @@
 ! hydrodynamics module added by tjh on 18th june 2007
 
+
 module hydrodynamics_mod
 #ifdef MPI
 
@@ -1950,6 +1951,7 @@ contains
 
   end subroutine advectrhow
 
+
   subroutine advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -1967,16 +1969,19 @@ contains
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupflux(grid%octreeroot, grid, direction)
     call updatecellq(grid%octreeroot, dt)
-
     
   end subroutine advectq
 
 
-recursive subroutine sumFluxes(thisOctal, totalFlux, dt)
+recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
   integer :: subcell, i
   type(octal), pointer :: thisOctal
   type(octal), pointer :: child
- real(double) :: totalFlux, dt
+  type(gridtype) :: grid
+  real(double) :: totalFlux, dt
+  logical :: firstTime
+
+ totalFlux = 0.d0
 
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
@@ -1984,14 +1989,17 @@ recursive subroutine sumFluxes(thisOctal, totalFlux, dt)
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call sumFluxes(child, totalFlux, dt)
+              call sumFluxes(child, dt, totalFlux)
               exit
            end if
         end do
      else
-        call constructFlux(thisOctal, dt)
-        totalFlux = totalFlux + thisOctal%flux_i(subcell)
-     end if
+!        totalFlux = totalFlux + thisOctal%flux_i(subcell)
+        totalFLux = totalFlux + dt * &
+                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / &
+                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+
+    end if
   end do
 
 end subroutine sumFluxes
@@ -2035,10 +2043,11 @@ end subroutine sumFluxes
     end if
 
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call sumFluxes(grid%octreeRoot, dt, dFluxOne)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call sumFLuxes(grid%octreeRoot, dfluxOne, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+  
 !
 !Thaw - extra boundary impose
 
@@ -2078,10 +2087,11 @@ end subroutine sumFluxes
      call rhiechowui(grid%octreeroot, grid, direction, dt)
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     end if
+
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call sumFluxes(grid%octreeRoot, dt, dFluxTwo)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call sumFLuxes(grid%octreeRoot, dfluxTwo, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
 !
 !Thaw - extra boundary impose
@@ -2112,9 +2122,9 @@ end subroutine sumFluxes
     call MPI_SEND(dfluxOne, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
     call MPI_SEND(dfluxTwo, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
 
-!    print *, "fluxOne ", abs(fluxOne)
-!    print *, "fluxTwo ", abs(fluxTwo)
-!    print *, "RATIO : ", abs(fluxOne/fluxTwo)
+    print *, "fluxOne ", abs(dfluxOne), myRank
+    print *, "fluxTwo ", abs(dfluxTwo), myRank
+    print *, "RATIO : ", abs(dfluxOne/dfluxTwo), myRank
 
   end subroutine fluxTest1D
 

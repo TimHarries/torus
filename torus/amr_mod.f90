@@ -4008,6 +4008,7 @@ CONTAINS
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
       if(rVec%x > 0.5 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+!      if(rVec%x > 0.5 .and. rVec%x < 0.85 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
    case("hydro1d")
 
