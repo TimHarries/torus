@@ -2912,9 +2912,10 @@ end subroutine sumFluxes
     enddo
 
     if(myRankGLobal == 0) then
-       print *, "fluxOne ", abs(fluxOne)
-       print *, "fluxTwo ", abs(fluxTwo)
-       print *, "RATIO : ", abs(fluxOne/fluxTwo)
+       print *, "fluxOne ", fluxOne
+       print *, "fluxTwo ", fluxTwo
+       print *, "RATIO : ", fluxOne/fluxTwo
+       print *, "DIFFERENCE : ", fluxTwo - fluxOne
 
 !       print *, " "
 !       call findEnergyOverAllThreads(grid, totalenergy)
@@ -3204,6 +3205,8 @@ end subroutine sumFluxes
     type(VECTOR) :: direction, viewVec
     integer :: thread1(100), thread2(100), nBound(100), nPairs
     integer :: nGroup, group(100)
+    real(double) :: dfluxOne, dfluxTwo, fluxOne, fluxTwo
+    integer :: tag, iThread, status
 
 !    logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
@@ -3341,7 +3344,13 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
-          call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          if(grid%geometry == "fluxTest") then
+             call fluxTest1D(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+             grid%currentTime = tend
+          else
+
+             call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          end if
 
           call findEnergyOverAllThreads(grid, totalenergy)
           if (writeoutput) write(*,*) "Total energy: ",totalEnergy
@@ -3375,6 +3384,31 @@ end subroutine sumFluxes
 
        currentTime = currentTime + dt
 !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
+
+
+       if(grid%geometry == "fluxTest") then
+          do iThread = 1, nThreadsGlobal - 1
+             print *, "RANK 0 RECVING FROM ", iThread
+             call MPI_RECV(dFluxOne, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+             print *, "Got fluxOne From ", iThread
+             fluxOne = fluxOne  + dFluxOne
+             call MPI_RECV(dFluxTwo, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                print *, "Got fluxTwo From ", iThread
+                fluxTwo = fluxTwo + dFluxTwo
+             end do
+          end if
+
+          call findEnergyOverAllThreads(grid, totalenergy)
+          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+          call findMassOverAllThreads(grid, totalmass)
+          if (writeoutput) write(*,*) "Total mass: ",totalMass
+          
+          if(grid%geometry == "fluxTest") then
+             nextDumpTime = tend
+             currentTime = tend
+          end if
+
+
 
 
        if (currentTime .ge. nextDumpTime) then

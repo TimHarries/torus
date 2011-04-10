@@ -4007,8 +4007,8 @@ CONTAINS
    case("fluxTest")
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if(rVec%x > 0.5 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-!      if(rVec%x > 0.5 .and. rVec%x < 0.85 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+   !   if(rVec%x > 0.3 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+      if(rVec%x > 0.6 .and. rVec%x < 0.7 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
    case("hydro1d")
 
