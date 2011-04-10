@@ -216,7 +216,8 @@ contains
              else
                 thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i(subcell)
              endif
-             
+             !print *, "thisOctal%flux(subcell) = ", thisOctal%flux_i(subcell)
+        
              if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) "problem with the x_i values"
                 stop
@@ -1974,14 +1975,16 @@ contains
 
 
 recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
+  include 'mpif.h'
   integer :: subcell, i
   type(octal), pointer :: thisOctal
   type(octal), pointer :: child
-  type(gridtype) :: grid
   real(double) :: totalFlux, dt
-  logical :: firstTime
+  integer :: myRank, ierr
 
- totalFlux = 0.d0
+  call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+! totalFlux = 0.d0
 
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
@@ -1994,14 +1997,14 @@ recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
            end if
         end do
      else
-!        totalFlux = totalFlux + thisOctal%flux_i(subcell)
-        totalFLux = totalFlux + dt * &
-                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / &
-                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
-
-    end if
+        if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+        if (.not.thisoctal%edgecell(subcell)) then
+        totalFlux = totalFlux + thisOctal%flux_i(subcell)
+      !  print *, "thisflux = ", thisOctal%flux_i(subcell)
+        end if
+     end if
   end do
-
+ ! print *, "total flux = ", totalFlux
 end subroutine sumFluxes
 
 
@@ -2048,14 +2051,6 @@ end subroutine sumFluxes
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
   
-!
-!Thaw - extra boundary impose
-
-   ! call imposeboundary(grid%octreeroot)
-   ! call periodboundary(grid)
-   ! call transfertempstorage(grid%octreeroot)
-   ! call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
     call setupui(grid%octreeroot, grid, direction)
     call setupupm(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
@@ -2119,12 +2114,16 @@ end subroutine sumFluxes
     call transfertempstorage(grid%octreeroot)
 
     print *, "RANK ", myRank, "sending fluxes"
+    print *, "fluxOne ", dfluxOne, myRank
+    print *, "fluxTwo ", dfluxTwo, myRank
+    print *, "RATIO : ", dfluxOne/dfluxTwo, myRank
+
     call MPI_SEND(dfluxOne, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
     call MPI_SEND(dfluxTwo, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
-
-    print *, "fluxOne ", abs(dfluxOne), myRank
-    print *, "fluxTwo ", abs(dfluxTwo), myRank
-    print *, "RATIO : ", abs(dfluxOne/dfluxTwo), myRank
+!
+!    print *, "fluxOne ", abs(dfluxOne), myRank
+!    print *, "fluxTwo ", abs(dfluxTwo), myRank
+!    print *, "RATIO : ", abs(dfluxOne/dfluxTwo), myRank
 
   end subroutine fluxTest1D
 
@@ -2884,10 +2883,10 @@ end subroutine sumFluxes
           end if
        endif
 
-!       call findEnergyOverAllThreads(grid, totalenergy)
-!       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-!       call findMassOverAllThreads(grid, totalmass)
-!       if (writeoutput) write(*,*) "Total mass: ",totalMass
+       call findEnergyOverAllThreads(grid, totalenergy)
+       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+       call findMassOverAllThreads(grid, totalmass)
+       if (writeoutput) write(*,*) "Total mass: ",totalMass
 
        if(grid%geometry == "fluxTest") then
           nextDumpTime = tend
@@ -2916,6 +2915,13 @@ end subroutine sumFluxes
        print *, "fluxOne ", abs(fluxOne)
        print *, "fluxTwo ", abs(fluxTwo)
        print *, "RATIO : ", abs(fluxOne/fluxTwo)
+
+!       print *, " "
+!       call findEnergyOverAllThreads(grid, totalenergy)
+!       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+!       call findMassOverAllThreads(grid, totalmass)
+!       if (writeoutput) write(*,*) "Total mass: ",totalMass
+
     end if
 
   end subroutine doHydrodynamics1d
