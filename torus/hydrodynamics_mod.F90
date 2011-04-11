@@ -519,8 +519,8 @@ contains
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-!    real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
-    real(double) :: rhou_i_plus_1, rho_i_plus_1, weight
+    real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
+!    real(double) :: rhou_i_plus_1, rho_i_plus_1, weight
     integer :: nd
   
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
@@ -549,11 +549,11 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
 
-!             rho_i_minus_1 = rho
-!             rhou_i_minus_1 = rhou
+             rho_i_minus_1 = rho
+             rhou_i_minus_1 = rhou
 
-             rho_i_plus_1 = rho
-             rhou_i_plus_1 = rhou
+!             rho_i_plus_1 = rho
+!             rhou_i_plus_1 = rhou
 
 
 
@@ -567,14 +567,14 @@ contains
 !                !weight  = 0.333333333d0 ! coarse to fine
 !             endif
 
-!             thisoctal%u_interface(subcell) = &
-!                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
-!                  (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
- 
-                !Thaw: if this fails then use the above version
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
-                  (1.d0-weight)*rhou_i_plus_1/rho_i_plus_1
+                  (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
+ 
+!                !Thaw: if this fails then use the above version
+!             thisoctal%u_interface(subcell) = &
+!                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
+!                  (1.d0-weight)*rhou_i_plus_1/rho_i_plus_1
 
 
      
