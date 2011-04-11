@@ -2917,25 +2917,18 @@ end subroutine sumFluxes
 
           if(grid%geometry == "fluxTest") then
              do iThread = 1, nHydroThreads
-                print *, "RANK 0 RECVING FROM ", iThread
                 call MPI_RECV(dFluxOne, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
-                print *, "Got fluxOne From ", iThread
                  fluxOne = fluxOne  + dFluxOne
-                 print *, "RANK 0 RECVING FROM ", iThread, "B"
                 call MPI_RECV(dFluxTwo, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
-                print *, "Got fluxTwo From ", iThread
                 fluxTwo = fluxTwo + dFluxTwo 
              enddo
-          
-       
+                 
           call findEnergyOverAllThreads(grid, totalenergy)
           if (writeoutput) write(*,*) "Total energy: ",totalEnergy
           call findMassOverAllThreads(grid, totalmass)
           if (writeoutput) write(*,*) "Total mass: ",totalMass
           
           
-          nextDumpTime = tend
-          currentTime = tend
        end if
     end if
 
@@ -2955,14 +2948,19 @@ end subroutine sumFluxes
           grid%iDump = it
           grid%currentTime = currentTime
        endif
+    
+    
+       if(myRankGLobal == 0 .and. grid%geometry == "fluxTest") then
+          print *, "fluxOne ", fluxOne
+          print *, "fluxTwo ", fluxTwo
+          print *, "RATIO : ", fluxOne/fluxTwo
+          print *, "DIFFERENCE : ", fluxTwo - fluxOne
+          nextDumpTime = tend
+          currentTime = tend
+          
+       end if
+   
     enddo
-
-    if(myRankGLobal == 0 .and. grid%geometry == "fluxTest") then
-       print *, "fluxOne ", fluxOne
-       print *, "fluxTwo ", fluxTwo
-       print *, "RATIO : ", fluxOne/fluxTwo
-       print *, "DIFFERENCE : ", fluxTwo - fluxOne
-    end if
 
   end subroutine doHydrodynamics1d
 
