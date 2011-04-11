@@ -130,6 +130,8 @@ CONTAINS
        if (associated(thisOctal%rhow)) thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
        if (associated(thisOctal%rhoe)) thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
        if (associated(thisOctal%phi_i)) thisOctal%phi_i(subcell) = parentOctal%phi_i(parentSubcell)
+       if (associated(thisOctal%phi_gas)) thisOctal%phi_gas(subcell) = parentOctal%phi_gas(parentSubcell)
+       if (associated(thisOctal%phi_stars)) thisOctal%phi_stars(subcell) = parentOctal%phi_stars(parentSubcell)
        if (associated(thisOctal%energy)) thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
 
     else if (interpolate) then
@@ -9731,6 +9733,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%pressure_i_minus_1, source%pressure_i_minus_1)
     call copyAttribute(dest%pressure_i, source%pressure_i)
     call copyAttribute(dest%phi_i, source%phi_i)
+    call copyAttribute(dest%phi_gas, source%phi_gas)
+    call copyAttribute(dest%phi_stars, source%phi_stars)
     call copyAttribute(dest%phi_i_plus_1, source%phi_i_plus_1)
     call copyAttribute(dest%phi_i_minus_1, source%phi_i_minus_1)
     call copyAttribute(dest%pressure_i_plus_1, source%pressure_i_plus_1)
@@ -15980,6 +15984,8 @@ end function readparameterfrom2dmap
 
 
        call allocateAttribute(thisOctal%phi_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_gas,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_stars,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%phi_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%phi_i_minus_1,thisOctal%maxchildren)
 
@@ -16109,6 +16115,8 @@ end function readparameterfrom2dmap
 
 
        call deAllocateAttribute(thisOctal%phi_i)
+       call deAllocateAttribute(thisOctal%phi_gas)
+       call deAllocateAttribute(thisOctal%phi_stars)
        call deAllocateAttribute(thisOctal%phi_i_plus_1)
        call deAllocateAttribute(thisOctal%phi_i_minus_1)
 

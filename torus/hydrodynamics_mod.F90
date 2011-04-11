@@ -15,7 +15,7 @@ module hydrodynamics_mod
   use mpi_amr_mod
   use gridio_mod
   use vtk_mod
-
+  use nbody_mod
   implicit none
 
   public
@@ -141,7 +141,7 @@ contains
              n = 8
           endif
           parentoctal%rho(m) = sum(testoctal%rho(1:n))/dble(n)
-          parentoctal%phi_i(m) = sum(testoctal%phi_i(1:n))/dble(n)
+          parentoctal%phi_gas(m) = sum(testoctal%phi_gas(1:n))/dble(n)
           parentoctal%edgecell(m) = any(testoctal%edgecell(1:n))
           testoctal => parentoctal
        enddo
@@ -165,7 +165,7 @@ contains
           n = 8
        endif
 
-       thisoctal%phi_i = thisoctal%parent%phi_i(thisoctal%parentsubcell)
+       thisoctal%phi_gas = thisoctal%parent%phi_gas(thisoctal%parentsubcell)
 !       write(*,*) "phi ",thisoctal%phi_i(1:8)
     else
 
@@ -2441,11 +2441,16 @@ end subroutine sumFluxes
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
+    if (globalnSource > 0) call updateSourcePositions(globalsourceArray, globalnSource, dt)
+
+
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
 
     if (selfGravity) then
        if (myrankglobal == 1) call tune(6,"Self-gravity")
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          if (globalnSource > 0) call calculateGasSourceInteraction(globalsourceArray, Globalnsource, grid)
+          call sumGasStarGravity(grid%octreeRoot)
        if (myrankglobal == 1) call tune(6,"Self-gravity")
     endif
 
@@ -2657,6 +2662,30 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine computeCourantTime
+
+  recursive subroutine sumGasStarGravity(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sumgasStarGravity(child)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          thisOctal%phi_i(subcell) = thisOctal%phi_gas(subcell) + thisOctal%phi_stars(subcell)
+       endif
+    enddo
+  end subroutine sumGasStarGravity
 
   function soundSpeed(thisOctal, subcell) result (cs)
     type(OCTAL), pointer :: thisOctal
@@ -3043,7 +3072,12 @@ end subroutine sumFluxes
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
           call writeVtkFile(grid, "beforeselfgrav.vtk", &
                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
+          call zeroPhiGas(grid%octreeRoot)
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+
+          if (globalnSource > 0) call calculateGasSourceInteraction(globalsourceArray, globalnSource, grid)
+          call sumGasStarGravity(grid%octreeRoot)
+
           call writeVtkFile(grid, "afterselfgrav.vtk", &
                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
           if (myrank == 1) write(*,*) "Done"
@@ -3100,7 +3134,6 @@ end subroutine sumFluxes
 !       endif
 
        dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
-
        if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)/tff, " free-fall times"
        call findMassoverAllThreads(grid, totalmass)
        if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass
@@ -3124,6 +3157,8 @@ end subroutine sumFluxes
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
           if (myrank == 1) call tune(6,"Hydrodynamics step")
+
+
 
 
           iUnrefine = iUnrefine + 1
@@ -3461,6 +3496,27 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine zeroRefinedLastTime
+
+  recursive subroutine zeroPhigas(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call zeroPhiGas(child)
+                exit
+             end if
+          end do
+       else 
+          thisOctal%phi_gas = 0.d0
+       endif
+    enddo
+  end subroutine zeroPhigas
 
 
   recursive subroutine transferTempStorage(thisOctal, justGrav)
@@ -6271,13 +6327,13 @@ end subroutine refineGridGeneric2
 !                sumd2phidx2 = SUM(d2phidx2(1:3))
 !             endif
 !             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT)
-             if (thisOctal%phi_i(subcell) /= 0.d0) then
-                frac = abs((newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell))
+             if (thisOctal%phi_gas(subcell) /= 0.d0) then
+                frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                 fracChange = max(frac, fracChange)
              else
                 fracChange = 1.d30
              endif
-             thisOctal%phi_i(subcell) = newPhi
+             thisOctal%phi_gas(subcell) = newPhi
              
           endif
        endif
@@ -6385,7 +6441,7 @@ end subroutine refineGridGeneric2
                 endif
 
 
-                g(n) =   (phi - thisOctal%phi_i(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+                g(n) =   (phi - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
 
                 
              enddo
@@ -6403,16 +6459,16 @@ end subroutine refineGridGeneric2
              deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
 !             deltaT = deltaT * timeToCodeUnits
 
-             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
+             newPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
 
 !             if (myrankglobal == 1) write(*,*) newphi,thisOctal%phi_i(subcell),deltaT, sumd2phidx2, thisOctal%rho(subcell)
-             if (thisOctal%phi_i(subcell) /= 0.d0) then
-                frac = abs((newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell))
+             if (thisOctal%phi_gas(subcell) /= 0.d0) then
+                frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                 fracChange = max(frac, fracChange)
              else
                 fracChange = 1.d30
              endif
-             thisOctal%phi_i(subcell) = newPhi
+             thisOctal%phi_gas(subcell) = newPhi
              
           endif
        endif
@@ -6509,8 +6565,8 @@ end subroutine refineGridGeneric2
 !                sumd2phidx2 = SUM(d2phidx2(1:3))
 !             endif
 !             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT)
-                if (thisOctal%phi_i(subcell) /= 0.d0) then
-                   frac = abs((newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell))
+                if (thisOctal%phi_gas(subcell) /= 0.d0) then
+                   frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                    fracChange = max(frac, fracChange)
                 else
                    fracChange = 1.d30
@@ -6519,8 +6575,8 @@ end subroutine refineGridGeneric2
                    ghostFracChange = max(fracChange, ghostFracChange)
                 endif
                 sorFactor = 1.5d0
-                deltaPhi = newPhi - thisOctal%phi_i(subcell)
-                thisOctal%phi_i(subcell) = thisOctal%phi_i(subcell) + sorFactor * deltaPhi
+                deltaPhi = newPhi - thisOctal%phi_gas(subcell)
+                thisOctal%phi_gas(subcell) = thisOctal%phi_gas(subcell) + sorFactor * deltaPhi
              
           endif
        enddo

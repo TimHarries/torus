@@ -168,11 +168,12 @@ contains
          write(*,*) "Number of OB stars (>15 msol): ",nOB
       endif
       do i = 1, nSource
+         source(i)%mass = source(i)%mass * msol
 !         write(*,*) i, " source mass, teff, radius, ",source(i)%mass, source(i)%teff, source(i)%radius*1.d10/rsol
          if (i < nSource) then
-            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass*msol, source(i)%radius*1.d10)
+            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
          else
-            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass*msol, source(i)%radius*1.d10, freeUp=.true.)
+            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10, freeUp=.true.)
          endif
       enddo
       
@@ -189,7 +190,7 @@ contains
          write(32,'(a)') "    #   mass    teff  radius  luminosity    position "
          write(32,'(a)') "    # (Msol)     (K)  (Rsol)      (Lsol)   (10^10cm)"
          do i = 1, nSource
-            write(32, '(i5,  f7.1, i8, f8.1, 1pe12.2, 1p, 3e12.2)') i, source(i)%mass, nint(source(i)%teff), &
+            write(32, '(i5,  f7.1, i8, f8.1, 1pe12.2, 1p, 3e12.2)') i, source(i)%mass/msol, nint(source(i)%teff), &
                  source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, source(i)%position
          enddo
          close(32)

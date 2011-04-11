@@ -14,6 +14,8 @@ module source_mod
 
   type SOURCETYPE
      type(VECTOR)    :: position   ! [10^10cm]
+     type(VECTOR)    :: force
+     type(VECTOR)    :: velocity
      real(double) :: radius     ! [10^10cm]
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]

@@ -76,6 +76,7 @@ contains
        source(iSource)%mass = sourceMass(iSource)
        source(iSource)%radius = sourceRadius(iSource)
        source(iSource)%position = sourcePos(iSource)
+       source(iSource)%velocity = sourceVel(iSource)
        source(isource)%luminosity = fourPi * stefanBoltz * &
             (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
        source(iSource)%prob = sourceProb(iSource)

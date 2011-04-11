@@ -562,6 +562,8 @@ contains
        
 
           call writeAttributePointerFlexi(20, "phi_i", thisOctal%phi_i, fileFormatted)
+          call writeAttributePointerFlexi(20, "phi_gas", thisOctal%phi_gas, fileFormatted)
+          call writeAttributePointerFlexi(20, "phi_stars", thisOctal%phi_stars, fileFormatted)
           call writeAttributePointerFlexi(20, "phi_i_plus_1", thisOctal%phi_i_plus_1, fileFormatted)
           call writeAttributePointerFlexi(20, "phi_i_minus_1", thisOctal%phi_i_minus_1, fileFormatted)
           
@@ -3505,6 +3507,10 @@ contains
 
          case("phi_i")
             call readPointerFlexi(20, thisOctal%phi_i, fileFormatted)
+         case("phi_stars")
+            call readPointerFlexi(20, thisOctal%phi_stars, fileFormatted)
+         case("phi_gas")
+            call readPointerFlexi(20, thisOctal%phi_gas, fileFormatted)
          case("phi_i_plus_1")
             call readPointerFlexi(20, thisOctal%phi_i_plus_1, fileFormatted)
          case("phi_i_minus_1")
@@ -3816,6 +3822,10 @@ contains
 
          case("phi_i")
             call receivePointerFlexi(thisOctal%phi_i)
+         case("phi_stars")
+            call receivePointerFlexi(thisOctal%phi_stars)
+         case("phi_gas")
+            call receivePointerFlexi(thisOctal%phi_gas)
          case("phi_i_plus_1")
             call receivePointerFlexi(thisOctal%phi_i_plus_1)
          case("phi_i_minus_1")
@@ -4007,6 +4017,8 @@ contains
 
 
       call sendAttributePointerFlexi(iThread, "phi_i", thisOctal%phi_i)
+      call sendAttributePointerFlexi(iThread, "phi_gas", thisOctal%phi_gas)
+      call sendAttributePointerFlexi(iThread, "phi_stars", thisOctal%phi_stars)
       call sendAttributePointerFlexi(iThread, "phi_i_plus_1", thisOctal%phi_i_plus_1)
       call sendAttributePointerFlexi(iThread, "phi_i_minus_1", thisOctal%phi_i_minus_1)
 

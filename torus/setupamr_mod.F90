@@ -30,7 +30,7 @@ contains
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
     use input_variables, only : amrGridSize, doSmoothGrid
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
-    use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
+    use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa, rho0, photoionPhysics
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
     use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use sph_data_class, only: sphdata
@@ -201,12 +201,14 @@ contains
           grid%octreeRoot%temperature = 10.
           call randomNumberGenerator(randomSeed = .true.)
           do while(.not.gridconverged) 
-             call splitGridFractal(grid%octreeRoot, real(1000.*mHydrogen), 0.1, grid, gridconverged)
+             call splitGridFractal(grid%octreeRoot, rho0, 0.3, grid, gridconverged)
           enddo
           call randomNumberGenerator(syncIseed=.true.)
-
-          call ionizeGrid(grid%octreeRoot)
-          call resetNH(grid%octreeRoot)
+          
+          if (photoionPhysics) then
+             call ionizeGrid(grid%octreeRoot)
+             call resetNH(grid%octreeRoot)
+          endif
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol
@@ -869,7 +871,7 @@ contains
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use input_variables, only : maxDepthAMR
+    use input_variables, only : maxDepthAMR, photoionPhysics
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
@@ -938,15 +940,17 @@ contains
       
 
                 child%inFlow(j) = .true.
-                child%nh(j) = child%rho(j) / mHydrogen
-                child%ne(j) = child%nh(j)
-                child%nhi(j) = 1.e-5
-                child%nhii(j) = child%ne(j)
-                child%nHeI(j) = 0.d0 !0.1d0 *  child%nH(j)
-    
-                child%ionFrac(j,1) = 1.               !HI
-                child%ionFrac(j,2) = 1.e-10           !HII
-                
+
+
+                if (photoionPhysics) then
+                   child%nh(j) = child%rho(j) / mHydrogen
+                   child%ne(j) = child%nh(j)
+                   child%nhi(j) = 1.e-5
+                   child%nhii(j) = child%ne(j)
+                   child%nHeI(j) = 0.d0 !0.1d0 *  child%nH(j)    
+                   child%ionFrac(j,1) = 1.               !HI
+                   child%ionFrac(j,2) = 1.e-10           !HII
+                endif
 
 
 

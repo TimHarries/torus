@@ -1816,7 +1816,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   !
 #ifdef MPI
   ! just return if the grid is decomposed and MPI job and this is rank zero thread
-!  if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+  if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 #endif
 
   lf = char(10)
@@ -2583,7 +2583,7 @@ end subroutine writeXMLVtkFileAMR
         endif
         endif
      end do
-        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+        call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writeDomainDecomposed
 
   subroutine writePointsDecomposed(grid, vtkFilename, lunit, nPoints, nPointsGlobal)
@@ -2640,7 +2640,7 @@ end subroutine writeXMLVtkFileAMR
            endif
         endif
      end do
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writePointsDecomposed
 #endif
 end module vtk_mod

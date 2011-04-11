@@ -399,7 +399,7 @@ module input_variables
 
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)
-  type(VECTOR) :: sourcePos(10)
+  type(VECTOR) :: sourcePos(10), sourceVel(10)
   character(len=80) :: inputContFluxFile(10)
 
   ! binary parameters

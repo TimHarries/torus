@@ -311,6 +311,11 @@ contains
 
     select case(geometry)
 
+       case("fractal")
+          call getReal("rho0", rho0, real(mhydrogen),cLine, fLine, nLines, &
+               "Initial number density: ","(a,f6.1,1x,a)", 100., ok, .true.)
+
+
        case("cmfgen")
           oneKappa = .true.
           fastIntegrate = .false.
@@ -1018,6 +1023,10 @@ contains
        write(keyword, '(a,i1)') "sourcepos",i
        call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
             "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       write(keyword, '(a,i1)') "velocity",i
+       call getVector(keyword, sourceVel(i), 1.d5, cLine, fLine, nLines, &
+            "Source velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
 
        write(keyword, '(a,i1)') "probsource",i
        call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
