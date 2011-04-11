@@ -1,6 +1,7 @@
 module nbody_mod
 
   use kind_mod
+  use dimensionality_mod
   use constants_mod
   use source_mod
   use mpi_global_mod
@@ -22,14 +23,14 @@ contains
     real(double), allocatable :: temp(:), temp2(:)
 #endif
 
-    eps = 2.d0 * grid%halfSmallestSubcell
+    eps = 0.1d0*rsol /1.d10!2.d0 * grid%halfSmallestSubcell
 
     do i = 1, nSource
        source(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
     enddo
 
-    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
-    call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
+!    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
+!    call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
 #ifdef MPI
     if (grid%splitOverMPI) then
@@ -50,36 +51,78 @@ contains
     enddo
     deallocate(temp, temp2)
 #endif
-    call writeInfo("Done.",TRIVIAL)
+!    call writeInfo("Done.",TRIVIAL)
 
-    call writeInfo("Calculating source potential for gas", TRIVIAL)
-    call zeroSourcepotential(grid%octreeRoot)
-    call applySourcePotential(grid%octreeRoot, source, nSource, eps)
-    call writeInfo("Done.", TRIVIAL)
+!    call writeInfo("Calculating source potential for gas", TRIVIAL)
+!    call zeroSourcepotential(grid%octreeRoot)
+!    call applySourcePotential(grid%octreeRoot, source, nSource, eps)
+!    call writeInfo("Done.", TRIVIAL)
 
-    call writeInfo("Calculating source-source forces", TRIVIAL)
+!    call writeInfo("Calculating source-source forces", TRIVIAL)
     call sourceSourceForces(source, nSource, eps)
-    call writeInfo("Done.", TRIVIAL)
+!    call writeInfo("Done.", TRIVIAL)
 
   end subroutine calculateGasSourceInteraction
 
 
-  subroutine updateSourcePositions(source, nSource, dt)
+  subroutine updateSourcePositions(source, nSource, dt, grid)
+    type(GRIDTYPE) :: grid
     real(double) :: dt
-    type(VECTOR) :: acc
     type(sourcetype) :: source(:)
-    integer :: nSource, i
+    integer :: nSource, i, ia, nvar
+    real(double), allocatable :: yStart(:)
+    integer :: nok, nbad
+    integer :: kmax, kount
+    real(double) :: dxsav, xp(200), yp(20,200), energy
+    common /path/ kmax,kount,dxsav,xp ,yp
+    kmax = 0
+
+    nvar = nSource * 6
+    allocate(yStart(1:nvar))
+
+    do i = 1,nSource
+       ia = (i-1)*6 + 1
+       ystart(ia+0) = returnCodeUnitLength(source(i)%position%x*1.d10)
+       ystart(ia+1) = returnCodeUnitSpeed(source(i)%velocity%x)
+
+       ystart(ia+2) = returnCodeUnitLength(source(i)%position%y*1.d10)
+       ystart(ia+3) = returnCodeUnitSpeed(source(i)%velocity%y)
+
+       ystart(ia+4) = returnCodeUnitLength(source(i)%position%z*1.d10)
+       ystart(ia+5) = returnCodeUnitSpeed(source(i)%velocity%z)
+
+
+    enddo
+    call odeint(ystart, nvar, 0.d0, dt, 1.d-16, dt, 0.d0, nok, nbad, derivs, bsstep, grid)
 
     do i = 1, nSource
-       acc = source(i)%force / source(i)%mass
-       source(i)%position = source(i)%position + (source(i)%velocity*dt + (0.5d0 * dt**2) * acc)/1.d10
-       source(i)%velocity = source(i)%velocity + acc * dt
+       ia = (i-1)*6 + 1
+       source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))/1.d10
+       source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
+
+       source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))/1.d10
+       source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+
+       source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
+       source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
+
        if (writeoutput) then
           write(*,*) "source ",i
-          write(*,*) "velocity ",source(i)%velocity/1.d5, " km/s"
-          write(*,*) "position ",source(i)%position*1.d10/pctocm, " pc"
+          write(*,*) "position ",source(i)%position*1.d10/autocm
+          write(*,*) "velocity ",source(i)%velocity/1.d5
        endif
     enddo
+    if (writeoutput) then
+       open(57, file="pos.dat",status="old",position="append")
+       write(57,*)  real(source(1)%position%x*1.d10/autocm), &
+            real(source(1)%position%y*1.d10/autocm), &
+            real(source(2)%position%x*1.d10/autocm), &
+            real(source(2)%position%y*1.d10/autocm)
+       close(57)
+    endif
+    deallocate(yStart)
+    call sumEnergy(source, nSource, energy)
+    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
   end subroutine updateSourcePositions
 
 
@@ -181,21 +224,39 @@ contains
              rVec = source(j)%position - source(i)%position
              r = modulus(rVec)
              rHat = rVec/r
-             source(i)%force = source(i)%force - (bigG * source(i)%mass*source(j)%mass / (( r**2 + eps**2)*1.d20)) * rHat
+             source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / (( r**2 + eps**2)*1.d20)) * rHat
           endif
        enddo
     enddo
   end subroutine sourceSourceForces
 
+  subroutine sumEnergy(source, nSource, energy)
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource, i, j
+    real(double) :: energy
+
+    energy = 0.d0
+    do i = 1, nSource
+       do j = 1, nSource
+
+          if (i /= j) then
+             energy = energy - 0.5d0 * bigG*source(i)%mass*source(j)%mass / &
+                  (modulus(source(i)%position-source(j)%position)*1.d10)
+          endif
+       enddo
+       energy = energy + 0.5d0 * source(i)%mass * modulus(source(i)%velocity)**2
+    enddo
+  end subroutine sumEnergy
+
   subroutine odeint(ystart,nvar,x1,x2,eps,h1,hmin,nok,nbad,derivs,rkqc,grid)
     type(GRIDTYPE) :: grid
     real(double) :: eps, hdid, hnext, hmin
     integer :: nvar
-    integer, parameter :: maxstp=10000, nmax=10
+    integer, parameter :: maxstp=10000, nmax=20
     real(double), parameter :: two=2.d0,zero=0.d0,tiny=1.d-30
     real(double) :: x, x1, h, x2, h1, xsav, dxsav
     integer :: nok, nbad, kount, i, nstp, kmax
-    real(double) :: xp(200), yp(10,200)
+    real(double) :: xp(200), yp(20,200)
     common /path/ kmax,kount,dxsav,xp ,yp
     real(double) :: ystart(nvar),yscal(nmax),y(nmax),dydx(nmax)
     external derivs
@@ -226,7 +287,7 @@ contains
           endif
        endif
        if((x+h-x2)*(x+h-x1).gt.zero) h=x2-x
-       call rkqc(y,dydx,nvar,x,h,eps,yscal,hdid,hnext,derivs)
+       call rkqc(y,dydx,nvar,x,h,eps,yscal,hdid,hnext,derivs,grid)
        if(hdid.eq.h)then
           nok=nok+1
        else
@@ -254,7 +315,7 @@ contains
   subroutine bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext,derivs,grid)
     type(GRIDTYPE) :: grid
     integer :: nv
-    integer, parameter :: nmax=10,imax=11,nuse=7
+    integer, parameter :: nmax=20,imax=11,nuse=7
     real(double) :: h, htry, x, xsav, xest, errmax
     integer :: i, j
     real(double) :: eps, hdid,  hnext
@@ -303,7 +364,7 @@ contains
     real(double) :: xs, htot, h, h2, x, swap
     integer :: nvar
     integer :: nstep, i, n
-    integer, parameter :: nmax=10
+    integer, parameter :: nmax=20
     real(double) :: y(nvar),dydx(nvar),yout(nvar),ym(nmax),yn(nmax)
     external derivs
     h=htot/nstep
@@ -329,8 +390,9 @@ contains
   end subroutine mmid
 
   subroutine derivs(x, y, dydx, grid)
+    integer, parameter :: nmax = 20
     type(GRIDTYPE) :: grid
-    real(double) :: x, y(:), dydx(:)
+    real(double) :: x, y(nmax), dydx(nmax)
     integer :: i, ia
     type(SOURCETYPE), allocatable :: testsource(:)
 
@@ -344,9 +406,11 @@ contains
 
     allocate(testSource(1:globalnSource))
     do i = 1, globalNSource
-       testsource(i) = globalSourceArray(i)
+       testsource(i)%mass = globalSourceArray(i)%mass
        ia = 6*(i-1)+1
-       testSource(i)%position = VECTOR(y(ia), y(ia+2), y(ia+4))
+       testSource(i)%position = (VECTOR(returnPhysicalUnitLength(y(ia)), &
+            returnPhysicalUnitLength(y(ia+2)), &
+            returnPhysicalUnitLength(y(ia+4))))/1.d10
        testSource(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
     enddo
 
@@ -358,18 +422,30 @@ contains
 
     do i = 1 , globalNSource
        ia = (i-1)*6+1
-       dydx(ia+1) = globalSourceArray(i)%force%x / testsource(i)%mass
-       dydx(ia+3) = globalSourceArray(i)%force%y / testsource(i)%mass
-       dydx(ia+5) = globalSourceArray(i)%force%z / testsource(i)%mass
+       dydx(ia+1) = returnCodeUnitAcceleration(testsource(i)%force%x / testsource(i)%mass)
+       dydx(ia+3) = returnCodeUnitAcceleration(testsource(i)%force%y / testsource(i)%mass)
+       dydx(ia+5) = returnCodeUnitAcceleration(testsource(i)%force%z / testsource(i)%mass)
     enddo
+
+
+!    if (writeoutput) then
+!       write(*,*) "x ",x
+!       do i = 1, globalnSource
+!          ia = (i-1)*6+1
+!          write(*,*) "source ",i
+!          write(*,*) "position ",y(ia+0),y(ia+2),y(ia+4)
+!          write(*,*) "velocity ",y(ia+1),y(ia+3),y(ia+5)
+!       enddo
+!    endif
     deallocate(testSource)
   end subroutine derivs
 
   SUBROUTINE RZEXTR(IEST,XEST,YEST,YZ,DY,NV,NUSE)
-    integer, parameter :: IMAX=11,NMAX=10,NCOL=7
+    integer, parameter :: IMAX=11,NMAX=20,NCOL=7
     integer :: iest, nuse, j, m1, k , nv
     real(double) :: xest, yy, v, c, b1,b , ddy
-    real(double) ::  X(IMAX),YEST(NV),YZ(NV),DY(NV),D(NMAX,NCOL),FX(NCOL)
+    real(double) ::  YEST(NV),YZ(NV),DY(NV)
+    real(double), save :: x(imax), D(NMAX,NCOL),FX(NCOL)
     X(IEST)=XEST
     IF(IEST.EQ.1) THEN
        DO  J=1,NV
@@ -407,4 +483,4 @@ contains
     ENDIF
   END SUBROUTINE RZEXTR
 
-           end module nbody_mod
+end module nbody_mod

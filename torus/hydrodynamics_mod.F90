@@ -2230,6 +2230,7 @@ end subroutine sumFluxes
 
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
+    use input_variables, only : nBodyPhysics
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -2458,7 +2459,8 @@ end subroutine sumFluxes
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
-    if (globalnSource > 0) call updateSourcePositions(globalsourceArray, globalnSource, dt)
+    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
+         call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
 
 
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
@@ -2987,7 +2989,10 @@ end subroutine sumFluxes
 
     doSelfGrav = .true.
 
-
+    if (writeoutput) then
+       open(57, file="pos.dat", status="unknown", form="formatted")
+       close(57)
+    endif
 
     if (grid%geometry == "shakara") doSelfGrav = .false.
     if (grid%geometry == "rtaylor") doSelfGrav = .false.

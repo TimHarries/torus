@@ -136,6 +136,14 @@ contains
 
   end function returnCodeUnitPressure
 
+
+  real(double) function returnCodeUnitAcceleration(acceleration) result (codeAcceleration)
+    real(double) :: acceleration
+
+    codeAcceleration = acceleration * lengthToCodeUnits / (timeToCodeUnits**2)
+
+  end function returnCodeUnitAcceleration
+
   real(double) function returnCodeUnitEnergy(energy) result (codeEnergy)
     real(double) :: energy
 

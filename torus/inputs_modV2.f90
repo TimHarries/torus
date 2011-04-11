@@ -142,6 +142,9 @@ contains
     call getLogical("photoionphysics", photoionPhysics, cLine, fLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("nbodyphysics", nBodyPhysics, cLine, fLine, nLines, &
+         "Include n-body physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
     if(photoionphysics) then
        call getLogical("checkForPhoto", checkforphoto, cLine, fLine, nLines, &
             "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)

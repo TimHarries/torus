@@ -18,6 +18,7 @@ module input_variables
     logical :: molecularPhysics
     logical :: photoionPhysics
     logical :: atomicPhysics
+    logical :: nbodyPhysics
     logical :: dustPhysics
     logical :: hOnly !Thaw
 

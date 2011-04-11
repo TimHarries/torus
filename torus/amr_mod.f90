@@ -7546,6 +7546,7 @@ CONTAINS
        thisOctal%rho(subcell) = 10.d0*2.d0*mHydrogen
        thisOctal%temperature(subcell) = 100.d0
     endif
+    thisOctal%rho(subcell) = 1.d-30
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%pressure_i(subcell) = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
