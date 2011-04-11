@@ -14,10 +14,11 @@ contains
     integer :: nSource
     type(GRIDTYPE) :: grid
     real(double) :: eps
-    integer :: i, n
+    integer :: i
 #ifdef MPI
     include 'mpif.h'
     integer :: ierr
+    integer :: n
     real(double), allocatable :: temp(:), temp2(:)
 #endif
 
@@ -30,8 +31,8 @@ contains
     call writeInfo("Calculating force from gas on sources...",TRIVIAL)
     call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
-    if (grid%splitOverMPI) then
 #ifdef MPI
+    if (grid%splitOverMPI) then
        n = nSource*3
        allocate(temp(1:n), temp2(1:n))
        temp = 0.d0
@@ -253,11 +254,10 @@ contains
   subroutine bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext,derivs,grid)
     type(GRIDTYPE) :: grid
     integer :: nv
-    real(double) :: swap
     integer, parameter :: nmax=10,imax=11,nuse=7
-    real(double) :: h, htry, x, xsav, sx, htot, xest, errmax
-    integer :: i, j, n
-    real(double) :: eps, hdid,  hnext, h2
+    real(double) :: h, htry, x, xsav, xest, errmax
+    integer :: i, j
+    real(double) :: eps, hdid,  hnext
     real(double), parameter :: one=1.d0,shrink=.95d0,grow=1.2d0
     real(double) ::  y(nv),dydx(nv),yscal(nv),yerr(nmax), &
          ysav(nmax),dysav(nmax),yseq(nmax)
@@ -300,9 +300,9 @@ contains
 
   subroutine mmid(y,dydx,nvar,xs,htot,nstep,yout,derivs,grid)
     type(GRIDTYPE)::grid
-    real(double) :: xs, htot, xest, errmax, h, h2, x, swap
+    real(double) :: xs, htot, h, h2, x, swap
     integer :: nvar
-    integer :: nstep, i, j, n
+    integer :: nstep, i, n
     integer, parameter :: nmax=10
     real(double) :: y(nvar),dydx(nvar),yout(nvar),ym(nmax),yn(nmax)
     external derivs

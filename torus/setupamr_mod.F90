@@ -30,7 +30,7 @@ contains
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
     use input_variables, only : amrGridSize, doSmoothGrid
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
-    use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa, rho0, photoionPhysics
+    use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
     use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use sph_data_class, only: sphdata
@@ -41,7 +41,7 @@ contains
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
     use mpi_amr_mod
-    use input_variables, only : photoionPhysics
+    use input_variables, only : photoionPhysics, rho0
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff
 #endif
     use vh1_mod, only: read_vh1
