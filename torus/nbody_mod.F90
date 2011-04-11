@@ -306,10 +306,15 @@ contains
           endif
           return
        endif
-       if(abs(hnext).lt.hmin) pause 'stepsize smaller than minimum.'
+       if(abs(hnext).lt.hmin) then
+          write(*,*) 'stepsize smaller than minimum.'
+          stop
+       endif
+
        h=hnext
     enddo
-    pause 'too many steps.'
+    write(*,*) 'too many steps.'
+    stop
   end subroutine odeint
 
   subroutine bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext,derivs,grid)
@@ -355,7 +360,10 @@ contains
        endif
     enddo
     h=0.25*h/2**((imax-nuse)/2)
-    if(x+h.eq.x)pause 'step size underflow.'
+    if(x+h.eq.x) then
+       write(*,*) 'step size underflow.'
+       stop
+    endif
     goto 1
   end subroutine bsstep
 

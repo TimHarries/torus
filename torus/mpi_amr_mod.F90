@@ -2907,7 +2907,7 @@ end subroutine distributeMPIthreadLabels
 
 !Label an individual subcell with its MPI thread
 subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
-  use mpi_global_mod, only: nThreadsGlobal, myRankGlobal
+  use mpi_global_mod, only: nThreadsGlobal
   type(octal), pointer   :: parent
   integer ::  i, iChild, newChildIndex
 

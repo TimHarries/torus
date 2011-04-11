@@ -60,7 +60,6 @@ contains
     real :: scalefac
     character(len=80) :: message
     integer :: nVoxels, nOctals
-    integer :: i
 !    integer :: nUnrefine
 
 
