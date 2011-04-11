@@ -519,7 +519,8 @@ contains
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
+!    real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
+    real(double) :: rhou_i_plus_1, rho_i_plus_1, weight
     integer :: nd
   
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
@@ -548,21 +549,35 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
 
-             rho_i_minus_1 = rho
-             rhou_i_minus_1 = rhou
+!             rho_i_minus_1 = rho
+!             rhou_i_minus_1 = rhou
+
+             rho_i_plus_1 = rho
+             rhou_i_plus_1 = rhou
+
+
 
 !             if (thisoctal%ndepth == nd) then
                 weight = 0.5d0
 !             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                weight  = 0.666666666d0
+!                !weight  = 0.666666666d0
+!                weight  = 0.75d0
 !             else
-!                weight  = 0.333333333d0 ! coarse to fine
+!                weight  = 0.25d0
+!                !weight  = 0.333333333d0 ! coarse to fine
 !             endif
 
+!             thisoctal%u_interface(subcell) = &
+!                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
+!                  (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
+ 
+                !Thaw: if this fails then use the above version
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
-                  (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
-      
+                  (1.d0-weight)*rhou_i_plus_1/rho_i_plus_1
+
+
+     
           endif
        endif
     enddo
@@ -720,7 +735,9 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
 
              if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
+   
                 thisoctal%flux_i_plus_1(subcell) = flux
+
              else
                 ! now we need to do the fine-to-coarse flux
 
@@ -2761,7 +2778,7 @@ end subroutine sumFluxes
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(10)
     character(len=80) :: plotfile
-    real(double) :: dfluxOne, dfluxTwo, fluxOne, fluxTwo
+    real(double) :: dfluxOne, dFluxTwo, fluxOne, fluxTwo
     integer :: tag=30, status, iThread
 
     fluxOne = 0.d0
@@ -2785,15 +2802,11 @@ end subroutine sumFluxes
 
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
-    call dumpValuesAlongLine(grid, "sod.dat", VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-
     if (myrankGlobal /= 0) then
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
        do i = 1, nPairs
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
        enddo
-
 
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2844,10 +2857,12 @@ end subroutine sumFluxes
 
     do while(currentTime <= tend)
 
-       call findEnergyOverAllThreads(grid, totalenergy)
-       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-       call findMassOverAllThreads(grid, totalmass)
-       if (writeoutput) write(*,*) "Total mass: ",totalMass
+       if(grid%geometry == "fluxTest") then
+          call findEnergyOverAllThreads(grid, totalenergy)
+          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+          call findMassOverAllThreads(grid, totalmass)
+          if (writeoutput) write(*,*) "Total mass: ",totalMass
+       end if
 
        tc = 0.d0
        if (myrank /= 0) then
@@ -2899,28 +2914,30 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        else
+
           if(grid%geometry == "fluxTest") then
-             do iThread = 1, nThreadsGlobal - 1
+             do iThread = 1, nHydroThreads
                 print *, "RANK 0 RECVING FROM ", iThread
                 call MPI_RECV(dFluxOne, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
                 print *, "Got fluxOne From ", iThread
                  fluxOne = fluxOne  + dFluxOne
+                 print *, "RANK 0 RECVING FROM ", iThread, "B"
                 call MPI_RECV(dFluxTwo, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
                 print *, "Got fluxTwo From ", iThread
-                fluxTwo = fluxTwo + dFluxTwo
-             end do
-          end if
-       endif
-
-       call findEnergyOverAllThreads(grid, totalenergy)
-       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-       call findMassOverAllThreads(grid, totalmass)
-       if (writeoutput) write(*,*) "Total mass: ",totalMass
-
-       if(grid%geometry == "fluxTest") then
+                fluxTwo = fluxTwo + dFluxTwo 
+             enddo
+          
+       
+          call findEnergyOverAllThreads(grid, totalenergy)
+          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+          call findMassOverAllThreads(grid, totalmass)
+          if (writeoutput) write(*,*) "Total mass: ",totalMass
+          
+          
           nextDumpTime = tend
           currentTime = tend
        end if
+    end if
 
 
 !          if (myRank == 1) write(*,*) "current time ",currentTime,dt
@@ -2940,18 +2957,11 @@ end subroutine sumFluxes
        endif
     enddo
 
-    if(myRankGLobal == 0) then
+    if(myRankGLobal == 0 .and. grid%geometry == "fluxTest") then
        print *, "fluxOne ", fluxOne
        print *, "fluxTwo ", fluxTwo
        print *, "RATIO : ", fluxOne/fluxTwo
        print *, "DIFFERENCE : ", fluxTwo - fluxOne
-
-!       print *, " "
-!       call findEnergyOverAllThreads(grid, totalenergy)
-!       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-!       call findMassOverAllThreads(grid, totalmass)
-!       if (writeoutput) write(*,*) "Total mass: ",totalMass
-
     end if
 
   end subroutine doHydrodynamics1d

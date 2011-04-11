@@ -60,7 +60,7 @@ contains
     real :: scalefac
     character(len=80) :: message
     integer :: nVoxels, nOctals
-!    integer(bigInt) :: i
+    integer :: i
 !    integer :: nUnrefine
 
 
@@ -77,27 +77,12 @@ contains
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
-#ifdef MPI 
-       !label each cell with its appropriate MPI thread
-       !if(myRankGlobal == 0) then
-  !        write(*,*) "Distributing MPI Labels"
-  !        call distributeMPIthreadLabels(grid%octreeRoot)
-  !        write(*,*) "Label Distribution Completed"
-       !end if
+#ifdef MPI
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 #endif
        call findTotalMemory(grid, globalMemoryFootprint)
 
     else
-
-
-!#ifdef MPI
-!       if(myRankGlobal == 0) then
-!          write(*,*) "Distributing MPI Labels"
-!          call distributeMPIthreadLabels(grid%octreeRoot)
-!          write(*,*) "Label Distribution Completed"
-!       end if
-!#endif 
 
        grid%splitOverMPI = splitOverMPI
 
@@ -301,15 +286,6 @@ contains
         grid%nOctals = nOctals
         call howmanysplits()
 
-!#ifdef MPI
-!!       if(myRankGlobal == 0) then
-!!          write(*,*) "Distributing MPI Labels"
-!!          call distributeMPIthreadLabels(grid%octreeRoot)
-!!          write(*,*) "Label Distribution Completed"
-!!       end if
-!#endif
-
-
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
@@ -363,10 +339,17 @@ contains
            call grid_info_mpi(grid, "info_grid.dat")
            !Check an appropriate no. of MPI threads is being used
            call checkThreadNumber(grid)
-     !      !label each cell with its appropriate MPI thread
-     !      write(*,*) "Distributing MPI Labels"
-     !      call distributeMPIthreadLabels(grid%octreeRoot)
-     !      write(*,*) "Label Distribution Completed"
+
+           if(readGrid) then
+              do i = 1, 8
+                 grid%octreeRoot%mpiThread(i) = i
+              enddo
+              
+              !label each cell with its appropriate MPI thread
+              write(*,*) "Distributing MPI Labels"
+              call distributeMPIthreadLabels(grid%octreeRoot)
+              write(*,*) "Label Distribution Completed"
+           end if
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif

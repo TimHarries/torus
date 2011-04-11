@@ -2880,17 +2880,20 @@ end subroutine dumpStromgrenRadius
 !When reading in a grid that uses a different number of mpi threads to that of the current run
 !redistribute thread ID's to the appropriate cells
 recursive subroutine distributeMPIthreadLabels(thisOctal)
+  use mpi_global_mod, only : myRankGlobal
   include 'mpif.h'
-  type(octal), pointer   :: thisoctal
+  type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   integer :: subcell, i
 
 !Go through grid and label MPI threads
+  write(*,*) "Rank ", myRankGlobal, "being allocated grid space"
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
         do i = 1, thisoctal%nchildren, 1
            if (thisoctal%indexchild(i) == subcell) then
               call labelSingleSubcellMPI(thisOctal, subcell, i)
+              print *, "thisOctal%mpiThread(subcell) ", thisOctal%mpiThread(subcell)
               child => thisoctal%child(i)
               call distributeMPIthreadLabels(child)
               exit
@@ -2904,7 +2907,7 @@ end subroutine distributeMPIthreadLabels
 
 !Label an individual subcell with its MPI thread
 subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
-  use mpi_global_mod, only: nThreadsGlobal
+  use mpi_global_mod, only: nThreadsGlobal, myRankGlobal
   type(octal), pointer   :: parent
   integer ::  i, iChild, newChildIndex
 
@@ -2912,8 +2915,8 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
          ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
          ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
        parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
-    else
 
+    else
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -2932,7 +2935,6 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
           endif
        endif
     endif
-
     if ((parent%twod).and.(nThreadsGlobal - 1) == 16) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
