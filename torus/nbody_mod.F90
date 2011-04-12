@@ -259,7 +259,7 @@ contains
     real(double) :: xp(200), yp(20,200)
     common /path/ kmax,kount,dxsav,xp ,yp
     real(double) :: ystart(nvar),yscal(nmax),y(nmax),dydx(nmax)
-    external derivs
+    external derivs, rkqc
     x=x1
     h=sign(h1,x2-x1)
     nok=0
