@@ -517,12 +517,13 @@ contains
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
-    integer :: subcell, i, neighboursubcell
-    type(vector) :: direction, locator
+    integer :: subcell, i, neighboursubcell, nd
+    type(vector) :: direction, locator, rotator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
-!    real(double) :: rhou_i_plus_1, rho_i_plus_1, weight
-    integer :: nd
-  
+!    real(double) :: rhou_i_minus_1_B, rho_i_minus_1_B
+!    real(double) :: rhou_i_minus_one_array(:), rho_i_minus_one_array(:)
+    real(double) :: scaleParam
+
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -536,7 +537,7 @@ contains
              end if
           end do
        else
-
+          
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
 
@@ -545,16 +546,50 @@ contains
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+             
+
+!Thaw - correcting stuff for non constant grid
+!             if(thisOctal%ndepth < nd) then 
+!                if(grid%octreeRoot%twoD) then
+!                   allocate(rhou_i_minus_one_array(2))
+!                   allocate(rho_i_minus_one_array(2))
+!
+!                   do i = 1,2
+!                      locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell) 
+!                      scaleParam = (0.01d0*grid%halfsmallestsubcell)
+!                      rotator = (cos(pi/2.)*scaleParam,0.d0, sin((pi/2.) + dbl(i)*pi)* scaleParam)
+!                      locator = locator - rotator
+!                      neighbouroctal => thisoctal
+!                      call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+!                      call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
+!                           rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+!
+!                      rhou_i_minus_one_array(i) = rhou 
+!                      rho_i_minus_one_array(i) = rho
+!
+!                   end do
+!       
+!                else
+!
+!                   !Otherwise, 3D (sort later)
+!                   allocate(rhou_i_minus_one_array(4))
+!                   allocate(rho_i_minus_one_array(4))
+!
+!                   
+!                   locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+!                   neighbouroctal => thisoctal
+!                   call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+!                   call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
+!                        rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+!
+!                end if!
+!
+!          end if
 
              rho_i_minus_1 = rho
              rhou_i_minus_1 = rhou
-
-!             rho_i_plus_1 = rho
-!             rhou_i_plus_1 = rhou
-
 
 
 !             if (thisoctal%ndepth == nd) then
@@ -571,12 +606,8 @@ contains
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
  
-!                !Thaw: if this fails then use the above version
-!             thisoctal%u_interface(subcell) = &
-!                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
-!                  (1.d0-weight)*rhou_i_plus_1/rho_i_plus_1
-
-
+!             deallocate(rhou_i_minus_one_array)
+!             deallocate(rho_i_minus_one_array)
      
           endif
        endif
@@ -2034,7 +2065,7 @@ end subroutine sumFluxes
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
     integer :: ierr, tag=30, myRank
-
+    character(len=80) :: plotFile
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank,  ierr)
 
@@ -2051,16 +2082,43 @@ end subroutine sumFluxes
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
 
     call setupui(grid%octreeroot, grid, direction)
+
     call setupupm(grid%octreeroot, grid, direction)
+
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+
     if (rhieChow) then
      call computepressureu(grid, grid%octreeroot, direction) !Thaw Rhie-Chow might just need setuppressureu
+    !MID POINT DUMP
+    write(plotfile,'(a)') "1.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    !MID POINT DUMP
+    write(plotfile,'(a)') "2.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
      call setuppressure(grid%octreeroot, grid, direction) !Thaw
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    !MID POINT DUMP
+    write(plotfile,'(a)') "3.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
      call rhiechowui(grid%octreeroot, grid, direction, dt)
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    !MID POINT DUMP
+    write(plotfile,'(a)') "4.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
     end if
+
+    !MID POINT DUMP
+    write(plotfile,'(a)') "5.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
+
+
+
 
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call sumFluxes(grid%octreeRoot, dt, dFluxOne)
@@ -2070,7 +2128,7 @@ end subroutine sumFluxes
   
     call setupui(grid%octreeroot, grid, direction)
     call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+   call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call computepressureu(grid, grid%octreeroot, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call setuppressure(grid%octreeroot, grid, direction)
@@ -2084,6 +2142,12 @@ end subroutine sumFluxes
     call imposeboundary(grid%octreeroot)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
+
+    !MID POINT DUMP!
+
+    write(plotfile,'(a)') "start.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
     direction = vector(-1.d0, 0.d0, 0.d0)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
@@ -2130,10 +2194,12 @@ end subroutine sumFluxes
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
-    print *, "RANK ", myRank, "sending fluxes"
-    print *, "fluxOne ", dfluxOne, myRank
-    print *, "fluxTwo ", dfluxTwo, myRank
-    print *, "RATIO : ", dfluxOne/dfluxTwo, myRank
+
+       print *, "RANK ", myRank, "sending fluxes"
+       print *, "fluxOne ", dfluxOne, myRank
+       print *, "fluxTwo ", dfluxTwo, myRank
+       print *, "RATIO : ", dfluxOne/dfluxTwo, myRank
+
 
     call MPI_SEND(dfluxOne, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
     call MPI_SEND(dfluxTwo, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
@@ -3254,7 +3320,7 @@ end subroutine sumFluxes
     integer :: thread1(100), thread2(100), nBound(100), nPairs
     integer :: nGroup, group(100)
     real(double) :: dfluxOne, dfluxTwo, fluxOne, fluxTwo
-    integer :: tag, iThread, status
+    integer :: tag=30, iThread, status
 
 !    logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
@@ -3385,8 +3451,30 @@ end subroutine sumFluxes
           dt = nextDumpTime - currentTime
        endif
 
-       if (myrankGlobal /= 0) then
+       if(dt == 0.d0 .and. grid%geometry == "fluxTest") then
+          nextDumpTime = nextDumpTime + tDump
+          grid%currentTime = currentTime
+          tc = tempTc
+          dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+          write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
+          
+          !       if ((jt < 2000).and.(grid%geometry=="sedov")) then
+          !          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
+          !       endif
+          
+          if ((currentTime + dt).gt.tEnd) then
+             nextDumpTime = tEnd
+             dt = nextDumpTime - currentTime
+          endif
+          
+          if ((currentTime + dt) .gt. nextDumpTime) then
+             dt = nextDumpTime - currentTime
+          endif
+          
+       end if
 
+       if (myrankGlobal /= 0) then
+          if (myrank == 1) write(*,*) "courantTime", dt, it
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call writeInfo("calling hydro step",TRIVIAL)
 
@@ -3417,9 +3505,6 @@ end subroutine sumFluxes
 
           if (myrank == 1) call tune(6,"Hydrodynamics step")
 
-
-
-
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call refinegridGeneric(grid, 1.d-1)
@@ -3428,36 +3513,35 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
 
-       endif
+          currentTime = currentTime + dt
+          !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
 
-       currentTime = currentTime + dt
-!       if (myRank == 1) write(*,*) "current time ",currentTime,dt
+       else
+         if(grid%geometry == "fluxTest") then
+            do iThread = 1, nThreadsGlobal - 1
+               print *, "RANK 0 RECVING FROM ", iThread
+               call MPI_RECV(dFluxOne, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+               print *, "Got fluxOne From ", iThread
+               fluxOne = fluxOne  + dFluxOne
+               call MPI_RECV(dFluxTwo, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+               print *, "Got fluxTwo From ", iThread
+               fluxTwo = fluxTwo + dFluxTwo
+            end do
+            
+            
+            call findEnergyOverAllThreads(grid, totalenergy)
+            if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+            call findMassOverAllThreads(grid, totalmass)
+            if (writeoutput) write(*,*) "Total mass: ",totalMass
+         end if
 
+      end if
 
-       if(grid%geometry == "fluxTest") then
-          do iThread = 1, nThreadsGlobal - 1
-             print *, "RANK 0 RECVING FROM ", iThread
-             call MPI_RECV(dFluxOne, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
-             print *, "Got fluxOne From ", iThread
-             fluxOne = fluxOne  + dFluxOne
-             call MPI_RECV(dFluxTwo, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
-                print *, "Got fluxTwo From ", iThread
-                fluxTwo = fluxTwo + dFluxTwo
-             end do
-          end if
-
-          call findEnergyOverAllThreads(grid, totalenergy)
-          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-          call findMassOverAllThreads(grid, totalmass)
-          if (writeoutput) write(*,*) "Total mass: ",totalMass
-          
-          if(grid%geometry == "fluxTest") then
-             nextDumpTime = tend
-             currentTime = tend
-          end if
-
-
-
+      if(grid%geometry == "fluxTest") then
+         print *, "RANK ", myRank, "TERMINATING"
+         nextDumpTime = tend
+         currentTime = tend
+      end if
 
        if (currentTime .ge. nextDumpTime) then
           it = it + 1
