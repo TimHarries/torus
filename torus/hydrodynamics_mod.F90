@@ -518,11 +518,11 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighboursubcell, nd
-    type(vector) :: direction, locator, rotator
+    type(vector) :: direction, locator!, rotator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
 !    real(double) :: rhou_i_minus_1_B, rho_i_minus_1_B
 !    real(double) :: rhou_i_minus_one_array(:), rho_i_minus_one_array(:)
-    real(double) :: scaleParam
+!    real(double) :: scaleParam
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 

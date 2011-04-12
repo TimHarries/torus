@@ -61,6 +61,9 @@ contains
     character(len=80) :: message
     integer :: nVoxels, nOctals
 !    integer :: nUnrefine
+#ifdef MPI 
+    integer :: i
+#endif
 
 
 #ifdef MPI

@@ -54,8 +54,8 @@ contains
 !    call writeInfo("Done.",TRIVIAL)
 
 !    call writeInfo("Calculating source potential for gas", TRIVIAL)
-!    call zeroSourcepotential(grid%octreeRoot)
-!    call applySourcePotential(grid%octreeRoot, source, nSource, eps)
+    call zeroSourcepotential(grid%octreeRoot)
+    call applySourcePotential(grid%octreeRoot, source, nSource, eps)
 !    call writeInfo("Done.", TRIVIAL)
 
 !    call writeInfo("Calculating source-source forces", TRIVIAL)
@@ -400,10 +400,11 @@ contains
   subroutine derivs(x, y, dydx, grid)
     integer, parameter :: nmax = 20
     type(GRIDTYPE) :: grid
-    real(double) :: x, y(nmax), dydx(nmax)
+    real(double) :: x, y(nmax), dydx(nmax), test
     integer :: i, ia
     type(SOURCETYPE), allocatable :: testsource(:)
 
+    test = x
     ! y(1,2,3,4,5,6) is first source
     ! y(1) = x position
     ! y(2) = x velocity
