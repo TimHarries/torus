@@ -70,15 +70,18 @@ contains
     real(double) :: dt
     type(sourcetype) :: source(:)
     integer :: nSource, i, ia, nvar
-    real(double), allocatable :: yStart(:)
+    real(double), allocatable :: yStart(:), dydx(:)
     integer :: nok, nbad
     integer :: kmax, kount
-    real(double) :: dxsav, xp(200), yp(20,200), energy
+    real(double) :: acc, eps, minDt, thisDt, thisTime
+    real(double) :: dxsav, xp(200), yp(200,200), energy
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
+    eps = returnCodeUnitLength(0.1d0*rsol)
+
     nvar = nSource * 6
-    allocate(yStart(1:nvar))
+    allocate(yStart(1:nvar), dydx(1:nVar))
 
     do i = 1,nSource
        ia = (i-1)*6 + 1
@@ -93,34 +96,54 @@ contains
 
 
     enddo
-    call odeint(ystart, nvar, 0.d0, dt, 1.d-16, dt, 0.d0, nok, nbad, derivs, bsstep, grid)
 
-    do i = 1, nSource
-       ia = (i-1)*6 + 1
-       source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))/1.d10
-       source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
+    thisTime = 0.d0
+    do while (thisTime  < dt)
 
-       source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))/1.d10
-       source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+       call derivs(0.d0, ystart, dydx, grid)
 
-       source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
-       source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
-
+       minDt = 1.d30
+       do i = 1, nSource
+          ia = (i-1)*6 + 1
+          acc = sqrt(dydx(ia+1)**2 + dydx(ia+3)**2 + dydx(ia+5)**2)
+          minDt = min(sqrt(eps / (acc + tiny(Acc))), minDt)
+       enddo
+       thisDt = min(minDt, dt)
+       if ((thisTime + thisDt) > dt) then
+          thisDt = dt - thisTime
+       endif
+       if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-10, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
+       thisTime = thisTime + thisDt
+       do i = 1, nSource
+          ia = (i-1)*6 + 1
+          source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))/1.d10
+          source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
+          
+          source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))/1.d10
+          source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+          
+          source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
+          source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
+          
+          if (writeoutput) then
+             write(*,*) "source ",i
+             write(*,*) "position ",source(i)%position*1.d10/autocm
+             write(*,*) "velocity ",source(i)%velocity/1.d5
+          endif
+       enddo
        if (writeoutput) then
-          write(*,*) "source ",i
-          write(*,*) "position ",source(i)%position*1.d10/autocm
-          write(*,*) "velocity ",source(i)%velocity/1.d5
+          open(57, file="pos.dat",status="old",position="append")
+          write(57,*)  real(source(1)%position%x*1.d10/autocm), &
+               real(source(1)%position%y*1.d10/autocm), &
+               real(source(2)%position%x*1.d10/autocm), &
+               real(source(2)%position%y*1.d10/autocm), &
+               real(source(3)%position%x*1.d10/autocm), &
+               real(source(3)%position%y*1.d10/autocm)
+          close(57)
        endif
     enddo
-    if (writeoutput) then
-       open(57, file="pos.dat",status="old",position="append")
-       write(57,*)  real(source(1)%position%x*1.d10/autocm), &
-            real(source(1)%position%y*1.d10/autocm), &
-            real(source(2)%position%x*1.d10/autocm), &
-            real(source(2)%position%y*1.d10/autocm)
-       close(57)
-    endif
-    deallocate(yStart)
+    deallocate(yStart,dydx)
     call sumEnergy(source, nSource, energy)
     if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
   end subroutine updateSourcePositions
@@ -252,11 +275,11 @@ contains
     type(GRIDTYPE) :: grid
     real(double) :: eps, hdid, hnext, hmin
     integer :: nvar
-    integer, parameter :: maxstp=10000, nmax=20
+    integer, parameter :: maxstp=10000, nmax=200
     real(double), parameter :: two=2.d0,zero=0.d0,tiny=1.d-30
     real(double) :: x, x1, h, x2, h1, xsav, dxsav
     integer :: nok, nbad, kount, i, nstp, kmax
-    real(double) :: xp(200), yp(20,200)
+    real(double) :: xp(200), yp(200,200)
     common /path/ kmax,kount,dxsav,xp ,yp
     real(double) :: ystart(nvar),yscal(nmax),y(nmax),dydx(nmax)
     external derivs, rkqc
@@ -320,7 +343,7 @@ contains
   subroutine bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext,derivs,grid)
     type(GRIDTYPE) :: grid
     integer :: nv
-    integer, parameter :: nmax=20,imax=11,nuse=7
+    integer, parameter :: nmax=200,imax=11,nuse=7
     real(double) :: h, htry, x, xsav, xest, errmax
     integer :: i, j
     real(double) :: eps, hdid,  hnext
@@ -372,7 +395,7 @@ contains
     real(double) :: xs, htot, h, h2, x, swap
     integer :: nvar
     integer :: nstep, i, n
-    integer, parameter :: nmax=20
+    integer, parameter :: nmax=200
     real(double) :: y(nvar),dydx(nvar),yout(nvar),ym(nmax),yn(nmax)
     external derivs
     h=htot/nstep
@@ -398,7 +421,7 @@ contains
   end subroutine mmid
 
   subroutine derivs(x, y, dydx, grid)
-    integer, parameter :: nmax = 20
+    integer, parameter :: nmax = 200
     type(GRIDTYPE) :: grid
     real(double) :: x, y(nmax), dydx(nmax), test
     integer :: i, ia
@@ -450,7 +473,7 @@ contains
   end subroutine derivs
 
   SUBROUTINE RZEXTR(IEST,XEST,YEST,YZ,DY,NV,NUSE)
-    integer, parameter :: IMAX=11,NMAX=20,NCOL=7
+    integer, parameter :: IMAX=11,NMAX=200,NCOL=7
     integer :: iest, nuse, j, m1, k , nv
     real(double) :: xest, yy, v, c, b1,b , ddy
     real(double) ::  YEST(NV),YZ(NV),DY(NV)

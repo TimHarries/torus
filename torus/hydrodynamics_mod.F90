@@ -388,7 +388,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi
+    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas
     integer :: subcell, i, neighboursubcell
     integer :: nd
     type(vector) :: direction, locator, reversedirection
@@ -425,7 +425,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
 
              thisoctal%x_i_plus_1(subcell) = x
              thisoctal%q_i_plus_1(subcell) = q
@@ -436,7 +436,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%x_i_minus_1(subcell) = x
              thisoctal%q_i_minus_1(subcell) = q
              thisoctal%q_i_minus_2(subcell) = qnext
@@ -461,7 +461,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi
+    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator, reversedirection
     integer :: nd
@@ -487,7 +487,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
 
              thisoctal%rho_i_plus_1(subcell) = rho
              thisoctal%phi_i_plus_1(subcell) = phi
@@ -498,7 +498,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%rho_i_minus_1(subcell) = rho
              thisoctal%phi_i_minus_1(subcell) = phi
 
@@ -516,7 +516,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighboursubcell, nd
     type(vector) :: direction, locator!, rotator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
@@ -547,7 +547,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              
 
 !Thaw - correcting stuff for non constant grid
@@ -621,7 +621,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
@@ -650,7 +650,7 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
 
                 rho_i_minus_1 = rho
                 rhou_i_minus_1 = rhov
@@ -678,7 +678,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
@@ -707,7 +707,7 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
 
                 rho_i_minus_1 = rho
                 rhou_i_minus_1 = rhow
@@ -738,7 +738,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi
+    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -763,7 +763,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
 
              if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
    
@@ -783,7 +783,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%flux_i_minus_1(subcell) = flux
 
 ! new stuff added by tjh
@@ -809,7 +809,7 @@ contains
     include 'mpif.h'
     integer :: myrank, ierr
     type(gridtype) :: grid
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
@@ -840,7 +840,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%pressure_i_plus_1(subcell) = pressure
 
              
@@ -848,7 +848,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%pressure_i_minus_1(subcell) = pressure
 
           endif
@@ -865,7 +865,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     integer :: nd
   
 
@@ -890,14 +890,14 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%u_i_plus_1(subcell) = rhou/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%u_i_minus_1(subcell) = rhou/rho
 
           endif
@@ -914,7 +914,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     integer :: nd
   
 
@@ -939,14 +939,14 @@ contains
              neighbouroctal =>thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%u_i_plus_1(subcell) = rhov/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%u_i_minus_1(subcell) = rhov/rho
 
           endif
@@ -963,7 +963,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     integer :: nd
   
 
@@ -988,14 +988,14 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%u_i_plus_1(subcell) = rhow/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              thisoctal%u_i_minus_1(subcell) = rhow/rho
 
           endif
@@ -2312,14 +2312,14 @@ end subroutine sumFluxes
 !    print *, "o hai"
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call imposeBoundary(grid%octreeRoot)
- !   print *, "trol"
+!    print *, "trol"
     call periodBoundary(grid)
-  !  print *, "olol"
+!    print *, "olol"
     call transferTempStorage(grid%octreeRoot)
-   ! print *, "trolol"
+!    print *, "trolol"
    if (selfGravity) then
-       call periodBoundary(grid, justGrav = .true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+!       call periodBoundary(grid, justGrav = .true.)
+!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     
@@ -2521,8 +2521,8 @@ end subroutine sumFluxes
 
     !THAW
     if (selfGravity) then
-       call periodBoundary(grid, justGrav = .true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+!       call periodBoundary(grid, justGrav = .true.)
+!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
@@ -6341,7 +6341,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
     integer :: n, ndir, nd
@@ -6394,7 +6394,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
@@ -6403,7 +6403,7 @@ end subroutine refineGridGeneric2
 !                g(n) =   (phi - thisOctal%phi_i(subcell))/thisOctal%subcellSize !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !                if (slow) then
-                   g(n) = phi
+                   g(n) = phigas
 !                endif
 
              enddo
@@ -6444,7 +6444,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
@@ -6508,7 +6508,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
@@ -6538,7 +6538,7 @@ end subroutine refineGridGeneric2
                 endif
 
 
-                g(n) =   (phi - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+                g(n) =   (phigas - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
 
                 
              enddo
@@ -6580,7 +6580,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
     integer :: nDepth
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
     integer :: n, ndir
@@ -6632,7 +6632,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
@@ -6641,7 +6641,7 @@ end subroutine refineGridGeneric2
 !                g(n) =   (phi - thisOctal%phi_i(subcell))/thisOctal%subcellSize !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !                if (slow) then
-                   g(n) = phi
+                   g(n) = phigas
 !                endif
 
                 enddo
@@ -6690,7 +6690,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-4,  tol2 = 5.d-5
+    real(double), parameter :: tol = 1.d-6,  tol2 = 1.d-6
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -6710,6 +6710,8 @@ end subroutine refineGridGeneric2
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
+          call applyDirichlet(grid, iDepth)
+
           dx = returnCodeUnitLength(gridDistancescale*grid%octreeRoot%subcellSize/dble(2.d0**(iDepth-1)))
           if (grid%octreeRoot%twoD) then
              deltaT =  (dx)**2 / 4.d0
@@ -6723,7 +6725,7 @@ end subroutine refineGridGeneric2
              fracChange = 0.d0
              ghostFracChange = 0.d0
              it = it + 1
-             
+              
 !             if (myrankglobal == 1) call tune(6,"Boundary exchange")
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
 !             if (myrankglobal == 1) call tune(6,"Boundary exchange")
@@ -6736,11 +6738,10 @@ end subroutine refineGridGeneric2
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
 
             !Thaw - trying to remove expansion by removing periodic gravity
-             call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
-!             call imposeboundary(grid%octreeroot)
-             call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
+!             call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
+             !             call imposeboundary(grid%octreeroot)
+!             call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
-             
 
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
@@ -6773,6 +6774,8 @@ end subroutine refineGridGeneric2
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
 
+    call applyDirichlet(grid)
+
 !    call reapplyGhostCellPhi(grid%octreeRoot)
 
     if (grid%octreeRoot%twoD) then
@@ -6783,7 +6786,7 @@ end subroutine refineGridGeneric2
 !    deltaT = deltaT * timeToCodeUnits
 
     fracChange = 1.d30
-    it = 0
+    it =0 
     do while (ANY(fracChange(1:nHydrothreads) > tol2))
        fracChange = 0.d0
        it = it + 1
@@ -6792,8 +6795,8 @@ end subroutine refineGridGeneric2
        
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
-       call periodBoundary(grid, justGrav = .true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+!       call periodBoundary(grid, justGrav = .true.)
+!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        
@@ -6991,6 +6994,292 @@ end subroutine minMaxDepth
     call getChildlessOctalArray(grid%octreeRoot, globalChildlessOctalArray, nGlobalChildlessOctals)
   end subroutine createChildlessOctalArray
 
+
+  real(double) function  legendre(n, x)
+    integer :: n
+    real(double) :: x
+
+    select case(n)
+       case(0)
+          legendre = 1.d0
+       case(1)
+          legendre = x
+       case(2)
+          legendre = (3.d0*x**2 - 1.d0)/2.d0
+       case(3)
+          legendre = (5.d0*x**3 - 3.d0*x)/2.d0
+       case(4)
+          legendre = (35.d0*x**4 - 30.d0*x**2 +3)/8.d0
+       case DEFAULT
+          write(*,*) "legendre: n not found ", n
+     end select
+   end function legendre
+
+   subroutine findCoM(grid, com)
+     include 'mpif.h'
+     type(GRIDTYPE) :: grid
+     type(VECTOR) :: com
+     real(double) :: totalMass, temp(3), temp2(3)
+     integer :: ierr
+
+     call findMassOverAllThreads(grid, totalmass)
+     
+     com = VECTOR(0.d0, 0.d0, 0.d0)
+     call sumCOM(grid%octreeRoot, com)
+
+     temp(1) = com%x
+     temp(2) = com%y
+     temp(3) = com%z
+     call MPI_ALLREDUCE(temp, temp2, 3, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+     com%x = temp2(1)
+     com%y = temp2(2)
+     com%z = temp2(3)
+     com = com / totalmass
+   end subroutine findCoM
+
+   recursive subroutine sumCOM(thisOctal, com)
+     type(OCTAL), pointer :: thisOctal, child
+     type(VECTOR) :: com
+     integer :: subcell, i
+     do subcell = 1, thisoctal%maxchildren
+        if (thisoctal%haschild(subcell)) then
+           ! find the child
+           do i = 1, thisoctal%nchildren, 1
+              if (thisoctal%indexchild(i) == subcell) then
+                 child => thisoctal%child(i)
+                 call sumCom(child, com)
+                 exit
+              end if
+           end do
+        else
+           com = com + subcellCentre(thisOctal,subcell) * &
+                thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30
+        endif
+     enddo
+   end subroutine sumCOM
+
+
+
+   recursive subroutine multipoleExpansion(thisOctal, point, com, v)
+     type(OCTAL), pointer :: thisOctal, child
+     type(VECTOR) :: com, point, xVec,rVec
+     real(double) :: v, r, x, cosTheta, dm
+     integer :: subcell, i, ipole
+
+     do subcell = 1, thisoctal%maxchildren
+        if (thisoctal%haschild(subcell)) then
+           ! find the child
+           do i = 1, thisoctal%nchildren, 1
+              if (thisoctal%indexchild(i) == subcell) then
+                 child => thisoctal%child(i)
+                 call multipoleExpansion(child, point, com, v)
+                 exit
+              end if
+           end do
+        else
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+           if (.not.thisOctal%ghostCell(subcell)) then
+              xVec = point - com
+              rVec = subcellCentre(thisOctal, subcell) - com
+              r = modulus(rVec)*1.d10
+              x = modulus(xVec)*1.d10
+              cosTheta = (xVec.dot.rVec) / (r*x)
+              dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
+              do iPole = 0, 4
+                 v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
+              enddo
+              
+           endif
+        endif
+     enddo
+   end subroutine multipoleExpansion
+
+   recursive subroutine multipoleExpansionLevel(thisOctal, point, com, v, level)
+     type(OCTAL), pointer :: thisOctal, child
+     type(VECTOR) :: com, point, xVec,rVec
+     integer :: level
+     real(double) :: v, r, x, cosTheta, dm
+     integer :: subcell, i, ipole
+
+    if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < level)) then
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call  multipoleExpansionLevel(child, point, com, v, level)
+       end do
+    else
+       do subcell = 1, thisOctal%maxChildren
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+           if (.not.thisOctal%ghostCell(subcell)) then
+              xVec = point - com
+              rVec = subcellCentre(thisOctal, subcell) - com
+              r = modulus(rVec)*1.d10
+              x = modulus(xVec)*1.d10
+              cosTheta = (xVec.dot.rVec) / (r*x)
+              dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
+              do iPole = 0, 4
+                 v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
+              enddo
+              
+           endif
+        enddo
+     endif
+   end subroutine multipoleExpansionLevel
+
+   subroutine applyDirichlet(grid,level)
+     include 'mpif.h'
+     type(GRIDTYPE) :: grid
+     type(VECTOR) :: com
+     integer, optional :: level
+     real(double) :: temp(3)
+     integer :: iThread
+     integer :: tag
+     logical :: stillReceiving
+     integer :: status(MPI_STATUS_SIZE)
+     integer :: ierr, j
+     real(double) :: v
+
+     type(VECTOR) :: point
+     tag = 94
+     call findCoM(grid, com)
+
+     call updateDensityTree(grid%octreeRoot)
+
+     do iThread = 1, nHydroThreadsGlobal
+        if (myRankGlobal == iThread) then
+           if (present(level)) then
+              call recursApplyDirichletLevel(grid, grid%octreeRoot, com, level)
+           else
+              call recursApplyDirichlet(grid, grid%octreeRoot, com)
+           endif
+           do j = 1, nHydroThreadsGlobal
+              if (j /= iThread) then
+                 temp(1) = 1.d30
+                 call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
+              endif
+           enddo
+        else
+           stillReceiving = .true.
+           do while (stillReceiving)
+              call mpi_recv(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+              if (temp(1) > 1.d29) then
+                 stillReceiving = .false.
+                 exit
+              else
+                 point%x = temp(1)
+                 point%y = temp(2)
+                 point%z = temp(3)
+                 v = 0.d0
+!                 if (present(level)) then
+                    call multipoleExpansionLevel(grid%octreeRoot, point, com, v, level=4)
+!                 else
+!                    call multipoleExpansion(grid%octreeRoot, point, com, v)
+!                 endif
+                 call mpi_send(v, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+              endif
+           enddo
+        endif
+        call mpi_barrier(amrCommunicator, ierr)
+     enddo
+   end subroutine applyDirichlet
+
+
+   recursive subroutine recursApplyDirichlet(grid, thisOctal, com)
+     include 'mpif.h'
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal, child
+     type(VECTOR) :: com, point
+     real(double) :: v, vgrid
+     real(double) :: temp(3)
+     integer :: subcell, i
+     integer :: ithread
+     integer :: tag, ierr
+     integer :: status(MPI_STATUS_SIZE)
+
+     tag = 94
+     
+     do subcell = 1, thisoctal%maxchildren
+        if (thisoctal%haschild(subcell)) then
+           ! find the child
+           do i = 1, thisoctal%nchildren, 1
+              if (thisoctal%indexchild(i) == subcell) then
+                 child => thisoctal%child(i)
+                 call recursApplyDirichlet(grid, child, com)
+                 exit
+              end if
+           end do
+        else
+           if (.not.OctalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+           if (thisOctal%ghostCell(subcell)) then
+              point = subcellCentre(thisOctal, subcell)
+              v = 0.d0
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=4)
+
+              do iThread = 1, nHydroThreadsGlobal
+
+                 temp(1) = point%x
+                 temp(2) = point%y
+                 temp(3) = point%z
+                 if (iThread /= myRankGlobal) then
+                    call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                    call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                    v = v + vgrid
+                 endif
+              enddo
+              thisOctal%phi_gas(subcell) = v
+           endif
+        endif
+     enddo
+   end subroutine recursApplyDirichlet
+
+   recursive subroutine recursApplyDirichletLevel(grid, thisOctal, com, level)
+     include 'mpif.h'
+     type(GRIDTYPE) :: grid
+     integer :: level
+     type(OCTAL), pointer :: thisOctal, child
+     type(VECTOR) :: com, point
+     real(double) :: v, vgrid
+     real(double) :: temp(3)
+     integer :: subcell, i
+     integer :: ithread
+     integer :: tag, ierr
+     integer :: status(MPI_STATUS_SIZE)
+
+     tag = 94
+
+    if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < level)) then
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call recursApplyDirichletLevel(grid, child, com, level) 
+       end do
+    else
+       do subcell = 1, thisOctal%maxChildren
+
+           if (thisOctal%ghostCell(subcell)) then
+              point = subcellCentre(thisOctal, subcell)
+              v = 0.d0
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level)
+
+              do iThread = 1, nHydroThreadsGlobal
+
+                 temp(1) = point%x
+                 temp(2) = point%y
+                 temp(3) = point%z
+                 if (iThread /= myRankGlobal) then
+                    call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                    call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                    v = v + vgrid
+                 endif
+              enddo
+              thisOctal%phi_gas(subcell) = v
+           endif
+        enddo
+     endif
+   end subroutine recursApplyDirichletLevel
+
 #endif
+
 
 end module hydrodynamics_mod

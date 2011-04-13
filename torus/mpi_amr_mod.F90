@@ -376,7 +376,7 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 12
+    integer, parameter :: nStorage = 13
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec
     integer :: nBound
@@ -386,7 +386,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
     integer :: nDepth
-    real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux
+    real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
@@ -542,13 +542,16 @@ contains
 
                 tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
 
+                tempStorage(13) = neighbourOctal%phi_gas(neighbourSubcell)
+
 
 !                write(*,*) myrank," set up tempstorage with ", &
 !                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
 !                     neighbourOctal%edgeCell(neighbourSubcell)
 
              else ! need to average
-                call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
+                call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
+                     flux, phi, phigas)
                 tempStorage(1) = q
                 tempStorage(2) = rho
                 tempStorage(3) = rhoe
@@ -567,6 +570,7 @@ contains
                 tempStorage(10) = pressure
                 tempStorage(11) = flux
                 tempStorage(12) = phi
+                tempStorage(13) = phigas
              endif
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
@@ -649,7 +653,7 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 12
+    integer, parameter :: nStorage = 13
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec
     integer :: nBound
@@ -803,6 +807,8 @@ contains
  
 
                 tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
+
+                tempStorage(13) = neighbourOctal%phi_gas(neighbourSubcell)
 
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
@@ -1034,7 +1040,7 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
@@ -1043,7 +1049,7 @@ contains
     integer :: nBound, nDepth
     integer, intent(out) :: nd
 
-    real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
+    real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
     integer :: myRank, ierr
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1070,6 +1076,7 @@ contains
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           flux = neighbourOctal%flux_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
+          phigas = neighbourOctal%phi_gas(neighbourSubcell)
 
        else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
           q   = neighbourOctal%q_i(neighbourSubcell)
@@ -1080,6 +1087,7 @@ contains
           rhow = neighbourOctal%rhow(neighbourSubcell)
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
+          phigas = neighbourOctal%phi_gas(neighbourSubcell)
           if (thisOctal%oneD) then
              flux = neighbourOctal%flux_i(neighbourSubcell)
           else if (thisOctal%twoD) then
@@ -1088,7 +1096,8 @@ contains
              flux = neighbourOctal%flux_i(neighbourSubcell)!/4.d0
           endif
        else
-          call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi) ! fine to coarse
+          call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
+               flux, phi, phigas) ! fine to coarse
        endif
 
        
@@ -1138,16 +1147,17 @@ contains
        pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
        flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
        phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
+       phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
 
     endif
   end subroutine getNeighbourValues
 
 
 
-  subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
+  subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi, phigas)
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
-    real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi
+    real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi, phigas
     real(double) :: fac
     type(VECTOR) :: direction
 
@@ -1169,6 +1179,7 @@ contains
        pressure = neighbourOctal%pressure_i(neighbourSubcell)
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
+       phigas = neighbourOctal%phi_gas(neighbourSubcell)
 
      else if (neighbourOctal%twoD) then
        if (direction%x > 0.9d0) then
@@ -1193,6 +1204,7 @@ contains
        pressure = 0.5d0*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)))
        flux = 0.5d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)))
        phi = 0.5d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)))
+       phigas = 0.5d0*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)))
     else if (neighbourOctal%threed) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1
@@ -1253,6 +1265,9 @@ contains
 
        phi = fac*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)) + & 
             neighbourOctal%phi_i(nSubcell(3)) + neighbourOctal%phi_i(nSubcell(4)))
+
+       phi = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
+            neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
     endif
 
