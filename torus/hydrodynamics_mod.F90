@@ -2944,9 +2944,11 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-       if (myrank == 1) write(*,*) "courantTime", dt, it
-       if (myrank == 1) call tune(6,"Hydrodynamics step")
-       call writeInfo("calling hydro step",TRIVIAL)
+       if(grid%geometry == "fluxTest") then
+          if (myrank == 1) write(*,*) "courantTime", dt, it
+          if (myrank == 1) call tune(6,"Hydrodynamics step")
+          call writeInfo("calling hydro step",TRIVIAL)
+       end if
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3009,7 +3011,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
