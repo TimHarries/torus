@@ -1038,6 +1038,7 @@ contains
           if (.not.thisoctal%ghostcell(subcell)) then
              !if (.not.thisoctal%edgecell(subcell)) then
              dx = returnCodeUnitLength(thisoctal%subcellsize*gridDistanceScale)
+       !      dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
              thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
                   ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                   (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
@@ -2921,7 +2922,7 @@ end subroutine sumFluxes
     it = 0
     nextDumpTime = 0.d0
     iUnrefine = 0
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+!    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
     do while(currentTime <= tend)
 
@@ -3327,9 +3328,10 @@ end subroutine sumFluxes
 
 !    logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
-!    logical :: dorefine
+    logical :: converged
+!    logical, optional :: inherit
     integer :: nUnrefine, jt
-
+    
     nUnrefine = 0
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -3346,7 +3348,8 @@ end subroutine sumFluxes
 
 !       dorefine = .true.
 
-
+!famr
+       call refineEdges(grid%octreeRoot, grid,  converged)
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        mu = 2.d0
@@ -5010,7 +5013,7 @@ end subroutine sumFluxes
              endif
 
 
-           endif
+          endif
        endif
     enddo
 666 continue

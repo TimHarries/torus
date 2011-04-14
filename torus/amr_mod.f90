@@ -4017,7 +4017,7 @@ CONTAINS
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
       !Coarse to fine
-      if(rVec%x > 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+ !     if(rVec%x > 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
     
       !fine to coarse
  !     if(rVec%x < 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
