@@ -3235,6 +3235,9 @@ end subroutine sumFluxes
 
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
+          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
+
+
           if (myrank == 1) call tune(6,"Hydrodynamics step")
 
 
@@ -7278,6 +7281,119 @@ end subroutine minMaxDepth
         enddo
      endif
    end subroutine recursApplyDirichletLevel
+
+   subroutine addSinks(grid, source, nSource)
+     include 'mpif.h'
+     type(GRIDTYPE) :: grid
+     type(SOURCETYPE) :: source(:)
+     real(double) :: temp(7)
+     integer :: nSource
+     integer :: iThread
+     integer :: j, tag, ierr
+     integer :: status(MPI_STATUS_SIZE)
+     logical :: stillReceiving
+
+     tag = 77
+
+     do iThread = 1, nHydroThreadsGlobal
+        if (myrankGlobal == iThread) then
+           call recursaddSinks(grid%octreeRoot, grid, source, nSource)
+           do j = 1, nHydroThreadsGlobal
+              if (j /= myRankGlobal) then
+                 temp(1) = 1.d30
+                 call mpi_send(temp, 7, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
+              endif
+           enddo
+        else
+           stillReceiving = .true.
+           do while (stillReceiving)
+              call mpi_recv(temp, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+              if (temp(1) > 1.d29) then
+                 stillReceiving = .false.
+                 exit
+              else
+                 nSource = nSource + 1
+                 source(nsource)%position%x = temp(1) 
+                 source(nsource)%position%y = temp(2) 
+                 source(nsource)%position%z = temp(3) 
+                 source(nsource)%mass  = temp(4) 
+                 source(nsource)%velocity%x = temp(5) 
+                 source(nsource)%velocity%y = temp(6) 
+                 source(nsource)%velocity%z = temp(7) 
+              endif
+           enddo
+        endif
+     enddo
+   end subroutine addSinks
+          
+
+  recursive subroutine recursaddSinks(thisOctal, grid, source, nSource)
+    include 'mpif.h'
+    type(OCTAL), pointer :: thisOctal, child
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: vel
+    real(double) :: rhoJeans, bigJ, cs, e
+    real(double) :: temp(7)
+    integer :: nSource
+    integer :: i, subcell, ierr, ithread, tag
+    tag = 77
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call recursaddSinks(child, grid, source, nSource)
+                exit
+             end if
+          end do
+       else
+
+          bigJ = 0.25d0
+
+          cs = soundSpeed(thisOctal, subcell)
+          rhoJeans = bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2) ! krumholz eq 6
+
+          
+          if (thisOctal%rho(subcell) > rhoJeans) then
+             nSource = nSource + 1
+             source(nSource)%position = subcellCentre(thisOctal, subcell)
+             source(nsource)%mass = (thisOctal%rho(subcell) - rhoJeans*bigJ)*thisOctal%subcellSize**3*1.d30
+             source(nsource)%velocity%x = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
+             source(nsource)%velocity%y = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
+             source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
+
+             vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                  thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             e = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+             thisOctal%rho(subcell) = bigJ * rhoJeans
+             thisOctal%rhou(subcell) = bigJ * rhoJeans * vel%x
+             thisOctal%rhov(subcell) = bigJ * rhoJeans * vel%x
+             thisOctal%rhow(subcell) = bigJ * rhoJeans * vel%x
+             thisOctal%rhoe(subcell) = bigJ * rhoJeans * e
+
+             temp(1) = source(nsource)%position%x
+             temp(2) = source(nsource)%position%y
+             temp(3) = source(nsource)%position%z
+             temp(4) = source(nsource)%mass 
+             temp(5) = source(nsource)%velocity%x
+             temp(6) = source(nsource)%velocity%y
+             temp(7) = source(nsource)%velocity%z
+             
+             do iThread = 1, nHydroThreadsGlobal
+                if (iThread /= myRankGlobal) then
+                   call mpi_send(temp, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                endif
+             enddo
+             
+          endif
+
+       endif
+    enddo
+  end subroutine recursaddSinks
+
+
 
 #endif
 
