@@ -6698,7 +6698,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-6,  tol2 = 1.d-6
+    real(double), parameter :: tol = 1.d-5,  tol2 = 1.d-5
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -6718,7 +6718,9 @@ end subroutine refineGridGeneric2
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
+          if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
           call applyDirichlet(grid, iDepth)
+          if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
 
           dx = returnCodeUnitLength(gridDistancescale*grid%octreeRoot%subcellSize/dble(2.d0**(iDepth-1)))
           if (grid%octreeRoot%twoD) then
@@ -6782,7 +6784,9 @@ end subroutine refineGridGeneric2
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
 
+    if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
     call applyDirichlet(grid)
+    if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
 
 !    call reapplyGhostCellPhi(grid%octreeRoot)
 
@@ -7180,7 +7184,7 @@ end subroutine minMaxDepth
                  point%z = temp(3)
                  v = 0.d0
 !                 if (present(level)) then
-                    call multipoleExpansionLevel(grid%octreeRoot, point, com, v, level=4)
+                    call multipoleExpansionLevel(grid%octreeRoot, point, com, v, level=3)
 !                 else
 !                    call multipoleExpansion(grid%octreeRoot, point, com, v)
 !                 endif
@@ -7223,7 +7227,7 @@ end subroutine minMaxDepth
            if (thisOctal%ghostCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
               v = 0.d0
-              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=4)
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=3)
 
               do iThread = 1, nHydroThreadsGlobal
 
@@ -7232,10 +7236,15 @@ end subroutine minMaxDepth
                  temp(3) = point%z
                  if (iThread /= myRankGlobal) then
                     call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                 endif
+              enddo
+              do iThread = 1, nHydroThreadsGlobal
+                 if (iThread /= myRankGlobal) then
                     call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
                     v = v + vgrid
                  endif
               enddo
+
               thisOctal%phi_gas(subcell) = v
            endif
         endif
@@ -7268,7 +7277,7 @@ end subroutine minMaxDepth
            if (thisOctal%ghostCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
               v = 0.d0
-              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level)
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=3)
 
               do iThread = 1, nHydroThreadsGlobal
 
@@ -7277,6 +7286,10 @@ end subroutine minMaxDepth
                  temp(3) = point%z
                  if (iThread /= myRankGlobal) then
                     call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                 endif
+              enddo
+              do iThread = 1, nHydroThreadsGlobal
+                 if (iThread /= myRankGlobal) then
                     call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
                     v = v + vgrid
                  endif
@@ -7355,6 +7368,7 @@ end subroutine minMaxDepth
           end do
        else
 
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
           bigJ = 0.25d0
 
           cs = soundSpeed(thisOctal, subcell)
@@ -7362,6 +7376,10 @@ end subroutine minMaxDepth
 
           
           if (thisOctal%rho(subcell) > rhoJeans) then
+
+             write(*,*) "Source created"
+             write(*,*) "local density ",thisOctal%rho(subcell)
+             write(*,*) "local jeans density ", bigJ**2 * rhoJeans
              nSource = nSource + 1
              source(nSource)%position = subcellCentre(thisOctal, subcell)
              source(nsource)%mass = (thisOctal%rho(subcell) - rhoJeans*bigJ)*thisOctal%subcellSize**3*1.d30

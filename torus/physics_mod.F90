@@ -549,6 +549,7 @@ contains
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
      use input_variables, only : inputNsource
+     integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
 #ifdef MPI
    include 'mpif.h'  
@@ -563,9 +564,10 @@ contains
      endif
 
      if (inputNsource > 0 ) call writeBanner("Source setup","-",TRIVIAL)
+     globalNSource = 0
+     allocate(globalsourceArray(1:maxSources))
      if (inputNsource > 0) then
         globalnSource = inputNSource
-        allocate(globalsourceArray(1:globalnSource))
         call setupSources(globalnSource, globalsourceArray, grid)
      endif
 
