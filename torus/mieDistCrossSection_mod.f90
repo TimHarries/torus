@@ -17,12 +17,12 @@ MODULE  mieDistCrossSection_mod
       real  cmr, cmi, x, kappaExt, kappaAbs, kappaSca
       real aMin, aMax, a0, qDist, pDist, lambda
       real logAmin, logAmax
-      integer nDist
-      real pi
+      integer, parameter :: nDist = 100
+      real, parameter :: pi = 3.14159265358979
       real qsca(100), qext(100), qback(100), gsca(100)
-      integer ic, ip, i
-      real micronsToCm
-      complex cm,ci
+      integer i
+      real, parameter :: micronsToCm=1.e-4
+      complex cm
       real normFac, a
       real gscadist
       real nsd(100), aDist(100)
@@ -30,22 +30,14 @@ MODULE  mieDistCrossSection_mod
       complex s1(2*MXNANG-1),s2(2*MXNANG-1)
       integer :: nang=2
       
-      pi = 3.14159265358979
-      ci = (0.0,1.0)
-      ic = 1
-      ip = 1
-
-      micronsToCm = 1.e-4
-      
 !     .........................................
 !     .  set the complex index of refraction  .
 !     .    for an exp(-iwt) time variation    .
 !     .........................................
       cm = cmplx(cmr,cmi)
         
-        nDist = 100
-        logamin = log(aMin)
-        logamax = log(aMax)
+      logamin = log(aMin)
+      logamax = log(aMax)
 
         do i = 1, nDist
 

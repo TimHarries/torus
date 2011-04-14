@@ -1,17 +1,15 @@
 MODULE bhmie_mod 
-  use kind_mod
 
   implicit none
 
   public  :: bhmie, MXNANG
-  private :: NMXX
 
   integer, parameter :: MXNANG=1000
-  integer, parameter :: NMXX=4000000
 
 contains
 
   SUBROUTINE BHMIE(X,REFREL,NANG,S1,S2,QEXT,QSCA,QBACK,GSCA)
+    use kind_mod
     IMPLICIT NONE
 
 ! Arguments:
@@ -151,8 +149,6 @@ contains
 !***********************************************************************
 !*** Safety checks
 
-      allocate(d(1:NMXX))
-
       IF(NANG.GT.MXNANG)STOP'***Error: NANG > MXNANG in bhmie'
       IF(NANG.LT.2)NANG=2
 !*** Obtain pi:
@@ -168,6 +164,8 @@ contains
       XSTOP=X+4.*X**0.3333+2.
       NMX=NINT(MAX(XSTOP,YMOD))+15
 
+      allocate(d(1:NMX))
+
 ! BTD experiment 91.1.15: add one more term to series and compare results
 !      NMX=MAX(XSTOP,YMOD)+16
 ! test: compute 7001 wavelengths between .0001 and 1000 micron
@@ -176,10 +174,6 @@ contains
 ! conclusion: we are indeed retaining enough terms in series!
       NSTOP=NINT(XSTOP)
 !
-      IF(NMX.GT.NMXX)THEN
-          WRITE(0,*)'Error: NMX > NMXX=',NMXX,' for |m|x=',YMOD
-          STOP
-      ENDIF
 !*** Require NANG.GE.1 in order to calculate scattering intensities
       DANG=0.
 
