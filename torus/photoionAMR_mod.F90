@@ -3551,33 +3551,6 @@ end if
 end subroutine dumpLexingtonMPI
 
 
-subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, deexcitation)
-  real, intent(out) :: excitation, deexcitation
-  type(IONTYPE) :: thisIon
-  integer :: iTransition, i
-  real :: temperature
-  real :: thisGamma
-  real :: t , fac
-  real :: boltzFac
-
-  t = max(min(real(thisIon%transition(iTransition)%t(thisIon%transition(iTransition)%ngamma)),temperature), &
-       real(thisIon%transition(iTransition)%t(1)))
-  call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
-  fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
-  thisGamma = thisIon%transition(iTransition)%gamma(i) + &
-       fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
-
-  boltzFac =  exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
-
-  fac = (8.63e-6 / sqrt(temperature)) * thisGamma
-
-  deexcitation =  fac / thisIon%level(thisIon%transition(iTransition)%j)%g
-
-  excitation =  fac / thisIon%level(thisIon%transition(iTransition)%i)%g * boltzFac
-
-end subroutine getCollisionalRates
-
-
 subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
   type(GRIDTYPE) :: grid
   character(len=*) :: species
@@ -3714,97 +3687,6 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   enddo
 end subroutine metalcoolingRate
   
-subroutine solvePops(thisIon, pops, ne, temperature, debug)
-  type(IONTYPE) :: thisIon
-  real(double) :: ne
-  real, intent(out) :: pops(:)
-  real :: temperature
-  real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
-  integer :: n, iTrans, i, j
-  real :: excitation, deexcitation, arateji
-  logical :: ok
-  logical, optional :: debug
-
-  n = thisIon%nLevels
-  allocate(matrixA(1:n, 1:n), matrixB(1:n), tempMatrix(1:n,1:n), qeff(1:n,1:n), rates(1:n))
-
-  matrixA = 1.d-30
-  matrixB = 0.d0
-
-  call getRecombs(rates, thision, dble(temperature))
-
-  matrixA(1,:) = 1.d0
-  matrixB(1) = 1.d0
-
-  matrixB(2:n) = 0.d0 !rates(2:n) * ne * (nh * ionFrac * thisIon%abundance)
-  do iTrans = 1, thisIon%nTransitions
-     i = thision%transition(itrans)%i
-     j = thision%Transition(itrans)%j
-     call getCollisionalRates(thisIon, iTrans, temperature, excitation, deexcitation)
-     qeff(i,j) = excitation
-     qeff(j,i) = deexcitation
-  enddo
-
-  do i = 2, n
-     do j = 1, n
-
-        do iTrans = 1, thisIon%nTransitions
-           if (((i == thision%transition(itrans)%i).and.(j == thision%Transition(itrans)%j)).or. &
-               ((i == thision%transition(itrans)%j).and.(j == thision%Transition(itrans)%i))) then
-              arateji =  thisIon%transition(iTrans)%a
-              
-              matrixA(i,j) = matrixA(i,j) + ne * qeff(j, i)
-              matrixA(i,i) = matrixA(i,i) - ne * qeff(i, j)
-              if (j > i) then
-                 matrixA(i,j) = matrixA(i,j) + arateji
-              else
-                 matrixA(i,i) = matrixA(i,i) - arateji
-              endif
-
-           endif
-        enddo
-
-     enddo
-  enddo
-
-  tempMatrix = matrixA
-
-  if (PRESENT(debug)) then
-     if (debug) then
-        do i = 1, n
-           write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
-        enddo
-     endif
-  endif
-  
-  call luSlv(matrixA, matrixB)
-
-  matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
-  
-  ok = .true.
-
-  if (.not.ok) then
-     write(*,*) "Population solver failed for: ",thisIon%species
-     write(*,*) matrixB(1:n)
-     write(*,*) "nlevels",thisIon%nLevels,"ntrans",thisIon%nTransitions 
-     write(*,*) "temp",temperature,"ne",ne
-     
-     do i = 1, n
-        write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
-     enddo
-     matrixB = 0.d0
-     matrixB(1) = 1.d0
-     write(*,*) "Setting pops to ground state"
-  endif
-
-  do i = 1, n
-     pops(i) = max(1.d-30,matrixB(i))
-  enddo
-
-  deallocate(matrixA, matrixB, tempMatrix, qeff, rates)
-
-end subroutine solvePops
-
 subroutine getSahaMilneFreq(table,temperature, thisFreq)
   type(SAHAMILNETABLE) :: table
   real(double) :: temperature, thisfreq, r, t, fac
@@ -4589,7 +4471,6 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
   subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
        lambdaImage, outputimageType, nPixels)
-    use photoion_mod, only : addForbiddenEmissionLine, addRecombinationEmissionLine
     use input_variables, only : freeFreeImage, nPhotons
     real :: lambdaImage
     include 'mpif.h'
