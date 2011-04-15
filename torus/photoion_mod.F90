@@ -25,7 +25,7 @@ private
 #ifdef MPI
  private :: updateGridMPIphoto
 #endif
-public :: photoIonizationLoop, createImagePhotoion, refineLambdaArray, addForbiddenEmissionLine
+public :: photoIonizationLoop, createImagePhotoion, refineLambdaArray
 
   real :: heIRecombinationFit(32, 3, 3)
   real :: heIRecombinationLambda(32)
@@ -1911,90 +1911,6 @@ subroutine dumpLexington(grid, epsoverdt)
   close(22)
 end subroutine dumpLexington
 
-!subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate)
-!  type(IONTYPE) :: parentIon
-!  real(double) :: nHI, nHII,  recombRate
-!  real :: t4, a, b, c, d
-!  real :: temperature
-!  t4 = nhii;t4 = nhi
-!
-!  recombRate  = 0.d0
-!
-!  select case(parentIon%z)
-!     case(7)
-!        select case(parentIon%n)
-!           case(4) ! N IV
-!              t4 = temperature / 1.e4
-!              a = 3.05e-10
-!              b = 0.60
-!              c = 2.65
-!              d = -0.93
-!              recombRate  = kingdonFerland96(t4, a, b, c, d)
-!        end select
-!     case(8)
-!        select case(parentIon%n)
-!           case(7) ! O II
-!              t4 = temperature / 1.e4
-!              a = 1.04e-9
-!              b = 3.15e-2
-!              c = -0.61
-!              d = -9.73
-!              recombRate  = kingdonFerland96(t4, a, b, c, d)
-!           case(6) ! OIII
-!              t4 = temperature / 1.e4
-!              a = 1.04e-9
-!              b = 0.27
-!              c = 2.02
-!              d = -5.92
-!              recombRate  = kingdonFerland96(t4, a, b, c, d)
-!       end select
-!   end select
-!
-!  recombRate = recombRate * nhi
-!
-!end subroutine getChargeExchangeRecomb
-
-!subroutine getChargeExchangeIon(parentIon, temperature, nHI, nHII, IonRate)
-!  type(IONTYPE) :: parentIon
-!  real(double) :: nHI, nHII, ionRate
-!  real :: temperature
-!  real :: t4, a, b, c, d
-!  t4 = nhi
-!  IonRate = 0.d0
-!
-!  select case(parentIon%z)
-!     case(7)
-!        select case(parentIon%n)
-!           case(7) ! N I charge exchange Ionization
-!              t4 = temperature / 1.e4
-!              a = 4.55e-12
-!              b = -0.29
-!              c = -0.92
-!              d = -8.38
-!              ionRate  = kingdonFerland96(t4, a, b, c, d)
-!        end select
-!     case(8)
-!        select case(parentIon%n)
-!           case(8) ! O I charge exchange ionization
-!              t4 = temperature / 1.e4
-!              a = 7.40e-11
-!              b = 0.47
-!              c = 24.37
-!              d = -0.74
-!              ionRate  = kingdonFerland96(t4, a, b, c, d)
-!       end select
-!   end select!!
-!
-!  ionRate = ionRate * nhii
-!end subroutine getChargeExchangeIon
-
-
-!function kingdonFerland96(t4, a, b, c, d) result (alpha)
-!  real :: alpha
-!  real :: t4, a, b, c, d
-!  alpha = a*(t4**b)*(1.+c*exp(d*t4))
-!end function kingdonFerland96
-
 
 subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
   use ion_mod, only: returnIonNumber
@@ -2723,11 +2639,6 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   deallocate(kAbsArray)
 
 end subroutine addDustContinuum
-
-
-
-
-
 
 
 
