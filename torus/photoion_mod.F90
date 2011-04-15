@@ -14,7 +14,6 @@ use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, cellVolume
 use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcelllocal
 use source_mod, only: SOURCETYPE, sumSourceLuminosityMonochromatic
 use ion_mod, only: IONTYPE
-use phfit_mod, only : phfit2
 use photoion_utils_mod
 #ifdef MPI
 use mpi_global_mod, only : myrankGlobal
@@ -100,8 +99,8 @@ contains
     logical, save :: firsttime = .true.
     integer(bigInt) :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
-    integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
-    integer ::  nVoxels, nOctals
+    integer :: iOctal, iOctal_beg, iOctal_end, nOctal
+    integer :: nVoxels, nOctals
 
 ! For testing convergence
 ! Temperature
@@ -120,32 +119,21 @@ contains
 #ifdef MPI
     ! For MPI implementations
   ! For MPI implementations =====================================================
-    integer ::   my_rank        ! my processor rank
-    integer ::   n_proc         ! The number of processes
     integer ::   ierr           ! error flag
+    integer :: np
     integer(bigInt) :: n_rmdr, m
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
 #endif
 
     !$OMP THREADPRIVATE (firstTime)
+
 #ifdef MPI
-
-
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-    
-    if (my_rank .eq. 0) then
+    if (myRankisZero) then
        print *, ' '
-       print *, 'Photoionization loop computed by ', n_proc, ' processors.'
+       print *, 'Photoionization loop computed by ', nThreadsGlobal, ' processors.'
        print *, ' '
     endif
-    
-    ! ============================================================================
 #endif
 
     call randomNumberGenerator(randomSeed=.true.)
@@ -230,7 +218,6 @@ contains
     do while(.not.converged)
        nIter = nIter + 1
 
-
        nCellsInDiffusion = 0
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
@@ -240,9 +227,8 @@ contains
 
        call zeroDistanceGrid(grid%octreeRoot)
 
-       if (writeoutput) then
-          write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
-       endif
+       write(message,*) "Running loop with ",nmonte," photons. Iteration: ",niter
+       call writeInfo(message,IMPORTANT)
 
        if (doTuning) call tune(6, "One photoionization itr")  ! start a stopwatch
 
@@ -250,20 +236,17 @@ contains
        iMonte_end = nMonte
 
 #ifdef MPI
-
-
-                 np = nThreadsGlobal
-                 n_rmdr = MOD(nMonte,int(np,kind=bigInt))
-                 m = nMonte/np
+       np = nThreadsGlobal
+       n_rmdr = MOD(nMonte,int(np,kind=bigInt))
+       m = nMonte/np
           
-                 if (myRankGlobal .lt. n_rmdr ) then
-                    imonte_beg = (m+1)*myRankGlobal + 1
-                    imonte_end = imonte_beg + m
-                 else
-                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
-                    imonte_end = imonte_beg + m -1
-                 end if
-    
+       if (myRankGlobal .lt. n_rmdr ) then
+          imonte_beg = (m+1)*myRankGlobal + 1
+          imonte_end = imonte_beg + m
+       else
+          imonte_beg = m*myRankGlobal + 1 + n_rmdr
+          imonte_end = imonte_beg + m -1
+       end if   
 #endif
 
        !$OMP PARALLEL DEFAULT(NONE) &
@@ -289,7 +272,6 @@ contains
           end if
           
                     
-
           escaped = .false.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -399,14 +381,13 @@ contains
 
 #ifdef MPI
 
-       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
+       if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
-
        call updateGridMPIphoto(grid)
 
-       if(my_rank == 0) write(*,*) "Done update_octal_MPI"
+       if(myRankIsZero) write(*,*) "Done update_octal_MPI"
 #endif
 
 
@@ -418,10 +399,6 @@ contains
        call  identifyUndersampled(grid%octreeRoot, num_undersampled)
 
 
-    np = 1
-#ifdef MPI
-    my_rank = 1
-#endif
     firstTime = .true.
     sumDeltaT = 0.0_db; numDeltaT = 0
     sumDeltaNe=  0.0_db; numDeltaNe = 0
@@ -433,21 +410,6 @@ contains
        write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
        stop
     endif
-
-#ifdef MPI
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-    
-    ! we will use an array to store the rank of the process
-    !   which will calculate each octal's variables
-
-    
-    ! ============================================================================
-#endif
 
     
     ! default loop indices
@@ -2092,6 +2054,7 @@ real(double) function returnGamma(table, temp, freq) result(out)
 end function returnGamma
 
 subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+  use phfit_mod, only : phfit2
   type(GRIDTYPE) :: grid
   TYPE(OCTAL) :: thisOctal
   integer :: subcell
