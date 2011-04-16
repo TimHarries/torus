@@ -1302,6 +1302,9 @@ contains
     enddo
 
     close(lunit)
+#ifdef MPI
+666 continue
+#endif
   end subroutine writeVTKfileNbody
 
   subroutine writeVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString, xml)
