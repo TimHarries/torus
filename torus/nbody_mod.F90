@@ -247,8 +247,10 @@ contains
           if (i /= j) then
              rVec = source(j)%position - source(i)%position
              r = modulus(rVec)
-             rHat = rVec/r
-             source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / (( r**2 + eps**2)*1.d20)) * rHat
+             if (r /= 0.d0) then
+                rHat = rVec/r
+                source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / (( r**2 + eps**2)*1.d20)) * rHat
+             endif
           endif
        enddo
     enddo

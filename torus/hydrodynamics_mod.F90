@@ -3080,9 +3080,6 @@ end subroutine sumFluxes
     !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
     viewVec = rotateY(viewVec, 25.d0*degtorad)
 
-    it = grid%iDump
-    currentTime = grid%currentTime
-    nextDumpTime = grid%currentTime
 
 
     tff = 1.d0 / sqrt(bigG * (1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
@@ -3094,6 +3091,11 @@ end subroutine sumFluxes
        !tDump = 0.01d0 * tff
        tDump = 1.d0 * tff
     endif
+
+    it = grid%iDump
+    currentTime = grid%currentTime
+    nextDumpTime = grid%currentTime+tdump
+
 
     call setCodeUnit(time=timeUnit)
     call setCodeUnit(mass=massUnit)
@@ -3189,7 +3191,7 @@ end subroutine sumFluxes
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
-    nextDumpTime = 0.
+    if (it ==0) nextDumpTime = 0.
     iUnrefine = 0
 
 
@@ -3303,6 +3305,9 @@ end subroutine sumFluxes
                "rhoe         ", &
                "u_i          ", &
                "phi          "/))
+
+          write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
+          call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
           if (myrank==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -6698,7 +6703,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-5,  tol2 = 1.d-5
+    real(double), parameter :: tol = 1.d-5,  tol2 = 1.d-4
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -7304,7 +7309,7 @@ end subroutine minMaxDepth
      include 'mpif.h'
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
-     real(double) :: temp(7)
+     real(double) :: temp(7),rhomax
      integer :: nSource
      integer :: iThread
      integer :: j, tag, ierr
@@ -7315,7 +7320,9 @@ end subroutine minMaxDepth
 
      do iThread = 1, nHydroThreadsGlobal
         if (myrankGlobal == iThread) then
-           call recursaddSinks(grid%octreeRoot, grid, source, nSource)
+           rhomax = 0.d0
+           call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
+           write(*,*) "Maximum ratio of local density:Jeans density ",rhomax
            do j = 1, nHydroThreadsGlobal
               if (j /= myRankGlobal) then
                  temp(1) = 1.d30
@@ -7338,6 +7345,7 @@ end subroutine minMaxDepth
                  source(nsource)%velocity%x = temp(5) 
                  source(nsource)%velocity%y = temp(6) 
                  source(nsource)%velocity%z = temp(7) 
+                 call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
               endif
            enddo
         endif
@@ -7345,13 +7353,13 @@ end subroutine minMaxDepth
    end subroutine addSinks
           
 
-  recursive subroutine recursaddSinks(thisOctal, grid, source, nSource)
+  recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
     include 'mpif.h'
     type(OCTAL), pointer :: thisOctal, child
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: vel
-    real(double) :: rhoJeans, bigJ, cs, e
+    real(double) :: rhoJeans, bigJ, cs, e, rhomax
     real(double) :: temp(7)
     integer :: nSource
     integer :: i, subcell, ierr, ithread, tag
@@ -7362,30 +7370,33 @@ end subroutine minMaxDepth
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call recursaddSinks(child, grid, source, nSource)
+                call recursaddSinks(child, grid, source, nSource, rhomax)
                 exit
              end if
           end do
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-          bigJ = 0.25d0
+          bigJ = 0.2d0
 
           cs = soundSpeed(thisOctal, subcell)
           rhoJeans = bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2) ! krumholz eq 6
 
+
+          rhoMax = max(thisOctal%rho(subcell) / rhoJeans, rhoMax)
           
           if (thisOctal%rho(subcell) > rhoJeans) then
 
              write(*,*) "Source created"
              write(*,*) "local density ",thisOctal%rho(subcell)
-             write(*,*) "local jeans density ", bigJ**2 * rhoJeans
+             write(*,*) "local jeans density ", rhoJeans
              nSource = nSource + 1
              source(nSource)%position = subcellCentre(thisOctal, subcell)
              source(nsource)%mass = (thisOctal%rho(subcell) - rhoJeans*bigJ)*thisOctal%subcellSize**3*1.d30
              source(nsource)%velocity%x = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
              source(nsource)%velocity%y = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
              source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
+             call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
              vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
                   thisOctal%rhow(subcell)/thisOctal%rho(subcell))

@@ -163,6 +163,73 @@ contains
     if (writeoutput) write(*,*) "done."
   end subroutine buildSphere
 
+  subroutine buildSphereNBody(centre, radius, surface, nTheta)
+    type(VECTOR),intent(in) :: centre
+    real(double),intent(in) :: radius ! 1.e10 cm
+    real(double) :: area ! 1.e20 cm^2
+    type(SURFACETYPE),intent(out) :: surface
+    integer,intent(in) :: nTheta
+    integer :: nPhi, i, j, n
+    real(double) :: theta, phi, dTheta, dPhi
+    real(double) :: dPhase
+    type(VECTOR) :: rVec
+    logical :: ok
+
+    ok = .true.
+
+    surface%centre = centre
+    surface%radius = radius
+    surface%nElements = 0
+    surface%nTheta = ntheta
+
+    allocate(surface%angleArray(1:nTheta,1:nTheta))
+    ! open the continuum flux file to get the number of points
+
+
+
+
+    n = 0
+    do i = 1, nTheta
+       theta = max(1.d-10,pi*real(i-1)/real(nTheta-1))
+!       nphi = max(1,nint(real(nTheta)*sin(theta)))
+       nPhi = ntheta
+       do j = 1, nPhi
+          n = n + 1
+       enddo
+    enddo
+    if (associated(surface%element)) then
+      print *, 'Trying to ALLOCATE surface%element in buildSphere, but it''s'
+      print *, '  already ASSOCIATED! (size is ',SIZE(surface%element),')'         
+      stop
+    else
+      allocate(surface%element(1:n))
+    end if
+
+    n = 0
+    do i = 1, nTheta
+       theta = pi*real(i-1)/real(nTheta-1)
+!       nphi = max(1,nint(real(nTheta)*sin(theta)))
+       nPhi = nTheta ! makes it easier to find element
+       call randomNumberGenerator(getDouble=dphase)
+       dPhase = dphase * twoPi
+       do j = 1, nPhi
+          n = n + 1
+          if (nPhi > 1) then
+             phi = twoPi * real(j-1)/real(nPhi) !+ dPhase
+          else
+             phi = 0.
+          endif
+          if (phi > twoPi) phi = phi - twoPi
+          rVec = VECTOR(cos(phi)*sin(theta), sin(phi)*sin(theta), cos(theta))
+          dTheta = pi / real(nTheta)
+          dPhi = twoPi / real(nPhi)
+          area = radius * dTheta * radius * sin(theta) * dPhi
+          call addElement(surface, radius, rVec, dtheta, dphi, area, 0.)
+          surface%angleArray(i,j) = n
+       enddo
+    enddo
+  end subroutine buildSphereNbody
+
 
   integer function getElement(surface, direction)
     type(VECTOR) :: direction , td
