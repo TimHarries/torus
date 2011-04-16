@@ -1221,9 +1221,9 @@ contains
     integer :: nCount
     
 
-!#ifdef MPI
-!    if (myrankGlobal /=1 ) goto 666
-!#endif
+#ifdef MPI
+    if (myrankGlobal /=1 ) goto 666
+#endif
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
 
     open(lunit,file=vtkFilename, form="formatted", status="unknown")
