@@ -1302,7 +1302,6 @@ contains
     enddo
 
     close(lunit)
-666 continue
   end subroutine writeVTKfileNbody
 
   subroutine writeVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString, xml)
