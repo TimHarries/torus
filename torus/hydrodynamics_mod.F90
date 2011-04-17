@@ -1090,12 +1090,13 @@ contains
           biggamma = 0.d0
 
 
-          if (useviscosity) then
-             if (.not.thisoctal%edgecell(subcell)) then
-                useviscosity = .false.
+          
+          if (.not.thisoctal%edgecell(subcell)) then
+             useviscosity = .false.
                 if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
-!     if ((thisoctal%u_i_plus_1(subcell) < 0.d0).and.(thisoctal%u_i_plus_1(subcell) .ge. thisoctal%u_i_minus_1(subcell))) &
-!     useviscosity = .true.
+                if (useviscosity) then          
+                !     if ((thisoctal%u_i_plus_1(subcell) < 0.d0).and.(thisoctal%u_i_plus_1(subcell) .ge. thisoctal%u_i_minus_1(subcell))) &
+                !     useviscosity = .true.
                 
                 biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
                 * thisoctal%rho(subcell)
