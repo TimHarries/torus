@@ -191,7 +191,7 @@ endif
 ifeq ($(SYSTEM), ompi)
     F95COMP  = mpif90
     F95FLAG  = -Wno=155
-    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
+    DEBUGFLAG= -g3 -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
     CFITSIOLIBS = -lcfitsio
     EXE = torus.ompi
