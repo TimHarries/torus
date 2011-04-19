@@ -95,6 +95,9 @@ contains
                 !write(*,*) "vanleer"
                 thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
                 abs(thisoctal%rlimit(subcell))) / (1 + abs(thisoctal%rlimit(subcell)))
+               
+             case("donorcell")
+                thisOctal%philimit(subcell) = 0.d0
 
 
              case default
