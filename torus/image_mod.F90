@@ -3,13 +3,14 @@ module image_mod
   use constants_mod
   use vector_mod
   use messages_mod
-  use phasematrix_mod, only: STOKESVECTOR
-  use photon_mod, only: PHOTON
-  use source_mod, only: SOURCETYPE, I_nu, getElement
+  use phasematrix_mod
+  use photon_mod
 
   implicit none
 
   public
+
+  private :: pixelLocate
   
   type IMAGETYPE
     type(STOKESVECTOR), pointer :: pixel(:,:) => null()
@@ -42,7 +43,6 @@ module image_mod
   contains
 
      
-
    function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax, xOffset, yOffset)
 
      type(IMAGETYPE) :: initImage
@@ -198,7 +198,42 @@ module image_mod
      endif
    end subroutine addPhotontoPVimage
      
-     
+ 
+   subroutine addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFlux)
+
+     type(VECTOR), intent(in) :: observerDirection
+     type(IMAGETYPE), intent(inout) :: thisImage
+     type(PHOTON), intent(in) :: thisPhoton
+     real(double), intent(inout) :: totalFlux
+     type(VECTOR) :: xProj, yProj
+     real :: xDist, yDist
+     integer :: xPix, yPix
+
+     type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+
+     xPix = 0; yPix = 0
+
+     xProj =  zAxis .cross. observerDirection
+     call normalize(xProj)
+     yProj = observerDirection .cross. xProj
+     call normalize(yProj)
+     xDist = (thisPhoton%position) .dot. xProj
+     yDist = (thisPhoton%position) .dot. yProj
+           
+
+     call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
+
+     if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
+          (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
+
+        thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
+             + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
+
+     endif
+     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
+
+   end subroutine addPhotonToPhotoionImage
+
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, center, lambda0_cont)
@@ -741,14 +776,13 @@ module image_mod
             
   subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
     use input_variables, only : npix, setimageSize, vmin, vmax
-
+    use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
 #ifdef USECFITSIO
     use input_variables, only : griddistance
 #endif
     use amr_mod, only: distanceToGridFromOutside, distanceToCellBoundary, findSubcellLocal, returnKappa, inOctal, &
          returnScatteredIntensity
     use atom_mod, only: bnu
-    use source_mod, only: distanceToSource
     use utils_mod, only: findILambda
     use gridtype_mod, only: GRIDTYPE
     use octal_mod, only: OCTAL
@@ -933,7 +967,5 @@ module image_mod
 #endif
 
 end module image_mod
-
-
 
 

@@ -4705,7 +4705,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
                    addtoImage = .true.
                 endif
                 if (addToImage) then
-                   call addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
+                   call addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
                    goto 777
                 else
                    call sendPhoton(thisPhoton, newThread, endLoop = .false.)
@@ -4733,7 +4733,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
                    newThread = -2
                    call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread)
                    if (addToImage) then
-                      call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
+                      call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
                    else
                       call sendPhoton(observerPhoton, newThread, endLoop = .false.)
                    endif
@@ -4998,44 +4998,6 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        endif
     enddo
   end subroutine moveToNextScattering
-
-
-   subroutine addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFlux)
-     
-     type(IMAGETYPE), intent(inout) :: thisImage
-     type(PHOTON) :: thisPhoton
-     type(VECTOR) :: observerDirection,  xProj, yProj
-     real :: xDist, yDist
-     integer :: xPix, yPix
-     real(double) :: totalFlux
-
-     type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
-
-     xPix = 0; yPix = 0
-
-     xProj =  zAxis .cross. observerDirection
-     call normalize(xProj)
-     yProj = observerDirection .cross. xProj
-     call normalize(yProj)
-     xDist = (thisPhoton%position) .dot. xProj
-     yDist = (thisPhoton%position) .dot. yProj
-           
-     call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
-
-     if ((xPix >= 1) .and. &
-          (yPix >= 1) .and. &
-          (xPix <= thisImage%nx) .and. &
-          (yPix <= thisImage%ny)) then
-              
-        thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
-             + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
-
-!        write(*,*) xpix,ypix, thisImage%pixel(xpix,ypix)%i, &
-!             thisPhoton%stokes%i,  thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
-     endif
-     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau)
-           
-   end subroutine addPhotonToImageLocal
 
    subroutine  computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
      include 'mpif.h'

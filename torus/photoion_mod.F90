@@ -3277,7 +3277,7 @@ end subroutine readHeIIrecombination
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
     use input_variables, only : nPhotons, setimagesize, mie, lamStart, amr2d, gridDistance
-    use image_mod, only: initImage, freeImage, IMAGETYPE
+    use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use lucy_mod, only: calcContinuumEmissivityLucyMono
     use parallel_mod, only: torus_abort
 #ifdef USECFITSIO
@@ -3390,31 +3390,32 @@ end subroutine readHeIIrecombination
        end select
 
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
-
     totalEmission = totalEmission * 1.d30
 
-
-    write(message,*) "Total line emission ",totalEmission
+    write(message,*) "Total continuum emission ",totalEmission
     call writeInfo (message, FORINFO)
     write(message,*) "Total source emission ",lCore
     call writeInfo (message, FORINFO)
+    write(message,*) "Total  emission ",totalEmission+lCore
+    call writeInfo (message, FORINFO)
 
     chanceSource = lCore / (lCore + totalEmission)
-
     probSource = 0.1d0
-
     weightSource = chanceSource / probSource
     weightEnv = (1.d0 - chanceSource) / (1.d0 - probSource)
 
-
     write(message,*) "Probability of photon from sources: ", probSource
+    call writeInfo (message, FORINFO)
+    write(message,*) "Source weight: ", weightSource
+    call writeInfo (message, FORINFO)
+    write(message,*) "Envelope weight: ", weightEnv
     call writeInfo (message, FORINFO)
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     
+
     iBeg = 1
     iEnd = nPhotons
-
 
 #ifdef MPI
     i = nPhotons/nThreadsGlobal
@@ -3454,7 +3455,7 @@ end subroutine readHeIIrecombination
        observerPhoton%direction = observerDirection
        
        call propagateObserverPhoton(grid, observerPhoton)
-       call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
+       call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFlux)
 
        scatterloop: do 
           call moveToNextScattering(grid, thisPhoton, escaped, absorbed)      
@@ -3466,7 +3467,7 @@ end subroutine readHeIIrecombination
           observerPhoton%tau = 0.d0
           observerPhoton%direction = observerDirection
           call propagateObserverPhoton(grid, observerPhoton)          
-          call addPhotonToImageLocal(observerDirection, thisImage, observerPhoton, totalFlux)
+          call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFlux)
        end do scatterloop
 
     end do mainloop
@@ -3614,45 +3615,6 @@ end subroutine readHeIIrecombination
        endif
     enddo
   end subroutine moveToNextScattering
-
-
-   subroutine addPhotonToImageLocal(observerDirection, thisImage, thisPhoton, totalFlux)
-     use image_mod, only: pixelLocate, IMAGETYPE
-
-     type(IMAGETYPE), intent(inout) :: thisImage
-     type(PHOTON) :: thisPhoton
-     type(VECTOR) :: observerDirection,  xProj, yProj
-     real :: xDist, yDist
-     integer :: xPix, yPix
-     real(double) :: totalFlux
-
-     type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
-
-     xPix = 0; yPix = 0
-
-
-     xProj =  zAxis .cross. observerDirection
-     call normalize(xProj)
-     yProj = observerDirection .cross. xProj
-     call normalize(yProj)
-     xDist = (thisPhoton%position) .dot. xProj
-     yDist = (thisPhoton%position) .dot. yProj
-           
-
-     call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
-
-     if ((xPix >= 1) .and. &
-          (yPix >= 1) .and. &
-          (xPix <= thisImage%nx) .and. &
-          (yPix <= thisImage%ny)) then
-
-              
-        thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
-             + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau)
-     endif
-     totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
-
-   end subroutine addPhotonToImageLocal
-
+ 
 end module
 
