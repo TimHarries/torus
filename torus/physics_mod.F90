@@ -238,10 +238,8 @@ contains
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
-    use input_variables, only : useDust, realDust, readlucy, writelucy, variableDustSublimation
-    use input_variables, only : lucyfilenameOut, lucyFilenamein, massEnvelope
+    use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
-    !use input_variables, only : radiationHydrodynamics
     use cmf_mod, only : atomloop
     use photoion_mod, only : photoionizationLoop
 #ifdef MPI
@@ -346,8 +344,7 @@ contains
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
         if (.not.grid%splitOverMPI) then
-           call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray, readlucy, writelucy, &
-             lucyfileNameout, lucyfileNamein)
+           call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
         else
 #ifdef MPI
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &

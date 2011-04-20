@@ -34,11 +34,9 @@ public :: photoIonizationLoop, createImagePhotoion, refineLambdaArray
 contains
 
 
-  subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein)
+  subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use input_variables, only : nlucy, taudiff, lambdaSmooth
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
-    use gridio_mod, only: readAmrGrid, writeAmrGrid
     use ion_mod, only: addXsectionArray
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -52,8 +50,6 @@ contains
 #endif
 
     type(GRIDTYPE) :: grid
-    character(len=*) :: lucyfileout, lucyfilein
-    logical :: readlucy, writelucy
     type(OCTAL), pointer :: thisOctal, tempOctal
     integer :: nCellsInDiffusion
     logical :: directPhoton
@@ -193,13 +189,6 @@ contains
     nIter = 0
     
     converged = .false.
-
-    if (readlucy) then
-       call writeInfo("Reading lucy dumpfile")
-       call readAmrGrid(lucyfilein,.false.,grid)
-       converged = .true.
-    endif
-
 
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
     if (nLucy == 0) then
@@ -674,11 +663,6 @@ contains
  if (writeoutput) close(lun_convfile)
 
  call writeInfo("Done.",TRIVIAL)
-
- if (writelucy) then
-    call writeAmrGrid(lucyfileout,.false.,grid)
- endif
-
 
 end subroutine photoIonizationloop
 

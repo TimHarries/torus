@@ -413,7 +413,7 @@ module input_variables
   real :: radius1, radius2
   logical :: readPops, writePops
   logical :: readPhasePops, writePhasePops
-  logical :: readLucy, writeLucy, openLucy
+  logical :: readLucy, openLucy
   logical :: readMol, writeMol ! molecular_mod equivalents of read/writelucy
   real :: tThresh
   logical :: redolucy
