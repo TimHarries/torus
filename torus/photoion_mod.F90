@@ -12,7 +12,6 @@ use vtk_mod, only: writeVtkFile
 use amr_mod, only: returnKappa, inOctal
 use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, cellVolume
 use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcelllocal
-use source_mod, only: SOURCETYPE, sumSourceLuminosityMonochromatic
 use ion_mod, only: IONTYPE
 use photoion_utils_mod
 #ifdef MPI
@@ -42,7 +41,7 @@ contains
     use gridio_mod, only: readAmrGrid, writeAmrGrid
     use ion_mod, only: addXsectionArray
     use amr_mod, only: countVoxels, getOctalArray
-    use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection
+    use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
     use spectrum_mod, only: getwavelength
 #ifdef MPI
     use parallel_mod, only: mpiBlockHandout, mpiGetblock
@@ -3276,15 +3275,13 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
-    use input_variables, only : nPhotons, setimagesize, mie, lamStart, amr2d, gridDistance
+    use input_variables, only : nPhotons, setimagesize, lamStart, amr2d, gridDistance
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
-    use lucy_mod, only: calcContinuumEmissivityLucyMono
-    use parallel_mod, only: torus_abort
 #ifdef USECFITSIO
     use image_mod, only: writeFitsImage
 #endif
     use math_mod, only: computeprobdist
-    use source_mod, only: randomSource, getphotonpositiondirection
+    use source_mod, only: randomSource, getphotonpositiondirection, SOURCETYPE
     use random_mod
     use amr_mod, only: locatecontprobamr
 #ifdef MPI
@@ -3349,45 +3346,7 @@ end subroutine readHeIIrecombination
        thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0.)
     end if
 
-
-    select case (outputimageType)
-    
-       case("forbidden")
-
-          call writeInfo("Generating forbidden line  image", FORINFO)
-          call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaLine))
-          call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
-
-          if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
-          else
-             lcore = tiny(lcore)
-          endif
-
-       case("dustonly")
-
-          if ( mie ) then 
-             call writeInfo("Generating dust only image", FORINFO)
-          else
-             call torus_abort("Cannot generate dust image with mie=.false.")
-          end if
-
-          call locate(grid%lamArray, grid%nlambda, real(lambdaLine), ilambdaPhoton)
-          write(message,*) "lambda=", lambdaLine, "index=", ilambdaPhoton, " nlambda= ", grid%nlambda
-          call writeInfo(message,FORINFO)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%nlambda, grid%lamArray, real(lambdaLine),iLambdaPhoton)
-
-          if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(ilambdaPhoton)))
-          else
-             lcore = tiny(lcore)
-          endif
-
-       case DEFAULT
-          call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
-          stop
-
-       end select
+    call setupGridForImage(grid, outputimageType, lambdaLine, iLambdaPhoton, nsource, source, lcore)
 
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
     totalEmission = totalEmission * 1.d30
@@ -3414,14 +3373,14 @@ end subroutine readHeIIrecombination
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     
 
-    iBeg = 1
-    iEnd = nPhotons
-
 #ifdef MPI
     i = nPhotons/nThreadsGlobal
     ibeg = (myrankGlobal * i) + 1
     iend = ibeg + i -1
     if (myRankGlobal == (nThreadsGlobal-1)) iEnd = nPhotons
+#else
+    iBeg = 1
+    iEnd = nPhotons
 #endif
 
     mainloop: do iPhoton = iBeg, iEnd

@@ -9,7 +9,9 @@
 ! 2. Tables (pu02)
 ! 3. Charge Exchange Routines(pu03)
 ! 4. Population levels (??04)
-! 5. Line emission routines (??05)
+! 5. Line emission (??05)
+! 6. Continuum emission (??06)
+! 7. Imaging (??07)
 ! X. Unused routines (pu0X)
 
 !NOTE: Until this module is well established, routines will have either a P,
@@ -66,9 +68,9 @@ type GAMMATABLE
 end type GAMMATABLE
 
 ! If a subroutine/function needs to be used outside this module declare it as public here. 
-public :: solvePops, addForbiddenEmissionLine
+public :: solvePops
 private :: getCollisionalRates, identifyForbiddenTransition, addForbiddenToEmission, identifyRecombinationTransition, &
-     addRecombinationToEmission
+     addRecombinationToEmission, addRadioContinuumEmissivity, addForbiddenEmissionLine, addRecombinationEmissionLine
 
 contains
 
@@ -723,6 +725,110 @@ end subroutine addRecombinationEmissionLine
         endif
      enddo
    end subroutine addRecombinationToEmission
+
+! ??06 Continuum emission routines
+
+  recursive subroutine addRadioContinuumEmissivity(thisOctal)
+
+    use stateq_mod, only : alpkk
+    type(octal), pointer  :: thisOctal
+    type(octal), pointer  :: child 
+    integer               :: subcell
+    integer               :: i
+    real(double) :: eta, freq
+    
+    do subcell = 1, thisOctal%maxChildren, 1
+
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call addRadioContinuumEmissivity(child)
+                exit
+             end if
+          end do            
+       else
+          freq = cspeed / (20.d0) ! 20 cm radio free-free
+          eta =  thisOctal%Ne(subcell)**2 * &
+               alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
+               exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
+          
+          eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+             
+          thisOctal%etaCont(subcell) = eta * 1.d10
+          thisOctal%biasCont3d(subcell) = 1.d0
+       end if
+
+    end do
+
+  end subroutine addRadioContinuumEmissivity
+
+! ??07 Imaging
+subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
+  use lucy_mod, only: calcContinuumEmissivityLucyMono
+
+  implicit none
+  
+  type(GRIDTYPE) :: grid
+  character(len=*), intent(in) :: outputImageType
+  real, intent(in)             :: lambdaImage
+  integer, intent(out)         :: iLambdaPhoton
+  integer, intent(in)          :: nsource
+  type(SOURCETYPE), intent(in) :: source(:)
+  real(double), intent(out)    :: lCore
+
+  select case (outputimageType)
+
+  case("freefree")
+
+     ilambdaPhoton = grid%nLambda
+     call  addRadioContinuumEmissivity(grid%octreeRoot)
+     lcore = tiny(lcore)
+
+  case("forbidden")
+
+     call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
+     call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
+
+     if (nSource > 0) then              
+        lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+     else
+        lcore = tiny(lcore)
+     endif
+
+  case("recombination")
+
+     call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
+     call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
+     
+     if (nSource > 0) then              
+        lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+     else
+        lcore = tiny(lcore)
+     endif
+
+  case("dustonly")
+
+     call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage,iLambdaPhoton)
+     
+     if (nSource > 0) then              
+        lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+     else
+        lcore = tiny(lcore)
+     endif
+
+  case DEFAULT
+
+     call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
+     stop
+
+  end select
+
+end subroutine setupGridForImage
 
 !   pu0X Unused routines
       

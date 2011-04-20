@@ -259,7 +259,6 @@ module input_variables
 
   integer :: nLambda, nLambdaInput
   real :: lambdaImage(10)
-  logical :: freeFreeImage
   real :: lamStart, lamEnd
   logical :: lamLinear
   logical :: oneKappa

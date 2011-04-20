@@ -2724,9 +2724,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     enddo
   end subroutine calcContinuumEmissivityLucy
 
-  recursive subroutine  calcContinuumEmissivityLucyMono(grid, thisOctal, nlambda, lamArray, lambda, iPhotonLambda)
+  recursive subroutine  calcContinuumEmissivityLucyMono(grid, thisOctal, lamArray, lambda, iPhotonLambda)
     type(GRIDTYPE) :: grid
-    integer :: nLambda
     integer :: iPhotonLambda
     real :: lamArray(:), lambda
     type(octal), pointer   :: thisOctal
@@ -2739,7 +2738,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calcContinuumEmissivityLucyMono(grid, child, nlambda, lamArray, lambda, iPhotonLambda)
+                call calcContinuumEmissivityLucyMono(grid, child, lamArray, lambda, iPhotonLambda)
                 exit
              end if
           end do

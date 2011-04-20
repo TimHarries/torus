@@ -8,7 +8,6 @@ use messages_mod
 
 use hydrodynamics_mod
 use parallel_mod
-use lucy_mod, only : calcContinuumEmissivityLucyMono
 use photoion_utils_mod
 use gridio_mod
 use source_mod
@@ -4471,8 +4470,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
   subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
        lambdaImage, outputimageType, nPixels)
-    use input_variables, only : freeFreeImage, nPhotons
-    real :: lambdaImage
+    use input_variables, only: nPhotons
+    real, intent(in) :: lambdaImage
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: npixels
@@ -4505,11 +4504,18 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: status(MPI_STATUS_SIZE)
     integer :: isignal
     real(double) :: powerPerPhoton, photonPacketWeight
+    logical :: freefreeImage
 
     call randomNumberGenerator(randomSeed=.true.)
 
     absorbed = .false.
     escaped = .false.
+
+    if (outputimageType == "freefree") then
+       freefreeImage = .true.
+    else
+       freefreeImage = .false.
+    end if
 
     allocate(nDoneArray(1:nThreadsGlobal-1))
     allocate(totalFluxArray(1:nThreadsGlobal-1))
@@ -4528,53 +4534,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     allocate(threadProbArray(1:nThreadsGlobal-1))
 
-    select case (outputimageType)
-       case("freefree")
-          freefreeImage = .true.
-          ilambdaPhoton = grid%nLambda
-          call  addRadioContinuumEmissivity(grid%octreeRoot)
-          lcore = tiny(lcore)
-
-       case("forbidden")
-
-          call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage, iLambdaPhoton)
-          call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
-
-          if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
-          else
-             lcore = tiny(lcore)
-          endif
-
-       case("recombination")
-
-          call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage, iLambdaPhoton)
-          call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
-
-          if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
-          else
-             lcore = tiny(lcore)
-          endif
-
-       case("dustonly")
-
-          call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-          call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, nlambda, grid%lamArray, lambdaImage,iLambdaPhoton)
-
-          if (nSource > 0) then              
-             lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
-          else
-             lcore = tiny(lcore)
-          endif
-       case DEFAULT
-          call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
-          stop
-
-    end select
-
+    call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
 
@@ -5135,41 +5095,6 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     end do 
   end subroutine computeProbDist3AMRMpi
 
-  recursive subroutine addRadioContinuumEmissivity(thisOctal)
-
-    use stateq_mod, only : alpkk
-    type(octal), pointer                 :: thisOctal
-    type(octal), pointer  :: child 
-    integer               :: subcell
-    integer               :: i
-    real(double) :: eta, freq
-    
-    do subcell = 1, thisOctal%maxChildren, 1
-
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call addRadioContinuumEmissivity(child)
-                exit
-             end if
-          end do            
-       else
-          freq = cspeed / (20.d0) ! 20 cm radio free-free
-          eta =  thisOctal%Ne(subcell)**2 * &
-               alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
-               exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
-          
-          eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-             
-          thisOctal%etaCont(subcell) = eta * 1.d10
-          thisOctal%biasCont3d(subcell) = 1.d0
-       end if
-
-    end do
-
-  end subroutine addRadioContinuumEmissivity
-
 #endif    
+
 end module photoionAMR_mod

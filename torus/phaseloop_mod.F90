@@ -1329,7 +1329,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !           endif
 
 
-           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, grid%lamArray, &
+           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            
 !           if (doTuning) call tune(6,"Calculate bias on tau")
