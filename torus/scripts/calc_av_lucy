@@ -1,0 +1,30 @@
+#!/usr/bin/perl -w
+
+# Calcualte the average time taken per iteration
+# of the Lucy algorithm by reading tune.dat
+
+use strict;
+
+my $torustune="tune.dat";
+open FILE1, $torustune;
+
+my $nIter=0;
+my @fields;
+my $timeTaken;
+my $timeSum=0;
+while (<FILE1>){
+  if (/One Lucy Rad Eq Itr/){
+    @fields=split;
+    $nIter++;
+    $timeTaken=$fields[7]*60 + $fields[9];
+    $timeSum += $timeTaken;
+  }
+}
+close FILE1;
+
+my $AverageTime=$timeSum/$nIter;
+print "There were $nIter iterations\n";
+print "Average time per iteration: $AverageTime s\n";
+
+
+
