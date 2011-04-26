@@ -1025,7 +1025,7 @@ end subroutine radiationHydro
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved) &
                !$OMP SHARED(stackSize) &
-               !$OMP SHARED(nPhot, nEscaped)
+               !$OMP SHARED(nPhot, nEscaped, amr1d)
                
                finished = .false.
                escaped = .false.
@@ -1070,7 +1070,7 @@ end subroutine radiationHydro
                            crossedMPIboundary, newThread, sourcePhoton)
 
 ! DMA: check for condition which causes domain decomposed lexington benchmark to deadlock
-! Remove this check once the deadlock is fixed
+! Remove this check once the deadlock is fixed. Also remove amr1d from OpenMP declarations. 
                       if (myRank == 2 .and. crossedMPIBoundary .and. sendAllPhotons .and. amr1d) then 
                          write(*,*) "**** DEADLOCK WARNING ****"
                       end if
