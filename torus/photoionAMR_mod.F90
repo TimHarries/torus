@@ -1069,6 +1069,12 @@ end subroutine radiationHydro
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
                            crossedMPIboundary, newThread, sourcePhoton)
 
+! DMA: check for condition which causes domain decomposed lexington benchmark to deadlock
+! Remove this check once the deadlock is fixed
+                      if (myRank == 2 .and. crossedMPIBoundary .and. sendAllPhotons .and. amr1d) then 
+                         write(*,*) "**** DEADLOCK WARNING ****"
+                      end if
+
                       if (crossedMPIBoundary) then                         
                          !Create a bundle of photon packets, only modify the first available array space
                          !$OMP CRITICAL (crossed_mpi_boundary)
