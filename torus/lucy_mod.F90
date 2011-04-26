@@ -70,7 +70,6 @@ contains
     !    real(oct) :: probDistPlanck(nFreq)
     real(double) :: kappaScadb, kappaAbsdb
     integer(double) :: nDiffusion
-    integer(double) :: nDiffusion_sub
     integer(double) :: nScat, nAbs
     integer(bigInt) :: nMonte, iMonte
     integer :: thisPhotonAbs
@@ -105,7 +104,6 @@ contains
     real(oct)::  dT_mean_new, dT_mean_old ! [Kelvins]
     logical :: converged
     real:: percent_undersampled
-    integer(double) :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: nKilled
     integer(bigInt)       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
     real(double)  :: kAbsArray(nlambda),kAbsArray2(nlambda)
@@ -425,7 +423,7 @@ contains
                 !$OMP PRIVATE(thisOctal, albedo, r) &
                 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
                 !$OMP PRIVATE(i, j, T1) &
-                !$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
+                !$OMP PRIVATE(thisPhotonAbs) &
                 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
                 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
                 !$OMP PRIVATE(oldUHat, packetWeight) &
@@ -437,13 +435,8 @@ contains
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
                 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
                 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
-                !$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled) 
+                !$OMP REDUCTION (+: nAbs, nScat, nInf, nDiffusion, nKilled) 
 
-
-                 nInf_sub = 0
-                 nScat_sub = 0
-                 nAbs_sub = 0
-                 nDiffusion_sub = 0
 
                 !$OMP DO SCHEDULE(DYNAMIC,10)
                 photonloop: do iMonte = imonte_beg, imonte_end
@@ -490,14 +483,11 @@ contains
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
                       If (escaped) then
-
-                      !$OMP ATOMIC
-                         nInf_sub = nInf_sub + 1
+                         nInf = nInf + 1
                       endif
 
                       if (photonInDiffusionZone) then
-                         !$OMP ATOMIC
-                         nDiffusion_sub = nDiffusion_sub + 1
+                         nDiffusion = nDiffusion + 1
                          cycle photonloop
                       endif
 
@@ -544,17 +534,14 @@ contains
                             uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
                                  thisOctal%dustTypeFraction(subcell, 1:nDusttype))
 
-                            !%OMP ATOMIC
-                            nScat_sub = nScat_sub + 1
+                            nScat = nScat + 1
                             uHat = uNew
 
                          else
 
-                            !%OMP ATOMIC
-                            nAbs_sub = nAbs_sub + 1
+                            nAbs = nAbs + 1
                             thisPhotonAbs = thisPhotonAbs + 1
                             if (thisPhotonAbs > 50000) then
-                            !%OMP ATOMIC
                                nKilled = nKilled + 1
                                cycle photonLoop
                             endif
@@ -647,14 +634,7 @@ contains
 
                 enddo photonLoop
                 !$OMP END DO
-                !$OMP CRITICAL (update)
-                  nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
-                  nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
-                  nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
-                  nDiffusion = nDiffusion_sub   + nDiffusion    ! sum from each thread for OpenMP
-          !$OMP END CRITICAL (update)
 
-          !$OMP BARRIER
           !$OMP END PARALLEL
 
 
