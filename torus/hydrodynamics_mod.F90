@@ -2930,12 +2930,12 @@ end subroutine sumFluxes
 
     do while(currentTime <= tend)
 
-       if(grid%geometry == "fluxTest") then
+ !      if(grid%geometry == "fluxTest") then
           call findEnergyOverAllThreads(grid, totalenergy)
           if (writeoutput) write(*,*) "Total energy: ",totalEnergy
           call findMassOverAllThreads(grid, totalmass)
           if (writeoutput) write(*,*) "Total mass: ",totalMass
-       end if
+  !     end if
 
        tc = 0.d0
        if (myrank /= 0) then
@@ -2948,11 +2948,11 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-       if(grid%geometry == "fluxTest") then
+!       if(grid%geometry == "fluxTest") then
           if (myrank == 1) write(*,*) "courantTime", dt, it
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call writeInfo("calling hydro step",TRIVIAL)
-       end if
+!       end if
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -5664,7 +5664,7 @@ end subroutine refineGridGeneric2
 
     unrefine = .false.
 
-    if ((nc > 1)) then !.and.(.not.ghostCell)) then
+    if ((nc > 1).and.(.not.ghostCell)) then
 
        unrefine = .true.
        meancs = SUM(cs(1:nc))/dble(nc)
