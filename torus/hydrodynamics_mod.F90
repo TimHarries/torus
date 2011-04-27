@@ -227,6 +227,7 @@ contains
              endif
 
              dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+!             dx = griddistancescale
 !             dx = thisoctal%subcellsize * griddistancescale
 
              thisoctal%flux_i(subcell) = thisoctal%flux_i(subcell) + &
@@ -248,7 +249,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt
+    real(double) :: dt, dx
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
@@ -275,11 +276,16 @@ contains
 !             x_minus_half = 0.5d0*(thisoctal%x_i(subcell)+thisoctal%x_i_minus_1(subcell))
 !             x_plus_half = 0.5d0*(thisoctal%x_i(subcell)+thisoctal%x_i_plus_1(subcell))
 !             dx = x_plus_half - x_minus_half
+!             dx = thisoctal%subcellsize * griddistancescale
+!             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
 
              thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
                   (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / &
-                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+                  dx
+!                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
 
+!                 dx                 dx
 
 !             dx = thisoctal%subcellsize * griddistancescale
 
@@ -553,57 +559,19 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
              
 
-!Thaw - correcting stuff for non constant grid
-!             if(thisOctal%ndepth < nd) then 
-!                if(grid%octreeRoot%twoD) then
-!                   allocate(rhou_i_minus_one_array(2))
-!                   allocate(rho_i_minus_one_array(2))
-!
-!                   do i = 1,2
-!                      locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell) 
-!                      scaleParam = (0.01d0*grid%halfsmallestsubcell)
-!                      rotator = (cos(pi/2.)*scaleParam,0.d0, sin((pi/2.) + dbl(i)*pi)* scaleParam)
-!                      locator = locator - rotator
-!                      neighbouroctal => thisoctal
-!                      call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-!                      call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-!                           rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
-!
-!                      rhou_i_minus_one_array(i) = rhou 
-!                      rho_i_minus_one_array(i) = rho
-!
-!                   end do
-!       
-!                else
-!
-!                   !Otherwise, 3D (sort later)
-!                   allocate(rhou_i_minus_one_array(4))
-!                   allocate(rho_i_minus_one_array(4))
-!
-!                   
-!                   locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-!                   neighbouroctal => thisoctal
-!                   call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-!                   call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-!                        rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
-!
-!                end if!
-!
-!          end if
-
              rho_i_minus_1 = rho
              rhou_i_minus_1 = rhou
 
 
-!             if (thisoctal%ndepth == nd) then
+             if (thisoctal%ndepth == nd) then
                 weight = 0.5d0
-!             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                !weight  = 0.666666666d0
-!                weight  = 0.75d0
-!             else
-!                weight  = 0.25d0
-!                !weight  = 0.333333333d0 ! coarse to fine
-!             endif
+             else if (thisoctal%ndepth > nd) then ! fine to coarse
+                !weight  = 0.666666666d0
+                weight  = 0.75d0
+             else
+                weight  = 0.25d0
+                !weight  = 0.333333333d0 ! coarse to fine
+             endif
 
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
@@ -1096,13 +1064,13 @@ contains
           
           if (.not.thisoctal%edgecell(subcell)) then
              useviscosity = .false.
-                if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
-                if (useviscosity) then          
+             if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
+             if (useviscosity) then          
                 !     if ((thisoctal%u_i_plus_1(subcell) < 0.d0).and.(thisoctal%u_i_plus_1(subcell) .ge. thisoctal%u_i_minus_1(subcell))) &
                 !     useviscosity = .true.
                 
                 biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
-                * thisoctal%rho(subcell)
+                     * thisoctal%rho(subcell)
              else
                 biggamma = 0.d0
              endif
@@ -2725,7 +2693,7 @@ end subroutine sumFluxes
              cs = soundSpeed(thisOctal, subcell)
 !             if (myrank == 1) write(*,*) "cs ", returnPhysicalUnitSpeed(cs)/1.d5, " km/s ",cs, " code"
              dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
-
+             dx = grid%halfSmallestsubcell * 2.d0
 !Use max velocity not average
              speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
 !             speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
@@ -3015,7 +2983,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
