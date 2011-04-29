@@ -366,7 +366,7 @@ contains
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
     real(double) :: udist, umass, utime,  time, uvel, utemp
-    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h
+    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h, h2ratio, gmw
     integer :: itype ! splash particle type, different convention to SPHNG 
     integer :: ipart, icount, iptmass, igas, idead
     integer :: nptmass, nghost, nstar, nunknown, nlines
@@ -375,6 +375,7 @@ contains
     character(LEN=150) :: message
     character(len=500) :: namestring, unitString
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, ih2frac
+
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
     read(LUIN,*)
@@ -433,7 +434,13 @@ contains
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
     ! velocity unit is derived from distance and time unit (converted to seconds from years)
     sphdata%codeVelocitytoTORUS = uvel / cspeed 
-    sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
+
+    if (convertRhoToHI) then
+       sphdata%codeEnergytoTemperature = 1.0
+    else
+       sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
+    end if
+
     sphData%useSphTem = .true.
     sphdata%totalgasmass = 0.d0
 
@@ -459,12 +466,13 @@ contains
        vx = junkArray(ivx)
        vy = junkArray(ivy)
        vz = junkArray(ivz)
+       h2ratio = junkArray(ih2frac)
 
        if (internalView) call rotate_particles
 
        u = junkArray(iu)
        if ( convertRhoToHI ) then 
-          rhon = (1.0-2.0*junkArray(ih2frac))*junkArray(irho)*5.0/7.0
+          rhon = (1.0-2.0*h2ratio)*junkArray(irho)*5.0/7.0
        else
           rhon = junkArray(irho)
        end if
@@ -489,7 +497,13 @@ contains
           sphdata%vyn(igas) = vy
           sphdata%vzn(igas) = vz
 
-          sphdata%temperature(igas) = u
+          if (convertRhoToHI) then 
+             gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
+             sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
+             write(99,*) gmw, ( (2.0/3.0) * ( gmw / Rgas)) / 1.9725e-8, sphdata%temperature(igas)
+          else
+             sphdata%temperature(igas) = u
+          end if
 
           sphdata%hn(igas) = h
 

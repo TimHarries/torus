@@ -915,8 +915,8 @@ module angularImage
            end if
 
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
-           if ( n_sample > 0.99 ) write(LUIN,'(9(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
-                sphdata%rhon(ipart), dI, n_sample, H2_frac, ipart
+           if ( n_sample > 0.99 ) write(LUIN,'(10(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
+                sphdata%rhon(ipart), dI, n_sample, H2_frac, sphdata%temperature(ipart), ipart
 
         end if
 
@@ -935,6 +935,7 @@ module angularImage
      write(LUIN,'(a)') "dI"
      write(LUIN,'(a)') "nsample"
      write(LUIN,'(a)') "H2frac"
+     write(LUIN,'(a)') "temperature"
      write(LUIN,'(a)') "index"
      close (LUIN)
 
