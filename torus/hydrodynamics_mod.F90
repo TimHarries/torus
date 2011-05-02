@@ -98,7 +98,8 @@ contains
                 dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
 !                dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
 !                dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
-                thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - thisoctal%x_i_minus_2(subcell))
+                thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - &
+                     thisoctal%x_i_minus_2(subcell))
                 a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
@@ -2985,7 +2986,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
