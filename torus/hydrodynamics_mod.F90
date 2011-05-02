@@ -65,9 +65,7 @@ contains
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-     !     if (.not.thisoctal%ghostcell(subcell)) then
-
-!          dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+      !    if (.not.thisoctal%ghostcell(subcell)) then
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
              if (dq /= 0.d0) then
                 if (thisoctal%u_interface(subcell) .ge. 0.d0) then
@@ -75,7 +73,6 @@ contains
                 else
                    thisoctal%rlimit(subcell) = (thisoctal%q_i_plus_1(subcell) - thisoctal%q_i(subcell)) / dq
                 endif
-!                thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - thisoctal%x_i_minus_2(subcell))
              else
                 thisoctal%rlimit(subcell) = 1.d0
              endif
@@ -95,11 +92,25 @@ contains
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
                 
              case("modified_superbee")
-                dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-!                dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
-!                dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
-                thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - &
-                     thisoctal%x_i_minus_2(subcell))
+                if (dq /= 0.d0) then
+                   if (thisoctal%u_interface(subcell) .ge. 0.d0) then
+                      thisoctal%rlimit(subcell) = (thisoctal%q_i_minus_1(subcell) - thisoctal%q_i_minus_2(subcell)) / dq
+                      dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+
+                      thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - &
+                           thisoctal%x_i_minus_2(subcell))
+
+                   else
+                      thisoctal%rlimit(subcell) = (thisoctal%q_i_plus_1(subcell) - thisoctal%q_i(subcell)) / dq
+                      dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+                
+                      thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_plus_1(subcell) - &
+                           thisoctal%x_i(subcell))
+                   endif
+                else
+                   thisoctal%rlimit(subcell) = 1.d0
+                endif
+
                 a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
