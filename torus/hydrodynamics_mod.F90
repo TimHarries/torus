@@ -45,7 +45,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: a, b, dq
+    real(double) :: a, b, dq, dx
     character(len=80) :: message
  
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
@@ -67,7 +67,7 @@ contains
 
      !     if (.not.thisoctal%ghostcell(subcell)) then
 
-          
+!          dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
              if (dq /= 0.d0) then
                 if (thisoctal%u_interface(subcell) .ge. 0.d0) then
@@ -75,9 +75,12 @@ contains
                 else
                    thisoctal%rlimit(subcell) = (thisoctal%q_i_plus_1(subcell) - thisoctal%q_i(subcell)) / dq
                 endif
+!                thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - thisoctal%x_i_minus_2(subcell))
              else
                 thisoctal%rlimit(subcell) = 1.d0
              endif
+
+
              select case (limitertype)
              case("superbee")
 !                write(*,*) myrankglobal, "q_i ", thisoctal%q_i(subcell)
@@ -91,6 +94,15 @@ contains
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
                 
+             case("modified_superbee")
+                dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+!                dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+!                dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+                thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - thisoctal%x_i_minus_2(subcell))
+                a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
+                b = min(2.d0, thisoctal%rlimit(subcell))
+                thisoctal%philimit(subcell) = max(0.d0, a, b)
+
              case("vanleer")
                 !write(*,*) "vanleer"
                 thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
@@ -227,8 +239,8 @@ contains
              endif
 
              dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
-!             dx = griddistancescale
-!             dx = thisoctal%subcellsize * griddistancescale
+
+!             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
 
              thisoctal%flux_i(subcell) = thisoctal%flux_i(subcell) + &
                   0.5d0 * abs(thisoctal%u_interface(subcell)) * &
@@ -249,7 +261,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx
+    real(double) :: dt, dx, df
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
@@ -265,38 +277,17 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-
           if (.not.thisoctal%ghostcell(subcell)) then
-!             dx = thisoctal%subcellsize * griddistancescale
-!             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
-
-!             x_minus_half = 0.5d0*(thisoctal%x_i(subcell)+thisoctal%x_i_minus_1(subcell))
-!             x_plus_half = 0.5d0*(thisoctal%x_i(subcell)+thisoctal%x_i_plus_1(subcell))
-!             dx = x_plus_half - x_minus_half
-!             dx = thisoctal%subcellsize * griddistancescale
-!             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+          
              dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
 
-             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
-                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / &
-                  dx
-!                  (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+             df = (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell))
 
-!                 dx                 dx
-
-!             dx = thisoctal%subcellsize * griddistancescale
-
-!             write(*,*) "old q ",thisoctal%q_i(subcell)
-!             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
-!                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / dx
+                thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dx)
 
 
-
-!             write(*,*) "new q ", thisoctal%q_i(subcell),dt,thisoctal%flux_i_plus_1(subcell), &
-!                  thisoctal%flux_i(subcell),dx
           endif
        endif
     enddo
@@ -398,6 +389,7 @@ contains
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas
+    real(double) :: xnext
     integer :: subcell, i, neighboursubcell
     integer :: nd
     type(vector) :: direction, locator, reversedirection
@@ -434,7 +426,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
              thisoctal%x_i_plus_1(subcell) = x
              thisoctal%q_i_plus_1(subcell) = q
@@ -445,8 +437,9 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%x_i_minus_1(subcell) = x
+             thisoctal%x_i_minus_2(subcell) = xnext
              thisoctal%q_i_minus_1(subcell) = q
              thisoctal%q_i_minus_2(subcell) = qnext
 
@@ -474,7 +467,7 @@ contains
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator, reversedirection
     integer :: nd
-  
+    real(double) :: xnext
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -496,7 +489,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
              thisoctal%rho_i_plus_1(subcell) = rho
              thisoctal%phi_i_plus_1(subcell) = phi
@@ -507,7 +500,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%rho_i_minus_1(subcell) = rho
              thisoctal%phi_i_minus_1(subcell) = phi
 
@@ -532,7 +525,7 @@ contains
 !    real(double) :: rhou_i_minus_1_B, rho_i_minus_1_B
 !    real(double) :: rhou_i_minus_one_array(:), rho_i_minus_one_array(:)
 !    real(double) :: scaleParam
-
+    real(double) :: xnext
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -556,7 +549,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              
 
              rho_i_minus_1 = rho
@@ -597,7 +590,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
-
+    real(double) :: xnext
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -621,7 +614,7 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
                 rho_i_minus_1 = rho
                 rhou_i_minus_1 = rhov
@@ -654,7 +647,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
-  
+    real(double) :: xnext
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -678,7 +671,7 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
                 rho_i_minus_1 = rho
                 rhou_i_minus_1 = rhow
@@ -711,6 +704,8 @@ contains
     type(vector) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd
+    real(double) :: xnext
+
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -734,7 +729,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
              if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
    
@@ -754,7 +749,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%flux_i_minus_1(subcell) = flux
 
 ! new stuff added by tjh
@@ -787,7 +782,8 @@ contains
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     integer :: nd
-  
+    real(double) :: xnext  
+
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
@@ -811,7 +807,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%pressure_i_plus_1(subcell) = pressure
 
              
@@ -819,7 +815,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%pressure_i_minus_1(subcell) = pressure
 
           endif
@@ -838,7 +834,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     integer :: nd
-  
+    real(double) :: xnext
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -861,14 +857,14 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%u_i_plus_1(subcell) = rhou/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%u_i_minus_1(subcell) = rhou/rho
 
           endif
@@ -887,7 +883,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     integer :: nd
-  
+    real(double) :: xnext
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -910,14 +906,14 @@ contains
              neighbouroctal =>thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%u_i_plus_1(subcell) = rhov/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%u_i_minus_1(subcell) = rhov/rho
 
           endif
@@ -936,7 +932,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     integer :: nd
-  
+    real(double) :: xnext
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -959,14 +955,14 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%u_i_plus_1(subcell) = rhow/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%u_i_minus_1(subcell) = rhow/rho
 
           endif
@@ -2692,7 +2688,7 @@ end subroutine sumFluxes
 
              cs = soundSpeed(thisOctal, subcell)
 !             if (myrank == 1) write(*,*) "cs ", returnPhysicalUnitSpeed(cs)/1.d5, " km/s ",cs, " code"
-             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
+!             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
              dx = grid%halfSmallestsubcell * 2.d0
 !Use max velocity not average
              speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
@@ -2819,7 +2815,7 @@ end subroutine sumFluxes
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(10)
     character(len=80) :: plotfile
-    real(double) :: dfluxOne, dFluxTwo, fluxOne, fluxTwo
+    real(double) :: dfluxOne, dFluxTwo, fluxOne, fluxTwo, iniM, endM, iniE, endE
     integer :: tag=30, status, iThread
 
     fluxOne = 0.d0
@@ -2894,15 +2890,22 @@ end subroutine sumFluxes
     it = 0
     nextDumpTime = 0.d0
     iUnrefine = 0
+
 !    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+          call findEnergyOverAllThreads(grid, totalenergy)
+          call findMassOverAllThreads(grid, totalmass)
+
+          iniM = totalMass
+          iniE = totalEnergy
 
     do while(currentTime <= tend)
 
  !      if(grid%geometry == "fluxTest") then
-          call findEnergyOverAllThreads(grid, totalenergy)
-          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-          call findMassOverAllThreads(grid, totalmass)
-          if (writeoutput) write(*,*) "Total mass: ",totalMass
+!          call findEnergyOverAllThreads(grid, totalenergy)
+!          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+!          call findMassOverAllThreads(grid, totalmass)
+!          if (writeoutput) write(*,*) "Total mass: ",totalMass
   !     end if
 
        tc = 0.d0
@@ -2969,8 +2972,7 @@ end subroutine sumFluxes
           call findEnergyOverAllThreads(grid, totalenergy)
           if (writeoutput) write(*,*) "Total energy: ",totalEnergy
           call findMassOverAllThreads(grid, totalmass)
-          if (writeoutput) write(*,*) "Total mass: ",totalMass
-          
+          if (writeoutput) write(*,*) "Total mass: ",totalMass          
           
        end if
     end if
@@ -2983,7 +2985,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
@@ -3004,6 +3006,23 @@ end subroutine sumFluxes
        end if
    
     enddo
+
+
+    call findEnergyOverAllThreads(grid, totalenergy)
+    call findMassOverAllThreads(grid, totalmass)
+    
+    endM = totalMass
+    endE = totalEnergy
+    
+    if(myRank == 1) then
+       print *, "dM (%) = ", (1.d0 - (endM/iniM))*100.d0
+       print *, "dE (%) = ", (1.d0 - (endE/iniE))*100.d0
+       print *, "endM", endM
+       print *, "iniM", iniM
+       print *, "endE", endE
+       print *, "iniE", iniE
+    end if
+
 
   end subroutine doHydrodynamics1d
 
@@ -6332,7 +6351,7 @@ end subroutine refineGridGeneric2
     integer :: n, ndir, nd
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
-
+    real(double) :: xnext
     gGrav = bigG  * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -6379,7 +6398,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
@@ -6436,7 +6455,7 @@ end subroutine refineGridGeneric2
     real(double) ::  g(6), dx
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
-
+    real(double) :: xnext
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -6493,7 +6512,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
@@ -6572,7 +6591,7 @@ end subroutine refineGridGeneric2
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
     real(double) :: sorFactor, deltaPhi
-
+    real(double) :: xnext
     sorFactor = 1.2d0
 
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
@@ -6617,7 +6636,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)

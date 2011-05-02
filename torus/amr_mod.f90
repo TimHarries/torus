@@ -3544,6 +3544,7 @@ CONTAINS
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          ttauriRinner, amr2d
     use input_variables, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
+    use input_variables, only : dorefine, dounrefine
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -4014,16 +4015,22 @@ CONTAINS
 
    case("hydro1d")
 
-      rVec = subcellCentre(thisOctal, subcell)
-      if (thisOctal%nDepth < maxDepthAMR) split = .true.
-      !Coarse to fine
-!      if(rVec%x > 0.6 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-    
-      !fine to coarse
-!      if(rVec%x > 0.6 .and. rvec%x  < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-      if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
+      if(dorefine .and. dounrefine) then
+         rVec = subcellCentre(thisOctal, subcell)
+         if (thisOctal%nDepth < maxDepthAMR) split = .true.
+
+         if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+         if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+
+      else
+         rVec = subcellCentre(thisOctal, subcell)
+         if (thisOctal%nDepth < minDepthAMR) split = .true.
+         !Coarse to fine
+         if(rVec%x > 0.6 .and. rvec%x < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+         
+      end if
 
    case("diagSod")
       rVec = subcellCentre(thisOctal, subcell)
@@ -9718,6 +9725,7 @@ end function readparameterfrom2dmap
 
 
     call copyAttribute(dest%x_i_minus_1, source%x_i_minus_1)
+    call copyAttribute(dest%x_i_minus_2, source%x_i_minus_2)
 
     call copyAttribute(dest%x_i, source%x_i)
     call copyAttribute(dest%x_i_plus_1, source%x_i_plus_1)
@@ -15955,6 +15963,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%x_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%x_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%x_i_minus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%x_i_minus_2,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_plus_1,thisOctal%maxchildren)
@@ -16084,6 +16093,7 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%x_i)
        call deAllocateAttribute(thisOctal%x_i_plus_1)
        call deAllocateAttribute(thisOctal%x_i_minus_1)
+       call deAllocateAttribute(thisOctal%x_i_minus_2)
 
        call deAllocateAttribute(thisOctal%u_interface)
        call deAllocateAttribute(thisOctal%u_i_plus_1)
