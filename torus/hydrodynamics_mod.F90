@@ -115,6 +115,19 @@ contains
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
 
+             case("minmod")
+                
+                a = min(1.d0, thisoctal%rlimit(subcell))
+                thisoctal%philimit(subcell) = max(0.d0, a)
+                
+             case("MC")
+                a = min((1.d0+thisoctal%rlimit(subcell))/2.d0, 2.d0, (2.d0*thisoctal%rlimit(subcell)))
+                thisoctal%philimit(subcell) = max(0.d0, a)
+
+             case("fromm")
+                thisoctal%philimit(subcell) = 0.5d0*(1.d0 + thisoctal%rlimit(subcell))
+                
+
              case("vanleer")
                 !write(*,*) "vanleer"
                 thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
