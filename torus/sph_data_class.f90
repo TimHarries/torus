@@ -426,8 +426,7 @@ contains
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
     iitype = indexWord("itype",word,nWord)
-    ih2frac = indexWord("column 14",word,nWord)
-
+    ih2frac = indexWord("column  14",word,nWord)
 
     write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
     call writeinfo(message, TRIVIAL)
@@ -2017,6 +2016,11 @@ contains
          exit
       endif
    enddo
+
+   if ( indexWord == 0 ) then 
+      call writeFatal("indexWord: "//inputword//" not found")
+   end if
+
  end function indexWord
 
 ! Calculate the total mass of SPH particles found within the AMR grid. Use 
