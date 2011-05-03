@@ -1064,7 +1064,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nTotScat, gammaTableArray, freq) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved) &
-               !$OMP SHARED(stackSize) &
+               !$OMP SHARED(stackSize, nFreq) &
                !$OMP SHARED(nPhot, nEscaped, amr1d)
                
                finished = .false.
@@ -2765,7 +2765,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: photonPacketWeight
     integer :: i 
     real(double) :: fac, xSec
-    real ::  e, crossSection
     logical :: sourcePhoton
 
     
