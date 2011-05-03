@@ -1450,6 +1450,9 @@ contains
 
        call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
             "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
+       call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
+            "Column containing H2 fraction ","(a,i2,a)", 14, ok, .false.)
+
        call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
             "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &

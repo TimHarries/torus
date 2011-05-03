@@ -396,6 +396,7 @@ module input_variables
   logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
   logical :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
   logical :: convertRhoToHI ! Convert density to HI
+  integer :: ih2frac        ! column of SPH file which contains H2 fraction
 
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)

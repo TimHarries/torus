@@ -357,7 +357,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(filename)
-    use input_variables, only: internalView, convertRhoToHI
+    use input_variables, only: internalView, convertRhoToHI, ih2frac
     implicit none
 
     character(LEN=*), intent(in)  :: filename
@@ -374,7 +374,7 @@ contains
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=500) :: namestring, unitString
-    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, ih2frac
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass
 
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
@@ -426,7 +426,6 @@ contains
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
     iitype = indexWord("itype",word,nWord)
-    ih2frac = indexWord("column  14",word,nWord)
 
     write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
     call writeinfo(message, TRIVIAL)
@@ -435,6 +434,10 @@ contains
     sphdata%codeVelocitytoTORUS = uvel / cspeed 
 
     if (convertRhoToHI) then
+       write (message,'(a,i2)') "Converting density to HI density using H2 fraction from column ", ih2frac
+       call writeInfo(message,FORINFO)
+       ! This affects the conversion of internal energy to temperature via the mean molecular weight
+       ! so needs to be handled differently to cases with fixed abundances. 
        sphdata%codeEnergytoTemperature = 1.0
     else
        sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
@@ -465,12 +468,12 @@ contains
        vx = junkArray(ivx)
        vy = junkArray(ivy)
        vz = junkArray(ivz)
-       h2ratio = junkArray(ih2frac)
 
        if (internalView) call rotate_particles
 
        u = junkArray(iu)
        if ( convertRhoToHI ) then 
+          h2ratio = junkArray(ih2frac)
           rhon = (1.0-2.0*h2ratio)*junkArray(irho)*5.0/7.0
        else
           rhon = junkArray(irho)
@@ -499,7 +502,6 @@ contains
           if (convertRhoToHI) then 
              gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
              sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
-             write(99,*) gmw, ( (2.0/3.0) * ( gmw / Rgas)) / 1.9725e-8, sphdata%temperature(igas)
           else
              sphdata%temperature(igas) = u
           end if
