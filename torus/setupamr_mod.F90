@@ -265,6 +265,7 @@ contains
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call writeInfo("grid split.", TRIVIAL)
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 

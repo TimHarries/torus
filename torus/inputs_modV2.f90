@@ -147,6 +147,8 @@ contains
     if(photoionphysics) then
        call getLogical("checkForPhoto", checkforphoto, cLine, fLine, nLines, &
             "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)
+       
+
     end if
 
     if (molecularPhysics.and.atomicPhysics) then
@@ -1142,7 +1144,11 @@ contains
     call getLogical("nodiffuse", noDiffuseField, cLine, fLine, nLines, &
          "Ignore diffuse radiation field: ","(a,1l,a)", .false., ok, .false.)
 
-
+    if(nodiffusefield) then
+       call getLogical("monochromatic", monochromatic, cLine, fLine, nLines, &
+            "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)
+    end if
+    
     call getReal("h_abund", h_abund, 1., cLine, fLine, nLines, &
          "Hydrogen abdunance: ","(a,1PF8.3,a)", &
          1., ok, .false.)

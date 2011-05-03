@@ -100,6 +100,10 @@ contains
     thisIon%Xsec = 0.d0
     do  i = 1, nFreq
        e = hCgs * freq(i) * ergtoEv
+!       print *, "e", e
+ !      print *, "thisIon%iPot", thisIon%iPot
+  !     print *, "i", i
+   !    print *, " "
        if (e > thisIon%iPot) then
           call phfit2(thisIon%z, thisIon%n, thisIon%outerShell , e , xsec)
           thisIon%xSec(i) = dble(xSec)

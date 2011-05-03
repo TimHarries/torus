@@ -306,7 +306,8 @@ contains
 
           if (.not.thisoctal%ghostcell(subcell)) then
           
-             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+!             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
 
              df = (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell))
 
@@ -2713,8 +2714,8 @@ end subroutine sumFluxes
 
              cs = soundSpeed(thisOctal, subcell)
 !             if (myrank == 1) write(*,*) "cs ", returnPhysicalUnitSpeed(cs)/1.d5, " km/s ",cs, " code"
-!             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
-             dx = grid%halfSmallestsubcell * 2.d0
+             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
+!             dx = grid%halfSmallestsubcell * 2.d0
 !Use max velocity not average
              speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
 !             speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2

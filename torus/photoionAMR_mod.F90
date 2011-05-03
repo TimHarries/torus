@@ -202,7 +202,7 @@ contains
              call writeInfo("Calling photoionization loop",TRIVIAL)
              call setupNeighbourPointers(grid, grid%octreeRoot)
              call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                  looplimittime, .True.,.true.)
+                  looplimittime, .true.,.true.)
              call writeInfo("Done",TRIVIAL)
           else
              call writeInfo("Calling photoionization loop",TRIVIAL)
@@ -513,7 +513,8 @@ end subroutine radiationHydro
     integer, parameter :: nTemp = 9
     real(double) :: v, dustHeating
     real :: kappaP
-    integer, parameter :: nFreq = 1000
+!    integer, parameter :: nFreq = 1000
+    integer :: nFreq
 
     logical, save :: firsttime = .true.
     !$OMP THREADPRIVATE(firstTime)
@@ -551,6 +552,7 @@ end subroutine radiationHydro
     integer :: stackSize, p
     integer :: mpi_vector, mpi_photon_stack
     logical :: sendAllPhotons = .false., donePanicking = .true.
+    real(double) :: nIonizingPhotons
 
     type(PHOTONPACKET), allocatable :: photonPacketStack(:)
     type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
@@ -570,6 +572,8 @@ end subroutine radiationHydro
     real(double) :: totalPower = 0.d0
     real(double) :: lams(1000) = 0.d0
     real(double) :: countArray(1000) = 0.d0
+
+    character(len=80) :: mpiFilename
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
     !start with stack size of 1
@@ -620,25 +624,44 @@ end subroutine radiationHydro
        photonPacketStack%tPhot = 0.d0
 !    end if
 
-       nuStart = cSpeed / (1000.e4 * 1.d-8)
-       nuEnd =  cSpeed / (10. * 1.d-8) ! 2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
 
-    do i = 1, nFreq
-       freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
-       freq(i) = 10.d0**freq(i)
-       lams(nFreq-i+1) = cspeed/freq(i)
-    enddo
-    do i = 2, nFreq-1
-       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
-    enddo
-    dfreq(1) = 2.d0*(freq(2)-freq(1))
-    dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
+       if(monochromatic) then
+          nfreq = 2
+          nuStart = (13.60001*evtoerg/hcgs)
+          nuEnd =  (13.60001*evtoerg/hcgs)
+          do i = 1, nFreq
+             freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
+             freq(i) = 10.d0**freq(i)
+             lams(nFreq-i+1) = cspeed/freq(i)
+          enddo
+          do i = 2, nFreq-1
+             dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+          enddo
+          dfreq(1) = 2.d0*(freq(2)-freq(1))
+          dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
+
+       else
+          nfreq = 1000
+          nuStart = cSpeed / (1000.e4 * 1.d-8)
+          nuEnd =  cSpeed / (10. * 1.d-8) ! 2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
+          do i = 1, nFreq
+             freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
+             freq(i) = 10.d0**freq(i)
+             lams(nFreq-i+1) = cspeed/freq(i)
+          enddo
+          do i = 2, nFreq-1
+             dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+          enddo
+          dfreq(1) = 2.d0*(freq(2)-freq(1))
+          dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
+       end if
 
     if (firstTimeTables) then
 
        do i = 1, grid%nIon
           call addxSectionArray(grid%ion(i), nfreq, freq)
-       enddo
+          print *, "grid%ion(i)xsec",grid%ion(i)%xsec
+     enddo
        call createGammaTable(gammaTableArray(1), 'gammaHI.dat')
 
        call createGammaTable(gammaTableArray(2), 'gammaHeI.dat')
@@ -669,8 +692,10 @@ end subroutine radiationHydro
     if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
     if (writeoutput) then
-       write(*,'(a,1pe12.1)') "Ionizing photons per cm^2 ", ionizingFlux(source(1))
+       write(*,'(a,1pe12.1)') "Ionizing photons per second ", ionizingFlux(source(1))
     endif
+
+    nIonizingPhotons = ionizingFlux(source(1))
 
     !nmonte selector: Only works for fixed grids at present
     if (inputnMonte == 0) then
@@ -732,7 +757,18 @@ end subroutine radiationHydro
 
        call clearContributions(grid%octreeRoot)
 
-       epsoverdeltat = lcore/dble(nMonte)
+       if(monochromatic) then
+          if (source(1)%outsidegrid) then
+             
+             epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte))                         
+          else
+             epsoverdeltat = (nIonizingPhotons*((13.60001)*evtoerg))/ &
+                  dble(nMonte)
+          endif
+       else
+          epsoverdeltat = lcore/dble(nMonte)
+       end if
        
        if (myrank /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
@@ -781,8 +817,12 @@ end subroutine radiationHydro
 
                 tPhoton = 0.d0
 
-                call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)                
-                thisFreq = cSpeed/(wavelength / 1.e8)
+                if(monochromatic) then
+                   thisFreq = ((13.60001)*evtoerg)/hcgs
+                else
+                   call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)                
+                   thisFreq = cSpeed/(wavelength / 1.e8)
+                end if
 
                 totalPower = totalPower + epsOverDeltaT*photonPacketWeight
                 
@@ -1268,7 +1308,23 @@ end subroutine radiationHydro
 !
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       epsOverDeltaT = (lCore) / dble(nMonte)
+!       epsOverDeltaT = (lCore) / dble(nMonte)
+       if(monochromatic) then
+          if (source(1)%outsidegrid) then
+
+             epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte))
+
+          else
+             epsoverdeltat = (nIonizingPhotons*((13.60001)*evtoerg))/ &
+                  dble(nMonte)
+          endif
+       else
+          epsoverdeltat = lcore/dble(nMonte)
+!          print *, "epsAlarm"
+       end if
+ 
+
        if (myrank == 1) then
           if (nPhot > 0) then
              write(*,*) "Thread 1 had ",real(nTotScat)/real(nPhot), " scatters per photon"
@@ -1498,6 +1554,13 @@ end subroutine radiationHydro
         nMonte = nMonte *2.d0
      end if
      
+
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"
+     call writeVtkFile(grid, mpiFilename, &
+          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+          "hydrovelocity","sourceCont   ","pressure     "/))
+     
+
      
      call torus_mpi_barrier
   enddo
@@ -1556,8 +1619,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     crossedMPIboundary = .false.
     outOfTime = .false.
 
-    photonMomentum = epsOverDeltaT / cSpeed
+    Photonmomentum = epsOverDeltaT / cSpeed
     thisLam = (cSpeed / thisFreq) * 1.e8
+
+
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
@@ -2700,6 +2765,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: photonPacketWeight
     integer :: i 
     real(double) :: fac, xSec
+    real ::  e, crossSection
     logical :: sourcePhoton
 
     
@@ -2710,10 +2776,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
     call locate(freq, nFreq, thisFreq, iFreq)
 
-    do i = 1, grid%nIon
 
-       xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)
-!       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
+!    e = hCgs * nuHydrogen * ergtoEv
+
+    do i = 1, grid%nIon
+          xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)          
+
        if (xSec > 0.d0) then
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
                + fac * xSec
@@ -3347,8 +3415,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer, parameter :: nPoints = 500
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
-  logical, parameter :: useNiter=.false. ! Tag filename with iteration number?
-
+  logical, parameter :: useNiter=.true. ! Tag filename with iteration number?
+  
   if ( useNiter ) then 
      write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
   else

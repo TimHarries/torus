@@ -58,7 +58,7 @@ module source_mod
       real(double) :: flux
       flux = sumPhotonsOverBand(source%spectrum, 10.d0, 912.d0)
       if (source%outsidegrid) then
-         flux = flux * (source%radius*1.d10)**2/source%distance**2
+         flux = flux * (source%radius*1.d10)**2/(source%distance**2)
       else
          flux = flux * fourPi*(source%radius*1.d10)**2
       endif
