@@ -581,9 +581,9 @@ contains
              rho_i_minus_1 = rho
              rhou_i_minus_1 = rhou
 
-
+             
 !             if (thisoctal%ndepth == nd) then
-!                weight = 0.5d0
+                weight = 0.5d0
 !             else if (thisoctal%ndepth > nd) then ! fine to coarse
 !                !weight  = 0.666666666d0
 !                weight  = 0.75d0
