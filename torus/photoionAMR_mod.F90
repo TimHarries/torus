@@ -660,7 +660,7 @@ end subroutine radiationHydro
 
        do i = 1, grid%nIon
           call addxSectionArray(grid%ion(i), nfreq, freq)
-          print *, "grid%ion(i)xsec",grid%ion(i)%xsec
+          !print *, "grid%ion(i)xsec",grid%ion(i)%xsec
      enddo
        call createGammaTable(gammaTableArray(1), 'gammaHI.dat')
 
