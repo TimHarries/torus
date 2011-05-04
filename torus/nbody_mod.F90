@@ -114,7 +114,7 @@ contains
           thisDt = dt - thisTime
        endif
        if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
-       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-10, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-8, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
        thisTime = thisTime + thisDt
        do i = 1, nSource
           ia = (i-1)*6 + 1
