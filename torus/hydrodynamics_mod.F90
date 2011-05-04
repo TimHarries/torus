@@ -80,13 +80,6 @@ contains
 
              select case (limitertype)
              case("superbee")
-!                write(*,*) myrankglobal, "q_i ", thisoctal%q_i(subcell)
-!                write(*,*) myrankglobal, "q_i-1", thisoctal%q_i_minus_1(subcell)
-!                write(*,*) myrankglobal, "q_i-2", thisoctal%q_i_minus_2(subcell)
-!                write(*,*) myrankglobal, "q_i+1", thisoctal%q_i_plus_1(subcell)
-!                write(*,*) myrankglobal, "dq ",dq
-!                write(*,*) myrankglobal, "r ", thisoctal%rlimit(subcell)
-
                 a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
@@ -232,7 +225,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx!, dq
+    real(double) :: dt, dx
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
@@ -263,21 +256,8 @@ contains
                 stop
              endif
 
-!             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+
              dx = thisOctal%subcellSize*griddistancescale
-!             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-
-
-!             if (thisoctal%ndepth == nd) then
-!                dq = (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
-!
-!             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                dq = (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
-!
-!             else
-!                dq = (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
-!             endif
-
 
 
              thisoctal%flux_i(subcell) = thisoctal%flux_i(subcell) + &
@@ -450,14 +430,6 @@ contains
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
-!          if (associated(thisoctal%mpiboundarystorage)) then
-!             if (myrank == 1) then
-!                write(*,*) "x_i", &
-!                  thisoctal%x_i(subcell),thisoctal%mpiboundarystorage(subcell, 1:6, 7)
-!                write(*,*) "subcell x_i ",thisoctal%x_i(subcell)
-!             endif
-!          endif
-
           thisoctal%x_i_minus_1(subcell) = 0.d0
           thisoctal%x_i_plus_1(subcell) = 0.d0
           if (.not.thisoctal%edgecell(subcell)) then
@@ -482,6 +454,20 @@ contains
              thisoctal%x_i_minus_2(subcell) = xnext
              thisoctal%q_i_minus_1(subcell) = q
              thisoctal%q_i_minus_2(subcell) = qnext
+!
+!             if (thisoctal%ndepth == nd) then
+!                thisoctal%q_i_minus_1(subcell) = q
+!
+!             else if (thisoctal%ndepth > nd) then ! fine to coarse
+!                thisoctal%q_i_minus_1(subcell) = (q + thisOctal%q_i!(subcell))*2.d0/3.d0
+!                !
+!             els!e!!
+!
+!                thisoctal%u_interface(subcell) = &
+!                     (2.d0/3.d0)*(((thisoctal%rhou(subcell)/thisoctal%rho(subcell))/2.d0) + &
+!                     (rhou_i_minus_1/rho_i_minus_1))
+!             endif
+
 
 
 !             write(*,*) "q: ", thisoctal%q_i_minus_2(subcell), thisoctal%q_i_minus_1(subcell), thisoctal%q_i(subcell), &
@@ -604,12 +590,12 @@ contains
              else if (thisoctal%ndepth > nd) then ! fine to coarse
 
                 thisoctal%u_interface(subcell) = &
-                     0.66666d0*((thisoctal%rhou(subcell)/thisoctal%rho(subcell)) + &
+                     (2.d0/3.d0)*((thisoctal%rhou(subcell)/thisoctal%rho(subcell)) + &
                      ((rhou_i_minus_1/rho_i_minus_1)/2.d0))
              else
 
                 thisoctal%u_interface(subcell) = &
-                     0.66666d0*(((thisoctal%rhou(subcell)/thisoctal%rho(subcell))/2.d0) + &
+                     (2.d0/3.d0)*(((thisoctal%rhou(subcell)/thisoctal%rho(subcell))/2.d0) + &
                      (rhou_i_minus_1/rho_i_minus_1))
              endif
 

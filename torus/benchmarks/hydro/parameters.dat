@@ -5,7 +5,7 @@ writegrid F
 
 hydrodynamics T
 
-limitertype superbee
+limitertype modified_superbee
 
 mindepthamr 3
 maxdepthamr 10
