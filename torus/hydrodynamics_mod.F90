@@ -232,7 +232,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx
+    real(double) :: dt, dx, dq
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
@@ -263,9 +263,22 @@ contains
                 stop
              endif
 
-             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
-
+!             dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+             dx = thisOctal%subcellSize*griddistancescale
 !             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+
+
+!             if (thisoctal%ndepth == nd) then
+!                dq = (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
+!
+!             else if (thisoctal%ndepth > nd) then ! fine to coarse
+!                dq = (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
+!
+!             else
+!                dq = (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
+!             endif
+
+
 
              thisoctal%flux_i(subcell) = thisoctal%flux_i(subcell) + &
                   0.5d0 * abs(thisoctal%u_interface(subcell)) * &
@@ -307,7 +320,8 @@ contains
           if (.not.thisoctal%ghostcell(subcell)) then
           
 !             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+!             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
+             dx = thisOctal%subcellSize*griddistancescale
 
              df = (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell))
 
@@ -582,22 +596,27 @@ contains
              rhou_i_minus_1 = rhou
 
              
-!             if (thisoctal%ndepth == nd) then
-                weight = 0.5d0
-!             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                !weight  = 0.666666666d0
-!                weight  = 0.75d0
-!!             else
- !               weight  = 0.25d0
- !               !weight  = 0.333333333d0 ! coarse to fine
- !            endif
 
-             thisoctal%u_interface(subcell) = &
-                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
-                  (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
+             if (thisoctal%ndepth == nd) then
+                thisoctal%u_interface(subcell) = &
+                     0.5d0*((thisoctal%rhou(subcell)/thisoctal%rho(subcell)) + &
+                     (rhou_i_minus_1/rho_i_minus_1))
+             else if (thisoctal%ndepth > nd) then ! fine to coarse
+
+                thisoctal%u_interface(subcell) = &
+                     0.66666d0*((thisoctal%rhou(subcell)/thisoctal%rho(subcell)) + &
+                     ((rhou_i_minus_1/rho_i_minus_1)/2.d0))
+             else
+
+                thisoctal%u_interface(subcell) = &
+                     0.66666d0*(((thisoctal%rhou(subcell)/thisoctal%rho(subcell))/2.d0) + &
+                     (rhou_i_minus_1/rho_i_minus_1))
+             endif
+
+!             thisoctal%u_interface(subcell) = &
+ !                 weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
+  !                (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
  
-!             deallocate(rhou_i_minus_one_array)
-!             deallocate(rho_i_minus_one_array)
      
           endif
        endif
