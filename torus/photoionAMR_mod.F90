@@ -1172,7 +1172,8 @@ end subroutine radiationHydro
                                   end do
 
                                   if(thisPacket /= 1 .and. nSaved(optCounter) /= 0) then
-                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+                                          ierr)
                                      nSaved(optCounter) = 0
                                      toSendStack%freq = 0.d0
                                      toSendStack%destination = 0
