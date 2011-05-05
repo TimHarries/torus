@@ -556,7 +556,7 @@ end subroutine radiationHydro
 
     type(PHOTONPACKET), allocatable :: photonPacketStack(:)
     type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
- 
+
    !Custom MPI type variables
     integer(MPI_ADDRESS_KIND) :: displacement(7)
     integer :: count = 7
@@ -723,7 +723,7 @@ end subroutine radiationHydro
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
-                nMonte = 100.d0 * 2**(maxDepthAMR)
+                nMonte = 1000.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -926,8 +926,10 @@ end subroutine radiationHydro
                 toSendStack%freq = 0.d0
                 do iThread = 1, nThreads - 1
                    toSendStack(1)%destination = 999
+                   !toSendStack(1)%freq = 100.d0
+                   
                    call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
-                
+                   
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
                                
                 enddo
@@ -951,6 +953,7 @@ end subroutine radiationHydro
 
 
              do iThread = 1, nThreads - 1
+                !tosendstack(1)%freq = 100.d0
                 toSendStack(1)%destination = 999
                 toSendStack(2)%destination = 999
                 call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
@@ -971,15 +974,18 @@ end subroutine radiationHydro
                 !Get a new photon stack
                 iSignal = -1
                 if(stackSize == 0) then
-                   !call MPI_RECV(currentStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
-                   call MPI_RECV(toSendStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
-                   currentStack = toSendStack
-                   !Check to see how many photons in stack are not null
-                   do p = 1, stackLimit
-                      if(currentStack(p)%freq /= 0.d0) then                            
-                         stackSize = stackSize + 1
-                      end if
-                   end do
+                      
+                      call MPI_RECV(toSendStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+                      currentStack = toSendStack
+                      
+
+                      !Check to see how many photons in stack are not null
+                      do p = 1, stackLimit
+                         if(currentStack(p)%freq /= 0.d0) then                            
+                            stackSize = stackSize + 1
+                         end if
+                      end do
+
                    !Check to see if a special action is required
                    escapeCheck = .false.
                    !Escape checking
@@ -988,20 +994,21 @@ end subroutine radiationHydro
                       escapeCheck = .true.
                       stackSize = 0
                       !End photoionization loop
+
                       if(currentStack(2)%destination == 999) then
                          iSignal = 0                    
                       end if
-                      
+                      currentStack%destination = 0                      
                       !Start sending all photon packets rather than bundles
                    else if(currentStack(1)%destination == 500 .and. .not. sendAllPhotons) then
                       sendAllPhotons = .true.
                       stackSize = 0
-                      
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nThreads-1
                          if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
                             if(nSaved(optCounter) == (stackLimit) .or. sendAllPhotons) then
                                thisPacket = 1
+                               
                                toSendStack%freq = 0.d0
                                do sendCounter = 1, (stackLimit*nThreads)
                                   if(photonPacketStack(sendCounter)%destination /= 0 .and. &
@@ -1035,6 +1042,7 @@ end subroutine radiationHydro
                         end if
                      end do
                      call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+                     
                      goto 777
                   end if
                   Currentstack%destination = 0
@@ -1110,10 +1118,10 @@ end subroutine radiationHydro
                            crossedMPIboundary, newThread, sourcePhoton)
 
 ! DMA: check for condition which causes domain decomposed lexington benchmark to deadlock
-! Remove this check once the deadlock is fixed. Also remove amr1d from OpenMP declarations. 
-                      if (myRank == 2 .and. crossedMPIBoundary .and. sendAllPhotons .and. amr1d) then 
-                         write(*,*) "**** DEADLOCK WARNING ****"
-                      end if
+ !Remove this check once the deadlock is fixed. Also remove amr1d from OpenMP declarations. 
+  !                    if (myRank == 2 .and. crossedMPIBoundary .and. sendAllPhotons .and. amr1d) then 
+  !                       write(*,*) "**** DEADLOCK WARNING ****"
+  !                    end if
 
                       if (crossedMPIBoundary) then                         
                          !Create a bundle of photon packets, only modify the first available array space
@@ -1162,10 +1170,14 @@ end subroutine radiationHydro
                                         
                                      end if
                                   end do
-                                  call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
-                                  nSaved(optCounter) = 0
-                                  toSendStack%freq = 0.d0
-                                  toSendStack%destination = 0
+
+                                  if(thisPacket /= 1 .and. nSaved(optCounter) /= 0) then
+                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+                                     nSaved(optCounter) = 0
+                                     toSendStack%freq = 0.d0
+                                     toSendStack%destination = 0
+                                  end if
+                                  
                                end if
                             end if
                          end do
