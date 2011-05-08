@@ -1289,8 +1289,8 @@ contains
 
              rhou = thisoctal%rhou(subcell)
 
-             dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-!             dx = thisoctal%subcellsize * griddistancescale
+!             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+             dx = thisoctal%subcellsize * griddistancescale
 
 
 !             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
@@ -1298,25 +1298,25 @@ contains
 
   
              !Thaw - Rhie-Chow interpolation
-             !print *, "rhou", thisoctal%rhou(subcell)
-             if(rhieChow) then
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt) * &
-                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-                !print *, "rhou", thisoctal%rhou(subcell)
-
+!             !print *, "rhou", thisoctal%rhou(subcell)
+!             if(rhieChow) then
+!                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt) * &
+!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
+!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+!                !print *, "rhou", thisoctal%rhou(subcell)
+!
 !                write(*,*) "rhou pressure ", thisOctal%rhou(subcell),  (dt) * &
 !                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
 !                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
 !                    thisOctal%pressure_i(subcell)
-
-
-             else 
+!!
+!
+!             else 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
 
-             end if
+!             end if
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
