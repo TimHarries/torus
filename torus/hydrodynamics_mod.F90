@@ -762,19 +762,19 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
-             if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
+!             if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
    
                 thisoctal%flux_i_plus_1(subcell) = flux
 
-             else
-                ! now we need to do the fine-to-coarse flux
-
-                if (thisoctal%u_i_plus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
-                   thisoctal%flux_i_plus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_plus_1(subcell)
-                else
-                   thisoctal%flux_i_plus_1(subcell) = flux ! flow is from neighbour into this one
-                endif
-             endif
+!             else
+!                ! now we need to do the fine-to-coarse flux
+!
+!                if (thisoctal%u_i_plus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
+!                   thisoctal%flux_i_plus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_plus_1(subcell)
+!                else
+!                   thisoctal%flux_i_plus_1(subcell) = flux ! flow is from neighbour into this one
+!                endif
+!             endif
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -785,16 +785,16 @@ contains
 
 ! new stuff added by tjh
 
-             if (thisoctal%ndepth >= nd) then ! this is a coarse-to-fine cell boundary
+!             if (thisoctal%ndepth >= nd) then ! this is a coarse-to-fine cell boundary
                 thisoctal%flux_i_minus_1(subcell) = flux
-             else
-                ! now we need to do the fine-to-coarse flux
-                if (thisoctal%u_i_minus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
-                   thisoctal%flux_i_minus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_minus_1(subcell)
-                else
-                   thisoctal%flux_i_minus_1(subcell) = flux ! flow is from neighbour into this one
-                endif
-             endif
+!             else
+!                ! now we need to do the fine-to-coarse flux
+!                if (thisoctal%u_i_minus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
+!                   thisoctal%flux_i_minus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_minus_1(subcell)
+!                else
+!                   thisoctal%flux_i_minus_1(subcell) = flux ! flow is from neighbour into this one
+!                endif
+!             endif
 
           endif
        endif
