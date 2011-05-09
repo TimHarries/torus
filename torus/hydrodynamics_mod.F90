@@ -5780,7 +5780,7 @@ end subroutine refineGridGeneric2
           dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
        endif
 
-       unrefine = .false.
+       unrefine = .true.
        do i = 1, nDir
           maxGradient = 1.d-30
           locator = centre + r*dirVec(i)
