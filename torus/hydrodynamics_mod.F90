@@ -2848,7 +2848,6 @@ end subroutine sumFluxes
     character(len=80) :: plotfile
     real(double) :: dfluxOne, dFluxTwo, fluxOne, fluxTwo, iniM, endM, iniE, endE
     integer :: tag=30, status, iThread
-    real(double) :: preMass, preEnergy
 
     fluxOne = 0.d0
     fluxTwo = 0.d0

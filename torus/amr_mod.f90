@@ -10698,12 +10698,12 @@ end function readparameterfrom2dmap
     TYPE(OCTAL), INTENT(INOUT) :: childOctal 
     
     TYPE(OCTAL), POINTER :: parentOctal
-    INTEGER :: parentSubcell, iSubcell
+    INTEGER :: parentSubcell !, iSubcell
     INTEGER :: nVals, i
     REAL(double) :: nValsREAL
 
-    REAL(double) :: dv, oldMass, newMass, oldEnergy, newEnergy
-    REAL(double) :: factor
+!    REAL(double) :: dv, oldMass, newMass, oldEnergy, newEnergy
+ !   REAL(double) :: factor
 
     IF ( childOctal%nDepth == 1 ) THEN
       ! we're at the root of the tree
