@@ -4016,7 +4016,7 @@ CONTAINS
    case("hydro1d")
 
 
-      if(dorefine .and. dounrefine) then
+      if(dorefine .or. dounrefine) then
          rVec = subcellCentre(thisOctal, subcell)
          if (thisOctal%nDepth < maxDepthAMR) split = .true.
 
@@ -10698,9 +10698,12 @@ end function readparameterfrom2dmap
     TYPE(OCTAL), INTENT(INOUT) :: childOctal 
     
     TYPE(OCTAL), POINTER :: parentOctal
-    INTEGER :: parentSubcell
+    INTEGER :: parentSubcell, iSubcell
     INTEGER :: nVals, i
     REAL(double) :: nValsREAL
+
+    REAL(double) :: dv, oldMass, newMass, oldEnergy, newEnergy
+    REAL(double) :: factor
 
     IF ( childOctal%nDepth == 1 ) THEN
       ! we're at the root of the tree
@@ -10721,7 +10724,6 @@ end function readparameterfrom2dmap
     endif
 
     nValsREAL = REAL( nVals, KIND=double )
-
 
     if (associated(childOctal%boundaryCondition)) &
          parentOctal%boundaryCondition(parentSubcell) = childOctal%boundaryCondition(1)
@@ -10753,6 +10755,80 @@ end function readparameterfrom2dmap
    
     parentOctal%temperature(parentSubcell) = &
      SUM(childOctal%temperature(1:nVals)) / nValsREAL
+
+
+!!THAW - conservation normalization
+!!Need to use subcellSize rather than cell volume!
+!
+!! Mass 
+!
+!    oldMass = 0.d0 
+!    newMass = 0.d0
+!
+!    do iSubcell = 1, parentOctal%maxChildren
+!
+!       if (childOctal%threed) then
+!          dv = cellVolume(childOctal, iSubcell) * 1.d30
+!       else if (childOctal%twoD) then
+!          dv = childOctal%subcellSize**2
+!       else if (childOctal%oneD) then
+!          dv = childOctal%subcellSize
+!       endif
+!
+!       oldMass = oldMass + childOctal%rho(iSubcell) * dV
+!    enddo
+!
+!       if (parentOctal%threed) then
+!          dv = cellVolume(parentOctal, parentSubcell) * 1.d30
+!       else if (parentOctal%twoD) then
+!          dv = parentOctal%subcellSize**2
+!       else if (parentOctal%oneD) then
+!          dv = parentOctal%subcellSize
+!       endif
+!
+!    newMass = parentOctal%rho(parentSubcell)*dv!
+!
+!    factor = oldMass/newMass
+!    print *, "factor A", factor
+!    parentOctal%rho(parentSubcell) = parentOctal%rho(parentSubcell) * factor
+!
+!
+!! Energy
+!
+!    oldEnergy = 0.d0
+!    newEnergy = 0.d0
+!
+!
+!    do iSubcell = 1, parentOctal%maxChildren
+!
+!       if (childOctal%threed) then
+!          dv = cellVolume(childOctal, iSubcell) * 1.d30
+!       else if (childOctal%twoD) then
+!          dv = childOctal%subcellSize**2
+!       else if (childOctal%oneD) then
+!          dv = childOctal%subcellSize
+!       endif!!
+!
+!       oldEnergy = oldEnergy + childOctal%rhoe(iSubcell) * dV
+!    enddo
+!
+!
+!    if (parentOctal%threed) then
+!       dv = cellVolume(parentOctal, iSubcell) * 1.d30
+!    else if (parentOctal%twoD) then
+!       dv = parentOctal%subcellSize**2
+!    else if (parentOctal%oneD) then
+!       dv = parentOctal%subcellSize
+!    endif
+!    
+!    newEnergy = parentOctal%rhoe(parentSubcell)*dv
+!    !
+!    factor = oldEnergy/newEnergy
+!    print *, "factor B", factor
+!    parentOctal%rhoe(parentSubcell) = parentOctal%rhoe(parentSubcell) * factor
+!
+!!Conservation done!
+
 
 
     if (associated(parentOctal%ionFrac)) then

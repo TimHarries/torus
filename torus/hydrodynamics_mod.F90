@@ -2848,6 +2848,7 @@ end subroutine sumFluxes
     character(len=80) :: plotfile
     real(double) :: dfluxOne, dFluxTwo, fluxOne, fluxTwo, iniM, endM, iniE, endE
     integer :: tag=30, status, iThread
+    real(double) :: preMass, preEnergy
 
     fluxOne = 0.d0
     fluxTwo = 0.d0
@@ -2937,7 +2938,10 @@ end subroutine sumFluxes
 !          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
 !          call findMassOverAllThreads(grid, totalmass)
 !          if (writeoutput) write(*,*) "Total mass: ",totalMass
-  !     end if
+!          if(myRank == 1) then
+!             print *, "dM (%) = ", (1.d0 - (iniM/totalmass))*100.d0
+!             print *, "dE (%) = ", (1.d0 - (iniE/totalenergy))*100.d0
+!          end if
 
        tc = 0.d0
        if (myrank /= 0) then
@@ -2964,7 +2968,8 @@ end subroutine sumFluxes
              grid%currentTime = tend
           else
              call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-          end if
+          end if          
+
           if(dounrefine) then
              iUnrefine = iUnrefine + 1
              
@@ -2974,7 +2979,7 @@ end subroutine sumFluxes
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
                 !             write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
-                
+                print *, "nUnrefine", nUnrefine
                 iUnrefine = 0
              endif
           end if
@@ -2982,14 +2987,13 @@ end subroutine sumFluxes
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
           call zeroRefinedLastTime(grid%octreeRoot)
           if(dorefine) then
              call refineGridGeneric(grid, 1.d-2)
            end if
            call evenUpGridMPI(grid, .true., dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
+          
        else
 
           if(grid%geometry == "fluxTest") then
@@ -3016,7 +3020,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
@@ -3628,6 +3632,30 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine zeroRefinedLastTime
+
+
+!  recursive subroutine printRefinedLastTime(thisOctal)
+!    type(octal), pointer   :: thisOctal
+!    type(octal), pointer  :: child
+!    integer :: subcell, i!
+!
+!    do subcell = 1, thisOctal%maxChildren
+!       if (thisOctal%hasChild(subcell)) then
+!          ! find the child
+!          do i = 1, thisOctal%nChildren, 1
+!             if (thisOctal%indexChild(i) == subcell) then
+!                child => thisOctal%child(i)
+!                call zeroRefinedLastTime(child)
+!                exit
+!             end if
+!          end do
+!       else
+!          if(thisOctal%refinedLastTime) then
+!       endif
+!    enddo
+!  end subroutine printRefinedLastTime
+
+
 
   recursive subroutine zeroPhigas(thisOctal)
     type(octal), pointer   :: thisOctal
@@ -5417,6 +5445,8 @@ end subroutine sumFluxes
 !                   endif
 !                endif
                 
+
+!THAW - commented out exits and replaced them with a single so that neither are skipped
                 if (split) then
                    if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
                       call addNewChildWithInterp(thisOctal, subcell, grid)
@@ -5430,11 +5460,8 @@ end subroutine sumFluxes
                       converged = .false.
                       exit
                    endif
+                   
                 endif
-
-
-
-
 
              endif
           enddo
@@ -5636,13 +5663,14 @@ end subroutine refineGridGeneric2
     logical :: refinedLastTime, ghostCell, split
     real(double) :: r, maxGradient
     real(double) :: rho1, rhoe1, rhou1, rhov1, rhow1, grad, speed, thisSpeed, meanrho, meancs
-    real(double) :: splitLimit
+    real(double) :: splitLimit, dv
     integer :: ndir
     logical :: debug
     type(VECTOR) :: dirvec(6), locator, centre
 
     debug = .false.
     limit  = 1.d-3
+
 
     unrefine = .true.
     refinedLastTime = .false.
@@ -5671,7 +5699,16 @@ end subroutine refineGridGeneric2
           rhow(nc) = thisOctal%rhow(subcell)
           cs(nc) = soundSpeed(thisOctal, subcell)
 
-          mass = mass +  thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) * 1.d30
+          if (thisOctal%threed) then
+             dv = cellVolume(thisOctal, Subcell) * 1.d30
+          else if (thisOctal%twoD) then
+             dv = thisOctal%subcellSize**2
+          else if (thisOctal%oneD) then!
+             dv = thisOctal%subcellSize
+          endif
+
+!          mass = mass +  thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) * 1.d30
+          mass = mass +  thisOctal%rho(subcell)*dv
 
           cs(nc) = soundSpeed(thisOctal, subcell)
           if (thisOctal%ghostCell(subcell)) ghostCell=.true.
@@ -5744,6 +5781,7 @@ end subroutine refineGridGeneric2
           dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
        endif
 
+       unrefine = .false.
        do i = 1, nDir
           maxGradient = 1.d-30
           locator = centre + r*dirVec(i)
@@ -5772,7 +5810,8 @@ end subroutine refineGridGeneric2
                    endif
                 endif
 
-                if (split) then
+                !THaw - added ".and. unrefine because previously it would only care about the last direction
+                if (split .and. unrefine) then
                    unrefine = .false.
                 endif
              endif

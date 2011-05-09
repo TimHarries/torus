@@ -104,6 +104,7 @@ contains
                    dv = thisOctal%subcellSize**2/1.d30
                 else if (thisOctal%oned) then
                    dv = thisOctal%subcellSize/1.d30
+
                 endif
              endif
              totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
@@ -2135,7 +2136,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: phiCorner(8)
     real(double) :: weight, totalWeight
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
-    real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z
+    real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
     real(double) :: oldMass, newMass, factor
     real(double) :: oldEnergy, newEnergy!, oldMom, newMom
     logical, save :: firstTime = .true.
@@ -2549,22 +2550,64 @@ end subroutine dumpStromgrenRadius
     ! conservation normalizations
 
     ! mass
-    oldMass = parent%rho(parentSubcell) * cellVolume(parent, parentSubcell)
+
+    if (thisOctal%threed) then
+       dv = cellVolume(thisOctal, parentSubcell) * 1.d30
+    else if (thisOctal%twoD) then
+       dv = parent%subcellSize**2
+    else if (thisOctal%oneD) then
+       dv = parent%subcellSize
+    endif
+
+    oldMass = parent%rho(parentSubcell) * dv !cellVolume(parent, parentSubcell)
+!    oldMass = parent%rho(parentSubcell) * cellVolume(parent, parentSubcell)
     newMass = 0.d0
+
     do iSubcell = 1, thisOctal%maxChildren
-       newMass = newMass + thisOctal%rho(isubcell) * cellVolume(thisOctal, iSubcell)
+       !THAW - redoing mass calculation
+       if (thisOctal%threed) then
+          dv = cellVolume(thisOctal, iSubcell) * 1.d30
+       else if (thisOctal%twoD) then
+          dv = thisOctal%subcellSize**2
+       else if (thisOctal%oneD) then
+          dv = thisOctal%subcellSize
+       endif
+!       print *, "dv", dv, cellVolume(thisOctal, iSubcell)
+
+!       newMass = newMass + thisOctal%rho(isubcell) * cellVolume(thisOctal, iSubcell)
+       newMass = newMass + thisOctal%rho(isubcell) * dv
     enddo
+
     factor = oldMass / newMass
     thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
     if ( associated (thisOctal%nh) ) thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
 
-
     ! energy
 
-    oldEnergy = parent%rhoe(parentSubcell) * cellVolume(parent, parentSubcell)
+    if (thisOctal%threed) then
+       dv = cellVolume(thisOctal, parentSubcell) * 1.d30
+    else if (thisOctal%twoD) then
+       dv = parent%subcellSize**2
+    else if (thisOctal%oneD) then
+       dv = parent%subcellSize
+    endif
+
+    oldEnergy = parent%rhoe(parentSubcell) * dv !cellVolume(parent, parentSubcell)
+!    oldEnergy = parent%rhoe(parentSubcell) * cellVolume(parent, parentSubcell)
+
     newEnergy = 0.d0
+
     do iSubcell = 1, thisOctal%maxChildren
-       newEnergy = newEnergy + thisOctal%rhoe(isubcell) * cellVolume(thisOctal, iSubcell)
+!       newEnergy = newEnergy + thisOctal%rhoe(isubcell) * cellVolume(thisOctal, iSubcell)
+       !THAW - redoing energy calculation
+       if (thisOctal%threed) then
+          dv = cellVolume(thisOctal, iSubcell) * 1.d30
+       else if (thisOctal%twoD) then
+          dv = thisOctal%subcellSize**2
+       else if (thisOctal%oneD) then!
+          dv = thisOctal%subcellSize
+       endif
+        newEnergy = newEnergy + thisOctal%rhoe(isubcell) * dv
     enddo
     factor = oldEnergy/newEnergy
     thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
