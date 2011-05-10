@@ -4018,11 +4018,12 @@ CONTAINS
 
       if(dorefine .or. dounrefine) then
          rVec = subcellCentre(thisOctal, subcell)
+!THAW - this is probalby a stupid idea
          if (thisOctal%nDepth < maxDepthAMR) split = .true.
+!         if (thisOctal%nDepth < minDepthAMR) split = .true.
 
          if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
          if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
 
       else
          rVec = subcellCentre(thisOctal, subcell)
@@ -4056,7 +4057,7 @@ CONTAINS
 
 !Thaw
    case("gaussian")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if (thisOctal%nDepth < maxDepthAMR) split = .true.
 
    case("radHydro")
       if (thisOctal%nDepth < minDepthAMR) split = .true.      

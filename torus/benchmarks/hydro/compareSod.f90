@@ -3,6 +3,7 @@ program compareSod
 
   character(len=*), parameter :: torus_file="sod.dat"
   character(len=*), parameter :: ref_file  ="sod_analytical.dat"
+  character(len=*), parameter :: conservation_file="conservation.dat"
   integer, parameter :: nSodA = 19
   real :: xA(nSodA), rhoA(nSodA), testrho,fac
   integer :: nTorus
@@ -11,6 +12,8 @@ program compareSod
   integer :: nTorusMax = 100000
   real, allocatable :: xTorus(:), rhoTorus(:)
   logical :: found
+  real :: iniMass, endMass, iniEnergy, endEnergy
+  real :: massChange, energyChange
 
   open(20,file=ref_file, status="old", form="formatted",iostat=status)
   if ( status /= 0) call file_read_error(ref_file)
@@ -48,7 +51,27 @@ program compareSod
      tot = tot + (testRho-rhoTorus(i))**2
   enddo
   tot = sqrt(tot/(real(nTorus-1)))
+
+!thaw
+  inquire(file=conservation_file, exist=found )
+  if ( found ) then
+     open(20, file=conservation_file, status="old")
+     if ( status /= 0) call file_read_error(torus_file)
+  else
+     write(*,*) torus_file//" not found"
+     write(*,*) "TORUS: Test failed"
+     STOP
+  end if
+  read(20, *) iniMass, endMass, iniEnergy, endEnergy
+  close(20)
+
+  massChange = (1.0 - (endMass/iniMass))*100.0
+  energyChange = (1.0 - (endEnergy/iniEnergy))*100.0
+
   write(*,*) "Sigma: ",tot
+  write(*,*) "Mass variation: ",massChange,"%"
+  write(*,*) "Energy variation: ",energyChange,"%"
+
   if (tot < 1.d-2) then
      write(*,*) "TORUS: Test successful"
      

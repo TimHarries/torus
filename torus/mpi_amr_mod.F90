@@ -56,11 +56,14 @@ contains
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: mass
-    real(double), allocatable :: massOnThreads(:), temp(:)
+    real(double), allocatable :: massOnThreads(:), temp(:), volumeOnThreads(:)
     integer :: ierr
+!    real(double) :: totalVolume
 
     allocate(massOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    allocate(volumeOnThreads(1:nThreadsGlobal))
     massOnThreads = 0.d0
+!    volumeOnThreads = 0.d0
     temp = 0.d0
     if (.not.grid%splitOverMpi) then
        call writeWarning("findMassOverAllThreads: grid not split over MPI")
@@ -72,6 +75,9 @@ contains
        call findtotalMassMPI(grid%octreeRoot, massOnThreads(myRankGlobal))
        call MPI_ALLREDUCE(massOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
        mass = SUM(temp(1:nThreadsGlobal))
+       !call MPI_ALLREDUCE(volumeOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       !totalVolume = sum(temp(1:nThreadsGlobal))
+       !print *, "totalVolume = ", totalVolume
     end if
 666 continue
   end subroutine findMassOverAllThreads
@@ -82,7 +88,7 @@ contains
   type(octal), pointer  :: child 
   real(double) :: totalMass
   real(double),optional :: minRho, maxRho
-  real(double) :: dv
+  real(double) :: dv!, totalVolume
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -96,26 +102,28 @@ contains
              end if
           end do
        else
-
-          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-             dv = cellVolume(thisOctal, subcell)
-             if (hydrodynamics) then
-                if (thisOctal%twoD) then
-                   dv = thisOctal%subcellSize**2/1.d30
-                else if (thisOctal%oned) then
-                   dv = thisOctal%subcellSize/1.d30
-
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                dv = cellVolume(thisOctal, subcell)*1.d30
+                if (hydrodynamics) then
+                   if (thisOctal%twoD) then
+                      dv = thisOctal%subcellSize**2
+                   else if (thisOctal%oned) then
+                      dv = thisOctal%subcellSize
+                      
+                   endif
                 endif
-             endif
-             totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
-             if (PRESENT(minRho)) then
-                if (thisOctal%rho(subcell) > 1.d-20) then
-                   minRho = min(thisOctal%rho(subcell), minRho)
+                !             totalVolume = totalVolume + dv
+                totalMass = totalMass + thisOctal%rho(subcell) * dv
+                if (PRESENT(minRho)) then
+                   if (thisOctal%rho(subcell) > 1.d-20) then
+                      minRho = min(thisOctal%rho(subcell), minRho)
+                   endif
                 endif
+                if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
              endif
-             if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
           endif
-       endif
+       end if
     enddo
   end subroutine findTotalMassMPI
 
@@ -161,18 +169,19 @@ contains
              end if
           end do
        else
-
-          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-             if (thisOctal%threed) then
-                dv = cellVolume(thisOctal, subcell) * 1.d30
-             else if (thisOctal%twoD) then
-                dv = thisOctal%subcellSize**2
-             else if (thisOctal%oneD) then
-                dv = thisOctal%subcellSize
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                if (thisOctal%threed) then
+                   dv = cellVolume(thisOctal, subcell) * 1.d30
+                else if (thisOctal%twoD) then
+                   dv = thisOctal%subcellSize**2
+                else if (thisOctal%oneD) then
+                   dv = thisOctal%subcellSize
+                endif
+                totalEnergy = totalEnergy + thisOctal%rhoe(subcell) * dv
              endif
-             totalEnergy = totalEnergy + thisOctal%rhoe(subcell) * dv
           endif
-       endif
+       end if
     enddo
   end subroutine findTotalEnergyMPI
 
@@ -516,13 +525,13 @@ contains
              endif
 
              if (neighbourOctal%nDepth <= nDepth) then
-!                if ((nDepth - neighbourOctal%nDepth) > 1) then
-!                   write(*,*) "Octal depth differs by more than 1 across boundary!!!"
-!                   write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
-!                   write(*,*) "myrank ",myrank
-!                   write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
-!                   stop
-!                endif
+                if ((nDepth - neighbourOctal%nDepth) > 1) then
+                   write(*,*) "Octal depth differs by more than 1 across boundary!!!"
+                   write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
+                   write(*,*) "myrank ",myrank
+                   write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
+                   stop
+                endif
                 tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
                 tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
                 tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
@@ -1103,6 +1112,7 @@ contains
           call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
                flux, phi, phigas) ! fine to coarse
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+          
        endif
 
        
@@ -1276,7 +1286,7 @@ contains
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
     endif
-
+    
   end subroutine averageValue
 
 
@@ -2138,7 +2148,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
     real(double) :: oldMass, newMass, factor
-    real(double) :: oldEnergy, newEnergy!, oldMom, newMom
+    real(double) :: oldEnergy, newEnergy
     logical, save :: firstTime = .true.
     logical :: debug
 
@@ -2265,6 +2275,8 @@ end subroutine dumpStromgrenRadius
        parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
     endif
 
+
+
     parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
     parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
     parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
@@ -2287,8 +2299,6 @@ end subroutine dumpStromgrenRadius
           thisOctal%ionFrac(isubcell,:) = parent%ionFrac(parentSubcell,:)
        enddo
     endif
-
-
 
     if (thisOctal%threed) then
        nDir = 8
@@ -2550,36 +2560,36 @@ end subroutine dumpStromgrenRadius
     ! conservation normalizations
 
     ! mass
-
-    if (thisOctal%threed) then
-       dv = cellVolume(thisOctal, parentSubcell) * 1.d30
-    else if (thisOctal%twoD) then
-       dv = parent%subcellSize**2
-    else if (thisOctal%oneD) then
-       dv = parent%subcellSize
-    endif
-
-    oldMass = parent%rho(parentSubcell) * dv !cellVolume(parent, parentSubcell)
-!    oldMass = parent%rho(parentSubcell) * cellVolume(parent, parentSubcell)
-    newMass = 0.d0
-
-    do iSubcell = 1, thisOctal%maxChildren
-       !THAW - redoing mass calculation
        if (thisOctal%threed) then
-          dv = cellVolume(thisOctal, iSubcell) * 1.d30
+          dv = cellVolume(thisOctal, parentSubcell) * 1.d30
        else if (thisOctal%twoD) then
-          dv = thisOctal%subcellSize**2
+          dv = parent%subcellSize**2
        else if (thisOctal%oneD) then
-          dv = thisOctal%subcellSize
+          dv = parent%subcellSize
        endif
-!       print *, "dv", dv, cellVolume(thisOctal, iSubcell)
-
-!       newMass = newMass + thisOctal%rho(isubcell) * cellVolume(thisOctal, iSubcell)
-       newMass = newMass + thisOctal%rho(isubcell) * dv
-    enddo
-
-    factor = oldMass / newMass
-    thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
+       
+       oldMass = parent%rho(parentSubcell) * dv !cellVolume(parent, parentSubcell)
+       !    oldMass = parent%rho(parentSubcell) * cellVolume(parent, parentSubcell)
+       newMass = 0.d0
+       
+       do iSubcell = 1, thisOctal%maxChildren
+          !THAW - redoing mass calculation
+          if (thisOctal%threed) then
+             dv = cellVolume(thisOctal, iSubcell) * 1.d30
+          else if (thisOctal%twoD) then
+             dv = thisOctal%subcellSize**2
+          else if (thisOctal%oneD) then
+             dv = thisOctal%subcellSize
+          endif
+          !       print *, "dv", dv, cellVolume(thisOctal, iSubcell)
+          
+          !       newMass = newMass + thisOctal%rho(isubcell) * cellVolume(thisOctal, iSubcell)
+          newMass = newMass + thisOctal%rho(isubcell) * dv
+       enddo
+       
+       factor = oldMass / newMass
+       thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * factor
+       
     if ( associated (thisOctal%nh) ) thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
 
     ! energy
@@ -2611,6 +2621,9 @@ end subroutine dumpStromgrenRadius
     enddo
     factor = oldEnergy/newEnergy
     thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
+
+
+!!THAW - re-adding mom conservation
 !
 !    ! momentum (u)
 !
@@ -2620,9 +2633,9 @@ end subroutine dumpStromgrenRadius
 !       factor = oldMom / newMom
 !       thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
 !    endif
-!    
+!    !!!
 !
-!    ! momentum (v)
+!    ! momentum (v)!
 !
 !    oldMom = parent%rhov(parentSubcell)
 !    newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
@@ -2639,6 +2652,7 @@ end subroutine dumpStromgrenRadius
 !       factor = oldMom / newMom
 !       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
 !    endif
+!
 
     if (PRESENT(constantGravity)) then
        if (constantGravity) then
