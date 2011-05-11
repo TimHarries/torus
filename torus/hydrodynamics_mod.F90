@@ -2550,12 +2550,6 @@ end subroutine sumFluxes
              speed = sqrt(speed)/thisOctal%rho(subcell)
 !             if (myrank == 1) write(*,*) "speed ", returnPhysicalUnitSpeed(speed)/1.d5, " km/s ",speed, " code"
 !             if (myrank == 1) write(*,*) "dx ", returnPhysicalUnitLength(dx), " cm ",dx," code"
-
-
-
-             print *, "speed ", speed
-             print *, "cs ", cs
-             print *, "dx ", dx
     
 
             ! if(myRank == 1) then

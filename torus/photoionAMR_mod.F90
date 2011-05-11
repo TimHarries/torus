@@ -73,7 +73,7 @@ contains
     integer :: iRefine, nUnrefine
     logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
-    integer :: i, status, tag=30, jt
+    integer :: i, status, tag=30
     integer :: stageCounter=1, nTimes, nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
 
@@ -289,7 +289,7 @@ contains
       ! stop
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
-       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
+!       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
        
        if (nstep < 3) then
           dt = dt * 0.01d0
@@ -409,9 +409,9 @@ contains
 
        endif
 
-!       grid%currentTime = grid%currentTime + dt
-!       
-!       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
+       grid%currentTime = grid%currentTime + dt
+       
+       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
 
 !Track the evolution of the ionization front with time
 !          write(datFilename, '(a, i4.4, a)') "Ifront.dat"
@@ -475,13 +475,6 @@ contains
     stageCounter = stageCounter + 1
     
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-
-
-!THaw - update grid time after dumping  ! ! ! ! ! !! !  
-       grid%currentTime = grid%currentTime + dt
-
-       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
-
 
     close(444)
     write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
