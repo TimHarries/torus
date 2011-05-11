@@ -3127,7 +3127,7 @@ end subroutine sumFluxes
     integer :: nHydroThreads 
     logical :: converged
     integer :: nUnrefine, jt
-    
+
     nUnrefine = 0
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -3142,7 +3142,7 @@ end subroutine sumFluxes
     endif
     if (myrankGlobal /= 0) then
 
-!famr
+       !famr
        call refineEdges(grid%octreeRoot, grid,  converged)
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -3175,20 +3175,20 @@ end subroutine sumFluxes
           call calculateRhoV(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 0.d0, 1.d0)
           call calculateRhoW(grid%octreeRoot, direction)
-          
-       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-          call calculateRhoE(grid%octreeRoot, direction)
-          
-          
 
-             call evenUpGridMPI(grid,.false., dorefine)
-             
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          !    call calculateEnergy(grid%octreeRoot, gamma, mu)
+          call calculateRhoE(grid%octreeRoot, direction)
+
+
+
+          call evenUpGridMPI(grid,.false., dorefine)
+
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call refinegridGeneric(grid, 1.d-1)          
           end if
-             call evenUpGridMPI(grid, .false.,dorefine)
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call evenUpGridMPI(grid, .false.,dorefine)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
           direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -3217,13 +3217,13 @@ end subroutine sumFluxes
 
 
     iUnrefine = 0
-       !    call writeInfo("Plotting grid", TRIVIAL)    
+    !    call writeInfo("Plotting grid", TRIVIAL)    
 
 
     jt = 0
 
-      !Thaw - trace courant time history
-      open (444, file="tcHistory.dat", status="unknown")
+    !Thaw - trace courant time history
+    open (444, file="tcHistory.dat", status="unknown")
 
     do while(currentTime < tEnd)
        if (myrank == 1) write(*,*) "current time " ,currentTime
@@ -3238,15 +3238,15 @@ end subroutine sumFluxes
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
        write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
 
-!       if ((jt < 2000).and.(grid%geometry=="sedov")) then
-!          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
-!       endif
-          
+       !       if ((jt < 2000).and.(grid%geometry=="sedov")) then
+       !          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
+       !       endif
+
        if ((currentTime + dt).gt.tEnd) then
           nextDumpTime = tEnd
           dt = nextDumpTime - currentTime
        endif
-       
+
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
        endif
@@ -3257,39 +3257,39 @@ end subroutine sumFluxes
           call writeInfo("calling hydro step",TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          
-             call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-          end if
 
-          call findEnergyOverAllThreads(grid, totalenergy)
-          if (writeoutput) write(*,*) "Total energy: ",totalEnergy
-          call findMassOverAllThreads(grid, totalmass)
-          if (writeoutput) write(*,*) "Total mass: ",totalMass
-          
-          if(doUnrefine) then
-             iUnrefine = iUnrefine + 1
-             if (iUnrefine == 20) then
-                if (myrankglobal == 1) call tune(6, "Unrefine grid")
-                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-2)
-                if (myrankglobal == 1) call tune(6, "Unrefine grid")
-                iUnrefine = 0
-             endif
-          end if
+          call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+       end if
 
-          if (myrank == 1) call tune(6,"Hydrodynamics step")
+       call findEnergyOverAllThreads(grid, totalenergy)
+       if (writeoutput) write(*,*) "Total energy: ",totalEnergy
+       call findMassOverAllThreads(grid, totalmass)
+       if (writeoutput) write(*,*) "Total mass: ",totalMass
 
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          if(doRefine) then
-             call refinegridGeneric(grid, 1.d-1)
-          end if
-          call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          
+       if(doUnrefine) then
+          iUnrefine = iUnrefine + 1
+          if (iUnrefine == 20) then
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-2)
+             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             iUnrefine = 0
+          endif
+       end if
 
-          currentTime = currentTime + dt
-          !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
+       if (myrank == 1) call tune(6,"Hydrodynamics step")
 
-      
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if(doRefine) then
+          call refinegridGeneric(grid, 1.d-1)
+       end if
+       call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
+       currentTime = currentTime + dt
+       !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
+
+
 
 
        if (currentTime .ge. nextDumpTime) then
@@ -3310,14 +3310,14 @@ end subroutine sumFluxes
                "rhow         ", &
                "phi          "/))
           if (grid%geometry == "sedov") &
-          call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
+               call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
 
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
 
-      enddo
-      close(444)
+    enddo
+    close(444)
 
   end subroutine doHydrodynamics2d
 

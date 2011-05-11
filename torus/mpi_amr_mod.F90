@@ -607,8 +607,8 @@ contains
     character(len=10) :: boundaryType(6) = (/"left  ","right ", "top   ", "bottom", "front ", "back  "/)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
     if (myrankGlobal == 0) goto 666
+    CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
     do iGroup = 1, nGroup
 
