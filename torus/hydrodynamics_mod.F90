@@ -450,7 +450,7 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%x_i_minus_1(subcell) = x
-             thisoctal%x_i_minus_2(subcell) = xnext
+!             thisoctal%x_i_minus_2(subcell) = xnext
              thisoctal%q_i_minus_1(subcell) = q
              thisoctal%q_i_minus_2(subcell) = qnext
 !
@@ -2542,13 +2542,21 @@ end subroutine sumFluxes
              cs = soundSpeed(thisOctal, subcell)
 !             if (myrank == 1) write(*,*) "cs ", returnPhysicalUnitSpeed(cs)/1.d5, " km/s ",cs, " code"
 !             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
-             dx = grid%halfSmallestsubcell * 2.d0
+             dx = grid%halfSmallestsubcell *gridDistanceScale* 2.d0
+
 !Use max velocity not average
              speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
 !             speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
              speed = sqrt(speed)/thisOctal%rho(subcell)
 !             if (myrank == 1) write(*,*) "speed ", returnPhysicalUnitSpeed(speed)/1.d5, " km/s ",speed, " code"
 !             if (myrank == 1) write(*,*) "dx ", returnPhysicalUnitLength(dx), " cm ",dx," code"
+
+
+
+             print *, "speed ", speed
+             print *, "cs ", cs
+             print *, "dx ", dx
+    
 
             ! if(myRank == 1) then
             !    tc = min(tc, dx / (cs + speed))

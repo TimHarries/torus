@@ -73,7 +73,7 @@ contains
     integer :: iRefine, nUnrefine
     logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
-    integer :: i, status, tag=30
+    integer :: i, status, tag=30, jt
     integer :: stageCounter=1, nTimes, nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
 
@@ -144,9 +144,13 @@ contains
 
     if (myRank == 1) write(*,*) "CFL set to ", cfl
 
-
     if (myrank /= 0) then
+
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+       do i = 1, nPairs
+          if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
+       enddo
 
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        if (myRank == 1) call tune(6,"Exchange across boundary")
@@ -154,46 +158,49 @@ contains
        if (myRank == 1) call tune(6,"Exchange across boundary")
        call writeInfo("Done", TRIVIAL)
 
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call calculateRhoU(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 1.d0, 0.d0)
-       call calculateRhoV(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 0.d0, 1.d0)
-       call calculateRhoW(grid%octreeRoot, direction)
+       if(grid%currentTime == 0.d0) then
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call calculateRhoU(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 1.d0, 0.d0)
+          call calculateRhoV(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 0.d0, 1.d0)
+          call calculateRhoW(grid%octreeRoot, direction)
+          
+          call calculateEnergyFromTemperature(grid%octreeRoot)
+          
+          call calculateRhoE(grid%octreeRoot, direction)
 
-       call calculateEnergyFromTemperature(grid%octreeRoot)
-       
-       call calculateRhoE(grid%octreeRoot, direction)
 
+          call writeInfo("Refining individual subgrids", TRIVIAL)
+          if (.not.grid%splitOverMpi) then
+             do
+                gridConverged = .true.
+                call setupEdges(grid%octreeRoot, grid)
+                !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+                call unsetGhosts(grid%octreeRoot)
+                call setupGhostCells(grid%octreeRoot, grid)
+                if (gridConverged) exit
+             end do
+          else
+             call evenUpGridMPI(grid, .false., .true.)
+          endif
+          
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          
+          call evenUpGridMPI(grid,.false.,.true.)      
+          call refineGridGeneric(grid, 1.d-2)
+          call writeInfo("Evening up grid", TRIVIAL)    
+          call evenUpGridMPI(grid, .false.,.true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call setupX(grid%octreeRoot, grid, direction)
+          call setupQX(grid%octreeRoot, grid, direction)
+          !    call calculateEnergy(grid%octreeRoot, gamma, mu)    
 
-       call writeInfo("Refining individual subgrids", TRIVIAL)
-       if (.not.grid%splitOverMpi) then
-          do
-             gridConverged = .true.
-             call setupEdges(grid%octreeRoot, grid)
-             !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
-             call unsetGhosts(grid%octreeRoot)
-             call setupGhostCells(grid%octreeRoot, grid)
-             if (gridConverged) exit
-          end do
-       else
-          call evenUpGridMPI(grid, .false., .true.)
        endif
-
-
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-       call evenUpGridMPI(grid,.false.,.true.)      
-       call refineGridGeneric(grid, 1.d-2)
-       call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid, .false.,.true.)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-    endif
+    end if
 
     if(grid%currentTime == 0.d0) then
-
        call ionizeGrid(grid%octreeRoot)
 
        looplimitTime = deltaTForDump
@@ -215,6 +222,8 @@ contains
           call writeInfo("Dumping post-photoionization data", TRIVIAL)
           call writeVtkFile(grid, "start.vtk", &
                valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
+
+
           
           if (myrank /= 0) then
              call calculateEnergyFromTemperature(grid%octreeRoot)
@@ -264,6 +273,11 @@ contains
     nPhase = 1
 
     nstep = 0
+    
+!    !Thaw - trace courant time history                                                                                                                              
+!    open (444, file="tcHistory.dat", status="unknown")
+
+
     do while(grid%currentTime < tEnd)
        nstep = nstep + 1
        write(*,*) "rank ", myRankGlobal, "on next loop", myRank
@@ -275,7 +289,8 @@ contains
       ! stop
        tc = tempTc
        dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
-
+       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
+       
        if (nstep < 3) then
           dt = dt * 0.01d0
        endif
@@ -394,9 +409,9 @@ contains
 
        endif
 
-       grid%currentTime = grid%currentTime + dt
-       
-       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
+!       grid%currentTime = grid%currentTime + dt
+!       
+!       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
 
 !Track the evolution of the ionization front with time
 !          write(datFilename, '(a, i4.4, a)') "Ifront.dat"
@@ -458,8 +473,17 @@ contains
  
     endif
     stageCounter = stageCounter + 1
-
+    
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+
+!THaw - update grid time after dumping  ! ! ! ! ! !! !  
+       grid%currentTime = grid%currentTime + dt
+
+       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
+
+
+    close(444)
     write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
  enddo
 end subroutine radiationHydro
@@ -708,6 +732,7 @@ end subroutine radiationHydro
                 !nMonte = (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
                 nMonte = 209715200
+               ! nMonte = 409600.0
              else
                 !nMonte = 2**(maxDepthAMR)
                 nMonte = 100000
