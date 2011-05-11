@@ -5620,7 +5620,7 @@ end subroutine refineGridGeneric2
     type(GRIDTYPE) :: grid
     logical :: inheritFlag
     integer, optional :: dumpfiles
-    integer :: myRank, nThreads
+    integer :: myRank, nThreads, thisThread
     include 'mpif.h'  
     integer :: ierr
     logical :: globalConverged(64), localChanged(64), tConverged(64)
@@ -5692,36 +5692,36 @@ end subroutine refineGridGeneric2
           call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
           nLocsGlobal = SUM(tempnLocs)
 
-
-          do iThread = 1, nThreads-1
-             nTemp(1) = 0
-             if (iThread /= myRank) then
-                 do i = 1 , nLocs(myRank)
-                   if (thread(i) == iThread) then
-                      nTemp(1) = nTemp(1) + 1
-                      temp(nTemp(1),1) = locs(i)%x
-                      temp(nTemp(1),2) = locs(i)%y
-                      temp(nTemp(1),3) = locs(i)%z
-                      temp(nTemp(1),4) = dble(depth(i))
+          do thisThread = 1, nThreads - 1
+             if(thisThread == myRank) then
+                do iThread = 1, nThreads-1
+                   nTemp(1) = 0
+                   if (iThread /= myRank) then
+                      do i = 1 , nLocs(myRank)
+                         if (thread(i) == iThread) then
+                            nTemp(1) = nTemp(1) + 1
+                            temp(nTemp(1),1) = locs(i)%x
+                            temp(nTemp(1),2) = locs(i)%y
+                            temp(nTemp(1),3) = locs(i)%z
+                            temp(nTemp(1),4) = dble(depth(i))
+                         endif
+                      enddo
+                      call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+                      if (nTemp(1) > 0) then
+                         do i = 1, nTemp(1)
+                            call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                         enddo
+                      endif
                    endif
                 enddo
-                call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-                if (nTemp(1) > 0) then
-                   do i = 1, nTemp(1)
-                      call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
-                   enddo
-                endif
-             endif
-          enddo
 
-          do iThread = 1, nThreads - 1
-             if (iThread /= myRank) then
+             else
                 !                          write(*,*) "rank ",myRank," receiving message from ",ithread
-                call mpi_recv(nSent, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
                 !                          write(*,*) "received ",nSent
                 if (nSent(1) > 0) then
                    do i = 1, nSent(1)
-                      call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                      call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, MPI_COMM_WORLD, status, ierr)
                       eLocs(i)%x = tempsent(1)
                       eLocs(i)%y = tempsent(2)
                       eLocs(i)%z = tempsent(3)
@@ -5731,6 +5731,46 @@ end subroutine refineGridGeneric2
                 nExternalLocs = nSent(1)
              endif
           enddo
+
+!Thaw - code below was deadlocking, now replaced by the stuff above
+!          do iThread = 1, nThreads-1
+!             nTemp(1) = 0
+!             if (iThread /= myRank) then
+!                 do i = 1 , nLocs(myRank)
+!                   if (thread(i) == iThread) then
+!                      nTemp(1) = nTemp(1) + 1
+!                      temp(nTemp(1),1) = locs(i)%x
+!                      temp(nTemp(1),2) = locs(i)%y
+!                      temp(nTemp(1),3) = locs(i)%z
+!                      temp(nTemp(1),4) = dble(depth(i))
+!                   endif
+!                enddo
+!                call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+!                if (nTemp(1) > 0) then
+!                   do i = 1, nTemp(1)
+!                      call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+!                   enddo
+!                endif
+!             endif
+!          enddo
+!
+!          do iThread = 1, nThreads - 1
+!             if (iThread /= myRank) then
+!                !                          write(*,*) "rank ",myRank," receiving message from ",ithread
+!                call mpi_recv(nSent, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!                !                          write(*,*) "received ",nSent
+!                if (nSent(1) > 0) then
+!                   do i = 1, nSent(1)
+!                      call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!                      eLocs(i)%x = tempsent(1)
+!                      eLocs(i)%y = tempsent(2)
+!                      eLocs(i)%z = tempsent(3)
+!                      eDepth(i) = nint(tempsent(4))
+!                   enddo
+!                endif
+!                nExternalLocs = nSent(1)
+!             endif
+!          enddo
 
           do iThread = 1, nThreadsGlobal-1
              if (myrankGlobal /= iThread) then
