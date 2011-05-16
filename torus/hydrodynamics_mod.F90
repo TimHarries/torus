@@ -3279,7 +3279,8 @@ end subroutine sumFluxes
        end if
 
        if (myrank == 1) call tune(6,"Hydrodynamics step")
-
+!Thaw - temprorary extra evenup
+       call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
           call refinegridGeneric(grid, 1.d-1)
@@ -5905,7 +5906,8 @@ end subroutine refineGridGeneric2
                          converged = .false.
                          exit
                       endif
-                      
+         
+!                      if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
                       if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
                          call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                          converged = .false.
