@@ -42,7 +42,9 @@ contains
 #ifdef MPI 
     use mpi_amr_mod
     use input_variables, only : photoionPhysics, rho0
+#ifdef PHOTOION
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff
+#endif
 #endif
     use vh1_mod, only: read_vh1
     use memory_mod
@@ -80,7 +82,9 @@ contains
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI
+#ifdef PHOTOION
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
+#endif
 #endif
        call findTotalMemory(grid, globalMemoryFootprint)
 
@@ -192,10 +196,13 @@ contains
           enddo
           call randomNumberGenerator(syncIseed=.true.)
           
+#ifdef PHOTOION
           if (photoionPhysics) then
              call ionizeGrid(grid%octreeRoot)
              call resetNH(grid%octreeRoot)
           endif
+#endif
+
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol

@@ -243,33 +243,41 @@ contains
     use input_variables, only : variableDustSublimation, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use cmf_mod, only : atomloop
+    use source_mod, only : globalNsource, globalSourceArray, randomSource
+    use lucy_mod, only : lucyRadiativeEquilibriumAMR
+    use setupamr_mod, only: doSmoothOnTau
+    use disc_hydro_mod, only: verticalHydrostatic
+
+#ifdef PHOTOION
     use photoion_mod, only : photoionizationLoop
+#endif
+
 #ifdef HYDRO
     use input_variables, only : hydrodynamics
-#endif
 #ifdef MPI
-    use photoionAMR_mod, only: photoionizationLoopAMR
-#ifdef HYDRO
-    use photoionAMR_mod, only: radiationHydro 
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
 #endif
-    use source_mod, only : globalNsource, globalSourceArray, randomSource
+
+#ifdef MPI
+#ifdef PHOTOION
+    use photoionAMR_mod, only: photoionizationLoopAMR
+    use input_variables, only : optimizeStack
+#ifdef HYDRO
+    use photoionAMR_mod, only: radiationHydro
+#endif
+#endif
+#endif
+
 #ifdef MOLECULAR
     use molecular_mod, only : molecularLoop, globalMolecule
     use input_variables, only : lowmemory, molecularPhysics,  useDust, realDust
 #ifdef MPI
     use input_variables, only : hydrovelocityconv
-#endif
-#endif
-    use lucy_mod, only : lucyRadiativeEquilibriumAMR
-#ifdef MPI
-    use input_variables, only : optimizeStack
 !    use mpi_amr_mod, only : fillVelocityCornersFromHydro
     use amr_mod, only : hydroVelocityConvert
 #endif
-    use setupamr_mod, only: doSmoothOnTau
-    use disc_hydro_mod, only: verticalHydrostatic
+#endif
 
     real, pointer :: xArray(:) => null()
     integer :: nLambda 
@@ -281,12 +289,13 @@ contains
 
 
 #ifdef MPI
+#ifdef PHOTOION
     if(optimizeStack .and. photoionPhysics .and. photoionEquilibrium) then
        call writeInfo("Optimizing photon stack size.", TRIVIAL)
        call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
             .true., sublimate=.false.)
     end if
-
+#endif
 #endif
 
 
@@ -354,6 +363,7 @@ contains
 !     endif
 
 
+#ifdef PHOTOION
      if (photoionPhysics.and.photoionEquilibrium) then 
 
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
@@ -362,15 +372,15 @@ contains
         if (.not.grid%splitOverMPI) then
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
         else
-#ifdef MPI
+#ifdef MPI 
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
                 .true., sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
         endif
-
      end if
+#endif
 
 #ifdef HYDRO
      if (hydrodynamics) then
@@ -384,12 +394,13 @@ contains
      else 
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-
+#ifdef PHOTOION
 #ifdef MPI 
         call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray)
 #else
         call writeFatal("hydrodynamics not available in single processor version")
         stop
+#endif
 #endif
         call torus_mpi_barrier
      endif
@@ -410,7 +421,9 @@ contains
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
      use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
+#ifdef PHOTOION
      use photoion_mod, only : refineLambdaArray
+#endif
 
      logical, optional :: dustRadeq, photoion, atomicDataCube
      type(GRIDTYPE) :: grid
@@ -487,7 +500,9 @@ contains
           xArray(1) = lamStart
           xArray(2) = lamEnd
           nCurrent = 2
+#ifdef PHOTOION
           call refineLambdaArray(xArray, nCurrent, grid)
+#endif
           nt = nLambda - nCurrent
           do i = 1, nt
              fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
@@ -498,7 +513,6 @@ contains
           enddo
        endif
     endif
-
 
     grid%nLambda = nLambda
     if (associated(grid%lamArray)) deallocate(grid%lamArray)

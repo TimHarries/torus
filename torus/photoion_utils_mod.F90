@@ -1,3 +1,4 @@
+#ifdef PHOTOION
 !Photoionization utilities module
 !Started 01/04/2011
 
@@ -875,3 +876,5 @@ end function recombToGround
 !   End of pu0X
   
 end module photoion_utils_mod
+
+#endif

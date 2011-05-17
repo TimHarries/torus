@@ -1,3 +1,4 @@
+#ifdef PHOTOION
 ! photoionization module - started on October 4th 2005 by th
 
 module photoion_mod
@@ -3561,3 +3562,4 @@ end subroutine readHeIIrecombination
  
 end module
 
+#endif

@@ -24,6 +24,7 @@ coverage = no
 withsphng = no
 hydro = yes
 molecular = yes
+photoion = yes
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -522,6 +523,10 @@ ifeq ($(molecular), yes)
   ETCFLAG += -DMOLECULAR
 endif
 
+ifeq ($(photoion), yes)
+  ETCFLAG += -DPHOTOION
+endif
+
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90
    INPUTSMODSOURCE= inputs_modV2.f90
@@ -545,7 +550,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             readTioCrossSection.f90  \
             fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 cont_read.f90 \
-            getMeanMass.f90 input_variables.f90 amr_mod.f90 amr_utils_mod.f90 octal_mod.f90 \
+            getMeanMass.f90 input_variables.f90 amr_mod.f90 amr_utils_mod.f90  \
             jets_mod.f90 h21cm_mod.f90 \
             dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
             wr104_mod.f90 density_mod.f90 \
@@ -558,11 +563,11 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             cmfgen_class.f90  \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            nrtype.f90 nrutil.f90 magnetic_mod.f90 photoion_utils_mod.f90
+            nrtype.f90 nrutil.f90 magnetic_mod.f90 
             
 
 
-CAPF90SOURCE =	 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
+CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoion_utils_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
 	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \

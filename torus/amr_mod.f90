@@ -15996,9 +15996,6 @@ end function readparameterfrom2dmap
        allocate(thisOctal%diffuseContribution(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%normSourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
 
-!       call allocateAttribute(thisOctal%TLastIter,thisOctal%maxChildren)
-!       call allocateAttribute(thisOctal%TLastLastIter,thisOctal%maxChildren)
-
     endif
 
     if (lineEmission) then
@@ -16090,9 +16087,6 @@ end function readparameterfrom2dmap
 
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
-
-!       call allocateAttribute(thisOctal%TLastIter,thisOctal%maxChildren)
-!       call allocateAttribute(thisOctal%TLastLastIter,thisOctal%maxChildren)
 
     endif
   end  subroutine allocateOctalAttributes
@@ -16215,9 +16209,6 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%boundaryPartner)
 
        call deAllocateAttribute(thisOctal%radiationMomentum)
-
-!       call deAllocateAttribute(thisOctal%tLastIter)
-!       call deAllocateAttribute(thisOctal%tLastLastIter)
 
        call deAllocateAttribute(thisOctal%gravboundaryPartner)
        call deAllocateAttribute(thisOctal%changed)

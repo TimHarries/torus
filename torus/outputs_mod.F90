@@ -34,9 +34,11 @@ contains
     use blob_mod, only : blobtype
     use lucy_mod, only : getSublimationRadius
     use input_variables, only : fastIntegrate
+#ifdef PHOTOION
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
     use photoionAMR_mod, only : createImageSplitGrid
+#endif
 #endif
 
     type(BLOBTYPE) :: tblob(1)
@@ -44,7 +46,10 @@ contains
     type(SURFACETYPE) :: tsurface
     type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
-    type(VECTOR) :: viewVec, observerDirection
+    type(VECTOR) :: viewVec
+#ifdef PHOTOION
+    type(VECTOR) :: observerDirection
+#endif
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
@@ -81,6 +86,7 @@ contains
             globalSourceArray, globalnsource, 1, totalflux)
     endif
 
+#ifdef PHOTOION
     if (photoionPhysics.and.calcImage) then
        call setupXarray(grid, xArray, nLambda, photoion=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -102,6 +108,7 @@ contains
           end do
        end if
     endif
+#endif
 
 #ifdef MOLECULAR
     if (molecularPhysics.and.calcDataCube) then

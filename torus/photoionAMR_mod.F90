@@ -1,3 +1,4 @@
+#ifdef PHOTOION
 !Photoionization module - started on October 4th 2005 by th
 
 module photoionAMR_mod
@@ -5211,3 +5212,5 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 #endif    
 
 end module photoionAMR_mod
+
+#endif
