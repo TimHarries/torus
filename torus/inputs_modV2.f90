@@ -265,6 +265,9 @@ contains
     call getLogical("datacube", calcDataCube, cLine, fLine, nLines, &
          "Calculate a data cube: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("photometry", calcPhotometry, cLine, fLine, nLines, &
+         "Calculate a data cube: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("image", calcImage, cLine, fLine, nLines, &
          "Calculate an image: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -275,6 +278,7 @@ contains
     if (calcDataCube) call readDataCubeParameters(cLine, fLine, nLines)
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
     if (calcSpectrum) call readSpectrumParameters(cLine, fLine, nLines)
+    if (calcPhotometry) call readPhotometryParameters(cLine, fLine, nLines)
 
     if (writeoutput) write(*,*) " "
 
@@ -1393,6 +1397,19 @@ contains
 
   end subroutine readHydrodynamicsParameters
 
+
+  subroutine readPhotometryParameters(cLine, fLine, nLines)
+    character(len=80) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+
+    call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+    call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+  end subroutine readPhotometryParameters
+
   subroutine readDataCubeParameters(cLine, fLine, nLines)
     character(len=80) :: cLine(:)
     logical :: fLine(:)
@@ -1684,6 +1701,21 @@ contains
        lastInclination = lastInclination * degToRad
     end if
 
+    call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+    if (atomicPhysics) then
+          call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
+               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
+          call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
+               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
+    endif
+
+    call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &
+         "Maximum Velocity Channel (km/s): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+
+    call getDouble("minVel", minVel, 1.0_db, cLine, fLine, nLines, &
+         "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)
 
     call getReal("vmin", vMinSpec, 1.0, cLine, fLine, nLines, &
          "Minimum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", -2000.0, ok, .false.)

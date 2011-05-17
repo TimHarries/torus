@@ -493,6 +493,7 @@ module image_mod
        integer :: i, j
 
        scale = 1.d20 / distance**2 ! to per cm^2
+       
        angularScale =  (image%xAxisCentre(2) - image%xAxisCentre(1))*1.d10/distance
        strad = angularScale**2 ! str per pix
 
@@ -515,20 +516,29 @@ module image_mod
 
 ! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
-     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx)
-
+     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance)
+       use input_variables, only : imageinarcsec
        real, intent(inout)      :: array(:,:)
        real, intent(in)         :: lambda
-       real(double), intent(in) :: dx
+       real(double), intent(in) :: dx, distance
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
-       real(double) :: nu, PerAngstromToPerHz
+       real(double) :: nu, PerAngstromToPerHz, strad, scale
+
+       strad = (dx*1.d10/distance)**2
+       scale = 1.d20/distance**2
+       write(*,*) "dx ", dx
+       write(*,*) "distance ",distance
+       write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
+
+       WRITE(*,*) "Flux ",array(128,128)*scale
+       write(*,*) "flux in mjy ",array(128,128)*fluxtomegajanskies * perAngstromtoperhz * scale,lambda
        ! Factor of 1.0e20 converts dx to cm from Torus units
-       array = FluxToMegaJanskies * PerAngstromToPerHz  * array / (1.0e20_db * dx**2)
+       array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 
      end subroutine ConvertArrayToMJanskiesPerStr
 !
@@ -617,7 +627,8 @@ module image_mod
              write(*,*) "Unknown type in writefitsimage ",type
        end select
 
-       call ConvertArrayToMJanskiesPerStr(array, lamstart, dx)
+      
+       call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
        call ftppre(unit,group,fpixel,nelements,array,status)
        !
        !  Write another optional keyword to the header.
@@ -632,7 +643,7 @@ module image_mod
           call ftpkys(unit,'CTYPE1'," X","x axis", status)
           call ftpkys(unit,'CUNIT1', "arcsec", "x axis unit", status)
           call ftpkys(unit,'CTYPE2'," Y","y axis", status)
-          call ftpkys(unit,'CUNIT2', "arcsec", "y axis unit", status)
+          call ftpkyd(unit,'PIXEL', dx*1000.d0, 10, " ", status)
        else
           dx = (dx * 1.d10)/autocm
           dy = (dy * 1.d10)/autocm
@@ -892,9 +903,9 @@ module image_mod
              position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
           end do
           if (hitSource) then
-             i0 = i0 + i_nu(source(sourceNumber), cSpeed/(lambda*angstromtocm), iElement)*exp(-tau)
+             i0 = i0 + i_nu(source(sourceNumber), cSpeed/(lambda*angstromtocm), iElement, cosTheta)*exp(-tau)
              write(*,*) "hit core ", &
-            i_nu(source(sourceNumber), cSpeed/(lambda*angstromtocm), iElement)*exp(-tau), tau, lambda
+            i_nu(source(sourceNumber), cSpeed/(lambda*angstromtocm), iElement, cosTheta)*exp(-tau), tau, lambda
           endif
           image%pixel(ix, iy)%i = i0 * scale
        end do

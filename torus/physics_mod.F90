@@ -75,6 +75,7 @@ contains
 
     do iSource = 1, nSource
    
+       source(isource)%limbDark = 0.d0
        source(iSource)%teff = sourceTeff(iSource)
        source(iSource)%mass = sourceMass(iSource)
        source(iSource)%radius = sourceRadius(iSource)
@@ -238,9 +239,10 @@ contains
     use dust_mod
     use modelatom_mod, only : globalAtomArray
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
-    use input_variables, only : dustPhysics, radiativeEquilibrium
-    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, lucy_undersampled
-    use input_variables, only : variableDustSublimation, massEnvelope
+    use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
+    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
+         lucy_undersampled, molecularPhysics, hydrodynamics
+    use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope, cmf, lte
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use cmf_mod, only : atomloop
     use source_mod, only : globalNsource, globalSourceArray, randomSource
@@ -285,8 +287,9 @@ contains
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
+    integer :: nlower, nupper
     type(GRIDTYPE) :: grid
-
+    nlower = 2; nupper = 3
 
 #ifdef MPI
 #ifdef PHOTOION
@@ -357,8 +360,8 @@ contains
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
 
-!     if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
-!        call amrStateqnew(grid, lte, nLower, nUpper, globalSourceArray(1)%surface,&
+!     if (atomicPhysics.and.statisticalEquilibrium) then
+!        call amrStateqnew(grid, lte, 2, 3, globalSourceArray(1)%surface,&
 !                       recalcPrevious=.false.)
 !     endif
 

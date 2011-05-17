@@ -2854,8 +2854,8 @@ subroutine setBiasOnTau(grid, iLambda)
 
 
 !$OMP PARALLEL DEFAULT (NONE) &
-!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec) &
-!$OMP SHARED (iOctal_beg, iOctal_end, rVec, octalArray, grid, cylindrical, ilambda)
+!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
+!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda)
 
      if (cylindrical) then
         nDir = 6
@@ -2907,8 +2907,8 @@ subroutine setBiasOnTau(grid, iLambda)
 
 
 
-                do i = 1, ndir
-                   direction = arrayVec(i)
+                do i = 1, ndir 
+                  direction = arrayVec(i)
                    call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0, startOctal=thisOctal, startSubcell=subcell)
                    tau = min(tau, thisTau)
                 enddo

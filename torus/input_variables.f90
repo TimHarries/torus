@@ -32,6 +32,7 @@ module input_variables
     logical :: monochromatic
 
     logical :: calcDataCube
+    logical :: calcPhotometry
     logical :: rgbCube
     logical :: calcImage
     logical :: calcSpectrum

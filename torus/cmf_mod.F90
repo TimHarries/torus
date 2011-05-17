@@ -952,9 +952,9 @@ contains
           !          write(*,*) freq(ifreq),i_nu(source(sourcenumber),freq(ifreq),ielement)
           !          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
           if (.not.onTheSpot) then
-             iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*exp(-tauCont(iFreq))
+             iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)*exp(-tauCont(iFreq))
           else
-             iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)
+             iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)
           endif
        enddo
     endif
@@ -966,11 +966,11 @@ contains
           iAtom = indexAtom(iRBB)
           iTrans = indexRBBTrans(iRBB)
           if (.not.onTheSpot) then
-             i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*exp(-tau(iRBB))
+             i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement, cosTheta)*exp(-tau(iRBB))
 !             if (iRbb == iFlagRBB) write(*,*) "i0 ", i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement),&
 !                  tau(irbb),exp(-tau(iRBB))
           else
-             i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)
+             i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement, cosTheta)
           endif
        enddo
     endif
@@ -2564,7 +2564,8 @@ contains
     call locate(freqArray, nFreq, transitionFreq, iFreq)
 
     transitionLambda = (cSpeed/transitionFreq) /angstromTocm
-    iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
+    ilambda = 1
+    if (mie) iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
 
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
@@ -2855,8 +2856,7 @@ contains
 
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
 
-       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement)*exp(-tau)
-
+       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
     endif
 666 continue 
 
@@ -3191,7 +3191,7 @@ contains
 
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
 
-       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement)*exp(-tau)
+       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
     endif
 666 continue 
 
@@ -3200,7 +3200,9 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda, occultingDisc)
-    use input_variables, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf
+    use input_variables, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf, calcPhotometry, calcSpectrum
+    use input_variables, only : minvel, maxvel
+    use source_mod, only : globalSourceArray
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
     use modelatom_mod, only : identifyTransitionCmf
@@ -3233,6 +3235,7 @@ contains
     real(double), allocatable :: vArray(:), spec(:)
     integer :: iv1, iv2, i
     character(len=30) :: plotfile,message
+    character(len=80) :: tempChar, tempFilename
     type(DATACUBE) :: cube
     integer :: nFreqArray
     real(double) :: totalOmega
@@ -3257,7 +3260,9 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
-    if (cmf) then
+    iAtom = 1
+    iTrans = 1
+    if (cmf.and.(.not.calcPhotometry)) then
        call identifyTransitionCmf(dble(lamLine), thisAtom, iAtom, iTrans)
        transitionFreq = thisAtom(iAtom)%transfreq(iTrans)
 !       open(45,file="chiline.dat",form="formatted",status="unknown")
@@ -3274,7 +3279,7 @@ contains
 
 
     doCube = calcDataCube
-    doSpec = .false.
+    doSpec = calcPhotometry.or.calcSpectrum
 
     broadBandFreq = 1.d15
     if (PRESENT(forceLambda)) then
@@ -3304,7 +3309,9 @@ contains
        if (myrankiszero) then
 
 #ifdef USECFITSIO
-          call writeDataCube(cube,datacubefilename)
+          tempChar = datacubeFilename(1:(index(datacubefilename,".fits")-1))
+          write(tempFilename,'(a,i3.3,a)') trim(tempChar),nFile,".fits"
+          call writeDataCube(cube,tempfilename)
 #endif
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
@@ -3336,13 +3343,14 @@ contains
           varray(1) = 0.d0
        else
           do iv = 1, nv
-             vArray(iv) = 2100.e5/cspeed * (2.d0*dble(iv-1)/dble(nv-1)-1.d0)
+             vArray(iv) = (minvel + (maxvel-minvel)*dble(iv-1)/dble(nv-1))*1.d5/cspeed
           enddo
        endif
     endif
-    
+
+
     do iv = iv1, iv2
-       write(*,*) iv
+       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
@@ -3353,20 +3361,35 @@ contains
     if (my_rank == (np-1)) iv2 = nray
 #endif
     totalOmega = 0.d0
+!$OMP PARALLEL DEFAULT (NONE) &
+!$OMP PRIVATE (iray, i0) &
+!$OMP SHARED (iray1, iray2, iv, occultingDisc, rayposition, viewvec, grid, thisAtom, nAtom, iatom, itrans, deltaV, source, nsource) &
+!$OMP SHARED (nFreqArray, freqArray, broadbandFreq, spec, domega, totalOmega, calcPhotometry) 
+!$OMP DO SCHEDULE(DYNAMIC)
        do iRay = iray1, iray2
           if (PRESENT(occultingDisc)) then
-             i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-                  nFreqArray, freqArray, occultingDisc=.true., forceFreq=broadBandFreq)
+             if (calcPhotometry) then
+                i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+                     nFreqArray, freqArray, occultingDisc=.true., forceFreq=broadBandFreq)
+             else
+                i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+                     nFreqArray, freqArray, occultingDisc=.true.)
+             endif
           else
              i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
                   nFreqArray, freqArray)
           endif
+!$OMP CRITICAL
           spec(iv) = spec(iv) + i0 * domega(iRay) 
-          if (i0 > 1.d-20) then
-             totalOmega = totalOmega + domega(iray)
-          endif
+          totalOmega = totalOmega + domega(iray)
+!$OMP END CRITICAL
        enddo
+!$OMP END DO
+!$OMP BARRIER
+!$OMP END PARALLEL
+
     enddo
+
 #ifdef MPI
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
      allocate(tempArray(1:nv))
@@ -3384,7 +3407,7 @@ contains
 
 #endif
      if (myrankiszero) then
-        write(*,*) "Solid angle check: ", totalOmega, pi* grid%rCore**2/distance**2
+        write(*,*) "Solid angle check: ", totalOmega, pi* globalSourceArray(1)%radius**2/(distance/1.d10)**2
      endif
 
     if (myRankIsZero) then
@@ -3404,6 +3427,7 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+    use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     integer :: nRay
     type(VECTOR) :: rayPosition(:), viewVec, xProj,yProj
@@ -3415,17 +3439,17 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 20
-    nr2 = 20
+    nr1 = 500
+    nr2 = 100
     nr = nr1 + nr2
-    nphi = 20
+    nphi = 500
     nray = 0
     i = 0
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
-    rmin = grid%rCore
+    rmin = globalSourceArray(1)%radius 
 !    rMax = 2.d0*grid%octreeRoot%subcellSize
-    rMax = 5.d0*grid%rCore
+    rMax = 10.d0*rmin
 
     do ir = 1, nr1
        r1 = rMin * dble(ir-1)/dble(nr1)
@@ -3475,7 +3499,7 @@ contains
          rayposition(nray) = rayPosition(nRay) + ((-1.d0*grid%octreeRoot%subcellSize*10.d0) * viewVec)
 
           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
-          dOmega(nRay) = da(nRay) / distance**2
+          dOmega(nRay) = da(nRay) / (distance/1.d10)**2
        enddo
     enddo
   end subroutine createRayGrid
@@ -3595,9 +3619,9 @@ contains
     
     write(message,*) "Total number of rays: ",nPoints
     call writeInfo(message)
-    do i = 1, npoints
-       write(55,*) xpoints(i), ypoints(i)
-    enddo
+!    do i = 1, npoints
+!       write(55,*) xpoints(i), ypoints(i)
+!    enddo
     dx = cube%xAxis(2)-cube%xAxis(1)
     dy = cube%yAxis(2)-cube%yAxis(1)
 
@@ -3905,7 +3929,7 @@ contains
              photoDirection = pVec
              call normalize(photoDirection)
              iElement = getElement(source(sourcenumber)%surface, photoDirection)
-             i0 = i0 + i_nu(source(sourceNumber), freq, iElement)*weight
+             i0 = i0 + i_nu(source(sourceNumber), freq, iElement,costheta)*weight
           endif
        enddo
        write(*,*) "nray ",nray, "j_nu ",i0/dble(nray)
@@ -3914,6 +3938,7 @@ contains
 
 
   subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
+    use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
     type(GRIDTYPE) :: grid
@@ -3940,7 +3965,7 @@ contains
           nPoints = nVoxels
        endif
        nPoints = 0
-       nPoints = nPoints + size(sourceArray) * nr * nphi
+       nPoints = nPoints + globalnSource * nr * nphi
     endif
     nPoints = nPoints + 4*cube%nx*cube%ny
 
@@ -3951,7 +3976,7 @@ contains
     
        nr1 = 20
        nr2 = nr - nr1
-       do iSource = 1, size(sourceArray)
+       do iSource = 1, globalnSource
           do i = 1, nr1
              r = (dble(i)/dble(nr1)) * sourceArray(iSource)%radius
              call randomNumberGenerator(getDouble=dphi)
@@ -3964,7 +3989,7 @@ contains
              enddo
           enddo
        enddo
-       do iSource = 1, size(sourceArray)
+       do iSource = 1, globalnSource
           do i = 1, nr2
              r = log10(sourceArray(iSource)%radius) + &
                   (log10(20.d0*sourceArray(iSource)%radius)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
@@ -4145,7 +4170,7 @@ contains
 
     transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
 
-    inu = i_nu(source, transitionFreq, 1)
+    inu = i_nu(source, transitionFreq, 1, 1.d0)
 
     call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
 

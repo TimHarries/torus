@@ -205,6 +205,7 @@ CONTAINS
     CASE("proto")
        CALL calcProtoDensity(thisOctal,subcell,grid)
 
+
     CASE("wrshell")
        CALL calcWRShellDensity(thisOctal,subcell,grid)
 
@@ -234,6 +235,9 @@ CONTAINS
 
     CASE("protobin")
        call calcProtoBinDensity(thisOctal, subcell)
+
+    CASE("nbody")
+       CALL calcnBodyDensity(thisOctal,subcell)
 
 
     CASE("gammavel")
@@ -6031,7 +6035,6 @@ CONTAINS
     thisOctal%etaLine = 1.e-30
   end subroutine calcProtoDensity
 
-
   subroutine calcGammaVel(thisOctal, subcell, grid)
     use input_variables
     type(OCTAL) :: thisOctal
@@ -6677,6 +6680,35 @@ CONTAINS
     thisOctal%iEquationOfState(subcell) = 2
 
   end subroutine calcProtoBinDensity
+    
+  subroutine calcnbodyDensity(thisOctal,subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: gamma, ethermal
+    real(double) :: rho0, r0, n, soundSpeed
+
+    gamma = 7.d0/4.d0
+    rho0 = 1.0d0
+    r0 = 0.4d0
+    soundSpeed = 0.01d0
+    n = 2.d0
+    ethermal = 0.1d0
+    rVec = subcellCentre(thisOctal, subcell)
+
+    thisOCtal%rho(subcell) = 100.d0 * mHydrogen
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%boundaryCondition(subcell) = 4
+
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%boundaryCondition(subcell) = 4
+
+    thisOctal%iEquationOfState(subcell) = 2
+
+  end subroutine calcnbodyDensity
     
 
 
@@ -8592,6 +8624,7 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%x_i, source%x_i)
     call copyAttribute(dest%x_i_plus_1, source%x_i_plus_1)
+    call copyAttribute(dest%x_i_minus_2, source%x_i_minus_2)
 
     call copyAttribute(dest%q_i_minus_2, source%q_i_minus_2)
     call copyAttribute(dest%q_i_minus_1, source%q_i_minus_1)

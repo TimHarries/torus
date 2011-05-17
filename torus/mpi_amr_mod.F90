@@ -664,7 +664,7 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 13
+    integer, parameter :: nStorage = 14
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec
     integer :: nBound

@@ -159,7 +159,10 @@ contains
     integer :: iSource
     integer :: subcell, i
     real(double) :: r, eps, dv
-    Type(VECTOR) :: rVec, cen
+    real(double) :: massSub
+    integer :: i1, j1, k1
+    integer, parameter  :: nSub = 8
+    Type(VECTOR) :: rVec, cen, pos
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -175,10 +178,30 @@ contains
           cen = subcellCentre(thisOctal, subcell)
           dv = cellVolume(thisOctal, subcell)*1.d30
           do iSource = 1, nSource
-             rVec = source(isource)%position - cen
-             r = modulus(rVec)
-             source(iSource)%force = source(iSource)%force - &
-                  (bigG*source(isource)%mass*thisOctal%rho(subcell) * dV / (1.d20*(r**2 + eps**2))) * (rVec/r)
+             if (.not.inSubcell(thisOctal, subcell, source(isource)%position)) then
+                rVec = source(isource)%position - cen
+                r = modulus(rVec)
+                source(iSource)%force = source(iSource)%force - &
+                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * dV / (1.d20*(r**2 + eps**2))) * (rVec/r)
+                
+             else
+                massSub  = (thisOctal%rho(subcell)*dv)/dble(nSub**3)
+                do i1 = 1, nSub
+                   do j1 = 1, nSub
+                      do k1 = 1, nSub
+                         pos%x = cen%x + (dble(i1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+                         pos%y = cen%y + (dble(j1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+                         pos%z = cen%z + (dble(k1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+                         rVec = source(isource)%position - pos
+                         r = modulus(rVec)
+                         source(iSource)%force = source(iSource)%force - &
+                              (bigG*source(isource)%mass*massSub / (1.d20*(r**2 + eps**2))) * (rVec/r)
+                      enddo
+                   enddo
+                enddo
+
+             endif
+
           enddo
        endif
     enddo

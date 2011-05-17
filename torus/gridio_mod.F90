@@ -3773,8 +3773,9 @@ contains
             call receivePointerFlexi(thisOctal%x_i_plus_1)
          case("x_i_minus_1")
             call receivePointerFlexi(thisOctal%x_i_minus_1)
+
          case("x_i_minus_2")
-            call receivePointerFlexi(thisOctal%x_i_minus_1)
+            call receivePointerFlexi(thisOctal%x_i_minus_2)
 
          case("u_interface")
             call receivePointerFlexi(thisOctal%u_interface)

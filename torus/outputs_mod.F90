@@ -10,7 +10,7 @@ contains
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
     use source_mod, only : globalNSource, globalSourceArray
-    use input_variables, only : gridOutputFilename, writegrid
+    use input_variables, only : gridOutputFilename, writegrid, calcPhotometry
     use input_variables, only : stokesimage
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
@@ -32,8 +32,10 @@ contains
     use surface_mod, only : surfacetype
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
+    use setupamr_mod, only : writegridkengo, writeFogel
+    use angularImage, only: make_angular_image, map_dI_to_particles
     use lucy_mod, only : getSublimationRadius
-    use input_variables, only : fastIntegrate
+    use input_variables, only : fastIntegrate, geometry, textfilename
 #ifdef PHOTOION
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
@@ -42,7 +44,7 @@ contains
 #endif
 
     type(BLOBTYPE) :: tblob(1)
-    real(double) :: totalFlux, rSub
+    real(double) :: totalFlux, rSub, ang, vFlux, bFlux
     type(SURFACETYPE) :: tsurface
     type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
@@ -64,11 +66,20 @@ contains
 
     if (writegrid) then
        call writeAMRgrid(gridOutputFilename,.false.,grid)
+
+       if (geometry == "kengo") then
+          call writegridkengo(grid)
+       endif
+       if (geometry == "fogel") then
+          call writeFogel(grid, textFilename, "fogel.out")
+       endif
+
     endif
 
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
-         (.not.calcDataCube) ) then
+         (.not.calcDataCube).and. &
+         (.not.calcPhotometry) ) then
        goto 666
     endif
 
@@ -79,12 +90,60 @@ contains
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       viewVec = VECTOR(0.d0, sin(thisInclination), -cos(thisinclination))
-!       gridDistance = 140.d0* pctocm/1.d10
-       call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
-            viewVec, dble(gridDistance), &
-            globalSourceArray, globalnsource, 1, totalflux)
+       do i = 1, 50
+          viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
+          !       gridDistance = 140.d0* pctocm/1.d10
+          ang = twoPi * dble(i-1)/50.d0
+          viewVec =  rotatez(viewVec, ang)
+          !       gridDistance = 140.d0* pctocm/1.d10
+          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+               viewVec, dble(gridDistance), &
+               globalSourceArray, globalnsource, i, totalflux)
+       enddo
     endif
+
+    if (atomicPhysics.and.calcPhotometry) then
+       call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
+       if (writeoutput) then
+          open(66, file="phase.dat", status="unknown", form="formatted")
+       endif
+       do i = 1, 50
+          viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
+          !       gridDistance = 140.d0* pctocm/1.d10
+          ang = twoPi * dble(i-1)/50.d0
+          viewVec =  rotatez(viewVec, ang)
+          globalSourceArray(1)%limbDark(1) = +1.05395E+00
+          globalSourceArray(1)%limbDark(2) = -1.64891E-01
+          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+               viewVec, dble(gridDistance), &
+               globalSourceArray, globalnsource, 1, bflux, forceLambda=4400.d0, occultingDisc=.true.)
+          globalSourceArray(1)%limbDark(1) = +8.29919E-01
+          globalSourceArray(1)%limbDark(2) = +1.62937E-02
+          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+               viewVec, dble(gridDistance), &
+               globalSourceArray, globalnsource, 1, vflux, forceLambda=5500.d0, occultingDisc=.true.)
+          if (writeoutput) write(66,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
+               returnMagnitude(bFlux, "B") -  returnMagnitude(vFlux,"V")
+       enddo
+       if (writeoutput) close(66)
+    endif
+
+    if (atomicPhysics.and.calcSpectrum) then
+       call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
+       do i = 1, 50
+          viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
+          !       gridDistance = 140.d0* pctocm/1.d10
+          ang = twoPi * dble(i-1)/50.d0
+          viewVec =  rotatez(viewVec, ang)
+          globalSourceArray(1)%limbDark(1) = 0.d0
+          globalSourceArray(1)%limbDark(2) = 0.d0
+          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+               viewVec, dble(gridDistance), &
+               globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true.)
+       enddo
+       goto 666
+    endif
+
 
 #ifdef PHOTOION
     if (photoionPhysics.and.calcImage) then

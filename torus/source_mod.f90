@@ -24,6 +24,7 @@ module source_mod
      real(double) :: age        ! [years]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
      type(SURFACETYPE) :: surface
+     real(double) :: limbDark(2)
      logical :: outsideGrid
      logical :: onEdge
      logical :: onCorner
@@ -472,9 +473,9 @@ module source_mod
 
   end function random_direction_from_sphere
 
-  real(double) function I_nu(source, nu, iElement) 
+  real(double) function I_nu(source, nu, iElement, mu) 
     type(SOURCETYPE) :: source
-    real(double) :: nu, fnu !, flambda, lam
+    real(double) :: nu, fnu, mu !, flambda, lam
     integer :: i, iElement
     real(double) :: tAccretion, ic_hot
 
@@ -511,10 +512,13 @@ module source_mod
     if (isHot(source%surface,ielement)) then
        tAccretion = source%surface%element(ielement)%temperature
        !================CHECK UNITS HERE!! ===========================
-       IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/nu))! [B_nu]
+!       IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/nu))! [B_nu]
+       IC_hot = bNu(nu, dble(tAccretion))
 !       write(*,*) "hit hotspot",ic_hot,i_nu
        i_nu  = I_nu + ic_hot
     endif
+
+    i_nu = i_nu * (1.d0 - source%limbDark(1)*(1.d0 - mu) - source%limbDark(2) * (1.d0-mu)**2)
 
   end function I_nu
 

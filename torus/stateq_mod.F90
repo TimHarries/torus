@@ -1989,7 +1989,6 @@ contains
        write(*,*) " "
        jnu = 1.e-28
        iMin = 1
-       stop
     else
        iMin = -1
        call hunt(nuArray, nNu, freq, iMin)
@@ -2084,7 +2083,6 @@ contains
        write(*,*) " "
        iMin = 1
        jnu = 1.e-28
-       stop
     else
        iMin = -1
        call hunt(nuArray, nNu, freq, iMin)
@@ -2148,7 +2146,6 @@ contains
        write(*,*) " "
        jnuPhoto = 1.e-28
        iMin = 1
-       stop
     else
        iMin = -1
        call hunt(nuArray, nNu, freq, iMin)
@@ -2168,7 +2165,6 @@ contains
        write(*,*) " "
        jnuHot = 1.e-28
        iMin2 = 1
-       stop
     else
        iMin2 = -1
        call hunt(nuArray2, nNu2, freq, iMin2)
@@ -2269,7 +2265,6 @@ contains
        write(*,*) " "
        jnuPhoto = 1.e-28
        iMin = 1
-       stop
     else
        iMin = -1
        call hunt(nuArray, nNu, freq, iMin)
@@ -2288,7 +2283,6 @@ contains
        write(*,*) " "
        jnuHot = 1.e-28
        iMin = 1
-       stop
     else
        iMin = -1
        call hunt(nuArray2, nNu2, freq, iMin)
@@ -2518,7 +2512,7 @@ contains
     real(double)                   :: del, dx_max, dx    
     
 
-    debug = .false.
+    debug = .true.
     if (size(x) /= n) then 
       print *, 'In subroutine mnewt_stateq, we are assuming argumnent ''n'' = SIZE(x),',&
                ' but in this case it is not.'
@@ -2958,7 +2952,7 @@ contains
 #endif
 
     isBinary = .false.
-    debugInfo = .false.
+    debugInfo = .true.
     if ( trim(grid%geometry) == "binary" ) isBinary = .true.
 
     numLTEsubcells = 0

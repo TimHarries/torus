@@ -4468,7 +4468,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
              enddo
              call  sortConvex(nver, xp, yp, xc, yc)
-                        write(33,*) "plot ""-"" using 1:2 w l"
+!                        write(33,*) "plot ""-"" using 1:2 w l"
 !             do ver = 1, nver
 !                write(33,*) xc(ver), yc(ver)
 !             enddo
@@ -4478,7 +4478,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
              totArea = totArea + a
              area(j) = a
 
-             write(33,*) " "
+!             write(33,*) " "
           enddo
 
 !          write(*,*) "total area ", totArea

@@ -116,7 +116,6 @@ contains
           call setupFogel(grid, textFilename, "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-
        case("kengo")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call readgridKengo(grid)
@@ -460,7 +459,7 @@ contains
   end subroutine doSmoothOnTau
 
   subroutine setupFogel(grid, filename, speciesName)
-    use input_variables, only : rinner, rOuter
+    use input_variables, only : rinner, rOuter, molecularPhysics
     type(GRIDTYPE) :: grid
     character(len=*) :: filename, speciesName
     integer, parameter :: maxR = 200, maxZ = 200
@@ -557,13 +556,79 @@ contains
             gridConverged,  inheritProps = .true., interpProps = .false.)
        if (gridConverged) exit
     end do
-    call writeWarning("Need to check whether abundances are really relative to N(H) rather than N(H_2)")
+!    call writeWarning("Need to check whether abundances are really relative to N(H) rather than N(H_2)")
     call fillGridFogel(grid%octreeRoot, grid, r, z, nr, nz, rho, t, abundance)
 
-    call writeVtkFile(grid, "fogel.vtk",  valueTypeString=(/"rho         ",&
-         "temperature ","molabundance","microturb   ","velocity    "/))
-
+    if (molecularPhysics) then
+       call writeVtkFile(grid, "fogel.vtk",  valueTypeString=(/"rho         ",&
+            "temperature ","molabundance","microturb   ","velocity    "/))
+    else
+       call writeVtkFile(grid, "fogel.vtk",  valueTypeString=(/"rho         ",&
+         "temperature ","velocity    "/))
+    endif
   end subroutine setupFogel
+
+  subroutine writeFogel(grid, infilename, outfilename)
+    use input_variables, only : rinner, rOuter, molecularPhysics
+    type(GRIDTYPE) :: grid
+    character(len=*) :: infilename, outfilename
+    integer, parameter :: maxR = 200, maxZ = 200
+    integer :: nr
+    integer, allocatable :: nz(:)
+    real(double), allocatable :: r(:), z(:,:), rho(:,:), t(:,:)
+    real(double), allocatable :: abundance(:,:)
+    character(len=120) :: cJunk
+    real(double) :: junk(5)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: rTemp, zTemp
+    type(VECTOR) :: rVec
+
+    allocate(r(maxR), nz(maxR), z(maxR, maxZ), rho(maxR, maxZ), &
+         t(maxR,maxZ), abundance(maxR,maxZ))
+    thisOctal => grid%octreeRoot
+
+    open(20, file=infilename, status="old", form="formatted")
+    open(21, file=outfilename, status="unknown", form="formatted")
+    read(20,'(A)') cJunk
+    write(21,'(A)') trim(cjunk)
+    read(20,'(A)') cJunk
+    write(21,'(A)') trim(cjunk)
+    
+    nr = 1
+    nz(1) = 0
+
+10  continue
+    read(20,'(a)',end=30) cJunk
+    if (len(trim(cJunk)) < 10) then ! blank line
+       write(21,'(A)') trim(cjunk)
+       read(20,'(a)',end=30) cJunk
+       write(21,'(A)') trim(cjunk)
+       read(20,'(a)',end=30) cJunk
+       write(21,'(A)') trim(cjunk)
+       nr = nr + 1
+       nz(nr) = 0
+       goto 10
+    endif
+
+    nz(nr) = nz(nr) + 1
+    read(cJunk,*) r(nr), z(nr,nz(nr)), rho(nr,nz(nr)), t(nr,nz(nr)), junk(1:5)
+    rtemp = r(nr)*autocm/1.d10
+    ztemp = z(nr, nz(nr))*autocm/1.d10
+    rVec = VECTOR(rTemp, 0.d0, zTemp)
+    call findSubcellLocal(rvec,thisOctal,subcell)
+    t(nr, nz(nr)) = thisOctal%temperature(subcell)
+    write(21, '(F5.1, f7.2, 1p, e11.3, 0p, f7.1, 1p, 5e11.3)')  r(nr), z(nr,nz(nr)), rho(nr,nz(nr)), &
+         t(nr,nz(nr)), junk(1:5)
+
+
+    goto 10
+30  continue
+    close(20)
+    close(22)
+
+
+  end subroutine writeFogel
 
   subroutine unrefineGridOnTau(grid)
     type(GRIDTYPE) :: grid
@@ -614,7 +679,7 @@ contains
        endif
        if (.not.OutsideGrid) then
           call locate(z(i,1:nz(i)), nz(i), thisZ, j)
-          if (thisOctal%subcellSize > (r(i+1)-r(i))) split = .true.
+          if (2.d0*thisOctal%subcellSize > (r(i+1)-r(i))) split = .true.
           if (thisOctal%subcellSize > (z(i,j+1)-z(i,j))) then
              split = .true.
           endif
@@ -680,12 +745,12 @@ contains
 
 
         recursive subroutine fillGridFogel(thisOctal, grid, r, z, nr, nz, rho, t, abundance)
-          use input_variables, only : mcore, vturb
+          use input_variables, only : mcore, vturb, atomicPhysics, molecularPhysics,sourcemass
           type(GRIDTYPE) :: grid
           type(octal), pointer   :: thisOctal
           type(octal), pointer  :: child 
           type(VECTOR) :: rVec
-          real(double) :: thisR, thisZ,fac1,fac2,fac3
+          real(double) :: thisR, thisZ,fac1,fac2,fac3,s
           integer :: subcell, i, j, k1,k2
           logical :: outsideGrid
           real(double) :: r(:), z(:,:), rho(:,:), t(:,:), abundance(:,:)
@@ -703,25 +768,28 @@ contains
                 end do
              else
 
-                Mcore = 0.5d0 * mSol
+                Mcore = sourcemass(1)
                 rVec = subcellCentre(thisOctal, subcell)
                 thisR = sqrt(rVec%x**2 + rVec%y**2)
                 thisZ = abs(rVec%z)
-
+                s = thisOctal%subcellsize/2.d0
                 thisOctal%velocity(subcell) = keplerianVelocity(rvec)
-                CALL fillVelocityCorners(thisOctal,keplerianVelocity)
+
+                if (atomicPhysics.or.molecularPhysics) CALL fillVelocityCorners(thisOctal,keplerianVelocity)
                 outsideGrid = .false.
 
-                if ((thisR < r(1)).or.(thisR > r(nr))) outsideGrid = .true.
+                if ((thisR+s < r(1)).or.(thisR-s > r(nr))) outsideGrid = .true.
                 if (.not.outsideGrid) then
                    call locate(r, nr, thisR, j)
-                   if ((thisZ < z(j,1)).or.(thisZ > z(j,nz(j)))) outsideGrid = .true.
+                   if ((thisZ < z(j,1)).or.(thisZ > z(j+1,nz(j+1)))) outsideGrid = .true.
                 endif
 
                 thisOctal%rho(subcell) = 1.d-25
                 thisOctal%temperature(subcell) = 3.d0
-                thisOctal%molAbundance(subcell) = 1.d-20
-                thisOctal%microTurb(subcell) = 0.d0
+                if (molecularPhysics) then
+                   thisOctal%molAbundance(subcell) = 1.d-20
+                   thisOctal%microTurb(subcell) = 0.d0
+                endif
                 if (.not.outsideGrid) then
                    call locate(z(j,1:nz(j)), nz(j), thisZ, k1)
                    call locate(z(j+1,1:nz(j+1)), nz(j+1), thisZ, k2)
@@ -741,20 +809,24 @@ contains
                         (     fac1)*(     fac3)* t(j+1,k2+1) ) 
 
 
-                   thisOctal%molAbundance(subcell) = (1.d0-fac1)*(1.d0-fac2)* abundance(j,k1) + &
-                        (     fac1)*(1.d0-fac3)* abundance(j+1,k2) + &
-                        (1.d0-fac1)*(     fac2)* abundance(j,k1+1) + &
-                        (     fac1)*(     fac3)* abundance(j+1,k2+1)  
+                   if (molecularPhysics) then
+                      thisOctal%molAbundance(subcell) = (1.d0-fac1)*(1.d0-fac2)* abundance(j,k1) + &
+                           (     fac1)*(1.d0-fac3)* abundance(j+1,k2) + &
+                           (1.d0-fac1)*(     fac2)* abundance(j,k1+1) + &
+                           (     fac1)*(     fac3)* abundance(j+1,k2+1)  
 
-                   thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
+                      thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
 
-                   thisOctal%molAbundance(subcell) = thisOctal%molAbundance(subcell) * 2.d0
+                      thisOctal%molAbundance(subcell) = thisOctal%molAbundance(subcell) * 2.d0
+                   endif
                 endif
-                thisOctal%microturb(subcell) = max(vturb/(1.d-5*cspeed),sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
+                if (molecularPhysics) then
+                   thisOctal%microturb(subcell) = max(vturb/(1.d-5*cspeed),sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
                         / (28.0 * amu)) + vturb**2) &
                         / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-
-                thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
+                   
+                   thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
+                endif
              endif
           enddo
         end subroutine fillGridFogel
@@ -858,6 +930,91 @@ contains
 
       enddo
     end subroutine readgridKengo
+
+
+        subroutine writegridKengo(grid)
+          type(GRIDTYPE) :: grid
+! *** data read routine
+! *** input: step, levmin, levmax
+! *** output: x, y, z, rho
+!      subroutine readd(step,levmin,levmax,x,y,z,rho)
+
+! *** parameters for grid configuration
+! *** imax,jmax,kmax: grid size, lmax: max of levels
+      integer, parameter :: imax=64, jmax=64, kmax=32, lmax=20
+! *** ibl,jbl,kbl: offset between coarse and fine levels
+! *** relation between coarse and fine levels is:
+! *** rho(ibl+i,jbl+j,kbl+k,l-1)=
+! *** (rho(2*i-1, 2*j-1, 2*k-1, l)+...+rho(2*i, 2*j, 2*k, l))/8d0
+!      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
+
+! *** conversion factors from computational units to cgs units.
+      real(double), parameter :: rho0=1.104d-18, l0=2.01318d16
+
+! *** input/output variables
+      integer levmin,levmax
+      real(double) ::  x(imax), y(jmax) ,z(kmax)
+
+
+! *** internal variables
+      real(double) ::  time(lmax)
+      integer(kind=8) ::  lstep(lmax)
+      real :: version, arrtmp(imax,jmax,kmax)
+      real :: xtmp(imax),ytmp(jmax),ztmp(kmax)
+      integer :: i, j, k, l, level
+      integer :: subcell
+      character(len=80) :: fn
+      type(VECTOR) :: point
+      type(OCTAL), pointer :: thisOctal
+      levmin = 1
+      levmax = 9
+      do l=levmin,levmax
+         write(fn,'(a,i1,a)') "disk9233776.",l,".d"
+         open(11,file=fn,form='unformatted')
+         write(fn,'(a,i1,a)') "output9233776.",l,".d"
+         open(12,file=fn,form='unformatted')
+         read(11) version,i,j,k,level,lstep(l),time(l)
+         write(12) version,i,j,k,level,lstep(l),time(l)
+         write(*,*) version, i, j, k,level,lstep(l),time(l)
+         read(11) xtmp
+         read(11) ytmp
+         read(11) ztmp
+         write(12) xtmp
+         write(12) ytmp
+         write(12) ztmp
+         do i=1,imax
+            x(i)=xtmp(i)*l0/1.d10
+         enddo
+         do j=1,jmax
+            y(j)=ytmp(j)*l0/1.d10
+         enddo
+         do k=1,kmax
+            z(k)=ztmp(k)*l0/1.d10
+         enddo
+         if (Writeoutput) write(*,*) "Grid size is ",(x(64)-x(1))+(x(2)-x(1)),2.d0*(x(64)-x(1))+(x(2)-x(1))
+         read(11) arrtmp
+         write(12) arrtmp
+
+         thisOctal => grid%octreeRoot
+         subcell = 1
+         do i = 1, imax
+            do j = 1, jmax
+               do k = 1, kmax
+                  point = VECTOR( dble(x(i)), dble(y(j)), dble(z(k)) )
+                  call findSubcellLocal(point,thisOctal,subcell)
+                  arrtmp(i,j,k) = thisOctal%temperature(subcell)
+               enddo
+            enddo
+         enddo
+
+
+         write(12) arrtmp
+
+         close(11)
+         close(12)
+
+      enddo
+    end subroutine writegridKengo
 
 
 
