@@ -242,7 +242,7 @@ contains
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
-    use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope, cmf, lte
+    use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use cmf_mod, only : atomloop
     use source_mod, only : globalNsource, globalSourceArray, randomSource

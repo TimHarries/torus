@@ -569,7 +569,6 @@ contains
   end subroutine setupFogel
 
   subroutine writeFogel(grid, infilename, outfilename)
-    use input_variables, only : rinner, rOuter, molecularPhysics
     type(GRIDTYPE) :: grid
     character(len=*) :: infilename, outfilename
     integer, parameter :: maxR = 200, maxZ = 200
@@ -949,7 +948,7 @@ contains
 !      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
 
 ! *** conversion factors from computational units to cgs units.
-      real(double), parameter :: rho0=1.104d-18, l0=2.01318d16
+      real(double), parameter :: l0=2.01318d16
 
 ! *** input/output variables
       integer levmin,levmax
