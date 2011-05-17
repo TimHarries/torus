@@ -153,6 +153,7 @@ contains
 
 
   recursive subroutine recursiveForceFromGas(thisOctal, source, nSource, eps)
+    use amr_utils_mod, only : inSubcell
     type(OCTAL), pointer :: thisOctal, child
     type(SOURCETYPE) :: source(:)
     integer :: nSource

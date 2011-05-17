@@ -3363,7 +3363,8 @@ contains
     totalOmega = 0.d0
 !$OMP PARALLEL DEFAULT (NONE) &
 !$OMP PRIVATE (iray, i0) &
-!$OMP SHARED (iray1, iray2, iv, occultingDisc, rayposition, viewvec, grid, thisAtom, nAtom, iatom, itrans, deltaV, source, nsource) &
+!$OMP SHARED (iray1, iray2, iv, occultingDisc, rayposition, viewvec, grid, thisAtom, nAtom, iatom) &
+!$OMP SHARED ( itrans, deltaV, source, nsource) &
 !$OMP SHARED (nFreqArray, freqArray, broadbandFreq, spec, domega, totalOmega, calcPhotometry) 
 !$OMP DO SCHEDULE(DYNAMIC)
        do iRay = iray1, iray2

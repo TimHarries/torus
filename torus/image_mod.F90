@@ -517,7 +517,6 @@ module image_mod
 ! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
      subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance)
-       use input_variables, only : imageinarcsec
        real, intent(inout)      :: array(:,:)
        real, intent(in)         :: lambda
        real(double), intent(in) :: dx, distance
