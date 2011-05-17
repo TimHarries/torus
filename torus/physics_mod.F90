@@ -16,18 +16,21 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization, molecular
-    use input_variables, only : molecularPhysics, moleculeFile
+    use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization
+#ifdef MOLECULAR
+    use input_variables, only : molecularPhysics, moleculeFile, molecular
     use molecular_mod
+#endif
     use modelatom_mod
     use source_mod
     type(GRIDTYPE) :: grid
 
+#ifdef MOLECULAR
     if (molecularPhysics) then
        molecular = .true.
        call readMolecule(globalMolecule, moleculefile)
     endif
-
+#endif
 
     if (atomicPhysics) then
        if (associated(globalAtomArray)) deallocate(globalAtomArray)
@@ -235,22 +238,33 @@ contains
     use dust_mod
     use modelatom_mod, only : globalAtomArray
     use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
-    use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
-    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics
-    use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope
+    use input_variables, only : dustPhysics, radiativeEquilibrium
+    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, lucy_undersampled
+    use input_variables, only : variableDustSublimation, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use cmf_mod, only : atomloop
     use photoion_mod, only : photoionizationLoop
+#ifdef HYDRO
+    use input_variables, only : hydrodynamics
+#endif
 #ifdef MPI
-    use photoionAMR_mod, only: photoionizationLoopAMR, radiationHydro !
+    use photoionAMR_mod, only: photoionizationLoopAMR
+#ifdef HYDRO
+    use photoionAMR_mod, only: radiationHydro 
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
+#endif
     use source_mod, only : globalNsource, globalSourceArray, randomSource
+#ifdef MOLECULAR
     use molecular_mod, only : molecularLoop, globalMolecule
+    use input_variables, only : lowmemory, molecularPhysics,  useDust, realDust
+#ifdef MPI
+    use input_variables, only : hydrovelocityconv
+#endif
+#endif
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
 #ifdef MPI
-    use input_variables, only : hydrovelocityconv, optimizeStack
+    use input_variables, only : optimizeStack
 !    use mpi_amr_mod, only : fillVelocityCornersFromHydro
     use amr_mod, only : hydroVelocityConvert
 #endif
@@ -308,6 +322,7 @@ contains
         endif
      endif
 
+#ifdef MOLECULAR
      if (molecularPhysics.and.statisticalEquilibrium) then
 #ifdef MPI
         if (grid%splitOverMPI.and.hydrovelocityconv) then
@@ -327,7 +342,8 @@ contains
         lowMemory = .false.
         call molecularLoop(grid, globalMolecule)
      endif
-     
+#endif
+
      if (atomicPhysics.and.statisticalEquilibrium) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
@@ -356,6 +372,7 @@ contains
 
      end if
 
+#ifdef HYDRO
      if (hydrodynamics) then
         if (.not.photoionPhysics) then
 #ifdef MPI 
@@ -377,6 +394,7 @@ contains
         call torus_mpi_barrier
      endif
   endif
+#endif
 
 ! Free memory allocated in this subroutine
   if (associated(xArray)) then

@@ -1,3 +1,4 @@
+#ifdef HYDRO
 ! hydrodynamics module added by tjh on 18th june 2007
 
 
@@ -7240,9 +7241,8 @@ end subroutine minMaxDepth
     enddo
   end subroutine recursaddSinks
 
-
-
 #endif
 
-
 end module hydrodynamics_mod
+
+#endif

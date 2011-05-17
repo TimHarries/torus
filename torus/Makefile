@@ -22,6 +22,8 @@ openmp  = no
 v2      = yes
 coverage = no
 withsphng = no
+hydro = yes
+molecular = yes
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -510,6 +512,14 @@ endif
 # Add flags required for sphNG compatibility
 ifeq ($(withsphng), yes)
   ETCFLAG +=  -mcmodel=medium -i-dynamic
+endif
+
+ifeq ($(hydro), yes)
+  ETCFLAG += -DHYDRO
+endif
+
+ifeq ($(molecular), yes)
+  ETCFLAG += -DMOLECULAR
 endif
 
 ifeq ($(v2), yes)

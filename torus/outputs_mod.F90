@@ -11,25 +11,27 @@ contains
     use modelatom_mod, only : globalAtomArray
     use source_mod, only : globalNSource, globalSourceArray
     use input_variables, only : gridOutputFilename, writegrid
-    use input_variables, only : useDust, realdust, stokesimage
+    use input_variables, only : stokesimage
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
-    use input_variables, only : imageFilename, calcImage, molecularPhysics, calcSpectrum
+    use input_variables, only : imageFilename, calcImage, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
     use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use input_variables, only : h21cm, internalView
-    use input_variables, only : lambdaImage, npixelsArray, dataCubeFilename, mie, gridDistance, nLambda
+    use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda
     use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
     use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity, outputImageType
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
+#ifdef MOLECULAR
     use molecular_mod
+    use angularImage, only: make_angular_image, map_dI_to_particles
+    use input_variables, only : molecularPhysics, useDust, realdust, h21cm, internalView, dataCubeFilename
+#endif 
     use phasematrix_mod
     use phaseloop_mod, only : do_phaseloop
     use surface_mod, only : surfacetype
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
-    use angularImage, only: make_angular_image, map_dI_to_particles
     use lucy_mod, only : getSublimationRadius
     use input_variables, only : fastIntegrate
     use photoion_mod, only: createImagePhotoion
@@ -101,6 +103,7 @@ contains
        end if
     endif
 
+#ifdef MOLECULAR
     if (molecularPhysics.and.calcDataCube) then
        if (dustPhysics) then
           call setupXarray(grid, xarray, nLambda, dustRadEq = .true.)
@@ -138,6 +141,7 @@ contains
           call make_h21cm_image(grid)
        end if
     end if
+#endif
 
     if (dustPhysics.and.(calcspectrum.or.calcimage).and.(.not.photoionPhysics)) then
        mie = .true.

@@ -1,3 +1,4 @@
+#ifdef MOLECULAR
 module molecular_mod 
  ! written by tjh
  ! 21/11/06
@@ -6233,3 +6234,5 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 #endif
 
 end module molecular_mod
+#endif
+

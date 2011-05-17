@@ -6,7 +6,9 @@ module photoionAMR_mod
 use constants_mod
 use messages_mod
 
+#ifdef HYDRO
 use hydrodynamics_mod
+#endif
 use parallel_mod
 use photoion_utils_mod
 use gridio_mod
@@ -27,8 +29,11 @@ use vtk_mod
 implicit none
 
 private
-public :: photoIonizationloopAMR, radiationHydro, createImagesplitgrid, ionizeGrid, &
+public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH
+#ifdef HYDRO
+public :: radiationHydro
+#endif
 
 type PHOTONPACKET
     type(VECTOR) :: rVec
@@ -48,6 +53,7 @@ end type PHOTONPACKET
 
 contains
 
+#ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use ion_mod, only : returnMu
     use input_variables, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
@@ -480,11 +486,12 @@ contains
     write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
  enddo
 end subroutine radiationHydro
-
+#endif
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
-    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons
+    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
+         readGrid, amr1d, dustOnly, minCrossings
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
@@ -1991,6 +1998,7 @@ end subroutine advancedCheckForPhotoLoop
 
 recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   use constants_mod, only : cspeed
+  use input_variables, only: lambdaSmooth, gridDistanceScale
   include 'mpif.h'
   TYPE(GRIDTYPE) :: grid
   TYPE(OCTAL),pointer :: thisOctal
@@ -3881,6 +3889,7 @@ real(double) function returnGamma(table, temp, freq) result(out)
 end function returnGamma
 
 subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+  use input_variables, only: hOnly
   type(GRIDTYPE) :: grid
   TYPE(OCTAL) :: thisOctal
   integer :: subcell

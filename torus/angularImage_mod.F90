@@ -1,3 +1,4 @@
+#ifdef MOLECULAR
 module angularImage
 
   use kind_mod
@@ -945,3 +946,5 @@ module angularImage
 !-----------------------------------------------------------------------------------------
 
 end module angularImage
+#endif
+
