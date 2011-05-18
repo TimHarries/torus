@@ -38,7 +38,7 @@ module input_variables
     logical :: calcSpectrum
 
     character(len=80) :: gridInputFilename, gridOutputFilename
-    character(len=80) :: textFilename
+    character(len=80) :: intextFilename, outtextFilename
 
  ! globally applied minimum temperature
   real    :: TMinGlobal     

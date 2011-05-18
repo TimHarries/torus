@@ -31,7 +31,7 @@ contains
     use input_variables, only : amrGridSize, doSmoothGrid
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, textFilename, sphDataFilename, inputFileFormat
+    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
     use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use sph_data_class, only: sphdata
     use wr104_mod, only : readwr104particles
@@ -113,7 +113,7 @@ contains
 
        case("fogel")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call setupFogel(grid, textFilename, "HCN")
+          call setupFogel(grid, intextFilename, "HCN")
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("kengo")

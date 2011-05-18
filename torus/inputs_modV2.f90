@@ -608,8 +608,10 @@ contains
 
 
        case("fogel")
-       call getString("asciifile", textFilename, cLine, fLine, nLines, &
-            "Ascii file for abundance data: ","(a,a,a)","none", ok, .true.)
+       call getString("asciiinfile", intextFilename, cLine, fLine, nLines, &
+            "Input ascii file for abundance data: ","(a,a,a)","none", ok, .true.)
+       call getString("asciioutfile", outtextFilename, cLine, fLine, nLines, &
+            "Output ascii file for abundance data: ","(a,a,a)","none", ok, .true.)
        case("clumpyagb")
           call getReal("rinner", rinner, real(rsol/1.e10), cLine, fLine, nLines, &
                "Inner radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
@@ -1238,7 +1240,7 @@ contains
          "(a,f5.1,a)",10.0,ok,.false.)
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
-         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
+         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",200,ok,.false.)
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)

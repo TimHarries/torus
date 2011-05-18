@@ -34,7 +34,7 @@ contains
     use blob_mod, only : blobtype
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
-    use input_variables, only : fastIntegrate, geometry, textfilename
+    use input_variables, only : fastIntegrate, geometry, intextfilename, outtextfilename
 #ifdef PHOTOION
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
@@ -70,7 +70,7 @@ contains
           call writegridkengo(grid)
        endif
        if (geometry == "fogel") then
-          call writeFogel(grid, textFilename, "fogel.out")
+          call writeFogel(grid, intextFilename, outtextFilename)
        endif
 
     endif
