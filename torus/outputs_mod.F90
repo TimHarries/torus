@@ -33,7 +33,6 @@ contains
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
     use setupamr_mod, only : writegridkengo, writeFogel
-    use angularImage, only: make_angular_image, map_dI_to_particles
     use lucy_mod, only : getSublimationRadius
     use input_variables, only : fastIntegrate, geometry, textfilename
 #ifdef PHOTOION
