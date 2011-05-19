@@ -2710,7 +2710,7 @@ contains
                 endif
                 x1 = max(0.d0, x1)
                 x2 = min(x2, tVal)
-                nTau = 100
+                nTau = 20
                 distArray(1) = 0.d0
                 do i = 1, nTau-1
                    distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
