@@ -15,7 +15,8 @@ module magnetic_mod
 contains
 
   logical function inFlowMahdavi(rVec) 
-    use input_variables, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar
+    use input_variables, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
+         TTauriDiskHeight
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
     real(double) :: rDash, thetaDash, phiDash, beta
@@ -53,6 +54,8 @@ contains
        if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdavi = .false.
     endif
     if (r < ttauriRstar) inflowMahdavi = .false.
+    if (abs(rVec%z) < TTauriDiskHeight) inflowMahdavi = .false.
+
 666 continue
   end function inFlowMahdavi
 

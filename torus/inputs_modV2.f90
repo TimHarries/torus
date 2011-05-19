@@ -384,6 +384,9 @@ contains
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
             "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
        rcore = TTauriRstar/1.0e10       ! [10^10cm]
+       call getReal("ttauridiskheight", TTauriDiskHeight, real(TTauriRstar), cLine, fLine, nLines, &
+            "T Tauri disk height (rStar): ","(a,f7.1,1x,a)", 0.1, ok, .false.)
+       rcore = TTauriRstar/1.0e10       ! [10^10cm]
        call getReal("ttaurimstar", TTauriMstar, real(msol), cLine, fLine, nLines, &
             "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
        call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &

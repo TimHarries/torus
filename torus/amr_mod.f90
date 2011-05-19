@@ -10917,8 +10917,8 @@ end function readparameterfrom2dmap
                    
                    bigR = SQRT(pointVec%x**2+pointVec%y**2)
                    bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
-                   bigR = min(bigR,TTauriRouter)
-                   bigR = max(bigR,0.0)
+                   bigR = min(bigR,real(TTauriRouter))
+                   bigR = max(bigR,0.d0)
                    
                    ! get the equivalent bigR for the Hartmann geometry
                    ! first work out the intersection angle (at the stellar surface) for
