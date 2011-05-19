@@ -3498,6 +3498,7 @@ CONTAINS
 
      if (inFlow) then
         if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
+        if (cellSize > 0.01d0*(TTauririnner/1.d10)) split = .true.
         if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
            split = .true.
            splitinazimuth = .true.
@@ -10857,13 +10858,17 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesAlphaDisc
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot)
-    use input_variables, only :  vturb, isothermTemp, ttauriRstar
+    use input_variables, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
+    use input_variables, only : TTauriRinner, TTauriRouter, maxHartTemp
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
     real(double) :: astar, mdot, thisR, thisRho, thisV
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: cellCentre
+    type(VECTOR) :: cellCentre, pointVec
+    real(double) :: r, rm, thetaStar, bigRstar,  bigR
+    real :: rMnorm, theta
+    real(double) :: thetaStarHartmann, tmp, bigRstarHartmann
     integer :: subcell, i
     
     do subcell = 1, thisOctal%maxChildren
@@ -10888,6 +10893,59 @@ end function readparameterfrom2dmap
                 thisOctal%inflow(subcell) = .true.
                 thisOctal%rho(Subcell) = thisRho
                 thisOctal%temperature(subcell) = isothermTemp
+
+
+                IF (useHartmannTemp) THEN
+                   ! need to calculate the flow point AS IF the magnetosphere
+                   !   was the same size as the one in the Hartmann et al paper
+                   pointVec = cellCentre*1.d10
+                   r = modulus( pointVec ) 
+                   theta = acos( pointVec%z  / r )
+        
+                   rM  = r / SIN(theta)**2
+                   
+                   ! work out the intersection angle (at the stellar surface) for
+                   !   the current flow line  
+                   thetaStar = ASIN(SQRT(TTauriRstar/rM))
+                   bigRstar = TTauriRstar * SIN(thetaStar) 
+                   
+                   ! normalize the magnetic radius (0=inside, 1=outside)
+                   rMnorm = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
+                   
+                   ! convert rM to Hartmann units
+                   rM = 2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol))
+                   
+                   bigR = SQRT(pointVec%x**2+pointVec%y**2)
+                   bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
+                   bigR = min(bigR,TTauriRouter)
+                   bigR = max(bigR,0.0)
+                   
+                   ! get the equivalent bigR for the Hartmann geometry
+                   ! first work out the intersection angle (at the stellar surface) for
+                   !   the current flow line  
+                   thetaStarHartmann = ASIN(SQRT((2.0*rSol)/rM))
+                   ! work out bigR for this point
+                   bigRstarHartmann = (2.0*rSol) * SIN(thetaStarHartmann) 
+             
+                   bigR = bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann))
+                   
+                   r = (rM * bigR**2)**(1./3.) ! get r in the Hartmann setup
+                   
+                   ! get theta in the Hartmann setup
+                   tmp = r/rM
+                   ! quick fix for out of range argments (R. Kurosawa)
+                   if (tmp > 1.0) tmp=1.0
+                   if (tmp < -1.0) tmp = -1.0
+                   theta = ASIN(SQRT(tmp))
+                   theta = MIN(theta,REAL(pi/2.0-0.0001))
+                   theta = MAX(theta,0.0001)
+                   
+                   rMnorm = MAX(rMnorm, 0.0001)
+                   rMnorm = MIN(rMnorm, 0.9999)
+                   !        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
+                   thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
+!                   if (Writeoutput) write(*,*) "hart ",rMnorm, theta, maxharttemp,thisOctal%temperature(subcell)
+                END IF
 
                 if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
              

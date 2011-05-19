@@ -117,12 +117,10 @@ contains
     
     call readGridInitParameters(cLine, fLine, nLines)
 
-    if (.not.readgrid) then
-       call readGeometrySpecificParameters(cLine, fLine, nLines)
-    else
-       call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
+    call readGeometrySpecificParameters(cLine, fLine, nLines)
+
+    call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
-    endif
 
 
 ! the physical ingredients of the model
@@ -1714,7 +1712,7 @@ contains
     endif
 
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &
-         "Maximum Velocity Channel (km/s): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+         "Maximum Velocity Channel (km/s): ","(a,f5.1,1x,a)", 1.0d0, ok, .false.)
 
     call getDouble("minVel", minVel, 1.0_db, cLine, fLine, nLines, &
          "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)

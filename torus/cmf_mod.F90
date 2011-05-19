@@ -648,9 +648,9 @@ contains
     call randomNumberGenerator(getDouble=r)
 
 
-!    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
+    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
 
-    deltaV = 10.d0 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
+!    deltaV = 10.d0 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
 
     rayDeltaV = deltaV
     ! 4.3 corresponds to the width where the peak of the line profile has dropped to 1% of its peak
@@ -2489,7 +2489,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : lineOff,  mie
+    use input_variables, only : lineOff,  mie, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -2680,7 +2680,7 @@ contains
 
              if (dv1*dv2 < 0.d0) passThroughResonance = .true.
 
-             if (modulus(endVel)==0.d0) passThroughResonance = .false.
+!             if (modulus(endVel)==0.d0) passThroughResonance = .false.
 
              if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
 
@@ -2843,8 +2843,8 @@ contains
 
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
-                if ((oldPosition%z >= 0.d0).and.(currentPosition%z < 0.d0)) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > (2.d0*grid%octreeRoot%subcellSize)) then
+                if  (oldPosition%z*currentPosition%z < 0.d0) then
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > TTauriRinner/1.d10) then
                       goto 666
                    endif
                 endif
@@ -2865,7 +2865,7 @@ contains
 
   function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, &
       forceFreq, occultingDisc) result (i0)
-    use input_variables, only : lineOff,  mie, lamLine
+    use input_variables, only : lineOff,  mie, lamLine, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -3178,10 +3178,10 @@ contains
 
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
-                if ((oldPosition%z >= 0.d0).and.(currentPosition%z < 0.d0)) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > (2.d0*grid%octreeRoot%subcellSize)) then
-                      goto 666
-                   endif
+                if  (oldPosition%z*currentPosition%z < 0.d0) then
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > TTauriRinner/1.d10) goto 666
+                   write(*,*) "hit disc"
+                   goto 666
                 endif
              endif
           endif
@@ -3440,10 +3440,10 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 500
+    nr1 = 100
     nr2 = 100
     nr = nr1 + nr2
-    nphi = 500
+    nphi = 100
     nray = 0
     i = 0
 
