@@ -1398,15 +1398,15 @@ contains
 
              rhou = thisoctal%rhov(subcell)
 
-             dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-!             dx = thisoctal%subcellsize * griddistancescale
+!             dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+             dx = thisoctal%subcellsize * griddistancescale
 
 
          !    thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
          !         (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
             if(rhieChow) then
-               thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt) * &
+               thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                     (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
                     !print *, "rhou", thisoctal%rhou(subcell)
@@ -1515,15 +1515,15 @@ contains
              rhow = thisoctal%rhow(subcell)
 
 
-             dx = 0.5d0 * (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
-!             dx = thisoctal%subcellsize * griddistancescale
+!             dx = 0.5d0 * (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+             dx = thisoctal%subcellsize * griddistancescale
 
             ! thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
             !      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
 
             if(rhieChow) then
-               thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt) * &
+               thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
                ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
                !print *, "rhou", thisoctal%rhou(subcell)
