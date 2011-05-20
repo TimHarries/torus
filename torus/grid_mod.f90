@@ -252,7 +252,6 @@ contains
     nullify(grid%chiLine)
     nullify(grid%etaLine)
     nullify(grid%etaCont)
-    nullify(grid%sigma)
     nullify(grid%biasLine3D)
     nullify(grid%biasCont3D)
     nullify(grid%xAxis)
@@ -1393,11 +1392,6 @@ contains
     enddo
 
     grid%isotropic = .true.
-    grid%dMu = grid%muAxis(2) - grid%muAxis(1)
-    grid%dPhi = grid%phiAxis(2) - grid%phiAxis(1)
-
-
-
     grid%rAxis = r
 
 !        do i = 1, nr
@@ -1422,7 +1416,6 @@ contains
                 grid%chiLine(i,j,k) = (logInterp(chil, nr, r, grid%rAxis(i)))*fac**2
                 grid%etaLine(i,j,k) = (logInterp(etal, nr,r, grid%rAxis(i)))*fac**2
                 grid%etaCont(i,j,k) = (logInterp(eta, nr,r, grid%rAxis(i)))*fac**2
-                grid%sigma(i, j, k) = sigma(i)
                 grid%kappaSca(i,j,k,1) = logInterp(escat, nr, r, grid%rAxis(i))*fac
                 tmp = logInterp(chi, nr, r,grid%rAxis(i))-grid%kappaSca(i,j,k,1)
                 grid%kappaAbs(i,j,k,1) = max(1.e-20,tmp)
@@ -1431,7 +1424,6 @@ contains
                 grid%temperature(i,j,k) = t(i)*1.e4
                 grid%chiLine(i,j,k) = chil(i)*fac**2
                 grid%etaLine(i,j,k) = etal(i)*fac**2
-                grid%sigma(i, j, k) = sigma(i)
                 grid%kappaSca(i,j,k,1) = escat(i)*fac
                 tmp = logInterp(chi, nr, r,grid%rAxis(i))-grid%kappaSca(i,j,k,1)
                 grid%etaCont(i,j,k) = eta(i)*fac**2
@@ -1504,8 +1496,6 @@ contains
        nullify(grid%etaLine)
     if (associated(grid%etaCont)) deallocate(grid%etaCont)
        nullify(grid%etaCont)
-    if (associated(grid%sigma)) deallocate(grid%sigma)
-       nullify(grid%sigma)
     if (associated(grid%velocity)) deallocate(grid%velocity)
        nullify(grid%velocity)
     if (associated(grid%rAxis)) deallocate(grid%rAxis)

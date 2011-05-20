@@ -60,12 +60,9 @@ module gridtype_mod
      real, pointer :: kappaRossArray(:,:) => null()
      real, pointer :: tempRossArray(:) => null()
      integer :: nTempRossArray
-     real :: kappaTest
-     integer :: itestlam
      type(VECTOR) :: diskNormal
      real :: dipoleOffset
      character(len=20) :: geometry               ! type of geometry
-     type(vector), pointer :: dVbydr(:,:,:)  => null()           ! velocity gradient
 
      real(double),pointer :: oneProbLine(:) => null()
      real(double),pointer :: oneProbCont(:) => null()
@@ -79,7 +76,6 @@ module gridtype_mod
      real, pointer :: chiLine(:,:,:) => null()   ! line opacity
      real, pointer :: etaLine(:,:,:) => null()   ! line emissivity
      real, pointer :: etaCont(:,:,:) => null()   ! line emissivity
-     real, pointer :: sigma(:,:,:)  => null()    ! radial velocity gradient
      type(VECTOR), pointer :: velocity(:,:,:) => null() ! velocity grid
      real, pointer :: rAxis(:) => null()                  ! r-axis
 
@@ -88,7 +84,6 @@ module gridtype_mod
 
      real, pointer :: muAxis(:) => null()        ! mu-axis
      real, pointer :: phiAxis(:) => null()       ! phi-axis
-     real          :: dMu, dPhi                  ! spacing of mu and phi axes
      real, pointer :: xAxis(:) => null()         ! x-axis
      real, pointer :: yAxis(:) => null()         ! y-axis
      real, pointer :: zAxis(:) => null()         ! z-axis
