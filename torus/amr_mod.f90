@@ -6276,7 +6276,7 @@ CONTAINS
        endif
 
     else if(thisOctal%twoD) then
-       if((rvec%z+rVec%z) <= 0.1) then
+       if((rvec%z+rVec%x) <= 0.1) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
