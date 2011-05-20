@@ -2833,8 +2833,9 @@ contains
 
              if (thisOctal%inflow(subcell)) then
                 i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+!                i0 = i0 + exp(-tau) * snu * dtau
+                tau = tau + dtau
              endif
-             tau = tau + dtau
           enddo
           rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
           oldPosition = currentPosition
@@ -3450,7 +3451,7 @@ contains
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = globalSourceArray(1)%radius 
 !    rMax = 2.d0*grid%octreeRoot%subcellSize
-    rMax = 10.d0*rmin
+    rMax = 5.d0*rmin
 
     do ir = 1, nr1
        r1 = rMin * dble(ir-1)/dble(nr1)

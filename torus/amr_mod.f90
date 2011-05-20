@@ -3498,7 +3498,7 @@ CONTAINS
 
      if (inFlow) then
         if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
-        if (cellSize > 0.01d0*(TTauririnner/1.d10)) split = .true.
+!        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
         if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
            split = .true.
            splitinazimuth = .true.

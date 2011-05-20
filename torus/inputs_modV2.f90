@@ -114,13 +114,13 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
+    if (readgrid) call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
+                  "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
     
     call readGridInitParameters(cLine, fLine, nLines)
 
     call readGeometrySpecificParameters(cLine, fLine, nLines)
 
-    call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
-                  "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
 
 
 ! the physical ingredients of the model
