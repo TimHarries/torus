@@ -3284,7 +3284,7 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
-          call refinegridGeneric(grid, 1.d-1)
+          call refinegridGeneric(grid, 1.d-2)
        end if
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -5072,7 +5072,7 @@ end subroutine sumFluxes
     real(double) :: limit 
     integer :: myRank, ierr
     logical :: refineOnMass, refineOnIonization, refineOnGradient
-    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
     integer :: nd
 
     converged = .true.
@@ -5138,7 +5138,7 @@ end subroutine sumFluxes
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
-                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z)
                
                 split = .false.
 
@@ -5431,7 +5431,7 @@ end subroutine refineGridGeneric2
 
     unrefine = .false.
 
-    if ((nc > 1) .and.(.not.ghostCell)) then
+    if ((nc > 1)) then !.and.(.not.ghostCell)) then
 
        unrefine = .true.
        meancs = SUM(cs(1:nc))/dble(nc)
@@ -5841,14 +5841,17 @@ end subroutine refineGridGeneric2
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
-    !
-    integer :: subcell, i
+    type(octal), pointer :: bOctal
+    integer :: subcell, i, bSubcell
     logical :: converged, converged_tmp
-    type(VECTOR) :: dirVec(6), centre, octVec
+    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
     integer :: myRank, ierr
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
+    integer :: nd, nd2
+
     converged = .true.
     converged_tmp=.true.
 
@@ -5874,6 +5877,34 @@ end subroutine refineGridGeneric2
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
+
+         
+          !Thaw - force ghostcells to match their partner refinement                                                  
+          if(thisOctal%ghostcell(subcell)) then                                                                     
+             locator = thisOctal%boundaryPartner(subcell)                                                           
+             bOctal => thisOctal                                                                                    
+             
+             rVec = subcellCentre(thisOctal, subcell)                                                               
+             
+             call findSubcellLocal(locator, bOctal, bSubcell)
+             bVec = subcellCentre(bOctal, bSubcell)
+             if(thisOctal%nDepth < bOctal%nDepth .and. thisOctal%nDepth < maxDepthAMR) then
+                call addNewChildWithInterp(thisOctal, subcell, grid)
+                rVec = subcellCentre(thisOctal, subcell)
+                converged = .false.
+                exit
+             end if
+             
+             if(octalOnThread(bOctal, bSubcell, myRank)) then                                                        
+                if(thisOctal%nDepth > bOctal%nDepth .and. bOctal%nDepth < maxDepthAMR) then                         
+                   call addNewChildWithInterp(bOctal, bsubcell, grid)                                               
+                   converged = .false.                                                                               
+                   exit                                                                                              
+                end if
+             end if
+             
+          end if
+             
           if (thisOctal%threed) then
              nDir = 6
              dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
@@ -5894,36 +5925,88 @@ end subroutine refineGridGeneric2
              dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
           endif
 
-             do j = 1, nDir
-                octVec = centre + r * dirvec(j)
-                if (inOctal(grid%octreeRoot, octVec)) then
-                   neighbourOctal => thisOctal
-                   call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
-
-                   if (octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
-
-                      if (((neighbourOctal%nDepth-thisOctal%nDepth) > 1).and. (thisOCtal%ndepth < maxDepthAMR)) then
-                         call addNewChildWithInterp(thisOctal, subcell, grid)
-                         converged = .false.
-                         exit
-                      endif
-         
-!                      if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
-                      if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
-                         call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
-                         converged = .false.
-                         exit
-                      endif
+          do j = 1, nDir
+             octVec = centre + r * dirvec(j)
+             if (inOctal(grid%octreeRoot, octVec)) then
+                neighbourOctal => thisOctal
+                call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+                
+                call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+                if(.not. thisOctal%ghostcell(subcell)) then
+                   if(thisOctal%twoD) then
+                      !                   if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
+                      rVec = subcellCentre(thisOctal, subcell)
+                      bVec = subcellCentre(neighbourOctal, neighbourSubcell)
+                      octVec = VECTOR(x, y, z) 
                       
-                   endif
+                      !                      print *, "nd", nd, thisOctal%nDepth, myRank
+                      if((nd - thisOctal%nDepth)==1) then
+                         !THaw - need to ensure that both of the neighbours are of lower refinement(2D)
+                         if(abs(dirVec(j)%z) == 1.d0) then
+                            if(rVec%x > octVec%x) then                                  
+!                               print *, "a1", octvec
+                               octVec = octVec + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               print *, "a2", octvec
+                            else
+!                               print *, "b1", octvec
+                               octVec = octVec + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               print *, "b2", octvec
+                            end if
+                            
+                         else if (abs(dirVec(j)%x) == 1.d0) then
+                            
+                            if(rVec%z >octVec%z) then
+!                               print *, "c1", octvec
+                               octVec = octVec + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               print *, "c2", octvec
+                            else
+!                               print *, "d1", octvec
+                               octVec = octVec + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               print *, "d2", octvec
+                            end if
+                            
+                         else 
+                            print *, "Unrecognized direction", dirVec(j)
+                            stop
+                         end if
+                         
+                         
+                         call getHydroValues(grid, octVec, nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+                         
+                         if(nd2 > nd) then
+!                            print *, "nd1", nd
+                            nd = nd2
+!                            print *, "nd2", nd
+                         end if
+                      end if
+                      !end if
+                   end if
                 end if
-             enddo
+                
+                !                   if (((neighbourOctal%nDepth-thisOctal%nDepth) > 1).and. (thisOCtal%ndepth < maxDepthAMR)) then
+                if (((nd-thisOctal%nDepth) > 1).and. (thisOctal%nDepth < maxDepthAMR)) then
+                   call addNewChildWithInterp(thisOctal, subcell, grid)
+                   converged = .false.
+                   exit
+                endif
+                
+                if (octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then         
+                   !                      if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
+                   if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
+                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+                      converged = .false.
+                      exit
+                   endif
+                      
+                endif
+             end if
+          enddo
           if (.not.converged) exit
        endif
     end do
 
   end subroutine evenUpGrid
-
+  
   subroutine splitAtLocator(grid, locator, depth,  localchanged)
     use input_variables, only :  maxDepthAMR
     include 'mpif.h'

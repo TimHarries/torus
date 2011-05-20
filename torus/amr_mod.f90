@@ -3719,8 +3719,26 @@ CONTAINS
       end if
 
    case("diagSod")
-      rVec = subcellCentre(thisOctal, subcell)
-      if (thisOctal%nDepth < maxDepthAMR) split = .true.
+!      rVec = subcellCentre(thisOctal, subcell)
+!      if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+
+      if(dorefine .or. dounrefine) then
+         rVec = subcellCentre(thisOctal, subcell)
+
+         if (thisOctal%nDepth < minDepthAMR) split = .true.                                                                                                    
+
+      else
+         rVec = subcellCentre(thisOctal, subcell)
+         if (thisOctal%nDepth < minDepthAMR) split = .true.
+         !Coarse to fine                                                                                                                                        
+          if(((rVec%x-0.5)**2 + rvec%z**2) < 0.1 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+
+      end if
+
+
+
+
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
    case("bonnor", "unisphere")
@@ -6258,7 +6276,7 @@ CONTAINS
        endif
 
     else if(thisOctal%twoD) then
-       if(rvec%z <= -0.1) then
+       if((rvec%z+rVec%z) <= 0.1) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0

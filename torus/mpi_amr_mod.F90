@@ -2147,7 +2147,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: weight, totalWeight
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
-    real(double) :: oldMass, newMass, factor
+    real(double) :: oldMass, newMass, factor, xh, yh, zh
     real(double) :: oldEnergy, newEnergy
     logical, save :: firstTime = .true.
     logical :: debug
@@ -2368,7 +2368,7 @@ end subroutine dumpStromgrenRadius
        do iDir = 1, nDir
           position = corner(iCorner) + dir(iDir)
           if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(parent, parentSubcell, position))) then
-             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh)
              weight = abs(parent%ndepth - nd)+1.d0
 
              totalWeight = totalWeight + weight
@@ -2688,16 +2688,16 @@ end subroutine dumpStromgrenRadius
     enddo
   end subroutine shutdownServers
 
-  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi)
+  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
-    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi
-    type(VECTOR) :: position
+    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
+    type(VECTOR) :: position, rVec
     real(double) :: loc(3)
     type(OCTAL), pointer :: thisOctal, parent
     integer :: iThread
-    integer, parameter :: nStorage = 8
+    integer, parameter :: nStorage = 11
     real(double) :: tempStorage(nStorage)
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
@@ -2708,7 +2708,10 @@ end subroutine dumpStromgrenRadius
     call findSubcellLocal(position, thisOctal, subcell)
     
     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
+    
+       
        if (.not.thisOctal%changed(subcell)) then
+          rVec = subcellCentre(thisOctal, subcell)
           rho = thisOctal%rho(subcell)
           rhoe = thisOctal%rhoe(subcell)
           rhou = thisOctal%rhou(subcell)
@@ -2717,8 +2720,12 @@ end subroutine dumpStromgrenRadius
           nd = thisOctal%nDepth
           energy = thisOctal%energy(subcell)
           phi = thisOctal%phi_i(subcell)
+          x = rVec%x
+          y = rVec%y
+          z = rVec%z
        else
           parent => thisOctal%parent
+          rVec = subcellCentre(parent, thisOctal%parentsubcell)
           rho =  parent%rho(thisOctal%parentsubcell)
           rhoe = parent%rhoe(thisOctal%parentsubcell)
           rhou = parent%rhou(thisOctal%parentsubcell)
@@ -2727,6 +2734,9 @@ end subroutine dumpStromgrenRadius
           nd = parent%nDepth
           energy = parent%energy(thisOctal%parentSubcell)
           phi = parent%phi_i(thisOctal%parentSubcell)
+          x = rVec%x
+          y = rVec%y
+          z = rVec%z
        endif
     else
        iThread = thisOctal%mpiThread(subcell)
@@ -2743,6 +2753,9 @@ end subroutine dumpStromgrenRadius
        rhow = tempStorage(6)
        energy = tempStorage(7)
        phi = tempStorage(8)
+       x = tempstorage(9)
+       y = tempstorage(10)
+       z = tempstorage(11)
     endif
   end subroutine getHydroValues
 
@@ -2751,11 +2764,11 @@ end subroutine dumpStromgrenRadius
     type(GRIDTYPE) :: grid
     logical :: stillServing
     real(double) :: loc(3)
-    type(VECTOR) :: position
+    type(VECTOR) :: position, rVec
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: iThread
-    integer, parameter :: nStorage = 8
+    integer, parameter :: nStorage = 11
     real(double) :: tempStorage(nStorage)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -2774,7 +2787,7 @@ end subroutine dumpStromgrenRadius
        else
           call findSubcellLocal(position, thisOctal, subcell)
 !          if (.not.thisOctal%changed(subcell)) then
-
+          rVec = subcellCentre(thisOctal, subcell)
              tempStorage(1) = thisOctal%nDepth
              tempStorage(2) = thisOctal%rho(subcell)
              tempStorage(3) = thisOctal%rhoe(subcell)             
@@ -2783,6 +2796,10 @@ end subroutine dumpStromgrenRadius
              tempStorage(6) = thisOctal%rhow(subcell)        
              tempStorage(7) = thisOctal%energy(subcell)
              tempStorage(8) = thisOctal%phi_i(subcell)
+             tempStorage(9) = rVec%x
+             tempStorage(10) = rVec%y
+             tempStorage(11) = rVec%z
+
 !          else
 !             parent => thisOctal%parent
 !             tempStorage(1) = parent%nDepth
