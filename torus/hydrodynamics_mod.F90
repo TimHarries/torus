@@ -3188,7 +3188,7 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
-             call refinegridGeneric(grid, 1.d-1)          
+             call refinegridGeneric(grid, 1.d-2)          
           end if
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
