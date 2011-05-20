@@ -1,3 +1,12 @@
+  type curtaintype
+     integer :: nr, ntheta
+     type(VECTOR), pointer :: position(:,:) => null()
+     type(VECTOR), pointer :: velocity(:,:) => null()
+     real(double), pointer :: density(:,:) => null()
+     real(double), pointer :: temperature(:,:) => null()
+  end type curtaintype
+
+
 !!$  SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
 !!$             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
 !!$             usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&

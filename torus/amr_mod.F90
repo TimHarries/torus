@@ -4,22 +4,14 @@ module amr_mod
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
 
-  use vector_mod
-  use random_mod
-  use messages_mod
-  USE constants_mod
+  use amr_utils_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute, returndphi
-  use utils_mod, only: blackbody, logint, loginterp, stripSimilarValues, locate, solvequaddble, spline, splint, regular_tri_quadint
-  use density_mod, only:    density, TTauriInFlow
+  use utils_mod, only: blackbody, logint, loginterp, locate, solvequaddble, spline, splint, regular_tri_quadint
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
   USE cluster_class, only:  cluster
-  USE parallel_mod, ONLY:   torus_abort
   use mpi_global_mod, only: myRankGlobal
-  use gas_opacity_mod
-  use amr_utils_mod
-  use phfit_mod, only : phfit2
 
   IMPLICIT NONE
 
@@ -35,18 +27,8 @@ module amr_mod
      real(double),pointer :: streamRadius(:)  => null()
   end type STREAMTYPE
 
-  integer :: somecounter
-
   type(STREAMTYPE),save :: globalStream(5000)
   integer,save :: globalnStream
-
-  type curtaintype
-     integer :: nr, ntheta
-     type(VECTOR), pointer :: position(:,:) => null()
-     type(VECTOR), pointer :: velocity(:,:) => null()
-     real(double), pointer :: density(:,:) => null()
-     real(double), pointer :: temperature(:,:) => null()
-  end type curtaintype
 
   real(double), parameter :: amr_min_rho = 1.0e-30_db 
 
@@ -2044,6 +2026,7 @@ CONTAINS
                         temperature,Ne,inFlow,etaCont,etaLine) 
   
     use jets_mod, only: JetsVelocity, get_jets_parameter, dV_dn_jets    
+    use density_mod, only: density
 
     IMPLICIT NONE
     
@@ -3237,6 +3220,7 @@ CONTAINS
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1
+    use density_mod, only: density
 
     IMPLICIT NONE
 
@@ -5031,6 +5015,7 @@ CONTAINS
                                 TTauriRinner, TTauriRouter, ttau_acc_on, &
                                  vturb
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    use density_mod, only:   density, TTauriInFlow
 
     IMPLICIT NONE
 
@@ -5224,6 +5209,7 @@ CONTAINS
   ! Before the initial call the total mass must be set to zero
   ! The output should be in grams.
   RECURSIVE SUBROUTINE TTauri_accretion_mass(thisOctal, grid, total_mass)
+    use density_mod, only: TTauriInFlow
 
     IMPLICIT NONE
     TYPE(OCTAL), POINTER :: thisOctal    
@@ -6164,7 +6150,7 @@ CONTAINS
 
 
   subroutine calcWRShellDensity(thisOctal,subcell,grid)
-
+    use density_mod, only: density
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7798,7 +7784,7 @@ end function readparameterfrom2dmap
 
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
-
+    use density_mod, only: density
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7911,7 +7897,7 @@ end function readparameterfrom2dmap
   end subroutine shakaraDisk
 
   subroutine warpedDisk(thisOctal,subcell,grid)
-
+    use density_mod, only: density
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7948,7 +7934,7 @@ end function readparameterfrom2dmap
 
   ! chris (26/05/04)
   subroutine calcPPDiskDensity(thisOctal, subcell, grid)
-
+    use density_mod, only: density
     use input_variables
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
@@ -7972,7 +7958,7 @@ end function readparameterfrom2dmap
 
 
   subroutine assign_clumpydisc(thisOctal,subcell,grid)
-
+    use density_mod, only: density
     use input_variables
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -9938,6 +9924,7 @@ end function readparameterfrom2dmap
     END SUBROUTINE amrUpdateGridAdd
 
     RECURSIVE SUBROUTINE amrUpdateGridChanged(thisOctal)
+      use density_mod, only: density
       ! update the octals in the grid
       ! flag any octals that have changed "significantly" since the last phase
 
@@ -9973,6 +9960,8 @@ end function readparameterfrom2dmap
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
     use input_variables, only: nDustType, mie, includeGasOpacity, lineEmission
     use atom_mod, only: bnu
+    use gas_opacity_mod, only: returnGasKappaValue
+    use phfit_mod, only : phfit2
 #ifdef PHOTOION
     use input_variables, only: photoionization, hOnly
 #endif

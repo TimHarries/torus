@@ -6,8 +6,8 @@ module amr_utils_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute
-  use gridtype_mod
-  use mpi_global_mod
+  use gridtype_mod, only: gridtype
+  use mpi_global_mod, only: myRankGlobal
   use parallel_mod, only : torus_abort
   use utils_mod, only : solveQuadDble
   public
