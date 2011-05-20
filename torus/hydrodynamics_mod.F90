@@ -5879,12 +5879,11 @@ end subroutine refineGridGeneric2
           centre = subcellCentre(thisOctal, subcell)
 
          
-          !Thaw - force ghostcells to match their partner refinement                                                  
-          if(thisOctal%ghostcell(subcell)) then                                                                     
-             locator = thisOctal%boundaryPartner(subcell)                                                           
-             bOctal => thisOctal                                                                                    
-             
-             rVec = subcellCentre(thisOctal, subcell)                                                               
+          !Thaw - force ghostcells to match their partner refinement
+          if(thisOctal%ghostcell(subcell)) then
+             locator = thisOctal%boundaryPartner(subcell)
+             bOctal => thisOctal             
+             rVec = subcellCentre(thisOctal, subcell)
              
              call findSubcellLocal(locator, bOctal, bSubcell)
              bVec = subcellCentre(bOctal, bSubcell)
@@ -5895,11 +5894,11 @@ end subroutine refineGridGeneric2
                 exit
              end if
              
-             if(octalOnThread(bOctal, bSubcell, myRank)) then                                                        
-                if(thisOctal%nDepth > bOctal%nDepth .and. bOctal%nDepth < maxDepthAMR) then                         
-                   call addNewChildWithInterp(bOctal, bsubcell, grid)                                               
-                   converged = .false.                                                                               
-                   exit                                                                                              
+             if(octalOnThread(bOctal, bSubcell, myRank)) then
+                if(thisOctal%nDepth > bOctal%nDepth .and. bOctal%nDepth < maxDepthAMR) then
+                   call addNewChildWithInterp(bOctal, bsubcell, grid)
+                   converged = .false.
+                   exit
                 end if
              end if
              

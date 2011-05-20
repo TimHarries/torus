@@ -3726,12 +3726,12 @@ CONTAINS
       if(dorefine .or. dounrefine) then
          rVec = subcellCentre(thisOctal, subcell)
 
-         if (thisOctal%nDepth < minDepthAMR) split = .true.                                                                                                    
+         if (thisOctal%nDepth < minDepthAMR) split = .true.
 
       else
          rVec = subcellCentre(thisOctal, subcell)
          if (thisOctal%nDepth < minDepthAMR) split = .true.
-         !Coarse to fine                                                                                                                                        
+         !Coarse to fine
           if(((rVec%x-0.5)**2 + rvec%z**2) < 0.1 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
       end if
