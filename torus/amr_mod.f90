@@ -3727,6 +3727,10 @@ CONTAINS
          rVec = subcellCentre(thisOctal, subcell)
 
          if (thisOctal%nDepth < minDepthAMR) split = .true.
+         if ( ((rVec%x+rvec%z) > 0.04).and. (((rVec%x+rvec%z) < 0.06)) .and. &
+              (thisOctal%nDepth < maxDepthAMR)) split = .true.
+         !if ( ((rVec%x+rvec%z) < 0.06).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+         
 
       else
          rVec = subcellCentre(thisOctal, subcell)
@@ -6276,7 +6280,7 @@ CONTAINS
        endif
 
     else if(thisOctal%twoD) then
-       if((rvec%z+rVec%x) <= 0.1) then
+       if((rvec%z+rVec%x) <= 0.05) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
