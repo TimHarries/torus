@@ -12,7 +12,8 @@ module dust_mod
   implicit none
   public
   private :: fillGridMie, fillAMRgridMie, dustPropertiesfromFile, returnScaleHeight, &
-       getTemperatureDensityRundust, createRossArray, rtnewtdust, Equation2dust, parseGrainType
+       getTemperatureDensityRundust, createRossArray, rtnewtdust, Equation2dust, parseGrainType, &
+       getMeanMass2
 
 contains
 
@@ -414,9 +415,7 @@ contains
     real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
     real :: meanParticleMass
-    real :: getMeanMass2
     real :: rayleigh, gsca
-    external getMeanMass2
     integer, intent(in) :: ngrain  ! number of grain types
     real, intent(in) :: abundance(:)   ! relative abundance of grains
     character(len=*) :: grainname(:)   ! names of grains available
@@ -1319,5 +1318,76 @@ contains
     enddo
   end subroutine allocateMemoryForDust
   
+real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)  
+
+  use constants_mod
+  use mieDistCrossSection_mod, only: PowerInt
+
+  implicit none
+  real, intent(in) :: aMin, aMax, a0, qDist, pDist
+  real :: a1, a2, vol, fac
+  integer :: i
+  integer, parameter :: n = 1000
+  real :: a(n)     ! grain sizes (log spaced)
+  real :: f(n)     ! distribution function (normalized)
+  real :: mass(n)  ! 
+  real :: normFac
+  character(len=*) :: grainType
+  real :: density
+
+  select case(grainType)
+  case("sil_dl")
+     density = 3.6
+  case("draine_sil")
+     density = 3.5
+  case("amc_hn","amc_zb","gr1_dl","gr2_dl")
+     density = 2.   ! mean density of graphite 2 g /cm^3
+  case("pinteISM")
+     density = 0.5
+  case DEFAULT
+     density = 3.6
+     write(*,*) "==== WARNING ==== WARNING ==== WARNING ====="
+     write(*,*) "Unknown grain type in getMeanMass2."
+     write(*,*) "       grainType =", grainType
+     write(*,*) "  Assuming the density of grain to be ", density, "[g/cm^3] "
+     write(*,*) "       and continuing .... "
+     write(*,*) "====================================== ====="
+  end select
+
+
+  a1 = log(aMin)
+  a2 = log(aMax)
+  !
+  ! setting up the grain sizes
+  do i = 1, n
+     a(i) = (a1 + (a2 - a1) * real(i-1)/real(n-1))
+     a(i) = exp(a(i))
+     f(i) = a(i)**(-qDist) * exp(-(a(i)/a0)**pDist) 
+  end do
+  
+  !
+  ! normalize the dist function
+  call PowerInt(n, 1, n, a, f, normFac)
+  f(:) = f(:)/normFac
+
+  !
+  ! Finding the mean mass now.
+  do i = 1, n
+     vol = (4./3.)* pi * (a(i)*microntocm)**3
+     mass(i) = vol * density * f(i)    ! weighted by dist function
+  end do
+  
+  call PowerInt(n, 1, n, a, mass, fac)
+
+  getMeanMass2 = fac
+
+  !  !
+  !  !  For debug
+  !  !
+  !  getMeanMass2 = getMeanMass2*1000.0
+  
+end function getMeanMass2
+
+
 end module dust_mod
 

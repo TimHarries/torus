@@ -3236,13 +3236,15 @@ contains
     real(double), allocatable :: vArray(:), spec(:)
     integer :: iv1, iv2, i
     character(len=30) :: plotfile,message
-    character(len=80) :: tempChar, tempFilename
     type(DATACUBE) :: cube
     integer :: nFreqArray
     real(double) :: totalOmega
     integer, parameter :: maxFreq = 2000
     real(double) :: freqArray(maxFreq), broadBandFreq, transitionFreq
     logical :: doCube, doSpec
+#ifdef USECFITSIO
+    character(len=80) :: tempChar, tempFilename
+#endif
 
 #ifdef MPI
     ! For MPI implementations

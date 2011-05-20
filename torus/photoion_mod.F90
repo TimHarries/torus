@@ -5,8 +5,7 @@ module photoion_mod
 
 use constants_mod
 use messages_mod
-use photon_mod
-use phasematrix_mod 
+use photon_mod, only: PHOTON
 use timing, only: tune
 use unix_mod, only: unixGetenv
 use vtk_mod, only: writeVtkFile
@@ -3258,9 +3257,10 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
-    use input_variables, only : nPhotons, setimagesize, lamStart, amr2d, gridDistance
+    use input_variables, only : nPhotons, setimagesize, lamStart, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
 #ifdef USECFITSIO
+    use input_variables, only: gridDistance
     use image_mod, only: writeFitsImage
 #endif
     use math_mod, only: computeprobdist
