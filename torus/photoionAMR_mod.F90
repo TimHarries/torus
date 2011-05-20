@@ -56,7 +56,6 @@ contains
 
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
-    use ion_mod, only : returnMu
     use input_variables, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid

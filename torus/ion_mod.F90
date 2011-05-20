@@ -1,3 +1,4 @@
+#ifdef PHOTOION
 module ion_mod
 !
 !
@@ -1114,3 +1115,4 @@ end function returnNe
 
 end module ion_mod
 
+#endif

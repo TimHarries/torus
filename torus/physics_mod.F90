@@ -16,13 +16,17 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use input_variables, only : atomicPhysics, photoionPhysics, nAtom, photoionization
+    use input_variables, only : atomicPhysics, nAtom
+    use modelatom_mod
 #ifdef MOLECULAR
     use input_variables, only : molecularPhysics, moleculeFile, molecular
-    use molecular_mod
+    use molecular_mod, only: readMolecule, globalMolecule
 #endif
-    use modelatom_mod
-    use source_mod
+#ifdef PHOTOION
+    use ion_mod, only: addIons, globalIonArray, nGlobalIon
+    use input_variables, only : photoionization, photoionPhysics
+#endif
+
     type(GRIDTYPE) :: grid
 
 #ifdef MOLECULAR
@@ -38,12 +42,13 @@ contains
        call setupAtoms(nAtom, globalAtomArray)
     endif
 
+#ifdef PHOTOION
   if (photoionPhysics) then
      call addIons(grid%ion, grid%nion)
      call addIons(globalIonArray, nGlobalIon)
      photoionization = .true.
   endif
-
+#endif
 
 
   end subroutine setupMicrophysics

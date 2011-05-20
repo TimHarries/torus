@@ -8,7 +8,6 @@ module vtk_mod
 ! http://public.kitware.com/VTK/pdf/file-formats.pdf
 
   use kind_mod
-  use ion_mod
   use dimensionality_mod
   use constants_mod
   use utils_mod
@@ -17,6 +16,9 @@ module vtk_mod
   use messages_mod
   use vector_mod
   use mpi_global_mod
+#ifdef PHOTOION
+  use ion_mod, only: returnIonNumber
+#endif
 
   implicit none
 
@@ -981,6 +983,7 @@ contains
                      write(lunit, *) 0.
                   endif
 
+#ifdef PHOTOION
                case("HI")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
 
@@ -998,6 +1001,7 @@ contains
 
                case("OIII")
                   write(lunit, *) real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
+#endif
 
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
@@ -2476,6 +2480,7 @@ end subroutine writeXMLVtkFileAMR
                      rArray(1, n) = 0.
                   endif
 
+#ifdef PHOTOION
                case("HI")
                   rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
 
@@ -2493,6 +2498,7 @@ end subroutine writeXMLVtkFileAMR
 
                case("OIII")
                   rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
+#endif
 
                case("sourceCont")
                   rArray(1, n) = real(thisOctal%normSourceContribution(subcell, 1))

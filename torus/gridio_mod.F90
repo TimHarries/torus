@@ -11,7 +11,6 @@ module gridio_mod
   use density_mod                     ! to use generic density function
   use cmfgen_class
   use messages_mod
-  use ion_mod
   use mpi_global_mod
   use mpi_amr_mod
   use parallel_mod, only : torus_mpi_barrier

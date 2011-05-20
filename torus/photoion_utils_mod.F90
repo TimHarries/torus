@@ -37,6 +37,7 @@ use mpi_amr_mod
 use mpi_global_mod
 use photon_mod
 use phasematrix_mod
+use ion_mod
 
 implicit none
 

@@ -6729,7 +6729,9 @@ end subroutine refineGridGeneric2
   end subroutine selfGrav
 
   real(double) function getPressure(thisOctal, subcell)
+#ifdef PHOTOION
     use ion_mod, only : nGlobalIon, globalIonArray, returnMu
+#endif
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
@@ -6758,6 +6760,7 @@ end subroutine refineGridGeneric2
 !          write(*,*) "rhou,rhow ", thisOCtal%rhou(subcell), thisOctal%rhow(subcell)
 !          write(*,*) "etot, ekinetic, eThermal ",etot, ekinetic, ethermal
        case(1) ! isothermal
+#ifdef PHOTOION
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
 
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
@@ -6779,6 +6782,10 @@ end subroutine refineGridGeneric2
           !    print *, "F", (thisOctal%rho(subcell)/mu*mHydrogen)*kerg*thisOctal%temperature(subcell)
           !   stop
           !end if
+#else
+          call writeFatal("hydrodynamics_mod: isothermal pressure needs photoionization")
+          STOP
+#endif
 
        case(2) !  equation of state from Bonnell 1994
           rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))

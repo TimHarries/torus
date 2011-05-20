@@ -13,7 +13,6 @@ use vtk_mod, only: writeVtkFile
 use amr_mod, only: returnKappa, inOctal
 use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, cellVolume
 use amr_mod, only: distanceToCellBoundary, randomPositionInCell, findsubcelllocal
-use ion_mod, only: IONTYPE
 use photoion_utils_mod
 #ifdef MPI
 use mpi_global_mod, only : myrankGlobal
@@ -38,7 +37,6 @@ contains
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use input_variables, only : nlucy, taudiff, lambdaSmooth
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
-    use ion_mod, only: addXsectionArray
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
     use spectrum_mod, only: getwavelength
@@ -1236,7 +1234,7 @@ end subroutine photoIonizationloop
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq)
-    use ion_mod, only: returnxSec
+
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: nFreq, iFreq
@@ -1737,7 +1735,7 @@ function recombRate(thisIon, temperature) result (rate)
 end function recombRate
 
 subroutine dumpLexington(grid, epsoverdt)
-  use ion_mod, only: returnIonNumber, returnAbundance
+
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
@@ -1859,7 +1857,7 @@ end subroutine dumpLexington
 
 
 subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
-  use ion_mod, only: returnIonNumber
+
   type(GRIDTYPE) :: grid
   character(len=*) :: species
   real(double) :: wavelength

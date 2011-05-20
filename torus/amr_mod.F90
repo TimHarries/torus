@@ -9971,8 +9971,11 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-    use input_variables, only: nDustType, photoionization, mie, includeGasOpacity, lineEmission, honly
+    use input_variables, only: nDustType, mie, includeGasOpacity, lineEmission
     use atom_mod, only: bnu
+#ifdef PHOTOION
+    use input_variables, only: photoionization, hOnly
+#endif
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -9995,8 +9998,6 @@ end function readparameterfrom2dmap
     real(double) :: freq, dfreq, norm !,  bnutot
     integer :: i,j,m,itemp
     real :: fac
-    real :: e, h0, he0
-    real(double) :: kappaH, kappaHe
     real(double), allocatable, save :: tgasArray(:)
     real(double), allocatable, save :: oneKappaAbsT(:,:)
     real(double), allocatable, save :: oneKappaScaT(:,:)
@@ -10005,6 +10006,11 @@ end function readparameterfrom2dmap
     integer(double),save :: nlambda
     real(double) :: tgas
     
+#ifdef PHOTOION
+    real(double) :: kappaH, kappaHe
+    real :: e, h0, he0
+#endif
+
 !$OMP THREADPRIVATE (firstTime, nLambda, tgasArray, oneKappaAbsT, oneKappaScaT)
 
     if ( present(reset_kappa) ) then 
@@ -10311,7 +10317,7 @@ end function readparameterfrom2dmap
       endif
    endif
    
-
+#ifdef PHOTOION
    if (photoionization) then
 
       if (PRESENT(kappaAbs)) then
@@ -10339,7 +10345,8 @@ end function readparameterfrom2dmap
       endif
       if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10 
    endif
-   
+#endif
+
   end subroutine returnKappa
    
   recursive subroutine getxValuesAMR(thisOctal, nx, xAxis)
