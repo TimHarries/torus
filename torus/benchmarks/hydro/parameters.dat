@@ -6,6 +6,7 @@ writegrid F
 hydrodynamics T
 
 limitertype superbee
+rhieChow F
 
 mindepthamr 3
 maxdepthamr 10
