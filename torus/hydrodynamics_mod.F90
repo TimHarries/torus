@@ -5854,14 +5854,47 @@ end subroutine refineGridGeneric2
                 exit
              end if
              
-!             if(octalOnThread(bOctal, bSubcell, myRank)) then
+             !THAW - need to provide a case for when boundary partner is not on thread (i.e. for periodics)
+             if(octalOnThread(bOctal, bSubcell, myRank)) then
                 if(thisOctal%nDepth > bOctal%nDepth .and. bOctal%nDepth < maxDepthAMR) then
                    call addNewChildWithInterp(bOctal, bsubcell, grid)
                    converged = .false.
                    exit
                 end if
-!             end if
+             end if
              
+
+             !Periodic non-ghosts
+             if(thisOctal%boundaryCondition(subcell) == 2 .and. .not. thisOctal%edgecell(subcell)) then
+
+                direction = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                
+                !Make it a unit vector                                                                                                                                                                                                
+                if(direction%x > 0.d0) direction%x = direction%x / direction%x
+                if(direction%x < 0.d0) direction%x = -direction%x / direction%x
+                if(direction%y > 0.d0) direction%y = direction%y / direction%y
+                if(direction%y < 0.d0) direction%y = -direction%y / direction%y
+                if(direction%z > 0.d0) direction%z = direction%z / direction%z
+                if(direction%z < 0.d0) direction%z = -direction%z / direction%z
+                
+                locator = subcellCentre(thisOctal, subcell) + direction*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+
+                neighbourOctal => thisOctal
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+                if(octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+
+                   if(neighbourOctal%nDepth > thisOctal%nDepth) then
+                      call addNewChildWithInterp(thisOctal, subcell, grid)
+                      converged = .false.
+                      exit
+                   else if (neighbourOctal%nDepth < thisOctal%nDepth) then
+                      call addNewChildWithInterp(neighbourOctal, neighbourSubcell, grid)
+                      converged = .false.
+                      exit
+                   end if
+                end if
+             end if
           end if
 
 
@@ -5888,10 +5921,32 @@ end subroutine refineGridGeneric2
                 converged = .false.
                 exit
              end if
-             
+
+
+             !Thaw - special case for periodics                                                                                                                                                                                       
+             if(thisOctal%boundaryCondition(subcell) == 2) then
+                !direction will still be valid from above
+
+                !Find the opposite edgecell
+                locator = subcellCentre(thisOctal, subcell)+direction*(grid%octreeRoot%subcellSize* - &
+                     ((thisOctal%subcellSize/2.d0)+ grid%halfSmallestSubcell*0.01d0))
+
+                neighbourOctal => thisOctal
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+                if(nd > thisOctal%nDepth) then
+                   call addNewChildWithInterp(thisOctal, subcell, grid)
+                   converged = .false.
+                   exit
+                end if
+
+             end if
+                          
           end if
-          
-             
+
+
+                       
           if (thisOctal%threed) then
              nDir = 6
              dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
