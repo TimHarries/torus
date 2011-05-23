@@ -394,6 +394,9 @@ contains
        call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
             "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
 
+       call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
+            "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
+
        call getLogical("ttauridisc", ttauriDisc, cLine, fLine, nLines, &
             "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1712,6 +1715,16 @@ contains
                "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
           call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
+          !
+          ! Voigt profile prameters
+          !
+          call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
+               "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+          call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &
+               "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+          call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
+               "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+
     endif
 
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &

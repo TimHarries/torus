@@ -441,6 +441,7 @@ module input_variables
   real :: MdotParameter1, MdotParameter2, MdotParameter3, MdotParameter4
   real :: MdotParameter5, MdotParameter6
   real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
+  real :: Thotspot
   logical :: ttauriwarp, ttauriwind, ttauridisc
   real :: TTauriRstar ! stellar radius (in R_sol units)
   real :: TTauriMstar ! stellar mass   (in M_sol units)

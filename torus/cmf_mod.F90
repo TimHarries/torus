@@ -989,6 +989,26 @@ contains
 
   end function phiProf
 
+  real(double) function phiProf2(dv, thisOctal, subcell, nu, thisAtom)
+    use utils_mod, only : bigGamma, voigtn
+    type(MODELATOM) :: thisAtom
+    real(double) :: dv
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
+
+    V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/mHydrogen)  ! [cm/s] theram speed
+             
+    DopplerWidth = nu/cSpeed * V_th !eq 7  [Hz]
+
+    N_HI = thisoctal%atomlevel(subcell, 1,thisAtom%nLevels)
+    a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
+    Hay = voigtn(a,dv*cspeed/v_th)
+    phiProf2 = nu * Hay / (sqrtPi*DopplerWidth)
+  end function phiProf2
+
+
+
   subroutine calculateJbar(grid, thisOctal, subcell, thisAtom, nRay, position, direction, rayDeltaV, &
        ds,  i0, iTrans, jbar, nPops, &
        weight,  tauAv)
@@ -2747,7 +2767,7 @@ contains
                 dv = (thisVel .dot. direction) + deltaV
                 call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
                 alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
-                     phiProf(dv, thisOctal%microturb(subcell)) /thisAtom(iAtom)%transFreq(iTrans)          
+                     phiProf2(dv, thisOctal, subcell, thisAtom(iatom)%transfreq(itrans), thisAtom(iatom)) /thisAtom(iAtom)%transFreq(iTrans)          
                 iUpper = thisAtom(iAtom)%iUpper(iTrans)
                 iLower = thisAtom(iAtom)%iLower(iTrans)
                 nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
@@ -2785,7 +2805,7 @@ contains
              if (.not.lineoff) then
                 etaLine = hCgs * a * transitionFreq
                 etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) /transitionFreq
+                jnu = (etaLine/fourPi) * phiProf2(dv, thisOctal, subcell, thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/transitionFreq
              else
                 jnu = 0.d0
                 etaline = 0.d0
@@ -2833,7 +2853,6 @@ contains
 
              if (thisOctal%inflow(subcell)) then
                 i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-!                i0 = i0 + exp(-tau) * snu * dtau
                 tau = tau + dtau
              endif
           enddo
