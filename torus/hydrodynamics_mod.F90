@@ -5382,7 +5382,7 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: dirvec(6), locator, centre
 
     debug = .false.
-    limit  = 5.d-2
+    limit  = 1.0d-2
 
     unrefine = .true.
     refinedLastTime = .false.
@@ -5736,46 +5736,6 @@ end subroutine refineGridGeneric2
              endif
           enddo
 
-!Thaw - code below was deadlocking, now replaced by the stuff above
-!          do iThread = 1, nThreads-1
-!             nTemp(1) = 0
-!             if (iThread /= myRank) then
-!                 do i = 1 , nLocs(myRank)
-!                   if (thread(i) == iThread) then
-!                      nTemp(1) = nTemp(1) + 1
-!                      temp(nTemp(1),1) = locs(i)%x
-!                      temp(nTemp(1),2) = locs(i)%y
-!                      temp(nTemp(1),3) = locs(i)%z
-!                      temp(nTemp(1),4) = dble(depth(i))
-!                   endif
-!                enddo
-!                call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-!                if (nTemp(1) > 0) then
-!                   do i = 1, nTemp(1)
-!                      call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
-!                   enddo
-!                endif
-!             endif
-!          enddo
-!
-!          do iThread = 1, nThreads - 1
-!             if (iThread /= myRank) then
-!                !                          write(*,*) "rank ",myRank," receiving message from ",ithread
-!                call mpi_recv(nSent, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
-!                !                          write(*,*) "received ",nSent
-!                if (nSent(1) > 0) then
-!                   do i = 1, nSent(1)
-!                      call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
-!                      eLocs(i)%x = tempsent(1)
-!                      eLocs(i)%y = tempsent(2)
-!                      eLocs(i)%z = tempsent(3)
-!                      eDepth(i) = nint(tempsent(4))
-!                   enddo
-!                endif
-!                nExternalLocs = nSent(1)
-!             endif
-!          enddo
-
           do iThread = 1, nThreadsGlobal-1
              if (myrankGlobal /= iThread) then
                 call hydroValuesServer(grid, iThread)
@@ -5844,7 +5804,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer :: bOctal
     integer :: subcell, i, bSubcell
     logical :: converged, converged_tmp
-    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec
+    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -5894,15 +5854,43 @@ end subroutine refineGridGeneric2
                 exit
              end if
              
-             if(octalOnThread(bOctal, bSubcell, myRank)) then
+!             if(octalOnThread(bOctal, bSubcell, myRank)) then
                 if(thisOctal%nDepth > bOctal%nDepth .and. bOctal%nDepth < maxDepthAMR) then
                    call addNewChildWithInterp(bOctal, bsubcell, grid)
                    converged = .false.
                    exit
                 end if
+!             end if
+             
+          end if
+
+
+          !Ensure new ghosts plus partners are all equal refinement
+          if(thisOctal%edgecell(subcell)) then
+             direction = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+
+             !Make it a unit vector
+             if(direction%x > 0.d0) direction%x = direction%x / direction%x
+             if(direction%x < 0.d0) direction%x = -direction%x / direction%x
+             if(direction%y > 0.d0) direction%y = direction%y / direction%y
+             if(direction%y < 0.d0) direction%y = -direction%y / direction%y
+             if(direction%z > 0.d0) direction%z = direction%z / direction%z
+             if(direction%z < 0.d0) direction%z = -direction%z / direction%z
+             
+             locator= subcellcentre(thisoctal, subcell) + direction * &
+                  (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+             
+             if(neighbourOctal%nDepth > thisOctal%nDepth) then
+                call addNewChildWithInterp(thisOctal, subcell, grid)
+                converged = .false.
+                exit
              end if
              
           end if
+          
              
           if (thisOctal%threed) then
              nDir = 6
