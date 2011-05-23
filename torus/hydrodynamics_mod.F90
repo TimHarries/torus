@@ -3188,7 +3188,7 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
-             call refinegridGeneric(grid, 1.d-2)          
+             call refinegridGeneric(grid, 1.d-1)          
           end if
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3273,7 +3273,7 @@ end subroutine sumFluxes
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 20) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-2)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-1)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -3284,7 +3284,7 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
-          call refinegridGeneric(grid, 1.d-2)
+          call refinegridGeneric(grid, 1.d-1)
        end if
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -5382,7 +5382,7 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: dirvec(6), locator, centre
 
     debug = .false.
-    limit  = 1.d-3
+    limit  = 5.d-2
 
     unrefine = .true.
     refinedLastTime = .false.
