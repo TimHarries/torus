@@ -6,6 +6,7 @@ use mpi_global_mod
 implicit none
 
 public 
+private :: seedFromClockTime, RAN3_double, localSort
 contains
 
   subroutine randomNumberGenerator(reset, putIseed, getIseed, syncIseed, randomSeed, getReal, getDouble, &

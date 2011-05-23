@@ -198,7 +198,7 @@ module image_mod
      endif
    end subroutine addPhotontoPVimage
      
- 
+#ifdef PHOTOION
    subroutine addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFlux)
 
      type(VECTOR), intent(in) :: observerDirection
@@ -233,7 +233,7 @@ module image_mod
      totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
 
    end subroutine addPhotonToPhotoionImage
-
+#endif
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, center, lambda0_cont)

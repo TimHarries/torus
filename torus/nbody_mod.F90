@@ -1,3 +1,4 @@
+#ifdef HYDRO
 module nbody_mod
 
   use kind_mod
@@ -543,3 +544,4 @@ contains
   END SUBROUTINE RZEXTR
 
 end module nbody_mod
+#endif

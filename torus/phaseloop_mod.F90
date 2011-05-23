@@ -40,7 +40,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use mpi_global_mod, only: myRankGlobal
 #ifdef MPI
   use mpi_global_mod, only: nThreadsGlobal
-  use random_mod, only :  test_random_across_threads
+  use random_mod
   use grid_mod, only: freeGrid
   use gridio_mod, only: readamrgrid
 #endif
