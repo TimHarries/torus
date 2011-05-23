@@ -5864,7 +5864,7 @@ end subroutine refineGridGeneric2
              end if
              
 
-             !Periodic non-ghosts
+             !Periodic non-ghosts refinement (i.e. A and B, where |G|G|A|B|)
              if(thisOctal%boundaryCondition(subcell) == 2 .and. .not. thisOctal%edgecell(subcell)) then
 
                 direction = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
@@ -5928,7 +5928,7 @@ end subroutine refineGridGeneric2
                 !direction will still be valid from above
 
                 !Find the opposite edgecell
-                locator = subcellCentre(thisOctal, subcell)+direction*(grid%octreeRoot%subcellSize* - &
+                locator = subcellCentre(thisOctal, subcell)+direction*((grid%octreeRoot%subcellSize*2.d0) - &
                      ((thisOctal%subcellSize/2.d0)+ grid%halfSmallestSubcell*0.01d0))
 
                 neighbourOctal => thisOctal
@@ -6022,6 +6022,21 @@ end subroutine refineGridGeneric2
                          end if
                       end if
                       !end if
+                  
+                   else if(thisOctal%threeD) then
+                      !As with 2D, need to ensure that all cells in contact are checked across an mpi boundary
+                      rVec = subcellCentre(thisOctal, subcell)
+                      bVec = subcellCentre(neighbourOctal, neighbourSubcell)
+                      octVec = VECTOR(x, y, z)
+
+                      !If the result of initial check is inconclusive we need to check other cells
+                      if((nd - thisOctal%nDepth)==1) then
+
+                         !This needs some thought...
+
+                      end if
+
+
                    end if
                 end if
                 
