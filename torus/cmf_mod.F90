@@ -2767,7 +2767,8 @@ contains
                 dv = (thisVel .dot. direction) + deltaV
                 call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
                 alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
-                     phiProf2(dv, thisOctal, subcell, thisAtom(iatom)%transfreq(itrans), thisAtom(iatom)) /thisAtom(iAtom)%transFreq(iTrans)          
+                     phiProf2(dv, thisOctal, subcell, &
+                     thisAtom(iatom)%transfreq(itrans), thisAtom(iatom)) /thisAtom(iAtom)%transFreq(iTrans)          
                 iUpper = thisAtom(iAtom)%iUpper(iTrans)
                 iLower = thisAtom(iAtom)%iLower(iTrans)
                 nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
@@ -2805,7 +2806,8 @@ contains
              if (.not.lineoff) then
                 etaLine = hCgs * a * transitionFreq
                 etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-                jnu = (etaLine/fourPi) * phiProf2(dv, thisOctal, subcell, thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/transitionFreq
+                jnu = (etaLine/fourPi) * phiProf2(dv, thisOctal, subcell, &
+                     thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/transitionFreq
              else
                 jnu = 0.d0
                 etaline = 0.d0
