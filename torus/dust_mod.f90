@@ -1140,7 +1140,7 @@ contains
        allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
 
        if (.not.dustfile) then
-          write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+          write(message,'(a,f7.4)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
           call writeInfo(message, FORINFO)
           do i = 1, nDustType
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)

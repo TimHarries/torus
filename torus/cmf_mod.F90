@@ -1358,7 +1358,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-6, gridtolerance = 1.d-2
+    real(double), parameter :: convergeTol = 1.d-3, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
@@ -1402,7 +1402,7 @@ contains
 #endif
 
 
-    sobolevApprox = .false.
+    sobolevApprox = .true.
 
     freq = 0.d0
     indexRBBTrans = 0
@@ -1562,7 +1562,7 @@ contains
         close(69)
      endif
 
-     nRay = 100
+     nRay = 1000
 
      nStage = 2
      if (sobolevApprox) nStage = 1
@@ -4180,11 +4180,11 @@ contains
     integer :: ntheta, nphi
     real(double) :: domega, dtheta, totomega, disttostar, sinang, r
     real(double) :: thetaToStar, phiToStar, theta0, phi0, tauAv
-    type(VECTOR) :: uHat, position, toStar
+    type(VECTOR) :: uHat, position, toStar, pVec, photoDirection
     logical :: hitSource
-    real(double) :: distTosource
+    real(double) :: distTosource, cosTheta
     integer :: sourcenumber
-
+    integer :: iElement
     nTheta = 10
 
     iUpper = thisAtom(iAtom)%iUpper(iTrans)
@@ -4246,19 +4246,17 @@ contains
 
     ntheta = 10
     nphi = 10
-    dtheta = pi / real(ntheta-1)
-    dphi = twopi / real(nphi-1)
     betacmn = 0.
     inu_times_betacmn = 0.
     totomega = 0.
     do i = 1, ntheta
        theta0 = (2.*real(i-1)/real(nTheta-1)-1.)*ang
        theta = thetaToStar + theta0
-       dTheta = 2.*ang/real(nTheta-1)
+       dTheta = 2.*ang/real(nTheta)
        do j = 1, nphi
           phi0 = (2.*real(j-1)/real(nPhi-1)-1.)*ang
           phi = phiToStar + phi0
-          dphi = 2.*ang/real(nPhi-1)
+          dphi = 2.*ang/real(nPhi)
           uhat = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           if (theta > pi) theta = theta - pi
           if (theta < 0.) theta = theta + pi
@@ -4266,29 +4264,29 @@ contains
           call distanceToSource(globalsourcearray, globalnSource, position, uhat, hitSource, disttoSource, sourcenumber)
 
           if (hitSource) then
-             pVec = (position + (direction * distToSource) - source%position)
+             pVec = (position + (uHat * distToSource) - source%position)
              call normalize(pVec)
-             cosTheta = -1.d0*(pVec.dot.direction)
+             cosTheta = -1.d0*(pVec.dot.uHat)
              photoDirection = pVec
              call normalize(PhotoDirection)
-          endif
 
-          iElement = getElement(source(sourcenumber)%surface, photoDirection)
-          inu = i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)
-          dOmega = dtheta*dphi
-          totomega = totomega + domega
-          grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
-          tauij = chiLine / grad 
-          tauij = tauij / transitionFreq
-          tauij = max(tauij, 1.d-30)
-          betacmn = betacmn + domega*(1.d0 - exp(-tauij))/tauij
-          inu_times_betacmn = inu_times_betacmn + inu * betacmn
+             iElement = getElement(source%surface, photoDirection)
+             inu = i_nu(source, transitionFreq, iElement, cosTheta)
+             dOmega = dtheta*dphi
+             totomega = totomega + domega
+             grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
+             tauij = chiLine / grad 
+             tauij = tauij / transitionFreq
+             tauij = max(tauij, 1.d-30)
+             betacmn = betacmn + domega*(1.d0 - exp(-tauij))/tauij
+             inu_times_betacmn = inu_times_betacmn + inu * betacmn
+          endif
        enddo
     enddo
     betacmn = betacmn / fourPi
     inu_times_betacmn = inu_times_betacmn / fourPi
     sobJnuLine = (1.d0 - betamn) * &
-         ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0) + betacmn * inu
+         ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0) + inu_times_betacmn
 
 !    if ((thisAtom(iatom)%name == "HeII").and.(ilower==1).and.(iupper==2)) write(*,*) "tausob ",tauav
     if ((thisAtom(iatom)%name == "HeII").and.(ilower==1).and.(iupper==2)) write(*,*) "jnu sob (line, cont)", &

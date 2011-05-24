@@ -12774,6 +12774,7 @@ end function readparameterfrom2dmap
     subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
+    use input_variables, only : tHotSpot
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -12787,6 +12788,8 @@ end function readparameterfrom2dmap
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
 
     if (Writeoutput) write(*,*) "calculating generic accretion surface ",surface%nElements
+
+    if (writeoutput.and.(Thotspot > 0.)) write(*,*) "Setting hot spot temperature to: ",thotspot
     accretingArea = 0.d0
     totalArea = 0.d0
     totallum = 0.d0
@@ -12821,6 +12824,8 @@ end function readparameterfrom2dmap
 
           surface%element(i)%hot = .true.
           allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
+
+          if (Thotspot > 0.) t = thotspot
           
           surface%element(i)%hotFlux(:) = &
                pi*blackbody(REAL(T), 1.e8*REAL(cSpeed)/surface%nuArray(:))

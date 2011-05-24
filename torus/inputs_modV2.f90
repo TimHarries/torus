@@ -915,7 +915,6 @@ contains
           if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
           stop
        end if
-
        
 
        grainFracTotal = 0.
