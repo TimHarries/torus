@@ -3289,7 +3289,6 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
        currentTime = currentTime + dt
        !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
 
@@ -5431,6 +5430,7 @@ end subroutine refineGridGeneric2
 
     unrefine = .false.
 
+
     if ((nc > 1)) then !.and.(.not.ghostCell)) then
 
        unrefine = .true.
@@ -5805,6 +5805,7 @@ end subroutine refineGridGeneric2
     integer :: subcell, i, bSubcell
     logical :: converged, converged_tmp
     type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction, nVec
+    type(vector) :: vecStore(3)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -5903,8 +5904,6 @@ end subroutine refineGridGeneric2
              direction = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
 
 
-
-
              if(abs(direction%x) > abs(direction%y)) then
                 direction%y = 0.d0
                 if(abs(direction%x) > abs(direction%z)) then !We are moving in the ±x direction                                                                                                      
@@ -5929,32 +5928,6 @@ end subroutine refineGridGeneric2
              if(direction%z > 0.d0) direction%z = direction%z / direction%z
              if(direction%z < 0.d0) direction%z = -direction%z / direction%z
 
-
-!             print *, "direction A", direction
-
-!             !Considering positions on other mpi threads can cause trouble
-!             !The below code ensures we definitely have the cell we want
-!             
-!             if(abs(direction%x) > abs(direction%y)) then
-!                direction%y = 0.d0
-!                if(abs(direction%x) > abs(direction%z)) then !We are moving in the ±x direction
-!                   direction%z = 0.d0!
-!                else                                         !Moving in the ±z direction
-!                   direction%x = 0.d0
-!                end if
-!             else
-!                direction%x = 0.d0
-!                if(abs(direction%y) > abs(direction%z)) then !We are moving in the ±y direction
-!                   direction%z = 0.d0
-!                else                                         !Moving in the ±z direction
-!                   direction%y = 0.d0
-!                end if
-!             end if
-
-!             print *, "direction B", direction
-             
-!             if(abs(direction%z) > abs(direction%x)) then
-!                if(abs(direction%
 
              locator= subcellcentre(thisoctal, subcell) + direction * &
                   (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -6074,64 +6047,148 @@ end subroutine refineGridGeneric2
                       rVec = subcellCentre(thisOctal, subcell)
                       nVec = subcellCentre(neighbourOctal, neighbourSubcell)
                       octVec = VECTOR(x, y, z)
+                      vecStore(1) = octVec
 
-
-                      !Temporary reminder of my labels
+                      !Reminder of my labels
                       ! _______
-                      !|i  |ii |   z
-                      !|___|___|   ^
-                      !|iii|iV |   |
-                      !|___|___|   |____>y
+                      !|i  |ii |   z        x        y
+                      !|___|___|   ^        ^        ^
+                      !|iii|iV |   |        |        |
+                      !|___|___|   |____>y, |____>z, |____x
                       !                 
 
-                      !If the result of initial check is inconclusive we need to check other cells
+                      !If the result of initial check is inconclusive we need to check other cells of the neighbour
                       if((nd - thisOctal%nDepth)==1) then
+
+                         !Work round the neighbouring cells clockwise and get their positions
                          
                          if(abs(dirVec(j)%x) == 1.d0) then
                             if(rVec%y > octVec%y) then
                                if(rVec%z > octVec%z) then
                                   !Have found (i)
+                                  
+                                  !goto (ii)
+                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iv)
+                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iii)
+                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+
                                else if(rVec%z < octVec%z) then
                                   !Have found (iii)
+
+                                  !goto (i)                                                                                                                                                         
+                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(ii)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iv)                                                                                                                                                          
+                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+
                                end if
                                
                             else if (rVec%y < octVec%y) then
                                if(rVec%z > octVec%z) then
                                   !have found ii
+                                  !goto (iv)                                                                                                                                                         
+                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iii)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(i)                                                                                                                                                        $
+                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+
+
                                else if(rVec%z < octVec%z) then
                                   !have found iv
+                                  !goto (iii)                                                                                                                                                         
+                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(i)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(ii)                                                                                                                                                        $
+                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+
                                end if
                             end if
                                                      
-                         else if(abs(dirVec(j)%y) == 1.d0) then
+                         else if(abs(dirVec(j)%y) == 1.d0) then !x-->y, y-->z, z-->x 
                             if(rVec%z > octVec%z) then
                                if((rVec%x > octVec%x)) then
-                               !Have found (i)                                                                                                                                                    
+                               !Have found (i)       
+
+                                  !goto (ii)                                                                                                                                                         
+                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iv)                                                                                                                                                          
+                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iii)                                                                                                                                                         
+                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                                                                                                                             
                                else if(rVec%x < octVec%x) then
-                                  !Have found (iii)                                                                                                                                                  
+                                  !Have found (iii)                   
+                                  !goto (i)                                                                                                                                                        
+                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(ii)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iv)                                                                                                                                                        
+                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)                                                                                                                               
                                end if
 
                             else if (rVec%z < octVec%z) then
                                if(rVec%x > octVec%x) then
-                                  !have found ii                                                                                                                                                     
+                                  !have found ii                      
+                                  !goto (iv)                                                                                                                                                          
+                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iii)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(i)                                                                                                                                                          
+                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)                                                                                                                                  
                                else if(rVec%z < octVec%z) then
-                                  !have found iv                                                                                                                                                     
+                                  !have found iv                                                                                       
+                                  !goto (iii)                                                                                                                                                          
+                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(i)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(ii)                                                                                                                                                          
+                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)                                                                 
                                end if
                             end if
 
-                         else if(abs(dirVec(j)%z) == 1.d0) then
+                         else if(abs(dirVec(j)%z) == 1.d0) then !x-->y, y-->z, z-->x 
                             if(rVec%x > octVec%x) then
                                if(rVec%y > octVec%y) then
                                   !Have found (i)                                                                                                                                                    
+                                  !goto (ii)                                                                                                                                                         
+                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iv)                                                                                                                                                          
+                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iii)                                                                                                                                                         
+                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+
                                else if(rVec%y < octVec%y) then
-                                  !Have found (iii)                                                                                                                                                  
+                                  !Have found (iii)           
+                                  !goto (i)                                                                                                                                                          
+                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(ii)                                                                                                                                                         
+                                  vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iv)                                                                                                                                                          
+                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)                                                                                                                                       
                                end if
 
                             else if (rVec%x < octVec%x) then
                                if(rVec%y > octVec%y) then
-                                  !have found ii                                                                                                                                                     
+                                  !have found ii                                                                                    
+                                  !goto (iv)                                                                                                                                                        $
+                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(iii)                                                                                                                                                        $
+                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(i)                                                                                                                                                          
+                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)                                                                  
                                else if(rVec%y < octVec%y) then
                                   !have found iv                                                                                                                                                     
+                                  !goto (iii)                                                                                                                                                       $
+                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(i)                                                                                                                                                           
+                                  vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !goto(ii)                                                                                                                                                         $
+                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                end if
                             end if
 
@@ -6141,8 +6198,15 @@ end subroutine refineGridGeneric2
                                                       
                          end if
 
-                      end if
+                         !Then use the cells to find the highest refinement neighbour
+                         do i = 1, 3
+                            call getHydroValues(grid, vecstore(i), nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+                            if(nd2 > nd) then
+                               nd = nd2
+                            end if
+                         end do
 
+                      end if
                    end if
                 end if
                 
