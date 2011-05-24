@@ -4264,6 +4264,7 @@ contains
           if (theta < 0.) theta = theta + pi
 
           call distanceToSource(globalsourcearray, globalnSource, position, uhat, hitSource, disttoSource, sourcenumber)
+
           if (hitSource) then
              pVec = (position + (direction * distToSource) - source%position)
              call normalize(pVec)

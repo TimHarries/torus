@@ -5804,7 +5804,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer :: bOctal
     integer :: subcell, i, bSubcell
     logical :: converged, converged_tmp
-    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction
+    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction, nVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -5899,8 +5899,27 @@ end subroutine refineGridGeneric2
 
 
           !Ensure new ghosts plus partners are all equal refinement
-          if(thisOctal%edgecell(subcell)) then
+          if(thisOctal%edgecell(subcell) .and. thisOctal%ghostcell(subcell)) then
              direction = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+
+
+
+
+             if(abs(direction%x) > abs(direction%y)) then
+                direction%y = 0.d0
+                if(abs(direction%x) > abs(direction%z)) then !We are moving in the 悉 direction                                                                                                      
+                   direction%z = 0.d0
+                else                                         !Moving in the 您 direction                                                                                                             
+                   direction%x = 0.d0
+                   end if
+             else
+                direction%x = 0.d0
+                if(abs(direction%y) > abs(direction%z)) then !We are moving in the 悠 direction                                                                                                      
+                   direction%z = 0.d0
+                   else                                         !Moving in the 您 direction                                                                                                             
+                   direction%y = 0.d0
+                   end if
+             end if
 
              !Make it a unit vector
              if(direction%x > 0.d0) direction%x = direction%x / direction%x
@@ -5909,7 +5928,34 @@ end subroutine refineGridGeneric2
              if(direction%y < 0.d0) direction%y = -direction%y / direction%y
              if(direction%z > 0.d0) direction%z = direction%z / direction%z
              if(direction%z < 0.d0) direction%z = -direction%z / direction%z
+
+
+!             print *, "direction A", direction
+
+!             !Considering positions on other mpi threads can cause trouble
+!             !The below code ensures we definitely have the cell we want
+!             
+!             if(abs(direction%x) > abs(direction%y)) then
+!                direction%y = 0.d0
+!                if(abs(direction%x) > abs(direction%z)) then !We are moving in the 悉 direction
+!                   direction%z = 0.d0!
+!                else                                         !Moving in the 您 direction
+!                   direction%x = 0.d0
+!                end if
+!             else
+!                direction%x = 0.d0
+!                if(abs(direction%y) > abs(direction%z)) then !We are moving in the 悠 direction
+!                   direction%z = 0.d0
+!                else                                         !Moving in the 您 direction
+!                   direction%y = 0.d0
+!                end if
+!             end if
+
+!             print *, "direction B", direction
              
+!             if(abs(direction%z) > abs(direction%x)) then
+!                if(abs(direction%
+
              locator= subcellcentre(thisoctal, subcell) + direction * &
                   (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              
@@ -5922,10 +5968,12 @@ end subroutine refineGridGeneric2
                 exit
              end if
 
-
              !Thaw - special case for periodics                                                                                                                                                                                       
              if(thisOctal%boundaryCondition(subcell) == 2) then
                 !direction will still be valid from above
+
+!                print *, "rVec ", subcellCentre(thisOctal, subcell)
+!                print *, "direction 2", direction
 
                 !Find the opposite edgecell
                 locator = subcellCentre(thisOctal, subcell)+direction*((grid%octreeRoot%subcellSize*2.d0) - &
@@ -5944,8 +5992,6 @@ end subroutine refineGridGeneric2
              end if
                           
           end if
-
-
                        
           if (thisOctal%threed) then
              nDir = 6
@@ -6026,16 +6072,76 @@ end subroutine refineGridGeneric2
                    else if(thisOctal%threeD) then
                       !As with 2D, need to ensure that all cells in contact are checked across an mpi boundary
                       rVec = subcellCentre(thisOctal, subcell)
-                      bVec = subcellCentre(neighbourOctal, neighbourSubcell)
+                      nVec = subcellCentre(neighbourOctal, neighbourSubcell)
                       octVec = VECTOR(x, y, z)
+
+
+                      !Temporary reminder of my labels
+                      ! _______
+                      !|i  |ii |   z
+                      !|___|___|   ^
+                      !|iii|iV |   |
+                      !|___|___|   |____>y
+                      !                 
 
                       !If the result of initial check is inconclusive we need to check other cells
                       if((nd - thisOctal%nDepth)==1) then
+                         
+                         if(abs(dirVec(j)%x == 1.d0)) then
+                            if(rVec%y > octVec%y) then
+                               if(rVec%z > octVec%z) then
+                                  !Have found (i)
+                               else if(rVec%z < octVec%z) then
+                                  !Have found (iii)
+                               end if
+                               
+                            else if (rVec%y < octVec%y) then
+                               if(rVec%z > octVec%z) then
+                                  !have found ii
+                               else if(rVec%z < octVec%z) then
+                                  !have found iv
+                               end if
+                            end if
+                                                     
+                         else if(abs(dirVec(j)%y == 1.d0)) then
+                            if(rVec%z > octVec%z) then
+                               if((rVec%x > octVec%x)) then
+                               !Have found (i)                                                                                                                                                    
+                               else if(rVec%x < octVec%x) then
+                                  !Have found (iii)                                                                                                                                                  
+                               end if
 
-                         !This needs some thought...
+                            else if (rVec%z < octVec%z) then
+                               if(rVec%x > octVec%x) then
+                                  !have found ii                                                                                                                                                     
+                               else if(rVec%z < octVec%z) then
+                                  !have found iv                                                                                                                                                     
+                               end if
+                            end if
+
+                         else if(abs(dirVec(j)%z == 1.d0)) then
+                            if(rVec%x > octVec%x) then
+                               if(rVec%y > octVec%y) then
+                                  !Have found (i)                                                                                                                                                    
+                               else if(rVec%y < octVec%y) then
+                                  !Have found (iii)                                                                                                                                                  
+                               end if
+
+                            else if (rVec%x < octVec%x) then
+                               if(rVec%y > octVec%y) then
+                                  !have found ii                                                                                                                                                     
+                               else if(rVec%y < octVec%y) then
+                                  !have found iv                                                                                                                                                     
+                               end if
+                            end if
+
+                         else
+                            print *, "Direction Error In EvenUpGrid (3D)"
+                            stop
+                                                      
+                         end if
 
                       end if
-
 
                    end if
                 end if
