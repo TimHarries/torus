@@ -6087,7 +6087,7 @@ end subroutine refineGridGeneric2
                       !If the result of initial check is inconclusive we need to check other cells
                       if((nd - thisOctal%nDepth)==1) then
                          
-                         if(abs(dirVec(j)%x == 1.d0)) then
+                         if(abs(dirVec(j)%x) == 1.d0) then
                             if(rVec%y > octVec%y) then
                                if(rVec%z > octVec%z) then
                                   !Have found (i)
@@ -6103,7 +6103,7 @@ end subroutine refineGridGeneric2
                                end if
                             end if
                                                      
-                         else if(abs(dirVec(j)%y == 1.d0)) then
+                         else if(abs(dirVec(j)%y) == 1.d0) then
                             if(rVec%z > octVec%z) then
                                if((rVec%x > octVec%x)) then
                                !Have found (i)                                                                                                                                                    
@@ -6119,7 +6119,7 @@ end subroutine refineGridGeneric2
                                end if
                             end if
 
-                         else if(abs(dirVec(j)%z == 1.d0)) then
+                         else if(abs(dirVec(j)%z) == 1.d0) then
                             if(rVec%x > octVec%x) then
                                if(rVec%y > octVec%y) then
                                   !Have found (i)                                                                                                                                                    
