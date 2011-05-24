@@ -1402,7 +1402,7 @@ contains
 #endif
 
 
-    sobolevApprox = .true.
+    sobolevApprox = .false.
 
     freq = 0.d0
     indexRBBTrans = 0
@@ -1451,7 +1451,6 @@ contains
      if (grid%geometry == "wrshell") ionized = .true.
      if (grid%geometry == "wind") ionized = .true.
 
-     ionized = .true.
      call writeInfo("Allocating levels and applying LTE...")
      call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
 #ifdef MEMCHECK
@@ -4162,6 +4161,7 @@ contains
 
   subroutine getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, source, &
        inu_times_betacmn, betamn, sobJnuLine)
+    use source_mod, only : globalSourceArray, globalnSource
     use amr_mod, only : amrgridDirectionalDeriv
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -4181,6 +4181,9 @@ contains
     real(double) :: domega, dtheta, totomega, disttostar, sinang, r
     real(double) :: thetaToStar, phiToStar, theta0, phi0, tauAv
     type(VECTOR) :: uHat, position, toStar
+    logical :: hitSource
+    real(double) :: distTosource
+    integer :: sourcenumber
 
     nTheta = 10
 
@@ -4195,7 +4198,6 @@ contains
 
     transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
 
-    inu = i_nu(source, transitionFreq, 1, 1.d0)
 
     call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
 
@@ -4242,11 +4244,12 @@ contains
     ang = asin(min(1.d0,max(-1.d0,sinAng)))
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
-    ntheta = 4
-    nphi = 4
+    ntheta = 10
+    nphi = 10
     dtheta = pi / real(ntheta-1)
     dphi = twopi / real(nphi-1)
     betacmn = 0.
+    inu_times_betacmn = 0.
     totomega = 0.
     do i = 1, ntheta
        theta0 = (2.*real(i-1)/real(nTheta-1)-1.)*ang
@@ -4259,6 +4262,18 @@ contains
           uhat = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           if (theta > pi) theta = theta - pi
           if (theta < 0.) theta = theta + pi
+
+          call distanceToSource(globalsourcearray, globalnSource, position, uhat, hitSource, disttoSource, sourcenumber)
+          if (hitSource) then
+             pVec = (position + (direction * distToSource) - source%position)
+             call normalize(pVec)
+             cosTheta = -1.d0*(pVec.dot.direction)
+             photoDirection = pVec
+             call normalize(PhotoDirection)
+          endif
+
+          iElement = getElement(source(sourcenumber)%surface, photoDirection)
+          inu = i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)
           dOmega = dtheta*dphi
           totomega = totomega + domega
           grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
@@ -4266,10 +4281,11 @@ contains
           tauij = tauij / transitionFreq
           tauij = max(tauij, 1.d-30)
           betacmn = betacmn + domega*(1.d0 - exp(-tauij))/tauij
+          inu_times_betacmn = inu_times_betacmn + inu * betacmn
        enddo
     enddo
     betacmn = betacmn / fourPi
-    inu_times_betacmn = inu * betacmn
+    inu_times_betacmn = inu_times_betacmn / fourPi
     sobJnuLine = (1.d0 - betamn) * &
          ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0) + betacmn * inu
 

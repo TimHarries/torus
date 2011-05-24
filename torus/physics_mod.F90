@@ -366,7 +366,7 @@ contains
      endif
 
 !     if (atomicPhysics.and.statisticalEquilibrium) then
-!        call amrStateqnew(grid, lte, 2, 3, globalSourceArray(1)%surface,&
+!        call amrStateqnew(grid, .false., 2, 3, globalSourceArray(1)%surface,&
 !                       recalcPrevious=.false.)
 !     endif
 

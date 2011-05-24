@@ -250,7 +250,6 @@ contains
 
            ! This section is getting rather long. Maybe this should be done in 
            ! wrapper subroutine in amr_mod.f90.
-          mdot = 2.d-8 * msol * secstoyears
           call zeroDensity(grid%octreeRoot)
           astar = accretingAreaMahdavi(grid)
 !          ttauriwind = .false.
