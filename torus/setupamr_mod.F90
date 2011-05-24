@@ -25,7 +25,7 @@ contains
     use amr_mod
     use lucy_mod
     use grid_mod
-    use input_variables, only : readgrid, gridinputfilename, geometry, mdot
+    use input_variables, only : readgrid, gridinputfilename, geometry!, mdot
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
     use input_variables, only : amrGridSize, doSmoothGrid
