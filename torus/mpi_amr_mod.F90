@@ -1105,6 +1105,7 @@ contains
              flux = neighbourOctal%flux_i(neighbourSubcell)
           else if (thisOctal%twoD) then
              flux = neighbourOctal%flux_i(neighbourSubcell)!/2.d0
+!             flux = neighbourOctal%flux_i(neighbourSubcell)/2.d0
           else
              flux = neighbourOctal%flux_i(neighbourSubcell)!/4.d0
           endif

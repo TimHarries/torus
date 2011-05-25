@@ -352,6 +352,73 @@ contains
     enddo
   end subroutine synchronizefluxes
 
+
+!THaw boundary partners should be directly opposite their ghosts
+  recursive subroutine checkBoundaryPartners(thisOctal, grid)
+    type(gridtype) :: grid
+    type(octal), pointer :: thisOctal
+    type(octal), pointer :: child
+    integer :: subcell, i
+    type(vector) :: rVec, bVec, direction
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child                                                                                                                                                                              
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call checkBoundaryPartners(child, grid)
+                exit
+             end if
+          end do
+       else
+          if(thisOctal%ghostcell(subcell)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             bVec = thisOctal%boundaryPartner(subcell)
+
+             direction = bVec - rVec
+             
+!             if(abs(direction%x) > abs(direction%y)) then
+!                direction%y = 0.d0
+!                if(abs(direction%x) > abs(direction%z)) then !We are moving in the ±x direction                                                                                                         
+!                   direction%z = 0.d0
+!                else                                         !Moving in the ±z direction                                                                                                                
+!                   direction%x = 0.d0
+!                end if
+!             else
+!                direction%x = 0.d0
+!                if(abs(direction%y) > abs(direction%z)) then !We are moving in the ±y direction                                                                                                         
+!                   direction%z = 0.d0
+!                else                                         !Moving in the ±z direction                                                                                                            $
+!                   direction%y = 0.d0
+!                end if
+!             end if
+
+             !Make it a unit vector                                                                                                                                                                     
+             if(direction%x > 0.d0) direction%x = direction%x / direction%x
+             if(direction%x < 0.d0) direction%x = -direction%x / direction%x
+             if(direction%y > 0.d0) direction%y = direction%y / direction%y
+             if(direction%y < 0.d0) direction%y = -direction%y / direction%y
+             if(direction%z > 0.d0) direction%z = direction%z / direction%z
+             if(direction%z < 0.d0) direction%z = -direction%z / direction%z
+
+             
+             if((abs(direction%x) + abs(direction%y) + abs(direction%z)) /= 1.d0) then
+                print *, "boundary partner is at a diagonal!"
+                print *, "direction ", direction
+                print *, "rVec ", rVec
+                print *, "bVec ", bVec
+                stop
+             end if
+
+          end if
+          
+       end if
+    end do
+
+  end subroutine checkBoundaryPartners
+
+
   recursive subroutine setupx(thisoctal, grid, direction)
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -3198,8 +3265,14 @@ end subroutine sumFluxes
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
           !    call calculateEnergy(grid%octreeRoot, gamma, mu)
+
+          call writeInfo("Checking Boundary Partner Vectors", TRIVIAL)
+          call checkBoundaryPartners(grid%octreeRoot, grid)
+          call writeInfo("Boundary Partner Check Passed", TRIVIAL)
        endif
     endif
+
+
 
     tc = 0.d0
     if (myrank /= 0) then
@@ -5944,9 +6017,6 @@ end subroutine refineGridGeneric2
              !Thaw - special case for periodics                                                                                                                                                                                       
              if(thisOctal%boundaryCondition(subcell) == 2) then
                 !direction will still be valid from above
-
-!                print *, "rVec ", subcellCentre(thisOctal, subcell)
-!                print *, "direction 2", direction
 
                 !Find the opposite edgecell
                 locator = subcellCentre(thisOctal, subcell)+direction*((grid%octreeRoot%subcellSize*2.d0) - &
