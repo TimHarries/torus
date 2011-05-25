@@ -1352,6 +1352,8 @@ contains
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
          "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("fluxinterp", fluxinterp, cLine, fLine, nLines, &
+         "Interpolate fine to coarse fluxes: ","(a,1l,1x,a)", .false., ok, .false.)
 
     xplusboundstring = "null"
     xminusboundstring = "null"

@@ -547,6 +547,7 @@ contains
           call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
           call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
           call writeAttributePointerFlexi(20, "edgeCell", thisOctal%edgeCell, fileFormatted)
+          call writeAttributePointerFlexi(20, "corner", thisOctal%corner, fileFormatted)
           call writeAttributePointerFlexi(20, "refinedLastTime", thisOctal%refinedLastTime, fileFormatted)
           
           call writeAttributePointerFlexi(20, "pressure_i", thisOctal%pressure_i, fileFormatted)
@@ -574,6 +575,8 @@ contains
 !          print *, " write : ghostcell ", thisOctal%ghostCell
           call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
           call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
+!          call writeAttributePointerFlexi(20, "cornerPartner", thisOctal%cornerPartner, fileFormatted)
+!          call writeAttributePointerFlexi(20, "cornerBC", thisOctal%cornerBC, fileFormatted)
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
 
           call writeAttributePointerFlexi(20, "gravboundaryPartner", thisOctal%GravboundaryPartner, fileFormatted)
@@ -3484,6 +3487,8 @@ contains
             call readPointerFlexi(20, thisOctal%feederCell, fileFormatted)
          case("edgeCell")
             call readPointerFlexi(20, thisOctal%edgeCell, fileFormatted)
+         case("corner")
+            call readPointerFlexi(20, thisOctal%corner, fileFormatted)
          case("refinedLastTime")
             call readPointerFlexi(20, thisOctal%refinedLastTime, fileFormatted)
 
@@ -3543,7 +3548,10 @@ contains
 
          case("boundaryPartner")
             call readPointerFlexi(20, thisOctal%boundaryPartner, fileFormatted)
-
+!         case("cornerPartner")
+!            call readPointerFlexi(20, thisOctal%cornerPartner, fileFormatted)
+!         case("cornerBC")
+ !           call readPointerFlexi(20, thisOctal%cornerBC, fileFormatted)
          case("radiationMomentum")
             call readPointerFlexi(20, thisOctal%radiationMomentum, fileFormatted)
          case("gravboundaryPartner")
@@ -3802,6 +3810,8 @@ contains
             call receivePointerFlexi(thisOctal%feederCell)
          case("edgeCell")
             call receivePointerFlexi(thisOctal%edgeCell)
+         case("corner")
+            call receivePointerFlexi(thisOctal%corner)
          case("refinedLastTime")
             call receivePointerFlexi(thisOctal%refinedLastTime)
 
@@ -3846,6 +3856,10 @@ contains
             !print *, "recv", thisOctal%boundaryCondition
          case("boundaryPartner")
             call receivePointerFlexi(thisOctal%boundaryPartner)
+!         case("cornerPartner")
+!            call receivePointerFlexi(thisOctal%cornerPartner)
+!         case("cornerBC")
+!            call receivePointerFlexi(thisOctal%cornerBC)
          case("gravboundaryPartner")
             call receivePointerFlexi(thisOctal%gravboundaryPartner)
          case("radiationMomentum")
@@ -4008,6 +4022,7 @@ contains
       call sendAttributePointerFlexi(iThread, "ghostCell", thisOctal%ghostCell)
       call sendAttributePointerFlexi(iThread, "feederCell", thisOctal%feederCell)
       call sendAttributePointerFlexi(iThread, "edgeCell", thisOctal%edgeCell)
+      call sendAttributePointerFlexi(iThread, "corner", thisOctal%corner)
       call sendAttributePointerFlexi(iThread, "refinedLastTime", thisOctal%refinedLastTime)
 
       call sendAttributePointerFlexi(iThread, "pressure_i", thisOctal%pressure_i)
@@ -4036,6 +4051,8 @@ contains
       !print *, "send", thisOctal%boundaryCondition
 
       call sendAttributePointerFlexi(iThread, "boundaryPartner", thisOctal%boundaryPartner)
+!      call sendAttributePointerFlexi(iThread, "cornerPartner", thisOctal%cornerPartner)
+!      call sendAttributePointerFlexi(iThread, "cornerBC", thisOctal%cornerBC)
       call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
       call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
       call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)

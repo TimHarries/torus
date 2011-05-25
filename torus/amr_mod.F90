@@ -8620,6 +8620,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%NHI,  source%NHI)
     call copyAttribute(dest%boundaryCondition,  source%boundaryCondition)
     call copyAttribute(dest%boundaryPartner,  source%boundaryPartner)
+ !   call copyAttribute(dest%cornerPartner,  source%cornerPartner)
+ !   call copyAttribute(dest%cornerBC,  source%cornerBC)
     call copyAttribute(dest%GravboundaryPartner,  source%GravboundaryPartner)
     call copyAttribute(dest%NHII,  source%NHII)
     call copyAttribute(dest%NHeI,  source%NHeI)
@@ -8688,6 +8690,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%phiLimit, source%phiLimit)
     call copyAttribute(dest%ghostCell, source%ghostCell)
     call copyAttribute(dest%edgeCell, source%edgeCell)
+    call copyAttribute(dest%corner, source%corner)
     call copyAttribute(dest%feederCell, source%feederCell)
     call copyAttribute(dest%energy, source%energy)
     call copyAttribute(dest%rhou, source%rhou)
@@ -13084,6 +13087,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%feederCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%refinedLastTime,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%pressure_i,thisOctal%maxchildren)
@@ -13109,6 +13113,8 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+!       call allocateAttribute(thisOctal%cornerPartner,thisOctal%maxChildren)
+!       call allocateAttribute(thisOctal%cornerBC,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%gravboundaryPartner,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%rLimit,thisOctal%maxChildren)
@@ -13210,6 +13216,7 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%ghostCell)
        call deAllocateAttribute(thisOctal%feederCell)
        call deAllocateAttribute(thisOctal%edgeCell)
+       call deAllocateAttribute(thisOctal%corner)
        call deAllocateAttribute(thisOctal%refinedLastTime)
 
        call deAllocateAttribute(thisOctal%pressure_i)
@@ -13238,6 +13245,8 @@ end function readparameterfrom2dmap
 
        call deAllocateAttribute(thisOctal%boundaryCondition)
        call deAllocateAttribute(thisOctal%boundaryPartner)
+!       call deAllocateAttribute(thisOctal%cornerPartner)
+!       call deAllocateAttribute(thisOctal%cornerBC)
 
        call deAllocateAttribute(thisOctal%radiationMomentum)
 

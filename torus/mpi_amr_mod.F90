@@ -1531,13 +1531,14 @@ contains
 
   end function octalOnThread
 
-  subroutine periodBoundary(grid, justGrav)
+  subroutine periodBoundary(grid, direction, justGrav)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iThread
     integer :: ierr, i
     real(double) :: loc(3)
     integer :: tag = 78
+    type(vector) :: direction
     logical, optional :: justGrav
 
     logical :: doJustGrav
@@ -1554,7 +1555,7 @@ contains
        else
           !write(*,*) "now doing ", myRankGlobal
           !print *, "beta", myRankGlobal
-          call recursivePeriodSend(grid%octreeRoot, doJustGrav)
+          call recursivePeriodSend(grid%octreeRoot, doJustGrav, direction)
           loc(1) = 1.d30
           do i = 1, nThreadsGlobal-1
              if (i /= iThread) then
@@ -1609,18 +1610,18 @@ contains
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
   end subroutine periodBoundaryLevel
 
-  recursive subroutine recursivePeriodSend(thisOctal, doJustGrav)
+  recursive subroutine recursivePeriodSend(thisOctal, doJustGrav, direction)
 
     include 'mpif.h'
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
     real(double) :: loc(3), tempStorage(8)
+    type(vector) :: direction, rVec, diff
     integer :: subcell, i
     logical :: doJustGrav
     integer :: tag1 = 78, tag2 = 79
-    integer :: ierr
+    integer :: ierr, nd, j, toUse
     integer :: status(MPI_STATUS_SIZE)
-
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -1629,15 +1630,19 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call recursivePeriodSend(child, doJustGrav)
+                call recursivePeriodSend(child, doJustGrav, direction)
                 exit
              end if
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
+          if(thisOctal%oneD) nd = 1
+          if(thisOctal%twoD) nd = 2
+          if(thisOctal%threeD) nd = 3
+
           if ( (thisOctal%ghostCell(subcell).and.thisOctal%boundaryCondition(subcell)==2) .or. &
-               (thisOctal%ghostCell(subcell).and.doJustGrav) ) then
+               (thisOctal%ghostCell(subcell).and.doJustGrav) .and. .not. thisOctal%corner(subcell)) then
              if (.not.doJustGrav) then
                 loc(1) = thisOctal%boundaryPartner(subcell)%x
                 loc(2) = thisOctal%boundaryPartner(subcell)%y
@@ -1661,6 +1666,78 @@ contains
             ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
              call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
             ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
+             if (.not.associated(thisOctal%tempStorage)) then
+                if (.not.doJustGrav) then
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                   thisOctal%tempStorage = 0.d0
+                else
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
+                   thisOctal%tempStorage = 0.d0
+                endif
+             endif
+             thisOctal%tempStorage(subcell,1:SIZE(thisOctal%tempStorage,2)) = &
+                  tempStorage(1:SIZE(thisOctal%tempStorage,2))
+
+             !Speical case for corner cells. Not including gravity though...
+          else if (thisOctal%corner(subcell) .and. thisOctal%boundaryCondition(subcell) ==2) then
+             rVec = subcellCentre(thisOctal, subcell)
+                        
+             do j = 1, nd
+                diff = thisOctal%cornerPartner(subcell, j) - rVec
+                if(abs(diff%x) > abs(diff%y)) then
+                   diff%y = 0.d0
+                   if(abs(diff%x) > abs(diff%z)) then !We are moving in the ±x direction
+                      diff%z = 0.d0
+                   else                                         !Moving in the ±z direction
+                      diff%x = 0.d0
+                   end if
+                else
+                   diff%x = 0.d0
+                   if(abs(diff%y) > abs(diff%z)) then !We are moving in the ±y direction
+                      diff%z = 0.d0
+                   else                                         !Moving in the ±z direction
+                      diff%y = 0.d0
+                   end if
+                end if
+                
+                !Make it a unit vector
+                if(diff%x > 0.d0) diff%x = diff%x / diff%x
+                if(diff%x < 0.d0) diff%x = -diff%x / diff%x
+                if(diff%y > 0.d0) diff%y = diff%y / diff%y
+                if(diff%y < 0.d0) diff%y = -diff%y / diff%y
+                if(diff%z > 0.d0) diff%z = diff%z / diff%z
+                if(diff%z < 0.d0) diff%z = -diff%z / diff%z
+                
+                if(diff == direction) then
+                   toUse = j
+                end if
+   
+             end do
+
+             if (.not.doJustGrav) then
+                loc(1) = thisOctal%cornerPartner(subcell, toUse)%x
+                loc(2) = thisOctal%cornerPartner(subcell, toUse)%y
+                loc(3) = thisOctal%cornerPartner(subcell, toUse)%z
+
+             else
+                loc(1) = thisOctal%gravboundaryPartner(subcell)%x
+                loc(2) = thisOctal%gravboundaryPartner(subcell)%y
+                loc(3) = thisOctal%gravboundaryPartner(subcell)%z
+             endif
+
+             tOctal => thisOctal
+             tSubcell = 1
+             if (.not.doJustGrav) then
+                call findSubcellLocal(thisOctal%cornerPartner(subcell, toUse), tOctal,tsubcell)
+             else
+                call findSubcellLocal(thisOctal%gravboundaryPartner(subcell), tOctal,tsubcell)
+             endif
+            ! write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)                                                                                       
+            ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)                                                                              
+             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
+            ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)                                                                              
+             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+            ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)                                                                                    
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
                    allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
