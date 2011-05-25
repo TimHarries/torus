@@ -1679,77 +1679,83 @@ contains
                   tempStorage(1:SIZE(thisOctal%tempStorage,2))
 
              !Speical case for corner cells. Not including gravity though...
-          else if (thisOctal%corner(subcell) .and. thisOctal%boundaryCondition(subcell) ==2) then
+          else if (thisOctal%corner(subcell)) then
              rVec = subcellCentre(thisOctal, subcell)
                         
+             toUse = 0
              do j = 1, nd
                 diff = thisOctal%cornerPartner(subcell, j) - rVec
-                if(abs(diff%x) > abs(diff%y)) then
-                   diff%y = 0.d0
-                   if(abs(diff%x) > abs(diff%z)) then !We are moving in the 悉 direction
-                      diff%z = 0.d0
-                   else                                         !Moving in the 您 direction
-                      diff%x = 0.d0
-                   end if
-                else
-                   diff%x = 0.d0
-                   if(abs(diff%y) > abs(diff%z)) then !We are moving in the 悠 direction
-                      diff%z = 0.d0
-                   else                                         !Moving in the 您 direction
+                if(thisOctal%cornerBC(subcell, j) == 2) then
+                   if(abs(diff%x) > abs(diff%y)) then
                       diff%y = 0.d0
+                      if(abs(diff%x) > abs(diff%z)) then !We are moving in the 悉 direction
+                         diff%z = 0.d0
+                      else                                         !Moving in the 您 direction
+                         diff%x = 0.d0
+                      end if
+                   else
+                      diff%x = 0.d0
+                      if(abs(diff%y) > abs(diff%z)) then !We are moving in the 悠 direction
+                         diff%z = 0.d0
+                      else                                         !Moving in the 您 direction
+                         diff%y = 0.d0
+                      end if
                    end if
-                end if
+                   
+                   !Make it a unit vector
+                   if(diff%x > 0.d0) diff%x = diff%x / diff%x
+                   if(diff%x < 0.d0) diff%x = -diff%x / diff%x
+                   if(diff%y > 0.d0) diff%y = diff%y / diff%y
+                   if(diff%y < 0.d0) diff%y = -diff%y / diff%y
+                   if(diff%z > 0.d0) diff%z = diff%z / diff%z
+                   if(diff%z < 0.d0) diff%z = -diff%z / diff%z
                 
-                !Make it a unit vector
-                if(diff%x > 0.d0) diff%x = diff%x / diff%x
-                if(diff%x < 0.d0) diff%x = -diff%x / diff%x
-                if(diff%y > 0.d0) diff%y = diff%y / diff%y
-                if(diff%y < 0.d0) diff%y = -diff%y / diff%y
-                if(diff%z > 0.d0) diff%z = diff%z / diff%z
-                if(diff%z < 0.d0) diff%z = -diff%z / diff%z
-                
-                if(diff == direction) then
-                   toUse = j
-                end if
-   
-             end do
-
-             if (.not.doJustGrav) then
-                loc(1) = thisOctal%cornerPartner(subcell, toUse)%x
-                loc(2) = thisOctal%cornerPartner(subcell, toUse)%y
-                loc(3) = thisOctal%cornerPartner(subcell, toUse)%z
-
-             else
-                loc(1) = thisOctal%gravboundaryPartner(subcell)%x
-                loc(2) = thisOctal%gravboundaryPartner(subcell)%y
-                loc(3) = thisOctal%gravboundaryPartner(subcell)%z
-             endif
-
-             tOctal => thisOctal
-             tSubcell = 1
-             if (.not.doJustGrav) then
-                call findSubcellLocal(thisOctal%cornerPartner(subcell, toUse), tOctal,tsubcell)
-             else
-                call findSubcellLocal(thisOctal%gravboundaryPartner(subcell), tOctal,tsubcell)
-             endif
-            ! write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)                                                                                       
-            ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)                                                                              
-             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
-            ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)                                                                              
-             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
-            ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)                                                                                    
-             if (.not.associated(thisOctal%tempStorage)) then
-                if (.not.doJustGrav) then
-                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
-                   thisOctal%tempStorage = 0.d0
+                   if(diff == direction) then
+                      toUse = j
+                   end if
                 else
-                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
-                   thisOctal%tempStorage = 0.d0
+                   toUse = 0
+                end if
+             end do
+                
+             if(toUse /= 0) then
+                if (.not.doJustGrav) then
+                   loc(1) = thisOctal%cornerPartner(subcell, toUse)%x
+                   loc(2) = thisOctal%cornerPartner(subcell, toUse)%y
+                   loc(3) = thisOctal%cornerPartner(subcell, toUse)%z
+                   
+                else
+                   loc(1) = thisOctal%gravboundaryPartner(subcell)%x
+                   loc(2) = thisOctal%gravboundaryPartner(subcell)%y
+                   loc(3) = thisOctal%gravboundaryPartner(subcell)%z
                 endif
+                
+                tOctal => thisOctal
+                tSubcell = 1
+                if (.not.doJustGrav) then
+                   call findSubcellLocal(thisOctal%cornerPartner(subcell, toUse), tOctal,tsubcell)
+                else
+                   call findSubcellLocal(thisOctal%gravboundaryPartner(subcell), tOctal,tsubcell)
+                endif
+                ! write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)                                                                                       
+                ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)                                                                              
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
+                ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)                                                                              
+                call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+                ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)                                                                                    
+                if (.not.associated(thisOctal%tempStorage)) then
+                   if (.not.doJustGrav) then
+                      allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                      thisOctal%tempStorage = 0.d0
+                   else
+                      allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
+                      thisOctal%tempStorage = 0.d0
+                   endif
+                endif
+                thisOctal%tempStorage(subcell,1:SIZE(thisOctal%tempStorage,2)) = &
+                     tempStorage(1:SIZE(thisOctal%tempStorage,2))
              endif
-             thisOctal%tempStorage(subcell,1:SIZE(thisOctal%tempStorage,2)) = &
-                  tempStorage(1:SIZE(thisOctal%tempStorage,2))
-          endif
+          end if
        endif
     enddo
   end subroutine recursivePeriodSend
