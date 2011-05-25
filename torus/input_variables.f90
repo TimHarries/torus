@@ -728,7 +728,6 @@ module input_variables
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
   logical :: doRefine, doUnrefine, useViscosity
-  logical :: fluxinterp
   character(len=20) :: limiterType
 
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString

@@ -404,14 +404,13 @@ contains
 
              
              if((abs(direction%x) + abs(direction%y) + abs(direction%z)) /= 1.d0) then
-                if(.not. thisOctal%corner(subcell)) then
-                   print *, "boundary partner is at a diagonal and not a corner!"
-                   print *, "direction ", direction
-                   print *, "rVec ", rVec
-                   print *, "bVec ", bVec
-                   stop
-                end if
+                print *, "boundary partner is at a diagonal!"
+                print *, "direction ", direction
+                print *, "rVec ", rVec
+                print *, "bVec ", bVec
+                stop
              end if
+
           end if
           
        end if
@@ -775,7 +774,6 @@ contains
   end subroutine setupwi
 
   recursive subroutine setupflux(thisoctal, grid, direction)
-    use input_variables, only : fluxinterp
     include 'mpif.h'
     integer :: myrank, ierr
     type(gridtype) :: grid
@@ -783,10 +781,10 @@ contains
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
-    type(vector) :: direction, locator, probe
+    type(vector) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd
-    real(double) :: xnext, fac
+    real(double) :: xnext
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -802,31 +800,30 @@ contains
           end do
        else
 
+!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
+!             thisoctal%x_i(subcell) = (subcellcentre(thisoctal, subcell) .dot. direction) * griddistancescale
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
+!             if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
+   
+                thisoctal%flux_i_plus_1(subcell) = flux
 
-             !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient   
-             if(thisOctal%nDepth > nd .and. fluxinterp) then
-                if(.not. thisOctal%oneD) then
-                   neighbourOctal%flux_i(neighboursubcell) = flux
-                   probe = subcellCentre(neighbourOctal, neighbourSubcell)
-                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, probe)
-                   !print *, "fac", fac                                                                               
-                   else
-                   fac = 0.d0
-                   end if
-             else
-                fac = 0.d0
-             end if
-
-             thisoctal%flux_i_plus_1(subcell) = flux + fac
+!             else
+!                ! now we need to do the fine-to-coarse flux
+!
+!                if (thisoctal%u_i_plus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
+!                   thisoctal%flux_i_plus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_plus_1(subcell)
+!                else
+!                   thisoctal%flux_i_plus_1(subcell) = flux ! flow is from neighbour into this one
+!                endif
+!             endif
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -835,157 +832,23 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
              thisoctal%flux_i_minus_1(subcell) = flux
 
+! new stuff added by tjh
+
+!             if (thisoctal%ndepth >= nd) then ! this is a coarse-to-fine cell boundary
                 thisoctal%flux_i_minus_1(subcell) = flux
+!             else
+!                ! now we need to do the fine-to-coarse flux
+!                if (thisoctal%u_i_minus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
+!                   thisoctal%flux_i_minus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_minus_1(subcell)
+!                else
+!                   thisoctal%flux_i_minus_1(subcell) = flux ! flow is from neighbour into this one
+!                endif
+!             endif
 
           endif
        endif
     enddo
   end subroutine setupflux
-
-
-
-!THaw - Flux interpolation routine
-  subroutine normalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, probe)
-    include 'mpif.h'
-    type(gridtype) :: grid
-    type(octal), pointer :: thisoctal
-    type(octal), pointer :: neighbourOctal
-    type(octal), pointer :: communityOctal
-    integer :: subcell, neighbourSubcell, communitySubcell
-    type(vector) :: direction
-    type(vector) :: rVec
-    type(vector), allocatable :: community(:)
-    type(vector) :: locator, probe
-    type(vector) :: nVec
-    real(double), intent(out) :: fac
-    real(double), allocatable ::  xpos(:), f(:)
-    integer :: myRank, ierr
-    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
-    integer :: nd, iTot, i
-    real(double) :: xnext, m, dx, df, mToT
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-
-
-    nVec = subcellCentre(neighbourOctal, neighbourSubcell)
-
-    fac = 0.d0
-    if(neighbourOctal%twoD) then
-       iTot = 2
-       allocate(community(iTot))
-       allocate(xpos(iTot))
-       allocate(f(iTot))
-
-       !Get the direction of the neighbour's community cells                                                          
-       if(abs(direction%x) == 1.d0) then !Advecting in ±x-direction                                                   
-          community(1) = VECTOR(0.d0, 0.d0,1.d0)
-          community(2) = VECTOR(0.d0, 0.d0,-1.d0)
-       else if(abs(direction%z) == 1.d0) then !Advecting in ±z direction                                              
-          community(1) = VECTOR(1.d0, 0.d0,0.d0)
-          community(2) = VECTOR(-1.d0, 0.d0,0.d0)
-       else
-          print *, "Advecting in unknown direction!"
-          stop
-       end if
-
-       do i = 1, iToT
-          locator = subcellcentre(neighbouroctal, neighboursubcell) + community(i) * &
-               (neighbouroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-
-          if(inOctal(grid%octreeRoot, locator)) then
-             communityoctal => neighbouroctal
-             call findsubcelllocal(locator, communityoctal, communitysubcell)
-             call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
-             
-             rVec = subcellcentre(communityoctal, communitysubcell)
-             
-             f(i) = flux
-             if(abs(direction%x) == 1.d0) then
-                xpos(i) = rVec%z
-             else if(abs(direction%z) == 1.d0) then
-                xpos(i) = rVec%x
-             else
-                print *, "unrecognized direction!"
-                stop
-             end if
-          
-          else
-             !At the edge just use the gradient over half the distance
-             f(i)  = neighbourOctal%flux_i(subcell)
-             if(abs(direction%x) == 1.d0) then
-                xpos(i) = nVec%z
-             else if(abs(direction%z) == 1.d0) then
-                xpos(i) = nVec%x
-             else
-                print *, "unrecognized direction!"
-                stop
-             end if
-
-             
-          end if
-       end do
-
-       !Flux gradient                                                                                                 
-       m = (f(1) - f(2))/(xpos(1) - xpos(2))
-
-       dx = thisOctal%subcellSize*griddistancescale
-
-
-       !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction
-       df = abs(m*dx)/2.d0
-
-       rVec = subcellCentre(thisOctal, subcell)!                                                                      
-       if(m > 0.d0) then !Positive gradient                                                                           
-
-          if(abs(direction%x) == 1.d0) then !±x advection                                                             
-             if(rVec%z > nVec%z) then         !Upper cell                                                             
-                   fac = df
-             else                             !lower cell                                                             
-                   fac = -df
-             end if
-          else                                !±z advection                                                           
-
-             if(rVec%x > nVec%x) then         !Right cell                                                             
-                fac = df
-             else                             !Left cell                                                              
-                   fac = -df
-             end if
-          end if
-       else if (m < 0.d0) then   !Negative gradient
-          if(abs(direction%x) == 1.d0) then !±x advection
-             if(rVec%z > nVec%z) then         !Upper cell
-                fac = -df
-             else                             !lower cell
-                fac = df
-             end if
-          else                                !±z advection
-
-             if(rVec%x > nVec%x) then         !Right cell  
-                fac = -df
-             else                             !Left cell   
-                fac = df
-             end if
-
-          end if
-
-       else                      !No gradient present                                                                 
-          fac = 0.d0
-       end if
-
-    else !3D case                                                                                                     
-
-       !Only going to do the 2D properly for now                                                                      
-
-       fac = 0.d0
-
-    end if
-
-    deallocate(community)
-    deallocate(xpos)
-    deallocate(f)
-
-  end subroutine normalFluxGradient
 
 
   recursive subroutine setuppressure(thisoctal, grid, direction)
@@ -2251,7 +2114,7 @@ end subroutine sumFluxes
     direction = vector(1.d0, 0.d0, 0.d0)
 
     call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
+    call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
     direction = vector(1.d0, 0.d0, 0.d0)
@@ -2290,7 +2153,7 @@ end subroutine sumFluxes
     call pressureforceu(grid%octreeroot, dt)
 !
     call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
+    call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
   end subroutine hydrostep1d
@@ -2336,14 +2199,14 @@ end subroutine sumFluxes
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
-
+!    print *, "o hai"
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call imposeBoundary(grid%octreeRoot)
-
-    call periodBoundary(grid, direction)
-
+!    print *, "trol"
+    call periodBoundary(grid)
+!    print *, "olol"
     call transferTempStorage(grid%octreeRoot)
-
+!    print *, "trolol"
    if (selfGravity) then
 !       call periodBoundary(grid, justGrav = .true.)
 !       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
@@ -2378,7 +2241,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
     call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
+    call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
 
@@ -2401,10 +2264,6 @@ end subroutine sumFluxes
 
     if (myrankglobal == 1) call tune(6,"Y-direction step")
     direction = VECTOR(0.d0, 1.d0, 0.d0)
-    call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
-    call transfertempstorage(grid%octreeroot)
-
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     call setupVi(grid%octreeRoot, grid, direction)
     call setupVpm(grid%octreeRoot, grid, direction)
@@ -2429,7 +2288,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
 
     call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
+    call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
 
@@ -2451,10 +2310,6 @@ end subroutine sumFluxes
 
     if (myrankglobal == 1) call tune(6,"Z-direction step")
     direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
-    call transfertempstorage(grid%octreeroot)
-
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
@@ -2479,7 +2334,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
     call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
+    call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
 
@@ -2502,10 +2357,6 @@ end subroutine sumFluxes
 
     if (myrankglobal == 1) call tune(6,"X-direction step")
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
-    call transfertempstorage(grid%octreeroot)
-
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2531,7 +2382,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
     call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
+    call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
 
@@ -2554,7 +2405,7 @@ end subroutine sumFluxes
 
 
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
-    call periodBoundary(grid, direction)
+    call periodBoundary(grid)
     call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
@@ -2591,7 +2442,7 @@ end subroutine sumFluxes
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid, direction)
+    call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
 
@@ -2637,7 +2488,7 @@ end subroutine sumFluxes
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid, direction)
+    call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
@@ -2658,6 +2509,11 @@ end subroutine sumFluxes
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     
+    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+    !call imposeboundary(grid%octreeroot)
+    !call periodboundary(grid)
+    !call transfertempstorage(grid%octreeroot)
+
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
@@ -2673,12 +2529,11 @@ end subroutine sumFluxes
     end if
     call pressureForceW(grid%octreeRoot, dt)
 
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-
-    call imposeboundary(grid%octreeroot)
-    call periodboundary(grid, direction)
-    call transfertempstorage(grid%octreeroot)
-
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -2697,6 +2552,11 @@ end subroutine sumFluxes
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     
+    !call imposeboundary(grid%octreeroot)
+    !call periodboundary(grid)
+    !call transfertempstorage(grid%octreeroot)
+    !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+
 
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -2714,7 +2574,7 @@ end subroutine sumFluxes
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     call imposeBoundary(grid%octreeRoot)
-    call periodBoundary(grid, direction)
+    call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
  
   end subroutine hydroStep2d
@@ -3507,7 +3367,7 @@ end subroutine sumFluxes
 
 
        !Perform another boundary partner check
-!       call checkBoundaryPartners(grid%octreeRoot, grid)
+       call checkBoundaryPartners(grid%octreeRoot, grid)
 
 
        if (currentTime .ge. nextDumpTime) then
@@ -3633,7 +3493,6 @@ end subroutine sumFluxes
                 call writeFatal("Tempstorage not allocated when it should have been")
                 stop
              endif
-
              if (.not.doJustGrav) then
                 thisOctal%rho(subcell) = thisOctal%tempStorage(subcell,1)
                 thisOctal%rhoe(subcell) = thisOctal%tempStorage(subcell,2)
@@ -4592,7 +4451,6 @@ end subroutine sumFluxes
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           thisOctal%edgeCell(subcell) = .false.
-          thisOctal%corner(subcell) = .false.
           if (thisOctal%oned) then
              nProbes = 2
              probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
@@ -4665,12 +4523,6 @@ end subroutine sumFluxes
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = getBoundary(boundary)
-
-
-             if(nProbeOutside > 1) then
-                thisOctal%corner(subcell) = .true.
-             end if
-
           endif
        endif
     enddo
@@ -4707,7 +4559,6 @@ end subroutine sumFluxes
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           thisOctal%edgeCell(subcell) = .false.
-          thisOctal%corner(subcell) = .false.
           if (thisOctal%oned) then
              nProbes = 2
              probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
@@ -4780,57 +4631,6 @@ end subroutine sumFluxes
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = getBoundary(boundary)
-
-             if(nProbeOutside > 1) then
-                thisoctal%corner(subcell) = .true.
-                do i=1, (nProbes/2)
-                   do iProbe = 1, nProbes
-                      locator = rVec + &
-                           (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
-                      if (.not.inOctal(grid%octreeRoot, locator)) then
-                                                                           
-                         if (thisOctal%oneD) then
-                            if (iProbe == 1) then
-                               boundary = "xplus"
-                            else
-                               boundary = "xminus"
-                            endif
-                         endif
-                         if (thisOctal%twoD) then
-                            select case (iProbe)
-                            case(1)
-                               boundary = "xplus"
-                            case(2)
-                               boundary = "xminus"
-                            case(3)
-                               boundary = "zplus"
-                            case(4)
-                               boundary = "zminus"
-                            end select
-                         endif
-                         if (thisOctal%threeD) then
-                            select case (iProbe)
-                            case(1)
-                               boundary = "xplus"
-                            case(2)
-                               boundary = "xminus"
-                            case(3)
-                               boundary = "yplus"
-                            case(4)
-                               boundary = "yminus"
-                            case(5)
-                               boundary  = "zplus"
-                            case(6)
-                               boundary = "zminus"
-                            end select
-                         endif
-                         thisOctal%cornerBC(subcell, i) = getboundary(boundary)
-                         exit
-                      endif
-                   enddo
-                end do
-             end if
-             
           endif
        enddo
     endif
@@ -4842,7 +4642,7 @@ end subroutine sumFluxes
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell, tempSubcell, j
+    integer :: subcell, i, neighbourSubcell, tempSubcell
     type(VECTOR) :: locator, rVec, tVec
     integer :: nProbes, iProbe
     type(VECTOR) :: probe(6), currentDirection
@@ -4865,9 +4665,8 @@ end subroutine sumFluxes
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
-          
+
           thisOctal%ghostCell(subcell) = .false.
-          thisOctal%corner(subcell) = .false.
 
           if (.not.thisOctal%edgeCell(subcell)) then
              if (thisOctal%oned) then
@@ -4901,13 +4700,10 @@ end subroutine sumFluxes
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighboursubcell)
                 if (neighbourOctal%edgeCell(neighbourSubcell)) then
-
-
                    tVec = subcellCentre(thisOctal, subcell) + &
                            (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)* &
                            ((-1.d0)*probe(iProbe))
                    if (inOctal(grid%octreeRoot, tVec)) then
-                      nProbeOutside = nProbeOutside + 1
                       thisOctal%ghostCell(subcell) = .true.
                       thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                       thisOctal%gravboundaryPartner(subcell) = (-1.d0)*probe(iProbe)
@@ -4955,43 +4751,11 @@ end subroutine sumFluxes
                    exit
                 endif
              enddo
-            
+             
+
+
+
           endif
-
-!Thaw - corners are going to need special treatment
-!Propose having two of x, y and z partners for corners 
-          if(nProbeOutside >1) then
-             thisOctal%corner(subcell) = .true.
-          end if
-
-          if(thisOctal%corner(subcell)) then
-             rVec = subcellCentre(thisOctal, subcell)
-             do i = 1, nProbes/2
-                do iProbe = 1, nProbes
-                   locator = rVec + &
-                        (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
-                   if (.not.inOctal(grid%octreeRoot, locator)) then
-
-                      thisOctal%cornerPartner(subcell, i) = (-1.d0)*probe(iProbe)
-                      currentDirection = (-1.d0)*probe(iProbe)
-                      
-                      exit
-                   else
-                      neighbourOctal => thisOctal
-                      call findSubcellLocal(locator, neighbourOctal, neighboursubcell)
-                      if (neighbourOctal%edgeCell(neighbourSubcell)) then
-                         thisOctal%cornerPartner(subcell, i) = (-1.d0)*probe(iProbe)
-                         currentDirection = (-1.d0)*probe(iProbe)
-                         if(.not. thisOctal%edgecell(subcell)) then
-                            thisOctal%cornerBC(subcell, i) = neighbourOctal%cornerBC(neighboursubcell, i)
-                         end if
-                      end if
-                   endif
-                end do
-             end do
-
-          end if
-
 
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
@@ -5018,80 +4782,42 @@ end subroutine sumFluxes
                 case(2)
                    
                    if (thisOctal%edgeCell(subcell)) then
-                      if(thisOctal%corner(subcell)) then
-
-                         do iProbe = 1, (nProbes/2)
-                            locator = subcellCentre(thisOctal, subcell) + &
-                                 (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize) &
-                                 * thisOctal%cornerPartner(subcell, iProbe)
-                            thisOctal%cornerPartner(subcell, iProbe) = locator
-                            if (.not.(inOctal(grid%octreeRoot,locator))) then
-                               write(*,*) "BUG1: locator ",locator
-                            endif
-                            
-                            tempOctal => thisOctal
-                            tempSubcell = 1
-                            call findSubcellLocal(locator, tempOctal, tempSubcell)
-                            tempOctal%feederCell(tempsubcell) = .true.
-                         end do
-                     
-                      else
-                         locator = subcellCentre(thisOctal, subcell) + &
-                              (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize) &
-                              * thisOctal%boundaryPartner(subcell)
-                         thisOctal%boundaryPartner(subcell) = locator
-                         if (.not.(inOctal(grid%octreeRoot,locator))) then
-                            write(*,*) "BUG1: locator ",locator
-                         endif
-                         
-                         tempOctal => thisOctal
-                         tempSubcell = 1
-                         call findSubcellLocal(locator, tempOctal, tempSubcell)
-                         tempOctal%feederCell(tempsubcell) = .true.
-                         
-                      end if
-                   end if
-                   if (.not.thisOctal%edgeCell(subcell)) then
-                      if(thisOctal%corner(subcell)) then
-                         do iProbe = 1, (nProbes/2)
-                            tVec = thisOctal%boundaryPartner(Subcell)
-                            locator = subcellCentre(thisOctal, subcell) + &
-                                 (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)* &
-                                 thisOctal%cornerPartner(subcell, iProbe)
-                            thisOctal%cornerPartner(subcell, iProbe) = locator
-                            if (.not.(inOctal(grid%octreeRoot,locator))) then
-                               write(*,*) "BUG2: locator ",locator
-                               write(*,*) "cell centre ", subcellCentre(thisOctal,subcell)
-                               write(*,*) "direction ",tVec
-                            endif
-                            tempOctal => thisOctal
-                            tempSubcell = 1
-                            call findSubcellLocal(locator, tempOctal, tempSubcell)
-                            tempOctal%feederCell(tempsubcell) = .true.
-                         end do
-
-                      else
-
-                         tVec = thisOctal%boundaryPartner(Subcell)
-                         locator = subcellCentre(thisOctal, subcell) + &
-                              (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)* &
-                              thisOctal%boundaryPartner(subcell)
-                         thisOctal%boundaryPartner(subcell) = locator
-                         if (.not.(inOctal(grid%octreeRoot,locator))) then
-                            write(*,*) "BUG2: locator ",locator
-                            write(*,*) "cell centre ", subcellCentre(thisOctal,subcell)
-                            write(*,*) "direction ",tVec
-                         endif
-                         tempOctal => thisOctal
-                         tempSubcell = 1
-                         call findSubcellLocal(locator, tempOctal, tempSubcell)
-                         tempOctal%feederCell(tempsubcell) = .true.
+                      locator = subcellCentre(thisOctal, subcell) + &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize) &
+                           * thisOctal%boundaryPartner(subcell)
+                      thisOctal%boundaryPartner(subcell) = locator
+                      if (.not.(inOctal(grid%octreeRoot,locator))) then
+                         write(*,*) "BUG1: locator ",locator
                       endif
-                   end if
+
+                      tempOctal => thisOctal
+                      tempSubcell = 1
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      tempOctal%feederCell(tempsubcell) = .true.
+                   endif
+
+                   
+                   if (.not.thisOctal%edgeCell(subcell)) then
+                      tVec = thisOctal%boundaryPartner(Subcell)
+                      locator = subcellCentre(thisOctal, subcell) + &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)* &
+                           thisOctal%boundaryPartner(subcell)
+                      thisOctal%boundaryPartner(subcell) = locator
+                      if (.not.(inOctal(grid%octreeRoot,locator))) then
+                         write(*,*) "BUG2: locator ",locator
+                         write(*,*) "cell centre ", subcellCentre(thisOctal,subcell)
+                         write(*,*) "direction ",tVec
+                      endif
+                      tempOctal => thisOctal
+                      tempSubcell = 1
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      tempOctal%feederCell(tempsubcell) = .true.
+                   endif
+
                    
                 case DEFAULT
                    write(*,*) "Unknown boundary condition in setupghostcells2 B: ",thisOctal%boundaryCondition(subcell)
-                end select
+             end select
 
 
              ! gravity boundary
