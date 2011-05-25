@@ -403,7 +403,7 @@ contains
              if(direction%z < 0.d0) direction%z = -direction%z / direction%z
 
              
-             if((abs(direction%x) + abs(direction%y) + abs(direction%z)) /= 1.d0) then
+             if((abs(direction%x) + abs(direction%y) + abs(direction%z)) == 1.d0) then
                 print *, "boundary partner is at a diagonal!"
                 print *, "direction ", direction
                 print *, "rVec ", rVec
@@ -3268,7 +3268,7 @@ end subroutine sumFluxes
 
           call writeInfo("Checking Boundary Partner Vectors", TRIVIAL)
           call checkBoundaryPartners(grid%octreeRoot, grid)
-          call writeInfo("Boundary Partner Check Passed", TRIVIAL)
+          call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
        endif
     endif
 
@@ -3366,6 +3366,8 @@ end subroutine sumFluxes
        !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
 
 
+       !Perform another boundary partner check
+       call checkBoundaryPartners(grid%octreeRoot, grid)
 
 
        if (currentTime .ge. nextDumpTime) then
