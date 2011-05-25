@@ -403,7 +403,7 @@ contains
              if(direction%z < 0.d0) direction%z = -direction%z / direction%z
 
              
-             if((abs(direction%x) + abs(direction%y) + abs(direction%z)) == 1.d0) then
+             if((abs(direction%x) + abs(direction%y) + abs(direction%z)) /= 1.d0) then
                 print *, "boundary partner is at a diagonal!"
                 print *, "direction ", direction
                 print *, "rVec ", rVec
