@@ -812,7 +812,7 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
    
-                thisoctal%flux_i_plus_1(subcell) = flux
+             !thisoctal%flux_i_plus_1(subcell) = flux
 
              !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient    
              if(thisOctal%nDepth > nd .and. fluxinterp) then
@@ -906,8 +906,8 @@ contains
           if(inOctal(grid%octreeRoot, locator)) then
              communityoctal => neighbouroctal
              call findsubcelllocal(locator, communityoctal, communitysubcell)
-             call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
+             call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, &
+                  rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
              rVec = subcellcentre(communityoctal, communitysubcell)
              f(i) = flux
