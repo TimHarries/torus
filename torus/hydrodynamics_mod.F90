@@ -784,7 +784,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd
-    real(double) :: xnext
+    real(double) :: xnext, fac
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -811,19 +811,23 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
 
-!             if (nd >= thisoctal%ndepth) then ! this is a coarse-to-fine cell boundary
    
                 thisoctal%flux_i_plus_1(subcell) = flux
 
-!             else
-!                ! now we need to do the fine-to-coarse flux
-!
-!                if (thisoctal%u_i_plus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
-!                   thisoctal%flux_i_plus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_plus_1(subcell)
-!                else
-!                   thisoctal%flux_i_plus_1(subcell) = flux ! flow is from neighbour into this one
-!                endif
-!             endif
+             !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient    
+             if(thisOctal%nDepth > nd .and. fluxinterp) then
+                if(.not. thisOctal%oneD) then
+                   neighbourOctal%flux_i(neighboursubcell) = flux
+!                   probe = subcellCentre(neighbourOctal, neighbourSubcell)
+                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
+                   else
+                   fac = 0.d0
+                   end if
+             else
+                fac = 0.d0
+             end if
+
+             thisoctal%flux_i_plus_1(subcell) = flux + fac
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -850,6 +854,148 @@ contains
     enddo
   end subroutine setupflux
 
+
+!THaw - Flux interpolation routine                                                                                                                                                                                                       
+  subroutine normalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
+    include 'mpif.h'
+    type(gridtype) :: grid
+    type(octal), pointer :: thisoctal
+    type(octal), pointer :: neighbourOctal
+    type(octal), pointer :: communityOctal
+    integer :: subcell, neighbourSubcell, communitySubcell
+    type(vector) :: direction
+    type(vector) :: rVec
+    type(vector), allocatable :: community(:)
+    type(vector) :: locator
+    type(vector) :: nVec
+    real(double), intent(out) :: fac
+    real(double), allocatable ::  xpos(:), f(:)
+    integer :: myRank, ierr
+    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
+    integer :: nd, iTot, i
+    real(double) :: xnext, m, dx, df, mToT
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+
+    nVec = subcellCentre(neighbourOctal, neighbourSubcell)
+
+    fac = 0.d0
+    if(neighbourOctal%twoD) then
+       iTot = 2
+       allocate(community(iTot))
+       allocate(xpos(iTot))
+       allocate(f(iTot))
+
+       !Get the direction of the neighbour's community cells                                                                                                                                                                             
+       if(abs(direction%x) == 1.d0) then !Advecting in ±x-direction                                                                                                                                                                      
+          community(1) = VECTOR(0.d0, 0.d0,1.d0)
+          community(2) = VECTOR(0.d0, 0.d0,-1.d0)
+       else if(abs(direction%z) == 1.d0) then !Advecting in ±z direction                                                                                                                                                                 
+          community(1) = VECTOR(1.d0, 0.d0,0.d0)
+          community(2) = VECTOR(-1.d0, 0.d0,0.d0)
+       else
+          print *, "Advecting in unknown direction!"
+          stop
+       end if
+
+       do i = 1, iToT
+          locator = subcellcentre(neighbouroctal, neighboursubcell) + community(i) * &
+               (neighbouroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+
+          if(inOctal(grid%octreeRoot, locator)) then
+             communityoctal => neighbouroctal
+             call findsubcelllocal(locator, communityoctal, communitysubcell)
+             call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext)
+
+             rVec = subcellcentre(communityoctal, communitysubcell)
+             f(i) = flux
+             if(abs(direction%x) == 1.d0) then
+                xpos(i) = rVec%z
+             else if(abs(direction%z) == 1.d0) then
+                xpos(i) = rVec%x
+             else
+                print *, "unrecognized direction!"
+                stop
+             end if
+
+          else
+             !At the edge just use the gradient over half the distance                                                                                                                                                                   
+             f(i)  = neighbourOctal%flux_i(subcell)
+             if(abs(direction%x) == 1.d0) then
+                xpos(i) = nVec%z
+             else if(abs(direction%z) == 1.d0) then
+                xpos(i) = nVec%x
+             else
+                print *, "unrecognized direction!"
+                stop
+             end if
+
+
+          end if
+       end do
+
+       !Flux gradient                                                                                                                                                                                                                    
+       m = (f(1) - f(2))/(xpos(1) - xpos(2))
+
+       dx = thisOctal%subcellSize*griddistancescale
+
+
+       !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                  
+       df = abs(m*dx)/2.d0
+
+       rVec = subcellCentre(thisOctal, subcell)!                                                                                                                                                                                         
+       if(m > 0.d0) then !Positive gradient                                                                                                                                                                                              
+
+          if(abs(direction%x) == 1.d0) then !±x advection                                                                                                                                                                                
+             if(rVec%z > nVec%z) then         !Upper cell                                                                                                                                                                                
+                   fac = df
+             else                             !lower cell                                                                                                                                                                                
+                   fac = -df
+             end if
+          else                                !±z advection                                                                                                                                                                              
+
+             if(rVec%x > nVec%x) then         !Right cell                                                                                                                                                                                
+                fac = df
+             else                             !Left cell                                                                                                                                                                                 
+                   fac = -df
+             end if
+          end if
+       else if (m < 0.d0) then   !Negative gradient                                                                                                                                                               
+          if(abs(direction%x) == 1.d0) then !±x advection                                                                                                                                                                                
+             if(rVec%z > nVec%z) then         !Upper cell                                                                                                                                                                                
+                fac = -df
+             else                             !lower cell                                                                                                                                                                                
+                fac = df
+             end if
+          else                                !±z advection                                                                                                                                                                              
+
+             if(rVec%x > nVec%x) then         !Right cell                                                                                                                                                                                
+                fac = -df
+             else                             !Left cell                                                                                                                                                                                 
+                fac = df
+             end if
+
+          end if
+
+       else                      !No gradient present                                                                                                                                                                                    
+          fac = 0.d0
+       end if
+
+    else !3D case                                                                                                                                                                                                                        
+
+       !Only going to do the 2D properly for now                                                                                                                                                                                         
+
+       fac = 0.d0
+
+    end if
+
+    deallocate(community)
+    deallocate(xpos)
+    deallocate(f)
+
+  end subroutine normalFluxGradient
 
   recursive subroutine setuppressure(thisoctal, grid, direction)
     include 'mpif.h'
