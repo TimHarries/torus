@@ -820,6 +820,7 @@ contains
                    neighbourOctal%flux_i(neighboursubcell) = flux
 !                   probe = subcellCentre(neighbourOctal, neighbourSubcell)
                    call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
+!                   if(fac /= 0.d0) print *, "fac", fac
                    else
                    fac = 0.d0
                    end if
@@ -873,7 +874,7 @@ contains
     integer :: myRank, ierr
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd, iTot, i
-    real(double) :: xnext, m, dx, df, mToT
+    real(double) :: xnext, m, dx, df
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -886,7 +887,6 @@ contains
        allocate(community(iTot))
        allocate(xpos(iTot))
        allocate(f(iTot))
-
        !Get the direction of the neighbour's community cells                                                                                                                                                                             
        if(abs(direction%x) == 1.d0) then !Advecting in ±x-direction                                                                                                                                                                      
           community(1) = VECTOR(0.d0, 0.d0,1.d0)
