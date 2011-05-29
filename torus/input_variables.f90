@@ -729,6 +729,7 @@ module input_variables
   integer :: xplusbound, yplusbound, zplusbound
   logical :: doRefine, doUnrefine, useViscosity
   logical :: fluxinterp
+  logical :: periodicX, periodicY, periodicZ ! For photoion
   character(len=20) :: limiterType
 
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString

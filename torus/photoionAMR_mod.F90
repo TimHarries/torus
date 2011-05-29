@@ -44,6 +44,7 @@ type PHOTONPACKET
     real(double) :: ppw
     integer :: destination
     logical :: sourcePhoton
+    logical :: crossedPeriodic
 end type PHOTONPACKET
 
   real :: heIRecombinationFit(32, 3, 3)
@@ -577,6 +578,7 @@ end subroutine radiationHydro
     integer :: mpi_vector, mpi_photon_stack
     logical :: sendAllPhotons = .false., donePanicking = .true.
     real(double) :: nIonizingPhotons
+    logical :: crossedPeriodic = .false.
 
     type(PHOTONPACKET), allocatable :: photonPacketStack(:)
     type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
@@ -646,6 +648,7 @@ end subroutine radiationHydro
        photonPacketStack%Freq = 0.d0
        photonPacketStack%Destination = 0
        photonPacketStack%tPhot = 0.d0
+       photonPacketStack%crossedPeriodic = .false.
 !    end if
 
 
@@ -776,6 +779,7 @@ end subroutine radiationHydro
        photonPacketStack%Freq = 0.d0
        photonPacketStack%Destination = 0
        photonPacketStack%tPhot = 0.d0
+       photonPacketStack%crossedPeriodic = .false.
  
       nIter = nIter + 1
       nInf=0
@@ -817,6 +821,7 @@ end subroutine radiationHydro
        photonPacketStack%freq = 0.d0
        toSendStack%freq = 0.d0
        toSendStack%destination = 0
+       toSendStack%crossedPeriodic = .false.
 
        countArray = 0.d0
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -874,6 +879,7 @@ end subroutine radiationHydro
                       photonPacketStack(optCounter)%ppw = photonPacketWeight
                       photonPacketStack(optCounter)%destination = iThread
                       photonPacketStack(optCounter)%sourcePhoton = .true.
+                      photonPacketStack(optCounter)%crossedPeriodic = .false.
                       exit
                    end if
                 end do
@@ -897,7 +903,7 @@ end subroutine radiationHydro
                                toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
                                toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
                                toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
-
+                               toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic 
                                thisPacket = thisPacket + 1
                                nInf = nInf + 1
                                
@@ -1046,6 +1052,7 @@ end subroutine radiationHydro
                                     toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
                                     toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
                                     toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+                                    toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
                                     thisPacket = thisPacket + 1
                                     !nInf = nInf + 1
                                     
@@ -1116,6 +1123,7 @@ end subroutine radiationHydro
                         tPhoton = currentStack(p)%tPhot
                         photonPacketWeight = currentStack(p)%ppw
                         sourcePhoton = currentStack(p)%sourcePhoton
+                        crossedPeriodic = currentStack(p)%crossedPeriodic
                         currentStack(p)%freq = 0.d0
                         exit
                      end if
@@ -1125,7 +1133,6 @@ end subroutine radiationHydro
                   voidThread = .true.
                end if
                !$OMP END CRITICAL (get_photon_stack)
-
 
                 ! here a new photon has been received, and we add its momentum
 
@@ -1140,7 +1147,7 @@ end subroutine radiationHydro
 
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
-                           crossedMPIboundary, newThread, sourcePhoton)
+                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
 ! DMA: check for condition which causes domain decomposed lexington benchmark to deadlock
  !Remove this check once the deadlock is fixed. Also remove amr1d from OpenMP declarations. 
@@ -1148,7 +1155,7 @@ end subroutine radiationHydro
   !                       write(*,*) "**** DEADLOCK WARNING ****"
   !                    end if
 
-                      if (crossedMPIBoundary) then                         
+                      if (crossedMPIBoundary) then    
                          !Create a bundle of photon packets, only modify the first available array space
                          !$OMP CRITICAL (crossed_mpi_boundary)
                          do optCounter = 1, (SIZE(photonPacketStack))
@@ -1160,6 +1167,7 @@ end subroutine radiationHydro
                                photonPacketStack(optCounter)%ppw = photonPacketWeight
                                photonPacketStack(optCounter)%destination = newThread
                                photonPacketStack(optCounter)%sourcePhoton = sourcePhoton
+                               photonPacketStack(optCounter)%crossedPeriodic = crossedPeriodic
                                exit
                             end if
                          end do
@@ -1184,6 +1192,7 @@ end subroutine radiationHydro
                                         toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
                                         toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
                                         toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+                                        toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
                                         thisPacket = thisPacket + 1
                                         !nInf = nInf + 1
                                      
@@ -1613,11 +1622,13 @@ end subroutine radiationHydro
 end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton)
+     nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+  use input_variables, only : periodicX, periodicY, periodicZ
   include 'mpif.h'
+
   integer :: myRank, ierr!, trackErr, sclHandle, classHandle, stateHandle, sclStart, sclEnd
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
    type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: endOctal
@@ -1646,8 +1657,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical, intent(out) :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
-   logical :: ok, outofTime
-   logical :: sourcePhoton 
+   logical :: ok, outofTime, neverInteracted
+   logical :: sourcePhoton, crossedPeriodic
 
    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -1657,9 +1668,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     crossedMPIboundary = .false.
     outOfTime = .false.
 
+    neverInteracted = .true.
+
     Photonmomentum = epsOverDeltaT / cSpeed
     thisLam = (cSpeed / thisFreq) * 1.e8
-
 
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -1712,18 +1724,80 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        endif
 
 ! check whether the photon has escaped from the grid
-
        if (inOctal(grid%octreeRoot,rVec)) then
           nextOctal => thisOctal
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
        else
-          stillingrid = .false.
+          if(.not. crossedPeriodic .and. neverInteracted) then
+             !Give photon packets a second chance if they haven't interacted
+             stillingrid = .false.
+             crossedPeriodic = .true.
+             crossedMPIBoundary = .true.
+             
+             !Calculate new position vector
+             upperBound%x = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
+             lowerBound%x = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+             upperBound%y = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
+             lowerBound%y = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
+             upperBound%z = grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize
+             lowerBound%z = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+
+             iniVec = rVec
+
+             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize
+             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize
+             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize
+             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize
+             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize
+             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize
+
+             if(rVec == iniVec) then
+                !no transfer occurs
+                crossedPeriodic = .false.
+                crossedMPIBoundary = .false.
+             end if
+
+             !This needs to be better
+             !In 1D the vector may have been altered so that the pp escapes in the y or z direction
+             !(not sure if this is a bug in the code) 
+             if(grid%octreeRoot%oneD) then
+                if(rvec%x == iniVec%x) then
+                   !Escape was due to y or z
+                   crossedPeriodic = .false.
+                   crossedMPIBoundary = .false.
+                   rVec = iniVec
+                end if
+             elseif(grid%octreeRoot%twoD) then
+                if(rvec%y /= iniVec%y) then
+                   !escape was due to y
+                   rVec = iniVec
+                end if 
+             end if
+
+             if(crossedPeriodic .and. (inOctal(grid%octreeRoot,rVec))) then
+                nextOctal => thisOctal
+                nextSubcell = subcell
+                call findSubcellLocal(rVec, nextOctal, nextSubcell)
+                newThread = nextOctal%mpiThread(nextSubcell)
+!                print *, "rVec1 ", iniVec
+!                print *, "rVec2 ", rVec
+             else
+                crossedPeriodic = .false.
+                crossedMPIBoundary = .false.
+                rVec = iniVec
+   
+             end if
+
+
+
+          else
+             stillingrid = .false.
+          end if
           escaped = .true.
        endif
           
        octVec = rVec
-
        
 ! check whether the photon has  moved across an MPI boundary
         
@@ -1734,7 +1808,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              escaped = .true.
              crossedMPIboundary = .true.
              newThread = nextOctal%mpiThread(nextSubcell)
-             !print *, "next on thread? ", octalOnThread(nextOctal, nextSubcell, newThread)
           endif
        endif
 
@@ -1768,6 +1841,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! now if the photon is in the grid choose a new random tau
 
        if (stillingrid) then
+          neverInteracted = .false.
           call randomNumberGenerator(getDouble=r)
           tau = -log(1.0-r)
           call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -1779,20 +1853,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! calculate the distance to the next cell
 
-
-!          write(*,*) "disttocell rvec ", inSubcell(thisOCtal, subcell, rVec)
-!          write(*,*) "disttocell octvec ", inSubcell(thisOCtal, subcell, octVec)
-
-
-          !if (.not. inSubcell(thisOctal, subcell, rVec)) then
-          !   write(*,*) "rvec ",rVec
-          !   write(*,*) "octvec ", octvec
-          !   write(*,*) "xmin xmax ", thisOctal%xmin, thisOctal%xmax
-          !   write(*,*) "ymin ymax ", thisOctal%ymin, thisOctal%ymax
-          !   write(*,*) "zmin zmax ", thisOctal%zmin, thisOctal%zmax
-          !endif
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
-
 
           octVec = rVec
 
@@ -1812,7 +1873,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! if photon is still in grid and  tau > tau_to_the_next_cell then loop round again
 ! choosing a new tau
-
        
     enddo
 

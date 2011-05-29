@@ -1157,7 +1157,18 @@ contains
        call getLogical("monochromatic", monochromatic, cLine, fLine, nLines, &
             "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)
     end if
-    
+
+    if(splitovermpi) then
+       call getLogical("periodicX", periodicX, cLine, fLine, nLines, &
+            "Use periodic photon boundary conditions in x direction:", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("periodicY", periodicY, cLine, fLine, nLines, &
+            "Use periodic photon boundary conditions in y direction:", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("periodicZ", periodicZ, cLine, fLine, nLines, &
+            "Use periodic photon boundary conditions in z direction:", "(a,1l,1x,a)", .false., ok, .false.)
+    end if
+
+
+
     call getReal("h_abund", h_abund, 1., cLine, fLine, nLines, &
          "Hydrogen abdunance: ","(a,1PF8.3,a)", &
          1., ok, .false.)
