@@ -1097,7 +1097,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat ) &
-               !$OMP PRIVATE(r1, finished, voidThread) &
+               !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, myRank, currentStack, escapeCheck) &
                !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nThreads, sendAllPhotons,toSendStack) &
