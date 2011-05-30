@@ -1745,12 +1745,12 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
              iniVec = rVec
 
-             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize
-             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize
-             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize
-             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize
-             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize
-             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize
+             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize*2.d0
+             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize*2.d0
+             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize*2.d0
+             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize*2.d0
+             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize*2.d0
+             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize*2.d0
 
              if(rVec == iniVec) then
                 !no transfer occurs
