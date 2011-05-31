@@ -221,6 +221,9 @@ CONTAINS
     CASE("nbody")
        CALL calcnBodyDensity(thisOctal,subcell)
 
+    CASE("empty")
+       CALL calcempty(thisOctal,subcell)
+
 
     CASE("gammavel")
        CALL calcGammaVel(thisOctal,subcell,grid)
@@ -3744,7 +3747,7 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere")
+   case("bonnor", "unisphere","empty")
          
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -6746,6 +6749,15 @@ CONTAINS
     thisOctal%iEquationOfState(subcell) = 2
 
   end subroutine calcnbodyDensity
+
+  subroutine calcEmpty(thisOctal,subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+
+    thisOCtal%rho(subcell) = 1.d-30
+    thisOctal%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+  end subroutine calcEmpty
     
 
 

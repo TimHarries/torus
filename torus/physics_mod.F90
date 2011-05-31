@@ -243,13 +243,15 @@ contains
     use phasematrix_mod
     use dust_mod
     use modelatom_mod, only : globalAtomArray
-    use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium
+    use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium, nBodyPhysics
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
     use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
+    use input_variables, only : tEnd, tDump
     use cmf_mod, only : atomloop
+    use nbody_mod, only : donBodyonly
     use source_mod, only : globalNsource, globalSourceArray, randomSource
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
     use setupamr_mod, only: doSmoothOnTau
@@ -414,6 +416,10 @@ contains
      endif
   endif
 #endif
+
+  if (nbodyPhysics.and.(.not.hydrodynamics)) then
+     call  donBodyOnly(tEnd, tdump, grid)
+  endif
 
 ! Free memory allocated in this subroutine
   if (associated(xArray)) then

@@ -13,6 +13,7 @@ contains
 
 
   subroutine calculateGasSourceInteraction(source, nSource, grid)
+    use input_variables, only : hydrodynamics
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     type(GRIDTYPE) :: grid
@@ -56,8 +57,10 @@ contains
 !    call writeInfo("Done.",TRIVIAL)
 
 !    call writeInfo("Calculating source potential for gas", TRIVIAL)
-    call zeroSourcepotential(grid%octreeRoot)
-    call applySourcePotential(grid%octreeRoot, source, nSource, eps)
+    if (hydrodynamics) then
+       call zeroSourcepotential(grid%octreeRoot)
+       call applySourcePotential(grid%octreeRoot, source, nSource, eps)
+    endif
 !    call writeInfo("Done.", TRIVIAL)
 
 !    call writeInfo("Calculating source-source forces", TRIVIAL)
@@ -66,6 +69,49 @@ contains
 
   end subroutine calculateGasSourceInteraction
 
+  subroutine donBodyOnly(tEnd, dt, grid)
+    use vtk_mod, only : writevtkfilenbody
+    use source_mod, only : globalnSource, globalSourceArray
+    character(len=80)  :: plotFile
+    type(GRIDTYPE) :: grid
+    real(double) :: dt, currentTime, tEnd
+    real(double) :: totalEnergy, ePot, eKin
+    real(double), allocatable :: tmp(:)
+    integer :: it,i 
+
+    currentTime = 0.d0
+    it = 0
+    open(44, file="energy.dat", form="formatted", status="unknown")
+    write(44,'(a)') "Step      Time (s)      p.e. (J)        k.e. (J)      E_total (J)"
+    open(45, file="position.dat", form="formatted", status="unknown")
+    write(45,'(a)') "Step      Time (s)     position x y z..." 
+    do while (currentTime  < tEnd)
+       write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
+       call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
+       call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin)
+       write(44,'(i6, 1p,4e15.5,0p)') it, currentTime, epot, ekin, totalEnergy
+       flush(44)
+
+       allocate(tmp(1:globalnSource*3))
+       do i = 1, globalnSource
+          tmp(i*3-2) = globalSourceArray(i)%position%x
+          tmp(i*3-1) = globalSourceArray(i)%position%y
+          tmp(i*3) = globalSourceArray(i)%position%z
+       enddo
+       write(45,'(i6,1p,20e15.5,0p)') it, currentTime, tmp(1:globalnsource*3)
+       deallocate(tmp)
+       flush(45)
+       call  nBodyStep(globalsourceArray, globalnSource, dt, grid)
+       currentTime = currentTime + dt
+       write(*,*) "Current time ",currentTime
+       it = it + 1
+    end do
+    close(44)
+    close(45)
+  end subroutine donBodyOnly
+       
+
+    
 
   subroutine updateSourcePositions(source, nSource, dt, grid)
     type(GRIDTYPE) :: grid
@@ -76,7 +122,7 @@ contains
     integer :: nok, nbad
     integer :: kmax, kount
     real(double) :: acc, eps, minDt, thisDt, thisTime
-    real(double) :: dxsav, xp(200), yp(200,200), energy
+    real(double) :: dxsav, xp(200), yp(200,200)
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
@@ -146,9 +192,76 @@ contains
        endif
     enddo
     deallocate(yStart,dydx)
-    call sumEnergy(source, nSource, energy)
-    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
+!    call sumEnergy(source, nSource, energy)
+!    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
   end subroutine updateSourcePositions
+
+
+  subroutine nBodyStep(source, nSource, dt, grid)
+    type(GRIDTYPE) :: grid
+    real(double) :: dt
+    type(sourcetype) :: source(:)
+    integer :: nSource, i, ia, nvar
+    real(double), allocatable :: yStart(:), dydx(:)
+    integer :: nok, nbad
+    integer :: kmax, kount
+    real(double) :: acc, eps, minDt, thisDt, thisTime
+    real(double) :: dxsav, xp(200), yp(200,200)
+    common /path/ kmax,kount,dxsav,xp ,yp
+    kmax = 0
+
+    eps = returnCodeUnitLength(0.1d0*rsol)
+
+    nvar = nSource * 6
+    allocate(yStart(1:nvar), dydx(1:nVar))
+
+    do i = 1,nSource
+       ia = (i-1)*6 + 1
+       ystart(ia+0) = returnCodeUnitLength(source(i)%position%x*1.d10)
+       ystart(ia+1) = returnCodeUnitSpeed(source(i)%velocity%x)
+
+       ystart(ia+2) = returnCodeUnitLength(source(i)%position%y*1.d10)
+       ystart(ia+3) = returnCodeUnitSpeed(source(i)%velocity%y)
+
+       ystart(ia+4) = returnCodeUnitLength(source(i)%position%z*1.d10)
+       ystart(ia+5) = returnCodeUnitSpeed(source(i)%velocity%z)
+
+
+    enddo
+
+    thisTime = 0.d0
+    do while (thisTime  < dt)
+
+       call derivs(0.d0, ystart, dydx, grid)
+
+       minDt = 1.d30
+       do i = 1, nSource
+          ia = (i-1)*6 + 1
+          acc = sqrt(dydx(ia+1)**2 + dydx(ia+3)**2 + dydx(ia+5)**2)
+          minDt = min(sqrt(eps / (acc + tiny(Acc))), minDt)
+       enddo
+       thisDt = min(minDt, dt)
+       if ((thisTime + thisDt) > dt) then
+          thisDt = dt - thisTime
+       endif
+       if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-8, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
+       thisTime = thisTime + thisDt
+       do i = 1, nSource
+          ia = (i-1)*6 + 1
+          source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))/1.d10
+          source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
+          
+          source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))/1.d10
+          source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+          
+          source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
+          source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
+          
+       enddo
+    enddo
+    deallocate(yStart,dydx)
+  end subroutine nBodyStep
 
 
 
@@ -281,22 +394,25 @@ contains
     enddo
   end subroutine sourceSourceForces
 
-  subroutine sumEnergy(source, nSource, energy)
+  subroutine sumEnergy(source, nSource, totalenergy, ePot, eKin)
     type(SOURCETYPE) :: source(:)
     integer :: nSource, i, j
-    real(double) :: energy
+    real(double) :: totalenergy, epot, ekin
 
-    energy = 0.d0
+    totalenergy = 0.d0
+    epot = 0.d0
+    ekin = 0.d0
     do i = 1, nSource
        do j = 1, nSource
 
           if (i /= j) then
-             energy = energy - 0.5d0 * bigG*source(i)%mass*source(j)%mass / &
+             epot = epot - 0.5d0 * bigG*source(i)%mass*source(j)%mass / &
                   (modulus(source(i)%position-source(j)%position)*1.d10)
           endif
        enddo
-       energy = energy + 0.5d0 * source(i)%mass * modulus(source(i)%velocity)**2
+       ekin = ekin + 0.5d0 * source(i)%mass * modulus(source(i)%velocity)**2
     enddo
+   totalenergy = epot + ekin
   end subroutine sumEnergy
 
   subroutine odeint(ystart,nvar,x1,x2,eps,h1,hmin,nok,nbad,derivs,rkqc,grid)

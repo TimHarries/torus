@@ -142,6 +142,29 @@ contains
     call getLogical("nbodyphysics", nBodyPhysics, cLine, fLine, nLines, &
          "Include n-body physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("timeunit", timeUnit, 1.d0, cLine, fLine, nLines, &
+         "Code unit of time: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
+
+    call getDouble("massunit", massUnit, 1.d0, cLine, fLine, nLines, &
+         "Code unit of mass: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
+
+    call getDouble("lengthunit", lengthUnit, 1.d0, cLine, fLine, nLines, &
+         "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
+
+    call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
+         "Number of photons in image","(a,i8,a)", 0, ok, .false.)
+
+    call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
+         "Number of photons in image","(a,i8,a)", 8, ok, .false.)
+
+    if (nBodyPhysics) then
+       call getDouble("tend", tEnd, 1.d0, cLine, fLine, nLines, &
+            "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .false.)
+
+       call getDouble("tdump", tDump, 1.d0, cLine, fLine, nLines, &
+            "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+    endif
+
     if(photoionphysics) then
        call getLogical("checkForPhoto", checkforphoto, cLine, fLine, nLines, &
             "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)
@@ -1397,21 +1420,6 @@ contains
     call getString("zminusboundstring", zminusboundString, cLine, fLine, nLines, &
          "negative z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
-
-    call getDouble("timeunit", timeUnit, 1.d0, cLine, fLine, nLines, &
-         "Code unit of time: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
-
-    call getDouble("massunit", massUnit, 1.d0, cLine, fLine, nLines, &
-         "Code unit of mass: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
-
-    call getDouble("lengthunit", lengthUnit, 1.d0, cLine, fLine, nLines, &
-         "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
-
-    call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 0, ok, .false.)
-
-    call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 8, ok, .false.)
 
 
   end subroutine readHydrodynamicsParameters

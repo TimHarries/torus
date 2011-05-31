@@ -3047,6 +3047,7 @@ end subroutine sumFluxes
 
 
   subroutine doHydrodynamics3d(grid)
+    use vtk_mod, only : writeVtkFilenBody
     use input_variables, only : tdump, tend, doRefine, doUnrefine
     include 'mpif.h'
     type(gridtype) :: grid
