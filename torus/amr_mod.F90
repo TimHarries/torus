@@ -8699,6 +8699,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%rLimit, source%rLimit)
     call copyAttribute(dest%phiLimit, source%phiLimit)
     call copyAttribute(dest%ghostCell, source%ghostCell)
+    call copyAttribute(dest%corner, source%corner)
     call copyAttribute(dest%edgeCell, source%edgeCell)
     call copyAttribute(dest%feederCell, source%feederCell)
     call copyAttribute(dest%energy, source%energy)
@@ -13094,6 +13095,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%phiLimit,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%feederCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%refinedLastTime,thisOctal%maxchildren)
@@ -13220,6 +13222,7 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%phiLimit)
 
        call deAllocateAttribute(thisOctal%ghostCell)
+       call deAllocateAttribute(thisOctal%corner)
        call deAllocateAttribute(thisOctal%feederCell)
        call deAllocateAttribute(thisOctal%edgeCell)
        call deAllocateAttribute(thisOctal%refinedLastTime)

@@ -4670,6 +4670,13 @@ end subroutine sumFluxes
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = getBoundary(boundary)
+
+             if(thisOctal%twoD .and. nProbeOutside == 2) then
+                thisOctal%corner(subcell) = .true.
+             else if (thisOctal%threeD .and. nProbeOutside == 3) then
+                thisOctal%corner(subcell) = .true.
+             end if
+                
           endif
        endif
     enddo
@@ -5370,6 +5377,11 @@ end subroutine sumFluxes
                    split = .true.
                 endif
 
+
+
+                if(thisOctal%corner(subcell) .and. thisOCtal%nDepth < maxDepthAMR) split = .true.
+
+
 !                thisSpeed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
 !                     + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
 !                speed = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
@@ -5395,7 +5407,13 @@ end subroutine sumFluxes
                       converged = .false.
                       exit
                    endif
-                   
+   
+                   if(thisOctal%corner(subcell) .and. thisOctal%nDepth < maxDepthAMR) then
+                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+                      converged = .false.
+                      exit
+                   end if
+                
                 endif
              endif
           enddo
@@ -5599,7 +5617,7 @@ end subroutine refineGridGeneric2
     real(double) :: rho1, rhoe1, rhou1, rhov1, rhow1, grad, speed, thisSpeed, meanrho, meancs
     real(double) :: splitLimit, dv
     integer :: ndir
-    logical :: debug
+    logical :: debug, cornerCell
     type(VECTOR) :: dirvec(6), locator, centre
 
     debug = .false.
@@ -5608,6 +5626,7 @@ end subroutine refineGridGeneric2
     unrefine = .true.
     refinedLastTime = .false.
     ghostCell = .false.
+    cornerCell = .false.
     nc = 0
     mass = 0.d0
     do subcell = 1, thisOctal%maxChildren
@@ -5645,6 +5664,8 @@ end subroutine refineGridGeneric2
 
           cs(nc) = soundSpeed(thisOctal, subcell)
           if (thisOctal%ghostCell(subcell)) ghostCell=.true.
+          if (thisOctal%corner(subcell)) cornerCell=.true.
+          
 !          if (thisOctal%refinedLastTime(subcell)) refinedLastTime = .true.
        endif
     enddo
@@ -5653,7 +5674,7 @@ end subroutine refineGridGeneric2
     unrefine = .false.
 
 
-    if ((nc > 1)) then !.and.(.not.ghostCell)) then
+    if ((nc > 1).and..not.cornerCell) then
 
        unrefine = .true.
        meancs = SUM(cs(1:nc))/dble(nc)

@@ -545,6 +545,7 @@ contains
        
 
           call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
+          call writeAttributePointerFlexi(20, "corner", thisOctal%corner, fileFormatted)
           call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
           call writeAttributePointerFlexi(20, "edgeCell", thisOctal%edgeCell, fileFormatted)
           call writeAttributePointerFlexi(20, "refinedLastTime", thisOctal%refinedLastTime, fileFormatted)
@@ -3480,6 +3481,11 @@ contains
          case("ghostCell")
             call readPointerFlexi(20, thisOctal%ghostCell, fileFormatted)
             !print *, "read ghostcell ", thisOctal%ghostCell 
+
+         case("corner")
+            call readPointerFlexi(20, thisOctal%corner, fileFormatted)
+
+
          case("feederCell")
             call readPointerFlexi(20, thisOctal%feederCell, fileFormatted)
          case("edgeCell")
@@ -3795,9 +3801,12 @@ contains
             call receivePointerFlexi(thisOctal%phiLimit)
 
          case("ghostCell")
-            
             call receivePointerFlexi(thisOctal%ghostCell)
             
+         case("corner")
+            call receivePointerFlexi(thisOctal%corner)
+
+
          case("feederCell")
             call receivePointerFlexi(thisOctal%feederCell)
          case("edgeCell")
@@ -4006,6 +4015,7 @@ contains
       call sendAttributePointerFlexi(iThread, "phiLimit", thisOctal%phiLimit)
 
       call sendAttributePointerFlexi(iThread, "ghostCell", thisOctal%ghostCell)
+      call sendAttributePointerFlexi(iThread, "corner", thisOctal%corner)
       call sendAttributePointerFlexi(iThread, "feederCell", thisOctal%feederCell)
       call sendAttributePointerFlexi(iThread, "edgeCell", thisOctal%edgeCell)
       call sendAttributePointerFlexi(iThread, "refinedLastTime", thisOctal%refinedLastTime)

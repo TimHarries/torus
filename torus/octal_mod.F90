@@ -300,7 +300,7 @@ MODULE octal_mod
     real(double), pointer :: u_interface(:) => null(), u_i_plus_1(:) => null(), u_i_minus_1(:) => null()
     real(double), pointer :: flux_i(:) => null(), flux_i_plus_1(:) => null(), flux_i_minus_1(:) => null()
     real(double), pointer :: phiLimit(:) => null(), rLimit(:) => null()
-    logical, pointer :: ghostCell(:) => null(), feederCell(:) => null()
+    logical, pointer :: ghostCell(:) => null(), feederCell(:) => null(), corner(:) => null()
     logical, pointer :: edgeCell(:) => null(), refinedLastTime(:) => null()
     real(double), pointer :: rhou(:) => null(),  rhov(:) => null(), rhow(:) => null(), rhoE(:) => null(), energy(:) => null()
     real(double), pointer :: pressure_i(:) => null(), pressure_i_plus_1(:) => null(), pressure_i_minus_1(:) => null()
