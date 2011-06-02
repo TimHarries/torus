@@ -3074,16 +3074,24 @@ end subroutine sumFluxes
        close(57)
     endif
 
+    write(plotfile,'(a,i4.4,a)') "3D_previewA.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ",&
+         "hydrovelocity", &
+         "rhoe         ", &
+         "u_i          ", &
+         "phi          "/))
+
+
     if (grid%geometry == "shakara") doSelfGrav = .false.
     if (grid%geometry == "rtaylor") doSelfGrav = .false.
+    if (grid%geometry == "diagSod") doSelfGrav = .false.
 
 !    dorefine = .true.
 
     nHydroThreads = nThreadsGlobal - 1
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-
-
 
     mu = 2.d0
 
@@ -3106,7 +3114,6 @@ end subroutine sumFluxes
     it = grid%iDump
     currentTime = grid%currentTime
     nextDumpTime = grid%currentTime+tdump
-
 
     call setCodeUnit(time=timeUnit)
     call setCodeUnit(mass=massUnit)
@@ -3145,19 +3152,55 @@ end subroutine sumFluxes
 
 
        call calculateRhoE(grid%octreeRoot, direction)
+    end if
 
+    write(plotfile,'(a,i4.4,a)') "3D_previewC.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ",&
+         "hydrovelocity", &
+         "rhoe         ", &
+         "u_i          ", &
+         "phi          "/))
+
+    if (myrankGlobal /= 0) then
 
 
        if(doRefine) then
            if (myrank == 1) call tune(6, "Initial refine")
-           call refineGridGeneric(grid, 1.d-2)
+           call refineGridGeneric(grid, 5.d-3)
            call writeInfo("Evening up grid", TRIVIAL)    
-           call evenUpGridMPI(grid,.false., dorefine)
-           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-        
-           if (myrank == 1) call tune(6, "Initial refine")
-        end if
+       end if
+   end if
+   
+       write(plotfile,'(a,i4.4,a)') "3D_previewD.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ",&
+         "hydrovelocity", &
+         "rhoe         ", &
+         "u_i          ", &
+         "phi          "/))
 
+    if(myRankGlobal /= 0) then
+
+       if(dorefine) then
+          call evenUpGridMPI(grid,.false., dorefine)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          
+          if (myrank == 1) call tune(6, "Initial refine")
+       end if
+
+    end if
+
+    write(plotfile,'(a,i4.4,a)') "3D_previewE.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ",&
+         "hydrovelocity", &
+         "rhoe         ", &
+         "u_i          ", &
+         "phi          "/))
+
+    if(myRankGlobal /= 0) then
+       
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
@@ -3180,6 +3223,16 @@ end subroutine sumFluxes
        endif
 
     endif
+
+
+    write(plotfile,'(a,i4.4,a)') "3D_previewB.vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"rho          ",&
+         "hydrovelocity", &
+         "rhoe         ", &
+         "u_i          ", &
+         "phi          "/))
+    
 
     tc = 0.d0
     if (myrank /= 0) then
@@ -3257,14 +3310,12 @@ end subroutine sumFluxes
           if (myrank == 1) call tune(6,"Hydrodynamics step")
 
 
-
-
           iUnrefine = iUnrefine + 1
           if(doUnRefine) then
              if (iUnrefine == 5) then
                 if (myrank == 1)call tune(6, "Unrefine grid")
                 nUnrefine = 0
-                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrank == 1)call tune(6, "Unrefine grid")
                 iUnrefine = 0
@@ -3274,9 +3325,11 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call writeInfo("Refining grid part 2", TRIVIAL)    
-             call refineGridGeneric(grid, 1.d-2)
+             call refineGridGeneric(grid, 5.d-3)
           !          
+             call writeInfo("Done the refine part", TRIVIAL)                 
              call evenUpGridMPI(grid, .true., dorefine)
+             call writeInfo("Done the even up part", TRIVIAL)    
 
           !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -3493,7 +3546,7 @@ end subroutine sumFluxes
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 20) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-1)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -3504,7 +3557,7 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
-          call refinegridGeneric(grid, 1.d-1)
+          call refinegridGeneric(grid, 5.d-3)
        end if
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -5263,6 +5316,9 @@ end subroutine sumFluxes
     globalConverged = .false.
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
+
+
+
     do
        call setAllUnchanged(grid%octreeRoot)
        globalConverged(myRankGlobal) = .true.
@@ -5279,6 +5335,8 @@ end subroutine sumFluxes
        call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        if (ALL(tConverged(1:nthreadsGlobal-1))) exit
     enddo
+
+
     666 continue
   end subroutine refineGridGeneric
 
@@ -5377,8 +5435,6 @@ end subroutine sumFluxes
                    split = .true.
                 endif
 
-
-
                 if(thisOctal%corner(subcell) .and. thisOCtal%nDepth < maxDepthAMR) split = .true.
 
 
@@ -5397,18 +5453,23 @@ end subroutine sumFluxes
  
                    if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
                       call addNewChildWithInterp(thisOctal, subcell, grid)
+!                      print *, "split A ", thisOctal%nDepth
                       exit
                    endif
                    
-                   if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
-                        octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
-                        (neighbourOctal%nDepth < thisOctal%nDepth)) then
-                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
-                      converged = .false.
-                      exit
-                   endif
+
+                   !Thaw - I am going to assume that this is handled in evenupgridMPI and rm it for now
+!                   if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
+!                        octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
+!                        (neighbourOctal%nDepth < thisOctal%nDepth)) then
+!                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+!                      print *, "split B ", neighbourOctal%nDepth, nd, thisOctal%nDepth
+!                      converged = .false.!
+!                      exit
+!                   endif
    
                    if(thisOctal%corner(subcell) .and. thisOctal%nDepth < maxDepthAMR) then
+                     print *, "split C ", thisOctal%nDepth
                       call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                       converged = .false.
                       exit
@@ -5426,6 +5487,7 @@ end subroutine sumFluxes
           call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                inherit=.false., interp=.false., amrHydroInterp = .true.)
           converged = .false.
+        print *, "split D ", thisOctal%nDepth
           exit
        endif
     endif
@@ -5460,15 +5522,12 @@ end subroutine sumFluxes
        enddo
     endif
 
-
-
     if (.not.converged) exit
  endif
+
 end do
 
 end subroutine refineGridGeneric2
-
-
 
 
 
@@ -6288,6 +6347,8 @@ end subroutine refineGridGeneric2
                       nVec = subcellCentre(neighbourOctal, neighbourSubcell)
                       octVec = VECTOR(x, y, z)
                       vecStore(1) = octVec
+                      
+!                      print *, "doing 3D evenup"
 
                       !Reminder of my labels
                       ! _______
@@ -6448,7 +6509,7 @@ end subroutine refineGridGeneric2
                                nd = nd2
                             end if
                          end do
-
+                        
                       end if
                    end if
                 end if

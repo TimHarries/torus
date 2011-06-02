@@ -3720,8 +3720,8 @@ CONTAINS
             if ( ((rVec%x+rvec%z) > 0.04).and. (((rVec%x+rvec%z) < 0.06)) .and. &
                  (thisOctal%nDepth < maxDepthAMR)) split = .true.
          else if(thisoctal%threeD) then
-            if ( ((rVec%y+rVec%x+rvec%z) > 0.04).and. (((rVec%y+rVec%x+rvec%z) < 0.06)) .and. &
-                 (thisOctal%nDepth < maxDepthAMR)) split = .true.
+            if ( ((rVec%x) < 0.21).and. &
+                 thisOctal%nDepth < maxDepthAMR) split = .true.
 
          else
             print *, "1D diag sod doesn't work"
@@ -3734,11 +3734,15 @@ CONTAINS
          rVec = subcellCentre(thisOctal, subcell)
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          !Coarse to fine
-
+         
          if(thisOctal%twoD) then
             if(((rVec%x-0.5)**2 + rvec%z**2) < 0.1 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-        end if
 
+         else if (thisOctal%threeD) then
+            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.1 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+
+         end if
+         
         
       end if
 
@@ -6296,7 +6300,7 @@ CONTAINS
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
        end if
     else if(thisOctal%threeD) then
-       if((rvec%z+rVec%x+rVec%y) <= 0.05) then
+       if((rvec%x) <= 0.2) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0

@@ -104,7 +104,9 @@ contains
        else
           if(.not. thisoctal%ghostcell(subcell)) then
              if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-                dv = cellVolume(thisOctal, subcell)*1.d30
+                dv = cellVolume(thisOctal, subcell)!*1.d30
+!                print *, "dv", dv, thisOctal%subcellSize**3
+
                 if (hydrodynamics) then
                    if (thisOctal%twoD) then
                       dv = thisOctal%subcellSize**2
@@ -172,7 +174,8 @@ contains
           if(.not. thisoctal%ghostcell(subcell)) then
              if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
                 if (thisOctal%threed) then
-                   dv = cellVolume(thisOctal, subcell) * 1.d30
+!                   dv = cellVolume(thisOctal, subcell) * 1.d30
+                   dv = thisOctal%subcellSize**3
                 else if (thisOctal%twoD) then
                    dv = thisOctal%subcellSize**2
                 else if (thisOctal%oneD) then
@@ -2276,8 +2279,6 @@ end subroutine dumpStromgrenRadius
        parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
     endif
 
-
-
     parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
     parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
     parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
@@ -2352,6 +2353,9 @@ end subroutine dumpStromgrenRadius
        corner(1) = thisOctal%centre + VECTOR(-r, 0.d0, 0.d0)
        corner(2) = thisOCtal%centre + VECTOR(+r, 0.d0, 0.d0)
     endif
+
+
+    !THAW - pretty sure corner and dir arrays are ok
 
     rhoCorner = 0.d0
     rhoeCorner = 0.d0
@@ -2560,9 +2564,11 @@ end subroutine dumpStromgrenRadius
     
     ! conservation normalizations
 
+    !THAW - i believe this volume calculation could be the problem
     ! mass
        if (thisOctal%threed) then
-          dv = cellVolume(thisOctal, parentSubcell) * 1.d30
+!          dv = cellVolume(thisOctal, parentSubcell) * 1.d30
+          dv = parent%subcellSize**3
        else if (thisOctal%twoD) then
           dv = parent%subcellSize**2
        else if (thisOctal%oneD) then
@@ -2576,7 +2582,8 @@ end subroutine dumpStromgrenRadius
        do iSubcell = 1, thisOctal%maxChildren
           !THAW - redoing mass calculation
           if (thisOctal%threed) then
-             dv = cellVolume(thisOctal, iSubcell) * 1.d30
+!             dv = cellVolume(thisOctal, iSubcell) * 1.d30
+             dv = thisOctal%subcellSize**3
           else if (thisOctal%twoD) then
              dv = thisOctal%subcellSize**2
           else if (thisOctal%oneD) then
@@ -2596,7 +2603,8 @@ end subroutine dumpStromgrenRadius
     ! energy
 
     if (thisOctal%threed) then
-       dv = cellVolume(thisOctal, parentSubcell) * 1.d30
+!       dv = cellVolume(thisOctal, parentSubcell) * 1.d30
+       dv = parent%subcellSize**3
     else if (thisOctal%twoD) then
        dv = parent%subcellSize**2
     else if (thisOctal%oneD) then
@@ -2612,7 +2620,8 @@ end subroutine dumpStromgrenRadius
 !       newEnergy = newEnergy + thisOctal%rhoe(isubcell) * cellVolume(thisOctal, iSubcell)
        !THAW - redoing energy calculation
        if (thisOctal%threed) then
-          dv = cellVolume(thisOctal, iSubcell) * 1.d30
+!          dv = cellVolume(thisOctal, iSubcell) * 1.d30
+          dv = thisOctal%subcellSize**3
        else if (thisOctal%twoD) then
           dv = thisOctal%subcellSize**2
        else if (thisOctal%oneD) then!

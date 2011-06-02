@@ -1,5 +1,5 @@
 #ifdef PHOTOION
-!Photoionization module - started on October 4th 2005 by th
+!Photoionization module - started on October 4th 2005 by th 
 
 module photoionAMR_mod
 
@@ -525,7 +525,7 @@ end subroutine radiationHydro
     integer(bigint) :: nEscapedGlobal=0
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
-    integer :: nIter
+    integer :: nIter, nPeriodic
     logical :: converged, thisThreadConverged, failed
     real(double) :: photonPacketWeight
     real(double) :: tPhoton
@@ -607,6 +607,8 @@ end subroutine radiationHydro
     !   stackLimit = 1
     !   zerothStackLimit = 1
     !end if
+
+    nPeriodic = 0
 
     !Custom MPI data types for easier send/receiving
     !MPI datatype for out TYPE(VECTOR) variables
@@ -1168,6 +1170,9 @@ end subroutine radiationHydro
                                photonPacketStack(optCounter)%destination = newThread
                                photonPacketStack(optCounter)%sourcePhoton = sourcePhoton
                                photonPacketStack(optCounter)%crossedPeriodic = crossedPeriodic
+                               if(crossedPeriodic) then
+                                  nPeriodic = nPeriodic + 1
+                               end if
                                exit
                             end if
                          end do
@@ -1324,6 +1329,11 @@ end subroutine radiationHydro
                 !$OMP END PARALLEL
 777             continue
              enddo
+
+
+             print *, "Rank ", myRank, "has nPeriodic : ", nPeriodic
+             nPeriodic = 0
+
           endif
 
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
