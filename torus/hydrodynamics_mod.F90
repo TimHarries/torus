@@ -6406,12 +6406,23 @@ end subroutine refineGridGeneric2
                                   !goto (iii)
                                   vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(i)
-                                  vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(ii)
                                   vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
 
                                end if
                             end if
+
+                            !vecstore check                                                                                                                            
+                            do i = 1, 3
+                               locator = vector(rVec%x, vecStore(i)%y, vecStore(i)%z)
+                               if(.not. inSubcell(thisOctal,subcell, locator)) then
+                                  write(*,*) "Screw up in partner checks x"
+                                  stop
+                               end if
+                            end do
+
                                                      
                          else if(abs(dirVec(j)%y) == 1.d0) then !x-->y, y-->z, z-->x 
                             if(rVec%z > octVec%z) then
@@ -6449,11 +6460,22 @@ end subroutine refineGridGeneric2
                                   !goto (iii)
                                   vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(i)
-                                  vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(ii)
                                   vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                end if
                             end if
+
+                            !vecstore check                                                                                                                            
+                            do i = 1, 3
+                               locator = vector(vecStore(i)%x, rVec%y, vecStore(i)%z)
+                               if(.not. inSubcell(thisOctal,subcell, locator)) then
+                                  write(*,*) "Screw up in partner checks y"
+                                  stop
+                               end if
+                            end do
+
 
                          else if(abs(dirVec(j)%z) == 1.d0) then !x-->y, y-->z, z-->x 
                             if(rVec%x > octVec%x) then
@@ -6490,11 +6512,22 @@ end subroutine refineGridGeneric2
                                   !goto (iii)
                                   vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(i)
-                                  vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  !vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(ii)
                                   vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                end if
                             end if
+
+                            !vecstore check
+                            do i = 1, 3
+                               locator = vector(vecStore(i)%x, vecStore(i)%y, rVec%z)
+                               if(.not. inSubcell(thisOctal,subcell, locator)) then
+                                  write(*,*) "Screw up in partner checks z"
+                                  stop
+                               end if
+                            end do
+
 
                          else
                             print *, "Direction Error In EvenUpGrid (3D)"
