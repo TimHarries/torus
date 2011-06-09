@@ -403,6 +403,11 @@ contains
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
 
+     case("empty")
+       call getDouble("centralmass", centralMass, msol, cLine, fLine, nLines, &
+            "Central mass (in M_sol): ","(a,f7.1,1x,a)", 1.d0, ok, .true.)
+
+
      case("ttauri")
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
             "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)

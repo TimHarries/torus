@@ -299,6 +299,14 @@ contains
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
        select case (geometry)
+
+
+          case("ttauri")
+             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
+             if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
+
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)

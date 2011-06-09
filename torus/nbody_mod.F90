@@ -33,10 +33,10 @@ contains
     enddo
 
 !    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
-!    call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
+    call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
 #ifdef MPI
-    if (grid%splitOverMPI) then
+    if (grid%splitOverMPI.and.(myrankGlobal/=0)) then
        n = nSource*3
        allocate(temp(1:n), temp2(1:n))
        temp = 0.d0
@@ -45,14 +45,14 @@ contains
           temp((i-1)*3+2) = source(i)%force%y
           temp((i-1)*3+3) = source(i)%force%z
        enddo
+       call MPI_ALLREDUCE(temp, temp2, n, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       do i = 1, nSource
+          source(i)%force%x = temp2((i-1)*3+1)
+          source(i)%force%y = temp2((i-1)*3+2)
+          source(i)%force%z = temp2((i-1)*3+3)
+       enddo
+       deallocate(temp, temp2)
     endif
-    call MPI_ALLREDUCE(temp, temp2, n, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
-    do i = 1, nSource
-       source(i)%force%x = temp2((i-1)*3+1)
-       source(i)%force%y = temp2((i-1)*3+2)
-       source(i)%force%z = temp2((i-1)*3+3)
-    enddo
-    deallocate(temp, temp2)
 #endif
 !    call writeInfo("Done.",TRIVIAL)
 
@@ -81,16 +81,18 @@ contains
 
     currentTime = 0.d0
     it = 0
-    open(44, file="energy.dat", form="formatted", status="unknown")
-    write(44,'(a)') "Step      Time (s)      p.e. (J)        k.e. (J)      E_total (J)"
-    open(45, file="position.dat", form="formatted", status="unknown")
-    write(45,'(a)') "Step      Time (s)     position x y z..." 
+    if (grid%splitOverMpi.and.(myrankGlobal == 0)) goto 666
+
+    if (writeoutput) open(44, file="energy.dat", form="formatted", status="unknown")
+    if (writeoutput) write(44,'(a)') "Step      Time (s)      p.e. (J)        k.e. (J)      E_total (J)"
+    if (writeoutput) open(45, file="position.dat", form="formatted", status="unknown")
+    if (Writeoutput) write(45,'(a)') "Step      Time (s)     position x y z..." 
     do while (currentTime  < tEnd)
        write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
        call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
-       call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin)
-       write(44,'(i6, 1p,4e15.5,0p)') it, currentTime, epot, ekin, totalEnergy
-       flush(44)
+       call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin, grid)
+       if (writeoutput) write(44,'(i6, 1p,4e15.5,0p)') it, currentTime, epot, ekin, totalEnergy
+       if (writeoutput) flush(44)
 
        allocate(tmp(1:globalnSource*3))
        do i = 1, globalnSource
@@ -98,16 +100,17 @@ contains
           tmp(i*3-1) = globalSourceArray(i)%position%y
           tmp(i*3) = globalSourceArray(i)%position%z
        enddo
-       write(45,'(i6,1p,20e15.5,0p)') it, currentTime, tmp(1:globalnsource*3)
+       if (writeoutput) write(45,'(i6,1p,20e15.5,0p)') it, currentTime, tmp(1:globalnsource*3)
        deallocate(tmp)
-       flush(45)
+       if (writeoutput) flush(45)
        call  nBodyStep(globalsourceArray, globalnSource, dt, grid)
        currentTime = currentTime + dt
-       write(*,*) "Current time ",currentTime
+       if (writeoutput) write(*,*) "Current time ",currentTime
        it = it + 1
     end do
-    close(44)
-    close(45)
+    if (writeoutput) close(44)
+    if (Writeoutput) close(45)
+    666 continue
   end subroutine donBodyOnly
        
 
@@ -244,7 +247,6 @@ contains
        if ((thisTime + thisDt) > dt) then
           thisDt = dt - thisTime
        endif
-       if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
        call odeint(ystart, nvar, 0.d0, thisDt, 1.d-8, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
        thisTime = thisTime + thisDt
        do i = 1, nSource
@@ -322,6 +324,64 @@ contains
     enddo
   end subroutine recursiveForceFromGas
 
+
+  recursive subroutine recursivePotentialFromGas(thisOctal, source, nSource, energy)
+    use amr_utils_mod, only : inSubcell
+    type(OCTAL), pointer :: thisOctal, child
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    integer :: iSource
+    integer :: subcell, i
+    real(double) :: r, energy, dv
+    real(double) :: massSub
+    integer :: i1, j1, k1
+    integer, parameter  :: nSub = 8
+    Type(VECTOR) :: rVec, cen, pos
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call recursivePotentialFromGas(child, source, nSource, energy)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          cen = subcellCentre(thisOctal, subcell)
+          dv = cellVolume(thisOctal, subcell)*1.d30
+          do iSource = 1, nSource
+             if (.not.inSubcell(thisOctal, subcell, source(isource)%position)) then
+                rVec = source(isource)%position - cen
+                r = modulus(rVec)
+                energy = energy - &
+                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * dV / (1.d10*r))
+                
+             else
+                massSub  = (thisOctal%rho(subcell)*dv)/dble(nSub**3)
+                do i1 = 1, nSub
+                   do j1 = 1, nSub
+                      do k1 = 1, nSub
+                         pos%x = cen%x + (dble(i1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+                         pos%y = cen%y + (dble(j1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+                         pos%z = cen%z + (dble(k1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+                         rVec = source(isource)%position - pos
+                         r = modulus(rVec)
+                         energy = energy - &
+                              (bigG*source(isource)%mass*massSub / (1.d10*r))
+                      enddo
+                   enddo
+                enddo
+
+             endif
+
+          enddo
+       endif
+    enddo
+  end subroutine recursivePotentialFromGas
+
+
   recursive subroutine applySourcePotential(thisOctal, source, nSource, eps)
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -394,10 +454,15 @@ contains
     enddo
   end subroutine sourceSourceForces
 
-  subroutine sumEnergy(source, nSource, totalenergy, ePot, eKin)
+  subroutine sumEnergy(source, nSource, totalenergy, ePot, eKin, grid)
+#ifdef MPI
+    include 'mpif.h'
+    integer :: ierr
+#endif
+    type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource, i, j
-    real(double) :: totalenergy, epot, ekin
+    real(double) :: totalenergy, epot, ekin, temp, ePotGas
 
     totalenergy = 0.d0
     epot = 0.d0
@@ -412,6 +477,16 @@ contains
        enddo
        ekin = ekin + 0.5d0 * source(i)%mass * modulus(source(i)%velocity)**2
     enddo
+
+    ePotGas = 0.d0
+#ifdef MPI
+    if ((grid%splitOverMPI).and.(myrankGlobal/=0)) then
+       call recursivePotentialFromGas(grid%octreeRoot, source, nSource, ePotGas)
+       call MPI_ALLREDUCE(epotGas, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       epot = epot + temp
+    endif
+#endif
+
    totalenergy = epot + ekin
   end subroutine sumEnergy
 

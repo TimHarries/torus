@@ -2396,6 +2396,9 @@ end subroutine writeXMLVtkFileAMR
                case("jnu10")
                   rArray(1, n) = thisOctal%jnu(1,subcell)
 
+               case("jnu")
+                  rArray(1, n) = thisOctal%biasLine3d(subcell)
+
                case("dust1")
                   rArray(1, n) = real(thisOctal%dustTypeFraction(subcell,1))
 
@@ -2470,6 +2473,13 @@ end subroutine writeXMLVtkFileAMR
                      rArray(1, n) = 0.
                   endif
 
+               case("haschild")
+                  if (thisOctal%haschild(subcell)) then
+                     rArray(1, n) = 1.
+                  else
+                     rArray(1, n) = 0.
+                  endif
+
                case("NH2")
                   rArray(1, n) = real( thisOctal%NH2(subcell) )
 
@@ -2518,6 +2528,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("etaline")
                   rArray(1, n) = max ( real(thisOctal%etaline(subcell)), min_single_prec )
+
+               case("n4")
+                  rArray(1, n) = max ( real(thisOctal%atomLevel(subcell,1,4)), min_single_prec )
 
                case("sourceline")
                   rArray(1, n) = max ( real(thisOctal%etaline(subcell)), min_single_prec )/ &

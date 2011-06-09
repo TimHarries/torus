@@ -61,7 +61,7 @@ contains
 
     do iatom = 1, nAtom
        call readAtom(atomArray(iatom), atomFilename(iatom))
-!       call stripAtomLevels(atomArray(iAtom), 4)
+!       call stripAtomLevels(atomArray(iAtom), 6)
     end do
 
   end subroutine setupAtoms
@@ -243,7 +243,7 @@ contains
     use phasematrix_mod
     use dust_mod
     use modelatom_mod, only : globalAtomArray
-    use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium, nBodyPhysics
+    use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
     use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
     use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
@@ -296,7 +296,6 @@ contains
     integer, parameter :: nMuMie = 20
     integer :: nlower, nupper
     type(GRIDTYPE) :: grid
-    nlower = 2; nupper = 3
 
 #ifdef MPI
 #ifdef PHOTOION
@@ -363,14 +362,15 @@ contains
      endif
 #endif
 
-     if (atomicPhysics.and.statisticalEquilibrium) then
+     if (atomicPhysics.and.statisticalEquilibrium.and.cmf) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
 
-!     if (atomicPhysics.and.statisticalEquilibrium) then
-!        call amrStateqnew(grid, .false., 2, 3, globalSourceArray(1)%surface,&
-!                       recalcPrevious=.false.)
-!     endif
+     if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
+        call amrStateqnew(grid, .false., nLower, nUpper, globalSourceArray(1)%surface,&
+                       recalcPrevious=.false.)
+        call writeVTKfile(grid, "eta.vtk", valueTypeString=(/"etaline","sourceline"/))
+     endif
 
 
 #ifdef PHOTOION

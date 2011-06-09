@@ -58,6 +58,7 @@ module input_variables
   character(len=10) :: geometry
   character(len=10) :: object
   real :: bigomega, eddingtonGamma, alphaCAK
+  real(double) :: centralMass
   logical :: uniformStar
   logical :: useBinaryXMLVTKfiles
   character(len=80) :: absolutePath

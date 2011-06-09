@@ -5064,7 +5064,6 @@ CONTAINS
 !    pointvec = rotateY(pointvec, dble(dipoleOffset))
 
 
-    thisOctal%inFlow(subcell) = .true.
 
     r = modulus(point)
     if (r < (ttauriRstar/1.d10)) thisOctal%inflow(subcell) = .false.
@@ -6755,12 +6754,16 @@ CONTAINS
   end subroutine calcnbodyDensity
 
   subroutine calcEmpty(thisOctal,subcell)
-
+    use input_variables, only : centralMass
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-
+    type(VECTOR) :: rVec
     thisOCtal%rho(subcell) = 1.d-30
     thisOctal%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+    rVec = VECTOR(0.d0, 0.d0, 0.d0)
+    if (inSubcell(thisOctal, subcell, rVec)) then
+       thisOctal%rho(subcell) = centralMass/(thisOctal%subcellSize**3 * 1.d30)/8.d0
+    endif
   end subroutine calcEmpty
     
 
@@ -10952,6 +10955,7 @@ end function readparameterfrom2dmap
           thisR = modulus(cellCentre)*1.d10
           if (inflowMahdavi(1.d10*cellCentre)) then
              
+             thisOctal%inFlow(subcell) = .true.
              thisOctal%velocity(subcell) = velocityMahdavi(cellCentre)
              thisV = modulus(thisOctal%velocity(subcell))*cSpeed
              if (thisV /= 0.d0) then
@@ -11015,11 +11019,8 @@ end function readparameterfrom2dmap
 
                 if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
              
-                IF ((thisoctal%threed).and.(subcell == 8)) &
-                     CALL fillVelocityCorners(thisOctal,velocityMahdavi)
+                CALL fillVelocityCorners(thisOctal,velocityMahdavi)
           
-                IF ((thisoctal%twod).and.(subcell == 4)) &
-                     CALL fillVelocityCorners(thisOctal,VelocityMahdavi)
 
              endif
 

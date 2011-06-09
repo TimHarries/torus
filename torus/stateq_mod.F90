@@ -447,6 +447,8 @@ contains
     enddo
     beta_cmn =   beta_cmn / fourpi
 !    write(*,*) "calc",pi*starradius**2/disttostar**2
+
+
 !    write(*,*) "found",totOmega
   end function beta_cmn
 

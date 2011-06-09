@@ -112,8 +112,8 @@ contains
        if (iAtom /= nAtom) then
           if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then ! if next atom is different element
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels 
-             nMatrix = nMatrix + 1  
              nCons(iAtom) = nMatrix
+             nMatrix = nMatrix + 1  
              nOffset(iAtom+1) = nMatrix
           else
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels-1  ! continuum state of this atom is ground state of next
@@ -123,8 +123,8 @@ contains
           endif
        else
           nMatrix = nMatrix + thisAtom(iAtom)%nLevels  ! last atom
-          nMatrix = nMatrix + 1  
-          nCons(iAtom) = nMatrix
+!          nMatrix = nMatrix + 1      ! TJH 1/6/11 
+          nCons(iAtom) = nMatrix     ! TJH 1/6/11  
        endif
     enddo
 
@@ -143,19 +143,6 @@ contains
     enddo
 
 
-    do iAtom = 1, nAtom
-       if (nCons(iAtom) /= 0) then
-          if (.not.continuumGround(iAtom)) then
-             matrixA(nCons(iAtom),1+nOffset(iAtom):nOffset(iAtom)+thisAtom(iAtom)%nLevels) = 1.d0
-             matrixB(nCons(iAtom)) = thisOctal%atomAbundance(subcell,iAtom) * rho
-          else
-             do i = iAtom, nAtom
-                if (nCons(i) /= -1) exit
-             enddo
-             matrixA(nCons(i),1+nOffset(iAtom): nOffset(iAtom)+thisAtom(iAtom)%nLevels-1) = 1.d0
-          endif
-       endif
-    enddo
 
 
     do iAtom = 1, nAtom
@@ -187,7 +174,7 @@ contains
              call locate(freq, nfreq, nuStart, istart)
 
 
-             do i = istart+1, nFreq
+             do i = istart+2, nFreq
                 xSection = photoCrossSection(thisAtom(iAtom), l, freq(i-1))
                 xSection2 = photoCrossSection(thisAtom(iAtom), l, freq(i))
 
@@ -196,6 +183,8 @@ contains
                      exp(-(hCgs*freq(i-1))/(kErg*temperature)) + &
                              (fourPi/(hCgs*freq(i)))*xSection2*((2.d0*hCgs*freq(i)**3)/cSpeed**2  + jnuCont(i)) * &
                      exp(-(hCgs*freq(i))/(kErg*temperature)) )*dfreq(i)
+!                write(*,*) i, real(1.e8*cspeed/freq(i-1))," recomb ",recombratekl,&
+!                     real((2.d0*hCgs*freq(i-1)**3)/cSpeed**2),real(jnuCont(i-1))
              enddo
 
 
@@ -212,7 +201,6 @@ contains
                 if (l==2) rate03 = rate03 + Nstarratio*recombratekl*npops(iatom,k)
                 if (l==2) write(*,'(a,1p,e10.2)') "Rad ",Nstarratio*recombratekl*npops(iatom,k)
              endif
-
 
 
              matrixA(l + noffset(iatom), k+nOffset(iAtom)) = matrixA(l + noffset(iatom), k+nOffset(iAtom)) + &
@@ -249,6 +237,8 @@ contains
                    write(*,'(a,1p,e10.2)') "Coll ",Nstarratio*collex*npops(iatom,k)
                 endif
              endif
+
+
 
              matrixA(l + noffset(iatom), k+nOffset(iAtom)) = matrixA(l + noffset(iatom), k+nOffset(iAtom)) + &
                   NstarRatio * collex * ne
@@ -408,15 +398,15 @@ contains
                 call locate(freq, nfreq, nuStart, istart)
                 
                 photoRatelk = 0.d0
-                do i = istart+1, nFreq
+                do i = istart+2, nFreq
                    xSection = photoCrossSection(thisAtom(iAtom), l, freq(i-1))
                    xSection2 = photoCrossSection(thisAtom(iAtom), l, freq(i))
                    photoRatelk = photoRatelk + 0.5d0 * ((jnuCont(i-1)/(hCgsfreq(i-1)))*xSection &
                         + (jnuCont(i)/(hCgsfreq(i)))*xSection2) * dfreq(i)
+!                   write(*,*) i, real(1.e8*cspeed/freq(i)),real(jnucont(i)),real(photoratelk)
                 enddo
+
                 photoRatelk = photoRatelk * fourPi
-
-
 
 !                if ((thisAtom(iatom)%name=="HeII").and.(l==1)) photoRatelk = photoRatelk * eps
 
@@ -429,6 +419,8 @@ contains
                    if (l==2) rate04 = rate04 - photoRatelk * npops(iatom,l)
 
                 endif
+
+!                photoRatelk = tiny(photoratelk)
 
                 matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
                 matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
@@ -449,12 +441,14 @@ contains
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
 
-
+             
              if ((thisAtom(iatom)%name == "HeII")) then 
                 if (l==2) rate04 = rate04 - npops(iatom,l) * collex * ne
              endif
 
 !             if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Coll ion out of  level 2: ", collex*ne*npops(iatom,l)
+
+
 
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - collex * ne
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + collex * ne
@@ -470,15 +464,30 @@ contains
 !       if (iatom == 2) write(*,*) "total photoionization: " , totphotoion, totcion
 
     enddo
+
+
+
+    do iAtom = 1, nAtom
+       if (nCons(iAtom) /= 0) then
+          if (.not.continuumGround(iAtom)) then
+             matrixA(nCons(iAtom),1+nOffset(iAtom):nOffset(iAtom)+thisAtom(iAtom)%nLevels) = 1.d0
+             matrixB(nCons(iAtom)) = thisOctal%atomAbundance(subcell,iAtom) * rho
+          else
+             do i = iAtom, nAtom
+                if (nCons(i) /= -1) exit
+             enddo
+             matrixA(nCons(i),1+nOffset(iAtom): nOffset(iAtom)+thisAtom(iAtom)%nLevels-1) = 1.d0
+          endif
+       endif
+    enddo
+
 !    write(*,'(a,1p,3e10.2)') "N(HeII) ",npops(3,1:3)
 !    write(*,'(a,1p,5e10.2)') "Rates ",rate01, rate02, rate03, rate04, rate01+rate02+rate03+rate04
 !
-!    if (debug) then
 !       write(*,'(4x,100i9)') num(1:nMatrix)
 !       do i = 1, nMatrix
 !          write(*,'(i4,1p,100e9.1)') i,matrixA(i,1:nMatrix),matrixB(i)
 !       enddo
-!    endif
 
     !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
@@ -526,7 +535,7 @@ contains
        hitPhotosphere, sourceNumber, cosTheta, weightFreq, weightOmega, &
        nRBBTrans, indexRBBTrans, indexAtom, &
        nFreq, freq, iCont, sobolevApprox, fracRay)
-    use input_variables, only : opticallyThickContinuum, nLambda, mie, onTheSpot
+    use input_variables, only : opticallyThickContinuum, nLambda, mie
     use amr_mod, only: randomPositionInCell, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -777,7 +786,7 @@ contains
 
           ! only need to calc continuum opacities once per cell
 
-          if (opticallyThickContinuum.and.(i==2).and.(.not.onTheSpot)) then
+          if (opticallyThickContinuum.and.(i==2)) then
 
              do iAtom = 1, nAtom
                 do j = 1, thisAtom(iAtom)%nLevels - 1
@@ -819,7 +828,7 @@ contains
              enddo
           endif
 
-          if (opticallyThickContinuum.and.(.not.onTheSpot)) then
+          if (opticallyThickContinuum) then
              deltaDist = (distArray(i)-distArray(i-1)) * 1.d10
              do iFreq = 1, nFreq
                 dTau = alphaNuCont(iFreq) *  deltaDist
@@ -868,7 +877,7 @@ contains
 
              alphanu = alphanu * (nLower * Blu - nUpper * Bul)
 
-             if (opticallyThickContinuum.and.(.not.onTheSpot)) alphanu = alphanu + alphaNuCont(iFreqRBB(iRBB))
+             if (opticallyThickContinuum) alphanu = alphanu + alphaNuCont(iFreqRBB(iRBB))
 
 
              if (alphanu < 0.d0) then
@@ -889,7 +898,7 @@ contains
              jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) /thisAtom(iAtom)%transFreq(iTrans)
 
 
-             if (opticallyThickContinuum.and.(.not.onTheSpot)) jnu = jnu + jnuCont(iFreqRBB(iRBB)) 
+             if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreqRBB(iRBB)) 
 
 
              if (alphanu > 1.d-30) then
@@ -939,10 +948,9 @@ contains
 
     enddo
 
-    if (onTheSpot) then
-       iCont = 0.d0
-       i0 = 0.d0
-    endif
+
+    if (sobolevApprox.and.(.not.hitPhotosphere)) iCont = 0.d0
+
 
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
@@ -951,13 +959,12 @@ contains
           !               freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq)),taucont(ifreq)
           !          write(*,*) freq(ifreq),i_nu(source(sourcenumber),freq(ifreq),ielement)
           !          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
-          if (.not.onTheSpot) then
              iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)*exp(-tauCont(iFreq))
-          else
-             iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)
-          endif
+
+             if (sobolevApprox) iCont(iFreq) = i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)!!!!!!!!!!!!!!!!!!!!!!
        enddo
     endif
+
 
 
     if (hitPhotosphere.and.(.not.SobolevApprox)) then ! don't include weight below - that's done when jbar is calculated
@@ -965,13 +972,7 @@ contains
        do iRBB = 1, nRBBTrans
           iAtom = indexAtom(iRBB)
           iTrans = indexRBBTrans(iRBB)
-          if (.not.onTheSpot) then
-             i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement, cosTheta)*exp(-tau(iRBB))
-!             if (iRbb == iFlagRBB) write(*,*) "i0 ", i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement),&
-!                  tau(irbb),exp(-tau(iRBB))
-          else
-             i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement, cosTheta)
-          endif
+          i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement, cosTheta)*exp(-tau(iRBB))
        enddo
     endif
 
@@ -1192,7 +1193,7 @@ contains
 
   subroutine calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, ne, nray, ds, freq, nfreq, &
        iCont, jBarCont, weight)
-    use input_variables, only : opticallyThickContinuum, onTheSpot
+    use input_variables, only : opticallyThickContinuum
     real(double) :: iCont(:,:), jBarCont(:), ds(:), ne
     integer :: nAtom
     type(OCTAL), pointer :: thisOctal
@@ -1263,13 +1264,8 @@ contains
             expMinusTau = 0.d0
          endif
 
-         if (.not.onTheSpot) then
-            jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq) * expMinusTau * weight(iRay)
-            jBarContInternal(iFreq) = jBarContInternal(iFreq) + snu * (1.d0 - expMinusTau) * weight(iRay)
-         else
-            jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq)  * weight(iRay)
-            jBarContInternal(iFreq) = jBarContInternal(iFreq) + 0.d0
-         endif
+         jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq) * expMinusTau * weight(iRay)
+         jBarContInternal(iFreq) = jBarContInternal(iFreq) + snu * (1.d0 - expMinusTau) * weight(iRay)
 
        enddo
        if (any(jbarcontexternal(1:nfreq) < 0.d0)) then
@@ -1280,7 +1276,6 @@ contains
     enddo
     jBarContExternal = jBarContExternal / SUM(weight(1:nRay))
     jBarContInternal = jBarContInternal / SUM(weight(1:nRay))
-    if (onthespot) jbarcontinternal = 0.d0
     jbarCont = jBarContExternal + jBarContInternal
 
 !    write(*,*) "test ",jbarcont(itestfreq),jbarcontExternal(itestfreq),jbarcontInternal(itestfreq)
@@ -1325,7 +1320,7 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100, maxRay = 200000
+    integer, parameter :: maxIter = 200, maxRay = 200000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
@@ -1358,7 +1353,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-3, gridtolerance = 1.d-2
+    real(double), parameter :: convergeTol = 1.d-6, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
@@ -1479,17 +1474,17 @@ contains
 
 ! ly-alpha in detailed balance
 
- !   do iAtom = 1, nAtom
- !      do iTrans = 1, thisAtom(iAtom)%nTrans
- !         if (thisAtom(iAtom)%transType(iTrans) == "RBB") then 
- !            if (thisAtom(iatom)%name == "HeII") then
- !               if ((thisAtom(iAtom)%iLower(iTrans) == 1).and.(thisAtom(iatom)%iUpper(itrans)==2)) then
- !                  thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
- !               endif
- !            endif
- !         endif
- !      enddo
- !   enddo
+!    do iAtom = 1, nAtom
+!       do iTrans = 1, thisAtom(iAtom)%nTrans
+!          if (thisAtom(iAtom)%transType(iTrans) == "RBB") then 
+!             if (thisAtom(iatom)%name == "HI") then
+!                if ((thisAtom(iAtom)%iLower(iTrans) == 1).and.(thisAtom(iatom)%iUpper(itrans)==2)) then
+!                   thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+!                endif
+!             endif
+!          endif
+!       enddo
+!    enddo
 
 
 ! Lyman continuum in detailed balance
@@ -1695,6 +1690,11 @@ contains
 !             do subcell = thisOctal%maxChildren,1,-1
              do subcell = 1, thisOctal%maxChildren
 
+
+!                if (.not.thisOctal%hasChild(subcell)) then
+
+                if (octalArray(iOctal)%inUse(subcell)) then
+
                 mainoldpops = thisOctal%newAtomLevel(subcell,:,:)
                         
 
@@ -1707,10 +1707,8 @@ contains
 !             thisOctal => grid%octreeRoot
 !             call findSubcellLocal(posVec, thisOctal, subcell)
 
-                if (.not.thisOctal%hasChild(subcell)) then
+                thisOctal%inflow(subcell) = thisOctal%inflow(subcell).and.(.not.insidesource(thisOctal, subcell, nsource, Source))
 
-                   thisOctal%inFlow(subcell) = &
-                        thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
 
                    if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then 
 
@@ -1718,59 +1716,6 @@ contains
                       write(*,*) myrankGlobal, nt, subcell, " doing octal ",iOctal, " of ",ioctal_end
 
 
-                            if (debug) then
-                               write(*,*) "Initial state"
-
-
-                               ntot = 0.d0
-                               ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,1, &
-                                    1:thisAtom(1)%nLevels))
-                               if (natom > 1) then
-                                  ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,2, &
-                                       1:thisAtom(2)%nLevels-1))
-                               endif
-                               if (natom  > 2) then
-                                  ntot = ntot + SUM(thisOctal%newAtomLevel(subcell,3, &
-                                       1:thisAtom(3)%nLevels))
-                               endif
-
-                               do iatom = 1, size(thisAtom)
-                                  write(*,*) "Atom: ",thisAtom(iatom)%name
-                                  write(*,*) "Number density: ",thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, iatom)
-                                  do i = 1, thisAtom(iatom)%nLevels-1
-
-                                     nStar = boltzSahaGeneral(thisAtom(iAtom), i, thisOctal%ne(subcell), &
-                                          dble(thisOctal%temperature(subcell))) * &
-                                          thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-                                     ratio = boltzSahaGeneral(thisAtom(iAtom), i, thisOctal%ne(subcell), &
-                                          dble(thisOctal%temperature(subcell)))
-                        
-                                 write(*,'(i2,1x,1p,7e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
-                                      abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(mainoldpops(iAtom,i),1.d-20)) &
-                                      / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/nstar, &
-                                      thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i),nstar,ratio
-                                 
-                              enddo
-                           enddo
-                           write(*,*) "Ne: ",thisOctal%ne(subcell)
-                           write(*,*) "T: ",thisOctal%temperature(subcell)
-                           write(*,*) "R: ",modulus(subcellCentre(thisOctal,subcell))/rCore
-                           write(*,*) "log(H I/ Ntot): ", &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-                                SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1))
-                           if (nAtom > 1) &
-                           write(*,*) "log(He I/ Ntot): ", &
-                           log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
-                           SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1))
-                           if (nAtom > 2) &
-                                write(*,*) "log(He II/ Ntot): ", &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
-                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1))
-                           if (nAtom > 2) &
-                                write(*,*) "log(He III/ Ntot): ", &
-                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
-                                thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels)
-                        endif
 
 
                         !.and.(.not.thisOctal%fixedTemperature(subcell))) then
@@ -1833,7 +1778,6 @@ contains
                             oldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
 
                             newpops = thisOctal%newatomLevel(subcell, 1:nAtom, 1:)
-
 
 
 
@@ -1918,51 +1862,6 @@ contains
                                    1:thisAtom(3)%nLevels))
                            endif
 
-                            if (debug) then
-                               write(*,*) "Iteration: ",iter
-                               do iatom = 1, size(thisAtom)
-                                  write(*,*) "Atom: ",thisAtom(iatom)%name
-                                  write(*,*) "Number density: ",thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, iatom)
-                                  do i = 1, thisAtom(iatom)%nLevels-1
-
-
-                                     nStar = boltzSahaGeneral(thisAtom(iAtom), i, ne, &
-                                          dble(thisOctal%temperature(subcell))) * &
-                                          thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-                                     ratio = boltzSahaGeneral(thisAtom(iAtom), i, ne, &
-                                          dble(thisOctal%temperature(subcell)))
-                        
-                                 write(*,'(i2,1x,1p,7e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
-                                      abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(mainoldpops(iAtom,i),1.d-20)) &
-                                      / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/nstar, &
-                                      thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i),nstar,ratio
-                                 
-                              enddo
-                           enddo
-                           !                           if (thisatom(1)%indetailedbalance(4)) then
-!                              write(*,*) "Halpha is in detailed balance",tauHalpha
-                           !                           else
-                           !                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
-                           !                           endif
-                           write(*,*) "Ne: ",newne
-                           write(*,*) "T: ",thisOctal%temperature(subcell)
-                           write(*,*) "R: ",modulus(subcellCentre(thisOctal,subcell))/rCore
-                           write(*,*) "log(H I/ Ntot): ", &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-                                SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1))
-                           if (nAtom > 1) &
-                           write(*,*) "log(He I/ Ntot): ", &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
-                                SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1))
-                           if (nAtom > 2) &
-                           write(*,*) "log(He II/ Ntot): ", &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
-                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1))
-                           if (nAtom > 2) &
-                           write(*,*) "log(He III/ Ntot): ", &
-                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
-                                thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels)
-                        endif
 
                          fac = -1.d30
                          where (mainoldPops == 0.d0)
@@ -1989,6 +1888,53 @@ contains
                       enddo
 !                      write(*,*) "Main iteration route converged after ", iter, " iterations"
                       thisOctal%ne(subcell) = ne
+
+                            if (debug) then
+                               write(*,*) "Iteration: ",iter
+                               do iatom = 1, size(thisAtom)
+                                  write(*,*) "Atom: ",thisAtom(iatom)%name
+                                  write(*,*) "Number density: ",thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, iatom)
+                                  do i = 1, thisAtom(iatom)%nLevels-1
+
+
+                                     nStar = boltzSahaGeneral(thisAtom(iAtom), i, ne, &
+                                          dble(thisOctal%temperature(subcell))) * &
+                                          thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+                                     ratio = boltzSahaGeneral(thisAtom(iAtom), i, ne, &
+                                          dble(thisOctal%temperature(subcell)))
+                        
+                                 write(*,'(i2,1x,1p,7e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
+                                      abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(mainoldpops(iAtom,i),1.d-20)) &
+                                      / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/max(nstar,1.d-20), &
+                                      thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i),nstar,ratio
+                                 
+                              enddo
+                           enddo
+                           !                           if (thisatom(1)%indetailedbalance(4)) then
+!                              write(*,*) "Halpha is in detailed balance",tauHalpha
+                           !                           else
+                           !                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
+                           !                           endif
+                           write(*,*) "log Ne: ",log10(newne)
+                           write(*,*) "T: ",thisOctal%temperature(subcell)
+                           write(*,*) "R: ",modulus(subcellCentre(thisOctal,subcell))/rCore
+                           write(*,*) "log(H I/ Ntot): ", &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)))
+                           if (nAtom > 1) &
+                           write(*,*) "log(He I/ Ntot): ", &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
+                                SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1))
+                           if (nAtom > 2) &
+                           write(*,*) "log(He II/ Ntot): ", &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
+                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1))
+                           if (nAtom > 2) &
+                           write(*,*) "log(He III/ Ntot): ", &
+                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
+                                thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels)
+                        endif
+
                       
                         if (myRankisZero) then
                            open(69, file=ifilename, status="old", position = "append", form="formatted")
@@ -2020,14 +1966,8 @@ contains
 
                         endif
 
-                   endif
-
-!                   write(*,*) "IMMEDIATELY replaceing populations...."
-!                   thisOctal%atomLevel(subcell,:,:) = thisOctal%newatomLevel(subcell,:,:)
-
-
-                endif
-
+                     endif
+                  endif
 !                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
 !                nStar = boltzSahaGeneral(thisAtom(1), 6, thisOctal%ne(subcell), &
 !                     dble(thisOctal%temperature(subcell))) * &
@@ -2039,8 +1979,8 @@ contains
 !             close(31)
 !             stop
 
-             enddo
-          end do
+                     enddo
+                  end do
           !$OMP END DO
           !$OMP BARRIER
 
@@ -2103,6 +2043,7 @@ contains
           call unpackAtomLevel(octalArray, nVoxels, tArrayd, iAtom, i)
        enddo
      enddo
+     call calcNe(grid%octreeRoot, thisAtom)
      do i = 1, nFreq
        tArrayd = 0.d0
        call packJnu(octalArray, nVoxels, tArrayd, i, ioctal_beg, ioctal_end)
@@ -2111,6 +2052,15 @@ contains
        tArrayd = tempArrayd
        call unpackJnu(octalArray, nVoxels, tArrayd, i)
      enddo
+
+
+     call packBiasLine3d(octalArray, nVoxels, tArrayd, ioctal_beg, ioctal_end)
+     call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+          MPI_SUM,MPI_COMM_WORLD,ierr)
+     tArrayd = tempArrayd
+     call unpackBiasLine3d(octalArray, nVoxels, tArrayd)
+
+
      deallocate(tArrayd, tempArrayd)
 
        if(my_rank == 0) write(*,*) "Done updating"
@@ -2242,8 +2192,7 @@ contains
           call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
           iUpper = thisAtom(iatom)%iUpper(iTrans)
           etaLine = (hCgs/fourPi) * a * thisAtom(iatom)%transFreq(iTrans)
-          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom,iUpper)/ thisAtom(iatom)%transFreq(iTrans)
-	  
+          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom,iUpper)
           thisOctal%etaLine(subcell) = etaLine * 1.d10
 !          write(45,*) modulus(subcellCentre(thisOctal,subcell)), thisOctal%etaline(subcell)
        endif
@@ -2279,8 +2228,7 @@ contains
           nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
           nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
 
-          alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi)  &
-               /thisAtom(iAtom)%transFreq(iTrans)          
+          alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) 
           call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
 
           alphanu = alphanu * (nLower * Blu - nUpper * Bul)
@@ -2290,6 +2238,30 @@ contains
        endif
     enddo
   end subroutine calcChiLine
+
+  recursive  subroutine  calcNe(thisOctal, thisAtom)
+    type(MODELATOM) :: thisAtom(:)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcNe(child, thisAtom)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%ne(subcell) = returnNe(thisOctal%atomLevel(subcell,:,:),thisAtom)
+
+       endif
+    enddo
+  end subroutine calcNe
 
 
   recursive  subroutine calcContinuumOpacities(thisOctal, thisAtom, nAtom, freq)
@@ -2537,6 +2509,7 @@ contains
     type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
     real(double) :: alphanu, snu, jnu
     integer :: iLower , iUpper
+    real(double) :: gUpper, gLower
     real(double) :: dv, deltaV
     integer :: i, icount
     real(double) :: distArray(1000), tval
@@ -2668,6 +2641,16 @@ contains
           icount = icount + 1 
           call findSubcellLocal(currentPosition, thisOctal, subcell)
 
+!          fac = 0.d0
+!          do i = 1,1000
+!             dv = (2.d0*dble(i-1)/999.d0-1.d0)* 0.01d0
+!             ddv = 0.02d0/1000.d0
+!             fac = fac + &
+!             phiProf2(dv, thisOctal, subcell, &
+!                  thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))  * ddv
+!          enddo
+!          write(*,*) "prof test ",fac
+
           !       rVec = subcellCentre(thisOctal,subcell)
 
           call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
@@ -2760,19 +2743,29 @@ contains
 
 
 
+
+
              if (.not.lineoff) then
                 thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
                 call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
-                alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
-                     phiProf2(dv, thisOctal, subcell, &
-                     thisAtom(iatom)%transfreq(itrans), thisAtom(iatom)) /thisAtom(iAtom)%transFreq(iTrans)          
+
                 iUpper = thisAtom(iAtom)%iUpper(iTrans)
                 iLower = thisAtom(iAtom)%iLower(iTrans)
                 nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
                 nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-                alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+                gLower = thisAtom(iatom)%g(iLower)
+                gUpper = thisAtom(iatom)%g(iUpper)
+
+                alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
+                alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
+                     phiProf2(dv, thisOctal, subcell, &
+                     thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
+
+                fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
+                jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
+
              else
                 alphanu = 0.d0
              endif
@@ -2802,16 +2795,6 @@ contains
              endif
 
 
-             if (.not.lineoff) then
-                etaLine = hCgs * a * transitionFreq
-                etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-                jnu = (etaLine/fourPi) * phiProf2(dv, thisOctal, subcell, &
-                     thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/transitionFreq
-             else
-                jnu = 0.d0
-                etaline = 0.d0
-             endif
-
              if (associated(thisOctal%fixedTemperature)) then
                 if (.not.thisOctal%fixedTemperature(subcell)) then
                    jnu = 0.d0
@@ -2832,13 +2815,14 @@ contains
 
              ! add continuous bf and ff emissivity of hydrogen
 
-             jnu = jnu + bfEmiss + dustEmiss
+             jnu = jnu !+ bfEmiss + dustEmiss
 
              if (alphanu /= 0.d0) then
-                snu = jnu/alphanu
+                snu = jnu/alphanu                
              else
                 snu = tiny(snu)
              endif
+
 
 
              dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
@@ -2853,7 +2837,12 @@ contains
 !                          i0,tau, jnu,alphanu,snu, nlower,nupper
 
              if (thisOctal%inflow(subcell)) then
-                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+                if (dtau > 0.1d0) then
+                   fac = (1.d0-exp(-dtau))
+                else
+                   fac = (dtau - dtau**2/2.d0)
+                endif
+                i0 = i0 +  exp(-tau) * fac*snu
                 tau = tau + dtau
              endif
           enddo
@@ -3298,7 +3287,8 @@ contains
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
-    call writeVTKfile(grid,"eta.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline"/))
+    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline", "ne", "jnu","haschild",&
+         "inflow","temperature","n4"/))
 
 
     doCube = calcDataCube
@@ -3871,6 +3861,37 @@ contains
        end do
      end subroutine packJnu
 
+      subroutine packbiasline3d(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: ioctal_beg, ioctal_end
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                   tArray(nTemps) = thisOctal%biasLine3d(isubcell)
+                 else 
+                   tArray(nTemps) = 0.d0
+                 endif
+              endif
+          end do
+       end do
+     end subroutine packbiasline3d
+
       subroutine unpackJnu(octalArray, nTemps, tArray, iFreq)
     include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
@@ -3896,6 +3917,32 @@ contains
           end do
        end do
      end subroutine unpackJnu
+
+      subroutine unpackbiasLine3d(octalArray, nTemps, tArray)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 thisOctal%biasLine3d(isubcell) = tArray(nTemps) 
+              endif
+          end do
+       end do
+     end subroutine unpackBiasLine3d
 #endif
 
   recursive  subroutine  setMicroturb(thisOctal, microTurb)
@@ -4175,14 +4222,14 @@ contains
     real(double) :: nUpper, nLower, gUpper, gLower
     real(double) :: transitionFreq, inu, chiline, a, blu, bul
     real(double) :: betamn, betacmn, grad, tauij, theta, ang, fij
-    real(double) :: sobJnuLine, dphi, phi
+    real(double) :: sobJnuLine, dphi, phi, escProb
     integer :: i, j
     integer :: ntheta, nphi
     real(double) :: domega, dtheta, totomega, disttostar, sinang, r
-    real(double) :: thetaToStar, phiToStar, theta0, phi0, tauAv
-    type(VECTOR) :: uHat, position, toStar, pVec, photoDirection
+    real(double) :: thetaToStar, phiToStar, tauAv
+    type(VECTOR) :: uHat, position, toStar, photoDirection, direction
+    real(double) :: dotprod
     logical :: hitSource
-    real(double) :: distTosource, cosTheta
     integer :: sourcenumber
     integer :: iElement
     nTheta = 10
@@ -4227,64 +4274,87 @@ contains
           tauij = chiLine / grad 
           tauij =  tauij / transitionFreq
           tauij = max(1.d-20,tauij)
+
+          if (tauij < 0.1d0) then
+             escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
+          else if (tauij < 15.d0) then
+             escProb = (1.0-exp(-tauij))/tauij
+          else
+             escProb = 1.d0/tauij
+          end if
+          
+
           tauav = tauav + dOmega*tauij
-          betamn = betamn + domega*(1.d0 - exp(-tauij))/tauij
+          betamn = betamn + domega*escProb
        enddo
     enddo
     betamn = betamn / totomega
     tauAv = tauAv /totOmega
 
 
-
-    tostar = source%position  - position
+    tostar = source%position - position
     disttostar = modulus(tostar)
     tostar = tostar / dble(disttostar)
 
-    sinang = source%radius / disttostar
+    sinAng = source%radius/distToStar
     ang = asin(min(1.d0,max(-1.d0,sinAng)))
+
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
-    ntheta = 10
-    nphi = 10
-    betacmn = 0.
-    inu_times_betacmn = 0.
-    totomega = 0.
+    betacmn = 0.d0
+    totomega = 0.d0
+    inu_times_betacmn = 0.d0
+    ntheta = 100
+    nphi = 100
     do i = 1, ntheta
-       theta0 = (2.*real(i-1)/real(nTheta-1)-1.)*ang
-       theta = thetaToStar + theta0
-       dTheta = 2.*ang/real(nTheta)
+       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
+       if (theta > pi) theta = theta - pi
+       if (theta < 0.) theta = theta + pi
+       dTheta = 2.*ang/real(nTheta-1)
        do j = 1, nphi
-          phi0 = (2.*real(j-1)/real(nPhi-1)-1.)*ang
-          phi = phiToStar + phi0
-          dphi = 2.*ang/real(nPhi)
-          uhat = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
-          if (theta > pi) theta = theta - pi
-          if (theta < 0.) theta = theta + pi
+          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
+          if (phi < 0.) phi = phi + twoPi
+          if (phi > twoPi) phi = phi + twoPi
+          dphi = 2.*ang/real(nPhi-1)
+          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          domega = sin(theta)*dtheta*dphi
+          dotprod = direction .dot. tostar
+          if ((dotprod > 0.d0) .and. (acos(min(1.d0,max(-1.d0,dotprod))) < ang)) then
 
-          call distanceToSource(globalsourcearray, globalnSource, position, uhat, hitSource, disttoSource, sourcenumber)
 
-          if (hitSource) then
-             pVec = (position + (uHat * distToSource) - source%position)
-             call normalize(pVec)
-             cosTheta = -1.d0*(pVec.dot.uHat)
-             photoDirection = pVec
-             call normalize(PhotoDirection)
-
+             call distanceToSource(globalSourceArray, globalnSource, position, direction, hitSource, distToStar, sourcenumber)
+             if (.not.hitsource) write(*,*) "bug in betacmn"
+             photoDirection = (position + distToStar*direction) - source%position
+             call normalize(photoDirection)
              iElement = getElement(source%surface, photoDirection)
-             inu = i_nu(source, transitionFreq, iElement, cosTheta)
-             dOmega = dtheta*dphi
-             totomega = totomega + domega
-             grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
+             inu = i_nu(source, transitionFreq, iElement, 1.d0)
+             grad =  abs(amrGridDirectionalDeriv(grid, position, direction, startOctal=thisOctal)/1.d10)
              tauij = chiLine / grad 
-             tauij = tauij / transitionFreq
-             tauij = max(tauij, 1.d-30)
-             betacmn = betacmn + domega*(1.d0 - exp(-tauij))/tauij
-             inu_times_betacmn = inu_times_betacmn + inu * betacmn
+             tauij =  tauij / transitionFreq
+             tauij = max(1.d-20,tauij)
+             
+             if (tauij < 0.1d0) then
+                escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
+             else if (tauij < 15.d0) then
+                escProb = (1.0-exp(-tauij))/tauij
+             else
+                escProb = 1.d0/tauij
+             end if
+             betacmn = betacmn + escprob * domega
+             inu_times_betacmn = inu_times_betacmn + inu * escprob * domega
+             totOmega = totOmega + dOmega
           endif
        enddo
     enddo
+
+    write(*,*) "omega ",totomega/(twoPi*source%radius**2/distTostar**2)
+
     betacmn = betacmn / fourPi
+
     inu_times_betacmn = inu_times_betacmn / fourPi
+
+    if ((ilower==2).and.(iUpper==4)) thisOctal%biasline3d(subcell) = inu_times_betacmn
+
     sobJnuLine = (1.d0 - betamn) * &
          ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0) + inu_times_betacmn
 
@@ -4323,15 +4393,11 @@ contains
     ! if this is the root of the tree, we initialize the counter
     IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
     
-    if (thisOctal%nChildren == 0) then
-       if (ANY(thisOctal%inFlow).and.ANY(thisOctal%temperature > 3000.)) then
-          counter = counter + 1 
-          if (.not.doCountOnly) then
-             array(counter)%content => thisOctal
-             !array(counter)%inUse = .TRUE. 
-             array(counter)%inUse = .NOT. thisOctal%hasChild 
-          endif
-       endif
+    counter = counter + 1 
+    if (.not.doCountOnly) then
+       array(counter)%content => thisOctal
+       !array(counter)%inUse = .TRUE. 
+       array(counter)%inUse = .NOT. thisOctal%hasChild 
     endif
 
 
