@@ -584,11 +584,18 @@ end subroutine radiationHydro
     type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
 
    !Custom MPI type variables
-    integer(MPI_ADDRESS_KIND) :: displacement(7)
-    integer :: count = 7
-    integer :: blocklengths(7) = (/ 7, 6, 5, 4, 3, 2, 1/)
-    integer :: oldTypes(7) 
+    integer(MPI_ADDRESS_KIND) :: displacement(8)
+    integer :: count = 8
+    integer :: blocklengths(8) = (/ 8, 7, 6, 5, 4, 3, 2, 1/)
+    integer :: oldTypes(8) 
     integer :: iDisp
+
+    !Buffer send variables 
+    integer :: bufferSize  !Send buffer size in bytes
+    character, allocatable :: buffer(:)
+    integer :: request
+!    logical :: checkRequest
+!    logical :: ready = .true.
 
     !OMP variables
     logical :: finished = .false.
@@ -617,7 +624,7 @@ end subroutine radiationHydro
 
     !MPI datatype for the photon_stack data type
     oldTypes = (/ MPI_VECTOR, MPI_VECTOR, MPI_DOUBLE_PRECISION, &
-         MPI_DOUBLE_PRECISION, MPI_DOUBLE_PRECISION, MPI_INTEGER, MPI_LOGICAL/)
+         MPI_DOUBLE_PRECISION, MPI_DOUBLE_PRECISION, MPI_INTEGER, MPI_LOGICAL, MPI_LOGICAL/)
 
     call MPI_GET_ADDRESS(toSendStack(1)%rVec, displacement(1), ierr)
     call MPI_GET_ADDRESS(toSendStack(1)%uHat, displacement(2), ierr)
@@ -626,8 +633,9 @@ end subroutine radiationHydro
     call MPI_GET_ADDRESS(toSendStack(1)%ppw, displacement(5), ierr)
     call MPI_GET_ADDRESS(toSendStack(1)%destination, displacement(6), ierr)
     call MPI_GET_ADDRESS(toSendStack(1)%sourcePhoton, displacement(7), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%crossedPeriodic, displacement(8), ierr)
 
-    do iDisp = 7, 1, -1
+    do iDisp = 8, 1, -1
        displacement(iDisp) = displacement(iDisp) - displacement(1)
     end do
 
@@ -639,6 +647,18 @@ end subroutine radiationHydro
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+
+!Allocate memory for send buffer - fixes deadlocks
+    !First, determine the no. of bytes used in a photonpacketstack array
+    call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
+
+    !Add some extra bytes for safety
+    bufferSize = 1000.*(bufferSize + MPI_BSEND_OVERHEAD)
+
+    allocate(buffer(bufferSize))
+
+    !setup the buffer
+    call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
 
 
     allocate(nEscapedArray(1:nThreads-1))
@@ -753,7 +773,7 @@ end subroutine radiationHydro
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
-                nMonte = 1000.d0 * 2**(maxDepthAMR)
+                nMonte = 10.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -1211,8 +1231,11 @@ end subroutine radiationHydro
                                   end do
 
                                   if(thisPacket /= 1 .and. nSaved(optCounter) /= 0) then
-                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
-                                          ierr)
+!                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+!                                          ierr)
+                                     call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+                                          request,ierr)
+
                                      nSaved(optCounter) = 0
                                      toSendStack%freq = 0.d0
                                      toSendStack%destination = 0
@@ -1289,13 +1312,10 @@ end subroutine radiationHydro
                                                        
                                nScat = nScat + 1
                                
-                               
-                               !                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
+                                                        !                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
                                
                                
                             endif
-                            
-                            
                          endif
                          if (nScat > 100000) then
                             write(*,*) "Nscat exceeded 10000, forcing escape"
@@ -3523,7 +3543,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer, parameter :: nPoints = 500
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
-  logical, parameter :: useNiter=.true. ! Tag filename with iteration number?
+  logical, parameter :: useNiter=.false. ! Tag filename with iteration number?
   
   if ( useNiter ) then 
      write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
