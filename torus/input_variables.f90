@@ -68,6 +68,7 @@ module input_variables
   logical :: usemetals 
   logical :: quickThermal
   integer :: inputNMonte
+  integer :: bufferCap
   logical :: dustOnly
   logical :: molecular
   logical :: dumpdi

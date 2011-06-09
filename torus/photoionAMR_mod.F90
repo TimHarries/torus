@@ -492,7 +492,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings
+         readGrid, dustOnly, minCrossings, bufferCap
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
@@ -653,7 +653,7 @@ end subroutine radiationHydro
     call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
 
     !Add some extra bytes for safety
-    bufferSize = 1000.*(bufferSize + MPI_BSEND_OVERHEAD)
+    bufferSize = real(bufferCap)*(bufferSize + MPI_BSEND_OVERHEAD)
 
     allocate(buffer(bufferSize))
 

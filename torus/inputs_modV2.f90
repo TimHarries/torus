@@ -1188,6 +1188,8 @@ contains
             "Use periodic photon boundary conditions in y direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("periodicZ", periodicZ, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in z direction:", "(a,1l,1x,a)", .false., ok, .false.)
+       call getInteger("bufferCap", bufferCap, cLine, fLine, nLines, &
+            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 5000, ok, .false.)
     end if
 
 
