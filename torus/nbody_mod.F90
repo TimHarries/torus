@@ -26,7 +26,7 @@ contains
     real(double), allocatable :: temp(:), temp2(:)
 #endif
 
-    eps = 0.1d0*rsol /1.d10!2.d0 * grid%halfSmallestSubcell
+    eps = 0.001d0*rsol /1.d10!2.d0 * grid%halfSmallestSubcell
 
     do i = 1, nSource
        source(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
@@ -448,6 +448,7 @@ contains
              if (r /= 0.d0) then
                 rHat = rVec/r
                 source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / (( r**2 + eps**2)*1.d20)) * rHat
+                if ((r/eps < 10.0).and.(writeoutput)) write(*,*) "Gravity softening becoming important"
              endif
           endif
        enddo
@@ -463,7 +464,10 @@ contains
     type(SOURCETYPE) :: source(:)
     integer :: nSource, i, j
     real(double) :: totalenergy, epot, ekin, temp, ePotGas
+    logical :: split
 
+    split = grid%splitOverMpi
+    temp = 0.d0
     totalenergy = 0.d0
     epot = 0.d0
     ekin = 0.d0

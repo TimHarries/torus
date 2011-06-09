@@ -1903,9 +1903,11 @@ contains
                                      ratio = boltzSahaGeneral(thisAtom(iAtom), i, ne, &
                                           dble(thisOctal%temperature(subcell)))
                         
-                                 write(*,'(i2,1x,1p,7e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
+                                 write(*,'(i2,1x,1p,7e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i), &
+                                      mainoldpops(iatom,i), &
                                       abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(mainoldpops(iAtom,i),1.d-20)) &
-                                      / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/max(nstar,1.d-20), &
+                                      / max(mainoldpops(iAtom,i),1.d-20)), &
+                                      thisOctal%newAtomLevel(subcell,iatom,i)/max(nstar,1.d-20), &
                                       thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i),nstar,ratio
                                  
                               enddo
@@ -3287,8 +3289,10 @@ contains
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
-    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline   ","chiline   ","sourceline", "ne", "jnu","haschild",&
-         "inflow","temperature","n4"/))
+    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
+         "sourceline ",  &
+    "ne         ", "jnu        ","haschild   ", &
+         "inflow     ","temperature","n4         "/))
 
 
     doCube = calcDataCube

@@ -369,7 +369,8 @@ contains
      if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
         call amrStateqnew(grid, .false., nLower, nUpper, globalSourceArray(1)%surface,&
                        recalcPrevious=.false.)
-        call writeVTKfile(grid, "eta.vtk", valueTypeString=(/"etaline","sourceline"/))
+        call writeVTKfile(grid, "eta.vtk", valueTypeString=(/"etaline   ",&
+             "sourceline"/))
      endif
 
 
