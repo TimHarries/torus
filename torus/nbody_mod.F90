@@ -91,8 +91,6 @@ contains
        write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
        call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
        call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin, grid)
-       if (writeoutput) write(44,'(i6, 1p,4e15.5,0p)') it, currentTime, epot, ekin, totalEnergy
-       if (writeoutput) flush(44)
 
        allocate(tmp(1:globalnSource*3))
        do i = 1, globalnSource
@@ -102,7 +100,6 @@ contains
        enddo
        if (writeoutput) write(45,'(i6,1p,20e15.5,0p)') it, currentTime, tmp(1:globalnsource*3)
        deallocate(tmp)
-       if (writeoutput) flush(45)
        call  nBodyStep(globalsourceArray, globalnSource, dt, grid)
        currentTime = currentTime + dt
        if (writeoutput) write(*,*) "Current time ",currentTime

@@ -405,7 +405,7 @@ contains
 
      case("empty")
        call getDouble("centralmass", centralMass, msol, cLine, fLine, nLines, &
-            "Central mass (in M_sol): ","(a,f7.1,1x,a)", 1.d0, ok, .true.)
+            "Central mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
 
      case("ttauri")
