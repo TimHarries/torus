@@ -297,6 +297,9 @@ contains
     integer :: nlower, nupper
     type(GRIDTYPE) :: grid
 
+    nLower = 2
+    nUpper = 3
+
 #ifdef MPI
 #ifdef PHOTOION
     if(optimizeStack .and. photoionPhysics .and. photoionEquilibrium) then
