@@ -773,7 +773,7 @@ end subroutine radiationHydro
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
-                nMonte = 10.d0 * 2**(maxDepthAMR)
+                nMonte = 100.d0 * 2**(maxDepthAMR)
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -1633,10 +1633,17 @@ end subroutine radiationHydro
      
 
      write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"
-     call writeVtkFile(grid, mpiFilename, &
-          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-          "hydrovelocity","sourceCont   ","pressure     "/))
-     
+
+     if(hydrodynamics) then
+        call writeVtkFile(grid, mpiFilename, &
+             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+             "hydrovelocity","sourceCont   ","pressure     "/))
+
+     else
+        call writeVtkFile(grid, mpiFilename, &
+             valueTypeString=(/"HI           " , "temperature  ", &
+             "sourceCont   "/))
+     end if
 
      
      call torus_mpi_barrier
@@ -3531,7 +3538,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
   real(double) :: cooling, dustHeating
   real :: netot
-  character(len=80) :: datFilename
+  character(len=80) :: datFilename, mpiFilename
   integer :: nIter
 
   !dumpLexingtonMPI specific variables
@@ -3543,13 +3550,17 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer, parameter :: nPoints = 500
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
-  logical, parameter :: useNiter=.false. ! Tag filename with iteration number?
+  logical, parameter :: useNiter=.true. ! Tag filename with iteration number?
   
   if ( useNiter ) then 
      write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
   else
      write(datFilename,'(a,i2.2,a)') "lexington.dat"
   end if
+
+  write(mpiFilename,'(a, i4.4, a)') "lexington",niter,".grid"
+  call writeAmrGrid(mpiFilename, .false., grid)
+
 
   startPoint = vector(0.d0, 0.d0, 0.d0)
   endPoint = vector(4.4d9, 0.d0, 0.d0)
@@ -3842,7 +3853,7 @@ recursive subroutine quickSublimate(thisOctal)
                 thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
              endif
 
-          else
+          Else
              thisOctal%dustTypeFraction(subcell,:) = 0.d0
           end if
        endif
@@ -4750,6 +4761,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     if (myRankGlobal == 0) then
        write(*,*) "Probability of photon from sources: ", probSource
+       if(probSource == 0.d0) then
+          print *, "Zero probability from source with: "
+          print *, "lCore : ", lCore
+          print *, "totalEmission : ", totalEmission
+       end if
     endif
 
     Ninf = 0

@@ -718,11 +718,15 @@ contains
 
     call readStaticComponents(grid, fileformatted)
 
+    call writeInfo("Static components read")
+
        allocate(grid%octreeRoot)
        grid%octreeRoot%nDepth = 1
        nOctal = 0
        mynull => grid%octreeRoot
        call readOctreePrivateFlexi(grid%octreeRoot,mynull,fileFormatted, nOctal, grid)
+
+    call writeInfo("Grid read done")
     
     close(unit=20)
 

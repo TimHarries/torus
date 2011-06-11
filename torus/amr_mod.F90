@@ -209,6 +209,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+!    CASE("radialclouds")
+!       call calcRadialClouds(thisOctal, subcell)
+
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
 
@@ -3720,8 +3723,8 @@ CONTAINS
             if ( ((rVec%x+rvec%z) > 0.04).and. (((rVec%x+rvec%z) < 0.06)) .and. &
                  (thisOctal%nDepth < maxDepthAMR)) split = .true.
          else if(thisoctal%threeD) then
-            if ( ((rVec%x) < 0.21).and. &
-                 thisOctal%nDepth < maxDepthAMR) split = .true.
+           ! if ( ((rVec%x) < 0.21).and. &
+           !      thisOctal%nDepth < maxDepthAMR) split = .true.
 
          else
             print *, "1D diag sod doesn't work"
@@ -3754,6 +3757,9 @@ CONTAINS
    case("bonnor", "unisphere","empty")
          
       if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+!   case("radialclouds")
+!      if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("kelvin")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -6299,7 +6305,8 @@ CONTAINS
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
        end if
     else if(thisOctal%threeD) then
-       if((rvec%x) <= 0.2) then
+!       if((rvec%x) <= 0.2) then
+       if((rvec%x <0.3) .and. (rvec%y>0.2) .and. (rvec%z < -0.2)) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
@@ -6552,6 +6559,13 @@ CONTAINS
     yplusbound = 2
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
+
+!  subroutine calcRadialClouds(thisOctal, subcell)
+!    TYPE(octal), INTENT(INOUT) :: thisOctal
+!    INTEGER, INTENT(IN) :: subcell
+!
+!
+!  end subroutine calcRadialClouds
 
   subroutine calcUniformSphere(thisOctal,subcell)
 

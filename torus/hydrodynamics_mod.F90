@@ -3074,15 +3074,6 @@ end subroutine sumFluxes
        close(57)
     endif
 
-    write(plotfile,'(a,i4.4,a)') "3D_previewA.vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ",&
-         "hydrovelocity", &
-         "rhoe         ", &
-         "u_i          ", &
-         "phi          "/))
-
-
     if (grid%geometry == "shakara") doSelfGrav = .false.
     if (grid%geometry == "rtaylor") doSelfGrav = .false.
     if (grid%geometry == "diagSod") doSelfGrav = .false.
@@ -3154,14 +3145,6 @@ end subroutine sumFluxes
        call calculateRhoE(grid%octreeRoot, direction)
     end if
 
-    write(plotfile,'(a,i4.4,a)') "3D_previewC.vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ",&
-         "hydrovelocity", &
-         "rhoe         ", &
-         "u_i          ", &
-         "phi          "/))
-
     if (myrankGlobal /= 0) then
 
 
@@ -3172,14 +3155,6 @@ end subroutine sumFluxes
        end if
    end if
    
-       write(plotfile,'(a,i4.4,a)') "3D_previewD.vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ",&
-         "hydrovelocity", &
-         "rhoe         ", &
-         "u_i          ", &
-         "phi          "/))
-
     if(myRankGlobal /= 0) then
 
        if(dorefine) then
@@ -3190,14 +3165,6 @@ end subroutine sumFluxes
        end if
 
     end if
-
-    write(plotfile,'(a,i4.4,a)') "3D_previewE.vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ",&
-         "hydrovelocity", &
-         "rhoe         ", &
-         "u_i          ", &
-         "phi          "/))
 
     if(myRankGlobal /= 0) then
        
@@ -3223,15 +3190,6 @@ end subroutine sumFluxes
        endif
 
     endif
-
-
-    write(plotfile,'(a,i4.4,a)') "3D_previewB.vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ",&
-         "hydrovelocity", &
-         "rhoe         ", &
-         "u_i          ", &
-         "phi          "/))
     
 
     tc = 0.d0
@@ -3314,7 +3272,7 @@ end subroutine sumFluxes
           if(doUnRefine) then
              if (iUnrefine == 5) then
                 if (myrank == 1)call tune(6, "Unrefine grid")
-                nUnrefine = 0
+               ! nUnrefine = 0
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrank == 1)call tune(6, "Unrefine grid")
@@ -5469,7 +5427,7 @@ end subroutine sumFluxes
 !                   endif
    
                    if(thisOctal%corner(subcell) .and. thisOctal%nDepth < maxDepthAMR) then
-                     print *, "split C ", thisOctal%nDepth
+!                     print *, "split C ", thisOctal%nDepth
                       call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                       converged = .false.
                       exit
@@ -5482,12 +5440,12 @@ end subroutine sumFluxes
 !
 
     if (converged.and.refineOnMass) then
-       if (((thisOctal%rho(subcell)*cellVolume(thisOctal, subcell)*1.d30) > 1.d-5*mSol) &
+       if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > 1.d-5*mSol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
           call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                inherit=.false., interp=.false., amrHydroInterp = .true.)
           converged = .false.
-        print *, "split D ", thisOctal%nDepth
+!        print *, "split D ", thisOctal%nDepth
           exit
        endif
     endif
@@ -5680,7 +5638,7 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: dirvec(6), locator, centre
 
     debug = .false.
-    limit  = 1.0d-2
+    limit  = 5.0d-3
 
     unrefine = .true.
     refinedLastTime = .false.
@@ -5711,7 +5669,8 @@ end subroutine refineGridGeneric2
           cs(nc) = soundSpeed(thisOctal, subcell)
 
           if (thisOctal%threed) then
-             dv = cellVolume(thisOctal, Subcell) * 1.d30
+!             dv = cellVolume(thisOctal, Subcell) * 1.d30
+             dv = thisOctal%subcellSize**3
           else if (thisOctal%twoD) then
              dv = thisOctal%subcellSize**2
           else if (thisOctal%oneD) then!
@@ -6455,7 +6414,7 @@ end subroutine refineGridGeneric2
                                   vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
                                   !goto(i)
                                   vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               else if(rVec%z < octVec%z) then
+                               else if(rVec%x < octVec%x) then
                                   !have found iv
                                   !goto (iii)
                                   vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)

@@ -518,7 +518,8 @@ module image_mod
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
      subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance)
        real, intent(inout)      :: array(:,:)
-       real, intent(in)         :: lambda
+!       real, intent(in)         :: lambda
+       real         :: lambda
        real(double), intent(in) :: dx, distance
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
@@ -531,10 +532,15 @@ module image_mod
        write(*,*) "distance ",distance
        write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
 
+!       if(lambda == 0.d0) lambda = 6562.8
+
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
 
+
+
        WRITE(*,*) "Flux ",array(128,128)*scale
+       
        write(*,*) "flux in mjy ",array(128,128)*fluxtomegajanskies * perAngstromtoperhz * scale,lambda
        ! Factor of 1.0e20 converts dx to cm from Torus units
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
@@ -626,6 +632,7 @@ module image_mod
              write(*,*) "Unknown type in writefitsimage ",type
        end select
 
+!       if(lamStart = 0.d0) 
       
        call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
        call ftppre(unit,group,fpixel,nelements,array,status)
