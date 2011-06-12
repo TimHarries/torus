@@ -492,7 +492,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, dorefine, dounrefine
+         readGrid, dustOnly, minCrossings, bufferCap
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
