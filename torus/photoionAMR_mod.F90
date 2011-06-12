@@ -81,7 +81,7 @@ contains
     logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
     integer :: i, status, tag=30
-    integer :: stageCounter=1, nTimes, nPhase, nstep
+    integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
 
 
@@ -609,7 +609,7 @@ end subroutine radiationHydro
     character(len=80) :: mpiFilename
 
     !AMR
-    integer :: iUnrefine, nUnrefine
+!    integer :: iUnrefine, nUnrefine
 
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
@@ -620,7 +620,7 @@ end subroutine radiationHydro
     !end if
 
     nPeriodic = 0
-    iUnrefine = 0
+!    iUnrefine = 0
 
     !Custom MPI data types for easier send/receiving
     !MPI datatype for out TYPE(VECTOR) variables
