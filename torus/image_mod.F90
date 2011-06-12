@@ -532,7 +532,7 @@ module image_mod
        write(*,*) "distance ",distance
        write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
 
-!       if(lambda == 0.d0) lambda = 6562.8
+       if(lambda == 0.d0) lambda = 6562.8
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)

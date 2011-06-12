@@ -195,7 +195,7 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
           call evenUpGridMPI(grid,.false.,.true.)      
-          call refineGridGeneric(grid, 1.d-2)
+          call refineGridGeneric(grid, 5.d-3)
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,.true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -353,26 +353,26 @@ contains
 
        if(photoLoopGlobal) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
-          !call ionizeGrid(grid%octreeRoot)
+          call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then
              loopLimitTime = grid%currentTime+dt
           else
              looplimittime = deltaTForDump
           end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .True., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 3, loopLimitTime, loopLimitTime, .True., .true.)
 
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
        else
           timeSinceLastRecomb = timeSinceLastRecomb + dt
           call writeInfo("Skipping photoionoization loop",TRIVIAL)
-          if(quickThermal) then
-             nTimes = 3
-             do i = 1, nTimes
-                call quickThermalCalc(grid%octreeRoot)
-             enddo
-          end if
+!          if(quickThermal) then
+!             nTimes = 3
+!             do i = 1, nTimes
+!                call quickThermalCalc(grid%octreeRoot)
+!             enddo
+!          end if
        end if
 
           if (myrank /= 0) then
@@ -407,7 +407,7 @@ contains
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 5) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine,1.d-3)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine,5.d-3)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -492,7 +492,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap
+         readGrid, dustOnly, minCrossings, bufferCap, dorefine, dounrefine
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
@@ -608,6 +608,10 @@ end subroutine radiationHydro
 
     character(len=80) :: mpiFilename
 
+    !AMR
+    integer :: iUnrefine, nUnrefine
+
+
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
     !start with stack size of 1
     !if(optimizeStack) then 
@@ -616,6 +620,7 @@ end subroutine radiationHydro
     !end if
 
     nPeriodic = 0
+    iUnrefine = 0
 
     !Custom MPI data types for easier send/receiving
     !MPI datatype for out TYPE(VECTOR) variables
@@ -756,6 +761,7 @@ end subroutine radiationHydro
              else if(grid%octreeRoot%threeD) then
                 !nMonte = (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
+!                nMonte = 150000000
                 nMonte = 209715200
                ! nMonte = 409600.0
              else
@@ -768,8 +774,9 @@ end subroutine radiationHydro
              if(grid%octreeRoot%twoD) then
                 nMonte = 10.d0 * (4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
-                !nMonte = 1000000.d0
+!                nMonte = 1000.d0
                 nMonte = 100.d0 * (8.d0**(maxDepthAMR))
+!                nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
@@ -1645,6 +1652,42 @@ end subroutine radiationHydro
              "sourceCont   "/))
      end if
 
+!     if(myRank /= 0) then
+!        iUnrefine = iUnrefine + 1
+!        if(doUnRefine) then
+!           if (iUnrefine == 5) then
+!              if (myrank == 1)call tune(6, "Unrefine grid")
+!               nUnrefine = 0                                                                                                            
+!              call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
+!              !          write(*,*) "Unrefined ", nUnrefine, " cells"                                                   
+!              if (myrank == 1)call tune(6, "Unrefine grid")
+!              iUnrefine = 0
+!           endif
+!        end if
+!        
+!!!        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!        if(doRefine) then!
+!           call writeInfo!!("Refining grid part 2", TRIVIAL)
+!           call refineGrid!Generic(grid, 5.d-3)
+!           !                                                                                                                               
+!           call writeInfo("Done the refine part", TRIVIAL)!
+!           call evenUpGridMPI(grid, .true., dorefine!!)
+!           call writeInfo("Done the even up part", TRIVIAL)
+!           
+           !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)                                    
+           
+!           if (myrank == 1) call tune(6, "Loop refine")
+!           
+!           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!           
+!           if (myrank == 1) call tune(6, "Loop refine")
+!           !                                                                                                         
+!        end if
+!     end if
+!
+
+
+
      
      call torus_mpi_barrier
   enddo
@@ -1653,9 +1696,10 @@ end subroutine radiationHydro
 
  call MPI_TYPE_FREE(mpi_vector, ierr)
  call MPI_TYPE_FREE(mpi_photon_stack, ierr)
+ call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
  deallocate(nSaved)
  deallocate(photonPacketStack)
-
+ deallocate(buffer)
 end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
@@ -2078,7 +2122,7 @@ recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt, t
                    photoLoop = .true.
                    exit
                 else if( timeSinceLastRecomb /= 0.d0) then
-                   if(recombTime(1) < timeSinceLastRecomb) then
+                   if(recombTime(1) < (timeSinceLastRecomb+dt)) then
                       photoLoop = .true.
                       timeSinceLastRecomb = 0.d0
                       exit
@@ -3550,7 +3594,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer, parameter :: nPoints = 500
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
-  logical, parameter :: useNiter=.true. ! Tag filename with iteration number?
+  logical, parameter :: useNiter=.false. ! Tag filename with iteration number?
   
   if ( useNiter ) then 
      write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"
@@ -4737,8 +4781,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     totalFluxArray = 0.d0
 
+    !zeros %etaCont, not sure what this var is though
     call zeroEtaCont(grid%octreeRoot)
     
+    !Add dust fractions
     call quickSublimate(grid%octreeRoot) ! do dust sublimation
     
     call torus_mpi_barrier
@@ -4746,16 +4792,20 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     thisImage = initImage(npixels, npixels, real(2.*grid%octreeRoot%subcellSize), &
          real(2.*grid%octreeRoot%subcellSize), 0., 0.)
 
+
     allocate(threadProbArray(1:nThreadsGlobal-1))
 
+!Setup the source luminosity emissivities across the grid. 
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
+!Computes probabilities and total emissions, though it should be zeroed unless it is 
+!appropriately assigned in setupGridForImage
+!THAW - lack of non-zero etaCont could be the whole problem! ! !  ! ! !
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
+
 
     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
     totalEmission = totalEmission * 1.d30
-
-
 
     probSource = lCore / (lCore + totalEmission)
 
@@ -4772,6 +4822,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     if (Writeoutput) write(*,*) "power per photon ",powerperphoton
+
+    write(*,*) "power per photon ",powerperphoton
 
     if (myRankGlobal == 0) then
        np = 0
