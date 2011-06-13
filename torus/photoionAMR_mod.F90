@@ -254,7 +254,7 @@ contains
           endif
 
           call evenUpGridMPI(grid,.false.,.true.)      
-          call refineGridGeneric(grid, 1.d-2)
+          call refineGridGeneric(grid, 3.d-5)
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,.true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -353,7 +353,7 @@ contains
 
        if(photoLoopGlobal) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
-          call ionizeGrid(grid%octreeRoot)
+!          call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then
              loopLimitTime = grid%currentTime+dt
           else
@@ -384,7 +384,7 @@ contains
              
              call evenUpGridMPI(grid,.false.,.true.)
 
-             call refineGridGeneric(grid, 1.d-2)
+             call refineGridGeneric(grid, 5.d-3)
 
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true.)
@@ -492,7 +492,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap
+         readGrid, dustOnly, minCrossings, bufferCap, dorefine
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
@@ -784,7 +784,7 @@ end subroutine radiationHydro
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
-             nMonte = 10000000
+             nMonte = 209715200
              write(*,*) "nMonte = ", nMonte
           end if
           
@@ -1652,7 +1652,7 @@ end subroutine radiationHydro
              "sourceCont   "/))
      end if
 
-!     if(myRank /= 0) then
+     if(myRank /= 0) then
 !        iUnrefine = iUnrefine + 1
 !        if(doUnRefine) then
 !           if (iUnrefine == 5) then
@@ -1666,24 +1666,21 @@ end subroutine radiationHydro
 !        end if
 !        
 !!!        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!        if(doRefine) then!
-!           call writeInfo!!("Refining grid part 2", TRIVIAL)
-!           call refineGrid!Generic(grid, 5.d-3)
-!           !                                                                                                                               
-!           call writeInfo("Done the refine part", TRIVIAL)!
-!           call evenUpGridMPI(grid, .true., dorefine!!)
+        if(doRefine) then!
+           call refineGridGeneric(grid, 5.d-3) 
+           call evenUpGridMPI(grid, .true., dorefine)
 !           call writeInfo("Done the even up part", TRIVIAL)
 !           
            !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)                                    
            
 !           if (myrank == 1) call tune(6, "Loop refine")
-!           
-!           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!           
-!           if (myrank == 1) call tune(6, "Loop refine")
+ !          
+  !         call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+   !        
+    !       if (myrank == 1) call tune(6, "Loop refine")
 !           !                                                                                                         
-!        end if
-!     end if
+        end if
+     end if
 !
 
 
@@ -4761,8 +4758,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
     integer :: isignal
-    real(double) :: powerPerPhoton, photonPacketWeight
+    real(double) :: powerPerPhoton
     logical :: freefreeImage
+    !THAW - dev
+    real(double) :: weightSource, weightEnv, sourceFac
+
 
     call randomNumberGenerator(randomSeed=.true.)
 
@@ -4781,10 +4781,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     totalFluxArray = 0.d0
 
-    !zeros %etaCont, not sure what this var is though
     call zeroEtaCont(grid%octreeRoot)
     
-    !Add dust fractions
     call quickSublimate(grid%octreeRoot) ! do dust sublimation
     
     call torus_mpi_barrier
@@ -4795,19 +4793,16 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     allocate(threadProbArray(1:nThreadsGlobal-1))
 
-!Setup the source luminosity emissivities across the grid. 
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
-!Computes probabilities and total emissions, though it should be zeroed unless it is 
-!appropriately assigned in setupGridForImage
-!THAW - lack of non-zero etaCont could be the whole problem! ! !  ! ! !
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
 
 
     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
     totalEmission = totalEmission * 1.d30
 
-    probSource = lCore / (lCore + totalEmission)
+    probSource = lCore / (lCore + totalEmission)     !This was chanceSource in photoion_mod
+    sourceFac = 0.1d0     !This was probSource in photoion_mod
 
     if (myRankGlobal == 0) then
        write(*,*) "Probability of photon from sources: ", probSource
@@ -4817,6 +4812,13 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           print *, "totalEmission : ", totalEmission
        end if
     endif
+
+
+    weightSource = probSource
+    weightEnv = (1.d0 - probSource)
+
+    print *, "weightSource ", weightSource
+    print *, "weightEnv ", weightEnv
 
     Ninf = 0
 
@@ -4829,6 +4831,9 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        np = 0
        mainloop: do iPhoton = 1, nPhotons
 
+!THaw - bug is that the photon packet weight is never defined
+          thisPhoton%weight = 1.d0
+
           thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
           thisPhoton%iLam = iLambdaPhoton
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
@@ -4837,10 +4842,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
 
           if (r < probSource) then
-             call randomSource(source, nSource, iSource, photonPacketWeight)
+             call randomSource(source, nSource, iSource, weightSource)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
-
+!Thaw - cf above
+             thisPhoton%weight = weightSource
 
 !             if (thisSource%outsideGrid) then
 !                thisPhoton%stokes%i = thisPhoton%stokes%i * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
@@ -4862,10 +4868,14 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
              np(iThread) = np (iThread) + 1
              thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
              thisPhoton%direction = randomUnitVector()
+             thisPhoton%weight = weightEnv
              call sendPhoton(thisPhoton, iThread, endloop = .false., getPosition=.true.) 
              call receivePhoton(thisPhoton, iSignal)
              directFromSource = .false.
           endif
+
+
+!          print *, "thisPhoton%weight = ", thisphoton%weight
 
           if ((directFromSource.and.(.not.thisSource%outsideGrid)).or.(.not.directFromSource)) then
              observerPhoton = thisPhoton

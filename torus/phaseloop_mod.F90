@@ -1023,6 +1023,17 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      ! here we may loop over different inclinations
      !
      
+
+
+     print *, "MEGA DEBUG ! ! ! ! ! ! ! ! !! ! ! ! ! ! ! ! ! !  ! ! ! ! ! !"
+
+     print *, "nInclination ", nInclination
+     stop
+
+
+     print *, "END ! ! ! ! ! ! ! ! ! ! ! ! !! ! ! ! ! ! ! ! ! !  ! ! ! ! ! !"
+
+
   incLoop: do iInclination = 1, nInclination, 1 
        ! NB This loop is not indented in the code!
      

@@ -20,6 +20,7 @@ contains
     use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda
     use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
     use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity, outputImageType
+    use input_variables, only : inclineX, inclineY, inclineZ, singleInclination
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
 #ifdef MOLECULAR
@@ -150,7 +151,13 @@ contains
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        if ( splitoverMPI ) then 
 #ifdef MPI
-          observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
+!          observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
+!More flexible inclinations
+          observerDirection = VECTOR(0.d0, 0.d0, 0.d0)
+          if(inclineX) observerDirection%x = sin(singleInclination)
+          if(inclineY) observerDirection%y = sin(singleInclination)
+          if(inclineZ) observerDirection%z = sin(singleInclination)
+
           do i = 1, nImage
              call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), & 
                   lambdaImage(i), outputImageType(i), nPixelsArray(i))

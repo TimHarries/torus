@@ -15,12 +15,6 @@
 ! 7. Imaging (??07)
 ! X. Unused routines (pu0X)
 
-!NOTE: Until this module is well established, routines will have either a P,
-!      a U or an F next to their leading comments. These stand for:
-!      P - passed: photoionAMR_mod & photoion_mod match for this routine
-!      F - failed: Pass criterion unfulfilled (rm or modify this routine!)
-!      U - unchecked: yet to verify P or F
-
 
 module photoion_utils_mod
 

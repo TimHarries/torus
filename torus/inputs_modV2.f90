@@ -1664,13 +1664,31 @@ contains
        endif
        call getInteger("npixels", npixelsArray(1), cLine, fLine, nLines, &
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+       
 
        call getReal("inclination", inclinationArray(1), real(degtorad), cLine, fLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
-    call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
-         "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
+       call getReal("singleInclination", singleInclination, real(degtorad), cLine, fLine, nLines, &
+            "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+
+       call getLogical("inclineX", inclineX, cLine, fLine, nLines, &
+         "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
+       
+       call getLogical("inclineY", inclineY, cLine, fLine, nLines, &
+            "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
+
+       call getLogical("inclineZ", inclineZ, cLine, fLine, nLines, &
+            "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
+       
+       call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
+            "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+       
+       call getReal("lamstart", lamstart, 1., cLine, fLine, nLines, &
+            "LamStart (probably temporary - not sure what it does)","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+       
     else
        do i = 1, nImage
 

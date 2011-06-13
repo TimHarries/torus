@@ -20,15 +20,14 @@ module input_variables
     logical :: atomicPhysics
     logical :: nbodyPhysics
     logical :: dustPhysics
-    logical :: hOnly !Thaw
+    logical :: hOnly 
 
-
-    logical :: radiationHydrodynamics !Thaw
+    logical :: radiationHydrodynamics 
     logical :: radiativeEquilibrium
     logical :: statisticalEquilibrium
     logical :: photoionEquilibrium
-    logical :: rhieChow !Thaw
-    logical :: checkForPhoto !thaw
+    logical :: rhieChow 
+    logical :: checkForPhoto 
     logical :: monochromatic
 
     logical :: calcDataCube
@@ -203,6 +202,8 @@ module input_variables
   integer :: nVelocity
   real :: gridDistance
   integer :: observerpos
+  logical :: inclineX, inclineY, inclineZ
+  real :: singleInclination
 
   integer :: npix    ! Number of pixels for polimages  
   character(LEN=30) :: filter_set_name  ! name of filter set used for images

@@ -193,7 +193,10 @@ module image_mod
              (ySlit <= ( thisImage%slitLength/2.)) ) then
            call locate(thisImage%pAxis, thisImage%np, ySlit, ip)
            call locate(thisImage%vAxis, thisImage%nv, velinkms, iv)
+!           print *, "pre ", thisImage%pixel(iv, ip)
            thisImage%pixel(iv, ip) = thisImage%pixel(iv,ip) + thisPhoton%stokes%i * weight
+!           print *, "post ", thisImage%pixel(iv, ip), thisPhoton%stokes%i, weight
+!           print *,  " "
         endif
      endif
    end subroutine addPhotontoPVimage
@@ -203,7 +206,8 @@ module image_mod
 
      type(VECTOR), intent(in) :: observerDirection
      type(IMAGETYPE), intent(inout) :: thisImage
-     type(PHOTON), intent(in) :: thisPhoton
+!     type(PHOTON), intent(in) :: thisPhoton
+     type(PHOTON) :: thisPhoton
      real(double), intent(inout) :: totalFlux
      type(VECTOR) :: xProj, yProj
      real :: xDist, yDist
@@ -226,10 +230,15 @@ module image_mod
      if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
           (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
 
+        if(thisPhoton%weight == 0.d0) then
+           print *, "photon weight problem in addPhotonToPhotoionImage"
+           thisPhoton%weight = 1.d0
+        end if
+
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
-
      endif
+
      totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
 
    end subroutine addPhotonToPhotoionImage
@@ -532,7 +541,7 @@ module image_mod
        write(*,*) "distance ",distance
        write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
 
-       if(lambda == 0.d0) lambda = 6562.8
+!       if(lambda == 0.d0) lambda = 6.e8
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
@@ -544,6 +553,16 @@ module image_mod
        write(*,*) "flux in mjy ",array(128,128)*fluxtomegajanskies * perAngstromtoperhz * scale,lambda
        ! Factor of 1.0e20 converts dx to cm from Torus units
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
+
+       print *, "FluxToMegaJanskies ", FluxToMegaJanskies
+       print *, "PerAngstromToPerHz ", PerAngstromToPerHz
+       print *, "scale ", scale
+       print *, "strad ", strad
+       print *, "PerAngstromToPerCm ", PerAngstromToPerCm
+       print *, "cSpeed ", cSpeed
+       print *, "nu ", nu
+       print *, "angstromtocm ", angstromtocm
+!       print *, "array ", array
 
      end subroutine ConvertArrayToMJanskiesPerStr
 !
@@ -561,7 +580,6 @@ module image_mod
        type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
-
 ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
@@ -615,6 +633,7 @@ module image_mod
        select case(type)
           case("intensity")
              array = image%pixel%i * scale
+!             print *, "image%pixel%i", image%pixel%i
           case("stokesq")
              where (image%pixel%i /= 0.d0) 
                 array = image%pixel%q * scale
@@ -679,7 +698,7 @@ module image_mod
           call printFitserror(status)
        end if
 
-     end subroutine writeFitsImage
+     End subroutine writeFitsImage
 #endif
 
 #ifdef USECFITSIO
