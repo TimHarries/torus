@@ -20,7 +20,9 @@ contains
     use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda
     use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
     use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity, outputImageType
+#ifdef MPI
     use input_variables, only : inclineX, inclineY, inclineZ, singleInclination
+#endif
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use physics_mod, only : setupXarray, setupDust
 #ifdef MOLECULAR
@@ -82,10 +84,6 @@ contains
          (.not.calcPhotometry) ) then
        goto 666
     endif
-
-
-
-
 
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)

@@ -1673,7 +1673,6 @@ contains
        call getReal("singleInclination", singleInclination, real(degtorad), cLine, fLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
-
        call getLogical("inclineX", inclineX, cLine, fLine, nLines, &
          "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
        

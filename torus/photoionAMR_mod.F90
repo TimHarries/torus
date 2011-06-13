@@ -4761,7 +4761,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     real(double) :: powerPerPhoton
     logical :: freefreeImage
     !THAW - dev
-    real(double) :: weightSource, weightEnv, sourceFac
+    real(double) :: weightSource,  sourceFac
 
 
     call randomNumberGenerator(randomSeed=.true.)
@@ -4814,45 +4814,35 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     endif
 
 
-    weightSource = probSource
-    weightEnv = (1.d0 - probSource)
+!    weightSource = probSource
+!    weightEnv = (1.d0 - probSource)
 
-    print *, "weightSource ", weightSource
-    print *, "weightEnv ", weightEnv
+!    print *, "weightSource ", weightSource
+!    print *, "weightEnv ", weightEnv
 
     Ninf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     if (Writeoutput) write(*,*) "power per photon ",powerperphoton
 
-    write(*,*) "power per photon ",powerperphoton
+ !   write(*,*) "power per photon ",powerperphoton
 
     if (myRankGlobal == 0) then
        np = 0
        mainloop: do iPhoton = 1, nPhotons
 
-!THaw - bug is that the photon packet weight is never defined
           thisPhoton%weight = 1.d0
-
           thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
           thisPhoton%iLam = iLambdaPhoton
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%observerPhoton = .false.
           call randomNumberGenerator(getDouble=r)
 
-
           if (r < probSource) then
              call randomSource(source, nSource, iSource, weightSource)
              thisSource = source(iSource)
+             print *, "thisSource%position ", thisSource%position
              call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
-!Thaw - cf above
-             thisPhoton%weight = weightSource
-
-!             if (thisSource%outsideGrid) then
-!                thisPhoton%stokes%i = thisPhoton%stokes%i * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
-!                   (thisSource%radius*1.d10)**2 / (thisSource%distance**2)
-!             endif
-
              call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
              iThread = thisOctal%mpiThread(subcell)
              call sendPhoton(thisPhoton, iThread, endloop = .false.) 
@@ -4868,14 +4858,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
              np(iThread) = np (iThread) + 1
              thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
              thisPhoton%direction = randomUnitVector()
-             thisPhoton%weight = weightEnv
              call sendPhoton(thisPhoton, iThread, endloop = .false., getPosition=.true.) 
              call receivePhoton(thisPhoton, iSignal)
              directFromSource = .false.
           endif
-
-
-!          print *, "thisPhoton%weight = ", thisphoton%weight
 
           if ((directFromSource.and.(.not.thisSource%outsideGrid)).or.(.not.directFromSource)) then
              observerPhoton = thisPhoton
