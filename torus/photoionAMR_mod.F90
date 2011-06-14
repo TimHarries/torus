@@ -1094,7 +1094,8 @@ end subroutine radiationHydro
                                  end if
                               end do
 !                              call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
-                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, request, ierr)
+                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+                                   request, ierr)
                               !reset the counter for this thread's bundle recieve
                               nSaved(optCounter) = 0
                               toSendStack%freq = 0.d0
