@@ -1093,9 +1093,9 @@ end subroutine radiationHydro
                                     
                                  end if
                               end do
-!                              call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
-                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
-                                   request, ierr)
+                              call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+!                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+!                                   request, ierr)
                               !reset the counter for this thread's bundle recieve
                               nSaved(optCounter) = 0
                               toSendStack%freq = 0.d0
@@ -3580,7 +3580,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
   real(double) :: cooling, dustHeating
   real :: netot
-  character(len=80) :: datFilename, mpiFilename
+  character(len=80) :: datFilename!, mpiFilename
   integer :: nIter
 
   !dumpLexingtonMPI specific variables
@@ -3600,8 +3600,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
      write(datFilename,'(a,i2.2,a)') "lexington.dat"
   end if
 
-  write(mpiFilename,'(a, i4.4, a)') "lexington",niter,".grid"
-  call writeAmrGrid(mpiFilename, .false., grid)
+!  write(mpiFilename,'(a, i4.4, a)') "lexington",niter,".grid"
+!  call writeAmrGrid(mpiFilename, .false., grid)
 
 
   startPoint = vector(0.d0, 0.d0, 0.d0)
