@@ -254,7 +254,7 @@ contains
           endif
 
           call evenUpGridMPI(grid,.false.,.true.)      
-          call refineGridGeneric(grid, 3.d-5)
+          call refineGridGeneric(grid, 5.d-3)
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,.true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -4768,7 +4768,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     logical :: freefreeImage
     !THAW - dev
     real(double) :: weightSource,  sourceFac
-
+!    integer :: i
 
     call randomNumberGenerator(randomSeed=.true.)
 
@@ -4796,19 +4796,17 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     thisImage = initImage(npixels, npixels, real(2.*grid%octreeRoot%subcellSize), &
          real(2.*grid%octreeRoot%subcellSize), 0., 0.)
 
-
     allocate(threadProbArray(1:nThreadsGlobal-1))
 
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
 
-
     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
     totalEmission = totalEmission * 1.d30
 
-    probSource = lCore / (lCore + totalEmission)     !This was chanceSource in photoion_mod
-    sourceFac = 0.1d0     !This was probSource in photoion_mod
+    probSource = lCore / (lCore + totalEmission) 
+    sourceFac = 0.1d0
 
     if (myRankGlobal == 0) then
        write(*,*) "Probability of photon from sources: ", probSource
@@ -4819,19 +4817,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        end if
     endif
 
-
-!    weightSource = probSource
-!    weightEnv = (1.d0 - probSource)
-
-!    print *, "weightSource ", weightSource
-!    print *, "weightEnv ", weightEnv
-
     Ninf = 0
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     if (Writeoutput) write(*,*) "power per photon ",powerperphoton
-
- !   write(*,*) "power per photon ",powerperphoton
 
     if (myRankGlobal == 0) then
        np = 0
@@ -4842,12 +4831,12 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           thisPhoton%iLam = iLambdaPhoton
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%observerPhoton = .false.
+        
           call randomNumberGenerator(getDouble=r)
 
           if (r < probSource) then
              call randomSource(source, nSource, iSource, weightSource)
              thisSource = source(iSource)
-             print *, "thisSource%position ", thisSource%position
              call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
              call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
              iThread = thisOctal%mpiThread(subcell)

@@ -789,6 +789,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
 
      if (nSource > 0) then              
+!THAW - need to add the grid to allow for off-grid sources?
         lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
      else
         lcore = tiny(lcore)
