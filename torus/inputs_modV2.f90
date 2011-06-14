@@ -890,6 +890,10 @@ contains
     call getLogical("dounrefine", dounrefine, cLine, fLine, nLines, &
          "Adaptively unrefine AMR grid?: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("dophotorefine", dophotorefine, cLine, fLine, nLines, &
+         "Adaptively refine AMR grid in photoloop?: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
     call getDouble("amrgridcentrex", amrGridCentreX, 1.d0 , cLine, fLine, nLines, &

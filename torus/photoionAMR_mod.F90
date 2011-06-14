@@ -492,7 +492,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, dorefine
+         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine
    !      optimizeStack, stackLimit, dStack
     implicit none
     include 'mpif.h'
@@ -1667,7 +1667,7 @@ end subroutine radiationHydro
 !        end if
 !        
 !!!        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-        if(doRefine) then!
+        if(doPhotoRefine) then!
            call refineGridGeneric(grid, 5.d-3) 
            call evenUpGridMPI(grid, .true., dorefine)
 !           call writeInfo("Done the even up part", TRIVIAL)

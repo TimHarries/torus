@@ -730,7 +730,7 @@ module input_variables
   logical :: hydrovelocityConv
   integer :: xminusbound, yminusbound, zminusbound
   integer :: xplusbound, yplusbound, zplusbound
-  logical :: doRefine, doUnrefine, useViscosity
+  logical :: doRefine, doUnrefine, useViscosity, doPhotoRefine
   logical :: fluxinterp
   logical :: periodicX, periodicY, periodicZ ! For photoion
   character(len=20) :: limiterType

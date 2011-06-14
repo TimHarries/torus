@@ -172,6 +172,13 @@ CONTAINS
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
 
+    CASE("point")
+       CALL calcPointSource(thisOctal, subcell)
+       if (thisOctal%nDepth > 1) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
+
+
     CASE("starburst")
        CALL calcStarburst(thisOctal, subcell)
        if (thisOctal%nDepth > 1) then
@@ -3564,6 +3571,15 @@ CONTAINS
 !         if (thisOctal%nDepth < 7) split = .true.
 !      endif
 
+
+   case("point")
+      if (thisOctal%nDepth < mindepthamr) then
+         split = .true.
+      else
+         split = .false.
+      endif
+
+
    case("runaway")
 
       call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
@@ -5930,8 +5946,30 @@ CONTAINS
        thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
        thisOctal%boundaryCondition(subcell) = 4
     endif
-
   end subroutine calcLexington
+
+  subroutine calcPointSource(thisOctal, subcell)
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real :: r
+    TYPE(vector) :: rVec
+
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec)
+
+    thisOctal%rho(subcell) = 1.d-30
+    thisOctal%temperature(subcell) = 10000.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+  end subroutine calcPointSource
 
   subroutine calcStarburst(thisOctal,subcell)
 

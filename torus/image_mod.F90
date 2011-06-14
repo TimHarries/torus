@@ -193,10 +193,7 @@ module image_mod
              (ySlit <= ( thisImage%slitLength/2.)) ) then
            call locate(thisImage%pAxis, thisImage%np, ySlit, ip)
            call locate(thisImage%vAxis, thisImage%nv, velinkms, iv)
-!           print *, "pre ", thisImage%pixel(iv, ip)
            thisImage%pixel(iv, ip) = thisImage%pixel(iv,ip) + thisPhoton%stokes%i * weight
-!           print *, "post ", thisImage%pixel(iv, ip), thisPhoton%stokes%i, weight
-!           print *,  " "
         endif
      endif
    end subroutine addPhotontoPVimage
