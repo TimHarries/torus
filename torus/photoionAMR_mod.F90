@@ -3177,7 +3177,7 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
      
         thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
 
-        if(thisOctal%ionFrac(subcell, iIon) == 0.d0) then
+        if(thisOctal%ionFrac(subcell, iIon) <= 0.d0) then
            thisOctal%ionFrac(subcell, iIon) = 1.d-50
         end if
 
@@ -3186,8 +3186,13 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
      thisOctal%ionFrac(subcell, iEnd) = 1.d0 - SUM(thisOctal%ionFrac(subcell,iStart:iEnd-1))
      thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
 
-     if(thisOctal%ionFrac(subcell, iend) == 0.d0) then
+     if(thisOctal%ionFrac(subcell, iend) <= 0.d0) then
         thisOctal%ionFrac(subcell, iend) = 1.d-50
+     end if
+
+!THAW - getting rid of -ve cooling rates
+     if(thisOctal%ionFrac(subcell, istart) <= 0.d0) then
+        thisOctal%ionFrac(subcell, istart) = 1.d-50
      end if
 
         k = iEnd + 1
