@@ -2999,7 +2999,7 @@ CONTAINS
     ENDIF
     IF (.NOT. ABS(amrGridDirectionalDeriv) >= 1.e-10) &
        amrGridDirectionalDeriv = 1.e-10
-666 continue
+!666 continue
   END FUNCTION amrGridDirectionalDeriv
 
 
