@@ -227,10 +227,7 @@ module image_mod
      if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
           (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
 
-        if(thisPhoton%weight == 0.d0) then
-           print *, "photon weight problem in addPhotonToPhotoionImage"
-           thisPhoton%weight = 1.d0
-        end if
+        if(thisPhoton%weight == 0.d0) thisPhoton%weight = 1.d0
 
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
@@ -531,7 +528,9 @@ module image_mod
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
        real(double) :: nu, PerAngstromToPerHz, strad, scale
-
+       logical :: pointTest = .true.
+       integer i, j
+       
        strad = (dx*1.d10/distance)**2
        scale = 1.d20/distance**2
        write(*,*) "dx ", dx
@@ -543,9 +542,23 @@ module image_mod
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
 
-!       WRITE(*,*) "Flux ",array(128,128)*scale
-!       write(*,*) "flux in mjy ",array(128,128)*fluxtomegajanskies * perAngstromtoperhz * scale,lambda
-
+       if(pointTest) then
+          do i = 1, 128
+             do j = 1, 128
+                if((array(i,j)*scale) /= 0.0) then
+                   print *, "non zero flux at pixel (",i,",",j,")"
+                   print *, "F = ", array(i,j)*scale
+                   print *, "F/inPixel ", array(i,j)*scale/(128.**2)
+!                   print *, "F/cm ", array(i,j)*scale/(128.**2)
+                   print *, "F/strad = ", array(i,j)*scale/strad
+                   write(*,*) "flux in mjy ",array(i,j)*fluxtomegajanskies * perAngstromtoperhz * &
+                        scale,lambda
+                   print *, " "
+                end if
+             end do
+          end do
+       end if
+       
        ! Factor of 1.0e20 converts dx to cm from Torus units
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 

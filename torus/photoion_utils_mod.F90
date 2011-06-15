@@ -790,7 +790,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
 
      if (nSource > 0) then              
 !THAW - need to add the grid to allow for off-grid sources?
-        lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+        lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
      else
         lcore = tiny(lcore)
      endif
@@ -802,7 +802,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
      
      if (nSource > 0) then              
-        lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+        lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
      else
         lcore = tiny(lcore)
      endif
@@ -813,7 +813,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage,iLambdaPhoton)
      
      if (nSource > 0) then              
-        lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+        lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
      else
         lcore = tiny(lcore)
      endif

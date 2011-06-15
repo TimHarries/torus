@@ -191,9 +191,10 @@ module source_mod
       enddo
     end function sumSourceLuminosity
 
-    real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam) result (tot)
+    real(double) function sumSourceLuminosityMonochromatic(grid, source, nsource, lam) result (tot)
       integer :: nSource
       type(SOURCETYPE) :: source(:)
+      type(GRIDTYPE) :: grid
       real(double) :: lam, flux
       integer :: i !, j
 
@@ -207,18 +208,15 @@ module source_mod
            flux =  loginterp_dble(source(i)%spectrum%flux(1:source(i)%spectrum%nLambda), &
                 source(i)%spectrum%nLambda, source(i)%spectrum%lambda(1:source(i)%spectrum%nLambda), lam)
 !THAW -old
-              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2 
+!              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2 
 
-
-!THAW - test
-!           if (.not.source(i)%outsideGrid) then                                                                                                                             
-!              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
-!           else 
-!              tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-!                   (fourPi*source(i)%distance**2)
-!           endif  
-
-
+!THaw - new
+           if (.not.source(i)%outsideGrid) then                                                    
+              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
+           else                                                                                    
+              tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &                  
+                   (source(i)%radius*1.d10)**2 / (source(i)%distance**2)                           
+           endif                 
 
         endif
      enddo
@@ -237,8 +235,6 @@ module source_mod
          tot = tot + flux * fourPi * (source%radius*1.d10)**2 
       endif
     end function sourceLuminosityMonochromatic
-
-
 
 
     subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance, sourcenumber)

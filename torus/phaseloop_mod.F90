@@ -1355,7 +1355,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            lcore = grid%lCore
            if (nSource > 0) then              
               if (.not.starOff) then
-                 lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+                 lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
                  if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
               else
                  lcore = tiny(lcore)
