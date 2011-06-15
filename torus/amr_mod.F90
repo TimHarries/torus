@@ -6607,7 +6607,6 @@ CONTAINS
 
   subroutine calcUniformSphere(thisOctal,subcell)
 
-    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use input_variables, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
