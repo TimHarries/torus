@@ -543,11 +543,9 @@ module image_mod
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
 
+!       WRITE(*,*) "Flux ",array(128,128)*scale
+!       write(*,*) "flux in mjy ",array(128,128)*fluxtomegajanskies * perAngstromtoperhz * scale,lambda
 
-
-       WRITE(*,*) "Flux ",array(128,128)*scale
-       
-       write(*,*) "flux in mjy ",array(128,128)*fluxtomegajanskies * perAngstromtoperhz * scale,lambda
        ! Factor of 1.0e20 converts dx to cm from Torus units
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 

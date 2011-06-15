@@ -194,6 +194,8 @@ module input_variables
   real :: vfwhm, pfwhm, vSys
   integer :: nSlit, np, nv
   type(VECTOR) :: slitPosition1, slitPosition2
+  type(VECTOR) :: sphereVelocity, spherePosition
+  real(double) :: sphereMass, sphereRadius
   logical :: stokesImage
   real :: setImageSize
   real :: imageScale

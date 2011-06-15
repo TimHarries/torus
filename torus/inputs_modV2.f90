@@ -165,6 +165,10 @@ contains
             "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
     endif
 
+    call getLogical("blockhandout", blockHandout, cLine, fLine, nLines, &
+         "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .false., ok, .false.)
+
+
     if(photoionphysics) then
        call getLogical("checkForPhoto", checkforphoto, cLine, fLine, nLines, &
             "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)
@@ -407,6 +411,18 @@ contains
        call getDouble("centralmass", centralMass, msol, cLine, fLine, nLines, &
             "Central mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
+     case("unisphere")
+       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+
+       call getDouble("radius", sphereRadius, rsol/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in R_sol): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+
+       call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
+            "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
+            "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
      case("ttauri")
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
@@ -1147,9 +1163,6 @@ contains
        call getLogical("dotune", dotune, cLine, fLine, nLines, &
             "Write out convergence data : ", "(a,1l,1x,a)", .false., ok, .false.)
 
-       call getLogical("blockhandout", blockHandout, cLine, fLine, nLines, &
-            "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
-
 
        call getLogical("doCOchemistry", doCOchemistry, cLine, fLine, nLines, &
             "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)
@@ -1783,15 +1796,15 @@ contains
          "Minimum Velocity Channel (km/s): ","(a,f4.1,1x,a)", -1.0d0*maxVel, ok, .false.)
 
     call getReal("vmin", vMinSpec, 1.0, cLine, fLine, nLines, &
-         "Minimum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", -2000.0, ok, .false.)
+         "Minimum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", -750.0, ok, .false.)
 
     call getReal("vmax", vMaxSpec, 1.0, cLine, fLine, nLines, &
-         "Maximum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
+         "Maximum velocity output to spectrum (km/s)","(a,1PE10.3,1x,a)", 750.0, ok, .false.)
 
     call getInteger("nv", nv, cLine, fLine, nLines, &
          "Number of velocity bins: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-    call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
+    call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nphase", nPhase, cLine, fLine, nLines, &

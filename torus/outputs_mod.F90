@@ -24,6 +24,7 @@ contains
     use input_variables, only : inclineX, inclineY, inclineZ, singleInclination
 #endif
 !    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+    use input_variables, only : cmf, lamline, ttauriRouter,amrgridsize
     use physics_mod, only : setupXarray, setupDust
 #ifdef MOLECULAR
     use molecular_mod
@@ -38,6 +39,7 @@ contains
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
     use input_variables, only : fastIntegrate, geometry, intextfilename, outtextfilename
+    use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
@@ -63,6 +65,7 @@ contains
 !    real(double) :: ang
     type(VECTOR) :: tvec(1)
     character(len=80) :: message
+    real(double), allocatable :: flux(:)
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
@@ -127,18 +130,40 @@ contains
     endif
 
     if (atomicPhysics.and.calcSpectrum) then
-       call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
-       do i = 1, 50
+
+       if (cmf) then
+          call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
+          do i = 1, 50
+             viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
+             !       gridDistance = 140.d0* pctocm/1.d10
+             ang = twoPi * dble(i-1)/50.d0
+             viewVec =  rotatez(viewVec, ang)
+             globalSourceArray(1)%limbDark(1) = 0.d0
+             globalSourceArray(1)%limbDark(2) = 0.d0
+             call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+                  viewVec, dble(gridDistance), &
+                  globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true.)
+          enddo
+       else
+          call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
+          allocate(flux(1:nLambda))
           viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
           !       gridDistance = 140.d0* pctocm/1.d10
           ang = twoPi * dble(i-1)/50.d0
           viewVec =  rotatez(viewVec, ang)
-          globalSourceArray(1)%limbDark(1) = 0.d0
-          globalSourceArray(1)%limbDark(2) = 0.d0
-          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
-               viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true.)
-       enddo
+          call compute_obs_line_flux(lamline, REAL(mHydrogen), DBLE(globalSourceArray(1)%radius), &
+               dble(TTauriRouter/1.0e10), dble(amrGridSize)/2.001d0/SQRT(2.0d0), &
+               globalsourcearray(1)%surface, &
+               100, 100, 100, 100,  &
+               (-1.d0)*viewVec, dble(griddistance), grid, 2., .true.,  &
+               flux, grid%lamArray, grid%nlambda, "flux.dat", &
+               .true., .false., &
+               .false., .false., 100, &
+               .false., tdisc, .false., .false., &
+               .false.) 
+       endif
+
+
        goto 666
     endif
 

@@ -26,14 +26,14 @@ contains
     real(double), allocatable :: temp(:), temp2(:)
 #endif
 
-    eps = 0.001d0*rsol /1.d10!2.d0 * grid%halfSmallestSubcell
+    eps = 0.1d0 * rsol/1.d10
 
     do i = 1, nSource
        source(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
     enddo
 
 !    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
-    call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
+    if (grid%splitOverMpi) call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
 #ifdef MPI
     if (grid%splitOverMPI.and.(myrankGlobal/=0)) then
@@ -57,10 +57,6 @@ contains
 !    call writeInfo("Done.",TRIVIAL)
 
 !    call writeInfo("Calculating source potential for gas", TRIVIAL)
-    if (hydrodynamics) then
-       call zeroSourcepotential(grid%octreeRoot)
-       call applySourcePotential(grid%octreeRoot, source, nSource, eps)
-    endif
 !    call writeInfo("Done.", TRIVIAL)
 
 !    call writeInfo("Calculating source-source forces", TRIVIAL)
@@ -91,7 +87,7 @@ contains
        write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
        call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
        call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin, grid)
-
+       if (writeoutput) write(44,'(i6,1p,20e15.5,0p)') it, currentTime, ePot, eKin, totalEnergy
        allocate(tmp(1:globalnSource*3))
        do i = 1, globalnSource
           tmp(i*3-2) = globalSourceArray(i)%position%x
@@ -161,7 +157,7 @@ contains
           thisDt = dt - thisTime
        endif
        if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
-       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-8, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
        thisTime = thisTime + thisDt
        do i = 1, nSource
           ia = (i-1)*6 + 1
@@ -173,12 +169,7 @@ contains
           
           source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
           source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
-          
-          if (writeoutput) then
-             write(*,*) "source ",i
-             write(*,*) "position ",source(i)%position*1.d10/autocm
-             write(*,*) "velocity ",source(i)%velocity/1.d5
-          endif
+    
        enddo
        if (writeoutput) then
           open(57, file="pos.dat",status="old",position="append")
@@ -210,7 +201,7 @@ contains
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    eps = returnCodeUnitLength(0.1d0*rsol)
+    eps = returnCodeUnitLength(rsol)
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))

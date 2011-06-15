@@ -2570,8 +2570,11 @@ end subroutine sumFluxes
     if (selfGravity) then
        if (myrankglobal == 1) call tune(6,"Self-gravity")
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          if (globalnSource > 0) call calculateGasSourceInteraction(globalsourceArray, Globalnsource, grid)
-          call sumGasStarGravity(grid%octreeRoot)
+       if (globalnSource > 0) then
+          call zeroSourcepotential(grid%octreeRoot)
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+       endif
+       call sumGasStarGravity(grid%octreeRoot)
        if (myrankglobal == 1) call tune(6,"Self-gravity")
     endif
 
@@ -3180,7 +3183,10 @@ end subroutine sumFluxes
           call zeroPhiGas(grid%octreeRoot)
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
 
-          if (globalnSource > 0) call calculateGasSourceInteraction(globalsourceArray, globalnSource, grid)
+          if (globalnSource > 0) then
+             call zeroSourcepotential(grid%octreeRoot)
+             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+          endif
           call sumGasStarGravity(grid%octreeRoot)
 
           call writeVtkFile(grid, "afterselfgrav.vtk", &
@@ -3262,7 +3268,7 @@ end subroutine sumFluxes
 
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
-          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
+!          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
 
 
           if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -7123,7 +7129,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-5,  tol2 = 1.d-4
+    real(double), parameter :: tol = 1.d-5,  tol2 = 1.d-5
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -7526,9 +7532,11 @@ end subroutine minMaxDepth
            if (.not.thisOctal%ghostCell(subcell)) then
               xVec = point - com
               rVec = subcellCentre(thisOctal, subcell) - com
-              r = modulus(rVec)*1.d10
-              x = modulus(xVec)*1.d10
+              r = modulus(rVec)
+              x = modulus(xVec)
               cosTheta = (xVec.dot.rVec) / (r*x)
+              r = r * 1.d10
+              x = x * 1.d10
               dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
               do iPole = 0, 4
                  v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm

@@ -328,6 +328,7 @@ contains
                         source(1), inu_times_betacmn, betamn, jnusob)
 !                   write(*,*) "jnu cmf ",jnu
 !                   write(*,*) "jnu sob ",jnusob
+!                   write(*,*) "betamn ",betamn
                    Jnu = inu_times_betacmn
                    if (opticallyThickContinuum) then
                       call locate(freq, nfreq, thisAtom(iatom)%transFreq(itrans), ifreq)
@@ -2826,7 +2827,6 @@ contains
              endif
 
 
-
              dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
              !          write(*,*) iCount,ntau,totdist, &
@@ -2844,7 +2844,13 @@ contains
                 else
                    fac = (dtau - dtau**2/2.d0)
                 endif
-                i0 = i0 +  exp(-tau) * fac*snu
+
+
+
+!                i0 = i0 +  exp(-tau) * fac*snu
+
+                i0 = i0 + jnu * exp(-tau) *  (distArray(i)-distArray(i-1)) * 1.d10
+
                 tau = tau + dtau
              endif
           enddo
@@ -3115,7 +3121,7 @@ contains
                      linearInterp=.false.) 
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
-                alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal%microturb(subcell))
+                alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal%microturb(subcell))/transitionFreq
              else
                 alphanu = 0.d0
              endif
@@ -3138,7 +3144,7 @@ contains
 
              if (.not.lineoff) then
                 etaLine = thisOctal%etaLine(subcell)
-                jnu = etaLine * phiProf(dv, thisOctal%microturb(subcell))
+                jnu = etaLine * phiProf(dv, thisOctal%microturb(subcell))/transitionFreq
              else
                 jnu = 0.d0
                 etaline = 0.d0
@@ -3433,7 +3439,7 @@ contains
        open(42, file=plotfile,status="unknown",form="formatted")
        do i = 1, nv
           transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
-          write(42, *) vArray(i)*cspeed/1.d5, toPerAngstrom(spec(i), transitionFreq)
+          write(42, *) vArray(i)*cspeed/1.d5, spec(i)*(distance/1.d10)**2/(globalSourceArray(1)%radius**2)
        enddo
        close(42)
     endif
@@ -4029,17 +4035,19 @@ contains
     logical :: enhanced 
     enhanced = .true.
 
-    nphi = 50
+    nphi = 100
     nr = 100
     npoints = 0
+!    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
+
+
     if (enhanced) then
        call countVoxels(grid%octreeRoot,nOctals,nVoxels)
        if ((grid%octreeRoot%oneD).or.(grid%octreeRoot%twoD)) then
-          nPoints = nVoxels * 50
+          nPoints = nPoints + nVoxels * 50
        else
-          nPoints = nVoxels
+          nPoints = nPoints + nVoxels
        endif
-       nPoints = 0
        nPoints = nPoints + globalnSource * nr * nphi
     endif
     nPoints = nPoints + 4*cube%nx*cube%ny
@@ -4049,7 +4057,7 @@ contains
     if (enhanced) then
 !       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
     
-       nr1 = 20
+       nr1 = 50
        nr2 = nr - nr1
        do iSource = 1, globalnSource
           do i = 1, nr1
@@ -4067,7 +4075,7 @@ contains
        do iSource = 1, globalnSource
           do i = 1, nr2
              r = log10(sourceArray(iSource)%radius) + &
-                  (log10(20.d0*sourceArray(iSource)%radius)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
+                  (log10(10.d0*sourceArray(iSource)%radius)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
              r = 10.d0**r
              call randomNumberGenerator(getDouble=dphi)
              dphi = dphi * twoPi
@@ -4148,33 +4156,42 @@ contains
     n = nt
   end subroutine removeIdenticalPoints
 
-  subroutine getProjectedPoints(grid, xProj, yProj, xPoints, yPoints, nPoints)
+  subroutine getProjectedPoints(grid, xProj, yProj, xPoints, yPoints, nPoints, count)
     type(GRIDTYPE) :: grid
     integer :: nPoints
     type(VECTOR) :: xProj, yProj
     real(double), pointer :: xPoints(:), yPoints(:)
+    logical, optional :: count
 
 
-    call getProjectedPointsRecursive(grid, grid%octreeRoot,  xProj, yProj, xPoints, yPoints, nPoints)
+    call getProjectedPointsRecursive(grid, grid%octreeRoot,  xProj, yProj, xPoints, yPoints, nPoints, count)
 
   end subroutine getProjectedPoints
 
-  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal,  xProj, yProj, xPoints, yPoints, nPoints)
+  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal,  xProj, yProj, xPoints, yPoints, nPoints, count)
     type(octal), pointer   :: thisOctal
     type(GRIDTYPE) :: grid
     type(octal), pointer  :: child 
+    logical, optional :: count
     integer :: subcell, i,j
     integer :: nPoints
     type(VECTOR) :: xProj, yProj, rVec
     real(double) :: xPoints(:), yPoints(:), phi, dphi
+    logical :: addPoint
   
+    addPoint = .true.
+    if (PRESENT(count)) then
+       addPoint = .not.count
+    endif
+
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call getProjectedPointsRecursive(grid, child,  xProj, yProj, xPoints, yPoints, nPoints)
+                call getProjectedPointsRecursive(grid, child,  xProj, yProj, xPoints, yPoints, nPoints, count)
                 exit
              end if
           end do
@@ -4183,17 +4200,21 @@ contains
           dphi = dphi * twoPi
           if (thisOctal%threeD) then
              nPoints = nPoints + 1
-             rVec = subcellCentre(thisOctal, subcell)
-             xPoints(nPoints) = xProj.dot.rVec
-             yPoints(nPoints) = yProj.dot.rVec
+             if (addPoint) then
+                rVec = subcellCentre(thisOctal, subcell)
+                xPoints(nPoints) = xProj.dot.rVec
+                yPoints(nPoints) = yProj.dot.rVec
+             endif
           else if (thisOctal%twoD) then
              do j = 1, 50
                 phi = dble(j-1)/49.d0 * twoPi + dphi
                 rVec =  subcellCentre(thisOctal, subcell)
                 rVec = rotateZ(rVec, phi)
                 nPoints = nPoints + 1
-                xPoints(nPoints) = xProj.dot.rVec
-                yPoints(nPoints) = yProj.dot.rVec
+                if (addPoint) then
+                   xPoints(nPoints) = xProj.dot.rVec
+                   yPoints(nPoints) = yProj.dot.rVec
+                endif
              enddo
           else if (thisOctal%oneD) then
              do j = 1, 50
@@ -4201,8 +4222,10 @@ contains
                 rVec =  subcellCentre(thisOctal, subcell)
                 rVec = rotateZ(rVec, phi)
                 nPoints = nPoints + 1
-                xPoints(nPoints) = rVec%x
-                yPoints(nPoints) = rVec%y
+                if (addPoint) then
+                   xPoints(nPoints) = rVec%x
+                   yPoints(nPoints) = rVec%y
+                endif
              enddo
           endif
        endif
@@ -4257,7 +4280,7 @@ contains
 
     chiline = (pi * eCharge**2 * fij)/(mElectron * cSpeed)
     chiLine = chiLine *  gLower * (Nlower/gLower - nUpper/gUpper)
-
+ 
     betamn = 0.d0
 
     position = subcellCentre(thisoctal,subcell)
@@ -4278,7 +4301,6 @@ contains
           tauij = chiLine / grad 
           tauij =  tauij / transitionFreq
           tauij = max(1.d-20,tauij)
-
           if (tauij < 0.1d0) then
              escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
           else if (tauij < 15.d0) then
@@ -4308,8 +4330,8 @@ contains
     betacmn = 0.d0
     totomega = 0.d0
     inu_times_betacmn = 0.d0
-    ntheta = 100
-    nphi = 100
+    ntheta = 20
+    nphi = 20
     do i = 1, ntheta
        theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
        if (theta > pi) theta = theta - pi
@@ -4324,8 +4346,6 @@ contains
           domega = sin(theta)*dtheta*dphi
           dotprod = direction .dot. tostar
           if ((dotprod > 0.d0) .and. (acos(min(1.d0,max(-1.d0,dotprod))) < ang)) then
-
-
              call distanceToSource(globalSourceArray, globalnSource, position, direction, hitSource, distToStar, sourcenumber)
              if (.not.hitsource) write(*,*) "bug in betacmn"
              photoDirection = (position + distToStar*direction) - source%position
@@ -4336,6 +4356,8 @@ contains
              tauij = chiLine / grad 
              tauij =  tauij / transitionFreq
              tauij = max(1.d-20,tauij)
+
+
              
              if (tauij < 0.1d0) then
                 escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
@@ -4351,7 +4373,6 @@ contains
        enddo
     enddo
 
-    write(*,*) "omega ",totomega/(twoPi*source%radius**2/distTostar**2)
 
     betacmn = betacmn / fourPi
 

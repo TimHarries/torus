@@ -534,6 +534,8 @@ contains
  end do block01        
  end if ! (my_rank /= 0)
 
+
+ write(*,*) myrankGlobal, " waiting at barrier"
  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 #endif

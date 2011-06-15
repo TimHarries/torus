@@ -2937,10 +2937,10 @@ CONTAINS
     INTEGER                        :: subcell
 
 
-    if (.not.grid%lineEmission) then
-       amrGridDirectionalDeriv = 1.e30
-       goto 666
-    endif
+!    if (.not.grid%lineEmission) then
+!       amrGridDirectionalDeriv = 1.e30
+!       goto 666
+!    endif
     
     octalDirection = direction
 
@@ -6608,40 +6608,28 @@ CONTAINS
   subroutine calcUniformSphere(thisOctal,subcell)
 
     use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    use input_variables, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, mass
+    real(double) :: eThermal, rMod,  rhoSphere
 
     rVec = subcellCentre(thisOctal, subcell)
-    rMod = modulus(rVec)
-    if (rMod < (pctocm/1.d10)) then
-       thisOctal%rho(subcell) = 1000.d0*2.d0*mHydrogen
+    rMod = modulus(rVec-spherePosition)
+    rhoSphere = sphereMass / ((fourPi/3.d0) * sphereRadius**3 * 1.d30)
+
+    if (rMod < sphereRadius) then
+       thisOctal%rho(subcell) = rhoSphere
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 10.d0*2.d0*mHydrogen
-       thisOctal%temperature(subcell) = 100.d0
+       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
+       thisOctal%temperature(subcell) = 1000.d0
     endif
-    thisOctal%rho(subcell) = 1.d-30
-    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%pressure_i(subcell) = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-
-    thisOctal%boundaryCondition(subcell) = 2
-
-    mass = (fourPi/3.d0) * pctocm**3 * 1000.d0 * 2.d0 * mHydrogen
-    thisOctal%phi_i(subcell) = -bigG * mass / (modulus(rVec)*1.d10)
-    thisOctal%gamma(subcell) = 2.d0
-    thisOctal%iEquationOfState(subcell) = 3
-
-    zplusbound = 1
-    zminusbound = 1
-    xplusbound = 1
-    xminusbound = 1
-    yplusbound = 1
-    yminusbound = 1
+    thisOctal%velocity(subcell) = sphereVelocity
+    thisOctal%iequationOfState(subcell) = 2
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 7.d0/5.d0
 
   end subroutine calcUniformSphere
 

@@ -27,7 +27,7 @@ contains
     use grid_mod
     use input_variables, only : readgrid, gridinputfilename, geometry!, mdot
     use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
-    use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI
+    use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics
     use input_variables, only : amrGridSize, doSmoothGrid
     use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
@@ -89,6 +89,8 @@ contains
        call findTotalMemory(grid, globalMemoryFootprint)
 
     else
+
+       grid%lineEmission = atomicPhysics.or.molecularPhysics
 
        grid%splitOverMPI = splitOverMPI
 
