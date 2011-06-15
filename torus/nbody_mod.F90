@@ -13,7 +13,6 @@ contains
 
 
   subroutine calculateGasSourceInteraction(source, nSource, grid)
-    use input_variables, only : hydrodynamics
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     type(GRIDTYPE) :: grid
