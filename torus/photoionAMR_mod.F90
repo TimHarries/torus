@@ -3603,7 +3603,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer, parameter :: nPoints = 500
   type(VECTOR) :: position, startPoint, endPoint, direction, octVec
   logical :: stillLooping
-  logical, parameter :: useNiter=.true. ! Tag filename with iteration number?
+  logical, parameter :: useNiter=.false. ! Tag filename with iteration number?
   
   if ( useNiter ) then 
      write(datFilename,'(a,i2.2,a)') "lexington",niter,".dat"

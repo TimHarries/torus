@@ -1025,15 +1025,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      
 
 
-     print *, "MEGA DEBUG ! ! ! ! ! ! ! ! !! ! ! ! ! ! ! ! ! !  ! ! ! ! ! !"
-
-     print *, "nInclination ", nInclination
-     stop
-
-
-     print *, "END ! ! ! ! ! ! ! ! ! ! ! ! !! ! ! ! ! ! ! ! ! !  ! ! ! ! ! !"
-
-
   incLoop: do iInclination = 1, nInclination, 1 
        ! NB This loop is not indented in the code!
      
