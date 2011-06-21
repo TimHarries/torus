@@ -214,7 +214,7 @@ contains
     integer :: nok, nbad
     integer :: kmax, kount
     real(double) :: acc, eps, minDt, thisDt, thisTime
-    real(double) :: dxsav, xp(200), yp(200,200)
+    real(double) :: dxsav, xp(2000), yp(2000,2000)
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
