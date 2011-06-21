@@ -595,7 +595,7 @@ contains
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
-     use input_variables, only : inputNsource
+     use input_variables, only : inputNsource, mstarburst
      integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
 #ifdef MPI
@@ -627,7 +627,7 @@ contains
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0
-        call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, 1.d3, 1.d0)
+        call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, mStarburst, 1.d0)
         call randomNumberGenerator(randomSeed = .true.)
     endif
     

@@ -1211,9 +1211,10 @@ contains
 666 continue
   end subroutine writeVTKfileSource
 
-  subroutine writeVTKfileNbody(nSource, source, vtkFilename)
+  subroutine writeVTKfileNbody(nSource, source, vtkFilename, grid)
     use source_mod
     use mpi_global_mod
+    type(GRIDTYPE) :: grid
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     character(len=*) :: vtkFilename
@@ -1229,6 +1230,7 @@ contains
     if (myrankGlobal /=1 ) goto 666
 #endif
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+
 
     open(lunit,file=vtkFilename, form="formatted", status="unknown")
     write(lunit,'(a)') "# vtk DataFile Version 2.0"
@@ -1247,6 +1249,9 @@ contains
     do iSource = 1, nSource
        do i = 1, source(iSource)%surface%nElements
           cVec = source(iSource)%surface%element(i)%position
+          call normalize(cVec)
+          cVec = cVec * grid%octreeRoot%subcellSize/400.d0
+          cVec = cVec * source(isource)%radius/(rsol/1.d10)
           dphi = source(iSource)%surface%element(i)%dphi
           dtheta = source(iSource)%surface%element(i)%dtheta
           aVec = cVec.cross.zAxis
@@ -1302,6 +1307,15 @@ contains
     do iSource = 1, nSource
        do i = 1, source(iSource)%surface%nElements
           write(lunit,*) source(isource)%mass/msol
+       enddo
+    enddo
+
+    write(lunit,'(a,a,a)') "SCALARS ","teff"," float"
+    write(lunit, '(a)') "LOOKUP_TABLE default"
+
+    do iSource = 1, nSource
+       do i = 1, source(iSource)%surface%nElements
+          write(lunit,*) source(isource)%teff
        enddo
     enddo
 

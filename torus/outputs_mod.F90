@@ -91,10 +91,10 @@ contains
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       do i = 1, 50
+       do i = 1, 2
           viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
           !       gridDistance = 140.d0* pctocm/1.d10
-          ang = twoPi * dble(i-1)/50.d0
+          ang = pi * dble(i-1)
           viewVec =  rotatez(viewVec, ang)
           !       gridDistance = 140.d0* pctocm/1.d10
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
@@ -154,7 +154,7 @@ contains
           call compute_obs_line_flux(lamline, REAL(mHydrogen), DBLE(globalSourceArray(1)%radius), &
                dble(TTauriRouter/1.0e10), dble(amrGridSize)/2.001d0/SQRT(2.0d0), &
                globalsourcearray(1)%surface, &
-               100, 100, 100, 100,  &
+               100, 20, 50, 100,  &
                (-1.d0)*viewVec, dble(griddistance), grid, 2., .true.,  &
                flux, grid%lamArray, grid%nlambda, "flux.dat", &
                .true., .false., &

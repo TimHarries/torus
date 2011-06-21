@@ -4228,7 +4228,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
 
 
-  SUBROUTINE VORON2(N, RX, RY, BOX, AREA)
+  SUBROUTINE VORON2(N, RX, RY, BOX, AREA, success)
     implicit none
 
     !    *******************************************************************
@@ -4282,7 +4282,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
     INTEGER     MAXN, MAXCAN, MAXVER
     PARAMETER ( MAXN = 1080, MAXCAN = 1000, MAXVER = 500 )
-
+    logical :: success
     REAL(double)        RX(:), RY(:), AREA(:)
 
     REAL(double)        PX(MAXCAN), PY(MAXCAN), PS(MAXCAN)
@@ -4294,7 +4294,6 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
     INTEGER     NCAN, NVER, NCOORD, NEDGE
     INTEGER     I, J, CAN, VER, N
-    logical :: success
     REAL(double)        BOX, BOXINV, RCUT, RCUTSQ, COORD
     REAL(double)        RXJ, RYJ, RXIJ, RYIJ, RIJSQ
     real(double)        xc(maxn), yc(maxn), xp(maxn), yp(maxn), a,totArea
@@ -4429,10 +4428,10 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
                            RXVER, RYVER, IVER, JVER , SUCCESS)
 
           if (.not.success) then
-             do i = 1, n
-                write(*,*) "rx ",rx(i),ry(i)
-             enddo
-             stop
+!             do i = 1, n
+!                write(*,*) "rx ",rx(i),ry(i)
+!             enddo
+             goto 666
           endif
 
           !       ** WRITE OUT RESULTS **
@@ -4540,7 +4539,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 !10002     FORMAT(/1X,'   INDICES         RELATIVE POSITION ')
 !10003     FORMAT(/1X,'INDEX    NABS    ... NEIGHBOUR INDICES ... ')
 
-
+666 continue
        end subroutine voron2
 
        SUBROUTINE READCN ( CNFILE, N, BOX )
@@ -4694,9 +4693,9 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
          IF ( NV .LT. 3 ) THEN
 
             WRITE(*,'('' LESS THAN 3 VERTICES FOUND IN WORK '',I5)') NV
-            do  i = 1, nn
-               write(*,*) i, rx(i), ry(i)
-            enddo
+!            do  i = 1, nn
+!               write(*,*) i, rx(i), ry(i)
+!            enddo
 
             SUCCESS = .false.
             goto 666

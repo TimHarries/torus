@@ -12,7 +12,7 @@ module nbody_mod
 contains
 
 
-  subroutine calculateGasSourceInteraction(source, nSource, grid)
+  subroutine calculateGasSourceInteraction(source, nSource, grid, eps)
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     type(GRIDTYPE) :: grid
@@ -25,7 +25,6 @@ contains
     real(double), allocatable :: temp(:), temp2(:)
 #endif
 
-    eps = 0.1d0 * rsol/1.d10
 
     do i = 1, nSource
        source(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
@@ -84,7 +83,7 @@ contains
     if (Writeoutput) write(45,'(a)') "Step      Time (s)     position x y z..." 
     do while (currentTime  < tEnd)
        write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
-       call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
+       call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile, grid)
        call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin, grid)
        if (writeoutput) write(44,'(i6,1p,20e15.5,0p)') it, currentTime, ePot, eKin, totalEnergy
        allocate(tmp(1:globalnSource*3))
@@ -117,11 +116,11 @@ contains
     integer :: nok, nbad
     integer :: kmax, kount
     real(double) :: acc, eps, minDt, thisDt, thisTime
-    real(double) :: dxsav, xp(200), yp(200,200)
+    real(double) :: dxsav, xp(2000), yp(2000,2000)
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    eps = returnCodeUnitLength(0.1d0*rsol)
+    call calculateEps(source, nsource,eps)
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))
@@ -143,7 +142,7 @@ contains
     thisTime = 0.d0
     do while (thisTime  < dt)
 
-       call derivs(0.d0, ystart, dydx, grid)
+       call derivs(0.d0, ystart, dydx, grid, eps)
 
        minDt = 1.d30
        do i = 1, nSource
@@ -156,7 +155,7 @@ contains
           thisDt = dt - thisTime
        endif
        if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
-       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
        thisTime = thisTime + thisDt
        do i = 1, nSource
           ia = (i-1)*6 + 1
@@ -186,6 +185,25 @@ contains
 !    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
   end subroutine updateSourcePositions
 
+  subroutine calculateEps(source, nsource, eps)
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    real(double) :: eps, r, minsep
+    integer :: i, j
+
+    minSep = 1.d30
+    do i = 1, nSource
+       do j = 1, nSource
+          if (i /= j) then
+             r = modulus(source(i)%position-source(j)%position)*1.d10
+             minSep = MIN(minSep, r)
+          endif
+       enddo
+    enddo
+    eps = 1.d-6 * minSep
+    eps = max(eps, 1000.d0*autocm)
+
+  end subroutine calculateEps
 
   subroutine nBodyStep(source, nSource, dt, grid)
     type(GRIDTYPE) :: grid
@@ -200,7 +218,7 @@ contains
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    eps = returnCodeUnitLength(rsol)
+    call calculateEps(source, nSource, eps)
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))
@@ -222,7 +240,7 @@ contains
     thisTime = 0.d0
     do while (thisTime  < dt)
 
-       call derivs(0.d0, ystart, dydx, grid)
+       call derivs(0.d0, ystart, dydx, grid, eps)
 
        minDt = 1.d30
        do i = 1, nSource
@@ -234,7 +252,8 @@ contains
        if ((thisTime + thisDt) > dt) then
           thisDt = dt - thisTime
        endif
-       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-8, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid)
+       if (writeoutput) write(*,*) "Calling ode integrator at ",100.d0*thisTime/dt, " % of total step"
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
        thisTime = thisTime + thisDt
        do i = 1, nSource
           ia = (i-1)*6 + 1
@@ -286,7 +305,7 @@ contains
                 rVec = source(isource)%position - cen
                 r = modulus(rVec)
                 source(iSource)%force = source(iSource)%force - &
-                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * dV / (1.d20*(r**2 + eps**2))) * (rVec/r)
+                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * dV / (1.d20*r**2 + eps**2)) * (rVec/r)
                 
              else
                 massSub  = (thisOctal%rho(subcell)*dv)/dble(nSub**3)
@@ -299,7 +318,7 @@ contains
                          rVec = source(isource)%position - pos
                          r = modulus(rVec)
                          source(iSource)%force = source(iSource)%force - &
-                              (bigG*source(isource)%mass*massSub / (1.d20*(r**2 + eps**2))) * (rVec/r)
+                              (bigG*source(isource)%mass*massSub / (1.d20*r**2 + eps**2)) * (rVec/r)
                       enddo
                    enddo
                 enddo
@@ -393,7 +412,7 @@ contains
              rVec = cen - source(isource)%position
              r = modulus(rVec)
              thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) - &
-                  (bigG*source(isource)%mass/ (1.d10*max(r,eps)))
+                  (bigG*source(isource)%mass/ (max(r*1.d10,eps)))
           enddo
        endif
     enddo
@@ -434,8 +453,8 @@ contains
              r = modulus(rVec)
              if (r /= 0.d0) then
                 rHat = rVec/r
-                source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / (( r**2 + eps**2)*1.d20)) * rHat
-                if ((r/eps < 10.0).and.(writeoutput)) write(*,*) "Gravity softening becoming important"
+                source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / ( 1.d20*r**2 + eps**2)) * rHat
+!                if ((r/eps < 10.0).and.(writeoutput)) write(*,*) "Gravity softening becoming important"
              endif
           endif
        enddo
@@ -481,15 +500,15 @@ contains
    totalenergy = epot + ekin
   end subroutine sumEnergy
 
-  subroutine odeint(ystart,nvar,x1,x2,eps,h1,hmin,nok,nbad,derivs,rkqc,grid)
+  subroutine odeint(ystart,nvar,x1,x2,eps,h1,hmin,nok,nbad,derivs,rkqc,grid,graveps)
     type(GRIDTYPE) :: grid
-    real(double) :: eps, hdid, hnext, hmin
+    real(double) :: eps, hdid, hnext, hmin, graveps
     integer :: nvar
-    integer, parameter :: maxstp=10000, nmax=200
+    integer, parameter :: maxstp=10000, nmax=10000
     real(double), parameter :: two=2.d0,zero=0.d0,tiny=1.d-30
     real(double) :: x, x1, h, x2, h1, xsav, dxsav
     integer :: nok, nbad, kount, i, nstp, kmax
-    real(double) :: xp(200), yp(200,200)
+    real(double) :: xp(2000), yp(2000,2000)
     common /path/ kmax,kount,dxsav,xp ,yp
     real(double) :: ystart(nvar),yscal(nmax),y(nmax),dydx(nmax)
     external derivs, rkqc
@@ -503,7 +522,7 @@ contains
     enddo
     xsav=x-dxsav*two
     do nstp=1,maxstp
-       call derivs(x,y,dydx,grid)
+       call derivs(x,y,dydx,grid, graveps)
        do  i=1,nvar
           yscal(i)=abs(y(i))+abs(h*dydx(i))+tiny
        enddo
@@ -520,7 +539,7 @@ contains
           endif
        endif
        if((x+h-x2)*(x+h-x1).gt.zero) h=x2-x
-       call rkqc(y,dydx,nvar,x,h,eps,yscal,hdid,hnext,derivs,grid)
+       call rkqc(y,dydx,nvar,x,h,eps,yscal,hdid,hnext,derivs,grid, graveps)
        if(hdid.eq.h)then
           nok=nok+1
        else
@@ -550,11 +569,11 @@ contains
     stop
   end subroutine odeint
 
-  subroutine bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext,derivs,grid)
+  subroutine bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext,derivs,grid, graveps)
     type(GRIDTYPE) :: grid
     integer :: nv
-    integer, parameter :: nmax=200,imax=11,nuse=7
-    real(double) :: h, htry, x, xsav, xest, errmax
+    integer, parameter :: nmax=10000,imax=11,nuse=7
+    real(double) :: h, htry, x, xsav, xest, errmax, graveps
     integer :: i, j
     real(double) :: eps, hdid,  hnext
     real(double), parameter :: one=1.d0,shrink=.95d0,grow=1.2d0
@@ -571,7 +590,7 @@ contains
     enddo
 1   continue
     do i=1,imax
-       call mmid(ysav,dysav,nv,xsav,h,nseq(i),yseq,derivs,grid)
+       call mmid(ysav,dysav,nv,xsav,h,nseq(i),yseq,derivs,grid, graveps)
        xest=(h/nseq(i))**2
        call rzextr(i,xest,yseq,y,yerr,nv,nuse)
        errmax=0.
@@ -600,12 +619,12 @@ contains
     goto 1
   end subroutine bsstep
 
-  subroutine mmid(y,dydx,nvar,xs,htot,nstep,yout,derivs,grid)
+  subroutine mmid(y,dydx,nvar,xs,htot,nstep,yout,derivs,grid, graveps)
     type(GRIDTYPE)::grid
-    real(double) :: xs, htot, h, h2, x, swap
+    real(double) :: xs, htot, h, h2, x, swap, graveps
     integer :: nvar
     integer :: nstep, i, n
-    integer, parameter :: nmax=200
+    integer, parameter :: nmax=10000
     real(double) :: y(nvar),dydx(nvar),yout(nvar),ym(nmax),yn(nmax)
     external derivs
     h=htot/nstep
@@ -614,7 +633,7 @@ contains
        yn(i)=y(i)+h*dydx(i)
     enddo
     x=xs+h
-    call derivs(x,yn,yout,grid)
+    call derivs(x,yn,yout,grid, graveps)
     h2=2.*h
     do n=2,nstep
        do i=1,nvar
@@ -623,17 +642,17 @@ contains
           yn(i)=swap
        enddo
        x=x+h
-       call derivs(x,yn,yout,grid)
+       call derivs(x,yn,yout,grid, graveps)
     enddo
     do i=1,nvar
        yout(i)=0.5*(ym(i)+yn(i)+h*yout(i))
     enddo
   end subroutine mmid
 
-  subroutine derivs(x, y, dydx, grid)
-    integer, parameter :: nmax = 200
+  subroutine derivs(x, y, dydx, grid, graveps)
+    integer, parameter :: nmax = 10000
     type(GRIDTYPE) :: grid
-    real(double) :: x, y(nmax), dydx(nmax), test
+    real(double) :: x, y(nmax), dydx(nmax), test, graveps
     integer :: i, ia
     type(SOURCETYPE), allocatable :: testsource(:)
 
@@ -656,7 +675,7 @@ contains
        testSource(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
     enddo
 
-    call calculateGasSourceInteraction(testsource, globalnSource, grid)
+    call calculateGasSourceInteraction(testsource, globalnSource, grid, graveps)
 
     do i = 1 , globalNSource*6-1,2
        dydx(i) = y(i+1) ! dx/dt = v_x etc
@@ -683,7 +702,7 @@ contains
   end subroutine derivs
 
   SUBROUTINE RZEXTR(IEST,XEST,YEST,YZ,DY,NV,NUSE)
-    integer, parameter :: IMAX=11,NMAX=200,NCOL=7
+    integer, parameter :: IMAX=11,NMAX=10000,NCOL=7
     integer :: iest, nuse, j, m1, k , nv
     real(double) :: xest, yy, v, c, b1,b , ddy
     real(double) ::  YEST(NV),YZ(NV),DY(NV)

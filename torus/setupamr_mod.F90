@@ -1029,7 +1029,7 @@ contains
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use input_variables, only : maxDepthAMR, photoionPhysics
+    use input_variables, only : maxDepthAMR, photoionPhysics, hydrodynamics
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
@@ -1089,13 +1089,16 @@ contains
                 child%temperature(j) = 10.d0
                 child%velocity(j) = VECTOR(0.d0, 0.d0, 0.d0)
                 !Thaw - will probably want to change this to use returnMu
+                
                 ethermal = (1.d0/(mHydrogen))*kerg*child%temperature(j)
-                child%pressure_i(j) = child%rho(j)*ethermal
-                child%energy(j) = ethermal + 0.5d0*(cspeed*modulus(child%velocity(j)))**2
-                child%rhoe(j) = child%rho(j) * child%energy(j)
-                child%gamma(j) = 1.0
-                child%iEquationOfState(j) = 1
-      
+
+                if (hydrodynamics) then
+                   child%pressure_i(j) = child%rho(j)*ethermal
+                   child%energy(j) = ethermal + 0.5d0*(cspeed*modulus(child%velocity(j)))**2
+                   child%rhoe(j) = child%rho(j) * child%energy(j)
+                   child%gamma(j) = 1.0
+                   child%iEquationOfState(j) = 1
+                endif
 
                 child%inFlow(j) = .true.
 

@@ -218,10 +218,13 @@ contains
     end function isSourceDead
 
     subroutine setSourceProperties(source, thisTable)
+      use input_variables, only : mStarburst, clusterRadius
       type(SOURCETYPE) :: source
       type(TRACKTABLE) :: thisTable
       integer :: i, j
       real(double) :: r, t, u, mass1, logL1, logT1
+      type(VECTOR) :: vVec
+      real(double) :: sigmaVel
       real(double) :: mass2, logL2, logT2
 
       call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
@@ -249,8 +252,16 @@ contains
       
       source%position = randomUnitVector()
       call randomNumberGenerator(getDouble=r)
-      r = sqrt(r)
-      source%position = source%position * (5.d0 * pctocm / 1.d10) * r
+      r = r**2
+      source%position = source%position * (clusterRadius / 1.d10) * r
+      sigmaVel = sqrt(bigG * (Mstarburst*mSol)/(2.d0*clusterRadius))
+      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
+      vVec = randomUnitVector()
+      r = gasdev()
+      source%velocity = r * sigmaVel * vVec
+
+      call buildSphereNBody(source%position, source%radius, source%surface, 20)
+
 
     end subroutine setSourceProperties
 

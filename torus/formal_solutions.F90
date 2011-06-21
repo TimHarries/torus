@@ -678,7 +678,7 @@ contains
    if (myRankIsZero) then
        ! Total Flux 
        ! scaling the flux at the observer's distance.
-       flux(j) = (F_core + F_acc + F_wind )*(R_star*1.0d10/dist_obs)**2  ! [erg/s cm^-2 Hz^-1]
+       flux(j) = (F_core + F_acc + F_wind ) / (r_Star**2*1.d20)!*(R_star*1.0d10/dist_obs)**2  ! [erg/s cm^-2 Hz^-1]
        flux_map(j,1:nray) = flux_map(j,1:nray)*(R_star*1.0d10/dist_obs)**2         ! [erg/s cm^-2 Hz^-1]
        ! Convet it some other units if you want below
 
@@ -686,7 +686,7 @@ contains
    call torus_mpi_barrier
 
 
-       write(*,*) j, "/", nlam, " of flux integration done,"
+   if (writeoutput) write(*,*) j, "/", nlam, " of flux integration done,"
 
        call torus_mpi_barrier
 

@@ -4902,15 +4902,15 @@ CONTAINS
 
              ! top level
 
-             thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
-             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
-             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3))
-             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
-             thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
-             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3))
-             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
-             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
-             thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3))
+             thisOctal%cornerVelocity(19) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerVelocity(20) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerVelocity(21) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3))
+             thisOctal%cornerVelocity(22) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(23) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerVelocity(24) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3))
+             thisOctal%cornerVelocity(25) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerVelocity(26) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerVelocity(27) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3))
 
           else
 

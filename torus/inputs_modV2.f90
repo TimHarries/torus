@@ -388,9 +388,18 @@ contains
        endif
 
 
+    case("starburst")
+       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
+            "Starburst mass (solar masses): ","(a,f5.1,a)", 1000.d0, ok, .true.)
+
+       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
+            "Cluster radius (pc): ","(a,f5.1,a)", 1.d0, ok, .true.)
+
+
        case("wrshell")
        call getReal("rcore", rCore, real(rSol/1.e10), cLine, fLine, nLines, &
             "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
 
        call getReal("rinner", rInner, rcore, cLine, fLine, nLines, &
             "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)

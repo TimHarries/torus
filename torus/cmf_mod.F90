@@ -322,13 +322,14 @@ contains
                 endif
 
                 betamn = 1.d0
+
                 
                 if (sobolevApprox) then
                    call getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, &
                         source(1), inu_times_betacmn, betamn, jnusob)
 !                   write(*,*) "jnu cmf ",jnu
 !                   write(*,*) "jnu sob ",jnusob
-!                   write(*,*) "betamn ",betamn
+!                   write(*,*) " "
                    Jnu = inu_times_betacmn
                    if (opticallyThickContinuum) then
                       call locate(freq, nfreq, thisAtom(iatom)%transFreq(itrans), ifreq)
@@ -564,10 +565,12 @@ contains
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
     integer :: i
-    real(double) :: distArray(200), tval
+    real(double), allocatable :: distArray(:)
+    real(double) :: tval
     integer :: nTau
     real(double) :: nLower, nUpper
-    real(double) :: dTau, etaline
+    real(double) :: dTauCont, etaline
+    real(double), allocatable :: dTau(:)
     real(double), allocatable :: tau(:)
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell, projVel
@@ -587,11 +590,12 @@ contains
     integer :: iElement
     integer :: j
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
+    real(double), allocatable :: tauStep(:), iStep(:), tauTmp(:)
     logical, save :: firstWarning = .true.
     logical, save :: firstTime = .true.
     real(double) :: nStar(5,40)
-    logical :: passThroughResonance, velocityIncreasing, ok
-    real(double) :: x1, x2, fac, deltaDist, lambda, kappaSca, kappaExt, kappaAbs
+    logical :: passThroughResonance, ok
+    real(double) :: deltaDist, lambda, kappaSca, kappaExt, kappaAbs
     real(double) :: dustOpac, dustEmiss
     Integer :: ilambda
     integer, allocatable,save :: iFreqRBB(:)
@@ -625,6 +629,11 @@ contains
     allocate(snuCont(1:nFreq))
 
     allocate(tau(1:nRBBTrans))
+    allocate(dtau(1:nRBBTrans))
+    allocate(tautmp(1:nRBBTrans))
+
+    allocate(tauStep(1:nRBBTrans))
+    allocate(iStep(1:nRBBTrans))
 
     position = randomPositionInCell(fromOctal, fromsubcell)
 
@@ -719,64 +728,35 @@ contains
        dv1 = abs(deltaV - (startVel .dot. direction))
        dv2 = abs(deltaV - (endVel .dot. direction))
 
-       distArray(1) = 0.d0
-       distArray(2) = tVal
-       nTau = 2
 
        passThroughResonance =.false.
 
 
        if (dv1*dv2 < 0.d0) passThroughResonance = .true.
 
-       if (modulus(endVel)==0.d0) passThroughResonance = .false.
 
        if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
-
-          if (dv1 <= dv2) then
-             velocityIncreasing = .true.
-          else
-             velocityIncreasing = .false.
-          endif
-
-          if ( (dv2 - dv1) /= 0.d0) then
-             if (velocityIncreasing) then
-                x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-             else
-                x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-             endif
-          else
-             x1 = 0.d0
-             x2 = tVal
-          endif
-
-          if (x1 > x2) then
-             fac = x1
-             x1 = x2
-             x2 = fac
-          endif
-          x1 = max(0.d0, x1)
-          x2 = min(x2, tVal)
-          nTau = 8
-          distArray(1) = 0.d0
-          do i = 1, nTau-1
-             distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
-          enddo
-          distArray(nTau) = tVal
+          ntau = 20
        endif
 
-!       if (.not.thisOctal%inflow(subcell)) then
-!          distArray(1) = 0.d0
-!          distArray(2) = tVal
-!          nTau = 2
-!          write(*,*) "not in flow"
-!       endif
        if (sobolevApprox) ntau = 2
+
+
+
+       if (.not.thisOctal%inflow(subcell)) ntau = 2
        
+       ok = .false.
+       do while (.not.ok)
+          ok = .true.
+          tauStep = 0.d0
+          tautmp = tau
+          iStep = 0.d0
+          allocate(distArray(1:nTau))
+          do i = 1, ntau
+             distArray(i) = tval * dble(i-1)/dble(nTau-1)
+          enddo
        do i = 2, nTau
 
-          distArray(i) = tval * dble(i-1)/dble(nTau-1)
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
@@ -832,16 +812,16 @@ contains
           if (opticallyThickContinuum) then
              deltaDist = (distArray(i)-distArray(i-1)) * 1.d10
              do iFreq = 1, nFreq
-                dTau = alphaNuCont(iFreq) *  deltaDist
+                dTauCont = alphaNuCont(iFreq) *  deltaDist
 
-                iCont(iFreq) = iCont(ifreq) + exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snuCont(iFreq)
+                iCont(iFreq) = iCont(ifreq) + exp(-tauCont(iFreq)) * (1.d0-exp(-dtauCont))*snuCont(iFreq)
                 if (icont(ifreq) < 0.d0) then
                    write(*,*) "icont negative ",icont(ifreq)
                    write(*,*) "tau ",tauCont(ifreq), " dtau ",dtau, " snu ",snuCont(ifreq)
-                   write(*,*) "expression ",exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snuCont(iFreq)
+                   write(*,*) "expression ",exp(-tauCont(iFreq)) * (1.d0-exp(-dtauCont))*snuCont(iFreq)
                    stop
                 endif
-                tauCont(iFreq) = tauCont(iFreq) + dtau
+                tauCont(iFreq) = tauCont(iFreq) + dtauCont
              enddo
           endif
           !          write(*,*) tauCont(48),iCont(48),snuCont(48)
@@ -891,7 +871,8 @@ contains
 
 
 
-             dTau = max(0.d0, alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10)
+             dTau(iRBB) = max(0.d0, alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10)
+
 
 
              etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
@@ -912,7 +893,7 @@ contains
              if (tau(irbb) < 0.d0) then
                 write(*,*) "Negative tau(irbb) problem ",tau(irbb), irbb
              endif
-             if (dtau < 0.d0) then
+             if (dtau(iRBB) < 0.d0) then
                 write(*,*) "negative dtau ",dtau
              endif
              if (i0(irbb) > 1.e20) then
@@ -922,20 +903,40 @@ contains
                 write(*,*) "snu bug ",snu, jnu, alphanu
              endif
 
-             i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
 
 
-             tau(iRBB) = tau(iRBB) + dtau
-             if ((tau(iRBB) > 1.d0).and.(iRBB==iflagRBB)) write(*,*) "i0 ",i0(iRBB),tau(iRBB)
+             istep(iRBB) = istep(iRBB) +  exp(-tautmp(irBB)) * (1.d0-exp(-dtau(iRBB)))*snu
+             tauStep(iRBB) = tauStep(iRBB) + dtau(iRBB)
+             tautmp(iRBB) = tautmp(iRBB) + dtau(iRBB)
 
           enddo
+
+          if (ANY(dtau > 1.d0)) then
+             ntau = ntau * 2
+             ok = .false.
+             exit
+          endif
+
        endif
     enddo
-       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
-       totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+
+    if (ok) then
+       do iRBB = 1, nRBBtrans
+          i0(iRBB) = i0(iRBB) + iStep(iRBB)
+          tau(iRBB) = tau(iRBB) + tauStep(iRBB)
+       enddo
+    endif
+
+
+    deallocate(distArray)
+
+ enddo
+
+       currentPosition = currentPosition + (tval+1.d-3*grid%halfSmallestSubcell) * direction
+       totdist = totdist + (tval+1.d-3*grid%halfSmallestSubcell)
 
        if (nBug > 10000) then
-          write(*,*) "bug",currentPosition,nTau,distArray(nTau),modulus(currentPosition)
+          write(*,*) "bug",currentPosition,nTau,tval,modulus(currentPosition)
        endif
 
        if (firstSubcell) then
@@ -978,7 +979,7 @@ contains
     endif
 
 !    write(*,*) "test tau ",tauCont(iTestFreq),icont(itestFreq)
-    deallocate(tau)
+    deallocate(tau, dtau, istep, tautmp)
   end subroutine getRay
 
   function phiProf(dv, b) result (phi)
@@ -1082,12 +1083,12 @@ contains
           distanceForTauOfOne = 0.1d0/(alphanu)
 
 
-          ns = 5 !max(5, ds(iray)/distanceForTauOfOne)
+          ns = max(5, nint(ds(iray)/max(ds(iray)/100.d0,distanceForTauOfOne)))
 
-          dds = ds(iray)/dble(ns)
 
           split = .true.
           do while(split)
+             dds = ds(iray)/dble(ns)
              split = .false.
              inu = 0.d0
              tau = 0.d0
@@ -1118,8 +1119,9 @@ contains
 
                 dtau = alphaNu * dds
 
-                if (dtau > 1.d0) then
+                if (dtau > 0.2d0) then
                    split = .true.
+                   exit
                 endif
 
                 jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) /thisAtom%transFreq(iTrans)
@@ -1579,13 +1581,13 @@ contains
 
           nIter = nIter + 1
           idump = idump + 1
-          write(ifilename,'(a,i2.2,a)') "ionization",01,".dat"
-          if (myRankisZero) then
-             open(69, file=ifilename, status="unknown", form="formatted")
-             write(69,'(a)') &
-                  "# log(r/R) , log N(HI), log N(HeI), log N(HeII), log N(HeIII)"
-             close(69)
-          endif
+!          write(ifilename,'(a,i2.2,a)') "ionization",01,".dat"
+!          if (myRankisZero) then
+!             open(69, file=ifilename, status="unknown", form="formatted")
+!             write(69,'(a)') &
+!                  "# log(r/R) , log N(HI), log N(HeI), log N(HeII), log N(HeIII)"
+!             close(69)
+!          endif
 
           if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
 
@@ -1939,35 +1941,35 @@ contains
                         endif
 
                       
-                        if (myRankisZero) then
-                           open(69, file=ifilename, status="old", position = "append", form="formatted")
-                           rCore = source(1)%radius
-                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
-
-                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
-
-                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
-                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
-                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
-                                log10(thisOctal%rho(subcell))
-                           close(69) 
-                           itmp = itmp + 1
+ !                       if (myRankisZero) then
+!                           open(69, file=ifilename, status="old", position = "append", form="formatted")
+!                           rCore = source(1)%radius
+!                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
+!
+!                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
+!
+!                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
+!                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
+!                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
+!                                log10(thisOctal%rho(subcell))
+!                           close(69) 
+!                           itmp = itmp + 1
 !                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
-!                           open(69, file=tfilename, status="unknown",form="formatted")
+!                           open6(9, file=tfilename, status="unknown",form="formatted")
 !                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
 !                           w = 0.5d0*(1.d0 - x1)
 !                           do i = 1, nFreq
 !                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1), &
 !                                   bnu(freq(i),dble(thisOctal%temperature(subcell)))
 !                           enddo
-!                           close(69)
+!                           close6(9)
 
-                        endif
+!                        endif
 
                      endif
                   endif
@@ -2515,7 +2517,8 @@ contains
     real(double) :: gUpper, gLower
     real(double) :: dv, deltaV
     integer :: i, icount
-    real(double) :: distArray(1000), tval
+    real(double) :: tval
+    real(double), allocatable :: distArray(:)
     integer :: nTau
     real(double) :: nLower, nUpper
     real(double) :: dTau, etaline, tau
@@ -2529,12 +2532,13 @@ contains
     integer :: iElement
     logical :: endLoopAtPhotosphere
     real(double) :: nstar(10,50), rhoCol
-    real(double) :: bfOpac, bfEmiss, x1, x2, fac
+    real(double) :: bfOpac, bfEmiss
     real(double) :: dustOpac, dustEmiss
     integer :: ilambda
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
+    real(double) :: tauStep, tauTmp, iStep, fac
     integer :: j, k
-    logical :: passThroughResonance, velocityIncreasing, ok
+    logical :: ok, closeToResonance, passThroughResonance
 
     i0 = tiny(i0)
     justPhotosphere = .false.
@@ -2640,7 +2644,8 @@ contains
 
 
 
-       do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
+       do while(inOctal(grid%octreeRoot, currentPosition).and. &
+            (.not.endloopAtPhotosphere).and.(tau < 20.d0))
           icount = icount + 1 
           call findSubcellLocal(currentPosition, thisOctal, subcell)
 
@@ -2664,6 +2669,7 @@ contains
              endLoopAtPhotosphere = .true.
           endif
 
+          ntau = 4
 
           if (.not.lineOff) then
              startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
@@ -2676,188 +2682,155 @@ contains
 
              dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
 
-             distArray(1) = 0.d0
-             distArray(2) = tVal
-             nTau = 2
 
              passThroughResonance =.false.
+             closeToResonance = .false.
 
+             if (dv1*dv2 <= 0.d0) passThroughResonance = .true.
 
-             if (dv1*dv2 < 0.d0) passThroughResonance = .true.
-
+             closeToResonance = (min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))
 !             if (modulus(endVel)==0.d0) passThroughResonance = .false.
 
-             if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
-
-                if (dv1 <= dv2) then
-                   velocityIncreasing = .true.
-                else
-                   velocityIncreasing = .false.
-                endif
-
-                if ( (dv2 - dv1) /= 0.d0) then
-                   if (velocityIncreasing) then
-                      x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                      x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                   else
-                      x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                      x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                   endif
-                else
-                   x1 = 0.d0
-                   x2 = tVal
-                endif
-
-                if (x1 > x2) then
-                   fac = x1
-                   x1 = x2
-                   x2 = fac
-                endif
-                x1 = max(0.d0, x1)
-                x2 = min(x2, tVal)
-                nTau = 20
-                distArray(1) = 0.d0
-                do i = 1, nTau-1
-                   distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
-                enddo
-                distArray(nTau) = tVal
+             if (passthroughresonance.or.closeToResonance) then
+                ntau = 20
              endif
-
-             if (.not.thisOctal%inflow(subcell)) then
-                distArray(1) = 0.d0
-                distArray(2) = tVal
-                nTau = 2
-             endif
-          else
-             distArray(1) = 0.d0
-             distArray(2) = tVal
-             nTau = 2
           endif
-
-
           bfOpac = 0.d0
           bfEmiss = 0.d0
 
-          do i = 2, nTau
+          if (.not.thisOctal%inflow(subcell)) ntau = 2
 
-             startOctal => thisOctal
-             thisPosition = currentPosition + distArray(i)*direction
+          ok = .false.
+          do while (.not.ok)
+             ok = .true.
+             tauStep = 0.d0
+             tautmp = tau
+             iStep = 0.d0
+             allocate(distArray(1:nTau))
+             do i = 1, ntau
+                distArray(i) = tval * dble(i-1)/dble(nTau-1)
+             enddo
+             do i = 2, nTau
 
-
-
-
-
-
-             if (.not.lineoff) then
-                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-                thisVel= thisVel - rayVel
-                dv = (thisVel .dot. direction) + deltaV
-                call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
-
-                iUpper = thisAtom(iAtom)%iUpper(iTrans)
-                iLower = thisAtom(iAtom)%iLower(iTrans)
-                nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
-                nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-                gLower = thisAtom(iatom)%g(iLower)
-                gUpper = thisAtom(iatom)%g(iUpper)
-
-                alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
-                alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
-                     phiProf2(dv, thisOctal, subcell, &
-                     thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
-
-                fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
-                jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
-
-             else
-                alphanu = 0.d0
-             endif
-
-
-             if (i == 2) then
-                do k = 1, nAtom
-                   do j = 1, thisAtom(k)%nLevels - 1
-                      nStar(k,j) = BoltzSahaGeneral(thisAtom(k), j, thisOctal%ne(subcell), &
-                           dble(thisOctal%temperature(subcell))) * &
-                           Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
-                   enddo
-                enddo
-                bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                     nstar, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
-                bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
-                     dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell))
-                dustOpac = 0.d0
-                dustEmiss = 0.d0
-                if (mie) then
-                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-                   kappaExt = kappaAbs + kappaSca
-                   dustOpac = kappaExt/1.d10
-                   dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
-                   dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
-                endif
-             endif
-
-
-             if (associated(thisOctal%fixedTemperature)) then
-                if (.not.thisOctal%fixedTemperature(subcell)) then
-                   jnu = 0.d0
-                   etaline = 0.d0
-                endif
-             endif
-
-             if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
-                bfOpac = 1.d30
-                bfEmiss = 0.d0
-                alphanu = 1.d30
-                etaLine = 0.d0
-                jnu = 0.d0
-                snu = 0.d0
-             endif
-
-             alphanu = alphanu + bfOpac + dustOpac
-
-             ! add continuous bf and ff emissivity of hydrogen
-
-             jnu = jnu !+ bfEmiss + dustEmiss
-
-             if (alphanu /= 0.d0) then
-                snu = jnu/alphanu                
-             else
-                snu = tiny(snu)
-             endif
-
-
-             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-
-             !          write(*,*) iCount,ntau,totdist, &
-             !               modulus(currentPosition)/(grid%rCore),tau,modulus(thisOctal%velocity(subcell))*cspeed/1.d5,i0,&
-             !               passthroughresonance, dv*cspeed/1.e5, phiProf(dv, thisOctal%microturb(subcell)), &
-             !               snu,dtau,tau
-
-!                       write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, &
-!                            dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
-!                          i0,tau, jnu,alphanu,snu, nlower,nupper
-
-             if (thisOctal%inflow(subcell)) then
-                if (dtau > 0.1d0) then
-                   fac = (1.d0-exp(-dtau))
+                startOctal => thisOctal
+                thisPosition = currentPosition + distArray(i)*direction
+                
+                if (.not.lineoff) then
+                   thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+                   thisVel= thisVel - rayVel
+                   dv = (thisVel .dot. direction) + deltaV
+                   call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
+                   
+                   iUpper = thisAtom(iAtom)%iUpper(iTrans)
+                   iLower = thisAtom(iAtom)%iLower(iTrans)
+                   nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+                   nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+                   gLower = thisAtom(iatom)%g(iLower)
+                   gUpper = thisAtom(iatom)%g(iUpper)
+                   
+                   alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
+                   alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
+                        phiProf2(dv, thisOctal, subcell, &
+                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
+                   
+                   fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
+                   jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
+                   
                 else
-                   fac = (dtau - dtau**2/2.d0)
+                   alphanu = 0.d0
                 endif
-
-
-
-!                i0 = i0 +  exp(-tau) * fac*snu
-
-                i0 = i0 + jnu * exp(-tau) *  (distArray(i)-distArray(i-1)) * 1.d10
-
-                tau = tau + dtau
+                
+                
+                if (i == 2) then
+                   do k = 1, nAtom
+                      do j = 1, thisAtom(k)%nLevels - 1
+                         nStar(k,j) = BoltzSahaGeneral(thisAtom(k), j, thisOctal%ne(subcell), &
+                              dble(thisOctal%temperature(subcell))) * &
+                              Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
+                      enddo
+                   enddo
+                   bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                        nstar, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
+                   bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
+                        dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell))
+                   dustOpac = 0.d0
+                   dustEmiss = 0.d0
+                   if (mie) then
+                      call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                      kappaExt = kappaAbs + kappaSca
+                      dustOpac = kappaExt/1.d10
+                      dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
+                      dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
+                   endif
+                endif
+                
+                
+                if (associated(thisOctal%fixedTemperature)) then
+                   if (.not.thisOctal%fixedTemperature(subcell)) then
+                      jnu = 0.d0
+                      etaline = 0.d0
+                   endif
+                endif
+                
+                if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
+                   bfOpac = 1.d30
+                   bfEmiss = 0.d0
+                   alphanu = 1.d30
+                   etaLine = 0.d0
+                   jnu = 0.d0
+                   snu = 0.d0
+                   deallocate(distArray)
+                   goto 666
+                endif
+                
+                alphanu = alphanu + bfOpac + dustOpac
+                
+                ! add continuous bf and ff emissivity of hydrogen
+                
+                jnu = jnu !+ bfEmiss + dustEmiss
+                
+                if (alphanu /= 0.d0) then
+                   snu = jnu/alphanu                
+                else
+                   snu = tiny(snu)
+                endif
+                
+                
+                dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+                
+                if ((dtau > 0.2d0).and.(tau < 20.d0)) then
+                   ntau = ntau * 2
+                   ok = .false.
+                   exit
+                endif
+                
+                
+                if (thisOctal%inflow(subcell)) then
+                   if (dtau > 0.1d0) then
+                      fac = (1.d0-exp(-dtau))
+                   else
+                      fac = (dtau - dtau**2/2.d0)
+                   endif
+                   
+                   
+                   
+                   istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1)) * 1.d10
+                   tauStep = tauStep + dtau
+                   tautmp = tautmp + dtau
+                endif
+             enddo
+             deallocate(distArray)
+             if (ok) then
+                i0 = i0 + iStep
+                tau = tau + tauStep
              endif
+
           enddo
-          rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
+
+          rhoCol = rhoCol + tval*thisOctal%rho(subcell)*1.d10
           oldPosition = currentPosition
-          currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
-          totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+          currentPosition = currentPosition + (tval+1.d-3*grid%halfSmallestSubcell) * direction
+          totdist = totdist + (tval+1.d-3*grid%halfSmallestSubcell)
 
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
@@ -2908,7 +2881,8 @@ contains
     real(double) :: alphanu, snu, jnu
     real(double) :: dv, deltaV
     integer :: i, icount
-    real(double) :: distArray(1000), tval
+    real(double) :: tval
+    real(double),allocatable :: distArray(:)
     integer :: nTau
     real(double) :: dTau, etaline, tau
     real(double) :: intensityIntegral
@@ -2920,11 +2894,13 @@ contains
     integer :: iElement
     logical :: endLoopAtPhotosphere
     real(double) ::  rhoCol
-    real(double) :: bfOpac, bfEmiss, x1, x2, fac
+    real(double) :: bfOpac, bfEmiss
     real(double) :: dustOpac, dustEmiss
     integer :: ilambda
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
-    logical :: passThroughResonance, velocityIncreasing, ok
+    
+    real(double) :: tauStep, tauTmp, iStep
+    logical :: passThroughResonance, ok, closeToResonance
 
     i0 = tiny(i0)
     justPhotosphere = .false.
@@ -3017,8 +2993,7 @@ contains
     !    write(*,*) lineoff,hitsource,endloopatphotosphere
 
 
-
-       do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
+       do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere).and.(tau < 20.d0))
           icount = icount + 1 
           call findSubcellLocal(currentPosition, thisOctal, subcell)
 
@@ -3033,6 +3008,8 @@ contains
           endif
 
 
+          nTau = 2
+
           if (.not.lineOff) then
              startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, &
                   linearInterp=.false.) 
@@ -3046,68 +3023,34 @@ contains
 
              dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
 
-             distArray(1) = 0.d0
-             distArray(2) = tVal
-             nTau = 2
-
              passThroughResonance =.false.
-
+             closeToResonance = .false.
 
              if (dv1*dv2 < 0.d0) passThroughResonance = .true.
 
              if (modulus(endVel)==0.d0) passThroughResonance = .false.
 
              if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 10.d0*thisOctal%microturb(subcell))) then
-
-                if (dv1 <= dv2) then
-                   velocityIncreasing = .true.
-                else
-                   velocityIncreasing = .false.
-                endif
-
-                if ( (dv2 - dv1) /= 0.d0) then
-                   if (velocityIncreasing) then
-                      x1 = tval*(-10.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                      x2 = tval*(+10.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                   else
-                      x1 = tval*(+10.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                      x2 = tval*(-10.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-                   endif
-                else
-                   x1 = 0.d0
-                   x2 = tVal
-                endif
-
-                if (x1 > x2) then
-                   fac = x1
-                   x1 = x2
-                   x2 = fac
-                endif
-                x1 = max(0.d0, x1)
-                x2 = min(x2, tVal)
-                nTau = 20
-                distArray(1) = 0.d0
-                do i = 1, nTau-1
-                   distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
-                enddo
-                distArray(nTau) = tVal
+                closeToResonance = .true.
              endif
 
-             if (.not.thisOctal%inflow(subcell)) then
-                distArray(1) = 0.d0
-                distArray(2) = tVal
-                nTau = 2
-             endif
-          else
-             distArray(1) = 0.d0
-             distArray(2) = tVal
-             nTau = 2
+             if (closeToResonance.or.passThroughResonance) nTau = 20
+
           endif
-
-
           bfOpac = 0.d0
           bfEmiss = 0.d0
 
+
+       ok = .false.
+       do while (.not.ok)
+          ok = .true.
+          tauStep = 0.d0
+          tautmp = tau
+          iStep = 0.d0
+          allocate(distArray(1:nTau))
+          do i = 1, ntau
+             distArray(i) = tval * dble(i-1)/dble(nTau-1)
+          enddo
           do i = 2, nTau
 
              startOctal => thisOctal
@@ -3164,6 +3107,8 @@ contains
                 etaLine = 0.d0
                 jnu = 0.d0
                 snu = 0.d0
+                deallocate(distArray)
+                goto 666
              endif
 
              alphanu = alphanu + bfOpac + dustOpac
@@ -3178,21 +3123,34 @@ contains
                 snu = tiny(snu)
              endif
 
-
              dTau = alphaNu *  (distArray(i)-distArray(i-1))
+
+             if ((dtau > 0.2d0).and.(tau < 20.d0).and.(alphanu < 1.d29)) then
+                ok = .false.
+                ntau = ntau * 2
+                exit
+             endif
 
 
              if (thisOctal%inflow(subcell)) then
-                i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+   
+                istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1))
+                tauStep = tauStep + dtau
+                tautmp = tautmp + dtau
+
              endif
-             tau = tau + dtau
-!             write(*,*) "i0 ",i0, " tau ", tau, " dtau ",dtau, dv*cspeed/1.e5
-             if (tau > 100.d0) exit
           enddo
-          rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
+             deallocate(distArray)
+             if (ok) then
+                i0 = i0 + iStep
+                tau = tau + tauStep
+             endif
+
+          enddo
+          rhoCol = rhoCol + tVal*thisOctal%rho(subcell)*1.d10
           oldPosition = currentPosition
-          currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
-          totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+          currentPosition = currentPosition + (tVal+1.d-3*grid%halfSmallestSubcell) * direction
+          totdist = totdist + (tVal+1.d-3*grid%halfSmallestSubcell)
 
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
@@ -3654,11 +3612,12 @@ contains
        !$OMP PARALLEL DEFAULT (NONE) &
        !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea) &
        !$OMP SHARED (cube, viewVec, grid ) &
-       !$OMP SHARED (deltaV, source, nSource) &
+       !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
+             write(*,*) myrankGlobal, " ix ",ix
           do iy = 1, cube%ny
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
                  nPoints,  nRay, xRay, yRay, area)
@@ -3693,7 +3652,6 @@ contains
 
 
 #ifdef MPI
-    write(*,*) "Process ",my_rank, " done. awaiting reduce"
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
@@ -3740,7 +3698,7 @@ contains
                   nRay, xRay, yRay, area)
     use utils_mod, only : voron2
     
-
+    logical :: ok
     real(double) :: xCen, yCen, dx, dy
     real(double) :: xPoints(:), yPoints(:)
     integer :: nPoints
@@ -3772,7 +3730,10 @@ contains
        allocate(xtmp(1:nray),ytmp(1:nRay))
        xtmp(1:nRay) = xRay(1:nray) - (xcen-dx/2.d0)
        ytmp(1:nray) = yRay(:nRay) - (yCen-dy/2.d0)
-       call voron2(nRay, xTmp, yTmp, dx, area(1:nRay))
+       call voron2(nRay, xTmp, yTmp, dx, area(1:nRay), ok)
+       if (.not.ok) then
+          area(1:nRay) = dx*dy/dble(nray)
+       endif
        deallocate(xTmp, yTmp)
     endif
   end subroutine findRaysInPixel

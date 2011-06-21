@@ -466,6 +466,10 @@ contains
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     "/))
+
+          write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
+          call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename, grid)
+
           
 !Track the evolution of the ionization front with time
        if(grid%geometry == "hii_test") then

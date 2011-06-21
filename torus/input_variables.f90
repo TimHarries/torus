@@ -14,7 +14,7 @@ module input_variables
 
 
   logical :: readGrid, writeGrid
-
+  real(double) :: mStarburst, clusterRadius
     logical :: molecularPhysics
     logical :: photoionPhysics
     logical :: atomicPhysics

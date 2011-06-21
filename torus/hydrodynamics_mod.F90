@@ -3335,7 +3335,7 @@ end subroutine sumFluxes
                "phi          "/))
 
           write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
-          call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
+          call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile, grid)
           if (myrank==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -7260,6 +7260,7 @@ end subroutine refineGridGeneric2
 
   real(double) function getPressure(thisOctal, subcell)
 #ifdef PHOTOION
+    use input_variables, only : photoionPhysics
     use ion_mod, only : nGlobalIon, globalIonArray, returnMu
 #endif
     type(OCTAL), pointer :: thisOctal
@@ -7293,7 +7294,11 @@ end subroutine refineGridGeneric2
 #ifdef PHOTOION
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
 
-          mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          if (photoionPhysics) then
+             mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          else
+             mu = 2.d0
+          endif
 
           getPressure =  thisOctal%rho(subcell)
           getPressure =  getpressure/((mu*mHydrogen))
