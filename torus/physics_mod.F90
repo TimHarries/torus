@@ -61,7 +61,7 @@ contains
 
     do iatom = 1, nAtom
        call readAtom(atomArray(iatom), atomFilename(iatom))
-!       call stripAtomLevels(atomArray(iAtom), 6)
+!       call stripAtomLevels(atomArray(iAtom), 5)
     end do
 
   end subroutine setupAtoms

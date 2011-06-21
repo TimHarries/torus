@@ -113,7 +113,7 @@ contains
           if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then ! if next atom is different element
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels 
              nCons(iAtom) = nMatrix
-             nMatrix = nMatrix + 1  
+!             nMatrix = nMatrix + 1  
              nOffset(iAtom+1) = nMatrix
           else
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels-1  ! continuum state of this atom is ground state of next
@@ -199,7 +199,7 @@ contains
 
              if ((thisAtom(iatom)%name == "HeII")) then 
                 if (l==2) rate03 = rate03 + Nstarratio*recombratekl*npops(iatom,k)
-                if (l==2) write(*,'(a,1p,e10.2)') "Rad ",Nstarratio*recombratekl*npops(iatom,k)
+!                if (l==2) write(*,'(a,1p,e10.2)') "Rad ",Nstarratio*recombratekl*npops(iatom,k)
              endif
 
 
@@ -232,9 +232,9 @@ contains
              if ((thisAtom(iatom)%name == "HeII")) then 
                 if (l==2) then
                    rate03 = rate03 + Nstarratio*collex*npops(iatom,k)
-                   write(*,'(a,1p,e10.2)') "N(HeIII) ",npops(iatom,k)
-                   write(*,'(a,1p,e10.2)') "Nstar ",nStarRatio*npops(iatom,k)
-                   write(*,'(a,1p,e10.2)') "Coll ",Nstarratio*collex*npops(iatom,k)
+!                   write(*,'(a,1p,e10.2)') "N(HeIII) ",npops(iatom,k)
+!                   write(*,'(a,1p,e10.2)') "Nstar ",nStarRatio*npops(iatom,k)
+!                   write(*,'(a,1p,e10.2)') "Coll ",Nstarratio*collex*npops(iatom,k)
                 endif
              endif
 
@@ -304,10 +304,10 @@ contains
 
                 if ((thisAtom(iatom)%name == "HeII")) then
                    if ((l==1).and.(k==2)) then
-                      write(*,*) "Bul ", Bul
-                      write(*,*) "Blu" , blu
-                      write(*,*) "a ",a
-                      write(*,*) "jnu ",jnu
+!                      write(*,*) "Bul ", Bul
+!                      write(*,*) "Blu" , blu
+!                      write(*,*) "a ",a
+!                      write(*,*) "jnu ",jnu
                    endif
                 endif
  
@@ -1518,7 +1518,7 @@ contains
        do iTrans = 1, thisAtom(iAtom)%nTrans
           if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
              if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-             write(*,*) "lyman cont detailed balance ",itrans
+!             write(*,*) "lyman cont detailed balance ",itrans
           endif
        enddo
     enddo
@@ -1581,13 +1581,13 @@ contains
 
           nIter = nIter + 1
           idump = idump + 1
-!          write(ifilename,'(a,i2.2,a)') "ionization",01,".dat"
-!          if (myRankisZero) then
-!             open(69, file=ifilename, status="unknown", form="formatted")
-!             write(69,'(a)') &
-!                  "# log(r/R) , log N(HI), log N(HeI), log N(HeII), log N(HeIII)"
-!             close(69)
-!          endif
+          write(ifilename,'(a,i2.2,a)') "ionization",01,".dat"
+          if (myRankisZero) then
+             open(69, file=ifilename, status="unknown", form="formatted")
+             write(69,'(a)') &
+                  "# log(r/R) , log N(HI), log N(HeI), log N(HeII), log N(HeIII)"
+             close(69)
+          endif
 
           if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
 
@@ -1941,35 +1941,35 @@ contains
                         endif
 
                       
- !                       if (myRankisZero) then
-!                           open(69, file=ifilename, status="old", position = "append", form="formatted")
-!                           rCore = source(1)%radius
-!                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
-!
-!                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
-!
-!                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
-!                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
-!                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
-!                                log10(thisOctal%rho(subcell))
-!                           close(69) 
-!                           itmp = itmp + 1
+                       if (myRankisZero) then
+                           open(69, file=ifilename, status="old", position = "append", form="formatted")
+                           rCore = source(1)%radius
+                           if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
+
+                           if (nAtom == 2) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot)
+
+                           if (nAtom == 3) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
+                               log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / ntot), &
+                                log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
+                                log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
+                                log10(thisOctal%rho(subcell))
+                           close(69) 
+                           itmp = itmp + 1
 !                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
-!                           open6(9, file=tfilename, status="unknown",form="formatted")
+!                           open(69, file=tfilename, status="unknown",form="formatted")
 !                           x1 = sqrt(max(0.d0,(1.d0 - source(1)%radius**2 / modulus(subcellCentre(thisOctal,subcell))**2)))
 !                           w = 0.5d0*(1.d0 - x1)
 !                           do i = 1, nFreq
 !                              write(69,*) freq(i),thisOctal%jnucont(subcell,i), w*i_nu(source(1), freq(i), 1), &
 !                                   bnu(freq(i),dble(thisOctal%temperature(subcell)))
 !                           enddo
-!                           close6(9)
+!                           close(69)
 
-!                        endif
+                        endif
 
                      endif
                   endif
@@ -4345,8 +4345,8 @@ contains
          ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0) + inu_times_betacmn
 
 !    if ((thisAtom(iatom)%name == "HeII").and.(ilower==1).and.(iupper==2)) write(*,*) "tausob ",tauav
-    if ((thisAtom(iatom)%name == "HeII").and.(ilower==1).and.(iupper==2)) write(*,*) "jnu sob (line, cont)", &
-         ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0),betacmn * inu
+!    if ((thisAtom(iatom)%name == "HeII").and.(ilower==1).and.(iupper==2)) write(*,*) "jnu sob (line, cont)", &
+!         ((2.d0*hcgs*transitionFreq**3)/cSpeed**2)*((gupper*nLower)/(glower*nUpper) - 1.d0)**(-1.d0),betacmn * inu
 
   end subroutine getSobolevJnuLine
 
