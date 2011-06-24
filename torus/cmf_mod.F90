@@ -1393,7 +1393,7 @@ contains
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
-    integer       ::   n_rmdr, m
+    integer       ::   m
     integer       ::   ierr           ! error flag
     integer       ::   nVoxels
     integer       :: nOCtal
