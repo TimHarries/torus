@@ -507,8 +507,8 @@ module source_mod
        i_nu = tiny(i_nu)
 !       write(*,*) nu,source%surface%nuArray(source%surface%nNuHotFlux)
     else
-       call locate(source%surface%nuArray, source%surface%nNuHotFlux, real(nu), i)
-       fnu = logint(real(nu), source%surface%nuArray(i), source%surface%nuArray(i+1), &
+       call locate(source%surface%nuArray, source%surface%nNuHotFlux, nu, i)
+       fnu = logint(nu, source%surface%nuArray(i), source%surface%nuArray(i+1), &
             source%surface%hnuArray(i), source%surface%hnuArray(i+1))
        i_nu = fnu / pi
     endif

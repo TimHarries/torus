@@ -15,6 +15,7 @@ module input_variables
 
   logical :: readGrid, writeGrid
   real(double) :: mStarburst, clusterRadius
+  real(double) :: lXOverLbol
     logical :: molecularPhysics
     logical :: photoionPhysics
     logical :: atomicPhysics
@@ -41,6 +42,7 @@ module input_variables
 
  ! globally applied minimum temperature
   real    :: TMinGlobal     
+  real(double) :: maxCellMass
 
   real(double) :: xAbundance, yAbundance
   ! variables for the grid

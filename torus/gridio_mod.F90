@@ -172,8 +172,13 @@ contains
 #endif
 
 
+#ifdef MPI
+    call torus_mpi_barrier
+#endif
 
 666 continue
+
+
   end subroutine writeAMRgrid
 
   subroutine writeAMRgridSingle(filename,fileFormatted,grid)

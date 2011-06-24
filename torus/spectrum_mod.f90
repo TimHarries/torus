@@ -246,6 +246,41 @@ module spectrum_mod
       call probSpectrum(spectrum)
     end subroutine addToSpectrumBB
 
+    subroutine addXray(spectrum, frac)
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: frac, totalFlux, xRayFlux, xRayFluxPerAngs
+      real(double) :: lamStart, lamEnd, bolFlux, lambda
+      integer :: i1, i2, i
+
+      totalflux = integrateSpectrumOverBand(spectrum, 0.d0, 1.d30)
+
+      xrayFlux = (frac / (1.d0 - frac)) * totalflux
+      lamStart = (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8
+      lamEnd = (cSpeed / (0.09d0 * 1000.d0 * evtoerg/hcgs))*1.d8
+      
+      do i = 10, 1, -1
+         lambda = 10.d0**(log10(lamStart) + (log10(lamend)-log10(lamstart))*dble(i-1)/9.d0)
+         call insertWavelength(spectrum, lambda)
+      enddo
+
+      lamStart = (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8
+      lamEnd = (cSpeed / (0.1d0 * 1000.d0  * evtoerg/hcgs))*1.d8
+      
+      xRayFluxPerAngs = xRayFlux / (lamEnd - lamStart)
+
+
+      call locate(spectrum%lambda, spectrum%nLambda, lamStart, i1)
+      call locate(spectrum%lambda, spectrum%nLambda, lamEnd, i2)
+      do i = i1, i2
+         spectrum%flux(i) = spectrum%flux(i) + xRAyFluxPerAngs
+      enddo
+      bolFlux =  integrateSpectrumOverBand(spectrum, 0.d0, 1.d30)
+      if (writeoutput) write(*,*) "X-ray flux added LX/LBol",xRayFlux/bolFlux
+      
+    end subroutine addXray
+
+      
+
     subroutine readSpectrum(spectrum, filename, ok)
       type(SPECTRUMTYPE) :: spectrum
       logical :: ok
@@ -297,6 +332,82 @@ module spectrum_mod
 999   continue
 
     end subroutine readSpectrum
+
+    subroutine insertWavelength(spectrum, lambda)
+      type(SPECTRUMTYPE) :: spectrum, tmpSpectrum
+      logical :: ok
+      integer :: i, newnLambda
+      real(double) :: lambda, flux
+
+      ok = .true.
+      do i = 1, spectrum%nlambda
+         if (lambda == spectrum%lambda(i)) ok = .false.
+      enddo
+      if (.not. ok) goto 666
+
+      if (lambda < spectrum%lambda(1)) then 
+         flux = 1.d-30
+      else if (lambda > spectrum%lambda(spectrum%nLambda)) then
+         flux = 1.d-30
+      else
+         flux = loginterp_dble(spectrum%flux, spectrum%nlambda, spectrum%lambda, lambda)
+      endif
+      
+      newnLambda = spectrum%nlambda + 1
+      
+      allocate(tmpspectrum%flux(1:newnLambda))
+      allocate(tmpspectrum%lambda(1:newnLambda))
+      allocate(tmpspectrum%dlambda(1:newnLambda))
+      allocate(tmpspectrum%prob(1:newnLambda))
+      allocate(tmpspectrum%ppw(1:newnLambda))
+      tmpSpectrum%nLambda = newNLambda
+
+      if (lambda < spectrum%lambda(1)) then 
+         tmpSpectrum%lambda(1) = lambda
+         tmpSpectrum%flux(1) = flux 
+         tmpSpectrum%lambda(2:newnLambda) = spectrum%lambda(1:spectrum%nLambda)
+         tmpSpectrum%flux(2:newnLambda) = spectrum%flux(1:spectrum%nLambda)
+
+     else if (lambda > spectrum%lambda(spectrum%nLambda)) then
+
+         tmpSpectrum%lambda(newnLambda) = lambda
+         tmpSpectrum%flux(newnLambda) = flux 
+         tmpSpectrum%lambda(1:newnLambda-1) = spectrum%lambda(1:spectrum%nLambda)
+         tmpSpectrum%flux(1:newnLambda-1) = spectrum%flux(1:spectrum%nLambda)
+
+
+      else
+
+       call locate(spectrum%lambda, spectrum%nlambda, lambda, i)
+
+         tmpSpectrum%lambda(1:i) = spectrum%lambda(1:i)
+         tmpSpectrum%flux(1:i) = spectrum%flux(1:i)
+
+         tmpSpectrum%lambda(i+1) = lambda
+         tmpSpectrum%flux(i+2) = flux 
+
+         tmpSpectrum%lambda(i+2:newnLambda) = spectrum%lambda(i+1:spectrum%nLambda)
+         tmpSpectrum%flux(i+2:newnLambda) = spectrum%flux(i+1:spectrum%nLambda)
+       
+      endif
+
+
+      call freeSpectrum(spectrum)
+      call copySpectrum(Spectrum, tmpspectrum)
+      do i = 2, spectrum%nLambda-1
+         spectrum%dlambda(i) = 0.5*((spectrum%lambda(i+1)+spectrum%lambda(i)) - &
+              (spectrum%lambda(i)+spectrum%lambda(i-1)))
+      enddo
+      spectrum%dlambda(1) = spectrum%lambda(2)-spectrum%lambda(1)
+      spectrum%dlambda(spectrum%nLambda) = spectrum%lambda(spectrum%nlambda) - &
+           spectrum%lambda(spectrum%nLambda-1)
+      
+
+      
+      666 continue
+     end subroutine insertWavelength
+
+
 
     subroutine copySpectrum(a, b)
       type(SPECTRUMTYPE) :: a, b

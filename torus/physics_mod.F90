@@ -595,14 +595,14 @@ contains
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
-     use input_variables, only : inputNsource, mstarburst
+     use input_variables, only : inputNsource, mstarburst, lxoverlbol
      integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
 #ifdef MPI
    include 'mpif.h'  
 #endif
      type(GRIDTYPE) :: grid
-     real(double) :: coreContinuumFlux, lAccretion
+     real(double) :: coreContinuumFlux, lAccretion, xRayFlux
      real :: fAccretion
 
 
@@ -634,6 +634,14 @@ contains
 
     if (grid%geometry(1:6) == "ttauri") then
        coreContinuumFlux = 0.d0
+       call addXray(globalSourceArray(1)%spectrum, lxoverlbol)
+       xRayFlux = integrateSpectrumOverBand(globalSourceArray(1)%spectrum, &
+            (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8, &
+            (cSpeed / (0.1d0 * 1000.d0 * evtoerg/hcgs))*1.d8)
+
+       if (writeoutput) write(*,*) "EUV/X-ray flux (erg/s)", &
+            xRayFlux*fourPi*globalSourceArray(1)%radius**2*1.d20
+
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, 1000, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)

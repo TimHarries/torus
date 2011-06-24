@@ -1,4 +1,4 @@
-! test
+!
 module inputs_mod
 
   use vector_mod
@@ -450,6 +450,12 @@ contains
        call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
             "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
 
+       call getDouble("lxoverlbol", lxOverLBol, 1.d0, cLine, fLine, nLines, &
+            "X-ray luminosity  (Bolometric luminosities): ","(a,f7.1,1x,a)", 0.d0, ok, .false.)
+
+       call getDouble("maxcellmass", maxCellMass, 1.d0, cLine, fLine, nLines, &
+            "Maximum cell mass after splitting (g): ","(a,e12.5,1x,a)", 1.d30, ok, .false.)
+
        call getLogical("ttauridisc", ttauriDisc, cLine, fLine, nLines, &
             "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -559,7 +565,7 @@ contains
                "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
           DW_rMin = DW_rmin * ttauriRouter/1.d10
           DW_rMax = DW_rmax * DW_rMin
-          DW_theta = 60.d0 * degtoRad
+          DW_theta = DW_theta * degtoRad
        endif
 
 
@@ -1813,7 +1819,7 @@ contains
     call getInteger("nv", nv, cLine, fLine, nLines, &
          "Number of velocity bins: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-    call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
+    call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nphase", nPhase, cLine, fLine, nLines, &

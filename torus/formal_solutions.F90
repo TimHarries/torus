@@ -352,7 +352,7 @@ contains
 
     ! continuum frequency (take the first element of the lamda array)
     freqc = cSpeed_dbl/(lambda(1)*1.d-8)  ! Hz
-    call locate(surface%nuArray,SIZE(surface%nuArray),REAL(freqc), k)
+    call locate(surface%nuArray,SIZE(surface%nuArray), freqc, k)
 
 !     ! estimating the temperature of the hot ring
 !     fillfactor = SUM(surface%element%area,MASK=surface%element%hot) / &
@@ -500,7 +500,7 @@ contains
           if (isHot(surface,ielement)) then
              tAccretion = surface%element(ielement)%temperature
              !================CHECK UNITS HERE!! ===========================
-             IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed)/surface%nuArray(k)) ! [B_nu]
+             IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/surface%nuArray(k))) ! [B_nu]
 
              I0  = IC_hot + IC_normal
              !                     [erg cm^-2 s^-1 Hz^-1 sr^-1] input intensity

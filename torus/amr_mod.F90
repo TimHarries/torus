@@ -3224,7 +3224,7 @@ CONTAINS
     use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          ttauriRinner, amr2d
     use input_variables, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
-    use input_variables, only : dorefine, dounrefine
+    use input_variables, only : dorefine, dounrefine, maxcellmass
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -3475,6 +3475,10 @@ CONTAINS
      cellCentre = subcellCentre(thisOctal,subcell)
      cellSize = thisOctal%subcellSize
      r0 = modulus(cellCentre)
+
+     if (inflowMahdavi(cellcentre*1.d10).and.&
+          cellVolume(thisOctal,subcell)*1.d30*thisOctal%rho(subcell) > maxCellMass) &
+          split=.true.
 
 !     if (thisOctal%threed) then
 !        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
@@ -12913,7 +12917,7 @@ end function readparameterfrom2dmap
           if (Thotspot > 0.) t = thotspot
           
           surface%element(i)%hotFlux(:) = &
-               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed)/surface%nuArray(:))
+               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:)))
           surface%element(i)%temperature = T
           accretingArea = accretingArea + area
        end if

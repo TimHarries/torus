@@ -815,6 +815,7 @@ contains
           else
              n0overn1 = 1.d10
              n1overn2 = 1.d10
+             c = 1.d-20
           endif
 
           select case(thisAtom%charge)
@@ -881,6 +882,7 @@ contains
           else
              n0overn1 = 1.d10
              n1overn2 = 1.d10
+             c = 1.d-20
           endif
 
           select case(thisAtom%charge)
@@ -1253,6 +1255,18 @@ contains
     integer :: nEven
     integer :: iTrans
 
+    nFreq = 0
+
+    nEven = 10
+
+    nuStart = 25.d0 * evtoerg/hcgs
+    nuEnd = 10.d0 * 1000.d0 * evtoerg/hcgs
+
+    do i = 1, nEven
+       nFreq = nFreq + 1
+       freq(nFreq) = log10(nuStart) + (dble(i-1)/dble(nEven-1))*(log10(nuEnd)-log10(nuStart))
+    enddo
+
     nuStart = cSpeed / (8.d5 * 1.d-8)
     nuEnd = cSpeed / (5.d0 * 1.d-8)
 
@@ -1260,10 +1274,11 @@ contains
 
 
     do i = 1, nEven
-       freq(i) = log10(nuStart) + (dble(i-1)/dble(nEven-1))*(log10(nuEnd)-log10(nuStart))
+       nFreq = nFreq + 1
+       freq(nFreq) = log10(nuStart) + (dble(i-1)/dble(nEven-1))*(log10(nuEnd)-log10(nuStart))
     enddo
-    freq(1:nEven) = 10.d0**freq(1:nEven)
-    nfreq = nEven
+
+    freq(1:nFreq) = 10.d0**freq(1:nFreq)
 
 
 ! bound-free edges

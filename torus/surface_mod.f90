@@ -33,7 +33,7 @@ module surface_mod
      type(VECTOR) :: norm
      real :: area ! 1.e20 cm^2
      type(VECTOR) :: position
-     real, dimension(:), pointer :: hotFlux => null()
+     real(double), dimension(:), pointer :: hotFlux => null()
      real :: temperature
      real :: dTheta
      real :: dphi
@@ -50,8 +50,8 @@ module surface_mod
      type(ELEMENTTYPE),pointer :: element(:) => null()
      type(VECTOR) :: centre ! 1.e10 cm
      integer :: nNuHotFlux
-     real, dimension(:), pointer :: nuArray  => null()
-     real, dimension(:), pointer :: hnuArray => null()
+     real(double), dimension(:), pointer :: nuArray  => null()
+     real(double), dimension(:), pointer :: hnuArray => null()
      real(double), dimension(:), pointer :: totalPhotosphere => null()
      real(double), dimension(:), pointer :: totalAccretion => null()
   end type SURFACETYPE
@@ -418,7 +418,7 @@ contains
 !        Taccretion = 7500.0
 !! FOR DEBUG==================================================
         surface%element(iElement)%hotFlux(:) = &
-           pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed)/surface%nuArray(:)) !* &
+           pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed/surface%nuArray(:))) !* &
 !                  ((1.e20*surface%element(iElement)%area)/(fourPi*TTauriRstar**2))
         surface%element(iElement)%temperature = Taccretion
       else 
@@ -609,7 +609,7 @@ contains
           allocate(surface%element(iElement)%hotFlux(surface%nNuHotFlux))
           
           surface%element(iElement)%hotFlux(:) = &
-               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed)/surface%nuArray(:)) !* &
+               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:))) !* &
           !                  ((1.e20*surface%element(iElement)%area)/(fourPi*TTauriRstar**2))
          surface%element(iElement)%temperature = T
          Tmin = MIN(Tmin, T)
@@ -682,7 +682,7 @@ contains
     fAccretion = 0.0
     
     ! find the line frequency in the tabulated fluxes
-    call locate(surface%nuArray,SIZE(surface%nuArray),lineFreq,lineIndex)
+    call locate(surface%nuArray,SIZE(surface%nuArray),dble(lineFreq),lineIndex)
     
     do i = 1, SIZE(surface%element)
       if (surface%element(i)%hot) then
@@ -690,7 +690,7 @@ contains
         !                       surface%nuArray(lineIndex+1),&
         !                       surface%element(i)%hotFlux(lineIndex),&
         !                       surface%element(i)%hotFlux(lineIndex+1))
-        accretionFlux = logint(lineFreq,surface%nuArray(lineIndex),&
+        accretionFlux = logint_dble(dble(lineFreq),surface%nuArray(lineIndex),&
                                surface%nuArray(lineIndex+1),&
                                surface%element(i)%hotFlux(lineIndex),&
                                surface%element(i)%hotFlux(lineIndex+1))
@@ -885,7 +885,7 @@ contains
             !     magFieldHotspots(iSpot)%speed / mSol / secsToYears
               
               surface%element(iElement)%hotFlux(:) = &
-                pi*blackbody(surface%element(iElement)%temperature, 1.e8*real(cSpeed)/surface%nuArray(:))
+                pi*blackbody(surface%element(iElement)%temperature, 1.e8*real(cSpeed/surface%nuArray(:)))
             ELSE
               ! new spot is cooler than last one. do nothing.
             END IF
@@ -903,7 +903,7 @@ contains
                  magFieldHotspots(iSpot)%speed / mSol / secsToYears
 
             surface%element(iElement)%hotFlux(:) = &
-              pi*blackbody(magFieldHotspots(iSpot)%temperature, 1.e8*real(cSpeed)/surface%nuArray(:))
+              pi*blackbody(magFieldHotspots(iSpot)%temperature, 1.e8*real(cSpeed/surface%nuArray(:)))
           END IF
         ELSE
           ! not near hot spot

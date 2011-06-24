@@ -3846,7 +3846,7 @@ END SUBROUTINE GAUSSJ
 
 
   subroutine  convertToFnu(nuarray, fArray, n)
-    real :: nuArray(:), fArray(:), nu
+    real(double) :: nuArray(:), fArray(:), nu
     real, allocatable :: nuTemp(:), fTemp(:)
     integer :: i, n
 

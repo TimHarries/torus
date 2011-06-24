@@ -675,7 +675,7 @@ contains
     ! 4.3 corresponds to the width where the peak of the line profile has dropped to 1% of its peak
     ! microturulence is assumed gaussian - b is FULL WIDTH
 
-    weightFreq = phiProf(deltaV, thisOctal%microturb(subcell))
+    weightFreq = phiProfTurb(dv, thisOctal%microturb(subcell))
 
     deltaV = deltaV +  (rayVel .dot. direction)
 
@@ -840,11 +840,13 @@ contains
              call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
 
-             alphanu = hCgsOverFourPi * phiProf(dv, thisOctal%microturb(subcell))   /thisAtom(iAtom)%transFreq(iTrans)
+             alphanu = hCgsOverFourPi * phiProf(dv, thisOctal, subcell, &
+                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iAtom)%transFreq(iTrans)
 
 
              if (firstSubcell) then
-                phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
+                phiAv = phiAv + phiProf(dv, thisOctal, subcell, &
+                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom)) * &
                      (distArray(i)-distArray(i-1)) * 1.d10
                 phiNorm = phiNorm + (distArray(i)-distArray(i-1)) * 1.d10
              endif
@@ -877,7 +879,8 @@ contains
 
              etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
              etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) /thisAtom(iAtom)%transFreq(iTrans)
+             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal, subcell, &
+                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iAtom)%transFreq(iTrans)
 
 
              if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreqRBB(iRBB)) 
@@ -982,7 +985,22 @@ contains
     deallocate(tau, dtau, istep, tautmp)
   end subroutine getRay
 
-  function phiProf(dv, b) result (phi)
+
+  real(double) function phiProf(dv, thisOctal, subcell, nu, thisAtom)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: dv, nu
+    type(MODELATOM) :: thisAtom
+    
+    if (thisAtom%name=="HI") then
+       phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
+    else
+       phiProf = phiProfTurb(dv, thisOctal%microturb(subcell))
+    endif
+  end function phiProf
+
+
+  function phiProfTurb(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
 
@@ -990,9 +1008,9 @@ contains
     fac = (dv/b)**2
     phi = phi * exp(-fac)
 
-  end function phiProf
+  end function phiProfTurb
 
-  real(double) function phiProf2(dv, thisOctal, subcell, nu, thisAtom)
+  real(double) function  phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     use utils_mod, only : bigGamma, voigtn
     type(MODELATOM) :: thisAtom
     real(double) :: dv
@@ -1007,8 +1025,8 @@ contains
     N_HI = thisoctal%atomlevel(subcell, 1,thisAtom%nLevels)
     a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
     Hay = voigtn(a,dv*cspeed/v_th)
-    phiProf2 = nu * Hay / (sqrtPi*DopplerWidth)
-  end function phiProf2
+    phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
+  end function phiProfStark
 
 
 
@@ -1079,7 +1097,8 @@ contains
 
           alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
           alphanu = alphanu * (nLower * Blu - nUpper * Bul) * &
-               phiProf(dv, thisOctal%microturb(subcell)) /thisAtom%transFreq(iTrans)
+               phiProf(dv, thisOctal, subcell, &
+                        thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
           distanceForTauOfOne = 0.1d0/(alphanu)
 
 
@@ -1106,7 +1125,8 @@ contains
 
                 alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
                 alphanu = alphanu * (nLower * Blu - nUpper * Bul) * &
-                     phiProf(dv, thisOctal%microturb(subcell)) /thisAtom%transFreq(iTrans)
+                     phiProf(dv, thisOctal, subcell, &
+                        thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
 !                if (debugOutput) &
 !                     write(*,*) i, dv*cspeed/1.e5,tau,inu
                 if (alphanu < 0.d0) then
@@ -1124,7 +1144,8 @@ contains
                    exit
                 endif
 
-                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) /thisAtom%transFreq(iTrans)
+                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal, subcell, &
+                        thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
 
 
                 if (alphanu /= 0.d0) then
@@ -1377,6 +1398,7 @@ contains
     integer       ::   nVoxels
     integer       :: nOCtal
     integer       ::   isubcell
+    integer :: nToDo, j, n
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
@@ -1599,19 +1621,57 @@ contains
 
 #ifdef MPI
     
+          nToDo = 0 
+          do i = 1, size(octalArray)
+             thisOctal => octalarray(i)%content
+             do subcell = 1, thisOctal%maxChildren
+                if (OctalArray(i)%inUse(subcell).and.thisOctal%inFlow(subcell)) then
+                   nToDo = nToDo + 1
+                   exit
+                endif
+             enddo
+          enddo
+
+          m = nToDo/np
+
+          ioctal_beg = 1
+          ioctal_end = 0
+          do j = 0, myRankGlobal
+             n = 0
+             do i = 1, size(octalArray)
+                thisOctal => octalarray(i)%content
+                do subcell = 1, thisOctal%maxChildren
+                   if (octalArray(i)%inUse(subcell).and.thisOctal%inFlow(subcell)) then
+                      n = n + 1
+                      exit
+                   endif
+                enddo
+                if (n == (j+1)*m) then
+                   iOctal_end = i
+                   exit
+                endif
+             enddo
+             if (j < myRankGlobal) then
+                iOctal_beg = iOctal_end + 1
+             endif
+          enddo
+          if (myrankGlobal == (nThreadsGlobal-1)) iOctal_end = size(octalArray)
+
+          write(*,*) "myrank ",myrankglobal, " doing ",iOctal_beg, iOctal_end
+
 
             ! Set the range of index for octal loop used later.     
-            np = nThreadsGlobal
-            n_rmdr = MOD(SIZE(octalArray),np)
-            m = SIZE(octalArray)/np
+!            np = nThreadsGlobal
+!            n_rmdr = MOD(SIZE(octalArray),np)
+!            m = SIZE(octalArray)/np
             
-            if (myRankGlobal .lt. n_rmdr ) then
-               ioctal_beg = (m+1)*myRankGlobal + 1
-               ioctal_end = ioctal_beg + m
-            else
-               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
-               ioctal_end = ioctal_beg + m - 1
-            end if
+!            if (myRankGlobal .lt. n_rmdr ) then
+!               ioctal_beg = (m+1)*myRankGlobal + 1
+!               ioctal_end = ioctal_beg + m
+!            else
+!               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+!               ioctal_end = ioctal_beg + m - 1
+!            end if
             
 #endif
             if (fixedRays) then
@@ -2730,7 +2790,7 @@ contains
                    
                    alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
                    alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
-                        phiProf2(dv, thisOctal, subcell, &
+                        phiProf(dv, thisOctal, subcell, &
                         thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
                    
                    fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
@@ -2854,12 +2914,14 @@ contains
   end function intensityAlongRay
 
 
-  function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, &
+  function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
       forceFreq, occultingDisc) result (i0)
     use input_variables, only : lineOff,  mie, lamLine, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
+    type(MODELATOM) :: thisAtom
+    integer :: itrans
     logical ::     justPhotosphere
     type(VECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
@@ -3064,7 +3126,8 @@ contains
                      linearInterp=.false.) 
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
-                alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal%microturb(subcell))/transitionFreq
+                alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal, subcell, &
+                        thisAtom%transfreq(itrans), thisAtom)/transitionFreq
              else
                 alphanu = 0.d0
              endif
@@ -3087,7 +3150,8 @@ contains
 
              if (.not.lineoff) then
                 etaLine = thisOctal%etaLine(subcell)
-                jnu = etaLine * phiProf(dv, thisOctal%microturb(subcell))/transitionFreq
+                jnu = etaLine * phiProf(dv, thisOctal, subcell, &
+                        thisAtom%transfreq(itrans), thisAtom)/transitionFreq
              else
                 jnu = 0.d0
                 etaline = 0.d0
@@ -3156,8 +3220,6 @@ contains
              if (occultingDisc) then
                 if  (oldPosition%z*currentPosition%z < 0.d0) then
                    if (sqrt(currentPosition%x**2 + currentPosition%y**2) > TTauriRinner/1.d10) goto 666
-                   write(*,*) "hit disc"
-                   goto 666
                 endif
              endif
           endif
@@ -3282,7 +3344,7 @@ contains
          write(*,*) "Calculating spectrum for: ",lamLine
 
     if (doCube) then
-       call createDataCube(cube, grid, viewVec, nSource, source)
+       call createDataCube(cube, grid, viewVec, nSource, source, thisAtom(iAtom), iTrans)
        
 #ifdef MPI
        write(*,*) "Process ",my_rank, " create data cube done"
@@ -3487,7 +3549,7 @@ contains
   end subroutine createRayGrid
 
 
-  subroutine createDataCube(cube, grid, viewVec,nSource, source)
+  subroutine createDataCube(cube, grid, viewVec,nSource, source, thisAtom, itrans)
     use mpi_global_mod
     use input_variables, only : npixels, nv, imageSide, maxVel, &
          positionAngle
@@ -3500,6 +3562,8 @@ contains
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
     type(VECTOR) :: viewvec, rayPos, xProj, yProj, northVec
+    type(MODELATOM) :: thisAtom
+    integer :: itrans
     real(double) :: deltaV
     integer :: ix, iy, iv
     real(double) :: vstart,vend
@@ -3613,7 +3677,7 @@ contains
        !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea) &
        !$OMP SHARED (cube, viewVec, grid ) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
-       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints)
+       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints, thisAtom, itrans)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
@@ -3633,7 +3697,7 @@ contains
                 
                 cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
                      + intensityAlongRayGeneric(rayPos, viewVec, grid,  &
-                     -deltaV, source, nSource) * area(iRay)
+                     -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay)
                 totArea = totArea + Area(iray)
              enddo
 !             write(*,*) "Pixel done with ",nRay, " rays. check on area ",totArea/(dx**2)
