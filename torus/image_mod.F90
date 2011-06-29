@@ -556,7 +556,7 @@ module image_mod
                    open (123, file="image_flux.dat", status="old")
                       print *, "More than one pixel with non-zero flux in point source test."
                       print *, "Halting test..."
-                      write(123,*), "FAIL: More than one pixel has non zero flux"
+                      write(123,*) "FAIL: More than one pixel has non zero flux"
                       stop
                       close(123)
                    else
