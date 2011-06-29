@@ -666,8 +666,6 @@ end subroutine radiationHydro
 
     allocate(buffer(bufferSize))
 
-    !setup the buffer
-    call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
 
 
     allocate(nEscapedArray(1:nThreads-1))
@@ -805,6 +803,11 @@ end subroutine radiationHydro
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
     do while(.not.converged)
 
+
+    !setup the buffer                                                                                                 
+    call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
+
+
 !       if(optimizeStack) then
 !          allocate(photonPacketStack(stackLimit*nThreads))
 !       end if
@@ -860,7 +863,6 @@ end subroutine radiationHydro
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
-
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
@@ -1692,19 +1694,18 @@ end subroutine radiationHydro
 !           !                                                                                                         
         end if
      end if
-!
-
-
-
-     
+!     
      call torus_mpi_barrier
+     call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
+
   enddo
+
 
  call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
  call MPI_TYPE_FREE(mpi_vector, ierr)
  call MPI_TYPE_FREE(mpi_photon_stack, ierr)
- call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
+
  deallocate(nSaved)
  deallocate(photonPacketStack)
  deallocate(buffer)
@@ -4778,6 +4779,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     logical :: freefreeImage
     !THAW - dev
     real(double) :: weightSource,  sourceFac
+    integer :: nLams
 !    integer :: i
 
     call randomNumberGenerator(randomSeed=.true.)
@@ -4817,9 +4819,15 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     probSource = lCore / (lCore + totalEmission) 
     sourceFac = 0.1d0
-
-    print *, "lCore = ", lCore
     
+    if(myRankGlobal == 1) then
+       print *, "lCore = ", lCore    
+    end if
+
+    if(outputImageType /= "freefree") then
+       nLams = 1
+    end if
+
 
     if (myRankGlobal == 0) then
        write(*,*) "Probability of photon from sources: ", probSource
@@ -4832,15 +4840,18 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     Ninf = 0
 
+
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     if (Writeoutput) write(*,*) "power per photon ",powerperphoton
+
+    Call randomSource(source, nSource, iSource, weightSource, nLambda=nLams, initialize=.true.)
 
     if (myRankGlobal == 0) then
        np = 0
        mainloop: do iPhoton = 1, nPhotons
 
           thisPhoton%weight = 1.d0
-          thisPhoton%stokes = STOKESVECTOR(1.d0, 0.d0, 0.d0, 0.d0)
+          thisPhoton%stokes = STOKESVECTOR(1.d0*powerPerPhoton, 0.d0, 0.d0, 0.d0)
           thisPhoton%iLam = iLambdaPhoton
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)
           thisPhoton%observerPhoton = .false.
@@ -4988,7 +4999,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
      totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1))
 #ifdef USECFITSIO
     if (myrankGlobal == 0) then
-       call writeFitsImage(thisimage, imageFilename, 1.d0, "intensity")
+       if(grid%geometry == "point") then
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", .true.)
+       else
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity")
+       end if
     endif
 #else
     call writeInfo("FITS not enabled, not writing "//trim(imageFilename),FORINFO)
@@ -5003,7 +5018,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: iThread
     logical :: endLoop
     logical, optional :: report, getPosition
-    integer, parameter  :: nTemp = 15
+    integer, parameter  :: nTemp = 16
     real(double) :: temp(nTemp)
     integer :: ierr
     integer :: tag = 42
@@ -5044,6 +5059,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        temp(15) = 0.d0
     endif
 
+    temp(16) = thisPhoton%weight
+
     if (iThread == myRankGlobal) then
        write(*,*) "sending to self bug ", ithread
        stop
@@ -5056,8 +5073,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   subroutine receivePhoton(thisPhoton, iSignal)
     include 'mpif.h'
     type(PHOTON) :: thisPhoton
-    integer, parameter :: nTemp = 15
-    real(double) :: temp(15)
+    integer, parameter :: nTemp = 16
+    real(double) :: temp(nTemp)
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 42
@@ -5100,6 +5117,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     else
        thisPhoton%observerPhoton = .false.
     endif
+
+    thisPhoton%weight = temp(16)
     
   end subroutine receivePhoton
 

@@ -1712,7 +1712,7 @@ contains
             "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
 
        call getLogical("inclineZ", inclineZ, cLine, fLine, nLines, &
-            "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
+            "Incline in the z direction: ","(a,1l,a)", .false., ok, .false.)
        
        call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
             "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)

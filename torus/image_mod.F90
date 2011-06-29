@@ -227,7 +227,7 @@ module image_mod
      if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
           (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
 
-        if(thisPhoton%weight == 0.d0) thisPhoton%weight = 1.d0
+!        if(thisPhoton%weight == 0.d0) thisPhoton%weight = 1.d0
 
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
@@ -519,7 +519,7 @@ module image_mod
 
 ! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
-     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance)
+     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, pointTest)
        real, intent(inout)      :: array(:,:)
 !       real, intent(in)         :: lambda
        real         :: lambda
@@ -527,27 +527,26 @@ module image_mod
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
-       real(double) :: nu, PerAngstromToPerHz, strad, scale, theta, sterad_two
-       logical :: pointTest = .true.
+       real(double) :: nu, PerAngstromToPerHz, strad, scale!, theta, sterad_two
+       logical, optional :: pointTest
+       logical :: found = .false.
        integer i, j
        
-!       strad = (dx*1.d10/distance)**2
-!       scale = 1.d20/distance**2
-       strad = (dx*1.d10/(distance*pcToCm))**2
-       scale = 1.d20/(distance*pcTocm)**2 
+       strad = (dx*1.d10/distance)**2
+       scale = 1.d20/distance**2
+!       strad = (dx*1.d10/(distance*pcToCm))**2
+!       scale = 1.d20/(distance*pcTocm)**2 
   
-       print *, "(0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)", (0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)
-       theta = asin((0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm))
+ !      print *, "(0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)", (0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)
+ !      theta = asin((0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm))!
 
-       sterad_two = 2.*pi*(1.d0 - cos(theta))
+!       sterad_two = 2.*pi*(1.d0 - cos(theta))
 
-       write(*,*) "dx ", dx
-       write(*,*) "distance ",distance
-       write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
-       write(*,*) "theta ", theta
-       write(*,*) "sterad_two ", sterad_two
-
-!       if(lambda == 0.d0) lambda = 6.e8
+!       write(*,*) "dx ", dx
+!       write(*,*) "distance ",distance
+!       write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
+!       write(*,*) "theta ", theta
+!       write(*,*) "sterad_two ", sterad_two
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
@@ -555,31 +554,31 @@ module image_mod
        ! Factor of 1.0e20 converts dx to cm from Torus units
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 
-       if(pointTest) then
+       if(present(pointTest)) then
           do i = 1, 201
              do j = 1, 201
                 if((array(i,j)*scale) /= 0.0) then
+                   if(found) then
+                      print *, "More than one pixel with non-zero flux in point source test."
+                      print *, "Halting test..."
+                      stop
+                   end if
+                   found = .true.
                    print *, "non zero flux at pixel (",i,",",j,")"
-                   print *, "array(i,j)*scale = ", array(i,j)*scale
-                   print *, "array(i,j) ", array(i, j)
+                   print *, " ", (array(i, j)*strad)/(FluxToMegaJanskies* &
+                        PerAngstromToPerHz * 1.d20)
                    print *, " "
                 end if
              end do
           end do
        end if
 
-       print *, "FluxToMegaJanskies ", FluxToMegaJanskies
-       print *, "PerAngstromToPerHz ", PerAngstromToPerHz
-       print *, "scale ", scale
-       print *, "strad ", strad
-       print *, "strad II ", (dx*1.d10/(distance*pcToCm))**2
-       print *, "strad III ", (dx*1.d10/(distance*auToCm))**2
-
-       print *, "PerAngstromToPerCm ", PerAngstromToPerCm
-       print *, "cSpeed ", cSpeed
-       print *, "nu ", nu
-       print *, "angstromtocm ", angstromtocm
-!       print *, "array ", array
+!       print *, "scale ", scale
+!       print *, "strad ", (dx*1.d10/(distance*pcToCm))**2
+!       print *, "PerAngstromToPerCm ", PerAngstromToPerCm
+!       print *, "cSpeed ", cSpeed
+!       print *, "nu ", nu
+!       print *, "angstromtocm ", angstromtocm
 
      end subroutine ConvertArrayToMJanskiesPerStr
 !
@@ -589,7 +588,7 @@ module image_mod
 !
 
 #ifdef USECFITSIO
-     subroutine writeFitsImage(image, filename, objectDistance, type)
+     subroutine writeFitsImage(image, filename, objectDistance, type, pointTest)
 
 ! Arguments
        
@@ -602,7 +601,7 @@ module image_mod
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
        real(double) :: scale,  dx, dy
-
+       logical, optional :: pointTest
        logical :: simple,extend
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
@@ -670,7 +669,13 @@ module image_mod
 
 !       if(lamStart = 0.d0) 
       
-       call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
+       if(present(pointTest)) then
+          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, .true.)
+       else
+          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
+       end if
+
+
        call ftppre(unit,group,fpixel,nelements,array,status)
        !
        !  Write another optional keyword to the header.
