@@ -251,7 +251,9 @@ contains
     use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use input_variables, only : tEnd, tDump
     use cmf_mod, only : atomloop
+#ifdef HYDRO
     use nbody_mod, only : donBodyonly
+#endif
     use source_mod, only : globalNsource, globalSourceArray, randomSource
     use lucy_mod, only : lucyRadiativeEquilibriumAMR
     use setupamr_mod, only: doSmoothOnTau
@@ -421,9 +423,11 @@ contains
   endif
 #endif
 
+#ifdef HYDRO
   if (nbodyPhysics.and.(.not.hydrodynamics)) then
      call  donBodyOnly(tEnd, tdump, grid)
   endif
+#endif
 
 ! Free memory allocated in this subroutine
   if (associated(xArray)) then
