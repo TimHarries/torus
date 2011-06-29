@@ -527,45 +527,54 @@ module image_mod
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
-       real(double) :: nu, PerAngstromToPerHz, strad, scale
+       real(double) :: nu, PerAngstromToPerHz, strad, scale, theta, sterad_two
        logical :: pointTest = .true.
        integer i, j
        
-       strad = (dx*1.d10/distance)**2
-       scale = 1.d20/distance**2
+!       strad = (dx*1.d10/distance)**2
+!       scale = 1.d20/distance**2
+       strad = (dx*1.d10/(distance*pcToCm))**2
+       scale = 1.d20/(distance*pcTocm)**2 
+  
+       print *, "(0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)", (0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)
+       theta = asin((0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm))
+
+       sterad_two = 2.*pi*(1.d0 - cos(theta))
+
        write(*,*) "dx ", dx
        write(*,*) "distance ",distance
        write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
+       write(*,*) "theta ", theta
+       write(*,*) "sterad_two ", sterad_two
 
 !       if(lambda == 0.d0) lambda = 6.e8
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
+       
+       ! Factor of 1.0e20 converts dx to cm from Torus units
+       array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 
        if(pointTest) then
-          do i = 1, 128
-             do j = 1, 128
+          do i = 1, 201
+             do j = 1, 201
                 if((array(i,j)*scale) /= 0.0) then
                    print *, "non zero flux at pixel (",i,",",j,")"
-                   print *, "F = ", array(i,j)*scale
-                   print *, "F/inPixel ", array(i,j)*scale/(128.**2)
-!                   print *, "F/cm ", array(i,j)*scale/(128.**2)
-                   print *, "F/strad = ", array(i,j)*scale/strad
-                   write(*,*) "flux in mjy ",array(i,j)*fluxtomegajanskies * perAngstromtoperhz * &
-                        scale,lambda
+                   print *, "array(i,j)*scale = ", array(i,j)*scale
+                   print *, "array(i,j) ", array(i, j)
                    print *, " "
                 end if
              end do
           end do
        end if
-       
-       ! Factor of 1.0e20 converts dx to cm from Torus units
-       array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 
        print *, "FluxToMegaJanskies ", FluxToMegaJanskies
        print *, "PerAngstromToPerHz ", PerAngstromToPerHz
        print *, "scale ", scale
        print *, "strad ", strad
+       print *, "strad II ", (dx*1.d10/(distance*pcToCm))**2
+       print *, "strad III ", (dx*1.d10/(distance*auToCm))**2
+
        print *, "PerAngstromToPerCm ", PerAngstromToPerCm
        print *, "cSpeed ", cSpeed
        print *, "nu ", nu

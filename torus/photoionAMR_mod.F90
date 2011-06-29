@@ -4819,7 +4819,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     sourceFac = 0.1d0
 
     print *, "lCore = ", lCore
-
+    
 
     if (myRankGlobal == 0) then
        write(*,*) "Probability of photon from sources: ", probSource

@@ -5281,8 +5281,6 @@ end subroutine sumFluxes
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
 
-
-
     do
        call setAllUnchanged(grid%octreeRoot)
        globalConverged(myRankGlobal) = .true.
@@ -5460,26 +5458,35 @@ end subroutine sumFluxes
     if (converged.and.refineOnIonization) then
 
        do i = 1, nDir
+          
+          maxGradient = 1.d-30
+
           locator = subcellCentre(thisOctal, subcell) + &
                (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
           if (inOctal(grid%octreeRoot, locator)) then
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
+!Thaw - modded to use specifiable limit
+             grad = abs((thisOctal%ionFrac(subcell, 1) - neighbourOctal%ionFrac(neighbourSubcell, 1)) / &
+                  (thisOctal%ionFrac(subcell, 1)))
+
+             maxGradient = max(grad, maxGradient)
+
              if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
-                if ((thisOctal%ionFrac(subcell,1) > 0.9d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) < 0.1d0) .and. &
-                     (thisOctal%nDepth < maxDepthAMR) ) then
+!                if ((thisOctal%ionFrac(subcell,1) > 0.9d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) < 0.1d0) .and. &
+                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
                    exit
                 endif
-
-                if ((thisOctal%ionFrac(subcell,1) < 0.4d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) > 0.6d0) .and. &
-                     (neighbourOctal%nDepth < maxDepthAMR) ) then
-                   call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
-                   converged = .false.
-                   exit
-                endif
+                
+!                if ((thisOctal%ionFrac(subcell,1) < 0.4d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) > 0.6d0) .and. &
+!                     (neighbourOctal%nDepth < maxDepthAMR) ) then
+!                   call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+!                   converged = .false.
+!                   exit
+!                endif
              endif
 
           endif
