@@ -527,26 +527,20 @@ module image_mod
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
-       real(double) :: nu, PerAngstromToPerHz, strad, scale!, theta, sterad_two
+       real(double) :: nu, PerAngstromToPerHz, strad, scale
        logical, optional :: pointTest
        logical :: found = .false.
        integer i, j
-       
+       real(double) :: inImage
+
        strad = (dx*1.d10/distance)**2
        scale = 1.d20/distance**2
 !       strad = (dx*1.d10/(distance*pcToCm))**2
 !       scale = 1.d20/(distance*pcTocm)**2 
   
- !      print *, "(0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)", (0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm)
- !      theta = asin((0.5 * sqrt((dx*1.d10)**2)) / (distance*pcTocm))!
-
-!       sterad_two = 2.*pi*(1.d0 - cos(theta))
-
 !       write(*,*) "dx ", dx
 !       write(*,*) "distance ",distance
 !       write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
-!       write(*,*) "theta ", theta
-!       write(*,*) "sterad_two ", sterad_two
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
@@ -559,15 +553,22 @@ module image_mod
              do j = 1, 201
                 if((array(i,j)*scale) /= 0.0) then
                    if(found) then
+                   open (123, file="image_flux.dat", status="old")
                       print *, "More than one pixel with non-zero flux in point source test."
                       print *, "Halting test..."
+                      write(123,*), "FAIL: More than one pixel has non zero flux"
                       stop
+                      close(123)
+                   else
+                      open (123, file="image_flux.dat", status="old", position="append")
+                      found = .true.
+                      print *, "non zero flux at pixel (",i,",",j,")"
+                      inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * 1.d20)
+                      print *, "Flux at image: ", inImage 
+                      write(123, *) inImage
+                      print *, " "
+                      close(123)
                    end if
-                   found = .true.
-                   print *, "non zero flux at pixel (",i,",",j,")"
-                   print *, " ", (array(i, j)*strad)/(FluxToMegaJanskies* &
-                        PerAngstromToPerHz * 1.d20)
-                   print *, " "
                 end if
              end do
           end do
@@ -615,6 +616,7 @@ module image_mod
        !  Delete the file if it already exists, so we can then recreate it.
        !
        call deleteFitsFile ( filename, status )
+       
        !
        !  Get an unused Logical Unit Number to use to open the FITS file.
        !
@@ -668,6 +670,7 @@ module image_mod
        end select
 
 !       if(lamStart = 0.d0) 
+
       
        if(present(pointTest)) then
           call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, .true.)
@@ -675,8 +678,8 @@ module image_mod
           call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
        end if
 
-
        call ftppre(unit,group,fpixel,nelements,array,status)
+
        !
        !  Write another optional keyword to the header.
        !

@@ -4778,7 +4778,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     real(double) :: powerPerPhoton
     logical :: freefreeImage
     !THAW - dev
-    real(double) :: weightSource,  sourceFac
+    real(double) :: weightSource,  sourceFac, theoretical
     integer :: nLams
 !    integer :: i
 
@@ -5000,7 +5000,12 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 #ifdef USECFITSIO
     if (myrankGlobal == 0) then
        if(grid%geometry == "point") then
-          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", .true.)
+          open (123, file="image_flux.dat", status="unknown")
+          theoretical = (lCore/(fourpi * (griddistance*pctocm)**2))
+          write(123, *) theoretical
+          write(*,*) "theoretical ", theoretical
+          close(123)
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", pointTest=.true.)
        else
           call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity")
        end if
