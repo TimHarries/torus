@@ -51,6 +51,8 @@ contains
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
     use image_mod, only : deleteFitsFile
+    use input_variables, only: FitsBitpix
+
     implicit none
     
     type(DATACUBE), intent(in) :: thisCube
@@ -169,7 +171,7 @@ contains
     ! 1st HDU : flux
     if( do_write_Intensity ) then
 
-       bitpix=-32
+       bitpix=FitsBitpix
        naxis=3
        naxes(1)=thisCube%nx
        naxes(2)=thisCube%ny
@@ -196,7 +198,7 @@ contains
 
        ! 2nd HDU : tau
        call FTCRHD(unit, status)
-       bitpix=-32
+       bitpix=FitsBitpix
        naxis=3
        naxes(1)=thisCube%nx
        naxes(2)=thisCube%ny
@@ -294,7 +296,7 @@ contains
     if( do_write_nCol ) then
        ! 8th HDU : nCol
        call FTCRHD(unit, status)
-       bitpix=-32
+       bitpix=FitsBitpix
        naxis=2
        naxes(1)=thisCube%nx
        naxes(2)=thisCube%ny
@@ -314,7 +316,7 @@ contains
 
        ! 9th HDU : positive intensity contribution
        call FTCRHD(unit, status)
-       bitpix=-32
+       bitpix=FitsBitpix
        naxis=3
        naxes(1)=thisCube%nx
        naxes(2)=thisCube%ny
@@ -335,7 +337,7 @@ contains
 
        ! 10th HDU : negative intensity contribution
        call FTCRHD(unit, status)
-       bitpix=-32
+       bitpix=FitsBitpix
        naxis=3
        naxes(1)=thisCube%nx
        naxes(2)=thisCube%ny
@@ -888,6 +890,7 @@ subroutine freeDataCube(thiscube)
 #ifdef USECFITSIO
   subroutine writeCollapsedDataCube(thisCube, filename)
     use image_mod, only : deleteFitsFile, printfitsError
+    use input_variables, only: FitsBitpix
     type(DATACUBE) :: thisCube
     character(len=*) :: filename
 
@@ -924,7 +927,7 @@ subroutine freeDataCube(thiscube)
     !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
     !
     simple=.true.
-    bitpix=-32
+    bitpix=FitsBitpix
     naxis=2
     naxes(1)=thisCube%nx
     naxes(2)=thisCube%ny

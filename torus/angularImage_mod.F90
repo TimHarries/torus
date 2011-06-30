@@ -467,9 +467,9 @@ module angularImage
  end function AngPixelIntensity
 
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
-        rhomax, i0max, nCol, nCol_H2, nCol_CO, observerVelocity)
+        nCol, nCol_H2, nCol_CO, observerVelocity)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth, vturb
+     use input_variables, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth, vturb, dssMinSample
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
@@ -503,7 +503,7 @@ module angularImage
 
      real(double) :: dTau, etaline, dustjnu
      real(double), intent(out), optional :: tau
-     real(double),save :: BnuBckGrnd
+     real(double) :: BnuBckGrnd
 
      real(double) :: phiProfVal
      real         :: sigma_thermal
@@ -513,8 +513,6 @@ module angularImage
      character(len = 80) :: message
 
      real(double) :: dI, dIovercell, attenuateddIovercell, dtauovercell, n
-     real(double), optional, intent(out) :: rhomax
-     real(double), optional, intent(in) :: i0max
      real(double) :: distToObs, gridSize
 
      logical, parameter :: doWriteLosInfo=.false. 
@@ -567,7 +565,6 @@ module angularImage
      if (present(nCol))    nCol    = 0.d0
      if (present(nCol_H2)) nCol_H2 = 0.d0
      if (present(nCol_CO)) nCol_CO = 0.d0 
-     if (present(rhomax))  rhomax  = 0.d0
 
      thisOctal => grid%octreeRoot
      icount = 0
@@ -583,10 +580,6 @@ module angularImage
            
         call findSubcelllocal(currentPosition, thisOctal, subcell)
         call distanceToCellBoundary(grid, currentPosition, otherDirection, tVal, sOctal=thisOctal)
-
-        if(present(rhomax)) then
-           rhomax = max(rhomax, thisoctal%rho(subcell))
-        endif
 
         dtauovercell = 0.d0
         dIovercell = 0.d0
@@ -640,7 +633,7 @@ module angularImage
         end if
 
         if(densitysubsample) then ! should replace 5 with maxdensity/mindensity * fac
-           nTau = min(max(5, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
+           nTau = min(max(dssMinSample, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
         else
            nTau = min(max(2, nint(dvAcrossCell * 5.d0)), 100) ! ensure good resolution / 5 chosen as its the magic number!
         endif
@@ -748,10 +741,6 @@ module angularImage
         else
            if (present(i0_neg)) i0_neg = i0_neg + dIovercell
         end if
-
-        if(present(i0max) .and. i0 .gt. 0.99d0 * i0max) then 
-           exit
-        endif
 
         n = thisoctal%newmolecularlevel(4,subcell)
                     

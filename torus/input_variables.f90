@@ -105,6 +105,7 @@ module input_variables
   logical :: quasi ! use quasirandom numbers
   logical :: dongstep ! controls Ng Acceleration
   logical :: densitysubsample ! do you want to subsample density in your images?
+  integer :: dssMinSample ! Minimum number of samples per cell when density subsample is used
   logical :: lowmemory ! if memory is tight
   logical :: maxrhocalc
   logical :: resonanceLine
@@ -128,6 +129,7 @@ module input_variables
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
   logical :: splitOverMPI
+  integer :: FitsBitpix ! bitpix parameter for FITS representation of the data
 
   ! variables to do with dust
 

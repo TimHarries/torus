@@ -1484,6 +1484,9 @@ contains
     TYPE(VECTOR) :: gridCentre
     character(len=100) :: message
 
+    call getInteger("fitsbitpix", FitsBitpix, cLine, fLine, nLines, &
+         "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
+
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
@@ -1546,6 +1549,10 @@ contains
             "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.0, ok, .false.)
+
+       ! This is only implemented in angularImage_mod 
+       call getInteger("dssminsample", dssminsample, cLine, fLine, nLines, &
+            "Minimum number of density subsamples: ","(a,i4,a)", 5, ok, .false.)
 
        ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
        ! Rotation about y-axis
