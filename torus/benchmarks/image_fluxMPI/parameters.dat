@@ -1,0 +1,69 @@
+!
+! Grid set up
+!
+
+splitovermpi    T
+readgrid        F
+
+amr3d           T
+mindepthamr     5
+maxdepthamr     5
+amrgridcentrex  0.0000
+amrgridcentrey  0.0000
+amrgridcentrez  0.0000
+amrgridsize     1.234d9
+geometry        point
+
+!
+! Physics 
+! Allow parameters to default for now
+! See readPhotoionPhysicsParameters for parameters
+!
+
+photoionphysics  T 
+dustphysics      T
+
+!
+!Image generation
+!
+
+image T
+nphotons 2000000
+imagesize 8.25e5
+distance 1.
+imagefile "testImage.fits"
+imagetype "recombination"
+lambdaimage 6562.8
+lamstart 6562.8
+npixels 201
+
+inclineX F
+inclineY T
+inclineZ F
+singleInclination 270.
+
+! Source parameters 
+
+nsource     1 
+radius1     10.
+teff1       40000.0
+mass1       10.0
+contflux1   blackbody
+sourcepos1  0.d0,0.0,0.0
+
+!
+! Dust parameters
+!
+
+dusttogas 1.e-20
+graintype1 sil_dl
+amin1 0.1
+amax1 0.11
+qdist1 0.0
+
+
+! Grid output 
+
+writegrid F
+
+
