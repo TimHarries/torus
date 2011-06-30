@@ -1,4 +1,5 @@
 module amr_mod
+  
  
 ! 21 nov
   ! routines for adaptive mesh refinement. nhs
@@ -216,8 +217,8 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
-!    CASE("radialclouds")
-!       call calcRadialClouds(thisOctal, subcell)
+    CASE("radcloud")
+       call calcRadialClouds(thisOctal, subcell)
 
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
@@ -3778,8 +3779,9 @@ CONTAINS
          
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
-!   case("radialclouds")
-!      if (thisOctal%nDepth < minDepthAMR) split = .true.
+   case("radcloud")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+  
 
    case("kelvin")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -6518,7 +6520,7 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, fac
+    real(double) :: eThermal, rMod, fac, centre
     logical, save :: firstTime = .true.
     integer, parameter :: nr = 1000
     real(double), save :: r(nr), rho(nr)
@@ -6534,6 +6536,7 @@ CONTAINS
 !       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
 !PASSING (t, my, rho0, nr, r, rho)
 !       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
+       centre = 0.d0
        call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)
 
        r = r / 1.d10
@@ -6602,12 +6605,100 @@ CONTAINS
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
 
-!  subroutine calcRadialClouds(thisOctal, subcell)
-!    TYPE(octal), INTENT(INOUT) :: thisOctal
-!    INTEGER, INTENT(IN) :: subcell
-!
-!
-!  end subroutine calcRadialClouds
+  subroutine calcRadialClouds(thisOctal, subcell)
+    use utils_mod, only: bonnorebertrun
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, fac
+    logical, save :: firstTime = .true.
+    integer, parameter :: nr = 1000
+    real(double), save :: r(nr), rho(nr)
+    integer :: i, j
+    integer, parameter :: numClouds=5
+    type(VECTOR) :: centre(numClouds)
+    logical :: inSphere = .false.
+
+!THaw - initially trying 30pc box centered at 0,0,0 and extending ± 15pc
+!Star at 0,0,0
+!BES's at 2.5, 5, 7.5, 10, 12.5pc
+
+    centre(1) = VECTOR(2.5d0, 0.d0, 0.d0)
+    centre(2) = VECTOR(0.d0, 5.d0, 0.d0)
+    centre(3) = VECTOR(0.d0, 0.d0, 7.5d0)
+    centre(4) = VECTOR(-10.d0, 0.d0, 0.d0)
+    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
+
+    do j = 1, numClouds
+       centre(j) = (centre(j) * pctocm)/1.d10
+    end do
+
+    if (firstTime) then
+       firstTime = .false.
+       r = 0.d0; rho = 0.d0
+
+       call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)
+
+       thisOctal%rho(subcell) = rho(nr)
+       thisOctal%temperature(subcell) = 10.d0
+       r = r / 1.d10
+       if (myrankGlobal==1) then
+          do i =1 , nr
+             write(55, *) r(i)*1.d10/autocm, rho(i)
+          enddo
+       endif
+    endif
+    
+    do j = 1, numClouds
+       rVec = subcellCentre(thisOctal, subcell)
+       if ((rVec%x < (centre(j)%x+r(nr))) .and. (rVec%x > (centre(j)%x-r(nr))) .and. &
+            (rVec%y < (centre(j)%y+r(nr))) .and. (rVec%y > (centre(j)%y-r(nr))) .and. &
+            (rVec%z < (centre(j)%z+r(nr))) .and. (rVec%z > (centre(j)%z-r(nr)))) then
+          
+          rMod = sqrt((rVec%x - centre(j)%x)**2 + (rVec%y - centre(j)%y)**2 + (rVec%z - centre(j)%z)**2)
+          
+          call locate(r, nr, rMod, i)
+          fac = (rMod-r(i))/(r(i+1)-r(i))
+
+!          print *, "rMod ", rMod
+!          print *, "fac ", fac
+!          print *, "rho(",i,") = ", rho(i)
+!          print *, "rho(",i+1,") = ", rho(i+1)
+!          print *, "fac*(rho(i+1)-rho(i))", fac*(rho(i+1)-rho(i))
+          thisOctal%rho(subcell) = rho(i) + fac*(rho(i+1)-rho(i))
+          thisOctal%temperature(subcell) = 10.d0       
+       endif
+    end do
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    !Thaw - will probably want to change this to use returnMu 
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+
+
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell) 
+
+    thisOctal%ionFrac(subcell,1) = 1.               !HI      
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI 
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+    endif
+    thisOctal%etaCont(subcell) = 0.
+
+
+
+  end subroutine calcRadialClouds
 
   subroutine calcUniformSphere(thisOctal,subcell)
 

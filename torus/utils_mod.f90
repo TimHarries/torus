@@ -3930,30 +3930,9 @@ END SUBROUTINE GAUSSJ
       eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
       eThermal = eThermal + (dv*rho(i)/(mu*mHydrogen))*kerg*t
    enddo
-
-!=== Thaw - this could be a massive fudge, wanting to replicate Gritschneder and need a 96SolMass BES ====
-!   do i = 2, nr
-!      rho(i) = rho(i)*(96.d0*mSol/mass)
-!   end do
-   
-!   eThermal = 0.d0
-!   eGrav = 0.d0
-!   mass = 0.d0
-!   do i = 2, nr
-!   do i = 1, nr
-!      dv = fourPi*r(i)**2*(r(i)-r(i-1))
-!      mass = mass + rho(i)*dv
-!      eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
-!      eThermal = eThermal + (dv*rho(i)/(mu*mHydrogen))*kerg*t
-!   enddo
-
-!============================================================================
-
    write(message,'(a,f5.2)') "Outer radius of Bonnor-Ebert sphere is (in pc): ",r0/pctocm
-    call writeInfo(message, TRIVIAL)
-    !print *, "mass", mass
-    !print *, "msol", msol
-    write(message,'(a,f7.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
+   call writeInfo(message, TRIVIAL)
+   write(message,'(a,f7.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
    call writeInfo(message, TRIVIAL)
    write(message,'(a,1pe12.3)') "Gravitational p.e.  contained in Bonnor-Ebert sphere is: ",eGrav
    call writeInfo(message, TRIVIAL)

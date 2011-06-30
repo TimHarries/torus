@@ -1708,7 +1708,7 @@ contains
        call getReal("inclination", inclinationArray(1), real(degtorad), cLine, fLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
-
+!THaw - temporary stuff for simple, easy custom image (single)
        call getReal("singleInclination", singleInclination, real(degtorad), cLine, fLine, nLines, &
             "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 

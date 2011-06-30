@@ -123,6 +123,7 @@ contains
        nextDumpTime = deltaTforDump
        if (grid%geometry == "hii_test") deltaTforDump = 9.d10
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
+       if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
        timeofNextDump = 0.d0       
      else
@@ -273,7 +274,7 @@ contains
 
  if(grid%geometry == "hii_test") then
     tEnd = 3.14d13 !1x10^6 year
- else if(grid%geometry == "bonnor") then
+ else if(grid%geometry == "bonnor" .or. grid%geometry=="radcloud") then
     tEnd = 200.d0*3.14d10 !200kyr 
  end if
 
@@ -405,7 +406,7 @@ contains
 
        if (myrank /= 0) then
           iUnrefine = iUnrefine + 1
-          if (iUnrefine == 5) then
+          if (iUnrefine == 3) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine,5.d-3)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
