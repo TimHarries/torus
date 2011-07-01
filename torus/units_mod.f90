@@ -6,12 +6,12 @@ implicit none
 
 contains
 
-  subroutine convertToTorusUnits(unitString, unitType, torusUnit)
+  subroutine convertToTorusUnits(unitString, unitType, torusUnit, inputValue)
 
     implicit none
     
     character(len=*) :: unitString, unitType
-    real(double) :: torusUnit
+    real(double) :: torusUnit, inputValue
     
     
     if(unitType == "distance") then
@@ -158,7 +158,8 @@ contains
              torusUnit = 1.d0
           end select
        end if
-    
+
+       inputvalue = inputValue * torusUnit
     
   end subroutine convertToTorusUnits
 
