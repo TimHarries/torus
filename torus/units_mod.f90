@@ -109,7 +109,7 @@ contains
        torusUnit = lsol
        
     case(default)
-       write(*,*) "Unit not recognized """, unitString """
+       write(*,*) "Unit not recognized "", unitString """
        write(*,*) "Using TORUS defaults"
        torusUnit = 1.d0
 
