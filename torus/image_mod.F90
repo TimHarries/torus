@@ -836,7 +836,7 @@ module image_mod
      end subroutine pixelLocate
             
   subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
-    use input_variables, only : npix, setimageSize, vmin, vmax
+    use input_variables, only : npixels, setimageSize, vmin, vmax
     use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
 #ifdef USECFITSIO
     use input_variables, only : griddistance
@@ -885,7 +885,7 @@ module image_mod
 
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    image = initImage(npix, npix, setimageSize/1.e10, setimageSize/1.e10, vmin, vmax) 
+    image = initImage(npixels, npixels, setimageSize/1.e10, setimageSize/1.e10, vmin, vmax) 
 
     xVec = zHat .cross. viewVec
     call normalize(xVec)

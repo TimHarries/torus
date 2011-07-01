@@ -255,6 +255,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
   real(double) :: bandwidth   ! Band width of a filter[A]
   real(double) :: weightsource
+  real :: probContPhoton
 
   ! intrinsic profile variables
 
@@ -268,6 +269,27 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
+! Variables formerly in input_variables but not set in Torus V2 ----------------
+  real :: ramVel=0.0
+  character(len=20) :: ramanDist          ! raman distortion type
+  logical :: coreEmissionLine=.false.
+  real :: relIntCoreEmissionLine       ! previously: 'relIntCoreEmission'
+  real :: velWidthCoreEmissionLine     ! previously: 'velWidthCoreEmission'
+  real :: phaseOffset
+  character(len=80) :: contFluxFile2
+  real :: temp1
+  character(len=80) :: popFilename
+  character(len=80) :: distortionType=" "
+  logical :: doIntensivePeelOff=.false.
+  logical :: forceFirstScat=.false.
+  integer :: nLower, nUpper
+  logical :: starOff=.false. 
+  real :: logMassLossRate
+  real :: slitPA, slitWidth, slitLength
+  real :: vfwhm=1.0, pfwhm=1.0
+  type(VECTOR) :: slitPosition1=VECTOR(1.0,1.0,1.0), slitPosition2=VECTOR(1.0,1.0,1.0)
+  integer :: nSlit=1, np
+!-------------------------------------------------------------------------------
 
 !$OMP THREADPRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray)
 
@@ -281,6 +303,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   biasPhiDirection = -1.d0
 
   objectDistance = griddistance * pctocm
+
+  if ( grid%geometry == "cmfgen" ) then 
+     probContPhoton = 0.2
+  else
+     probContPhoton = 1.0
+  endif
 
   probLinePhoton = 1. - probContPhoton
 
@@ -1166,28 +1194,23 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !     endif
 
 
-        ! Change the image size accoring to the scale 
-        imageSize = imageSize * imagescale
-
-
-
         ! Initializing the images ...
         do i = 1, nImageLocal           
            if (grid%cartesian) then
-              obsImageSet(i) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
+              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax)
               if (doRaman) then
-                 o6image(1) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
+                 o6image(1) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax)
               endif
            else if (grid%adaptive) then
-              obsImageSet(i) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
+              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax)
            else   
               select case (grid%geometry)
               case("disk")
-                 obsImageSet(i) = initImage(npix, npix, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),vMin, vMax)
+                 obsImageSet(i) = initImage(npixels, npixels, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),vMin, vMax)
               case("flared")
-                 obsImageSet(i) = initImage(npix, npix, 8.*grid%rAxis(1),8.*grid%rAxis(1), vMin, vMax)
+                 obsImageSet(i) = initImage(npixels, npixels, 8.*grid%rAxis(1),8.*grid%rAxis(1), vMin, vMax)
               case DEFAULT
-                 obsImageSet(i) = initImage(npix,npix,  min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), &
+                 obsImageSet(i) = initImage(npixels,npixels,  min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), &
                       min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
               end select
            endif
@@ -1263,7 +1286,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
              outVec, objectDistance, grid, sampleFreq, opaqueCore,  &
              flux, grid%lamArray, grid%nlambda, obsfluxfile, &
              thin_disc_on, (ttau_disc_on .and. .not. ttau_turn_off_disc), &
-             (ttau_jet_on .and. .not. ttau_turn_off_jet), ttau_discwind_on, npix, &
+             (ttau_jet_on .and. .not. ttau_turn_off_jet), ttau_discwind_on, npixels, &
              (ttau_disc_on .and. .not. ttau_turn_off_disc), ttauri_disc, thinLine, lineOff, &
              do_pos_disp) 
         write(*,*) "...Finished  formal integration of flux...."
@@ -3069,8 +3092,6 @@ end subroutine do_phaseloop
 subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
        rotateview, rotateDirection, tiltView)
 
-  use input_variables, only: forceRotate, forceNoRotate
-
   implicit none
 
 ! Intent in arguments
@@ -3160,9 +3181,6 @@ subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
      rotateView = .true.
 !     tiltView = .true.
   end if
-
-  if (forceRotate)   rotateView = .true.
-  if (forceNoRotate) rotateView = .false.
 
 end subroutine choose_view
 

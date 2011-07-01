@@ -762,61 +762,61 @@ contains
 !    spec = spec / dble(tot)
   end subroutine getWeightedSpectrum
 
-  subroutine convolveCube(cube, beamSize)
-    use constants_mod, only: pcTocm, pi, twoPi
-    type(DATACUBE) :: cube
-    real(double) :: beamSize ! beamsize in arcsec
-    real(double), allocatable :: newArray(:,:)
-    real(double) :: rrinArcSec, fac 
-    integer :: ix, iy, iv, i, j
-    real(double) :: sigma, sigma2, dx, dy, tot, flux, background
-    real(double) :: deltaX, deltaY
-
-    sigma = beamsize/2.35d0 ! changed from 2.35 (FWHM) as a result of reading IRAM-30m paper
-    sigma2 = sigma**2
-    dx = 3600.d0*((cube%xAxis(2) - cube%xAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
-    dy = 3600.d0*((cube%yAxis(2) - cube%yAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
-
-    allocate(newArray(1:cube%nx, 1:cube%ny))
-    call writeInfo("Convolving data cube with beam size", TRIVIAL)
-    write(*,*) "cube%obsdist",cube%obsDistance/pctocm, "dx",dx,"dy",dy
-
-    do iv = 1, cube%nv
-
-       background = cube%intensity(cube%nx,cube%ny,iv) ! This needs to be in flux units not Intensity
-       newArray = 0.d0
-
-       do ix = 1, cube%nx
-          do iy = 1, cube%ny
-             tot = 0.d0
-             do i = ix - cube%nx, ix + cube%nx
-                do j = iy - cube%ny, iy + cube%ny
-                   if ((i > 0).and.(i<=cube%nx).and.(j > 0).and.(j <= cube%ny)) then
-                      flux = cube%intensity(i,j,iv) ! This needs to be in flux units not Intensity
-                   else
-                      flux = background
-                   endif
-
-                   deltaX = dble(ix-i)*dx
-                   deltaY = dble(iy-j)*dy
-                   rrInArcSec = deltaX**2 + deltaY**2
-             
-                   fac = (1.d0/(twoPi*sigma2))*exp(-0.5d0*(rrInArcSec/sigma2))*dx*dy
-
-                   newArray(ix,iy) = newArray(ix, iy) + flux*fac
-                   tot = tot + fac
-                enddo
-             enddo
-          enddo
-          !write(*,*) "Weight",tot
-       enddo
-
-       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny) 
-       ! For flux calculations this needs to be in flux units not Intensity
-    enddo
-    deallocate(newArray)
-    call writeInfo("Done.",TRIVIAL)
-  end subroutine convolveCube
+!!$  subroutine convolveCube(cube, beamSize)
+!!$    use constants_mod, only: pcTocm, pi, twoPi
+!!$    type(DATACUBE) :: cube
+!!$    real(double) :: beamSize ! beamsize in arcsec
+!!$    real(double), allocatable :: newArray(:,:)
+!!$    real(double) :: rrinArcSec, fac 
+!!$    integer :: ix, iy, iv, i, j
+!!$    real(double) :: sigma, sigma2, dx, dy, tot, flux, background
+!!$    real(double) :: deltaX, deltaY
+!!$
+!!$    sigma = beamsize/2.35d0 ! changed from 2.35 (FWHM) as a result of reading IRAM-30m paper
+!!$    sigma2 = sigma**2
+!!$    dx = 3600.d0*((cube%xAxis(2) - cube%xAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
+!!$    dy = 3600.d0*((cube%yAxis(2) - cube%yAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
+!!$
+!!$    allocate(newArray(1:cube%nx, 1:cube%ny))
+!!$    call writeInfo("Convolving data cube with beam size", TRIVIAL)
+!!$    write(*,*) "cube%obsdist",cube%obsDistance/pctocm, "dx",dx,"dy",dy
+!!$
+!!$    do iv = 1, cube%nv
+!!$
+!!$       background = cube%intensity(cube%nx,cube%ny,iv) ! This needs to be in flux units not Intensity
+!!$       newArray = 0.d0
+!!$
+!!$       do ix = 1, cube%nx
+!!$          do iy = 1, cube%ny
+!!$             tot = 0.d0
+!!$             do i = ix - cube%nx, ix + cube%nx
+!!$                do j = iy - cube%ny, iy + cube%ny
+!!$                   if ((i > 0).and.(i<=cube%nx).and.(j > 0).and.(j <= cube%ny)) then
+!!$                      flux = cube%intensity(i,j,iv) ! This needs to be in flux units not Intensity
+!!$                   else
+!!$                      flux = background
+!!$                   endif
+!!$
+!!$                   deltaX = dble(ix-i)*dx
+!!$                   deltaY = dble(iy-j)*dy
+!!$                   rrInArcSec = deltaX**2 + deltaY**2
+!!$             
+!!$                   fac = (1.d0/(twoPi*sigma2))*exp(-0.5d0*(rrInArcSec/sigma2))*dx*dy
+!!$
+!!$                   newArray(ix,iy) = newArray(ix, iy) + flux*fac
+!!$                   tot = tot + fac
+!!$                enddo
+!!$             enddo
+!!$          enddo
+!!$          !write(*,*) "Weight",tot
+!!$       enddo
+!!$
+!!$       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny) 
+!!$       ! For flux calculations this needs to be in flux units not Intensity
+!!$    enddo
+!!$    deallocate(newArray)
+!!$    call writeInfo("Done.",TRIVIAL)
+!!$  end subroutine convolveCube
 
 subroutine TranslateCubeIntensity(cube,constant)
 

@@ -17,9 +17,9 @@ contains
     use input_variables, only : imageFilename, calcImage, calcSpectrum
     use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
     use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda
-    use input_variables, only : outfile, npix, ninclination, nImage, inclinations, inclinationArray
-    use input_variables, only : lamStart, lamEnd, lineEmission, nVelocity, outputImageType
+    use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
+    use input_variables, only : outfile, npixels, ninclination, nImage, inclinations, inclinationArray
+    use input_variables, only : lamStart, lamEnd, lineEmission, outputImageType
 #ifdef MPI
     use input_variables, only : inclineX, inclineY, inclineZ, singleInclination
 #endif
@@ -264,7 +264,7 @@ contains
              nlambda = 1
              stokesImage = .true.
              outfile = imageFilename(i)
-             npix = nPixelsArray(i)
+             npixels = nPixelsArray(i)
              ninclination = 1
              inclinations(1) = inclinationArray(i)
              lamStart = lambdaImage(i)
@@ -289,7 +289,7 @@ contains
        lineEmission = .true.
        grid%lineEmission = .true.
        if ( calcspectrum ) then 
-          call setupXarray(grid, xarray, nVelocity, atomicDataCube=.true.)
+          call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface, 0., 0., tdisc, tvec, 1,       &
@@ -302,7 +302,7 @@ contains
              nlambda = 1
              stokesImage = .true.
              outfile = imageFilename(i)
-             npix = nPixelsArray(i)
+             npixels = nPixelsArray(i)
              ninclination = 1
              inclinations(1) = inclinationArray(i)
              lamStart = lambdaImage(i)

@@ -42,8 +42,6 @@ contains
     nDustType = 1
     filter_set_name = "natural"
     probDust = 0.1
-    probContPhoton = 1.
-    imagescale = 1.
     noscattering = .false.
     usebias = .true.
     
@@ -319,7 +317,7 @@ contains
     integer :: nLines
     logical :: fLine(:)
     logical :: ok
-
+    logical :: setSubRadius
 
     select case(geometry)
 
@@ -332,7 +330,6 @@ contains
           oneKappa = .true.
           fastIntegrate = .false.
           lineEmission = .true.
-          probContPhoton = 0.2
           call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
                "Line emission wavelength: ","(a,f6.1,1x,a)", 850., ok, .true.)
 
@@ -1031,7 +1028,6 @@ contains
 
     call getLogical("thickcont", opticallyThickContinuum, cLine, fLine, nLines, &
          "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
-    onTheSpot = .false.
 
     call getDouble("xabundance", Xabundance, 1.d0, cLine, fLine, nLines, &
             "Hydrogen abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)
@@ -1305,11 +1301,6 @@ contains
 
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
-
-
-    call getReal("diffdepth", diffDepth, 1., cLine, fLine, nLines, &
-         "Depth of diffusion zone (in Rosseland optical depths): ", &
-         "(a,f5.1,a)",10.0,ok,.false.)
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",200,ok,.false.)

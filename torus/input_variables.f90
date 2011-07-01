@@ -16,29 +16,27 @@ module input_variables
   logical :: readGrid, writeGrid
   real(double) :: mStarburst, clusterRadius
   real(double) :: lXOverLbol
-    logical :: molecularPhysics
-    logical :: photoionPhysics
-    logical :: atomicPhysics
-    logical :: nbodyPhysics
-    logical :: dustPhysics
-    logical :: hOnly 
+  logical :: molecularPhysics
+  logical :: photoionPhysics
+  logical :: atomicPhysics
+  logical :: nbodyPhysics
+  logical :: dustPhysics
+  logical :: hOnly 
 
-    logical :: radiationHydrodynamics 
-    logical :: radiativeEquilibrium
-    logical :: statisticalEquilibrium
-    logical :: photoionEquilibrium
-    logical :: rhieChow 
-    logical :: checkForPhoto 
-    logical :: monochromatic
+  logical :: radiationHydrodynamics 
+  logical :: radiativeEquilibrium
+  logical :: statisticalEquilibrium
+  logical :: photoionEquilibrium
+  logical :: checkForPhoto 
+  logical :: monochromatic
 
-    logical :: calcDataCube
-    logical :: calcPhotometry
-    logical :: rgbCube
-    logical :: calcImage
-    logical :: calcSpectrum
+  logical :: calcDataCube
+  logical :: calcPhotometry
+  logical :: calcImage
+  logical :: calcSpectrum
 
-    character(len=80) :: gridInputFilename, gridOutputFilename
-    character(len=80) :: intextFilename, outtextFilename
+  character(len=80) :: gridInputFilename, gridOutputFilename
+  character(len=80) :: intextFilename, outtextFilename
 
  ! globally applied minimum temperature
   real    :: TMinGlobal     
@@ -49,11 +47,9 @@ module input_variables
 
   logical :: debug
   logical :: suppressWarnings
-  integer :: idump ! hydrodynamics time step dump number
   logical :: dumpInnerEdge
   logical :: doSelfGrav
   real(double) :: gridDistanceScale
-  real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
   integer :: maxPhotoIonIter
   character(len=10) :: geometry
@@ -74,64 +70,79 @@ module input_variables
   logical :: dustOnly
   logical :: molecular
   logical :: dumpdi
-  logical :: h21cm 
-  real :: beamSize
-  real :: eccentricity
-  real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
-  logical :: internalView ! observer is internal to the galaxy
-  logical :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
-  logical :: thermalLineWidth ! Use thermal line width? 
-  real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
-  real(double) :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
+  real    :: eccentricity
   logical :: cmf, sobolev
   integer :: iTransLine, iTransAtom
   integer :: nAtom
   character(len=20) :: atomFilename(10)
   integer :: nClumps
   integer(bigInt) :: maxMemoryAvailable
-  character(len=80) :: distortionType
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
-  real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
-  integer :: initnray ! number of rays to use in fixed ray case (stage 1)
-  integer :: setmaxlevel ! Subsonic turbulent velocity
-  logical :: setSubRadius
-  real :: vturb ! Subsonic turbulent velocity
-  logical :: noturb ! Subsonic turbulent velocity
+  real    :: vturb ! Subsonic turbulent velocity
   logical :: lineEmission
   logical :: smoothInnerEdge
-  logical :: lineimage
-  logical :: quasi ! use quasirandom numbers
-  logical :: dongstep ! controls Ng Acceleration
-  logical :: densitysubsample ! do you want to subsample density in your images?
-  integer :: dssMinSample ! Minimum number of samples per cell when density subsample is used
-  logical :: lowmemory ! if memory is tight
-  logical :: maxrhocalc
-  logical :: resonanceLine
-  real :: probContPhoton
-  ! If T, the first scattering is forced in torusMain. (Useful for optically thin case.)
-  logical :: forceFirstScat  
-  logical :: doIntensivePeelOff
   logical :: fastIntegrate
-  real(double) :: etaViscosity
-  logical :: opticallyThickContinuum, onTheSpot
+
+! CMF
+  logical :: opticallyThickContinuum
+  logical :: lineOff
+
+! Molecular_mod
+  logical :: constantAbundance
+  real :: molAbundance
+  character(len=80) :: molFilename
+  character(len=80) :: moleculefile
+  logical :: restart
+  logical :: addnewmoldata
+  logical :: dongstep ! controls Ng Acceleration
+  logical :: plotlevels   
+  logical :: writetempfits
+  logical :: doCOchemistry
+  logical :: isinlte ! assume grid is in LTE
+  logical :: lowmemory ! if memory is tight
+  logical :: noturb ! Subsonic turbulent velocity
+  real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
+  integer :: initnray ! number of rays to use in fixed ray case (stage 1)
+  real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+  integer :: setmaxlevel ! Subsonic turbulent velocity
+  logical :: lineimage
+  logical :: maxrhocalc
+  logical :: quasi ! use quasirandom numbers
+  logical :: rgbCube ! reverse velocity axis 
+  logical :: densitysubsample ! do you want to subsample density in your images?
+  logical :: wanttau ! Output tau cube? (also used in angularImage_mod)
+  real(double) :: centrevecx, centrevecy, centrevecz ! cube centre (also in AngularImage_mod)
+  real :: beamSize
+  logical :: getdepartcoeffs, gettau
+  logical :: outputconvergence, dotune
+
+! Internal view parameters (angularImage_mod)
+  logical :: h21cm ! also used in molecular_mod
+  logical :: internalView ! observer is internal to the galaxy
+  logical :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
+  logical :: thermalLineWidth ! Use thermal line width? 
+  real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
+  real(double) :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
+  real(double) :: galaxyInclination, galaxyPositionAngle 
+  integer :: dssMinSample ! Minimum number of samples per cell when density subsample is used
 
 ! SED variables
-  logical :: sed, jansky, SIsed, inArcsec
-  real :: SEDlamMin, SEDlamMax
+  logical :: sed, jansky, SIsed
+  real    :: SEDlamMin, SEDlamMax
   logical :: SEDwavLin
   integer :: SEDnumLam
 
-  ! Data cube parameters
-  real(double) :: galaxyInclination, galaxyPositionAngle 
+! Data cube parameters
   real :: positionAngle(10), inclinationArray(10)
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
   logical :: splitOverMPI
   integer :: FitsBitpix ! bitpix parameter for FITS representation of the data
-
-  ! variables to do with dust
+  real(double) :: minVel, maxVel
+  real :: imageside ! data cube size
+  integer :: nv ! number of velocity channels
 
   integer :: nInclination  ! number of inclinations
   real :: firstInclination ! first inclination angle
@@ -161,24 +172,15 @@ module input_variables
   logical :: forcedWavelength
   real :: usePhotonWavelength
   logical :: useDust, realdust ! molecular_mod includes continuum emission
-  logical :: doCOchemistry
-  logical :: isinlte ! assume grid is in LTE
-  logical :: getdepartcoeffs, gettau
-  logical :: outputconvergence, dotune
   real :: r0, rhoC ! Filamentry parameters
   real :: x_D, x_0
 
-  real(double) :: minVel, maxVel
-  real :: imageside ! molecular_mod image parameters
   integer :: itrans, npixels, nsubpixels !nv already exists
-  real(double) :: centrevecx, centrevecy, centrevecz
-  logical :: wanttau
   integer :: nPixelsArray(10)
   integer :: nImage
+
   logical :: blockHandout
 
-
-  real :: diffDepth  ! depth of diffusion zone - in units of rosseland optical depth
   !
   ! abundances of different types of dust grains. These will be used when 
   ! the graintype assigned is "mixed."
@@ -186,43 +188,30 @@ module input_variables
   real :: X_grain(10)    ! abundaunce 
   character(LEN=30) :: grainname(10)
 
+! Used in ion_mod
   real :: h_abund, he_abund, c_abund, n_abund, &
        o_abund, ne_abund, s_abund  
 
 
-
   ! torus images
-
-  real :: slitPA, slitWidth, slitLength
-  real :: imageSizeinArcsec
-  real :: vfwhm, pfwhm, vSys
-  integer :: nSlit, np, nv
-  type(VECTOR) :: slitPosition1, slitPosition2
   type(VECTOR) :: sphereVelocity, spherePosition
   real(double) :: sphereMass, sphereRadius
   logical :: stokesImage
   real :: setImageSize
-  real :: imageScale
   real :: vMin, vMax
   real :: vMinSpec, vMaxSpec
-  integer :: nVelocity
   real :: gridDistance
   integer :: observerpos
   logical :: inclineX, inclineY, inclineZ
   real :: singleInclination
-
-  integer :: npix    ! Number of pixels for polimages  
   character(LEN=30) :: filter_set_name  ! name of filter set used for images
   ! if T, the dimension of the images will be in arcsec otherwise in phyiscal unit of length.
   logical :: imageInArcsec  
 
-  logical :: forceRotate
-  logical :: forceNoRotate
 
-  ! variables to do with dust
-  !
   integer :: nSpiral
   logical :: doSpiral
+
   ! size distribution of dust grain is now assumed to have 
   ! the following form:
   !  
@@ -234,19 +223,13 @@ module input_variables
   real :: pDist(maxDustTypes)   !  p exponet in the equation above.
 
 
-  ! Flag to include accreation disc in sph dust model or not
-  logical :: disc_on
-
-  ! restrcting a calculation to a certain star in cluster geometry
-  integer :: idx_restrict_star 
-
   ! whitney stuff
-
+  !
   real :: erInner, erOuter, drInner, drOuter, cavAngle, cavDens
   real :: rStellar, mdotEnv, mEnv
 
   ! variables for clumped wind models
-
+  !
   integer :: nBlobs
   logical :: freshBlobs
   real :: blobContrast
@@ -262,9 +245,6 @@ module input_variables
   character(len=80) :: opacityDataFile
   character(len=80) :: dustfilename(10)
 
-  logical :: plot_maps
-  logical :: plotlevels
-  logical :: writetempfits
 
   ! output arrays
 
@@ -338,7 +318,6 @@ module input_variables
                              !   from Hartmann paper
   real :: maxHartTemp        ! maximum temperature of hartmann distribution                             
   logical :: isoTherm        ! use isothermal T Tauri accretion stream 
-  real    :: isoThermTempLogical    ! If isoTherm is true, use this temperature in [K]
 
   ! pp disk stuff
   real :: rSmooth, rHeight, sigmaPower
@@ -355,36 +334,10 @@ module input_variables
 
   real :: massEnvelope
 
-  ! raman scattering model parameters
-
+  ! raman scattering model 
   logical :: doRaman
-  real :: o6width
-  character(len=20) :: ramanDist          ! raman distortion type
-  real :: ramVel
 
-
-  ! core emission line parameters
-
-  logical :: coreEmissionLine
-  real :: velWidthCoreEmission
-
-
-  real :: vContrast
-
-  ! misc
-
-  character(len=80) :: misc
-
-  character(len=80) :: contFluxFile, contFluxFile1, contFluxFile2
-  real :: phaseOffset
-  logical :: lineOff, starOff
-  real :: logMassLossRate
-  real :: lamLine
-  character(LEN=20) :: ion_name  ! Name of the ion (see opacity_lte_mod.f90 for the list of a valid name.)
-  real ::  ion_frac              ! n_ion/n_specie
-  integer :: nLower, nUpper
-
-  
+  real :: lamLine ! ??? 
 
  ! Spot stuff
   
@@ -398,14 +351,14 @@ module input_variables
 ! SPH parameters
   character(len=80) :: sphdataFilename
   character(len=80) :: inputFileFormat 
-  real :: hcritPercentile
-  real :: hmaxPercentile
-  real :: sph_norm_limit
+  real    :: hcritPercentile
+  real    :: hmaxPercentile
+  real    :: sph_norm_limit
   integer :: kerneltype
   logical :: useHull
-
   logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
   logical :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
+  logical :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   logical :: convertRhoToHI ! Convert density to HI
   integer :: ih2frac        ! column of SPH file which contains H2 fraction
 
@@ -413,6 +366,7 @@ module input_variables
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)
   type(VECTOR) :: sourcePos(10), sourceVel(10)
   character(len=80) :: inputContFluxFile(10)
+  character(len=80) :: contFluxFile
 
   ! binary parameters
 
@@ -425,25 +379,16 @@ module input_variables
   real :: radius1, radius2
   logical :: readPops, writePops
   logical :: readPhasePops, writePhasePops
-  logical :: readLucy, openLucy
-  logical :: readMol, writeMol ! molecular_mod equivalents of read/writelucy
   real :: tThresh
-  logical :: redolucy
-  character(len=80) :: lucyFilenameIn
-  character(len=80) :: lucyFilenameOut
-  character(len=80) :: molFilename, molFilenameIn, molFilenameOut
-  character(len=80) :: moleculefile
-  logical :: restart
-  logical :: addnewmoldata
+  logical :: readLucy
   real :: mass1, mass2, massRatio, streamFac
-  real :: temp1, temp2
-  character(len=80) :: popFilename
   real :: deflectionAngle
   logical :: lte
   logical :: LyContThick
   logical :: curtains, enhance
   real :: dipoleOffset
   logical :: amr1d, amr2d, amr3d
+
 
   ! T Tauri parameters ----------------------------------------------------
   character(len=80) :: MdotType ! variable accretion rate model in use
@@ -588,7 +533,6 @@ module input_variables
   real(double) :: limitScalar  ! value for controlling grid subdivision 
   real(double) :: limitScalar2 ! value for controlling grid subdivision 
   real(double) :: vturbmultiplier ! value for controlling grid subdivision  
-  logical      :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   real :: amrGridSize          ! length of each side of the (cubic) grid 
   real(double) :: amrGridCentreX       ! x-coordinate of grid centre 
   real(double) :: amrGridCentreY       ! y-coordinate of grid centre 
@@ -626,8 +570,6 @@ module input_variables
   logical :: fillRayleighOpacity       ! previously: 'fillRayleigh'
   character(len=10) :: gridCoords      ! previously: 'gridtype'
   logical :: doPVimage                 ! previously: 'pvimage'
-  real :: relIntCoreEmissionLine       ! previously: 'relIntCoreEmission'
-  real :: velWidthCoreEmissionLine     ! previously: 'velWidthCoreEmission'
 
   
   ! lucy radiative equ
@@ -727,11 +669,12 @@ module input_variables
   logical :: magStreamFileDegrees ! does input file use degrees? (otherwise radians)
   !--------------------------------------------------------------------
 
-  real :: molAbundance
-  logical :: constantAbundance
 
 !hydro stuff
   logical :: hydrodynamics
+  logical :: rhieChow 
+  real :: cflNumber
+  real(double) :: etaViscosity
   real(double) :: tStart, tEnd, tDump
   logical :: hydrovelocityConv
   integer :: xminusbound, yminusbound, zminusbound
@@ -740,6 +683,7 @@ module input_variables
   logical :: fluxinterp
   logical :: periodicX, periodicY, periodicZ ! For photoion
   character(len=20) :: limiterType
+  integer :: idump ! hydrodynamics time step dump number
 
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString
   character(len=20) :: xplusboundString, yplusboundString, zplusboundString

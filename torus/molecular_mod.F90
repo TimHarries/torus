@@ -828,7 +828,7 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
-     use input_variables, only : blockhandout, tolerance, &!lucyfilenamein, openlucy,&
+     use input_variables, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
      use messages_mod, only : myRankIsZero
