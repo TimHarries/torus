@@ -10,7 +10,7 @@ contains
 
     implicit none
     
-    character(len=*) :: unitString
+    character(len=*) :: unitString, unitType
     real(double) :: torusUnit
 
 
@@ -108,7 +108,7 @@ contains
     case("lSol")
        torusUnit = lsol
        
-    case(default)
+    case default
        write(*,*) "Unit not recognized "", unitString """
        write(*,*) "Using TORUS defaults"
        torusUnit = 1.d0

@@ -562,7 +562,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             cmfgen_class.f90  \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            nrtype.f90 nrutil.f90 magnetic_mod.f90 
+            nrtype.f90 nrutil.f90 magnetic_mod.f90 units_mod.f90
             
 
 
