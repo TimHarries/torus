@@ -6617,7 +6617,7 @@ CONTAINS
     integer :: i, j
     integer, parameter :: numClouds=5
     type(VECTOR) :: centre(numClouds)
-    logical :: inSphere = .false.
+!    logical :: inSphere = .false.
 
 !THaw - initially trying 30pc box centered at 0,0,0 and extending ± 15pc
 !Star at 0,0,0
