@@ -6696,8 +6696,6 @@ CONTAINS
     endif
     thisOctal%etaCont(subcell) = 0.
 
-
-
   end subroutine calcRadialClouds
 
   subroutine calcUniformSphere(thisOctal,subcell)

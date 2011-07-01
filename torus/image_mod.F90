@@ -529,9 +529,7 @@ module image_mod
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
        real(double) :: nu, PerAngstromToPerHz, strad, scale
        logical, optional :: pointTest
-       logical :: found = .false.
-       integer i, j
-       real(double) :: inImage
+
 
        strad = (dx*1.d10/distance)**2
        scale = 1.d20/distance**2
@@ -549,9 +547,23 @@ module image_mod
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 
        if(present(pointTest)) then
+          call dumpPointTestData(array, strad, perAngstromToPerHz)
+       end if
+
+     end subroutine ConvertArrayToMJanskiesPerStr
+
+     subroutine dumpPointTestData(array, strad, perAngstromToPerHz)
+       real, intent(in)      :: array(:,:)
+       real(double) :: inImage, strad, perAngstromToPerHz
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
+       real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
+       integer :: i, j
+       logical :: found=.false.
+
+
           do i = 1, 201
              do j = 1, 201
-                if((array(i,j)*scale) /= 0.0) then
+                if((array(i,j)) /= 0.0) then
                    if(found) then
                    open (123, file="image_flux.dat", status="old")
                       print *, "More than one pixel with non-zero flux in point source test."
@@ -564,7 +576,7 @@ module image_mod
                       found = .true.
                       print *, "non zero flux at pixel (",i,",",j,")"
                       inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * 1.d20)
-                      print *, "Flux at image: ", inImage 
+                      print *, "Flux at image: ", inImage
                       write(123, *) inImage
                       print *, " "
                       close(123)
@@ -572,16 +584,10 @@ module image_mod
                 end if
              end do
           end do
-       end if
 
-!       print *, "scale ", scale
-!       print *, "strad ", (dx*1.d10/(distance*pcToCm))**2
-!       print *, "PerAngstromToPerCm ", PerAngstromToPerCm
-!       print *, "cSpeed ", cSpeed
-!       print *, "nu ", nu
-!       print *, "angstromtocm ", angstromtocm
 
-     end subroutine ConvertArrayToMJanskiesPerStr
+     end subroutine
+
 !
 !*******************************************************************************
 !
