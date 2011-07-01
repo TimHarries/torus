@@ -215,27 +215,6 @@ contains
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getString("limitertype", limiterType, cLine, fLine, nLines, &
-         "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
-
-    call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
-         "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
-
-    call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
-         "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getLogical("biasToLyman", biasToLyman, cLine, fLine, nLines, &
-         "Variance reduction, higher sampling of Lyman photons: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getLogical("binPhotons", biasToLyman, cLine, fLine, nLines, &
-         "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
-            "Variance reduction, extent of bias: ", "(a,es9.3,1x,a)", 100.d0, ok, .false.)
-
-    call getLogical("hOnly", hOnly, cLine, fline, nLines, &
-         "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
-
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1218,7 +1197,24 @@ contains
             "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)
     end if
 
+
+    call getLogical("biasToLyman", biasToLyman, cLine, fLine, nLines, &
+         "Variance reduction, higher sampling of Lyman photons: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("binPhotons", biasToLyman, cLine, fLine, nLines, &
+         "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
+            "Variance reduction, extent of bias: ", "(a,es9.3,1x,a)", 100.d0, ok, .false.)
+
+    call getLogical("hOnly", hOnly, cLine, fline, nLines, &
+         "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+
     if(splitovermpi) then
+       call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
+            "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getLogical("periodicX", periodicX, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in x direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("periodicY", periodicY, cLine, fLine, nLines, &
@@ -1427,6 +1423,13 @@ contains
 
     call getLogical("fluxinterp", fluxinterp, cLine, fLine, nLines, &
          "Interpolate flux at fine coarse boundaries: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getString("limitertype", limiterType, cLine, fLine, nLines, &
+         "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
+
+    call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
+         "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
+
 
 
     xplusboundstring = "null"
