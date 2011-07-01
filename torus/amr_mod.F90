@@ -6682,18 +6682,19 @@ CONTAINS
 
 
     thisOctal%inFlow(subcell) = .true.
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%nhi(subcell) = 1.e-5
-    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell) 
-
-    thisOctal%ionFrac(subcell,1) = 1.               !HI      
-    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
-    if (SIZE(thisOctal%ionFrac,2) > 2) then
-       thisOctal%ionFrac(subcell,3) = 1.            !HeI 
-       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
-    endif
+!THAW - temporary - for grav test
+!    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+!    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+!    thisOctal%nhi(subcell) = 1.e-5
+!    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+!    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell) 
+!
+!    thisOctal%ionFrac(subcell,1) = 1.               !HI      
+!    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+!    if (SIZE(thisOctal%ionFrac,2) > 2) then
+!       thisOctal%ionFrac(subcell,3) = 1.            !HeI 
+!       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+!    endif
     thisOctal%etaCont(subcell) = 0.
 
   end subroutine calcRadialClouds

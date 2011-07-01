@@ -533,12 +533,6 @@ module image_mod
 
        strad = (dx*1.d10/distance)**2
        scale = 1.d20/distance**2
-!       strad = (dx*1.d10/(distance*pcToCm))**2
-!       scale = 1.d20/(distance*pcTocm)**2 
-  
-!       write(*,*) "dx ", dx
-!       write(*,*) "distance ",distance
-!       write(*,*) "ang (arcsec) ", sqrt(strad)*radtodeg*3600.d0
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
