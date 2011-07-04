@@ -301,7 +301,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   logical :: VoigtProf=.false.
   logical :: photLine=.false.            ! photospheric line production
   logical :: useInterp=.false.
+#ifdef MPI
   logical :: readFileFormatted  ! whether 'grid' input  file is formatted
+#endif
   logical :: writeFileFormatted ! whether 'grid' output file is formatted
   logical :: sphericityTest=.false.        ! sphericity test
   logical :: fillRayleighOpacity =.false.  ! previously: 'fillRayleigh'
