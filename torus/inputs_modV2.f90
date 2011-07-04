@@ -38,10 +38,8 @@ contains
     oneKappa = .false.
 
     tMinGlobal = 3.
-    grainSize = 1.
     nDustType = 1
     filter_set_name = "natural"
-    probDust = 0.1
     noscattering = .false.
     usebias = .true.
     

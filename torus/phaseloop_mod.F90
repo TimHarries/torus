@@ -269,6 +269,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
+  real :: probDust
+
 ! Variables formerly in input_variables but not set in Torus V2 ----------------
   real :: ramVel=0.0
   character(len=20) :: ramanDist          ! raman distortion type
@@ -289,10 +291,27 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real :: vfwhm=1.0, pfwhm=1.0
   type(VECTOR) :: slitPosition1=VECTOR(1.0,1.0,1.0), slitPosition2=VECTOR(1.0,1.0,1.0)
   integer :: nSlit=1, np
+  real :: usePhotonWavelength
+  logical :: forcedWavelength
+  character(len=80) :: opacityDataFile
+  logical :: fillTio=.false.
+  logical :: plezModelOn=.false.
+  logical :: fillThomson=.false.
+  logical :: screened=.false.
+  logical :: VoigtProf=.false.
+  logical :: photLine=.false.            ! photospheric line production
+  logical :: useInterp=.false.
+  logical :: readFileFormatted  ! whether 'grid' input  file is formatted
+  logical :: writeFileFormatted ! whether 'grid' output file is formatted
+  logical :: sphericityTest=.false.        ! sphericity test
+  logical :: fillRayleighOpacity =.false.  ! previously: 'fillRayleigh'
+  logical :: doPVimage=.false.             ! previously: 'pvimage'
+  logical :: noPhaseUpdate=.false.  ! disable updating AMR grid at each phase
 !-------------------------------------------------------------------------------
 
 !$OMP THREADPRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray)
 
+  probDust = 0.1
   phaseTime = 0.0
   phaseOffset = 0.0
   dopshift = 0.

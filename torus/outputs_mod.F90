@@ -15,7 +15,7 @@ contains
     use input_variables, only : calcDataCube, atomicPhysics, nAtom
     use input_variables, only : iTransLine, iTransAtom, gridDistance
     use input_variables, only : imageFilename, calcImage, calcSpectrum
-    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, nImage, thisinclination
+    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
     use input_variables, only : outfile, npixels, ninclination, nImage, inclinations, inclinationArray
