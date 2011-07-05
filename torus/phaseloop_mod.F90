@@ -292,7 +292,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR) :: slitPosition1=VECTOR(1.0,1.0,1.0), slitPosition2=VECTOR(1.0,1.0,1.0)
   integer :: nSlit=1, np
   real :: usePhotonWavelength
-  logical :: forcedWavelength
+  logical :: forcedWavelength=.false.
   character(len=80) :: opacityDataFile
   logical :: fillTio=.false.
   logical :: plezModelOn=.false.
