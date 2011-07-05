@@ -51,18 +51,18 @@ module input_variables
 ! Physical units of the calculation
 !----------------------------------
 
-  real(double) :: massUnit, timeUnit, lengthUnit
+  real(double) :: massUnit, timeUnit, lengthUnit !Code units
 
 !-----------------
 ! Photoionisation 
 !-----------------
 
-  logical :: photoionization
-  logical :: hOnly         
-  logical :: usemetals     
-  logical :: checkForPhoto 
-  logical :: monochromatic 
-  logical :: quickThermal  
+  logical :: photoionization   !Perform a photoionization calculation
+  logical :: hOnly             !Hydrogen only model (no Helium)
+  logical :: usemetals         !Include species heavier than Helium
+  logical :: checkForPhoto     !Check whether or not a photoionization loop is necessary
+  logical :: monochromatic     !Use a monochromatic radiation field
+  logical :: quickThermal      !Use a simplified thermal balance calculation
 
 ! Abundances used in ion_mod
   real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
@@ -70,38 +70,46 @@ module input_variables
   ! Parameters  specific to domain decomposed photoionisation 
 
   !Stack optimization
-  logical :: optimizeStack
-  integer :: dStack
-  integer :: stackLimit
-  integer :: bufferCap
+  logical :: optimizeStack     !Perform run-time photon stack size optimization
+  integer :: dStack            !Stack increment for run-time photon stack size optimization 
+  integer :: stackLimit        !Maximum stack size for run-time photon stack size optimization
 
-  logical :: binPhotons
-  logical :: noDiffuseField
-  logical :: dustOnly
-  integer :: inputNMonte
-  integer :: maxPhotoIonIter
+  integer :: bufferCap         !Number of photon stacks to accomodate in buffer
+
+  logical :: binPhotons        !Dump a spectrum of propagated photon packets
+  logical :: noDiffuseField    !Use the on the spot approximation
+  logical :: dustOnly          !Consider dust physics only
+  integer :: inputNMonte       !Number of photon packets to propagate
+  integer :: maxPhotoIonIter   !Maximimum interation number
+
+  logical :: periodicX, periodicY, periodicZ ! Periodic photon boundary conditions
+  logical :: doPhotoRefine     !Refine the AMR grid between iterations of the photo loop
 
 !---------------
 ! Hydrodynamics
 !---------------
 
-  logical :: rhieChow
-  logical :: doSelfGrav 
-  real :: cflNumber
-  real(double) :: etaViscosity
-  real(double) :: tStart, tEnd, tDump
-  logical :: hydrovelocityConv
-  integer :: xminusbound, yminusbound, zminusbound
-  integer :: xplusbound, yplusbound, zplusbound
-  logical :: doRefine, doUnrefine, useViscosity, doPhotoRefine
-  logical :: fluxinterp
-  logical :: periodicX, periodicY, periodicZ ! For photoion
-  character(len=20) :: limiterType
-  integer :: idump ! hydrodynamics time step dump number
-  real(double) :: gridDistanceScale
+  logical :: rhieChow                 !Use Rhie-Chow interpolation
+  logical :: doSelfGrav               !Do self gravity calculation
+  real :: cflNumber                   !Courant-Friedrichs-Lewy constant
+  real(double) :: etaViscosity        !Artificial viscosity parameter
+  real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
+  logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
+  logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
+  logical :: useViscosity             !Use artificial viscosity
+  logical :: fluxinterp               !Interpolate fluxes at fine to coarse cell advections
+  character(len=20) :: limiterType    !Flux limiter type
+  integer :: idump                    !Hydrodynamics time step dump number
+  real(double) :: gridDistanceScale   !Scale of grid
 
+  !Boundary conditions (strings)
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString
   character(len=20) :: xplusboundString, yplusboundString, zplusboundString
+
+  !Boundary conditions (integer codes)
+  integer :: xminusbound, yminusbound, zminusbound 
+  integer :: xplusbound, yplusbound, zplusbound 
+
   real :: x1, x2
 
 !---------------------------------------
