@@ -6560,6 +6560,10 @@ CONTAINS
     endif
 !    thisOctal%rho(subcell) = rho(nr)
 
+
+!THAW - temporary uniform density to check propagation stability
+!    thisOctal%rho(subcell) = rho(nr)
+
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     !Thaw - will probably want to change this to use returnMu
     ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)

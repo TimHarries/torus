@@ -208,7 +208,7 @@ contains
        endif
     end if
 
-    if(grid%currentTime == 0.d0) then
+    if(grid%currentTime == 0.d0 .and. .not. readGrid) then
        call ionizeGrid(grid%octreeRoot)
 
        looplimitTime = deltaTForDump
@@ -361,7 +361,7 @@ contains
              looplimittime = deltaTForDump
           end if
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 3, loopLimitTime, loopLimitTime, .false., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., .true.)
 
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
