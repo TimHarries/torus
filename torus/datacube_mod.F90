@@ -149,6 +149,8 @@ contains
        end if
     end if
 
+    call checkBitpix(FitsBitpix)
+
     status=0
     !
     !  Delete the file if it already exists, so we can then recreate it.
@@ -1019,7 +1021,27 @@ subroutine freeDataCube(thiscube)
     close(38)
   end subroutine dumpCubeToSpectrum
        
+  ! Report whether the value of bitpix is valid
+  subroutine checkBitpix (thisBitpix)
+
+    integer, intent(in) :: thisBitPix
+    character(len=40)   :: message
+
+    if (thisBitPix == 8  .or. thisBitPix == 16  .or. &
+         thisBitPix == 32 .or. thisBitPix == -32 .or. &
+         thisBitPix == -64 ) then 
     
+       write(message,'(a,i3)') "Writing FITS files using BITPIX= ", thisBitPix
+       call writeInfo(message)
+
+    else
+
+       write(message,'(a,i3)') "Invalid value of  BITPIX= ", thisBitPix
+       call writeWarning(message)
+
+    end if
+
+  end subroutine checkBitpix
 
 end module datacube_mod
 
