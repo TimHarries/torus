@@ -187,7 +187,7 @@ contains
        call ftpkys(unit,'XUNIT',thisCube%xUnit,"Spatial unit",status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
-       
+       call addScalingKeywords(maxval(thisCube%intensity), minval(thisCube%intensity))
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -208,6 +208,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',"Optical depth","Optical depth unit",status)
+       call addScalingKeywords(maxval(thisCube%tau), minval(thisCube%tau))
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -305,6 +306,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',"cm^-2","Column density unit",status)
+       call addScalingKeywords(maxval(thisCube%nCol), minval(thisCube%nCol))
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -326,6 +328,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
+       call addScalingKeywords(maxval(thisCube%i0_pos), minval(thisCube%i0_pos))
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -347,6 +350,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
+       call addScalingKeywords(maxval(thisCube%i0_neg), minval(thisCube%i0_neg))
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -390,9 +394,27 @@ contains
 
       end subroutine addWCSinfo
 
+      subroutine addScalingKeywords(max, min)
+        real, intent(in) :: max, min        ! data max and min values
+        real(double) :: bscale, bzero       ! values of keywords
+        integer, parameter :: blank= -32768
+
+! Set scaling values used when packing data into an integer representation
+        if ( bitpix == 16 .or. bitpix == 8) then  
+           bscale = (max - min) / 65534.0
+           bzero = (max + min) / 2.0
+
+           call ftpkyd(unit,'BSCALE',   bscale,-9,'(max - min) / 65534.0',status)
+           if (status > 0) call print_error(status)
+           call ftpkyd(unit,'BZERO',    bzero, -9,'(max + min) / 2.0',status)
+           if (status > 0) call print_error(status)
+           call ftpkyj(unit,'BLANK', blank, 6, ' ', status)
+           if (status > 0) call print_error(status)
+        end if
+
+      end subroutine addScalingKeywords
     
-    
-  end subroutine writeDataCube
+    end subroutine writeDataCube
 
 #endif
 
