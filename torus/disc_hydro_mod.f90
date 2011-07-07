@@ -12,7 +12,7 @@ module disc_hydro_mod
   use constants_mod
   use vector_mod
   use messages_mod
-  use input_variables
+  use inputs_mod
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, subcellCentre
   use lucy_mod, only: lucyRadiativeEquilibriumAMR
@@ -27,7 +27,7 @@ contains
        radius, mStar, sigma0,  converged, drho)
 
     use density_mod, only: fractgap, fractgap2 
-    use input_variables, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap, rho0
+    use inputs_mod, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap, rho0
     integer, intent(in) :: nz ! number of vertical grid points
     real(double),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -349,7 +349,7 @@ contains
 
   subroutine verticalHydrostatic(grid, mStar, sigma0,  miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope)
-    use input_variables, only : variableDustsublimation, rGap
+    use inputs_mod, only : variableDustsublimation, rGap
     use messages_mod, only: myRankIsZero
     use parallel_mod, only: torus_mpi_barrier
     use source_mod, only: SOURCETYPE
@@ -604,7 +604,7 @@ end subroutine verticalHydrostatic
 
   recursive subroutine setTemperature(thisOctal, temperature)
 
-    use input_variables, only : rinner, router
+    use inputs_mod, only : rinner, router
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real :: temperature
@@ -654,7 +654,7 @@ end subroutine verticalHydrostatic
 
 
   subroutine getBetaValue(grid, beta, heightat100AU)
-    use input_variables, only : rinner, router
+    use inputs_mod, only : rinner, router
     use utils_mod, only: linfit 
 
     type(GRIDTYPE) :: grid

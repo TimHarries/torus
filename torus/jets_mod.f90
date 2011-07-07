@@ -236,7 +236,7 @@ contains
     ! theta_o  is "half" opening angle
     !
     
-    !    USE input_variables  ! inputs needed for this function are defined in here.
+    !    USE inputs_mod  ! inputs needed for this function are defined in here.
     USE constants_mod
     
     IMPLICIT NONE
@@ -421,7 +421,7 @@ contains
   !  NB: theta_o  is "half" opening angle
   !====================================================================
   FUNCTION JetsVelocity(point,grid) RESULT(out)
-!    USE input_variables  ! inputs needed for this function are defined in here.
+!    USE inputs_mod  ! inputs needed for this function are defined in here.
     USE constants_mod
     
     IMPLICIT NONE
@@ -642,7 +642,7 @@ contains
     !  subcell using the density and the velocity functions as descrubed
     !  below.
 
-    !    use input_variables
+    !    use inputs_mod
         
     IMPLICIT NONE
 
@@ -712,7 +712,7 @@ contains
   ! NB: The temperature assigned to the cell is in [K].
   !===============================================================  
   
-!  use input_variables    
+!  use inputs_mod    
   
     IMPLICIT NONE
 
@@ -744,7 +744,7 @@ contains
   SUBROUTINE initJetsAMR(grid)    
     use constants_mod
     use vector_mod
-!    use input_variables
+!    use inputs_mod
 
     implicit none
     

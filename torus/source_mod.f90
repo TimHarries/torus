@@ -114,7 +114,7 @@ module source_mod
 
 
     subroutine randomSource(source, nSource, iSource, weight,lamArray, nLambda, initialize)
-      use input_variables, only : lambdaImage
+      use inputs_mod, only : lambdaImage
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       integer, intent(out) :: iSource
@@ -288,7 +288,7 @@ module source_mod
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
-      use input_variables, only : biasPhiDirection, biasPhiProb, biasPhiInterval
+      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
       type(GRIDTYPE) :: grid
       real(double) :: r, t, u, v, w, ang
       real(double), optional :: weight

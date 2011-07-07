@@ -102,7 +102,7 @@ module molecular_mod
 
    subroutine readMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
-     use input_variables, only : molAbundance
+     use inputs_mod, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=80) :: junk
@@ -263,7 +263,7 @@ module molecular_mod
  ! Same routine for benchmark molecule (slightly different file format)
    subroutine readBenchmarkMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
-     use input_variables, only : molAbundance
+     use inputs_mod, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=200):: dataDirectory, filename
@@ -356,7 +356,7 @@ module molecular_mod
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
      use grid_mod, only: freeGrid
-     use input_variables, only : vturb, restart, isinLTE, &
+     use inputs_mod, only : vturb, restart, isinLTE, &
           addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics
 
@@ -646,7 +646,7 @@ module molecular_mod
 
    recursive subroutine  allocateOther(grid, thisOctal)
 
-     use input_variables, only : gettau
+     use inputs_mod, only : gettau
 
      type(GRIDTYPE) :: grid
      type(octal), pointer   :: thisOctal
@@ -757,7 +757,7 @@ module molecular_mod
 
    recursive subroutine  deallocateUnused(grid, thisOctal, upperlev, everything)
 
-     use input_variables, only : densitysubsample, debug, lowmemory
+     use inputs_mod, only : densitysubsample, debug, lowmemory
 
      type(GRIDTYPE) :: grid
      type(octal), pointer   :: thisOctal
@@ -828,7 +828,7 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
-     use input_variables, only : blockhandout, tolerance, &
+     use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
      use messages_mod, only : myRankIsZero
@@ -1466,7 +1466,7 @@ end subroutine molecularLoop
    subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays, warned_neg_dtau)
 !   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, thisMolecule, fixedrays)
 
-     use input_variables, only : useDust, realdust, quasi
+     use inputs_mod, only : useDust, realdust, quasi
 
      type(MOLECULETYPE), intent(in) :: thisMolecule
      type(GRIDTYPE), intent(in) :: grid
@@ -1752,7 +1752,7 @@ end subroutine molecularLoop
 ! This subroutine calculates the average local radiation field in a cell, Jbar. So the SE can be worked out
    subroutine calculateJbar(nr, grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar)
 
-     use input_variables, only : useDust, realdust, debug
+     use inputs_mod, only : useDust, realdust, debug
 
      type(GRIDTYPE) :: grid
      type(OCTAL), pointer :: thisOctal
@@ -1884,7 +1884,7 @@ end subroutine molecularLoop
  ! solves rate equation in matrix format
    subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2, collmatrix, ctot)
      
-     use input_variables, only : debug
+     use inputs_mod, only : debug
      
      real(double), intent(inout) :: nPops(:)
      real(double), intent(in) :: temperature
@@ -2176,7 +2176,7 @@ endif
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
                           iter, nVoxels,fixedrays)
 
-     use input_variables, only : tolerance, dongstep
+     use inputs_mod, only : tolerance, dongstep
 
      type(octal), pointer   :: thisOctal
      real(double) :: maxFracChangePerLevel(:),  avgFracChange(:,:)
@@ -2307,7 +2307,7 @@ endif
 
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
-   use input_variables, only : itrans, nSubpixels, observerpos, rgbCube, &
+   use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
         gridDistance, imageside, npixels
 #ifdef USECFITSIO
    use image_mod, only: deleteFitsFile
@@ -2498,7 +2498,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
     subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, &
                              ObserverVec, viewvec, imagebasis, imagegrid, ix1, ix2)
 
-      use input_variables, only : npixels
+      use inputs_mod, only : npixels
       
       type(GRIDTYPE), intent(IN) :: grid
       type(MOLECULETYPE), intent(IN) :: thisMolecule
@@ -2551,7 +2551,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
     function PixelIntensity(viewvec,pixelcorner,&
       imagebasis,grid,thisMolecule,iTrans,deltaV,subpixels) result(out)
    
-   use input_variables, only : tolerance, lineimage, lamline, maxrhocalc,isinlte
+   use inputs_mod, only : tolerance, lineimage, lamline, maxrhocalc,isinlte
 
    integer, parameter :: maxsubpixels = 100
    
@@ -2710,10 +2710,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
-     use input_variables, only : gridDistance, beamsize, npixels, nv, imageside, &
+     use inputs_mod, only : gridDistance, beamsize, npixels, nv, imageside, &
           maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, h21cm
 #ifdef USECFITSIO
-    use input_variables, only : writetempfits
+    use inputs_mod, only : writetempfits
     use image_mod, only : deleteFitsFile
 #endif
 #ifdef MPI
@@ -2941,7 +2941,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 ! Flux through solid angle covered by one pixel in ergs/s
  real(double) pure function IntensityToFlux(intensity,dx,distance,thismolecule) result (flux)
 
-   use input_variables, only : itrans
+   use inputs_mod, only : itrans
    real(double), intent(in) :: dx, intensity, distance
    type(moleculetype), intent(in) :: thismolecule
 
@@ -3052,7 +3052,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
  subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
                               tau,tautest,rhomax, i0max, nCol, observerVelocity)
 
-   use input_variables, only : useDust, h21cm, densitysubsample
+   use inputs_mod, only : useDust, h21cm, densitysubsample
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3389,7 +3389,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    subroutine continuumIntensityAlongRay(position, direction, grid, lambda, i0, tau, tautest)
 
-     use input_variables, only : densitysubsample
+     use inputs_mod, only : densitysubsample
 
      type(VECTOR) :: position, direction
      real(double) :: disttoGrid
@@ -3506,7 +3506,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule)
 
-     use input_variables, only : iTrans, h21cm, lowmemory, doCOchemistry, x_D, noturb
+     use inputs_mod, only : iTrans, h21cm, lowmemory, doCOchemistry, x_D, noturb
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3632,7 +3632,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    recursive subroutine addDustToOctalParams(grid, thisOctal, thisMolecule)
 
-     use input_variables, only : iTrans, lineimage, lamline
+     use inputs_mod, only : iTrans, lineimage, lamline
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3706,7 +3706,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
     ! sample level populations at logarithmically spaced annuli
    subroutine dumpResults(grid, thisMolecule)!, convtestarray)
 
-     use input_variables, only : rinner, router, amr1d, getdepartcoeffs, outputconvergence
+     use inputs_mod, only : rinner, router, amr1d, getdepartcoeffs, outputconvergence
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: r, ang
@@ -3926,7 +3926,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 #ifdef MPI 
        subroutine packMoleLevel(octalArray, nTemps, tArray, iLevel,ioctal_beg,ioctal_end)
-!         use input_variables,only : gettau
+!         use inputs_mod,only : gettau
          include 'mpif.h'
          integer :: ioctal_beg, ioctal_end
          type(OCTALWRAPPER) :: octalArray(:)
@@ -4003,7 +4003,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       end subroutine packJnuTrans
 
       subroutine unpackMoleLevel(octalArray, tArray, iLevel)
-!        use input_variables, only : gettau
+!        use inputs_mod, only : gettau
         include 'mpif.h'
         type(OCTALWRAPPER) :: octalArray(:)
         real(double) :: tArray(:,:)
@@ -4065,11 +4065,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       subroutine setObserverVectors(viewvec, observerVec, imagebasis)
 
-        use input_variables, only : npixels, imageside
-        use input_variables, only : griddistance 
-        use input_variables, only : observerpos ! line number of observer position in observerfile 
-        use input_variables, only : centrevecX, centrevecY, centrevecZ
-        use input_variables, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
+        use inputs_mod, only : npixels, imageside
+        use inputs_mod, only : griddistance 
+        use inputs_mod, only : observerpos ! line number of observer position in observerfile 
+        use inputs_mod, only : centrevecX, centrevecY, centrevecZ
+        use inputs_mod, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
 
         logical :: paraxial 
         real(double) :: pixelwidth, theta
@@ -4152,7 +4152,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !!!subroutine testOpticalDepth
       subroutine testOpticalDepth(grid,thisMolecule)
 
-        use input_variables, only : lamstart, lamend, rinner, router, debug, useDust
+        use inputs_mod, only : lamstart, lamend, rinner, router, debug, useDust
         type(GRIDTYPE) :: grid
         type(MOLECULETYPE) :: thisMolecule
         type(octal), pointer   :: thisOctal
@@ -4339,7 +4339,7 @@ end subroutine plotdiscValues
 ! Calculate the density based on functional form or values stored on AMR grid.
   real(double) function interpolated_Density(position, grid) RESULT(out)
 
-!    use input_variables, only : sphdatafilename    
+!    use inputs_mod, only : sphdatafilename    
     implicit none
     type(VECTOR), intent(in) :: position
 !    type(VECTOR), save :: oldposition
@@ -4392,7 +4392,7 @@ end subroutine plotdiscValues
 
   function calculatetau(grid, thisoctal, subcell, thismolecule, phi, ds) result(tauavg)
 
-    use input_variables, only : usedust, realdust
+    use inputs_mod, only : usedust, realdust
     TYPE(gridtype) :: grid
     TYPE(OCTAL), pointer :: thisoctal
     type(MOLECULETYPE) :: thismolecule
@@ -4444,7 +4444,7 @@ end subroutine plotdiscValues
   
   subroutine updateLevels(grid, nvoxels, fixedrays, maxRMSFracChange)
     
-    use input_variables, only : tolerance, dongstep, outputconvergence
+    use inputs_mod, only : tolerance, dongstep, outputconvergence
 
     integer :: nvoxels
     logical :: fixedrays
@@ -4692,12 +4692,12 @@ END SUBROUTINE sobseq
 
  subroutine make_h21cm_image(grid)
    
-   use input_variables, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc
-   use input_variables, only : useDust, isInLte, lowmemory
+   use inputs_mod, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc
+   use inputs_mod, only : useDust, isInLte, lowmemory
    use h21cm_mod, only : h21cm_lambda
 
 #ifdef USECFITSIO
-   use input_variables, only : datacubeFilename
+   use inputs_mod, only : datacubeFilename
 #endif
 
    implicit none
@@ -4744,7 +4744,7 @@ END SUBROUTINE sobseq
 
 subroutine compare_molbench(diffmax)
 
-!  use input_variables, only : tolerance
+!  use inputs_mod, only : tolerance
 
   implicit none 
 
@@ -4839,7 +4839,7 @@ subroutine compare_molbench(diffmax)
 end subroutine compare_molbench
 !-----------------------------------------------------------------------------------------------------------
  recursive subroutine  findtempdiff(grid, thisOctal, thisMolecule, mean, icount)
-   use input_variables, only : rinner, router
+   use inputs_mod, only : rinner, router
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    type(octal), pointer   :: thisOctal
@@ -5001,7 +5001,7 @@ end subroutine compare_molbench
 subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity, startI0, startTau, lengthOfRay)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, lowmemory
+     use inputs_mod, only : useDust, h21cm, densitysubsample, lowmemory
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -5330,7 +5330,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
  subroutine createFluxSpectra(cube,thismolecule,itrans)
 
-   use input_variables, only : gridDistance, molAbundance
+   use inputs_mod, only : gridDistance, molAbundance
    character(len=80) :: filename
    type(datacube) :: cube
    type(moleculetype) :: thisMolecule
@@ -5380,7 +5380,7 @@ endif
 
  subroutine cubeIntensityToFlux(cube,thisMolecule,itrans,doreverse)
 
-   use input_variables, only : gridDistance, npixels, nv
+   use inputs_mod, only : gridDistance, npixels, nv
    type(moleculetype) :: thismolecule
    type(datacube) :: cube
    integer :: ipixel,jpixel,iv, itrans
@@ -5416,7 +5416,7 @@ endif
 
  subroutine GaussianWeighting(cube,npixels,FWHM,NormalizeArea)
 
-   use input_variables, only : gridDistance
+   use inputs_mod, only : gridDistance
    type(datacube) :: cube
    integer :: npixels, i, j
    real :: FWHM
@@ -5456,7 +5456,7 @@ endif
  end subroutine GaussianWeighting
 
  subroutine fineGaussianWeighting(cube,npixels,FWHM,weight,NormalizeArea)
-   use input_variables, only : gridDistance
+   use inputs_mod, only : gridDistance
    type(datacube) :: cube
    integer :: npixels, i, j,k,l
    real :: FWHM
@@ -5511,7 +5511,7 @@ endif
 subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, lowmemory
+     use inputs_mod, only : useDust, h21cm, densitysubsample, lowmemory
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -5915,7 +5915,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
     subroutine dumpIntensityContributions(grid, thisMolecule) 
      use mpi_global_mod, only:  myRankGlobal
      use parallel_mod
-      use input_variables, only : itrans
+      use inputs_mod, only : itrans
       type(MOLECULETYPE) :: thisMolecule
       type(GRIDTYPE) :: grid
       type(VECTOR) :: viewVec, rayStart
@@ -6047,7 +6047,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
  end subroutine writeContributions
 
  subroutine  photoionChemistry(grid, thisOctal, subcell)
-   use input_variables, only : molAbundance
+   use inputs_mod, only : molAbundance
    type(GRIDTYPE) :: grid
    type(octal), pointer   :: thisOctal
    integer :: subcell

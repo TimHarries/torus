@@ -487,7 +487,7 @@ contains
     !  subcell using the density and the velocity functions as descrubed
     !  below.
 
-    !    use input_variables
+    !    use inputs_mod
         
     IMPLICIT NONE
 

@@ -25,14 +25,14 @@ contains
     use amr_mod
     use lucy_mod
     use grid_mod
-    use input_variables, only : readgrid, gridinputfilename, geometry!, mdot
-    use input_variables, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
-    use input_variables, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics
-    use input_variables, only : amrGridSize, doSmoothGrid
-    use input_variables, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
-    use input_variables, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use input_variables, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
-    use input_variables, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
+    use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
+    use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
+    use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics
+    use inputs_mod, only : amrGridSize, doSmoothGrid
+    use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
+    use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
+    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
+    use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use sph_data_class, only: sphdata
     use wr104_mod, only : readwr104particles
   
@@ -41,7 +41,7 @@ contains
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
 #ifdef MPI 
     use mpi_amr_mod
-    use input_variables, only : photoionPhysics, rho0
+    use inputs_mod, only : photoionPhysics, rho0
 #ifdef PHOTOION
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff
 #endif
@@ -403,8 +403,8 @@ contains
 
   subroutine doSmoothOnTau(grid)
 
-    use input_variables, only: doSmoothGridTau, dustPhysics, lambdaSmooth, cylindrical
-    use input_variables, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
+    use inputs_mod, only: doSmoothGridTau, dustPhysics, lambdaSmooth, cylindrical
+    use inputs_mod, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
     use utils_mod, only: locate
     use lucy_mod, only: putTau
     use grid_mod, only: grid_info
@@ -468,7 +468,7 @@ contains
   end subroutine doSmoothOnTau
 
   subroutine setupFogel(grid, filename, speciesName)
-    use input_variables, only : rinner, rOuter, molecularPhysics
+    use inputs_mod, only : rinner, rOuter, molecularPhysics
     type(GRIDTYPE) :: grid
     character(len=*) :: filename, speciesName
     integer, parameter :: maxR = 200, maxZ = 200
@@ -654,7 +654,7 @@ contains
 
 
   recursive subroutine splitGridFogel(thisOctal, grid, r, z, nr, nz, rho, t, abundance)
-    use input_variables, only : minDepthAMR, maxDepthAMR
+    use inputs_mod, only : minDepthAMR, maxDepthAMR
     type(GRIDTYPE) :: grid
     type(OCTAL),pointer :: thisOctal !TJH 9 JULY
     type(OCTAL), pointer :: childPointer
@@ -753,7 +753,7 @@ contains
 
 
         recursive subroutine fillGridFogel(thisOctal, grid, r, z, nr, nz, rho, t, abundance)
-          use input_variables, only : mcore, vturb, atomicPhysics, molecularPhysics,sourcemass
+          use inputs_mod, only : mcore, vturb, atomicPhysics, molecularPhysics,sourcemass
           type(GRIDTYPE) :: grid
           type(octal), pointer   :: thisOctal
           type(octal), pointer  :: child 
@@ -1029,7 +1029,7 @@ contains
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use input_variables, only : maxDepthAMR, photoionPhysics, hydrodynamics
+    use inputs_mod, only : maxDepthAMR, photoionPhysics, hydrodynamics
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
@@ -1129,7 +1129,7 @@ contains
 
   subroutine postSetupChecks(grid)
     use sph_data_class, only: sph_mass_within_grid
-    use input_variables, only : mDisc, geometry
+    use inputs_mod, only : mDisc, geometry
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
@@ -1292,7 +1292,7 @@ contains
   end subroutine set_bias_cmfgen
 
   subroutine turbulentVelocityField(grid, vDispersion)
-    use input_variables, only : maxDepthAMR
+    use inputs_mod, only : maxDepthAMR
     type(GRIDTYPE) :: grid
     real(double) :: vDispersion
     real(double) :: deltaV, wavenumber, vmag

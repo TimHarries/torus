@@ -22,7 +22,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
                    file_tag              )
 
   use torus_version_mod
-  use input_variables         ! variables filled by inputs subroutine
+  use inputs_mod         ! variables filled by inputs subroutine
   use constants_mod
   use messages_mod
   use mpi_global_mod

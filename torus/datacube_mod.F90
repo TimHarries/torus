@@ -51,7 +51,7 @@ contains
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
     use image_mod, only : deleteFitsFile
-    use input_variables, only: FitsBitpix
+    use inputs_mod, only: FitsBitpix
 
     implicit none
     
@@ -605,7 +605,7 @@ contains
 
 ! Initialises cube - sets intensity for cube to 0 
   subroutine initCube(thisCube, nx, ny, nv, mytelescope)
-    use input_variables, only: splitCubes, wanttau
+    use inputs_mod, only: splitCubes, wanttau
 
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
@@ -663,7 +663,7 @@ contains
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
-    use input_variables , only : gridDistance
+    use inputs_mod , only : gridDistance
     use constants_mod, only: auTocm, pi, rSol
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin, dx, dy
@@ -914,7 +914,7 @@ subroutine freeDataCube(thiscube)
 #ifdef USECFITSIO
   subroutine writeCollapsedDataCube(thisCube, filename)
     use image_mod, only : deleteFitsFile, printfitsError
-    use input_variables, only: FitsBitpix
+    use inputs_mod, only: FitsBitpix
     type(DATACUBE) :: thisCube
     character(len=*) :: filename
 

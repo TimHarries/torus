@@ -34,7 +34,7 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
-    use input_variables, only : nlucy, taudiff, lambdaSmooth
+    use inputs_mod, only : nlucy, taudiff, lambdaSmooth
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -2765,7 +2765,7 @@ end subroutine readHeIIrecombination
   end subroutine unpackvalues
 
   recursive subroutine  identifyUndersampled(thisOctal, num_undersampled)
-    use input_variables, only : minCrossings
+    use inputs_mod, only : minCrossings
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3257,10 +3257,10 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
-    use input_variables, only : nPhotons, setimagesize, lamStart, amr2d
+    use inputs_mod, only : nPhotons, setimagesize, lamStart, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
 #ifdef USECFITSIO
-    use input_variables, only: gridDistance
+    use inputs_mod, only: gridDistance
     use image_mod, only: writeFitsImage
 #endif
     use math_mod, only: computeprobdist
@@ -3434,7 +3434,7 @@ end subroutine readHeIIrecombination
   end subroutine createImagePhotoion
 
   recursive subroutine quickSublimate(thisOctal, temThres, ionThres)
-    use input_variables, only : hOnly
+    use inputs_mod, only : hOnly
     type(octal), pointer   :: thisOctal
     real, intent(in) :: temThres, ionThres
     type(octal), pointer  :: child 

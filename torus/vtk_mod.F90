@@ -701,7 +701,7 @@ contains
   contains
 
     recursive subroutine recursiveWriteValue(thisOctal, valueType, grid, xml)
-      use input_variables, only : lambdasmooth
+      use inputs_mod, only : lambdasmooth
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
 #ifdef MPI
@@ -1326,7 +1326,7 @@ contains
   end subroutine writeVTKfileNbody
 
   subroutine writeVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString, xml)
-    use input_variables, only : cylindrical, usebinaryxmlvtkfiles
+    use inputs_mod, only : cylindrical, usebinaryxmlvtkfiles
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -1597,7 +1597,7 @@ endif
   end subroutine writeVtkFileAMR
 
 !   subroutine writeIfitFile(grid, ifritFilename)
-!      use input_variables, only : minDepthAMR, maxDepthAMR
+!      use inputs_mod, only : minDepthAMR, maxDepthAMR
 !      type(GRIDTYPE) :: grid
 !      character(len=*) :: ifritFilename
 !      integer :: fileID, nValueType, nPointOffset
@@ -2241,7 +2241,7 @@ end subroutine writeXMLVtkFileAMR
   end subroutine getValues
 
     recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n)
-      use input_variables, only : lambdaSmooth
+      use inputs_mod, only : lambdaSmooth
       type(OCTAL), pointer :: thisOctal, child
       type(GRIDTYPE) :: grid
       character(len=*) :: valueType

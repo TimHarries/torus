@@ -357,7 +357,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(filename)
-    use input_variables, only: internalView, convertRhoToHI, ih2frac
+    use inputs_mod, only: internalView, convertRhoToHI, ih2frac
     implicit none
 
     character(LEN=*), intent(in)  :: filename
@@ -561,7 +561,7 @@ contains
  contains
 
    subroutine rotate_particles
-     use input_variables, only: galaxyPositionAngle, galaxyInclination
+     use inputs_mod, only: galaxyPositionAngle, galaxyInclination
      TYPE(VECTOR) :: orig_sph, rot_sph
 
      orig_sph = VECTOR(xn,  yn,  zn)
@@ -580,7 +580,7 @@ contains
 
 ! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
   subroutine read_galaxy_sph_data(filename)
-    use input_variables, only: internalView, galaxyPositionAngle, galaxyInclination
+    use inputs_mod, only: internalView, galaxyPositionAngle, galaxyInclination
 
     implicit none
     
@@ -1379,7 +1379,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone)
-    USE input_variables, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull
+    USE inputs_mod, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
 
@@ -1766,7 +1766,7 @@ contains
 
   subroutine findnearestparticles(pos, partcount, r, shouldreuse)
 
-    use input_variables, only : kerneltype
+    use inputs_mod, only : kerneltype
     use utils_mod, only: locate_double_f90
 
     type(VECTOR) :: pos
@@ -1934,7 +1934,7 @@ contains
 
   Subroutine doWeights(sumweight)
 
-    use input_variables, only : kerneltype
+    use inputs_mod, only : kerneltype
 
 !    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
     real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed

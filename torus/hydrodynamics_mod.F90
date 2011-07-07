@@ -5,7 +5,7 @@
 module hydrodynamics_mod
 #ifdef MPI
 
-  use input_variables
+  use inputs_mod
   use dimensionality_mod
   use kind_mod
   use constants_mod
@@ -40,7 +40,7 @@ contains
   end subroutine dohydrodynamics
 
   recursive subroutine fluxlimiter(thisoctal)
-    use input_variables, only : limiterType
+    use inputs_mod, only : limiterType
     include 'mpif.h'
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
@@ -1243,7 +1243,7 @@ contains
   end subroutine rhiechowui
 
    recursive subroutine computepressureu(grid, thisoctal, direction)
-     use input_variables, only : etaViscosity, useViscosity
+     use inputs_mod, only : etaViscosity, useViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid 
@@ -1317,7 +1317,7 @@ contains
   end subroutine computepressureu
 
    recursive subroutine computepressurev(grid, thisoctal, direction)
-     use input_variables, only : etaViscosity, useViscosity
+     use inputs_mod, only : etaViscosity, useViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid
@@ -1383,7 +1383,7 @@ contains
   end subroutine computepressurev
 
    recursive subroutine computepressurew(grid, thisoctal, direction)
-     use input_variables, only : etaViscosity, useViscosity
+     use inputs_mod, only : etaViscosity, useViscosity
      include 'mpif.h'
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid
@@ -2332,7 +2332,7 @@ end subroutine sumFluxes
 
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
-    use input_variables, only : nBodyPhysics
+    use inputs_mod, only : nBodyPhysics
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -2872,7 +2872,7 @@ end subroutine sumFluxes
   end function soundSpeed
 
   subroutine doHydrodynamics1d(grid)
-    use input_variables, only : tStart, tEnd, tDump, dorefine
+    use inputs_mod, only : tStart, tEnd, tDump, dorefine
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt,  gamma, mu
@@ -3051,7 +3051,7 @@ end subroutine sumFluxes
 
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
-    use input_variables, only : tdump, tend, doRefine, doUnrefine
+    use inputs_mod, only : tdump, tend, doRefine, doUnrefine
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
@@ -3345,7 +3345,7 @@ end subroutine sumFluxes
   end subroutine doHydrodynamics3d
 
   subroutine doHydrodynamics2d(grid)
-    use input_variables, only : tEnd, tDump, doRefine, doUnrefine
+    use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine
     include 'mpif.h'
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), mu
@@ -5246,7 +5246,7 @@ end subroutine sumFluxes
   end subroutine setupGhostsLevel
 
   integer function getBoundary(boundary) result(i)
-    use input_variables, only : xplusbound, yplusbound, zplusbound, &
+    use inputs_mod, only : xplusbound, yplusbound, zplusbound, &
          xminusbound, yminusbound, zminusbound 
     character(len=*) :: boundary
 
@@ -5270,7 +5270,7 @@ end subroutine sumFluxes
    end function getBoundary
 
   subroutine refineGridGeneric(grid, tol)
-    use input_variables, only : minDepthAMR, maxDepthAMR
+    use inputs_mod, only : minDepthAMR, maxDepthAMR
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iThread
@@ -5304,7 +5304,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
-    use input_variables, only : maxDepthAMR, photoionization
+    use inputs_mod, only : maxDepthAMR, photoionization
     include 'mpif.h'
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5504,7 +5504,7 @@ end subroutine refineGridGeneric2
 
   recursive subroutine refineEdges(thisOctal, grid,  converged, inherit)
 
-    use input_variables, only : maxDepthAMR
+    use inputs_mod, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5551,7 +5551,7 @@ end subroutine refineGridGeneric2
 
   recursive subroutine refineFeeders(thisOctal, grid,  converged, inherit)
 
-    use input_variables, only : maxDepthAMR
+    use inputs_mod, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5632,7 +5632,7 @@ end subroutine refineGridGeneric2
   end subroutine locatorToNeighbourLevel
        
   recursive subroutine unrefineCells(thisOctal, grid, nUnrefine, splitLimit)
-    use input_variables, only : minDepthAMR
+    use inputs_mod, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
@@ -5832,7 +5832,7 @@ end subroutine refineGridGeneric2
   end function maxminOverMean
   
   recursive subroutine unrefineCellsPhotoion(thisOctal, grid)
-    use input_variables, only : minDepthAMR
+    use inputs_mod, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -5894,7 +5894,7 @@ end subroutine refineGridGeneric2
 
   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
 
-    use input_Variables, only : minDepthAMR, maxDepthAMR
+    use inputs_mod, only : minDepthAMR, maxDepthAMR
     type(GRIDTYPE) :: grid
     logical :: inheritFlag
     integer, optional :: dumpfiles
@@ -6070,7 +6070,7 @@ end subroutine refineGridGeneric2
   end subroutine evenUpGridMPI
 
   recursive subroutine evenUpGrid(thisOctal, grid,  converged, inherit)
-    use input_variables, only : maxDepthAMR
+    use inputs_mod, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -6544,7 +6544,7 @@ end subroutine refineGridGeneric2
   end subroutine evenUpGrid
   
   subroutine splitAtLocator(grid, locator, depth,  localchanged)
-    use input_variables, only :  maxDepthAMR
+    use inputs_mod, only :  maxDepthAMR
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -7127,7 +7127,7 @@ end subroutine refineGridGeneric2
   end subroutine gSweepLevel
   
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
-    use input_variables, only :  maxDepthAMR
+    use inputs_mod, only :  maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     logical, optional :: multigrid
@@ -7267,7 +7267,7 @@ end subroutine refineGridGeneric2
 
   real(double) function getPressure(thisOctal, subcell)
 #ifdef PHOTOION
-    use input_variables, only : photoionPhysics
+    use inputs_mod, only : photoionPhysics
     use ion_mod, only : nGlobalIon, globalIonArray, returnMu
 #endif
     type(OCTAL), pointer :: thisOctal

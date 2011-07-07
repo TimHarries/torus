@@ -593,7 +593,7 @@ module image_mod
 
 ! Arguments
        
-       use input_variables, only: lamStart, ImageinArcSec
+       use inputs_mod, only: lamStart, ImageinArcSec
        type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
@@ -836,10 +836,10 @@ module image_mod
      end subroutine pixelLocate
             
   subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
-    use input_variables, only : npixels, setimageSize, vmin, vmax
+    use inputs_mod, only : npixels, setimageSize, vmin, vmax
     use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
 #ifdef USECFITSIO
-    use input_variables, only : griddistance
+    use inputs_mod, only : griddistance
 #endif
     use amr_mod, only: distanceToGridFromOutside, distanceToCellBoundary, findSubcellLocal, returnKappa, inOctal, &
          returnScatteredIntensity

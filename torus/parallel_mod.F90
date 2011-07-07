@@ -17,7 +17,7 @@ contains
     ! this routine will divide a task into many small blocks, and
     !   hand them out to processes that request work.
   
-    use input_variables, only: blockhandout
+    use inputs_mod, only: blockhandout
     implicit none
     include 'mpif.h'  
   
@@ -182,7 +182,7 @@ contains
   subroutine mpiGetBlock(myRank,startUnit,endUnit,allDone,tag,setDebug)
     ! this requests a work unit from the root process (which runs mpiBlockHandout)
   
-    use input_variables, only: blockhandout
+    use inputs_mod, only: blockhandout
     implicit none
     include 'mpif.h'  
   

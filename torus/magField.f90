@@ -78,7 +78,7 @@ CONTAINS
     !   flows around a star, from the models of Gregory,
     !   Jardine et al.
 
-    USE input_variables, ONLY: isothermStream, isothermTemp, &
+    USE inputs_mod, ONLY: isothermStream, isothermTemp, &
                                flowRhoScale, scaleFlowRho,   &
                                magStreamFileDegrees, limitSpotTemp, &
                                maxSpotTemp

@@ -316,7 +316,7 @@ contains
   !====================================================================
   FUNCTION cmfgen_velocity(point) RESULT(out)
     
-    use input_variables, only : bigOmega, eddingtonGamma, uniformStar
+    use inputs_mod, only : bigOmega, eddingtonGamma, uniformStar
     IMPLICIT NONE
     type(vector)                  :: out   ! [c]
     TYPE(Vector), INTENT(IN) :: point
@@ -402,7 +402,7 @@ contains
     !  subcell using the density and the velocity functions as descrubed
     !  below.
 
-    !    use input_variables
+    !    use inputs_mod
         
     IMPLICIT NONE
 
@@ -624,7 +624,7 @@ contains
 
 
   recursive subroutine distort_cmfgen(thisOctal, grid)
-    use input_variables, only : bigOmega, eddingtonGamma, alphaCAK, uniformStar
+    use inputs_mod, only : bigOmega, eddingtonGamma, alphaCAK, uniformStar
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 

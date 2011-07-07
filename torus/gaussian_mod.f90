@@ -59,7 +59,7 @@ contains
   end function eval
 
   subroutine createDiscGaussians(ng, gArray)
-    use input_variables
+    use inputs_mod
     use utils_mod, only: locate, gasdev
     integer :: ng, n
     real :: z, ang

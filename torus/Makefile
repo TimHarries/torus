@@ -549,7 +549,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             readTioCrossSection.f90  \
             fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 cont_read.f90 \
-            input_variables.f90 amr_utils_mod.f90  \
+            amr_utils_mod.f90  \
             jets_mod.f90 h21cm_mod.f90 \
             dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
             wr104_mod.f90 density_mod.f90 \

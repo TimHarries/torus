@@ -37,12 +37,12 @@ module angularImage
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
-      use input_variables, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
+      use inputs_mod, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
            galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid, h21cm
       use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
       use datacube_mod, only : writeDataCube
-      use input_variables, only : dataCubeFilename, wanttau, h21cm
+      use inputs_mod, only : dataCubeFilename, wanttau, h21cm
 #endif
 
 
@@ -165,7 +165,7 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use input_variables, only : npixels, nv, nsubpixels, splitCubes, wantTau, itrans
+      use inputs_mod, only : npixels, nv, nsubpixels, splitCubes, wantTau, itrans
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
@@ -284,8 +284,8 @@ module angularImage
 
     subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid, ix1, ix2)
 
-      use input_variables, only: npixels, imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination 
-      use input_variables, only: nv
+      use inputs_mod, only: npixels, imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination 
+      use inputs_mod, only: nv
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid
@@ -381,7 +381,7 @@ module angularImage
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
  function AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV,subpixels) result(out)
    
-   use input_variables, only : tolerance, nsubpixels
+   use inputs_mod, only : tolerance, nsubpixels
 
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
@@ -469,7 +469,7 @@ module angularImage
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
         nCol, nCol_H2, nCol_CO, observerVelocity)
 
-     use input_variables, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth, vturb, dssMinSample
+     use inputs_mod, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth, vturb, dssMinSample
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
@@ -825,7 +825,7 @@ module angularImage
 
    subroutine map_dI_to_particles(grid)
 
-    use input_variables, only: sphdatafilename, galaxyPositionAngle, galaxyInclination, &
+    use inputs_mod, only: sphdatafilename, galaxyPositionAngle, galaxyInclination, &
          inputFileFormat
     use sph_data_class, only: sphdata, read_galaxy_sph_data, new_read_sph_data
     use octal_mod, only: octal 

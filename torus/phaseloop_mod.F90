@@ -15,7 +15,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   use kind_mod
   use torus_version_mod
-  use input_variables 
+  use inputs_mod 
   use phasematrix_mod
   use disc_class
   use image_mod, only: IMAGETYPE, PVIMAGETYPE, initImage, initPVImage, addPhotonToImage, addphotontopvimage, &
@@ -271,7 +271,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
   real :: probDust
 
-! Variables formerly in input_variables but not set in Torus V2 ----------------
+! Variables formerly in inputs_mod but not set in Torus V2 ----------------
   real :: ramVel=0.0
   character(len=20) :: ramanDist          ! raman distortion type
   logical :: coreEmissionLine=.false.

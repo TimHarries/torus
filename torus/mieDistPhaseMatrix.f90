@@ -16,7 +16,7 @@ contains
 
    subroutine mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
       use phasematrix_mod
-      use input_variables, only : aMin, aMax, a0, qDist, pDist
+      use inputs_mod, only : aMin, aMax, a0, qDist, pDist
       implicit none
 
       integer, intent(in) :: nDustType, nLambda, nMuMie

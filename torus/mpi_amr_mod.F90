@@ -83,7 +83,7 @@ contains
   end subroutine findMassOverAllThreads
     
   recursive subroutine findTotalMassMPI(thisOctal, totalMass, minRho, maxRho)
-    use input_variables, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: totalMass
@@ -2129,7 +2129,7 @@ end subroutine dumpStromgrenRadius
   end subroutine grid_info_mpi
   
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
-    use input_variables, only : maxDepthAMR
+    use inputs_mod, only : maxDepthAMR
     use octal_mod, only: subcellRadius
     include 'mpif.h'
     type(OCTAL), pointer :: parent, thisOctal

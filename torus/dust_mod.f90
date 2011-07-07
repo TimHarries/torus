@@ -681,7 +681,7 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal)
 
-    use input_variables, only : rInner, rOuter
+    use inputs_mod, only : rInner, rOuter
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -723,8 +723,8 @@ contains
 
   recursive subroutine fillDustUniform(grid, thisOctal)
 
-    use input_variables, only : nDustType, grainFrac, rSublimation
-    use input_variables, only : ttauriDisc
+    use inputs_mod, only : nDustType, grainFrac, rSublimation
+    use inputs_mod, only : ttauriDisc
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -764,7 +764,7 @@ contains
 
 
   recursive subroutine sublimateDustWR104(thisOctal)
-    use input_variables, only : tThresh
+    use inputs_mod, only : tThresh
     type(OCTAL), pointer :: thisOctal, child
     integer :: subcell, i
     real(double) :: temperature
@@ -980,7 +980,7 @@ contains
   end subroutine stripDustAway
 
   subroutine createRossArray(grid)
-    use input_variables, only : nDustType
+    use inputs_mod, only : nDustType
     use atom_mod, only: dbNubydT
     type(GRIDTYPE) :: grid
     integer :: i, j, k
@@ -1105,7 +1105,7 @@ contains
 
     use mieDistPhaseMatrix_mod
     use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie
-    use input_variables, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
+    use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
          ttau_disc_on, grainFrac
@@ -1291,7 +1291,7 @@ contains
 
 
   recursive subroutine allocateMemoryForDust(thisOctal)
-    use input_variables, only : nDustType
+    use inputs_mod, only : nDustType
     use octal_mod, only: allocateAttribute
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 

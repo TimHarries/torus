@@ -57,7 +57,7 @@ contains
 
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
-    use input_variables, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
+    use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -496,7 +496,7 @@ end subroutine radiationHydro
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
-    use input_variables, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
+    use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine
    !      optimizeStack, stackLimit, dStack
     implicit none
@@ -1714,7 +1714,7 @@ end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
-  use input_variables, only : periodicX, periodicY, periodicZ
+  use inputs_mod, only : periodicX, periodicY, periodicZ
   include 'mpif.h'
 
   integer :: myRank, ierr!, trackErr, sclHandle, classHandle, stateHandle, sclStart, sclEnd
@@ -2149,7 +2149,7 @@ end subroutine advancedCheckForPhotoLoop
 
 recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   use constants_mod, only : cspeed
-  use input_variables, only: lambdaSmooth, gridDistanceScale
+  use inputs_mod, only: lambdaSmooth, gridDistanceScale
   include 'mpif.h'
   TYPE(GRIDTYPE) :: grid
   TYPE(OCTAL),pointer :: thisOctal
@@ -2771,7 +2771,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end subroutine calculateThermalBalanceTimeDep
   
   function HHeCooling(grid, thisOctal, subcell, temperature, debug) result (coolingRate)
-    use input_variables, only : dustOnly, hOnly
+    use inputs_mod, only : dustOnly, hOnly
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
     type(GRIDTYPE) :: grid
@@ -3885,7 +3885,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   end subroutine sumLineLuminosity
 
 recursive subroutine quickSublimate(thisOctal)
-  use input_variables, only : hOnly
+  use inputs_mod, only : hOnly
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i
@@ -4049,7 +4049,7 @@ real(double) function returnGamma(table, temp, freq) result(out)
 end function returnGamma
 
 subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-  use input_variables, only: hOnly
+  use inputs_mod, only: hOnly
   type(GRIDTYPE) :: grid
   TYPE(OCTAL) :: thisOctal
   integer :: subcell
@@ -4492,7 +4492,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   end subroutine unpackvalues
 
   recursive subroutine  identifyUndersampled(thisOctal)
-    use input_variables, only : minCrossings
+    use inputs_mod, only : minCrossings
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -4743,7 +4743,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
   subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
        lambdaImage, outputimageType, nPixels)
-    use input_variables, only: nPhotons
+    use inputs_mod, only: nPhotons
     real, intent(in) :: lambdaImage
     include 'mpif.h'
     type(GRIDTYPE) :: grid

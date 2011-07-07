@@ -49,7 +49,7 @@ contains
 
   subroutine initAMRgrid(grid)
 
-    use input_variables
+    use inputs_mod
     use cmfgen_class, only: get_cmfgen_data_array_element
     use jets_mod, only: initJetsAMR
     use amr_mod, only: initTTauriAMR, initWindTestAMR
@@ -2051,7 +2051,7 @@ contains
 
 #ifdef HYDRO
   subroutine writeAMRgridMPI(filename,fileFormatted,grid,mpiFlag)
-    use input_variables, only : molecular, cmf, hydrodynamics
+    use inputs_mod, only : molecular, cmf, hydrodynamics
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -2346,7 +2346,7 @@ contains
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
     use unix_mod, only: unixGetenv
-    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
+    use inputs_mod, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
     implicit none
 
     character(len=*)            :: filename
@@ -4513,7 +4513,7 @@ contains
 #endif
 
   subroutine initTestAmr(grid)
-    use input_variables
+    use inputs_mod
     type(GRIDTYPE) :: grid
 
     grid%geometry = "testamr"
@@ -4528,7 +4528,7 @@ contains
   end subroutine initTestAmr
 
   subroutine initProtoAmr(grid)
-    use input_variables
+    use inputs_mod
     type(GRIDTYPE) :: grid
 
     grid%geometry = "proto"

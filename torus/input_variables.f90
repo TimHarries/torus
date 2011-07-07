@@ -1,14 +1,7 @@
-module input_variables
-  ! a large number of variables are passed to the torus main
+  !   a large number of variables are passed to the torus main
   !   program by the inputs subroutine. they are all collected
   !   here so that they only need to be defined once.  nhs
-
-  use kind_mod
-  use vector_mod, only: vector
-  
-  implicit none
-
-  public
+  !   These now are inlcuded in inputs_mod. D. Acreman 
 
 !----------------------------------
 ! Physical ingredients of the model
@@ -725,7 +718,4 @@ module input_variables
   logical :: doRaman ! raman scattering model 
   real    :: lamLine 
   real    :: massEnvelope
-
-end module input_variables
-
 

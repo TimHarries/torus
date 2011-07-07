@@ -171,7 +171,7 @@ contains
 
   subroutine gaussSeidelSweep(grid,  tol, demax, converged)
 #ifdef MPI
-    use input_variables, only : blockhandout
+    use inputs_mod, only : blockhandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     use mpi_global_mod, only : myRankGlobal, nThreadsGlobal
     include 'mpif.h'
@@ -709,7 +709,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol !, tauforce
+    use inputs_mod, only : eDensTol !, tauforce
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -824,7 +824,7 @@ end subroutine gaussSeidelSweep
   end subroutine defineDiffusionOnRho
 
   recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, taudiff, nDiff)
-    use input_variables, only :  resetDiffusion
+    use inputs_mod, only :  resetDiffusion
     real :: tauDiff
     type(GRIDTYPE) :: grid
     integer, optional :: nDiff
@@ -1111,9 +1111,9 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use input_variables, only : tauForce, cylindrical, rGapInner, rGapOuter
+    use inputs_mod, only : tauForce, cylindrical, rGapInner, rGapOuter
 #ifdef MPI
-    use input_variables, only : blockHandout
+    use inputs_mod, only : blockHandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     include 'mpif.h'
 #endif

@@ -30,8 +30,8 @@ contains
 
   subroutine solveLevels(grid, source, thisOctal, subcell, nPops, jnuLine,  &
        temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, dfreq, nfreq, sobolevApprox)
-!    use input_variables, only : debug
-    use input_variables, only : opticallyThickContinuum
+!    use inputs_mod, only : debug
+    use inputs_mod, only : opticallyThickContinuum
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(OCTAL), pointer :: thisOctal
@@ -537,7 +537,7 @@ contains
        hitPhotosphere, sourceNumber, cosTheta, weightFreq, weightOmega, &
        nRBBTrans, indexRBBTrans, indexAtom, &
        nFreq, freq, iCont, sobolevApprox, fracRay)
-    use input_variables, only : opticallyThickContinuum, nLambda, mie
+    use inputs_mod, only : opticallyThickContinuum, nLambda, mie
     use amr_mod, only: randomPositionInCell, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -1217,7 +1217,7 @@ contains
 
   subroutine calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, ne, nray, ds, freq, nfreq, &
        iCont, jBarCont, weight)
-    use input_variables, only : opticallyThickContinuum
+    use inputs_mod, only : opticallyThickContinuum
     real(double) :: iCont(:,:), jBarCont(:), ds(:), ne
     integer :: nAtom
     type(OCTAL), pointer :: thisOctal
@@ -1318,7 +1318,7 @@ contains
 
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
-    use input_variables, only : debug, rcore, lte, vturb
+    use inputs_mod, only : debug, rcore, lte, vturb
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
     use utils_mod, only : ngstep
@@ -2330,7 +2330,7 @@ contains
 
 
   recursive  subroutine calcContinuumOpacities(thisOctal, thisAtom, nAtom, freq)
-    use input_variables, only : opticallyThickContinuum
+    use inputs_mod, only : opticallyThickContinuum
     type(MODELATOM) :: thisAtom(:)
     real(double) :: freq
     real(double) :: nstar(10,50)
@@ -2379,7 +2379,7 @@ contains
   end subroutine calcContinuumOpacities
 
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
-    use input_variables, only : Xabundance, Yabundance
+    use inputs_mod, only : Xabundance, Yabundance
     use stateq_mod, only : z_hi
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
@@ -2545,7 +2545,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray, forceFreq, occultingDisc) result (i0)
-    use input_variables, only : lineOff,  mie, ttauriRinner
+    use inputs_mod, only : lineOff,  mie, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -2916,7 +2916,7 @@ contains
 
   function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
       forceFreq, occultingDisc) result (i0)
-    use input_variables, only : lineOff,  mie, lamLine, ttauriRinner
+    use inputs_mod, only : lineOff,  mie, lamLine, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -3238,15 +3238,15 @@ contains
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
        totalFlux, forceLambda, occultingDisc)
-    use input_variables, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf, calcPhotometry, calcSpectrum
-    use input_variables, only : minvel, maxvel
+    use inputs_mod, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf, calcPhotometry, calcSpectrum
+    use inputs_mod, only : minvel, maxvel
     use source_mod, only : globalSourceArray
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
     use modelatom_mod, only : identifyTransitionCmf
     use datacube_mod, only : dumpCubeToSpectrum
 #ifdef USECFITSIO
-    use input_variables, only : dataCubeFilename
+    use inputs_mod, only : dataCubeFilename
     use datacube_mod, only : writedataCube
 #endif
 #ifdef MPI
@@ -3551,7 +3551,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec,nSource, source, thisAtom, itrans)
     use mpi_global_mod
-    use input_variables, only : npixels, nv, imageSide, maxVel, &
+    use inputs_mod, only : npixels, nv, imageSide, maxVel, &
          positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI

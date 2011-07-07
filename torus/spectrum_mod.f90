@@ -427,7 +427,7 @@ module spectrum_mod
     end subroutine copySpectrum
 
     subroutine probSpectrum(spectrum)
-      use input_variables, only : biasToLyman, biasMagnitude
+      use inputs_mod, only : biasToLyman, biasMagnitude
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: fac
       integer :: i

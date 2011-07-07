@@ -66,18 +66,6 @@ module utils_mod
 
 contains
 
-  subroutine testFileExists(thisFile)
-    character(len=*) :: thisFile
-    integer :: error
-    open(53, file=thisFile, status="old",form="formatted", iostat=error)
-
-    if (error /= 0) then
-       call writeFatal("Error opening file: "//trim(thisFile))
-       stop
-    else
-       close(53)
-    endif
-  end subroutine testFileExists
 
   ! solve a quadratic equation
 
@@ -1926,7 +1914,7 @@ contains
     ! Damping contant in a Voigt Profile in [1/s]
     !
     real function bigGamma(N_HI, temperature, Ne, nu)      
-      use input_variables,  only:  C_rad, C_vdw, C_stark
+      use inputs_mod,  only:  C_rad, C_vdw, C_stark
       real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
       real(double), intent(in) :: temperature  ! [Kelvins]
       real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
@@ -1969,7 +1957,7 @@ contains
     
     subroutine resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau, &
          inFlow, newInFlow)
-      use  input_variables, only: lamstart, lamend, nlambda, lamline
+      use  inputs_mod, only: lamstart, lamend, nlambda, lamline
       integer, intent(in) :: nTau, maxtau
       real, intent(in) :: lambda(nTau)
       real(double), intent(in) :: projVel(nTau)
@@ -1984,7 +1972,7 @@ contains
 !      real, parameter :: dvel  = 10.e5/cSpeed
       real :: dvel, dlam
 
-      ! -- using the values in input_variables module
+      ! -- using the values in inputs_mod module
       dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
       dvel = dvel/2.0  ! to be safe  
       dvel = 1.e5/cspeed ! 1 km/s
@@ -2784,26 +2772,6 @@ contains
     close(luout)
 
   end subroutine write_message_char
-
-! Count the number of lines in a file. 
-! Should return the same answer as wc -l i.e. includes blank lines in the total
-! D. Acreman, June 2010
-  integer function file_line_count(filename)
-
-    character(len=*) :: filename
-    character(len=1) :: dummy
-    integer :: status 
-
-    file_line_count = 0
-    open(unit=30, status="old", file=filename)
-    do
-       read(30,'(a1)',iostat=status) dummy
-       if ( status /= 0 ) exit
-       file_line_count = file_line_count + 1 
-    end do
-    close(30)
-
-  end function file_line_count
 
 !
 !     ******************************************************************
@@ -3873,7 +3841,7 @@ END SUBROUTINE GAUSSJ
   end subroutine convertToFnu
 
   subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
-    use input_variables, only : zetacutoff
+    use inputs_mod, only : zetacutoff
     use constants_mod
     implicit none
     real(double) :: t, rho0

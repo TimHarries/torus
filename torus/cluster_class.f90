@@ -301,7 +301,7 @@ contains
 
     use sph_data_class, only: Clusterparameter, sphData
     use constants_mod, only: mhydrogen
-    use input_variables, only: h21cm, tMinGlobal,doCOchemistry, x_D
+    use inputs_mod, only: h21cm, tMinGlobal,doCOchemistry, x_D
     use h21cm_mod, only: hi_emop
 
     IMPLICIT NONE

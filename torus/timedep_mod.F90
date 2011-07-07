@@ -36,7 +36,7 @@ module timedep_mod
 contains
 
   subroutine runTimeDependentRT(grid, source, nSource, nLambda, xArray)
-    use input_variables, only : teff, rCore, rInner, mCore
+    use inputs_mod, only : teff, rCore, rInner, mCore
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource

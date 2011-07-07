@@ -1583,7 +1583,7 @@ contains
   real(double) function equation8(n, nPop, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
        rVec, i1, i2, i3, grid, visFrac1, visFrac2, binary, thisOctal, thisSubcell)
 
-    use input_variables, only : LyContThick
+    use inputs_mod, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
     integer, intent(in)         :: nPop, nNu1, nNu2
     logical, intent(in)         :: binary
@@ -2885,12 +2885,12 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
-    use input_variables, only : lamLine
+    use inputs_mod, only : lamLine
     use source_mod, only : globalSourceArray
     USE amr_mod
-    USE input_variables, ONLY: LyContThick, statEq1stOctant
+    USE inputs_mod, ONLY: LyContThick, statEq1stOctant
 #ifdef MPI
-    USE input_variables, ONLY: blockHandout
+    USE inputs_mod, ONLY: blockHandout
 #endif
     use parallel_mod
 
@@ -3533,7 +3533,7 @@ contains
     !   adaptive octal grid.
 
     USE amr_mod
-    USE input_variables, ONLY: LyContThick, statEq1stOctant, lamLine
+    USE inputs_mod, ONLY: LyContThick, statEq1stOctant, lamLine
     use parallel_mod
 
     implicit none
@@ -4169,7 +4169,7 @@ contains
                 
   subroutine generateOpacitiesAMR(grid, nLower, nUpper)
     ! for all the cells in the grid.
-    use input_variables, only : vTurb
+    use inputs_mod, only : vTurb
     type(GRIDTYPE),intent(inout):: grid      
     integer,intent(in)          :: nLower, nUpper! level populations
     real(double)                :: chil
@@ -4730,7 +4730,7 @@ contains
   real(double) function rate_alpha_mn(m, n, Hnu1, nuArray1, nNu1, &
        rVec, i1, i2, i3, grid,  binary, thisOctal, thisSubcell) 
 
-    use input_variables, only : LyContThick
+    use inputs_mod, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
     integer, intent(in)         :: m, n ! levels
     integer, intent(in)         :: nNu1
@@ -4833,7 +4833,7 @@ contains
   real(double) function rate_beta_m(m, Hnu1, nuArray1, nNu1, &
        rVec, i1, i2, i3, grid, binary, thisOctal, thisSubcell) 
 
-    use input_variables, only : LyContThick
+    use inputs_mod, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
     integer, intent(in)         :: m ! levels
     integer, intent(in)         :: nNu1

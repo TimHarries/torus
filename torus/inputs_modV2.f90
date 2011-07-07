@@ -5,11 +5,11 @@ module inputs_mod
   use unix_mod
   use messages_mod
   use kind_mod
-  use input_variables
   use constants_mod
-  use utils_mod, only: file_line_count, testFileExists
 
   implicit none
+
+  include "input_variables.f90"
 
 contains
   
@@ -2296,7 +2296,6 @@ end subroutine getVector
 
  subroutine getLogical(name, rval, cLine, fLine, nLines, message, cformat, rdef, ok, &
                        musthave)
-   use parallel_mod, only: torus_abort
   character(len=*) :: name
   logical :: rval
   logical :: musthave
@@ -2319,7 +2318,8 @@ end subroutine getVector
   if (.not. ok) then
     if (musthave) then
        write(errorMessage,'(a,a)') name, " must be defined"
-       call torus_abort(errorMessage)
+       call writeFATAL(errorMessage)
+       STOP
     endif
     rval = rdef
     default = " (default)"
@@ -2390,6 +2390,39 @@ end subroutine getVector
 
 
  end function getBoundaryCode
+
+! Count the number of lines in a file. 
+! Should return the same answer as wc -l i.e. includes blank lines in the total
+! D. Acreman, June 2010
+  integer function file_line_count(filename)
+
+    character(len=*) :: filename
+    character(len=1) :: dummy
+    integer :: status 
+
+    file_line_count = 0
+    open(unit=30, status="old", file=filename)
+    do
+       read(30,'(a1)',iostat=status) dummy
+       if ( status /= 0 ) exit
+       file_line_count = file_line_count + 1 
+    end do
+    close(30)
+
+  end function file_line_count
+
+  subroutine testFileExists(thisFile)
+    character(len=*) :: thisFile
+    integer :: error
+    open(53, file=thisFile, status="old",form="formatted", iostat=error)
+
+    if (error /= 0) then
+       call writeFatal("Error opening file: "//trim(thisFile))
+       stop
+    else
+       close(53)
+    endif
+  end subroutine testFileExists
 
 end module inputs_mod
 

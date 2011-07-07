@@ -621,7 +621,7 @@ contains
 
 
   subroutine readAMRgrid(filename,fileFormatted,grid)
-    use input_variables, only: gridUsesAMR
+    use inputs_mod, only: gridUsesAMR
     character(len=*) :: filename
     logical :: fileFormatted
     type(GRIDTYPE) :: grid

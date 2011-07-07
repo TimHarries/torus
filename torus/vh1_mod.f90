@@ -20,7 +20,7 @@ contains
     ! Read data from VH-1 output file written by printold.f
     
     use messages_mod
-    use utils_mod, only: file_line_count
+    use inputs_mod, only: file_line_count
 
     implicit none
 

@@ -144,7 +144,7 @@ contains
   LOGICAL PURE FUNCTION TTauriInFlow(point,grid,ignoreDisk)
     ! tests if a point lies within the T Tauri accretion flow  
     
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, &
                                TTauriDiskHeight
 
     IMPLICIT NONE
@@ -247,7 +247,7 @@ contains
     ! returns the component of the T Tauri flow speed that is in the disc plane
 
     use flowSpeedVariables
-    use input_variables, only: TTauriMstar, TTauriRstar
+    use inputs_mod, only: TTauriMstar, TTauriRstar
     
     real, intent(in), dimension(:) :: bigR 
     real, dimension(size(bigR)) :: radius
@@ -268,7 +268,7 @@ contains
     ! lookup table
       
     use flowSpeedVariables
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, mDotType
+    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, mDotType
     use utils_mod, only: qsimp, locate
 
     real, intent(in) :: rM, rStart
@@ -346,7 +346,7 @@ contains
     use flowSpeedVariables
     use utils_mod
     use clump_mod
-    use input_variables, only: MdotParameter1, MdotParameter2, &
+    use inputs_mod, only: MdotParameter1, MdotParameter2, &
                                MdotParameter3, MdotParameter4, &
                                MdotParameter5,                 &
                                MdotType, curtainsPhi1s, curtainsPhi1e, &
@@ -581,7 +581,7 @@ contains
   ! Function to check if a given phi (azimuth angle) is within one of curtain in 
   ! constant curtain. 
   function in_curtain(phi) RESULT(out)
-    use input_variables, only: curtain_number, curtain_width
+    use inputs_mod, only: curtain_number, curtain_width
     implicit none
     logical :: out 
     !
@@ -658,7 +658,7 @@ contains
 !    !   star with magnetospheric accretion
 !    !   see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 !
-!    use input_variables, only: TTauriMstar, TTauriRstar, TTauriRinner, TTauriRouter
+!    use inputs_mod, only: TTauriMstar, TTauriRstar, TTauriRinner, TTauriRouter
 !
 !    IMPLICIT NONE
 !
@@ -715,7 +715,7 @@ contains
 
 
   function testDensity(point, grid)
-    use input_variables
+    use inputs_mod
     real :: testDensity
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
@@ -728,7 +728,7 @@ contains
   end function testDensity
 
   function protoDensity(point, grid) result(testdensity)
-    use input_variables
+    use inputs_mod
     real :: testDensity
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
@@ -742,7 +742,7 @@ contains
 
 
   real function whitneyDensity(point, grid)
-    use input_variables
+    use inputs_mod
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN), optional   :: grid
     real :: r, mu, mu_0, rhoEnv, r_c
@@ -798,7 +798,7 @@ contains
   end function whitneyDensity
 
   real function planetgapDensity(point, grid) result(rhoDisc)
-    use input_variables
+    use inputs_mod
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN), optional    :: grid
     real(double) :: r, h, fac
@@ -827,7 +827,7 @@ contains
 
   function wrshellDensity(point, grid) result(testdensity)
     use constants_mod
-    use input_variables
+    use inputs_mod
     real :: testDensity
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
@@ -842,7 +842,7 @@ contains
 
   real function benchmarkDensity(point, grid)
 
-    use input_variables
+    use inputs_mod
     TYPE(gridtype), optional, INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real :: r, hr, rd
@@ -864,7 +864,7 @@ contains
   end function benchmarkDensity
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
-    use input_variables, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
+    use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral, &
          deltaCav
     use utils_mod, only: solveQuad
@@ -1013,7 +1013,7 @@ contains
   end function shakaraSunyaevDisc
 
   function iras04158Disc(point) result (rhoOut)
-    use input_variables, only : betadisc, rinner, router, alphadisc, height, rho0
+    use inputs_mod, only : betadisc, rinner, router, alphadisc, height, rho0
 
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, fac
@@ -1035,7 +1035,7 @@ contains
   end function iras04158Disc
 
   function warpedDisc(point, grid) result (rhoOut)
-    use input_variables
+    use inputs_mod
     TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, warpheight1, warpheight2
@@ -1082,7 +1082,7 @@ contains
 
   real(double) function melvinDensity(point, grid) 
 
-    use input_variables
+    use inputs_mod
     TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real :: r,  mStar, rCav, r_c, r_d
@@ -1208,7 +1208,7 @@ contains
   ! chris (19/04/05)
   ! Returns real density now (and has for some time).
   function ppdiskDensity(point, grid)
-    use input_variables
+    use inputs_mod
     use constants_mod
     implicit none
     REAL(double) :: ppdiskDensity
@@ -1270,7 +1270,7 @@ contains
 
   function fractgap(R)
       use constants_mod
-      use input_variables, only : rGap, height, mPlanet, gapViscAlpha
+      use inputs_mod, only : rGap, height, mPlanet, gapViscAlpha
       implicit none
       REAL(double) :: x_nu, xmu, visc, const, xx, arg, fractgap, gapfloor, x, gapalph
       REAL(double), INTENT(IN) :: R
@@ -1322,7 +1322,7 @@ contains
 ! TJH version of fractgap
   function fractgap2(R)
       use constants_mod
-      use input_variables, only : rGap, height, mPlanet, gapViscAlpha, betaDisc, &
+      use inputs_mod, only : rGap, height, mPlanet, gapViscAlpha, betaDisc, &
            rCore
       
       implicit none
@@ -1384,7 +1384,7 @@ contains
     end function fractgap2
 
 subroutine calcPlanetMass
-   use input_variables, only : rGap, gapWidth, mPlanet
+   use inputs_mod, only : rGap, gapWidth, mPlanet
 
    implicit none
 

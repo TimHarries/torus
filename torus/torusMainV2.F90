@@ -21,7 +21,7 @@
 ! TJH: 10/09/08 pgplot calls removed...
 program torus
   use torus_version_mod
-  use input_variables         ! variables filled by inputs subroutine
+  use inputs_mod         ! variables filled by inputs subroutine
   use dimensionality_mod
   use constants_mod
   use messages_mod

@@ -16,15 +16,15 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use input_variables, only : atomicPhysics, nAtom
+    use inputs_mod, only : atomicPhysics, nAtom
     use modelatom_mod
 #ifdef MOLECULAR
-    use input_variables, only : molecularPhysics, moleculeFile, molecular
+    use inputs_mod, only : molecularPhysics, moleculeFile, molecular
     use molecular_mod, only: readMolecule, globalMolecule
 #endif
 #ifdef PHOTOION
     use ion_mod, only: addIons, globalIonArray, nGlobalIon
-    use input_variables, only : photoionization, photoionPhysics
+    use inputs_mod, only : photoionization, photoionPhysics
 #endif
 
     type(GRIDTYPE) :: grid
@@ -55,7 +55,7 @@ contains
 
   subroutine setupAtoms(nAtom, atomarray)
     use modelatom_mod
-    use input_variables, only : atomFilename
+    use inputs_mod, only : atomFilename
     integer :: nAtom, iAtom
     type(MODELATOM) :: atomArray(:)
 
@@ -70,7 +70,7 @@ contains
     use spectrum_mod
     use surface_mod
     use source_mod
-    use input_variables
+    use inputs_mod
     type(GRIDTYPE) :: grid
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
@@ -243,13 +243,13 @@ contains
     use phasematrix_mod
     use dust_mod
     use modelatom_mod, only : globalAtomArray
-    use input_variables, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
-    use input_variables, only : dustPhysics, lowmemory, radiativeEquilibrium
-    use input_variables, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
+    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
+    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium
+    use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
-    use input_variables, only : useDust, realDust, variableDustSublimation, massEnvelope
-    use input_variables, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
-    use input_variables, only : tEnd, tDump
+    use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
+    use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
+    use inputs_mod, only : tEnd, tDump
     use cmf_mod, only : atomloop
 #ifdef HYDRO
     use nbody_mod, only : donBodyonly
@@ -264,7 +264,7 @@ contains
 #endif
 
 #ifdef HYDRO
-    use input_variables, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics
 #ifdef MPI
     use hydrodynamics_mod, only : doHydrodynamics
 #endif
@@ -273,7 +273,7 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR
-    use input_variables, only : optimizeStack
+    use inputs_mod, only : optimizeStack
 #ifdef HYDRO
     use photoionAMR_mod, only: radiationHydro
 #endif
@@ -282,9 +282,9 @@ contains
 
 #ifdef MOLECULAR
     use molecular_mod, only : molecularLoop, globalMolecule
-    use input_variables, only : lowmemory, molecularPhysics,  useDust, realDust
+    use inputs_mod, only : lowmemory, molecularPhysics,  useDust, realDust
 #ifdef MPI
-    use input_variables, only : hydrovelocityconv
+    use inputs_mod, only : hydrovelocityconv
 !    use mpi_amr_mod, only : fillVelocityCornersFromHydro
     use amr_mod, only : hydroVelocityConvert
 #endif
@@ -442,7 +442,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
-     use input_variables, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
+     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
 #ifdef PHOTOION
      use photoion_mod, only : refineLambdaArray
 #endif
@@ -599,7 +599,7 @@ contains
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
-     use input_variables, only : inputNsource, mstarburst, lxoverlbol
+     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol
      integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
 #ifdef MPI
@@ -660,7 +660,7 @@ contains
 end subroutine setupGlobalSources
 
 subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
-  use input_variables, only : mie, nDustType
+  use inputs_mod, only : mie, nDustType
   use phasematrix_mod
   use dust_mod
   type(GRIDTYPE) :: grid

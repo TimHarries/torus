@@ -10,26 +10,26 @@ contains
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
     use source_mod, only : globalNSource, globalSourceArray
-    use input_variables, only : gridOutputFilename, writegrid, calcPhotometry
-    use input_variables, only : stokesimage
-    use input_variables, only : calcDataCube, atomicPhysics, nAtom
-    use input_variables, only : iTransLine, iTransAtom, gridDistance
-    use input_variables, only : imageFilename, calcImage, calcSpectrum
-    use input_variables, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-    use input_variables, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use input_variables, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
-    use input_variables, only : outfile, npixels, ninclination, nImage, inclinations, inclinationArray
-    use input_variables, only : lamStart, lamEnd, lineEmission, outputImageType
+    use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry
+    use inputs_mod, only : stokesimage
+    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom
+    use inputs_mod, only : iTransLine, iTransAtom, gridDistance
+    use inputs_mod, only : imageFilename, calcImage, calcSpectrum
+    use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
+    use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
+    use inputs_mod, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
+    use inputs_mod, only : outfile, npixels, ninclination, nImage, inclinations, inclinationArray
+    use inputs_mod, only : lamStart, lamEnd, lineEmission, outputImageType
 #ifdef MPI
-    use input_variables, only : inclineX, inclineY, inclineZ, singleInclination
+    use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
 #endif
-!    use input_variables, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
-    use input_variables, only : cmf, lamline, ttauriRouter,amrgridsize
+!    use inputs_mod, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+    use inputs_mod, only : cmf, lamline, ttauriRouter,amrgridsize
     use physics_mod, only : setupXarray, setupDust
 #ifdef MOLECULAR
     use molecular_mod
     use angularImage, only: make_angular_image, map_dI_to_particles
-    use input_variables, only : molecularPhysics, useDust, realdust, h21cm, internalView, dataCubeFilename
+    use inputs_mod, only : molecularPhysics, useDust, realdust, h21cm, internalView, dataCubeFilename
 #endif 
     use phasematrix_mod
     use phaseloop_mod, only : do_phaseloop
@@ -38,7 +38,7 @@ contains
     use blob_mod, only : blobtype
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
-    use input_variables, only : fastIntegrate, geometry, intextfilename, outtextfilename
+    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_mod, only: createImagePhotoion

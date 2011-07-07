@@ -111,7 +111,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use input_variables, only : hydrodynamics, suppresswarnings
+    use inputs_mod, only : hydrodynamics, suppresswarnings
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     TYPE(vector) :: point_local
@@ -164,7 +164,7 @@ module amr_utils_mod
 
     RECURSIVE SUBROUTINE findSubcellLocalPrivate(point,thisOctal,subcell,&
                                                  haveDescended,boundaryProblem)
-      use input_variables, only : suppressWarnings
+      use inputs_mod, only : suppressWarnings
       TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
       real(double) :: phi, phimax, phimin
@@ -290,7 +290,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use input_variables, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics
     IMPLICIT NONE
     integer :: nDepth
     TYPE(vector), INTENT(IN) :: point
@@ -582,7 +582,7 @@ module amr_utils_mod
   FUNCTION inOctal(thisOctal,point,alreadyRotated) 
     ! true if the point lies within the boundaries of the current octal
   
-    use input_variables, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal

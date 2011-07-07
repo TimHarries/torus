@@ -24,9 +24,9 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
-    use input_variables, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
-    use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use input_variables, only : object, maxMemoryAvailable, convergeOnUndersampled
+    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
+    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
+    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -1625,7 +1625,7 @@ contains
   end subroutine calculateMeanIntensity
 
   recursive subroutine checkUndersampled(thisOctal, nUndersampled, nCellsInDiffusion)
-    use input_variables, only : minCrossings
+    use inputs_mod, only : minCrossings
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: nUndersampled, nCellsinDiffusion
@@ -1660,7 +1660,7 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    use input_variables, only : minCrossings, TMinGlobal
+    use inputs_mod, only : minCrossings, TMinGlobal
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -1839,7 +1839,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
 
    use diffusion_mod, only: randomwalk
-   use input_variables, only : scatteredLightWavelength, storeScattered
+   use inputs_mod, only : scatteredLightWavelength, storeScattered
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec
@@ -2268,7 +2268,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
   subroutine updateGridMPI(grid)
-!    use input_variables, only : storeScattered
+!    use inputs_mod, only : storeScattered
     implicit none
     include 'mpif.h'
     type(gridtype) :: grid
@@ -2522,7 +2522,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
        distanceGrid,nCrossings, nDiffusion, meanIntensity)
-!    use input_variables, only : storeScattered
+!    use inputs_mod, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
@@ -2563,7 +2563,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,nCrossings, nDiffusion, meanIntensity)
-!    use input_variables, only : storeScattered
+!    use inputs_mod, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), meanIntensity(:)
@@ -2789,7 +2789,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine setBiasOnTau(grid, iLambda)
-    use input_variables, only : cylindrical
+    use inputs_mod, only : cylindrical
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
@@ -3137,7 +3137,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine calcIntensityFromGrid
 
   recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, nUnrefine, converged)
-    use input_variables, only : minDepthAMR
+    use inputs_mod, only : minDepthAMR
     use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -3204,7 +3204,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
-    use input_variables, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR, smoothinneredge
+    use inputs_mod, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR, smoothinneredge
     use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -3397,7 +3397,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine integrateUpwards
 
   recursive subroutine  refineDiscGrid(thisOctal, grid, beta, height, rSub, gridconverged, inheritProps, interpProps)
-    use input_variables, only : rOuter, heightsplitfac, maxDepthAMR, rInner, maxMemoryAvailable
+    use inputs_mod, only : rOuter, heightsplitfac, maxDepthAMR, rInner, maxMemoryAvailable
     use memory_mod, only : globalMemoryFootprint
     logical :: gridConverged
     type(gridtype) :: grid

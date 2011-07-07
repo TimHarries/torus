@@ -397,7 +397,7 @@ contains
        source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
-    use input_variables, only : photoionization, pencilbeam, lineEmission, vRot, useBias, &
+    use inputs_mod, only : photoionization, pencilbeam, lineEmission, vRot, useBias, &
          narrowBandImage, nspot, thetaSpot, phiSpot
     use atom_mod, only: bLambda
     use amr_mod

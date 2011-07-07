@@ -129,7 +129,7 @@ contains
   end function returnXsec
 
   subroutine addIons(ionArray, nIon)
-    use input_variables, only : usemetals, hOnly
+    use inputs_mod, only : usemetals, hOnly
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
 
@@ -1013,7 +1013,7 @@ end function returnLevel
 
 function returnAbundance(z) result(a)
 
-  use input_variables, only : h_abund, he_abund, c_abund, n_abund, &
+  use inputs_mod, only : h_abund, he_abund, c_abund, n_abund, &
        o_abund, ne_abund, s_abund
   integer :: z
   real:: a

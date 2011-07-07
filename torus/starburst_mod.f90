@@ -218,7 +218,7 @@ contains
     end function isSourceDead
 
     subroutine setSourceProperties(source, thisTable)
-      use input_variables, only : mStarburst, clusterRadius
+      use inputs_mod, only : mStarburst, clusterRadius
       type(SOURCETYPE) :: source
       type(TRACKTABLE) :: thisTable
       integer :: i, j

@@ -386,7 +386,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical
+    use inputs_mod, only : cylindrical
     use memory_mod, only : globalMemoryFootprint, octalMemory
     IMPLICIT NONE
     type(OCTAL), pointer :: thisOctal
@@ -566,7 +566,7 @@ CONTAINS
                          stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : cylindrical, maxMemoryAvailable
+    USE inputs_mod, ONLY : cylindrical, maxMemoryAvailable
     USE cluster_class, only: update_particle_list
     USE sph_data_class, only: isAlive
     use mpi_global_mod, only: nThreadsGlobal
@@ -1247,7 +1247,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
     
-    USE input_variables, ONLY : cylindrical, amr3d !, useHartmannTemp
+    USE inputs_mod, ONLY : cylindrical, amr3d !, useHartmannTemp
     USE cluster_class, ONLY:    assign_grid_values 
     use wr104_mod, only :       assign_grid_values_wr104
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
@@ -2160,7 +2160,7 @@ CONTAINS
                            interp, departCoeff,kappaAbsArray,kappaScaArray, dusttypeFraction, rosselandKappa, kappap, &
                            atthistemperature)
 
-    USE input_variables, only: hydrodynamics
+    USE inputs_mod, only: hydrodynamics
 
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
@@ -3213,19 +3213,19 @@ CONTAINS
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
 
-    use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
-    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
+    use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
+    use inputs_mod, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
          ttauriRouter
-    use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
-    use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
+    use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
+    use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
+    use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
          maxdepthamr, vturbmultiplier, rGapInner, rGapOuter
-    use input_variables, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
-    use input_variables, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
-    use input_variables, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
+    use inputs_mod, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
+    use inputs_mod, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
+    use inputs_mod, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          ttauriRinner, amr2d
-    use input_variables, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
-    use input_variables, only : dorefine, dounrefine, maxcellmass
+    use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
+    use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use romanova_class, only:  romanova_density
@@ -5004,7 +5004,7 @@ CONTAINS
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, &
                                TTauriMstar, TTauriDiskHeight, dipoleoffset
                                
     IMPLICIT NONE
@@ -5061,7 +5061,7 @@ CONTAINS
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
-    USE input_variables, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
+    USE inputs_mod, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
                                 TTauriRinner, TTauriRouter, ttau_acc_on, &
                                  vturb
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
@@ -5189,7 +5189,7 @@ CONTAINS
   !
   ! The function to check if a given point (rvec) is in "fuzzy" edge region
   logical function  in_fuzzy_edge(rvec) 
-    use input_variables, only: TTauriRinner, TTauriRouter
+    use inputs_mod, only: TTauriRinner, TTauriRouter
 
     IMPLICIT NONE    
     TYPE(vector), intent(in):: rvec
@@ -5232,7 +5232,7 @@ CONTAINS
   !
   ! The function to check if a given point (rvec) is in "fuzzy" edge region
   function  get_fuzzy_width()  RESULT(w)
-    use input_variables, only: TTauriRinner, TTauriRouter
+    use inputs_mod, only: TTauriRinner, TTauriRouter
 
     IMPLICIT NONE    
     real(double) :: w  ! width in  [10^10cm]
@@ -5651,7 +5651,7 @@ CONTAINS
     !   on one of the figures. this function returns the coordinates 
     !   of points along these lines, for obtaining comparable data. 
 
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, &
                                TTauriDiskHeight
                                
     INTEGER, INTENT(IN)              :: fieldline
@@ -5732,7 +5732,7 @@ CONTAINS
     use constants_mod
     use vector_mod
 
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, &
                                dipoleOffset, &
                                magStreamFile, thinDiskRin !, TTauriMstar
     USE magField, only: loadMagField
@@ -5811,7 +5811,7 @@ CONTAINS
 
   subroutine calcTestDensity(thisOctal,subcell,grid)
 
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -5854,7 +5854,7 @@ CONTAINS
 
   subroutine calcPathTestDensity(thisOctal,subcell)
 
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
@@ -5866,7 +5866,7 @@ CONTAINS
 
   subroutine calcLexington(thisOctal,subcell,grid)
 
-    use input_variables, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -5979,7 +5979,7 @@ CONTAINS
 
   subroutine calcStarburst(thisOctal,subcell)
 
-    use input_variables, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
@@ -6057,7 +6057,7 @@ CONTAINS
 
     use constants_mod
     use vector_mod
-    use input_variables
+    use inputs_mod
 
     implicit none
     
@@ -6080,7 +6080,7 @@ CONTAINS
 
   subroutine calcProtoDensity(thisOctal,subcell,grid)
 
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -6116,7 +6116,7 @@ CONTAINS
   end subroutine calcProtoDensity
 
   subroutine calcGammaVel(thisOctal, subcell, grid)
-    use input_variables
+    use inputs_mod
     type(OCTAL) :: thisOctal
     type(GRIDTYPE) :: grid
     integer :: subcell
@@ -6222,7 +6222,7 @@ CONTAINS
 
   subroutine calcWRShellDensity(thisOctal,subcell,grid)
     use density_mod, only: density
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -6270,7 +6270,7 @@ CONTAINS
 
   subroutine calcHydro1DDensity(thisOctal,subcell)
 
-    use input_variables
+    use inputs_mod
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -6376,7 +6376,7 @@ CONTAINS
 
   subroutine calcKelvinDensity(thisOctal,subcell,grid)
 
-    use input_variables
+    use inputs_mod
     type(GRIDTYPE), intent(in) :: grid
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -6440,7 +6440,7 @@ CONTAINS
 
   subroutine calcRTaylorDensity(thisOctal,subcell)
 
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -6515,7 +6515,7 @@ CONTAINS
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
 
-    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use utils_mod, only: bonnorebertrun
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -6705,7 +6705,7 @@ CONTAINS
 
   subroutine calcUniformSphere(thisOctal,subcell)
 
-    use input_variables, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -6734,7 +6734,7 @@ CONTAINS
 
   subroutine calcSedovDensity(thisOctal,subcell)
 
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -6891,7 +6891,7 @@ CONTAINS
   end subroutine calcnbodyDensity
 
   subroutine calcEmpty(thisOctal,subcell)
-    use input_variables, only : centralMass
+    use inputs_mod, only : centralMass
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -6907,7 +6907,7 @@ CONTAINS
 
   subroutine benchmarkDisk(thisOctal,subcell)
 
-    use input_variables, ONLY : rInner, rOuter, height, rho
+    use inputs_mod, ONLY : rInner, rOuter, height, rho
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real :: r, hr, rd
@@ -6951,7 +6951,7 @@ CONTAINS
 
   subroutine molecularBenchmark(thisOctal,subcell)
 
-    use input_variables, only : molAbundance !, amr2d
+    use inputs_mod, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7025,7 +7025,7 @@ CONTAINS
 
   subroutine WaterBenchmark1(thisOctal, subcell)
 
-    use input_variables, only : molAbundance !, amr2d
+    use inputs_mod, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7068,7 +7068,7 @@ CONTAINS
 
   subroutine WaterBenchmark2(thisOctal,subcell)
 
-    use input_variables, only : molAbundance !, amr2d
+    use inputs_mod, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7114,7 +7114,7 @@ CONTAINS
 
   subroutine AGBStarBenchmark(thisOctal,subcell)
 
-    use input_variables, only : molAbundance
+    use inputs_mod, only : molAbundance
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7188,7 +7188,7 @@ CONTAINS
 
   subroutine clumpyAgb(thisOctal,subcell)
 
-    use input_variables, only : rinner, router, vterm, mdot
+    use inputs_mod, only : rinner, router, vterm, mdot
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7219,7 +7219,7 @@ CONTAINS
 
   subroutine iras04158(thisOctal, subcell)
 
-    use input_variables, only : router, rinner
+    use inputs_mod, only : router, rinner
     use density_mod, only: iras04158Disc
     
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -7462,7 +7462,7 @@ end function readparameterfrom2dmap
 
   subroutine molecularFilamentFill(thisOctal,subcell)
 
-    use input_variables, only : molAbundance!,rhoC,r0
+    use inputs_mod, only : molAbundance!,rhoC,r0
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7488,7 +7488,7 @@ end function readparameterfrom2dmap
 
   subroutine ggtauFill(thisOctal,subcell)
 
-    use input_variables, only : molAbundance 
+    use inputs_mod, only : molAbundance 
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7532,7 +7532,7 @@ end function readparameterfrom2dmap
 
 
   TYPE(vector)  function wrshellVelocity(point)
-    use input_variables, only : vterm, beta, rinner
+    use inputs_mod, only : vterm, beta, rinner
     type(vector), intent(in) :: point
     type(vector) :: rvec
     real(double) :: v, r
@@ -7672,7 +7672,7 @@ end function readparameterfrom2dmap
 
 
   TYPE(vector)  function keplerianVelocity(point)
-    use input_variables, only : mcore,rinner
+    use inputs_mod, only : mcore,rinner
     type(vector), intent(in) :: point
     type(vector) :: rvec
     real(double) :: v, r
@@ -7792,7 +7792,7 @@ end function readparameterfrom2dmap
 
 !Thaw 2D gaussian distribution
   subroutine assign_gaussian(thisOctal,subcell)
-    use input_variables, only : xplusbound, xminusbound, zplusbound, zminusbound
+    use inputs_mod, only : xplusbound, xminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7826,7 +7826,7 @@ end function readparameterfrom2dmap
 
 !Thaw 1D radiation hydrodynamics test
   subroutine assign_radHydro(thisOctal,subcell)
-    use input_variables, only : xplusbound, xminusbound
+    use inputs_mod, only : xplusbound, xminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7866,7 +7866,7 @@ end function readparameterfrom2dmap
 
 
   subroutine assign_hii_test(thisOctal,subcell)
-    use input_variables, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
@@ -7969,7 +7969,7 @@ end function readparameterfrom2dmap
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
     use density_mod, only: density
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -8082,7 +8082,7 @@ end function readparameterfrom2dmap
 
   subroutine warpedDisk(thisOctal,subcell,grid)
     use density_mod, only: density
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -8119,7 +8119,7 @@ end function readparameterfrom2dmap
   ! chris (26/05/04)
   subroutine calcPPDiskDensity(thisOctal, subcell, grid)
     use density_mod, only: density
-    use input_variables
+    use inputs_mod
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
     type(gridtype), intent(in) :: grid
@@ -8143,7 +8143,7 @@ end function readparameterfrom2dmap
 
   subroutine assign_clumpydisc(thisOctal,subcell,grid)
     use density_mod, only: density
-    use input_variables
+    use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -8322,7 +8322,7 @@ end function readparameterfrom2dmap
 
   subroutine spiralWindSubcell(thisOctal, subcell)
     use ostar_mod, only: returnSpiralFactor
-    use input_variables
+    use inputs_mod
     real(double) :: v, r, rhoOut
     type(VECTOR) :: rVec, rHat
     type(VECTOR) :: octVec
@@ -8388,7 +8388,7 @@ end function readparameterfrom2dmap
   end subroutine spiralWindSubcell
 
   subroutine windSubcell(thisOctal, subcell)
-    use input_variables, only : v0, vterm, beta, twind, mdot, rcore
+    use inputs_mod, only : v0, vterm, beta, twind, mdot, rcore
     real(double) :: v, r, rhoOut
     type(VECTOR) :: rHat, rvec
     type(VECTOR) :: octVec
@@ -8419,7 +8419,7 @@ end function readparameterfrom2dmap
 
 
   TYPE(vector) FUNCTION ostarVelocity(point)
-    use input_variables, only : v0, vterm, beta, rcore
+    use inputs_mod, only : v0, vterm, beta, rcore
     real(double) :: r1
     type(VECTOR), intent(in) :: point
     type(VECTOR) rHat
@@ -9760,7 +9760,7 @@ end function readparameterfrom2dmap
   
   TYPE(vector) FUNCTION windTestVelocity(point)
 
-    use input_variables, only : rinner, router
+    use inputs_mod, only : rinner, router
     TYPE(vector), INTENT(IN) :: point
     
     TYPE(vector) :: starPosn
@@ -10143,12 +10143,12 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-    use input_variables, only: nDustType, mie, includeGasOpacity, lineEmission
+    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
     use phfit_mod, only : phfit2
 #ifdef PHOTOION
-    use input_variables, only: photoionization, hOnly
+    use inputs_mod, only: photoionization, hOnly
 #endif
     implicit none
     type(GRIDTYPE) :: grid
@@ -10703,8 +10703,8 @@ end function readparameterfrom2dmap
   end subroutine interpFromParent
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner
-    use input_variables, only : maxMemoryAvailable
+    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner
+    use inputs_mod, only : maxMemoryAvailable
     use memory_mod, only : humanreadablememory, globalMemoryFootprint
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -10889,7 +10889,7 @@ end function readparameterfrom2dmap
   subroutine myScaleSmooth(factor, grid, converged, &
        inheritProps, interpProps)
     use memory_mod, only : globalMemoryFootprint
-    use input_variables, only : maxMemoryAvailable
+    use inputs_mod, only : maxMemoryAvailable
     type(gridtype) :: grid
     real :: factor
     integer :: nTagged
@@ -10976,7 +10976,7 @@ end function readparameterfrom2dmap
   end subroutine zeroEtaCont
 
   recursive subroutine assignDensitiesBlandfordPayne(grid,thisOctal)
-    use input_variables, only :  vturb, dw_temperature
+    use inputs_mod, only :  vturb, dw_temperature
     use magnetic_mod, only : inflowBlandfordPayne, velocityBlandfordPayne, rhoBlandfordPayne
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -11019,7 +11019,7 @@ end function readparameterfrom2dmap
 
   recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc
-    use input_variables, only : rSublimation
+    use inputs_mod, only : rSublimation
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r, fac
     type(octal), pointer   :: thisOctal
@@ -11064,8 +11064,8 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesAlphaDisc
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot)
-    use input_variables, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
-    use input_variables, only : TTauriRinner, TTauriRouter, maxHartTemp
+    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
+    use inputs_mod, only : TTauriRinner, TTauriRouter, maxHartTemp
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
     real(double) :: astar, mdot, thisR, thisRho, thisV
     type(GRIDTYPE) :: grid
@@ -11168,7 +11168,7 @@ end function readparameterfrom2dmap
   
   recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps)
     use memory_mod, only : globalMemoryFootprint, humanReadableMemory
-    use input_variables, only : maxMemoryAvailable
+    use inputs_mod, only : maxMemoryAvailable
     type(GRIDTYPE) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -11942,7 +11942,7 @@ end function readparameterfrom2dmap
 
 
   function distanceToGridFromOutside(grid, posVec, direction) result (tval)
-    use input_variables, only : suppressWarnings
+    use inputs_mod, only : suppressWarnings
     type(GRIDTYPE) :: grid
     type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
@@ -12167,7 +12167,7 @@ end function readparameterfrom2dmap
   ! hydroWarp stuff
   !
   function hydroWarpTemperature(point, grid) result (tempOut)
-    use input_variables, only : warpFracHeight, warpRadius, warpSigma, warpAngle
+    use inputs_mod, only : warpFracHeight, warpRadius, warpSigma, warpAngle
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector), INTENT(IN) :: point
     real(double) :: tempOut
@@ -12190,7 +12190,7 @@ end function readparameterfrom2dmap
   end function hydroWarpTemperature
 
   function hydroWarpDensity(point, grid) result (rhoOut)
-    use input_variables, only : warpFracHeight, warpRadius, warpSigma, warpAngle
+    use inputs_mod, only : warpFracHeight, warpRadius, warpSigma, warpAngle
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(vector), INTENT(IN) :: point
     real(double) :: rhoOut
@@ -12570,7 +12570,7 @@ end function readparameterfrom2dmap
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
        xArray, tauArray, distanceToEdge, subRadius, stopatGap, stopatdistance)
-    use input_variables, only : rGap, rGapInner, rGapOuter
+    use inputs_mod, only : rGap, rGapInner, rGapOuter
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     real(double), optional,intent(out) :: xArray(:), tauArray(:)
@@ -12957,7 +12957,7 @@ end function readparameterfrom2dmap
     subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use input_variables, only : tHotSpot
+    use inputs_mod, only : tHotSpot
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -13034,7 +13034,7 @@ end function readparameterfrom2dmap
 
 
   subroutine allocateOctalAttributes(grid, thisOctal)
-    use input_variables, only : mie,  nDustType, molecular, TminGlobal, &
+    use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, h21cm, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
     use gridtype_mod, only: statEqMaxLevels
@@ -14894,7 +14894,7 @@ end function readparameterfrom2dmap
 
 
   recursive subroutine addWarpedDisc(thisOctal)
-    use input_variables, only : ttauriROuter, hOverR, ttauriRinner
+    use inputs_mod, only : ttauriROuter, hOverR, ttauriRinner
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i

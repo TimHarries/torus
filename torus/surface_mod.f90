@@ -373,7 +373,7 @@ contains
   subroutine createTTauriSurface(surface, grid, lineFreq, &
                                  coreContFlux,fAccretion)
 
-    use input_variables, only: TTauriRinner, TTauriRouter,&
+    use inputs_mod, only: TTauriRinner, TTauriRouter,&
                                TTauriRstar, TTauriMstar, dipoleOffset
    
     type(SURFACETYPE),intent(inout) :: surface

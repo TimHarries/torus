@@ -15,7 +15,7 @@ module magnetic_mod
 contains
 
   logical function inFlowMahdavi(rVec) 
-    use input_variables, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
+    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
          TTauriDiskHeight
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
@@ -60,7 +60,7 @@ contains
   end function inFlowMahdavi
 
   type (VECTOR) function velocityMahdavi(point)
-    use input_variables, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
+    use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: rvec, vp, magneticAxis, rVecDash
@@ -117,7 +117,7 @@ contains
 
 
   logical function inflowBlandfordPayne(rVec)
-    use input_variables, only : DW_Rmin, DW_Rmax, DW_theta
+    use inputs_mod, only : DW_Rmin, DW_Rmax, DW_theta
     type(VECTOR) :: rVec
     real(double) :: r0, r, z, zMax, zMin
        
@@ -137,7 +137,7 @@ contains
     
 
   type (VECTOR) function velocityBlandfordPayne(point)
-    use input_variables, only : DW_theta, DW_rMin, ttauriMstar, ttauriRstar
+    use inputs_mod, only : DW_theta, DW_rMin, ttauriMstar, ttauriRstar
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: rvec
     real(double) :: phi, r0, r, Vesc, vel, x
@@ -171,7 +171,7 @@ contains
   end function velocityBlandfordPayne
 
   function accretingAreaMahdavi(grid) result (accretingarea)
-    use input_variables, only : ttauriRstar
+    use inputs_mod, only : ttauriRstar
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec
     real(double) :: accretingArea
@@ -187,7 +187,7 @@ contains
   end function accretingAreaMahdavi
 
    function rhoBlandfordPayne(rVec) result(rho)
-     use input_variables, only : DW_rmax, DW_rmin, DW_mdot
+     use inputs_mod, only : DW_rmax, DW_rmin, DW_mdot
      type(VECTOR) :: rVec
      real(double) :: rho, kconst,vel,mdot
 
@@ -202,7 +202,7 @@ contains
    end function rhoBlandfordPayne
 
    function rhoAlphaDisc(grid, rVec) result(rho)
-     use input_variables, only : rinner, router, mdisc, alphaDisc, betaDisc, height
+     use inputs_mod, only : rinner, router, mdisc, alphaDisc, betaDisc, height
      type(GRIDTYPE) :: grid
      type(VECTOR) :: rVec
      real(double) :: rho, r, fac, r0
