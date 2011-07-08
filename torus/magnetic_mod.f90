@@ -193,9 +193,8 @@ contains
 666 continue
   end function velocityBlandfordPayne
 
-  function accretingAreaMahdavi(grid) result (accretingarea)
+  function accretingAreaMahdavi() result (accretingarea)
     use inputs_mod, only : ttauriRstar
-    type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec
     real(double) :: accretingArea
     integer :: i ,j

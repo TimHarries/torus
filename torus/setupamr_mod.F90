@@ -253,7 +253,7 @@ contains
            ! This section is getting rather long. Maybe this should be done in 
            ! wrapper subroutine in amr_mod.f90.
           call zeroDensity(grid%octreeRoot)
-          astar = accretingAreaMahdavi(grid)
+          astar = accretingAreaMahdavi()
 !          ttauriwind = .false.
 !          ttauridisc = .false.
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
@@ -313,7 +313,7 @@ contains
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                   minRho, minR)
              call testVelocity(grid%octreeRoot,grid)
-             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline","chiline","inflow  "/))
+             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline","chiline","inflow "/))
        
              if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)

@@ -1018,7 +1018,7 @@ contains
     integer :: subcell
     real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
 
-    V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/mHydrogen)  ! [cm/s] theram speed
+    V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/(thisAtom%mass*mHydrogen))  ! [cm/s] theram speed
              
     DopplerWidth = nu/cSpeed * V_th !eq 7  [Hz]
 
@@ -1771,7 +1771,8 @@ contains
                    !             thisOctal => grid%octreeRoot
                    !             call findSubcellLocal(posVec, thisOctal, subcell)
 
-                   thisOctal%inflow(subcell) = thisOctal%inflow(subcell).and.(.not.insidesource(thisOctal, subcell, nsource, Source))
+                   thisOctal%inflow(subcell) = thisOctal%inflow(subcell).and. &
+                        (.not.insidesource(thisOctal, subcell, nsource, Source))
 
 
                    if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then 

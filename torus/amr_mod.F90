@@ -3507,7 +3507,7 @@ CONTAINS
 !     endif
 
      if (firstTimeTTauri) then
-        astar = accretingAreaMahdavi(grid)
+        astar = accretingAreaMahdavi()
         firstTimeTTauri = .false.
      endif
      
@@ -11107,17 +11107,14 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesAlphaDisc
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
-    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
-    use inputs_mod, only : TTauriRinner, TTauriRouter, maxHartTemp, TTauriDiskHeight
+    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
+    use inputs_mod, only : TTauriDiskHeight
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRho, minr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: cellCentre, pointVec, direction, corner(8)
-    real(double) :: r, rm, thetaStar, bigRstar,  bigR
-    real :: rMnorm, theta
-    real(double) :: thetaStarHartmann, tmp, bigRstarHartmann
+    type(VECTOR) :: cellCentre, corner(8)
     integer :: subcell, i, j
     
     do subcell = 1, thisOctal%maxChildren
@@ -11191,10 +11188,9 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesMahdavi
 
   recursive subroutine assignTemperaturesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
-    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
-    use inputs_mod, only : TTauriRinner, TTauriRouter, maxHartTemp
+    use inputs_mod, only : maxHartTemp
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
-    real(double) :: astar, mdot, thisR, thisRho, thisV, minRho, minr, minTemp, maxTemp
+    real(double) :: astar, mdot, thisR, minRho, minr
     real(double) :: requiredMaxHeating, thisHeating, localCooling
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -11230,7 +11226,7 @@ end function readparameterfrom2dmap
              localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
              call locate(gamma, 8, localCooling, j)
              thisOctal%temperature(subcell) = logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j))
-             thisoctal%temperature(subcell) = max(0.d0, min(5.d0, thisOctal%temperature(subcell)))
+             thisoctal%temperature(subcell) = max(0.0, min(5.0, thisOctal%temperature(subcell)))
              thisOctal%temperature(subcell) = 10.d0**thisOctal%temperature(subcell)
           endif
        endif
