@@ -759,6 +759,8 @@ contains
 
        if (.not.setSubRadius) then
           rSublimation = rInner
+          write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+          call writeInfo(message,TRIVIAL)
        else
           rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
           write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
@@ -1032,6 +1034,22 @@ contains
 
     call getDouble("yabundance", Yabundance, 1.d0, cLine, fLine, nLines, &
             "Helium abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)
+
+    call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
+               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
+
+    call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
+               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
+    !
+    ! Voigt profile prameters
+    !
+    call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
+         "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+    call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &
+         "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+    call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
+         "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+
 
 
   end subroutine readAtomicPhysicsParameters
@@ -1786,22 +1804,6 @@ contains
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
-    if (atomicPhysics) then
-          call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
-               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
-          call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
-               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
-          !
-          ! Voigt profile prameters
-          !
-          call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
-               "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
-          call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &
-               "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
-          call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
-               "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
-
-    endif
 
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &
          "Maximum Velocity Channel (km/s): ","(a,f5.1,1x,a)", 1.0d0, ok, .false.)

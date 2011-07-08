@@ -1022,6 +1022,8 @@ contains
        call writeInfo(message, FORINFO)
        write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
        call writeInfo(message, FORINFO)
+       write(message, '(a,f7.1,a)') "Dust sublimation radius is ",subRadius/rcore, " stellar radii"
+       call writeInfo(message,TRIVIAL)
     endif
 
     !    if (storescattered) then 

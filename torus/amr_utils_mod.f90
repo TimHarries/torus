@@ -510,32 +510,32 @@ module amr_utils_mod
 
           if (thisOctal%splitAzimuthally) then ! azimuthal split case
 
-             if (phi <= thisOctal%phi) then
-                IF ( r <= thisOctal%r) THEN
+             if (phi <= thisOctal%phi) then ! small y
+                IF ( r <= thisOctal%r) THEN ! small x
                    IF ( point%z <= thisOctal%centre%z ) THEN
-                      subcell = 1
+                      subcell = 1    ! small x, small y, small z
                    ELSE 
-                      subcell = 3
+                      subcell = 5    ! small x, smally, big z
                    ENDIF
                 ELSE
-                   IF (point%z <= thisOctal%centre%z) THEN
-                      subcell = 2
+                   IF (point%z <= thisOctal%centre%z) THEN 
+                      subcell = 2  ! big x, small y, small z
                    ELSE 
-                      subcell = 4
+                      subcell = 6  ! big x, small y, big z
                    ENDIF
                 END IF
              else
                 IF ( r <= thisOctal%r ) THEN
                    IF ( point%z <= thisOctal%centre%z ) THEN
-                      subcell = 5
+                      subcell = 3  ! small x, big y, small z
                    ELSE 
-                      subcell = 7
+                      subcell = 7  ! small x, big y, big z
                    ENDIF
                 ELSE
                    IF (point%z <= thisOctal%centre%z) THEN
-                      subcell = 6
+                      subcell = 4  ! big x, big y, small z
                    ELSE 
-                      subcell = 8
+                      subcell = 8 ! big x, big y, big z
                    ENDIF
                 END IF
              endif

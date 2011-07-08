@@ -7,7 +7,7 @@ module amr_mod
 
   use amr_utils_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
-       allocateattribute, copyattribute, deallocateattribute, returndphi
+       allocateattribute, copyattribute, deallocateattribute, returndphi, subcellCorners
   use utils_mod, only: blackbody, logint, loginterp, locate, solvequaddble, spline, splint, regular_tri_quadint
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
@@ -2413,7 +2413,7 @@ CONTAINS
 
 
   FUNCTION amrGridVelocity(octalTree,point,startOctal,foundOctal,&
-                                        foundSubcell,actualSubcell, linearinterp) 
+                                        foundSubcell,actualSubcell, linearinterp, debug) 
     ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
 
@@ -2437,6 +2437,8 @@ CONTAINS
     TYPE(vector), INTENT(IN)  :: point
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
+    logical, optional :: debug
+    logical :: writedebug
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
     INTEGER, INTENT(IN),  OPTIONAL :: actualSubcell
 
@@ -2455,6 +2457,9 @@ CONTAINS
     real(double) :: weights(27), vr, vz
     logical, optional :: linearinterp
     logical :: linear
+
+    writedebug = .false.
+    if (present(debug)) writedebug = debug
 
     amrGridVelocity = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -2657,7 +2662,6 @@ CONTAINS
                t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
                t2 = (phi1 - (phi2 - resultOctal%dPhi/4.d0))/(resultOctal%dPhi/2.d0)
                t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
-
                select case(subcell)
             CASE(1)
                amrGridVelocity = &
@@ -2777,6 +2781,17 @@ CONTAINS
                     ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(8) + &
                     ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(9) + &
                     ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(10)
+               if (writedebug) then
+                     write(*,*) "case 1: ", resultOctal%inflow(subcell)
+                     write(*,*) "vel( 1): ",resultOctal%cornerVelocity( 1)
+                     write(*,*) "vel( 2): ",resultOctal%cornerVelocity( 2)
+                     write(*,*) "vel( 3): ",resultOctal%cornerVelocity( 3)
+                     write(*,*) "vel( 4): ",resultOctal%cornerVelocity( 4)
+                     write(*,*) "vel( 7): ",resultOctal%cornerVelocity( 7)
+                     write(*,*) "vel( 8): ",resultOctal%cornerVelocity( 8)
+                     write(*,*) "vel( 9): ",resultOctal%cornerVelocity( 9)
+                     write(*,*) "vel(10): ",resultOctal%cornerVelocity(10)
+               endif
                
             CASE(2)
                amrGridVelocity = &
@@ -2799,6 +2814,8 @@ CONTAINS
                     ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
                     ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
                     ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16)
+
+
                
             CASE(4)
                amrGridVelocity = &
@@ -2810,6 +2827,7 @@ CONTAINS
                     ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
                     ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
                     ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
+
 
             CASE DEFAULT
                PRINT *, 'Invalid subcell in amrGridVelocity'
@@ -3228,6 +3246,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
+    use magnetic_mod, only : accretingAreaMahdavi
     use romanova_class, only:  romanova_density
     USE cluster_class, only:   find_n_particle_in_subcell
     use sph_data_class, only:  sphVelocityPresent
@@ -3277,7 +3296,9 @@ CONTAINS
     real(double) :: h0
     logical :: inflow, insideStar,outSideStar
     logical,save  :: firstTime = .true.
-
+    logical,save  :: firstTimeTTauri = .true.
+    real(double) :: lAccretion
+    real(double), save :: astar
     type(VECTOR) :: minV, maxV
     real(double) :: vgradx, vgrady, vgradz, vgrad
     real(double) :: T, vturb, b, dphi
@@ -3485,10 +3506,17 @@ CONTAINS
 !        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
 !     endif
 
+     if (firstTimeTTauri) then
+        astar = accretingAreaMahdavi(grid)
+        firstTimeTTauri = .false.
+     endif
+     
+     lAccretion = ((astar * ((r0*1.d10)/ttauriRstar)**3) / (twoPi*r0*1.d10))/1.d10
+
      inflow=.false.
      insideStar = .false.
      outsideStar = .false.
-     do i = 1, 100
+     do i = 1, 200
         rVec = randomPositionInCell(thisOctal,subcell)
         if (inFLowMahdavi(1.d10*rVec)) then
            inFlow = .true.
@@ -3498,10 +3526,20 @@ CONTAINS
      enddo
      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
 
+     fac = (r*1.d10-TTauriRInner)/(TTauriRouter-TTauriRinner)
+
+
+     fac = 5d0
+
      if (inFlow) then
-        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) split = .true.
+!        write(*,*) "c/l ",cellsize/laccretion
+
+!        if (cellsize > lAccretion/fac) split = .true.
+        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) &
+             split = .true.
+
 !        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
-        if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 2.d0)) then
+        if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 0.5d0)) then
            split = .true.
            splitinazimuth = .true.
         endif
@@ -3515,7 +3553,7 @@ CONTAINS
      endif
 
      if (inflow) then
-        if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+        if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 7.5d0)) then
            split = .true.
            splitInAzimuth = .true.
         endif
@@ -4784,13 +4822,15 @@ CONTAINS
   END FUNCTION decideSplit
 
   
-  SUBROUTINE fillVelocityCorners(thisOctal,velocityFunc)
+  SUBROUTINE fillVelocityCorners(thisOctal,velocityFunc, debug)
     ! store the velocity values at the subcell corners of an octal so
     !   that they can be used for interpolation.
 
     IMPLICIT NONE
   
     TYPE(octal), INTENT(INOUT) :: thisOctal
+    logical, optional :: debug
+    logical :: writedebug
     real(oct)      :: r1, r2, r3
     real(oct)      :: phi1, phi2, phi3
     real(oct)      :: x1, x2, x3
@@ -4804,6 +4844,9 @@ CONTAINS
         TYPE(vector), INTENT(IN) :: point
       END FUNCTION velocityFunc
     END INTERFACE
+
+    writedebug = .false.
+    if (present(debug)) writedebug=debug
 
     if (thisOctal%oneD) then
        x1 = thisOctal%centre%x - thisOctal%subcellSize
@@ -4875,48 +4918,48 @@ CONTAINS
              z1 = thisOctal%centre%z - thisOctal%subcellSize
              z2 = thisOctal%centre%z
              z3 = thisOctal%centre%z + thisOctal%subcellSize
-             phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
+             phi1 = thisOctal%phiMin
              phi2 = thisOctal%phi 
-             phi3 = thisOctal%phi + thisOctal%dPhi/2.d0
+             phi3 = thisOctal%phiMax
              r1 = thisOctal%r - thisOctal%subcellSize
              r2 = thisOctal%r
              r3 = thisOctal%r + thisOctal%subcellSize
 
+
+
+
              ! bottom level
 
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
-             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
-             thisOctal%cornerVelocity(3) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1))
-             thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerVelocity(2) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerVelocity(3) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerVelocity(4) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
              thisOctal%cornerVelocity(5) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1))
-             thisOctal%cornerVelocity(6) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1))
-             thisOctal%cornerVelocity(7) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
-             thisOctal%cornerVelocity(8) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
+             thisOctal%cornerVelocity(6) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
+             thisOctal%cornerVelocity(7) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z1))
+             thisOctal%cornerVelocity(8) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z1))
              thisOctal%cornerVelocity(9) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z1))
 
-             ! middle level
-
              thisOctal%cornerVelocity(10) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
-             thisOctal%cornerVelocity(11) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
-             thisOctal%cornerVelocity(12) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2))
-             thisOctal%cornerVelocity(13) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerVelocity(12) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerVelocity(13) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
              thisOctal%cornerVelocity(14) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2))
-             thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2))
-             thisOctal%cornerVelocity(16) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
-             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
+             thisOctal%cornerVelocity(15) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
+             thisOctal%cornerVelocity(16) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z2))
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z2))
              thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z2))
 
-             ! top level
-
              thisOctal%cornerVelocity(19) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
-             thisOctal%cornerVelocity(20) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
-             thisOctal%cornerVelocity(21) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3))
-             thisOctal%cornerVelocity(22) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(20) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(21) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerVelocity(22) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
              thisOctal%cornerVelocity(23) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
-             thisOctal%cornerVelocity(24) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3))
-             thisOctal%cornerVelocity(25) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
-             thisOctal%cornerVelocity(26) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerVelocity(24) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerVelocity(25) = velocityFunc(vector(r1*cos(phi3),r1*sin(phi3),z3))
+             thisOctal%cornerVelocity(26) = velocityFunc(vector(r2*cos(phi3),r2*sin(phi3),z3))
              thisOctal%cornerVelocity(27) = velocityFunc(vector(r3*cos(phi3),r3*sin(phi3),z3))
+
 
           else
 
@@ -4933,28 +4976,28 @@ CONTAINS
              ! bottom level
 
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
-             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z1))
+             thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(3) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
              thisOctal%cornerVelocity(4) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z1))
-             thisOctal%cornerVelocity(5) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerVelocity(5) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
              thisOctal%cornerVelocity(6) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z1))
 
              ! middle level
 
              thisOctal%cornerVelocity(7) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
-             thisOctal%cornerVelocity(8) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z2))
+             thisOctal%cornerVelocity(8) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z2))
              thisOctal%cornerVelocity(9) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z2))
              thisOctal%cornerVelocity(10) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z2))
-             thisOctal%cornerVelocity(11) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerVelocity(11) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
              thisOctal%cornerVelocity(12) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z2))
 
              ! top level
 
              thisOctal%cornerVelocity(13) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
-             thisOctal%cornerVelocity(14) = velocityFunc(vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerVelocity(14) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z3))
              thisOctal%cornerVelocity(15) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z3))
              thisOctal%cornerVelocity(16) = velocityFunc(vector(r2*cos(phi2),r2*sin(phi2),z3))
-             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerVelocity(17) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
              thisOctal%cornerVelocity(18) = velocityFunc(vector(r3*cos(phi2),r3*sin(phi2),z3))
 
           endif
@@ -11063,34 +11106,46 @@ end function readparameterfrom2dmap
     enddo
   end subroutine assignDensitiesAlphaDisc
 
-  recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot)
+  recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
     use inputs_mod, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
-    use inputs_mod, only : TTauriRinner, TTauriRouter, maxHartTemp
+    use inputs_mod, only : TTauriRinner, TTauriRouter, maxHartTemp, TTauriDiskHeight
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
-    real(double) :: astar, mdot, thisR, thisRho, thisV
+    real(double) :: astar, mdot, thisR, thisRho, thisV, minRho, minr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: cellCentre, pointVec
+    type(VECTOR) :: cellCentre, pointVec, direction, corner(8)
     real(double) :: r, rm, thetaStar, bigRstar,  bigR
     real :: rMnorm, theta
     real(double) :: thetaStarHartmann, tmp, bigRstarHartmann
-    integer :: subcell, i
+    integer :: subcell, i, j
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call assignDensitiesMahdavi(grid, child, astar, mdot)
+                child =>thisOctal%child(i)
+                call assignDensitiesMahdavi(grid, child, astar, mdot, minRho, minR)
                 exit
              end if
           end do
        else
           cellCentre = subcellCentre(thisOctal, subcell)
           thisR = modulus(cellCentre)*1.d10
-          if (inflowMahdavi(1.d10*cellCentre)) then
+          call subcellCorners(thisOctal, subcell, corner)
+          do j = 1, 8
+             corner(j) = 1.d10 * corner(j)
+          enddo
+          thisOctal%inflow(subcell) = .false.
+          if (inflowMahdavi(corner(1:8)).and.inflowMahdavi(1.d10*cellCentre)) then
+!          if (inflowMahdavi(1.d10*cellCentre)) then
+
+!          do j = 1, 8
+!             write(*,*) j, " modulus ",modulus(corner(j) - (1.d10*cellCentre)) / &
+!                  (thisOctal%subcellSize*1.d10),inflowMahdavi(corner(j)), &
+!                  returndPhi(thisOctal)*thisR/thisOctal%subcellSize
+!          enddo
              
              thisOctal%inFlow(subcell) = .true.
              thisOctal%velocity(subcell) = velocityMahdavi(cellCentre)
@@ -11100,64 +11155,33 @@ end function readparameterfrom2dmap
                 thisOctal%inflow(subcell) = .true.
                 thisOctal%rho(Subcell) = thisRho
                 thisOctal%temperature(subcell) = isothermTemp
+                if (thisRho < minRho) then
+                   minRho = thisRho
+                   minR = thisR
+                endif
 
-
-                IF (useHartmannTemp) THEN
-                   ! need to calculate the flow point AS IF the magnetosphere
-                   !   was the same size as the one in the Hartmann et al paper
-                   pointVec = cellCentre*1.d10
-                   r = modulus( pointVec ) 
-                   theta = acos( pointVec%z  / r )
-        
-                   rM  = r / SIN(theta)**2
-                   
-                   ! work out the intersection angle (at the stellar surface) for
-                   !   the current flow line  
-                   thetaStar = ASIN(SQRT(TTauriRstar/rM))
-                   bigRstar = TTauriRstar * SIN(thetaStar) 
-                   
-                   ! normalize the magnetic radius (0=inside, 1=outside)
-                   rMnorm = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
-                   
-                   ! convert rM to Hartmann units
-                   rM = 2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol))
-                   
-                   bigR = SQRT(pointVec%x**2+pointVec%y**2)
-                   bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
-                   bigR = min(bigR,dble(TTauriRouter))
-                   bigR = max(bigR,0.d0)
-                   
-                   ! get the equivalent bigR for the Hartmann geometry
-                   ! first work out the intersection angle (at the stellar surface) for
-                   !   the current flow line  
-                   thetaStarHartmann = ASIN(SQRT((2.0*rSol)/rM))
-                   ! work out bigR for this point
-                   bigRstarHartmann = (2.0*rSol) * SIN(thetaStarHartmann) 
-             
-                   bigR = bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann))
-                   
-                   r = (rM * bigR**2)**(1./3.) ! get r in the Hartmann setup
-                   
-                   ! get theta in the Hartmann setup
-                   tmp = r/rM
-                   ! quick fix for out of range argments (R. Kurosawa)
-                   if (tmp > 1.0) tmp=1.0
-                   if (tmp < -1.0) tmp = -1.0
-                   theta = ASIN(SQRT(tmp))
-                   theta = MIN(theta,REAL(pi/2.0-0.0001))
-                   theta = MAX(theta,0.0001)
-                   
-                   rMnorm = MAX(rMnorm, 0.0001)
-                   rMnorm = MIN(rMnorm, 0.9999)
-                   !        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
-                   thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
-!                   if (Writeoutput) write(*,*) "hart ",rMnorm, theta, maxharttemp,thisOctal%temperature(subcell)
-                END IF
+               if (abs(cellCentre%z) < TTauriDiskHeight/1.d10) then
+                   thisOctal%inflow(subcell) = .false.
+                   thisrho = 1.d-30
+                endif
+ 
 
                 if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
              
                 CALL fillVelocityCorners(thisOctal,velocityMahdavi)
-          
+
+                if ((subcell==1).and.(thisOCtal%inflow(subcell))) then
+                   if ((modulus(thisOctal%cornerVelocity(1)) + &
+                       modulus(thisOctal%cornerVelocity(2)) + &
+                       modulus(thisOctal%cornerVelocity(3)) + &
+                       modulus(thisOctal%cornerVelocity(4)) + &
+                       modulus(thisOctal%cornerVelocity(7)) + &
+                       modulus(thisOctal%cornerVelocity(8)) + &
+                       modulus(thisOctal%cornerVelocity(9)) + &
+                       modulus(thisOctal%cornerVelocity(10)) + &
+                       modulus(thisOctal%cornerVelocity(2))) < 1.d-20) write(*,*) "corner bug"
+                endif
+                
 
              endif
 
@@ -11165,6 +11189,53 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesMahdavi
+
+  recursive subroutine assignTemperaturesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
+    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar, useHartmannTemp
+    use inputs_mod, only : TTauriRinner, TTauriRouter, maxHartTemp
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    real(double) :: astar, mdot, thisR, thisRho, thisV, minRho, minr, minTemp, maxTemp
+    real(double) :: requiredMaxHeating, thisHeating, localCooling
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: cellCentre
+    real(double) :: fac
+    integer :: subcell, i, j
+    real(double), parameter :: logT(8) = (/3.70d0, 3.8d0, 3.9d0, 4.0d0, 4.2d0, 4.6d0, 4.9d0, 5.4d0/)
+    real(double), parameter :: gamma(8) = (/-28.3d0, -26.0d0, -24.5d0, -23.6d0, -22.6d0, -21.8d0, &
+         -21.2d0, -21.1999d0/)
+
+
+    call locate(logT, 8, log10(dble(maxHartTemp)), j)
+    requiredmaxHeating = gamma(j) + (gamma(j+1)-gamma(j))*(log10(dble(maxHartTemp))-logT(j))/(logT(j+1)-logT(j))
+    requiredMaxHeating = 10.d0**requiredMaxHeating * (minRho/mhydrogen)**2
+    fac = requiredMaxHeating * minR**3
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignTemperaturesMahdavi(grid, child, astar, mdot, minRho, minR)
+                exit
+             end if
+          end do
+       else
+          cellCentre = subcellCentre(thisOctal, subcell)
+          thisR = modulus(cellCentre)*1.d10
+          if (inflowMahdavi(1.d10*cellCentre)) then
+             thisHeating = fac / thisR**3
+             localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
+             call locate(gamma, 8, localCooling, j)
+             thisOctal%temperature(subcell) = logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j))
+             thisoctal%temperature(subcell) = max(0.d0, min(5.d0, thisOctal%temperature(subcell)))
+             thisOctal%temperature(subcell) = 10.d0**thisOctal%temperature(subcell)
+          endif
+       endif
+    enddo
+  end subroutine assignTemperaturesMahdavi
   
   recursive subroutine splitTagged(thisOctal, grid, inheritProps, interpProps)
     use memory_mod, only : globalMemoryFootprint, humanReadableMemory
@@ -12980,8 +13051,7 @@ end function readparameterfrom2dmap
 
     thisOctal => grid%octreeRoot
     do i = 1, surface%nElements
-       rVec = surface%element(i)%position + &
-            0.01d0*modulus(surface%element(i)%position-surface%centre) * surface%element(i)%norm
+       rVec = 1.005d0 * modulus(surface%Element(i)%position-surface%centre) * surface%element(i)%norm
        CALL findSubcellTD(rVec, grid%octreeRoot, thisOctal,subcell)
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)

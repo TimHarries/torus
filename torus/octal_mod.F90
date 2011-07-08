@@ -5,6 +5,7 @@ MODULE octal_mod
   !   accessed from module(s) that are themselves USEd by amr_mod.
 
   USE kind_mod
+  use constants_mod
   USE vector_mod
   USE messages_mod
   
@@ -381,17 +382,17 @@ CONTAINS
                 subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (3)    
-                subcellCentre = rVec - (d * xHat) + (d * zHat)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
-             CASE (4)    
-                subcellCentre = rVec + (d * xHat) + (d * zHat)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
-             CASE (5)    
                 subcellCentre = rVec - (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
-             CASE (6)    
+             CASE (4)    
                 subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
+             CASE (5)    
+                subcellCentre = rVec - (d * xHat) + (d * zHat)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
+             CASE (6)    
+                subcellCentre = rVec + (d * xHat) + (d * zHat)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (7)    
                 subcellCentre = rVec - (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
@@ -446,6 +447,103 @@ CONTAINS
 666 continue
   END FUNCTION subcellCentre
 
+  subroutine subcellCorners(thisOctal,nChild, corner)
+    ! returns the centre of one of the subcells of the current octal 
+
+    IMPLICIT NONE
+
+    TYPE(octal), INTENT(IN) :: thisOctal 
+    INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
+    type(VECTOR) :: rVec, corner(8), cellCentre
+    real(oct)    :: d, phi, zp, zm, r1, r2, phistart, phiend, dphi
+    corner = subcellCentre(thisOctal, nchild)
+
+    d = thisOctal%subcellSize * 0.5_oc
+
+    if (thisOctal%oneD) then
+       select case (nchild)
+          case(1)
+             cellCentre = thisOctal%centre - d * xHat
+          case(2)
+             cellCentre = thisOctal%centre + d * xHat
+          case DEFAULT
+             write(*,*) "bug - one-d cell has more than 3 children"
+       end select
+       goto 666
+    endif
+
+    if (thisOctal%threeD) then  !do the three-d case as per diagram
+       if (.not.thisOctal%cylindrical) then
+
+          SELECT CASE (nChild)
+          CASE (1)    
+             cellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,-1.d0)
+          CASE (2)    
+             cellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,-1.d0)
+          CASE (3)    
+             cellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,-1.d0)
+          CASE (4)    
+             cellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,-1.d0)
+          CASE (5)    
+             cellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,1.d0)
+          CASE (6)    
+             cellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,1.d0)
+          CASE (7)    
+             cellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,1.d0)
+          CASE (8)    
+             cellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,1.d0)
+          CASE DEFAULT
+             PRINT *, "Error:: Invalid nChild passed to cellCentre threed case"
+             PRINT *, "        nChild = ", nChild 
+             STOP
+          END SELECT
+       else
+          rVec = subcellCentre(thisOctal, nChild)
+          d = thisOctal%subcellSize/2.d0
+          zp = rVec%z + d
+          zm = rVec%z - d
+          r1 = sqrt(rVec%x**2 + rVec%y**2) - d
+          r2 = sqrt(rVec%x**2 + rVec%y**2) + d
+          phi = atan2(rVec%y, rVec%x)
+          if (phi  < 0.d0) phi = phi + twoPi
+          dphi = returndPhi(thisOctal)
+          phiStart = phi - dphi
+          phiEnd = phi + dphi
+          corner(1) = VECTOR(r1*cos(phiStart), r1*sin(phiStart),zp)
+          corner(2) = VECTOR(r2*cos(phiStart), r2*sin(phiStart),zp)
+          corner(3) = VECTOR(r1*cos(phiEnd), r1*sin(phiEnd),zp)
+          corner(4) = VECTOR(r2*cos(phiEnd), r2*sin(phiEnd),zp)
+          corner(5) = VECTOR(r1*cos(phiStart), r1*sin(phiStart),zm)
+          corner(6) = VECTOR(r2*cos(phiStart), r2*sin(phiStart),zm)
+          corner(7) = VECTOR(r1*cos(phiEnd), r1*sin(phiEnd),zm)
+          corner(8) = VECTOR(r2*cos(phiEnd), r2*sin(phiEnd),zm)
+       endif
+    else
+       SELECT CASE (nChild)
+       CASE (1)    
+          cellCentre = thisOctal%centre - (d * xHat) - (d * zHat)
+       CASE (2)    
+          cellCentre = thisOctal%centre + (d * xHat) - (d * zHat)
+       CASE (3)    
+          cellCentre = thisOctal%centre - (d * xHat) + (d * zHat)
+       CASE (4)    
+          cellCentre = thisOctal%centre + (d * xHat) + (d * zHat)
+       CASE DEFAULT
+          PRINT *, "Error:: Invalid nChild passed to cellCentre twoD case 3"
+          PRINT *, "        nChild = ", nChild 
+          do;enddo
+       END SELECT
+       
+       corner(1) = cellCentre + d * xHat + d * zHat
+       corner(2) = cellCentre + d * xHat - d * zHat
+       corner(3) = cellCentre - d * xHat + d * zHat
+       corner(4) = cellCentre - d * xHat - d * zHat
+
+       
+    endif
+666 continue
+  END subroutine subcellCorners
+  
   real(double) FUNCTION subcellRadius(thisOctal,nChild)
     ! returns the radius of one of the subcells of the current octal 
 

@@ -58,7 +58,7 @@ contains
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass, removedMass
-    real(double) :: objectDistance
+    real(double) :: objectDistance, minRho, minR
     real :: scalefac
     character(len=80) :: message
     integer :: nVoxels, nOctals
@@ -257,7 +257,11 @@ contains
 !          ttauriwind = .false.
 !          ttauridisc = .false.
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
-          call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
+          minRho = 1.d30
+          call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+               minRho, minR)
+          call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+               minRho, minR)
           if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
@@ -304,7 +308,13 @@ contains
 
 
           case("ttauri")
-             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0))
+             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+                  minRho, minR)
+             call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+                  minRho, minR)
+             call testVelocity(grid%octreeRoot,grid)
+             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline","chiline","inflow  "/))
+       
              if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
@@ -1213,6 +1223,313 @@ contains
        enddo
     endif
   end subroutine bigarraytest
+
+
+  recursive subroutine testVelocity(thisOctal, grid)
+    type(octal), pointer :: thisOctal, child
+    type(GRIDTYPE) :: grid
+    integer :: subcell , i, j, k
+    real(double) :: t1, t2, t3, r1, r2, phi1, phi2, inc
+    real(Double) :: z1, z2,z3,r3,phi3
+    type(VECTOR) :: centre, corner(8)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call testVelocity(child,grid )
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%etaline(subcell) = 0.d0
+          if (thisOctal%inflow(subcell)) then
+             thisOctal%chiLine(subcell) =  0.d0
+             do j = 1, 27
+                thisOCtal%chiline(subcell) = thisOctal%chiline(subcell) + modulus(thisOctal%cornerVelocity(j))
+             enddo
+             thisOctal%etaLine(subcell) =  VECTOR(1.d0, 0.d0, 0.d0).dot.&
+                  amrGridVelocity(grid%octreeRoot,subcellCentre(thisOctal,subcell), foundOctal=thisOctal,&
+                  actualSubcell=subcell)
+             if (thisOctal%etaLine(subcell) > 1.d30) then
+                write(*,*) "Vel bug ",thisOctal%etaline(subcell),thisOctal%splitAzimuthally, subcell
+
+               centre = subcellCentre(thisOctal,subcell)
+               r1 = sqrt(centre%x**2 + centre%y**2)
+               r2 = sqrt(centre%x**2 + centre%y**2)
+               phi1 = atan2(centre%y, centre%x)
+               if (phi1 < 0.d0) phi1 = phi1 + twoPi
+               phi2 = atan2(centre%y, centre%x)
+               if (phi2 < 0.d0) phi2 = phi2 + twoPi
+
+               inc = thisOctal%subcellSize / 2.0               
+
+               t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / thisOctal%subcellSize)
+               t2 = (phi1 - (phi2 - thisOctal%dPhi/4.d0))/(thisOctal%dPhi/2.d0)
+               t3 = MAX(0.0_oc, (centre%z - (centre%z - inc)) / thisOctal%subcellSize)
+               write(*,*) "t1, t2, t3 ",t1,t2,t3
+                do k = 1, 8
+                   write(*,*) "velocities " ,k,(cspeed/1.d5)* thisOctal%velocity(k)
+                enddo
+
+
+             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z2 = thisOctal%centre%z
+             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             phi1 = thisOctal%phiMin
+             phi2 = thisOctal%phi 
+             phi3 = thisOctal%phiMax
+             r1 = thisOctal%r - thisOctal%subcellSize
+             r2 = thisOctal%r
+             r3 = thisOctal%r + thisOctal%subcellSize
+
+             write(*,*) "phi1 phi2 phi3 ",phi1*radtodeg, phi2*radtodeg, phi3*radtodeg
+
+               select case(subcell)
+            CASE(1)
+               write(*,*) thisOctal%cornerVelocity( 1)
+               write(*,*) "corner ",vector(r1*cos(phi1),r1*sin(phi1),z1), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi1),r1*sin(phi1),z1)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 2)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 4)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z1)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 5)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(10)
+               write(*,*) "corner ",vector(r1*cos(phi1),r1*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi1),r1*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(11)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(13)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               
+            CASE(2)
+               write(*,*) thisOctal%cornerVelocity( 2)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 3)
+               write(*,*) "corner ",vector(r1*cos(phi3),r1*sin(phi3),z1), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi3),r1*sin(phi3),z1)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 5)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 6)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z1)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(11)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(12)
+               write(*,*) "corner ",vector(r1*cos(phi3),r1*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi3),r1*sin(phi3),z2)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(15)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z2)), phi3*radtodeg
+               
+            CASE(3)
+               write(*,*) thisOctal%cornerVelocity( 4)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z1)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 5)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 7)
+               write(*,*) "corner ",vector(r3*cos(phi1),r3*sin(phi1),z1), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi1),r3*sin(phi1),z1)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 8)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(13)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(16)
+               write(*,*) "corner ",vector(r3*cos(phi1),r3*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi1),r3*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(17)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z2)), phi2*radtodeg
+               
+            CASE(4)
+               write(*,*) thisOctal%cornerVelocity( 5)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 6)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z1), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z1)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 8)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z1), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z1)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity( 9)
+               write(*,*) "corner ",vector(r3*cos(phi3),r3*sin(phi3),z1), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi3),r3*sin(phi3),z1)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(15)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z2)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(17)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(18)
+               write(*,*) "corner ",vector(r3*cos(phi3),r3*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi3),r3*sin(phi3),z2)), phi3*radtodeg
+               
+            CASE(5)
+               write(*,*) thisOctal%cornerVelocity(10)
+               write(*,*) "corner ",vector(r1*cos(phi1),r1*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi1),r1*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(11)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(13)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(19)
+               write(*,*) "corner ",vector(r1*cos(phi1),r1*sin(phi1),z3), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi1),r1*sin(phi1),z3)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(20)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z3)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(22)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z3)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(23)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z3)), phi2*radtodeg
+               
+            CASE(6)
+               write(*,*) thisOctal%cornerVelocity(11)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(12)
+               write(*,*) "corner ",vector(r1*cos(phi3),r1*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi3),r1*sin(phi3),z2)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(15)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z2)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(20)
+               write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi2),r1*sin(phi2),z3)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(21)
+               write(*,*) "corner ",vector(r1*cos(phi3),r1*sin(phi3),z3), &
+                    inflowMahdavi(1.d10*vector(r1*cos(phi3),r1*sin(phi3),z3)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(23)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z3)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(24)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z3)), phi3*radtodeg
+            
+            CASE(7)
+               write(*,*) thisOctal%cornerVelocity(13)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(16)
+               write(*,*) "corner ",vector(r3*cos(phi1),r3*sin(phi1),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi1),r3*sin(phi1),z2)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(17)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(22)
+               write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi1),r2*sin(phi1),z3)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(23)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z3)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(25)
+               write(*,*) "corner ",vector(r3*cos(phi1),r3*sin(phi1),z3), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi1),r3*sin(phi1),z3)), phi1*radtodeg
+               write(*,*) thisOctal%cornerVelocity(26)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z3)), phi2*radtodeg
+               
+            CASE(8)
+               write(*,*) thisOctal%cornerVelocity(14)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(15)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z2)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(17)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z2)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(18)
+               write(*,*) "corner ",vector(r3*cos(phi3),r3*sin(phi3),z2), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi3),r3*sin(phi3),z2)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(23)
+               write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z3)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(24)
+               write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z3), &
+                    inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z3)), phi3*radtodeg
+               write(*,*) thisOctal%cornerVelocity(26)
+               write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z3), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z3)), phi2*radtodeg
+               write(*,*) thisOctal%cornerVelocity(27)
+               write(*,*) "corner ",vector(r3*cos(phi3),r3*sin(phi3),z3), &
+                    inflowMahdavi(1.d10*vector(r3*cos(phi3),r3*sin(phi3),z3)), phi3*radtodeg
+
+            CASE DEFAULT
+               PRINT *, 'Invalid subcell in amrGridVelocity'
+               end select
+
+             call subcellCorners(thisOctal, subcell, corner)
+             write(*,*) "centre ",subcellCentre(thisOctal,subcell), &
+                  inflowMahdavi(1.d10*subcellCentre(thisOCtal,subcell))
+             do j = 1, 8
+                write(*,*) "subcell corner ",j,corner(j)
+                write(*,*) "corner test ",j,inflowMahdavi(1.d10*corner(j))
+                phi1 = atan2(corner(j)%y,corner(j)%x)*radtodeg
+                if (phi1 < 0.d0) phi1 = phi1 + 360.d0
+                write(*,*) "phi ", phi1
+             enddo
+
+
+
+             endif
+
+
+
+
+
+
+          endif
+
+
+       endif
+    enddo
+  end subroutine testVelocity
+
+
+
   recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal

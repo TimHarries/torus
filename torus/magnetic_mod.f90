@@ -11,22 +11,43 @@ module magnetic_mod
   implicit none
 
   public
+  interface inflowMahdavi
+     module procedure inflowMahdaviSingle
+     module procedure inflowMahdaviArray
+  end interface
 
 contains
 
-  logical function inFlowMahdavi(rVec) 
+
+  logical function inFlowMahdaviArray(vArray)
+    type(VECTOR) :: vArray(:)
+    integer :: i
+
+    inFlowMahdaviArray = .true.
+    do i = 1, SIZE(vArray)
+       inFlowMahdaviArray = inflowMahdaviSingle(vArray(i))
+       if (.not.inFlowMahdaviArray) exit
+    enddo
+  end function inFlowMahdaviArray
+
+  logical function inFlowMahdaviSingle(rVec) 
     use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
          TTauriDiskHeight
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
     real(double) :: rDash, thetaDash, phiDash, beta
     real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax
+
     beta = dipoleOffset
     r = modulus(rVec)    
+    if (r == 0.d0) then
+       inflowMahdaviSingle = .false.
+       goto 666
+    endif
     theta = acos(rVec%z/r)
 
     phi = atan2(rVec%y, rVec%x)
-    if (phi < 0.d0) phi = phi + twoPi
+    if (phi <= 0.d0) phi = phi + twoPi
 
     rDash = r
     phiDash = atan((sin(phi)*sin(theta))/(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
@@ -39,7 +60,7 @@ contains
     sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
 
     if (sin(thetaDash) == 0.d0) then
-       inFlowMahdavi = .false.
+       inFlowMahdaviSingle = .false.
        goto 666
     endif
     thisrMax = rDash / sin(thetaDash)**2
@@ -47,17 +68,18 @@ contains
     rMaxMin = ttauriRinner / sin2theta0dash
     rMaxMax = ttauriRouter / sin2theta0dash
 
-    inflowMahdavi = .false.
-    if ((thisRmax > rMaxMin).and.(thisRmax < rMaxMax)) inflowMahdavi = .true.
+    inflowMahdaviSingle = .false.
+    if ((thisRmax >= rMaxMin).and.(thisRmax <= rMaxMax)) inflowMahdaviSingle = .true.
     if (dipoleOffset /= 0.) then
-       if ((rVec%z < 0.d0).and.(rVec%x > 0.d0)) inflowMahdavi = .false.
-       if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdavi = .false.
+       if ((rVec%z < 0.d0).and.(rVec%x > 0.d0)) inflowMahdaviSingle = .false.
+       if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdaviSingle = .false.
     endif
-    if (r < ttauriRstar) inflowMahdavi = .false.
-    if (abs(rVec%z) < TTauriDiskHeight) inflowMahdavi = .false.
+    if (r < ttauriRstar) inflowMahdaviSingle = .false.
+    if (abs(rVec%z) < TTauriDiskHeight) inflowMahdaviSingle = .false.
 
 666 continue
-  end function inFlowMahdavi
+  end function inFlowMahdaviSingle
+
 
   type (VECTOR) function velocityMahdavi(point)
     use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
@@ -111,6 +133,7 @@ contains
 
     vp = rotateY(vp, beta)
     velocityMahdavi = vp
+
 
 666 continue
   end function velocityMahdavi
@@ -180,7 +203,7 @@ contains
     nLines = 100000
     j = 0
     do i = 1, nLines
-       rVec = (ttauriRstar + 1.d10 *grid%halfSmallestSubcell)*randomUnitVector() 
+       rVec = (ttauriRstar * 1.01d0)*randomUnitVector() 
        if (inFlowMahdavi(rVec)) j = j + 1
     enddo
     accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)
@@ -228,5 +251,6 @@ contains
 
 
    end function rhoAlphaDisc
+
 
 end module magnetic_mod
