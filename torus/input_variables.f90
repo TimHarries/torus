@@ -263,7 +263,7 @@
 ! SED parameters
 !----------------
 
-  logical :: sed, jansky, SIsed
+  logical, private :: sed, jansky, SIsed
   real    :: SEDlamMin, SEDlamMax
   logical :: SEDwavLin
   integer :: SEDnumLam

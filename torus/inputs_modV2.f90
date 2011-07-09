@@ -1772,6 +1772,8 @@ contains
   end subroutine readImageParameters
 
   subroutine readSpectrumParameters(cLine, fLine, nLines)
+    use sed_mod, only:  setSedParameters
+
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
@@ -1869,6 +1871,8 @@ contains
        call getString("lamfilename", lamFilename, cLine, fLine, nLines, &
             "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
+
+    call setSedParameters(jansky,SIsed,sed)
 
   end subroutine readSpectrumParameters
 

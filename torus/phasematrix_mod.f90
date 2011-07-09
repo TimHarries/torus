@@ -426,16 +426,15 @@ contains
   end subroutine fixMiePhase
 
   subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, varianceArray,&
-       normalizeSpectrum, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
+       normalizeSpectrum, objectDistance, velocitySpace, lamLine)
     use utils_mod, only: convertToJanskies
+    use sed_mod, only: SedInJansky, SedInSiUnits, SedInLambdaFLambda, SedIsInitialised
 
     implicit none
     integer, intent(in) :: nLambda
     character(len=*), intent(in) :: outFile
-    !  character(len=80) :: tfile
     real, intent(in) :: xArray(:)
-    logical, intent(in) :: jansky
-    logical, intent(in) :: normalizeSpectrum, sed, velocitySpace
+    logical, intent(in) :: normalizeSpectrum, velocitySpace
     real(double), intent(in) :: objectDistance
     real(double) :: area
     real, intent(in) :: lamLine
@@ -447,8 +446,11 @@ contains
     !  real :: tot
     real :: x
     integer :: i
-    logical :: SI
     character(len=80) :: message
+
+    if (.not. SedIsInitialised) then 
+       call writeWarning("SED parameters have not been initialised")
+    end if
 
     allocate(ytmpArray(1:nLambda))
     allocate(tmpXarray(1:nLambda))
@@ -520,7 +522,7 @@ contains
        stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
        stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
 
-       if (jansky) then
+       if (SedInJansky) then
           do i = 1, nLambda
              stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
              stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
@@ -531,7 +533,7 @@ contains
        endif
     endif
 
-    if (sed) then
+    if (SedInLambdaFlambda) then
        write(message,'(a)') "Writing spectrum as lambda F_lambda"
        call writeInfo(message, TRIVIAL)
 
@@ -554,7 +556,7 @@ contains
        stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
     endif
 
-    if (SI) then
+    if (SedInSiUnits) then
        write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
        call writeInfo(message, TRIVIAL)
 
@@ -577,9 +579,9 @@ contains
     call writeInfo(message, TRIVIAL)
 
     open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
-    if (sed) then
+    if (SedInLambdaFLambda) then
        write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
-    else if (SI) then
+    else if (SedInSiUnits) then
        write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
     else
        write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
