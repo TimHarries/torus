@@ -18,7 +18,7 @@ contains
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use inputs_mod, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
-    use inputs_mod, only : outfile, npixels, ninclination, nImage, inclinations, inclinationArray
+    use inputs_mod, only : outfile, npixels, nImage, inclinationArray
     use inputs_mod, only : lamStart, lamEnd, lineEmission, outputImageType
 #ifdef MPI
     use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
@@ -258,15 +258,13 @@ contains
                0., 0, .false., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
        end if
-       allocate(inclinations(1))
+
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
              stokesImage = .true.
              outfile = imageFilename(i)
              npixels = nPixelsArray(i)
-             ninclination = 1
-             inclinations(1) = inclinationArray(i)
              lamStart = lambdaImage(i)
              lamEnd = lambdaImage(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
@@ -278,7 +276,8 @@ contains
                   VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                   tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0., &
+                  overrideInclinations=inclinationArray(i:i) )
           enddo
        endif
 
@@ -296,15 +295,13 @@ contains
                0., 0, .true., 100000, &
                miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
        end if
-       allocate(inclinations(1))
+
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
              stokesImage = .true.
              outfile = imageFilename(i)
              npixels = nPixelsArray(i)
-             ninclination = 1
-             inclinations(1) = inclinationArray(i)
              lamStart = lambdaImage(i)
              lamEnd = lambdaImage(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
@@ -315,7 +312,8 @@ contains
                   VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                   tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0., &
+                  overrideInclinations=inclinationArray(i:i))
           enddo
        endif
 

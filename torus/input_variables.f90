@@ -272,10 +272,10 @@
 ! Inclinations for SEDs/images 
 !------------------------------
 
-  integer :: nInclination  ! number of inclinations (phaseloop_mod)
-  real :: firstInclination ! first inclination angle (phaseloop_mod)
-  real :: lastInclination  ! last inclination angle (phaseloop_mod)
-  real, allocatable :: inclinations(:) ! Array of inclination values used in phaseloop_mod
+  integer, private :: nInclination  ! number of inclinations (phaseloop_mod)
+  real, private :: firstInclination ! first inclination angle (phaseloop_mod)
+  real, private :: lastInclination=80.0  ! last inclination angle (phaseloop_mod)
+  real, allocatable, private :: inclinations(:)
   real :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
 
 !--------------------------------

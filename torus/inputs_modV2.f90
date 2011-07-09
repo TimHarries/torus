@@ -1872,7 +1872,12 @@ contains
             "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
-    call setSedParameters(jansky,SIsed,sed)
+    if (allocated(inclinations)) then 
+       call setSedParameters(jansky,SIsed,sed,incList=inclinations)
+    else
+       call setSedParameters(jansky,SIsed,sed,nInclination=nInclination,&
+            firstInc=firstInclination,LastInc=LastInclination, cosSpacing=.true.)
+    end if
 
   end subroutine readSpectrumParameters
 

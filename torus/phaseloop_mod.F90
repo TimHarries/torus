@@ -11,7 +11,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, maxTau, &
-     miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename)
+     miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename, overrideInclinations)
 
   use kind_mod
   use torus_version_mod
@@ -57,6 +57,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
+  use sed_mod, only: getNumSedInc, getSedInc
   implicit none
 
 #ifdef MPI
@@ -67,6 +68,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 ! Arguments
   type(GRIDTYPE) :: grid
   character(len=*), optional :: overrideFilename
+  real, optional, intent(in):: overrideInclinations(:)
   logical :: alreadyDoneInfall
   real :: meanDustParticleMass
   real :: rstar
@@ -185,8 +187,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer :: iOuterLoop
   real(double) :: lCore
   real :: weightDust=1.0, weightPhoto=1.0
-  real :: cos_inc, cos_inc_first, cos_inc_last, d_cos_inc
-  integer :: iInclination  
+  integer :: iInclination, nInclination
   integer :: iPhase
 
   real :: dopShift  ! velocity shift in terms of thermal line width
@@ -1071,28 +1072,25 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      !
      ! here we may loop over different inclinations
      !
-     
 
+! Use the override inclination values if supplied, otherwise use values from sed_mod
+     if ( present(overrideInclinations) ) then
+        nInclination = size(overrideInclinations)
+     else
+        nInclination = getNumSedInc()
+     endif
 
   incLoop: do iInclination = 1, nInclination, 1 
        ! NB This loop is not indented in the code!
      
      if (nInclination >= 1) then  
-        if (allocated(inclinations)) then
-           inclination = max(inclinations(iInclination),1.e-4)
+
+        if ( present(overrideInclinations) ) then
+           inclination = overrideInclinations(iInclination)
         else
-           ! Now the inclinations are equally spaced in  cos(incination).
-           ! Asuuming that firstInclination < lastInclination <= pi/2
-           cos_inc_first = COS(firstInclination)
-           cos_inc_last = COS(lastInclination)
-           d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
-           cos_inc = cos_inc_first - d_cos_inc * REAL(iInclination-1)
-           inclination = max(ACOS(cos_inc),1.e-4)
-
-
-!          inclination = firstInclination + REAL(iInclination-1) * &
-!                          (lastInclination-firstInclination)/REAL(nInclination-1)
+           inclination = getSedInc(iInclination)
         end if
+        inclination = max(inclination,1.e-4)
 
         if (writeoutput) then
            write(message,*) " "
