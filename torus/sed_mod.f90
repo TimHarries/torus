@@ -73,7 +73,7 @@ contains
                 cos_inc_last = COS(lastInc)
                 d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
                 cos_inc = cos_inc_first - d_cos_inc * REAL(i-1)
-                SedInclinations(i) = max(ACOS(cos_inc),1.e-4)
+                SedInclinations(i) = max(ACOS(cos_inc),1.e-4_db)
              else
                 SedInclinations(i) = firstInc + REAL(i-1) * &
                      (lastInc-firstInc)/REAL(nInclination-1)
