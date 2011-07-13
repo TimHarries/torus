@@ -6953,9 +6953,10 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
     real(double) ::  g(6), dx
-    real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
-    real(double) :: xnext
+    real(double) :: xnext, oldphi
+    real(double), parameter :: SOR = 1.2d0
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -7060,7 +7061,10 @@ end subroutine refineGridGeneric2
              deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
 !             deltaT = deltaT * timeToCodeUnits
 
-             newPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
+	     oldPhi = thisOctal%phi_gas(subcell)
+             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
+
+             newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
 
 !             if (myrankglobal == 1) write(*,*) newphi,thisOctal%phi_i(subcell),deltaT, sumd2phidx2, thisOctal%rho(subcell)
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
@@ -8119,16 +8123,14 @@ end subroutine minMaxDepth
     type(SOURCETYPE) :: source
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real(double) :: cellMass, radialMomentum, transverseMomentum, timeStep
-    type(VECTOR) :: cellCentre, rVec, tVec, totalMomentum, deltaMom
+    real(double) :: cellMass, radialMomentum, timeStep
+    type(VECTOR) :: cellCentre, rVec, totalMomentum, deltaMom
     real(double) :: u2, ekinetic, ethermal, eTot, deltaM
 
     cellCentre = subcellCentre(thisOctal, subcell)
     rVec = source%position - cellCentre
     call normalize(rVec)
 
-    tVec = rVec .cross. zAxis
-    call normalize(tVec)
 
     cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
     deltaM = thisOctal%etaline(subcell) * timestep
@@ -8138,7 +8140,6 @@ end subroutine minMaxDepth
                 thisOctal%rhov(subcell)/thisOctal%rho(subcell)-source%velocity%y, &
                 thisOctal%rhow(subcell)/thisOctal%rho(subcell)-source%velocity%z)
     radialMomentum = totalMomentum .dot. rVec
-    transverseMomentum = totalMomentum .dot. tVec
 
 
     totalMomentum = totalMomentum - radialMomentum * rVec
