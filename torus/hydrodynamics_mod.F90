@@ -2346,14 +2346,10 @@ end subroutine sumFluxes
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
-!    print *, "o hai"
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call imposeBoundary(grid%octreeRoot)
-!    print *, "trol"
     call periodBoundary(grid)
-!    print *, "olol"
     call transferTempStorage(grid%octreeRoot)
-!    print *, "trolol"
    if (selfGravity) then
 !       call periodBoundary(grid, justGrav = .true.)
 !       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
