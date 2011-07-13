@@ -7061,7 +7061,7 @@ end subroutine refineGridGeneric2
              deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
 !             deltaT = deltaT * timeToCodeUnits
 
-	     oldPhi = thisOctal%phi_gas(subcell)
+             oldPhi = thisOctal%phi_gas(subcell)
              newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
