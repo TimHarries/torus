@@ -95,6 +95,13 @@
   integer :: idump                    !Hydrodynamics time step dump number
   real(double) :: gridDistanceScale   !Scale of grid
 
+  real(double) :: inflowPressure
+  real(double) :: inflowRho
+  real(double) :: inflowRhoE
+  real(double) :: inflowEnergy
+  real(double) :: inflowMomentum
+  real(double) :: inflowSpeed
+
   !Boundary conditions (strings)
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString
   character(len=20) :: xplusboundString, yplusboundString, zplusboundString

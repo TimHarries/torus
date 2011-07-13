@@ -2393,6 +2393,8 @@ end subroutine getVector
          getBoundaryCode = 4
       case("constDenNoVel")
          getBoundaryCode = 5
+      case("inflow")
+         getBoundaryCode = 6
       case DEFAULT
          print *, "Unrecognised boundary string:", boundaryString
          print *, "Halting."

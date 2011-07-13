@@ -24,6 +24,7 @@ module hydrodynamics_mod
   type(OCTALWRAPPER), allocatable :: globalChildlessOctalArray(:)
   integer :: nGlobalChildlessOctals
 
+
 contains
 
   subroutine dohydrodynamics(grid)
@@ -2561,9 +2562,13 @@ end subroutine sumFluxes
 !       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
+
+    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
+         call doAccretion(grid, globalsourceArray, globalnSource, dt)
+
+
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
          call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
-
 
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
 
@@ -3229,6 +3234,10 @@ end subroutine sumFluxes
 
     call findMassoverAllThreads(grid, initialMass)
 
+       if (nBodyPhysics) then
+          initialMass = initialMass + SUM(globalSourceArray(1:globalnSource)%mass)
+       endif
+
     do while(currentTime < tend)
        if (myrank /= 0) then
           tc(myrank) = 1.d30
@@ -3248,6 +3257,9 @@ end subroutine sumFluxes
        dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
        if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)/tff, " free-fall times"
        call findMassoverAllThreads(grid, totalmass)
+       if (nBodyPhysics) then
+          totalmass = totalMass + SUM(globalSourceArray(1:globalnSource)%mass)
+       endif
        if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass
 
        if ((currentTime + dt) .gt. nextDumpTime) then
@@ -4228,6 +4240,52 @@ end subroutine sumFluxes
                       endif
                    endif
 
+                case(6) ! inflow boundary condition
+
+                   locator = thisOctal%boundaryPartner(subcell)
+                   bOctal => thisOctal
+                   call findSubcellLocal(locator, bOctal, bSubcell)
+
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                   call normalize(dir)
+                   Thisoctal%tempstorage(subcell,1) = inflowRho
+                   thisOctal%tempStorage(subcell,2) = inflowRhoE
+
+                   thisOctal%tempStorage(subcell,6) = inflowEnergy
+                   thisOctal%tempStorage(subcell,7) = inflowPressure
+
+! NB confusion regarding 2d being x,z rather than x,y
+
+                   if (thisOctal%twod.or.thisOctal%oneD) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = inflowMomentum
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = inflowMomentum
+                      endif
+                   else if (thisOctal%threed) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = inflowMomentum
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if (abs(dir%y) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = inflowMomentum
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = inflowMomentum
+                      endif
+                   endif
+                   
+
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)
              end select
@@ -4331,7 +4389,7 @@ end subroutine sumFluxes
                    
                    ! now a case to determine the boundary cell relations
                    select case (thisOctal%boundaryCondition(subcell))
-                   case(1, 5)
+                   case(1, 5, 6)
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
@@ -4492,7 +4550,7 @@ end subroutine sumFluxes
                    
              ! now a case to determine the boundary cell relations
              select case (thisOctal%boundaryCondition(subcell))
-             case(1, 4, 5)
+             case(1, 4, 5, 6)
                  dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
                 
@@ -4930,7 +4988,7 @@ end subroutine sumFluxes
 
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
-             case(1, 4, 5)
+             case(1, 4, 5, 6)
                 
                 if (thisOctal%edgeCell(subcell)) then
                    call locatorToNeighbour(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator)
@@ -5144,7 +5202,7 @@ end subroutine sumFluxes
 
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
-             case(1, 4, 5)
+             case(1, 4, 5, 6)
                 
                 if (thisOctal%edgeCell(subcell)) then
                    call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator, nDepth)
@@ -7136,7 +7194,7 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-5,  tol2 = 1.d-5
+    real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-4
     integer :: it, ierr, i
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -7256,6 +7314,7 @@ end subroutine refineGridGeneric2
 
 !       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 
+       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
     if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
@@ -7304,7 +7363,7 @@ end subroutine refineGridGeneric2
           if (photoionPhysics) then
              mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
           else
-             mu = 2.d0
+             mu = 2.33d0
           endif
 
           getPressure =  thisOctal%rho(subcell)
@@ -7873,6 +7932,549 @@ end subroutine minMaxDepth
        endif
     enddo
   end subroutine recursaddSinks
+
+  function BondiHoyleRadius(source, thisOctal, subcell) result (rBH)
+
+    real(double) :: rBH
+    type(SOURCETYPE) :: source
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: vInfty, cInfty
+    
+    if (.not.inSubcell(thisOCtal, subcell, source%position)) then
+       write(*,*) "bug in bondi-hoyle radius"
+    endif
+    
+    vInfty = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+         thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)**2)
+    cInfty = soundSpeed(thisOctal, subcell)
+    rBH = bigG * source%mass / (vinfty**2 + cInfty**2)
+
+  end function BondiHoyleRadius
+
+  function mDotBondiHoyle(rhobar, source, thisOctal, subcell) result (mdot)
+
+    type(SOURCETYPE) :: source
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: vInfty, cInfty, rBH, mdot, rhoBar, thisAlpha
+    integer :: subcell
+    real(double), parameter :: lambda = 1.120d0
+    real(double) :: rhoInfty
+
+    if (.not.inSubcell(thisOCtal, subcell, source%position)) then
+       write(*,*) "bug in bondi-hoyle radius"
+    endif
+
+    vInfty = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+         thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)**2)
+    cInfty = soundSpeed(thisOctal, subcell)
+    rBH = BondiHoyleRadius(source, thisOctal, subcell)
+
+    thisAlpha = alpha(1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH, cInfty, vInfty)
+
+    rhoInfty = rhoBar / thisalpha
+
+    mDot = fourPi * rhoInfty * rBH**2 * (lambda**2 * Cinfty**2 + vInfty**2)**0.5d0
+
+  end function mDotBondiHoyle
+  
+  
+  function accretionKernelRadius(source, thisOctal, subcell) result (rK)
+
+    use inputs_mod, only : gridDistanceScale
+    real(double) :: rk
+    type(SOURCETYPE) :: source
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: deltaX
+    real(double) :: rBH
+    real(double) :: rAcc
+
+    deltaX = thisOctal%subcellSize * gridDistanceScale
+    rBH = bondiHoyleRadius(source, thisOctal, subcell)
+    rAcc = 4.d0 * deltaX
+    if (rBH < deltaX/4.d0) then
+       rK = deltaX/4.d0
+    else if (rBH <= rAcc/2.d0) then
+       rK = rBH
+    else
+       rK = rAcc/2.d0
+    endif
+  end function accretionKernelRadius
+
+
+
+  recursive subroutine correctForRotationRecur(thisOctal, source, mdot, n, timestep)
+    include 'mpif.h'
+    type(SOURCETYPE) :: source
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: mDot, timestep, massCell
+    integer :: n, thisn
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call correctForRotationRecur(child, source, mDot, n, timestep)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          if (.not.inSubcell(thisOctal, subcell, source%position)) then
+
+             call correctMdot(source, thisOctal, subcell, mdot, thisn)
+             n = max(thisN, n)
+
+             massCell = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+             if (thisOctal%etaline(subcell) * timestep > 0.25d0*massCell) then
+                thisOctal%etaLine(subcell) = 0.25d0 * massCell / timestep
+             endif
+
+          endif
+
+       endif
+    enddo
+  end subroutine correctForRotationRecur
+
+  recursive subroutine sumAccretionRate(thisOctal, mDot)
+    include 'mpif.h'
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: mDot
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call sumAccretionRate(child, mdot)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          mDot = mDot + thisOctal%etaline(subcell)
+
+       endif
+    enddo
+  end subroutine sumAccretionRate
+
+
+
+
+    
+
+
+  subroutine correctMdot(source, thisOctal, subcell, mdot, n)
+    
+    type(SOURCETYPE) :: source
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: i, j, k, n
+    real(double) :: mDot
+    type(VECTOR) :: cellCentre, pointVelocity, pointPosition
+    real(double) :: x, y, z
+    real(double) :: esp, jsp, deltaX
+    
+    cellCentre = subcellCentre(thisOctal, subcell)
+    deltaX = thisOctal%subcellSize * gridDistanceScale
+    n = 0 
+    do i = 1, 8
+       do j = 1, 8
+          do k = 1, 8
+             x = thisOctal%subcellSize/16.d0 + thisOctal%subcellSize * dble(i-1)/8.d0 - cellCentre%x - thisOctal%subcellSize/2.d0
+             y = thisOctal%subcellSize/16.d0 + thisOctal%subcellSize * dble(j-1)/8.d0 - cellCentre%y - thisOctal%subcellSize/2.d0
+             z = thisOctal%subcellSize/16.d0 + thisOctal%subcellSize * dble(k-1)/8.d0 - cellCentre%z - thisOctal%subcellSize/2.d0
+             pointPosition = (VECTOR(x, y, z) - source%position)*gridDistanceScale
+             pointVelocity = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell) - source%velocity%x, &
+                                    thisOctal%rhov(subcell)/thisOctal%rho(subcell) - source%velocity%y, &
+                                    thisOctal%rhow(subcell)/thisOctal%rho(subcell) - source%velocity%z)
+             jsp = modulus(pointPosition.cross.pointVelocity)
+             esp = 0.5d0*modulus(pointVelocity)**2 - bigG*source%mass/modulus(pointPosition)
+             if (esp > 0.d0) then
+                rMin = 1.d30
+             else
+                rMin = -((bigG*source%mass)/(2.d0 * esp)) * (1.d0 - sqrt(1.d0 + (2.d0 * jsp * esp)/(bigG*source%mass)**2))
+             endif
+             if (rMin > deltaX/4.d0) n = n + 1
+          enddo
+       enddo
+    enddo
+    if (.not.associated(thisOctal%etaline)) allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+    thisOctal%etaline(subcell) =  mdot * (1.d0 - dble(n)/8.d0**3) * thisOctal%chiline(subcell)
+  end subroutine correctMdot
+
+  subroutine correctMomentumOfGas(source, thisOctal, subcell, timestep, deltaMom)
+    type(SOURCETYPE) :: source
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: cellMass, radialMomentum, transverseMomentum, timeStep
+    type(VECTOR) :: cellCentre, rVec, tVec, zAxis,  totalMomentum, deltaMom
+    real(double) :: u2, ekinetic, ethermal, eTot, deltaM
+
+    cellCentre = subcellCentre(thisOctal, subcell)
+    rVec = source%position - cellCentre
+    call normalize(rVec)
+
+    tVec = rVec .cross. zAxis
+    call normalize(tVec)
+
+    cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+    deltaM = thisOctal%etaline(subcell) * timestep
+
+    totalMomentum = (cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)) * &
+         VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell)-source%velocity%x, &
+                thisOctal%rhov(subcell)/thisOctal%rho(subcell)-source%velocity%y, &
+                thisOctal%rhow(subcell)/thisOctal%rho(subcell)-source%velocity%z)
+    radialMomentum = totalMomentum .dot. rVec
+    transverseMomentum = totalMomentum .dot. tVec
+
+
+    totalMomentum = totalMomentum - radialMomentum * rVec
+
+    deltaMom = deltaMom + radialMomentum * rVec
+
+    radialMomentum = radialMomentum * (1.d0 - deltaM/cellMass)
+
+    totalMomentum = totalMomentum + radialMomentum * rVec
+
+ 
+    if (thisOctal%threed) then
+       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    else
+       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    endif
+    eKinetic = u2 / 2.d0
+    eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+    eThermal = eTot - eKinetic
+
+    cellMass = cellMass - deltaM
+    thisOctal%rho(subcell) = cellMass / (cellVolume(thisOctal, subcell)*1.d30)
+
+    thisOctal%rhou(subcell) = totalMomentum%x / (cellVolume(thisOctal, subcell)*1.d30)
+    thisOctal%rhov(subcell) = totalMomentum%y / (cellVolume(thisOctal, subcell)*1.d30)
+    thisOctal%rhow(subcell) = totalMomentum%z / (cellVolume(thisOctal, subcell)*1.d30)
+
+    if (thisOctal%threed) then
+       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    else
+       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    endif
+    eKinetic = u2 / 2.d0
+
+    Etot = eThermal + eKinetic
+
+    thisOctal%rhoe(subcell) = eTot * thisOctal%rho(subcell)
+
+  end subroutine correctMomentumOfGas
+
+
+  subroutine correctMomentumOfSink(source, deltaMomentum)
+    type(SOURCETYPE) :: source
+    type(VECTOR) :: deltaMomentum, sourceMomentum
+
+    sourceMomentum = source%mass * source%velocity
+    sourceMomentum = sourceMomentum - deltaMomentum
+    source%velocity = (1.d0/source%mass) * sourceMomentum
+  end subroutine correctMomentumOfSink
+
+
+  subroutine doAccretion(grid, sourceArray, nSource, timeStep)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: sourceArray(:)
+    integer :: nSource
+    real(double) :: timeStep
+    integer :: iSource
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: n
+    real(double) :: rAcc, rK, rhobar, temp, thisMdot, localMdot, totalMdot, massCell
+    integer :: ierr, itemp
+    real(double) :: v(3), tempa(3)
+    type(VECTOR) :: deltaMom
+
+    do iSource = 1, nSource
+       
+       thisOctal => grid%octreeRoot
+       call findSubcellLocal(sourceArray(iSource)%position, thisOctal, subcell)
+
+       if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+          rAcc = 4.d0 * thisOctal%subcellSize * gridDistanceScale
+          rK = accretionKernelRadius(sourceArray(iSource), thisOctal, subcell)
+       endif
+       call MPI_BCAST(rK, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
+       call MPI_BCAST(rAcc, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
+          
+       if (myrankGlobal == 1) then
+          write(*,*) "rk, racc ", rk, racc
+       endif
+       call calculateWeights(grid%octreeRoot, sourceArray(isource), rK, rAcc)
+       call normalizeWeights(grid)
+       rhoBar = 0.d0
+       call calculateRhobar(grid%octreeRoot, rhoBar)
+
+       call MPI_ALLREDUCE(rhoBar, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       rhoBar = temp
+
+       if (myrankGlobal == 1) then
+          write(*,*) "rho bar ", rhobar
+       endif
+
+       if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+          thisMdot = mDotBondiHoyle(rhoBar, sourceArray(iSource), thisOctal, subcell)
+       endif
+       call MPI_BCAST(thisMdot, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
+
+       if (myrankGlobal == 1) then
+          write(*,*) "mdot initial ", thisMdot/msol*365.25d0*24.d0*3600.d0
+       endif
+
+       n = 0
+       call correctForRotationRecur(grid%octreeRoot, sourceArray(isource), thismdot, n, timestep)
+       call MPI_ALLREDUCE(n, itemp, 1, MPI_INTEGER, MPI_MAX, amrCommunicator, ierr)
+       n = itemp
+
+
+       if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+          massCell = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
+          if (.not.associated(thisOctal%etaline)) allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+          thisOctal%etaLine(subcell) = thismdot * thisOctal%chiline(subcell) * (1.d0 - dble(n)/8.d0**3)
+          if (thisOctal%etaline(subcell) * timestep > 0.25d0*massCell) then
+             thisOctal%etaLine(subcell) = 0.25d0 * massCell / timestep
+             write(*,*) "local cell limited"
+          endif
+          localMdot = thisOctal%etaLine(subcell)
+       endif
+       call MPI_BCAST(localMdot, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
+
+       totalMdot = 0.d0
+
+       call sumAccretionRate(grid%octreeRoot, totalMdot)
+       call MPI_ALLREDUCE(totalMdot, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       totalMdot = temp
+       if (myrankGlobal == 1) then
+          write(*,*) "mdot after corrections ", totalMdot/msol*365.25d0*24.d0*3600.d0
+       endif
+       deltaMom = VECTOR(0.d0, 0.d0, 0.d0)
+       call correctMomenta(thisOctal, sourceArray(isource), timestep, deltaMom)
+
+       v(1) = deltaMom%x
+       v(2) = deltaMom%y
+       v(3) = deltaMom%z
+       call MPI_ALLREDUCE(v, tempa, 3, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       deltaMom%x = tempa(1)
+       deltaMom%y = tempa(2)
+       deltaMom%z = tempa(3)
+
+       call correctMomentumOfSink(sourceArray(isource), deltaMom)
+
+       sourceArray(isource)%mass = sourceArray(isource)%mass + totalMdot * timestep
+       if (myrankGlobal == 1) write(*,*) "source mass ", sourceArray(iSource)%mass/msol
+
+    enddo
+
+  end subroutine doAccretion
+
+  recursive subroutine correctMomenta(thisOctal, source, timestep, deltaMom)
+    include 'mpif.h'
+    type(SOURCETYPE) :: source
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: timestep
+    type(VECTOR) :: deltaMom
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call correctMomenta(child, source, timestep, deltaMom)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+
+          call correctMomentumOfGas(source, thisOctal, subcell, timestep, deltaMom)
+
+       endif
+    enddo
+  end subroutine correctMomenta
+
+  recursive subroutine calculateWeights(thisOctal, source, rK, rAcc)
+    include 'mpif.h'
+    type(SOURCETYPE) :: source
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: rK, rAcc, r
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call calculateWeights(child, source, rK, rAcc)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiLine(1:thisOctal%maxChildren))
+          r = modulus(subcellCentre(thisOctal,subcell) - source%position)*gridDistanceScale
+          if (r < rAcc) then
+             thisOctal%chiLine(subcell) = exp(-r**2/rK**2)
+          else
+             thisOctal%chiLine(subcell) = 0.d0
+          endif
+       endif
+    enddo
+  end subroutine calculateWeights
+
+  subroutine normalizeWeights(grid)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    real(double) :: sum(1), temp(1)
+    integer :: ierr
+
+    sum = 0.d0
+    call sumWeights(grid%octreeRoot, sum(1))
+
+    call MPI_ALLREDUCE(sum, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+    sum(1) = temp(1)
+
+    call normWeights(grid%octreeRoot, sum(1))
+
+  end subroutine normalizeWeights
+
+  recursive subroutine calculateRhobar(thisOctal, rhobar)
+    include 'mpif.h'
+    real(double) :: rhobar
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call calculateRhobar(child, rhobar)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          
+          rhobar = rhoBar + thisOctal%chiline(subcell) * thisOctal%rho(subcell)
+
+       endif
+    enddo
+  end subroutine calculateRhobar
+
+  recursive subroutine sumWeights(thisOctal, sum)
+    include 'mpif.h'
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) ::  sum
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call sumWeights(child, sum)
+                exit
+             end if
+          end do
+       else
+
+          
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          sum = sum + thisOctal%chiline(subcell)
+       endif
+    enddo
+  end subroutine sumWeights
+
+  recursive subroutine normWeights(thisOctal, sum)
+    include 'mpif.h'
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: sum
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call normWeights(child, sum)
+                exit
+             end if
+          end do
+       else
+
+          
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          thisOctal%chiline(subcell) = thisOctal%chiline(subcell) / sum
+       endif
+    enddo
+  end subroutine normWeights
+
+  function alpha(x, cInfty, vInfty)
+    real(double) :: alpha,  cInfty, vInfty, x
+    real(double) :: y
+
+    y = vInfty / cInfty
+
+    alpha = exp( 1.d0/x - 0.5d0*y**2)
+
+  end function alpha
+    
+    
+
+
+  function gfunc(x, gamma) 
+    real(double) :: x, gamma, gfunc
+
+    gfunc = x**(4.d0*(gamma-1.d0)/(gamma+1.d0))/(gamma-1.d0) + x**(-(5.d0-3.d0*gamma)/(gamma+1.d0))
+  end function gfunc
+
+  function ffunc(u, gamma) 
+    real(double) :: u, gamma, ffunc
+
+    ffunc = u**(4.d0/(gamma+1.d0))*(0.5d0 + (1.d0/(gamma-1.d0)) * (1.d0/u**2))
+  end function ffunc
+
+  
 
 #endif
 

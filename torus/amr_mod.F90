@@ -6906,13 +6906,14 @@ CONTAINS
     
   subroutine calcnbodyDensity(thisOctal,subcell)
 
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: gamma, ethermal
-    real(double) :: rho0, r0, n, soundSpeed
+    real(double) :: gamma, ethermal, soundSpeed
+    real(double) :: rho0, r0, n
 
-    gamma = 7.d0/4.d0
+    gamma = 7.d0/5.d0
     rho0 = 1.0d0
     r0 = 0.4d0
     soundSpeed = 0.01d0
@@ -6920,16 +6921,25 @@ CONTAINS
     ethermal = 0.1d0
     rVec = subcellCentre(thisOctal, subcell)
 
-    thisOCtal%rho(subcell) = 100.d0 * mHydrogen
-    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%boundaryCondition(subcell) = 4
 
-    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%boundaryCondition(subcell) = 4
+    thisOctal%temperature(subcell) = 10.d0
+    thisOCtal%rho(subcell) = 1.d-25
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
 
-    thisOctal%iEquationOfState(subcell) = 2
+    soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+    inflowSpeed = 3.d0*soundSpeed
+    thisOctal%velocity(subcell) = VECTOR(inflowSpeed/cSpeed, 0.d0, 0.d0)
+
+    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%iEquationOfState(subcell) = 1
+
+    inflowPressure = thisOctal%pressure_i(subcell)
+    inflowRho = 1.d-25
+    inflowMomentum = inflowRho * inflowSpeed
+    inflowEnergy = thisOctal%energy(subcell)
+    inflowRhoE = inflowEnergy * inflowRho
+
 
   end subroutine calcnbodyDensity
 
@@ -6938,11 +6948,11 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    thisOCtal%rho(subcell) = 1.d-30
+    thisOCtal%rho(subcell) = 100.d0*mHydrogen
     thisOctal%velocity = VECTOR(0.d0, 0.d0, 0.d0)
     rVec = VECTOR(0.d0, 0.d0, 0.d0)
     if (inSubcell(thisOctal, subcell, rVec)) then
-       thisOctal%rho(subcell) = centralMass/(thisOctal%subcellSize**3 * 1.d30)/8.d0
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), centralMass/(thisOctal%subcellSize**3 * 1.d30)/8.d0)
     endif
   end subroutine calcEmpty
     

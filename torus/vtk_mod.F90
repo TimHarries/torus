@@ -1250,7 +1250,7 @@ contains
        do i = 1, source(iSource)%surface%nElements
           cVec = source(iSource)%surface%element(i)%position
           call normalize(cVec)
-          cVec = cVec * grid%octreeRoot%subcellSize/400.d0
+          cVec = cVec * grid%halfSmallestSubcell/4.d0
           cVec = cVec * source(isource)%radius/(rsol/1.d10)
           dphi = source(iSource)%surface%element(i)%dphi
           dtheta = source(iSource)%surface%element(i)%dtheta
