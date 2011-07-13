@@ -8120,7 +8120,7 @@ end subroutine minMaxDepth
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: cellMass, radialMomentum, transverseMomentum, timeStep
-    type(VECTOR) :: cellCentre, rVec, tVec, zAxis,  totalMomentum, deltaMom
+    type(VECTOR) :: cellCentre, rVec, tVec, totalMomentum, deltaMom
     real(double) :: u2, ekinetic, ethermal, eTot, deltaM
 
     cellCentre = subcellCentre(thisOctal, subcell)
