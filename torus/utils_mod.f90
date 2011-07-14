@@ -4829,7 +4829,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
   function alpha(x)
     real(double) :: alpha,  x
-    real(double), parameter :: lambda = 1.12d0, gamma=1.d0
+    real(double), parameter :: lambda = 1.12d0
     real(double) :: h1, h2, hm
     real(double) :: y1, y2, ym, z
     logical :: converged
@@ -4863,7 +4863,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     enddo
 
     z = lambda / (x**2 * y1)
-    write(*,*) "x, z, y ",x, z, y1
+!    write(*,*) "x, z, y ",x, z, y1
     alpha = z
   end function alpha    
 

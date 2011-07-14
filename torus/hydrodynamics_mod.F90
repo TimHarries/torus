@@ -3091,13 +3091,13 @@ end subroutine sumFluxes
        call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
     endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-
     if (firstStep) then
        firstStep = .false.
        dt = MINVAL(temptc(1:nHydroThreads)) * 1.d-5
     else
        dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
     endif
+    if (writeoutput) write(*,*) "Courant time is ",dt
 
     if ((grid%geometry == "shakara").or.(grid%geometry=="rtaylor")) then
        tdump =  20.d0 * dt
@@ -7850,6 +7850,7 @@ end subroutine minMaxDepth
     cInfty = soundSpeed(thisOctal, subcell)
     rBH = BondiHoyleRadius(source, thisOctal, subcell)
     write(*,*) "r/rBH ",1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH
+    write(*,*) "delta x/rBH ",thisOctal%subcellSize*gridDistanceScale/(bigG*source%mass/soundSpeed(thisOctal,subcell)**2)
     write(*,*) "c, v ",cInfty, vInfty, vinfty/cinfty
     thisAlpha = alpha(1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH)
 
@@ -8158,7 +8159,7 @@ end subroutine minMaxDepth
        endif
        sourceArray(isource)%mdot = totalMdot
        deltaMom = VECTOR(0.d0, 0.d0, 0.d0)
-       call correctMomenta(thisOctal, sourceArray(isource), timestep, deltaMom)
+       call correctMomenta(grid%octreeroot, sourceArray(isource), timestep, deltaMom)
 
        v(1) = deltaMom%x
        v(2) = deltaMom%y

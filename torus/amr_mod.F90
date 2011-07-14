@@ -6968,8 +6968,9 @@ CONTAINS
     y = lambda / (x**2 * z)
     v = y * soundSpeed
 
+!    write(*,*) "theoretical ",fourPi*1.d-25*rBondi**2 * 1.12d0*soundSpeed/msol*(365.25*24.*3600.)
     thisOctal%temperature(subcell) = 10.d0
-    thisOCtal%rho(subcell) = 1.d-25 * z
+    thisOCtal%rho(subcell) = rhoinfty * z
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%velocity(subcell) = (v/cSpeed) * Vvec
 
