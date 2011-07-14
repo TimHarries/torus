@@ -7851,7 +7851,7 @@ end subroutine minMaxDepth
     rBH = BondiHoyleRadius(source, thisOctal, subcell)
     write(*,*) "r/rBH ",1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH
     write(*,*) "c, v ",cInfty, vInfty, vinfty/cinfty
-    thisAlpha = alpha(1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH, cInfty, vInfty)
+    thisAlpha = alpha(1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH)
 
     rhoInfty = rhoBar / thisalpha
 
@@ -8342,52 +8342,6 @@ end subroutine minMaxDepth
     enddo
   end subroutine normWeights
 
-  function alpha(x, cInfty, vInfty)
-    real(double) :: alpha,  cInfty, vInfty, x
-    real(double) :: y
-    real(double), parameter :: lambda = 1.12d0, gamma=1.d0
-    real(double) :: h1, h2, hm
-    real(double) :: y1, y2, ym, z
-    logical :: converged
-
-
-    converged = .false.
-    y1 = 1.d-10
-    y2 = 100.d0
-    do while(.not.converged)
-       ym = 0.5d0*(y1+y2)
-       h1 = hfunc(y1, x, lambda)
-       h2 = hfunc(y2, x, lambda)
-       hm = hfunc(ym, x, lambda)
-
-       if (h1*hm < 0.d0) then
-          y1 = y1
-          y2 = ym
-       else if (h2*hm < 0.d0) then
-          y1 = ym
-          y2 = y2
-       else
-          converged = .true.
-          ym = 0.5d0*(y1+y2)
-       endif
-
-!       write(*,*) "y1, y2, ym ", y1, y2, ym
-!       write(*,*) "y1, y2, ym ", h1, h2, hm
-       if (abs((y1-y2)/y2) .le. 1.d-6) then
-          converged = .true.
-       endif
-    enddo
-
-    z = lambda / (x**2 * y1)
-    write(*,*) "x, z ",x,z
-    alpha = z
-  end function alpha    
-
-  function hfunc(y, x, lambda)
-    real(double) :: x, lambda, hfunc, y
-
-    hfunc = -0.5d0*y**2 - log(y) + log(lambda)+(1.d0/x + 2.d0*log(x))
-  end function hfunc
 
 
   function gfunc(x, gamma) 

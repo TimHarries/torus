@@ -232,6 +232,9 @@ CONTAINS
     CASE("nbody")
        CALL calcnBodyDensity(thisOctal,subcell)
 
+    CASE("bondi")
+       CALL calcBondiDensity(thisOctal,subcell)
+
     CASE("empty")
        CALL calcempty(thisOctal,subcell)
 
@@ -6943,6 +6946,39 @@ CONTAINS
 
 
   end subroutine calcnbodyDensity
+
+  subroutine calcBondiDensity(thisOctal,subcell)
+    use inputs_mod, only : gridDistanceScale
+    use utils_mod, only : alpha
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec, vVec
+    real(double) :: ethermal, soundSpeed
+    real(double) :: x, y, z, r, rBondi, rhoInfty, v
+    real(double), parameter :: lambda = 1.12d0
+    rVec = subcellCentre(thisOctal, subcell)
+    vVec = (-1.d0)*rVec
+    call normalize(vVec)
+    r = modulus(rVec)*gridDistanceScale
+    soundSpeed = sqrt(kerg*10.d0/(2.33d0 * mHydrogen))
+    rBondi = bigG*msol/ soundSpeed**2
+    x = r / rBondi
+    rhoInfty = 1.d-25
+    z = alpha(x)
+    y = lambda / (x**2 * z)
+    v = y * soundSpeed
+
+    thisOctal%temperature(subcell) = 10.d0
+    thisOCtal%rho(subcell) = 1.d-25 * z
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%velocity(subcell) = (v/cSpeed) * Vvec
+
+    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%iEquationOfState(subcell) = 1
+
+
+  end subroutine calcBondiDensity
 
   subroutine setupInflowParameters()
     use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe

@@ -353,7 +353,7 @@ module spectrum_mod
 
     subroutine writeSpectrumToDump(spectrum, lunit)
       type(SPECTRUMTYPE) :: spectrum
-      integer ::lunit, nLambda
+      integer ::lunit
       
       write(lunit) spectrum%nLambda
       write(lunit) spectrum%flux(1:spectrum%nLambda)
