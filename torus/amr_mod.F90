@@ -179,6 +179,12 @@ CONTAINS
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
 
+    CASE("imgTest")
+       CALL calcCylinderTest(thisOctal, subcell)
+       if (thisOctal%nDepth > 1) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
+
 
     CASE("starburst")
        CALL calcStarburst(thisOctal, subcell)
@@ -3626,6 +3632,16 @@ CONTAINS
       endif
 
 
+
+   case("imgTest")
+      if (thisOctal%nDepth < mindepthamr) then
+         split = .true.
+      else
+         split = .false.
+      endif
+
+
+
    case("runaway")
 
       call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
@@ -6023,6 +6039,36 @@ CONTAINS
 
   end subroutine calcPointSource
 
+  subroutine calcCylinderTest(thisOctal, subcell)
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real :: r
+    TYPE(vector) :: rVec
+
+    rVec = subcellCentre(thisOctal,subcell)
+    r = rVec%y**2 + rVec%z**2
+
+    thisOctal%rho(subcell) = 1.d-30
+
+    if((abs(rVec%x) < 0.2d9) .and. r < 0.2d9) then
+       !Inside cylinder
+       thisOctal%rho(subcell) = 100.d0*mHydrogen
+    end if
+
+    thisOctal%temperature(subcell) = 10000.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+  end subroutine calcCylinderTest
+
+
   subroutine calcStarburst(thisOctal,subcell)
 
     use inputs_mod, only : hydrodynamics
@@ -6689,7 +6735,15 @@ CONTAINS
 
        call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)
 
-       thisOctal%rho(subcell) = rho(nr)
+
+      if(rho(nr) /= 0.d0) then
+          thisOctal%rho(subcell) = rho(nr)
+       else
+          thisOctal%rho(subcell) = 1.d0*mHydrogen
+       end if
+
+
+!       thisOctal%rho(subcell) = rho(nr)
        thisOctal%temperature(subcell) = 10.d0
        r = r / 1.d10
        if (myrankGlobal==1) then
