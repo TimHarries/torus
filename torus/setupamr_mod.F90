@@ -39,6 +39,9 @@ contains
     use disc_class, only:  new
     use discwind_class, only:  new
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
+    use inputs_mod, only : xplusbound, yplusbound, zplusbound
+    use inputs_mod, only : xminusbound, yminusbound, zminusbound
+
 #ifdef MPI 
     use mpi_amr_mod
     use inputs_mod, only : photoionPhysics, rho0
@@ -76,6 +79,14 @@ contains
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
     totalmass = 0.
+
+    if ((xplusbound==6).or. &
+         (yplusbound==6).or. &
+         (zplusbound==6).or. &
+         (xminusbound==6).or. &
+         (yminusbound==6).or. &
+         (zminusbound==6)) call setupInflowParameters()
+
 
     if (readgrid) then
        grid%splitOverMPI = splitOverMPI
@@ -374,9 +385,9 @@ contains
               enddo
               
               !label each cell with its appropriate MPI thread
-              write(*,*) "Distributing MPI Labels"
+!              write(*,*) "Distributing MPI Labels"
               call distributeMPIthreadLabels(grid%octreeRoot)
-              write(*,*) "Label Distribution Completed"
+!              write(*,*) "Label Distribution Completed"
            end if
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")

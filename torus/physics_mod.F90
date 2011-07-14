@@ -77,6 +77,26 @@ contains
     logical :: ok
     real(double) :: distToEdge, fac, sumSurfaceLuminosity
     character(len=120) :: message
+    integer :: i
+    i = 0
+
+    if (readSources) then
+
+#ifdef MPI
+       do i = 0, nThreadsGlobal-1
+          if (myrankGlobal == i) then
+#endif
+             write(message,*) "Reading sources from file: ",trim(sourcefilename)
+             call writeInfo(message,TRIVIAL)
+             call readSourceArray(sourceFilename)
+
+#ifdef MPI
+          endif
+          call torus_mpi_barrier
+       enddo
+#endif
+
+    else
 
     do iSource = 1, nSource
    
@@ -237,6 +257,8 @@ contains
       call writeInfo(message, TRIVIAL)
       source(iSource)%luminosity = sumSurfaceLuminosity
     end do
+
+ endif
   end subroutine setupSources
 
   subroutine doPhysics(grid)
@@ -599,7 +621,7 @@ contains
      use parallel_mod
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
-     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol
+     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources
      integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
 #ifdef MPI
@@ -614,10 +636,10 @@ contains
         deallocate(globalSourceArray)
      endif
 
-     if (inputNsource > 0 ) call writeBanner("Source setup","-",TRIVIAL)
+     if (readSources.or.(inputNsource > 0 )) call writeBanner("Source setup","-",TRIVIAL)
      globalNSource = 0
      allocate(globalsourceArray(1:maxSources))
-     if (inputNsource > 0) then
+     if (readSources.or.(inputNsource > 0)) then
         globalnSource = inputNSource
         call setupSources(globalnSource, globalsourceArray, grid)
      endif

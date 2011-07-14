@@ -46,7 +46,7 @@ module surface_mod
      integer :: ntheta
      real(double) :: surfaceMdot, trueMdot
      real :: radius ! 1.e10 cm
-     integer, pointer :: angleArray(:,:)
+     integer, pointer :: angleArray(:,:) => null()
      type(ELEMENTTYPE),pointer :: element(:) => null()
      type(VECTOR) :: centre ! 1.e10 cm
      integer :: nNuHotFlux
@@ -57,6 +57,102 @@ module surface_mod
   end type SURFACETYPE
 
 contains
+
+  subroutine writeSurface(surface, lunit)
+    type(SURFACETYPE) :: surface
+    integer :: lunit
+
+!    write(*,*) "surface elements associated? ",associated(surface%element),surface%nelements
+
+    if (.not.associated(surface%element)) then
+       write(lunit) .false.
+    else
+       write(lunit) .true.
+     write(lunit) surface%nElements
+     write(lunit) surface%ntheta
+     write(lunit) surface%surfaceMdot
+     write(lunit) surface%trueMdot
+     write(lunit) surface%radius ! 1.e10 cm
+     write(lunit) size(surface%angleArray,1),size(surface%angleArray,2)
+     write(lunit) surface%angleArray
+     call writeElements(surface%element, lunit)
+     write(lunit) surface%centre
+     write(lunit) surface%nNuHotFlux
+     write(lunit) surface%hnuarray(1:surface%nnuHotFlux)
+     write(lunit) surface%totalPhotosphere(1:surface%NnuHotFlux)
+     write(lunit) surface%totalAccretion(1:surface%nnuHotFlux)
+  endif
+end subroutine writeSurface
+
+subroutine readSurface(surface, lunit)
+  type(SURFACETYPE) :: surface
+  integer :: lunit
+  integer :: i,j
+  logical :: hasSurface
+
+  read(lunit) hasSurface
+  if (hasSurface) then
+     read(lunit) surface%nElements
+     read(lunit) surface%ntheta
+     read(lunit) surface%surfaceMdot
+     read(lunit) surface%trueMdot
+     read(lunit) surface%radius ! 1.e10 cm
+     read(lunit) i, j
+     allocate(surface%angleArray(1:i, 1:j))
+     read(lunit) surface%angleArray
+     call readElements(surface%element, lunit)
+     read(lunit) surface%centre
+     read(lunit) surface%nNuHotFlux
+     allocate(surface%hNuArray(1:surface%nNuHotFlux))
+     read(lunit) surface%hnuarray(1:surface%nnuHotFlux)
+     allocate(surface%totalPhotoSphere(1:surface%nNuHotFlux))
+     read(lunit) surface%totalPhotosphere(1:surface%NnuHotFlux)
+     allocate(surface%totalAccretion(1:surface%nNuHotFlux))
+     read(lunit) surface%totalAccretion(1:surface%nnuHotFlux)
+  endif
+end subroutine readSurface
+
+   subroutine writeElements(elements, lunit)
+     integer :: lunit
+     type(ELEMENTTYPE), pointer :: elements(:)
+     integer :: i
+     write(lunit) size(elements,1)
+     do i = 1, size(elements,1)
+        write(lunit) elements(i)%norm
+        write(lunit) elements(i)%area
+        write(lunit) elements(i)%position
+        write(lunit) size(elements(i)%hotFlux)
+        write(lunit) elements(i)%hotFlux(1:size(elements(i)%hotflux))
+        write(lunit) elements(i)%temperature
+        write(lunit) elements(i)%dTheta
+        write(lunit) elements(i)%dphi
+        write(lunit) elements(i)%prob
+        write(lunit) elements(i)%hot
+     enddo
+   end subroutine writeElements
+
+   subroutine readElements(elements, lunit)
+     integer :: lunit
+     type(ELEMENTTYPE), pointer :: elements(:)
+     integer :: i, j, k
+     read(lunit) j
+     allocate(elements(1:j))
+     do i = 1, j
+        read(lunit) elements(i)%norm
+        read(lunit) elements(i)%area
+        read(lunit) elements(i)%position
+        read(lunit) k
+        allocate(elements(i)%hotFlux(1:k))
+        read(lunit) elements(i)%hotFlux(1:size(elements(i)%hotflux))
+        read(lunit) elements(i)%temperature
+        read(lunit) elements(i)%dTheta
+        read(lunit) elements(i)%dphi
+        read(lunit) elements(i)%prob
+        read(lunit) elements(i)%hot
+     enddo
+   end subroutine readElements
+        
+
 
   subroutine buildSphere(centre, radius, surface, nTheta, teff, hotspec)
     real(double) :: teff

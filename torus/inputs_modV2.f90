@@ -190,10 +190,17 @@ contains
     if (molecularPhysics) call readMolecularPhysicsParameters(cLine, fLine, nLines)
     if (photoionPhysics) call readPhotoionPhysicsParameters(cLine, fLine, nLines)
 
-    if (checkPresent("nsource", cLine, nLines)) then
-       call readSourceParameters(cLine, fLine, nLines)
-    endif
+    call getLogical("readsources", readsources, cLine, fLine, nLines, &
+         "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if (.not. readsources) then
+       if (checkPresent("nsource", cLine, nLines)) then
+          call readSourceParameters(cLine, fLine, nLines)
+       endif
+    else
+       call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
+                  "Source filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
 
 ! the type of calculation
 
@@ -1063,7 +1070,12 @@ contains
     logical :: ok
 
 
+
+
+
     call writeBanner("Stellar source  data","#",TRIVIAL)
+
+
 
     call getInteger("nsource", inputNSource, cLine, fLine, nLines, &
          "Number of sources: ","(a,i2,a)",1,ok,.true.)
@@ -1469,7 +1481,6 @@ contains
     call getString("zminusboundstring", zminusboundString, cLine, fLine, nLines, &
          "negative z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
-
 
   end subroutine readHydrodynamicsParameters
 

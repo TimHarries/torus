@@ -333,6 +333,36 @@ module spectrum_mod
 
     end subroutine readSpectrum
 
+    subroutine readSpectrumFromDump(spectrum, lunit)
+      type(SPECTRUMTYPE) :: spectrum
+      integer ::lunit, nLambda
+      
+      read(lunit) nLambda
+      allocate(spectrum%flux(1:nLambda))
+      allocate(spectrum%lambda(1:nLambda))
+      allocate(spectrum%dlambda(1:nLambda))
+      allocate(spectrum%prob(1:nLambda))
+      allocate(spectrum%ppw(1:nLambda))
+      spectrum%nLambda = nLambda
+      read(lunit) spectrum%flux(1:nLambda)
+      read(lunit) spectrum%lambda(1:nLambda)
+      read(lunit) spectrum%dlambda(1:nLambda)
+      read(lunit) spectrum%prob(1:nLambda)
+      read(lunit) spectrum%ppw(1:nLambda)
+    end subroutine readSpectrumFromDump
+
+    subroutine writeSpectrumToDump(spectrum, lunit)
+      type(SPECTRUMTYPE) :: spectrum
+      integer ::lunit, nLambda
+      
+      write(lunit) spectrum%nLambda
+      write(lunit) spectrum%flux(1:spectrum%nLambda)
+      write(lunit) spectrum%lambda(1:spectrum%nLambda)
+      write(lunit) spectrum%dlambda(1:spectrum%nLambda)
+      write(lunit) spectrum%prob(1:spectrum%nLambda)
+      write(lunit) spectrum%ppw(1:spectrum%nLambda)
+    end subroutine writeSpectrumToDump
+
     subroutine insertWavelength(spectrum, lambda)
       type(SPECTRUMTYPE) :: spectrum, tmpSpectrum
       logical :: ok

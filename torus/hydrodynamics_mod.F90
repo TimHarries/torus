@@ -651,7 +651,6 @@ contains
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
- 
      
           endif
        endif
@@ -3002,12 +3001,8 @@ end subroutine sumFluxes
     tdump = returnCodeUnitTime(tdump)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-
-
     if (myrankGlobal /= 0) then
-
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
        do i = 1, nPairs
           if (myrankglobal==1) &
             write(*,'(a,i3,i3,a,i3,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
@@ -3017,6 +3012,13 @@ end subroutine sumFluxes
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
+    endif
+
+    if (.not.readgrid) then
+
+    if (myrankGlobal /= 0) then
+
+
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call calculateRhoU(grid%octreeRoot, direction)
@@ -3081,7 +3083,7 @@ end subroutine sumFluxes
        endif
 
     endif
-    
+ endif
 
     tc = 0.d0
     if (myrank /= 0) then
@@ -3217,6 +3219,9 @@ end subroutine sumFluxes
 
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
+
+          write(plotfile,'(a,i4.4,a)') "source",it,".dat"
+          call writeSourceArray(plotfile)
 
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
@@ -7038,30 +7043,21 @@ end subroutine refineGridGeneric2
                    newphi = 0.25d0*(SUM(g(1:4))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
                 else
                    newphi = 0.16666666666667d0*(SUM(g(1:6))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
-                endif!
-                !             if (thisOctal%twoD) then
-!                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
-!                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
-!                sumd2phidx2 = SUM(d2phidx2(1:2))
-!             else
-!                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
-!                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
-!                d2phidx2(3) = (g(5) - g(6)) / thisOctal%subcellSize
-!                sumd2phidx2 = SUM(d2phidx2(1:3))
-!             endif
-!             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT)
+                endif
+
+                if (thisOctal%ghostCell(subcell)) then
+                   ghostFracChange = max(fracChange, ghostFracChange)
+                endif
+                deltaPhi = newPhi - thisOctal%phi_gas(subcell)
+                newPhi = thisOctal%phi_gas(subcell) + sorFactor * deltaPhi
+
                 if (thisOctal%phi_gas(subcell) /= 0.d0) then
                    frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                    fracChange = max(frac, fracChange)
                 else
                    fracChange = 1.d30
                 endif
-                if (thisOctal%ghostCell(subcell)) then
-                   ghostFracChange = max(fracChange, ghostFracChange)
-                endif
-                sorFactor = 1.5d0
-                deltaPhi = newPhi - thisOctal%phi_gas(subcell)
-                thisOctal%phi_gas(subcell) = thisOctal%phi_gas(subcell) + sorFactor * deltaPhi
+                thisOCtal%phi_gas(subcell) = newPhi
              
           endif
        enddo
@@ -7198,7 +7194,7 @@ end subroutine refineGridGeneric2
 
 !       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 
-       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+!       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
     if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
@@ -7853,7 +7849,8 @@ end subroutine minMaxDepth
          thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)**2)
     cInfty = soundSpeed(thisOctal, subcell)
     rBH = BondiHoyleRadius(source, thisOctal, subcell)
-
+    write(*,*) "r/rBH ",1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH
+    write(*,*) "c, v ",cInfty, vInfty, vinfty/cinfty
     thisAlpha = alpha(1.2d0*thisOctal%subcellSize*gridDistanceScale/rBH, cInfty, vInfty)
 
     rhoInfty = rhoBar / thisalpha
@@ -7911,6 +7908,11 @@ end subroutine minMaxDepth
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
+          if (.not.associated(thisoctal%etaline)) then
+             allocate(thisOctal%etaLine(1:thisOctal%maxChildren))
+             thisOctal%etaLine = 0.d0
+          endif
+          thisOctal%etaLine(subcell) = 0.d0
           if (.not.inSubcell(thisOctal, subcell, source%position)) then
 
              call correctMdot(source, thisOctal, subcell, mdot, thisn)
@@ -7995,7 +7997,10 @@ end subroutine minMaxDepth
           enddo
        enddo
     enddo
-    if (.not.associated(thisOctal%etaline)) allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+    if (.not.associated(thisOctal%etaline)) then
+       allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+       thisOctal%etaLine(subcell) = 0.d0
+    endif
     thisOctal%etaline(subcell) =  mdot * (1.d0 - dble(n)/8.d0**3) * thisOctal%chiline(subcell)
   end subroutine correctMdot
 
@@ -8127,10 +8132,14 @@ end subroutine minMaxDepth
        call MPI_ALLREDUCE(n, itemp, 1, MPI_INTEGER, MPI_MAX, amrCommunicator, ierr)
        n = itemp
 
-
        if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
           massCell = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
-          if (.not.associated(thisOctal%etaline)) allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+          if (.not.associated(thisOctal%etaline)) then
+             allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+             thisOctal%etaline = 0.d0
+          endif
+          write(*,*) "sink is on thread ",myrankglobal
+          write(*,*) "using n for correction: ",n
           thisOctal%etaLine(subcell) = thismdot * thisOctal%chiline(subcell) * (1.d0 - dble(n)/8.d0**3)
           if (thisOctal%etaline(subcell) * timestep > 0.25d0*massCell) then
              thisOctal%etaLine(subcell) = 0.25d0 * massCell / timestep
@@ -8141,13 +8150,13 @@ end subroutine minMaxDepth
        call MPI_BCAST(localMdot, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
 
        totalMdot = 0.d0
-
        call sumAccretionRate(grid%octreeRoot, totalMdot)
        call MPI_ALLREDUCE(totalMdot, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
        totalMdot = temp
        if (myrankGlobal == 1) then
           write(*,*) "mdot after corrections ", totalMdot/msol*365.25d0*24.d0*3600.d0
        endif
+       sourceArray(isource)%mdot = totalMdot
        deltaMom = VECTOR(0.d0, 0.d0, 0.d0)
        call correctMomenta(thisOctal, sourceArray(isource), timestep, deltaMom)
 
@@ -8220,7 +8229,10 @@ end subroutine minMaxDepth
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
-          if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiLine(1:thisOctal%maxChildren))
+          if (.not.associated(thisOctal%chiline)) then
+             allocate(thisOctal%chiLine(1:thisOctal%maxChildren))
+             thisOctal%chiLine = 0.d0
+          endif
           r = modulus(subcellCentre(thisOctal,subcell) - source%position)*gridDistanceScale
           if (r < rAcc) then
              thisOctal%chiLine(subcell) = exp(-r**2/rK**2)
@@ -8333,26 +8345,61 @@ end subroutine minMaxDepth
   function alpha(x, cInfty, vInfty)
     real(double) :: alpha,  cInfty, vInfty, x
     real(double) :: y
+    real(double), parameter :: lambda = 1.12d0, gamma=1.d0
+    real(double) :: h1, h2, hm
+    real(double) :: y1, y2, ym, z
+    logical :: converged
 
-    y = vInfty / cInfty
 
-    alpha = exp( 1.d0/x - 0.5d0*y**2)
+    converged = .false.
+    y1 = 1.d-10
+    y2 = 100.d0
+    do while(.not.converged)
+       ym = 0.5d0*(y1+y2)
+       h1 = hfunc(y1, x, lambda)
+       h2 = hfunc(y2, x, lambda)
+       hm = hfunc(ym, x, lambda)
 
-  end function alpha
-    
-    
+       if (h1*hm < 0.d0) then
+          y1 = y1
+          y2 = ym
+       else if (h2*hm < 0.d0) then
+          y1 = ym
+          y2 = y2
+       else
+          converged = .true.
+          ym = 0.5d0*(y1+y2)
+       endif
+
+!       write(*,*) "y1, y2, ym ", y1, y2, ym
+!       write(*,*) "y1, y2, ym ", h1, h2, hm
+       if (abs((y1-y2)/y2) .le. 1.d-6) then
+          converged = .true.
+       endif
+    enddo
+
+    z = lambda / (x**2 * y1)
+    write(*,*) "x, z ",x,z
+    alpha = z
+  end function alpha    
+
+  function hfunc(y, x, lambda)
+    real(double) :: x, lambda, hfunc, y
+
+    hfunc = -0.5d0*y**2 - log(y) + log(lambda)+(1.d0/x + 2.d0*log(x))
+  end function hfunc
 
 
   function gfunc(x, gamma) 
     real(double) :: x, gamma, gfunc
 
-    gfunc = x**(4.d0*(gamma-1.d0)/(gamma+1.d0))/(gamma-1.d0) + x**(-(5.d0-3.d0*gamma)/(gamma+1.d0))
+    gfunc = (x**(4.d0*(gamma-1.d0)/(gamma+1.d0)))/(gamma-1.d0) + x**(-(5.d0-3.d0*gamma)/(gamma+1.d0))
   end function gfunc
 
   function ffunc(u, gamma) 
     real(double) :: u, gamma, ffunc
 
-    ffunc = u**(4.d0/(gamma+1.d0))*(0.5d0 + (1.d0/(gamma-1.d0)) * (1.d0/u**2))
+    ffunc = (u**(4.d0/(gamma+1.d0)))*(0.5d0 + (1.d0/(gamma-1.d0)) * (1.d0/u**2))
   end function ffunc
 
   

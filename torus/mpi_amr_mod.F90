@@ -2991,13 +2991,13 @@ recursive subroutine distributeMPIthreadLabels(thisOctal)
   integer :: subcell, i
 
 !Go through grid and label MPI threads
-  write(*,*) "Rank ", myRankGlobal, "being allocated grid space"
+!  write(*,*) "Rank ", myRankGlobal, "being allocated grid space"
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
         do i = 1, thisoctal%nchildren, 1
            if (thisoctal%indexchild(i) == subcell) then
               call labelSingleSubcellMPI(thisOctal, subcell, i)
-              print *, "thisOctal%mpiThread(subcell) ", thisOctal%mpiThread(subcell)
+!              print *, "thisOctal%mpiThread(subcell) ", thisOctal%mpiThread(subcell)
               child => thisoctal%child(i)
               call distributeMPIthreadLabels(child)
               exit

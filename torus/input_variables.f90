@@ -213,6 +213,8 @@
 ! Source parameters
 !-------------------
 
+  logical :: readSources
+  character(len=80) :: sourceFilename
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)
   type(VECTOR) :: sourcePos(10), sourceVel(10)

@@ -6941,7 +6941,24 @@ CONTAINS
     inflowRhoE = inflowEnergy * inflowRho
 
 
+
   end subroutine calcnbodyDensity
+
+  subroutine setupInflowParameters()
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    real(double) :: soundSpeed, pressure, temperature
+    inflowRho = 1.d-25
+    temperature = 10.d0
+    pressure = (inflowRho/(2.33d0*mHydrogen))*kerg*temperature
+    soundSpeed = sqrt(pressure / inflowRho)
+    inflowSpeed = 3.d0*soundSpeed
+
+    inflowPressure = pressure
+    inflowRho = 1.d-25
+    inflowMomentum = inflowRho * inflowSpeed
+    inflowEnergy = kerg * temperature/(2.33d0*mHydrogen) + 0.5d0*inflowSpeed**2
+    inflowRhoE = inflowEnergy * inflowRho
+  end subroutine setupInflowParameters
 
   subroutine calcEmpty(thisOctal,subcell)
     use inputs_mod, only : centralMass

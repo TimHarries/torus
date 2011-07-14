@@ -22,6 +22,7 @@ module source_mod
      real(double) :: initialMass ! [solar]
      real(double) :: mass       ! [solar]
      real(double) :: age        ! [years]
+     real(double) :: mdot        ! [mDot g/s]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
      type(SURFACETYPE) :: surface
      real(double) :: limbDark(2)
@@ -37,6 +38,75 @@ module source_mod
   integer :: globalnSource
 
   contains
+
+    subroutine writeSourceArray(filename)
+      character(len=*) :: filename
+      integer :: iSource
+      integer, parameter :: lunit = 65
+
+      open(lunit, file=filename, form="unformatted", status="unknown")
+      write(lunit) globalnSource
+      do isource = 1, globalnSource
+         call writesource(globalsourceArray(isource), lunit)
+      enddo
+      close(lunit)
+    end subroutine writeSourceArray
+
+    subroutine readSourceArray(filename)
+      character(len=*) :: filename
+      integer :: iSource
+      integer, parameter :: lunit = 65
+
+      open(lunit, file=filename, form="unformatted", status="old")
+      read(lunit) globalnSource
+      do iSource = 1, globalnSource
+         call readSource(globalsourceArray(isource), lunit)
+      enddo
+      close(lunit)
+    end subroutine readSourceArray
+
+    subroutine writeSource(source, lunit)
+      type(SOURCETYPE) :: source
+      integer :: lunit
+
+      write(lunit) source%position
+      write(lunit) source%force
+      write(lunit) source%radius
+      write(lunit) source%luminosity
+      write(lunit) source%teff
+      write(lunit) source%initialMass
+      write(lunit) source%mass
+      write(lunit) source%age
+      write(lunit) source%mdot
+      write(lunit) source%outsideGrid
+      write(lunit) source%onCorner
+      write(lunit) source%distance
+
+      call writeSpectrumToDump(source%spectrum,lunit)
+      call writeSurface(source%surface, lunit)
+    end subroutine writeSource
+
+    subroutine readSource(source, lunit)
+      type(SOURCETYPE) :: source
+      integer :: lunit
+
+      read(lunit) source%position
+      read(lunit) source%force
+      read(lunit) source%radius
+      read(lunit) source%luminosity
+      read(lunit) source%teff
+      read(lunit) source%initialMass
+      read(lunit) source%mass
+      read(lunit) source%age
+      read(lunit) source%mdot
+      read(lunit) source%outsideGrid
+      read(lunit) source%onCorner
+      read(lunit) source%distance
+
+      call readSpectrumFromDump(source%spectrum,lunit)
+      call readSurface(source%surface, lunit)
+    end subroutine readSource
+
 
     subroutine freeGlobalSourceArray()
       integer :: i
