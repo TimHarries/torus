@@ -1197,9 +1197,9 @@ contains
     if (fac > 0.01d0) then
        write(message,'(a,f7.1,a)') "Grid mass differs from required mass by: ",100.d0*fac, " %"
        call writeWarning(message)
-       write(message,'(a,f7.5,a)') "Mass requested is: ",massWanted/msol, " solar masses"
+       write(message,'(a,f8.5,a)') "Mass requested is: ",massWanted/msol, " solar masses"
        call writeWarning(message)
-       write(message,'(a,f7.5,a)') "Grid mass is: ",actualMass/mSol, " solar masses"
+       write(message,'(a,f8.5,a)') "Grid mass is: ",actualMass/mSol, " solar masses"
        call writeWarning(message)
     endif
   end subroutine testAMRmass

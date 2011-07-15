@@ -7,9 +7,6 @@ module photoionAMR_mod
 use constants_mod
 use messages_mod
 
-#ifdef HYDRO
-use hydrodynamics_mod
-#endif
 use parallel_mod
 use photoion_utils_mod
 use gridio_mod
@@ -58,6 +55,11 @@ contains
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
+    use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
+         calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
+         setupx, setupqx, computecouranttime, unrefinecells
+    use dimensionality_mod, only: setCodeUnit
+    use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -497,8 +499,9 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine
+         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine
    !      optimizeStack, stackLimit, dStack
+    use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
@@ -3674,9 +3677,9 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
            tVal = tempStorage(23)
            t = tempStorage(24)
 
-        write(21,'(f5.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
+        write(21,'(f6.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
 
-        write(20,'(f5.3,f9.1,  14f8.3)') &
+        write(20,'(f6.3,f9.1,  14f8.3)') &
              r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
         write(22,*) r*1.e10/pctocm,netot
   
@@ -4743,7 +4746,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
   subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
        lambdaImage, outputimageType, nPixels)
-    use inputs_mod, only: nPhotons
+    use inputs_mod, only: nPhotons, gridDistance
     real, intent(in) :: lambdaImage
     include 'mpif.h'
     type(GRIDTYPE) :: grid

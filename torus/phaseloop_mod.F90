@@ -978,7 +978,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            chanceSpot = fSpot * blackBody(tSpot, 6562.8) / &
                 ((1.-fSpot)*blackBody(tEff, 6562.8) + &
                 (fSpot * blackBody(tSpot, 6562.8)))
-           if (writeoutput) write(*,'(a,f5.3)') "Spot chance at 6563A: ",chanceSpot
+           if (writeoutput) write(*,'(a,f6.3)') "Spot chance at 6563A: ",chanceSpot
         endif
 
 

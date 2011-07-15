@@ -835,7 +835,7 @@ contains
        enddo
     enddo
     if (dust) then
-       write(*,'(a,1pe8.2)') "Total dust mass (solar masses): ",totalDustMass/mSol
+       write(*,'(a,1pe9.2)') "Total dust mass (solar masses): ",totalDustMass/mSol
     endif
     deallocate(done)
 

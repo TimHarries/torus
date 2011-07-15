@@ -73,7 +73,7 @@ contains
     call createRoman(i, roman)
     thisIon%species = trim(element)//" "//trim(roman)
     thisIon%abundance = returnAbundance(z)
-    write(message, '(a10,f10.8)') thisIon%species, thisIon%abundance
+    write(message, '(a10,f11.8)') thisIon%species, thisIon%abundance
     if (writeoutput) call writeInfo(message, TRIVIAL)
     thisIon%iPot = iPot
     thisIon%outerShell = returnOuterShell(n) 

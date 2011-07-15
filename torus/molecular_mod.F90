@@ -3828,13 +3828,13 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         dc = dc * OneOverNangle
         if(outputconvergence) then
 ! results.dat
-           write(31,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
+           write(31,'(es12.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
 ! results.niter
-           write(310,'(es11.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
+           write(310,'(es12.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
 ! fracChangeGraph
-           write(32,'(es11.5e2,4x,14(f7.5,tr2))') r*1.e10, fracChange(1:min(14,minlevel))
+           write(32,'(es12.5e2,4x,14(f8.5,tr2))') r*1.e10, fracChange(1:min(14,minlevel))
 ! departcoeffs.dat
-           if(getdepartcoeffs) write(34,'(es11.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)
+           if(getdepartcoeffs) write(34,'(es12.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)
         endif
 
      enddo
@@ -4492,7 +4492,7 @@ end subroutine plotdiscValues
     maxFracChange = MAXVAL(maxFracChangePerLevel(1:max(2,minlevel-2))) 
 
 ! Output text to std out re convergence  
-    write(message,'(a,1x,f11.7,1x,a,1x,f5.3,1x,a,2x,l1,1x,a,1x,i6,1x,a,1x,i6)') &
+    write(message,'(a,1x,f11.7,1x,a,1x,f6.3,1x,a,2x,l1,1x,a,1x,i6,1x,a,1x,i6)') &
          "Maximum fractional change this iteration ", maxFracChange, "tolerance", tolerance, "fixed rays", fixedrays, &
          "nray", nray
     call writeInfo(message,FORINFO)
@@ -4509,16 +4509,16 @@ end subroutine plotdiscValues
     call writeinfo("",FORINFO)  
 
 ! Fraction of first minlevel-1 levels converged at 5,2,1,0.5 * tolerance respectively
-    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 5," | ",&
+    write(message,'(a,f7.4,a, 14(f7.4,2x))') "Individual levels converged @ ",tolerance * 5," | ",&
             real(convergenceCounter(1,1:min(14,minlevel-1)))/real(nVoxels) 
        call writeInfo(message,FORINFO)         
-    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 2," | ",&
+    write(message,'(a,f7.4,a, 14(f7.4,2x))') "Individual levels converged @ ",tolerance * 2," | ",&
             real(convergenceCounter(2,1:min(14,minlevel-1)))/real(nVoxels) 
        call writeInfo(message,FORINFO)         
-    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 1," | ",&
+    write(message,'(a,f7.4,a, 14(f7.4,2x))') "Individual levels converged @ ",tolerance * 1," | ",&
             real(convergenceCounter(3,1:min(14,minlevel-1)))/real(nVoxels) 
        call writeInfo(message,FORINFO)         
-    write(message,'(a,f6.4,a, 14(f6.4,2x))') "Individual levels converged @ ",tolerance * 0.5," | ",&
+    write(message,'(a,f7.4,a, 14(f7.4,2x))') "Individual levels converged @ ",tolerance * 0.5," | ",&
             real(convergenceCounter(4,1:min(14,minlevel-1)))/real(nVoxels) 
        call writeInfo(message,FORINFO)         
        call writeinfo("",FORINFO)
@@ -4528,7 +4528,7 @@ end subroutine plotdiscValues
     if(all(convergenceCounter(1,1:minlevel) > (1.-1e-3) * real(nvoxels))) then 
        allCellsConverged = .true.
 
-       write(message,'(a,6(tr1,f7.5),tr1,i7)') "Cells converged to tolerence", &
+       write(message,'(a,6(tr1,f8.5),tr1,i7)') "Cells converged to tolerence", &
             real(convergenceCounter(1,1:min(6,minlevel))) / real(nvoxels), nvoxels
        call writeinfo(message, FORINFO)
     endif
@@ -4577,7 +4577,7 @@ end subroutine plotdiscValues
        close(138)
   
        open(139, file="avgChange.dat", position="append", status="unknown")
-20     format(i2,tr3,i6,tr3,12(f7.5,1x))
+20     format(i2,tr3,i6,tr3,12(f8.5,1x))
        write(139,20) grand_iter, nray, avgFracChange(1:min(12,minlevel-1),1)/real(nvoxels)
     
        close(139)
@@ -5350,7 +5350,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
                     / (pi * (cube%telescope%diameter / 2.d0)**2 )) / dA
 
    if(writeoutput) then
-      write(filename,'(a,a,i1,a,i1,a,f4.1,a,f4.1,a,es8.2e2,a)') trim(cube%telescope%label),'lineprofilesJ', &
+      write(filename,'(a,a,i1,a,i1,a,f4.1,a,f4.1,a,es9.2e2,a)') trim(cube%telescope%label),'lineprofilesJ', &
         thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,&
         'beam',cube%telescope%beamsize,'diam',cube%telescope%diameter/100.,'abund',molAbundance,'.dat'
 

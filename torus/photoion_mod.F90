@@ -1843,9 +1843,9 @@ subroutine dumpLexington(grid, epsoverdt)
      ne = log10(max(ne,1.d-10))
 
 
-     write(21,'(f5.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
+     write(21,'(f6.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
 
-     write(20,'(f5.3,f9.1,  14f8.3)') &
+     write(20,'(f6.3,f9.1,  14f8.3)') &
           r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,,nei
      write(22,*) r*1.e10/pctocm,netot
   enddo

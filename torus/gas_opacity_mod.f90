@@ -85,7 +85,7 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
 !     read(20,'(4x,i2,i2,i3,1x,a4,e9.2,f10.3,f6.3)') &
 !          vUp, Vlow, Jlow, branch, gf(i), wavenumber(i),excitation(i)
 
-     read(20,'(4x,i3,i3,i3,2x,a4,4x,e9.4,1x,f10.3,f6.3)') &
+     read(20,'(4x,i3,i3,i3,2x,a4,4x,e11.4,1x,f10.3,f6.3)') &
           vUp, Vlow, Jlow(i),branch,gf(i),wavenumber(i),excitation(i)
 
 !     write(*,*) vUp, Vlow, Jlow, branch, gf(i), wavenumber(i),excitation(i)
