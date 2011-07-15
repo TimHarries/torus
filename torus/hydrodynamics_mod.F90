@@ -3137,7 +3137,8 @@ end subroutine sumFluxes
 !       endif
 
        dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
-       if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)/tff, " free-fall times"
+       if (writeoutput) write(*,*) "Courant time is ",dt
+       if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)
        call findMassoverAllThreads(grid, totalmass)
        if (nBodyPhysics) then
           totalmass = totalMass + SUM(globalSourceArray(1:globalnSource)%mass)
@@ -3162,7 +3163,9 @@ end subroutine sumFluxes
 
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
-!          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
+          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
+
+          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
 
 
           if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -3220,8 +3223,10 @@ end subroutine sumFluxes
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
 
-          write(plotfile,'(a,i4.4,a)') "source",it,".dat"
-          call writeSourceArray(plotfile)
+          if (writeoutput) then
+             write(plotfile,'(a,i4.4,a)') "source",it,".dat"
+             call writeSourceArray(plotfile)
+          endif
 
           write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
           call writeVtkFile(grid, plotfile, &
@@ -4558,6 +4563,10 @@ end subroutine sumFluxes
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           thisOctal%edgeCell(subcell) = .false.
+          if (.not.associated(thisOctal%corner)) then
+             allocate(thisOctal%corner(1:thisOctal%maxChildren))
+             thisOctal%corner = .false.
+          endif
           if (thisOctal%oned) then
              nProbes = 2
              probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
@@ -7192,7 +7201,7 @@ end subroutine refineGridGeneric2
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
-!       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
+       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
@@ -7691,6 +7700,128 @@ end subroutine minMaxDepth
      endif
    end subroutine recursApplyDirichletLevel
 
+
+   subroutine mergeSinks(grid, source, nSource)
+     type(GRIDTYPE) :: grid
+     type(SOURCETYPE) :: source(:)
+     type(SOURCETYPE), allocatable :: newSource(:)
+     type(VECTOR) :: newVelocity, newPosition
+     real(double) :: newMass, newAge
+     integer :: nSource
+     integer :: i, j
+     integer :: nGroup, newNGroup
+     integer, allocatable :: group(:)
+     real(double) :: rAcc, sep
+     integer :: m, n
+     integer :: newNSource
+     logical :: converged
+
+     rAcc = 4.d0 * 2.d0 * grid%halfSmallestSubcell
+
+     allocate(group(1:nSource))
+
+
+     nGroup = 0
+     group = 0 
+     converged = .false.
+     do while (.not.converged)
+        converged = .true.
+        do i = 1, nSource
+           do j = 1, nSource
+              if (i /= j) then
+                 sep = modulus(source(i)%position - source(j)%position)
+                 if (sep < rAcc) then
+                    if ((group(i) == 0).and.(group(j) == 0)) then ! new group
+                       nGroup = nGroup + 1
+                       group(i) = nGroup
+                       group(j) = nGroup
+                       converged = .false.
+                    else if ((group(i) == 0).and.(group(j) /= 0)) then ! connects to existing group
+                       group(i) = group(j)
+                       converged = .false.
+                    else if ((group(i) /= 0).and.(group(j) == 0)) then ! connects to existing group
+                       group(j) = group(i)
+                       converged = .false.
+                    else if (group(i) /= group(j)) then! now connect two existing groups
+                       m = MIN(group(i), group(j))
+                       n = MAX(group(i), group(j))
+                       where (group == n) group = m
+                       converged = .false.
+                    endif
+                 endif
+              endif
+           enddo
+        end do
+     enddo
+     newNGroup = 0
+     do j = 1, nGroup
+        if (ANY(group(1:nSource) == j)) then
+           newNGroup = newNGroup + 1
+           where (group == j) group = newNGroup
+        endif
+     enddo
+     nGroup = newNgroup
+     if (nGroup == 0) goto 666 ! no groups
+
+     if (writeoutput) then
+        m = 0 
+        do i = 0, nGroup
+
+           n = 0
+           do j = 1, nSource
+              if (group(j) == i) n = n + 1
+           enddo
+           write(*,*) "Group ", i, " has ",n," sources"
+           m = m + n
+        enddo
+        write(*,*) "total number of sources ",m
+     endif
+
+     newNSource = 0
+     allocate(newSource(1:100))
+     do j = 1, nSource
+        if (group(j) == 0) then
+           newNSource = newNSource + 1
+           newSource(newNSource) = source(j)
+        endif
+     enddo
+
+     do i = 1, nGroup
+
+        newMass = 0.d0
+        newVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+        newPosition = VECTOR(0.d0, 0.d0, 0.d0)
+        newAge = 0.d0
+        n = 0
+
+        do j = 1, nSource
+           if (group(j) == i) then
+              newMass = newMass + source(j)%mass
+              newVelocity = newVelocity + source(j)%mass * source(j)%velocity
+              newPosition = newPosition + source(j)%position * source(j)%mass
+              newAge = newAge + source(j)%age
+              n = n + 1
+           endif
+        enddo
+        newNSource = newNSource + 1
+        newSource(newNSource)%mass = newMass
+        newSource(newnSource)%velocity = (1.d0/newMass) * newVelocity 
+        newSource(newnSource)%position = (1.d0/newMass) * newPosition
+        newSource(newnSource)%age = newAge / dble(n)
+        call buildSphereNbody(newsource(newnsource)%position, grid%halfSmallestSubcell, newsource(newnsource)%surface, 20)
+     enddo
+
+     source = newSource
+     nSource = newnSource
+     if (writeoutput) write(*,*) "Number of sources after merges: ",newnSource
+
+     deallocate(newSource)
+666 continue
+
+
+
+     deallocate(group)
+   end subroutine mergeSinks
    subroutine addSinks(grid, source, nSource)
      include 'mpif.h'
      type(GRIDTYPE) :: grid
@@ -8031,6 +8162,7 @@ end subroutine minMaxDepth
     totalMomentum = totalMomentum - radialMomentum * rVec
 
     deltaMom = deltaMom + radialMomentum * rVec
+    deltaMom = VECTOR(0.d0, 0.d0, 0.d0)
 
     radialMomentum = radialMomentum * (1.d0 - deltaM/cellMass)
 
@@ -8049,20 +8181,21 @@ end subroutine minMaxDepth
     cellMass = cellMass - deltaM
     thisOctal%rho(subcell) = cellMass / (cellVolume(thisOctal, subcell)*1.d30)
 
-    thisOctal%rhou(subcell) = totalMomentum%x / (cellVolume(thisOctal, subcell)*1.d30)
-    thisOctal%rhov(subcell) = totalMomentum%y / (cellVolume(thisOctal, subcell)*1.d30)
-    thisOctal%rhow(subcell) = totalMomentum%z / (cellVolume(thisOctal, subcell)*1.d30)
+!    thisOctal%rhou(subcell) = totalMomentum%x / (cellVolume(thisOctal, subcell)*1.d30)
+!    thisOctal%rhov(subcell) = totalMomentum%y / (cellVolume(thisOctal, subcell)*1.d30)
+!    thisOctal%rhow(subcell) = totalMomentum%z / (cellVolume(thisOctal, subcell)*1.d30)
 
-    if (thisOctal%threed) then
-       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-    else
-       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-    endif
-    eKinetic = u2 / 2.d0
+!    if (thisOctal%threed) then
+!       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+!    else
+!       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+!    endif
+!    eKinetic = u2 / 2.d0
+!
+!    Etot = eThermal + eKinetic
 
-    Etot = eThermal + eKinetic
+!    thisOctal%rhoe(subcell) = eTot * thisOctal%rho(subcell)
 
-    thisOctal%rhoe(subcell) = eTot * thisOctal%rho(subcell)
 
   end subroutine correctMomentumOfGas
 
