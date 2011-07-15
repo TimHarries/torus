@@ -7209,7 +7209,8 @@ end subroutine refineGridGeneric2
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
-       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads))
+       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
+            MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
