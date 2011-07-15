@@ -7044,8 +7044,7 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
-    real(double) :: ethermal, soundSpeed
-    real(double) :: x, y, z, r, rBondi, rhoInfty, v
+    real(double) :: x, z, r,  v
     real(double), parameter :: lambda = 1.12d0
 
     real(double) :: xArray(21) = (/ 0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, &

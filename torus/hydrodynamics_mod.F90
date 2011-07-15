@@ -3014,6 +3014,14 @@ end subroutine sumFluxes
        call writeInfo("Done", TRIVIAL)
     endif
 
+    if (readgrid) then
+       if(myrankglobal /= 0) then
+          call zeroPhiGas(grid%octreeRoot)
+          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+       endif
+    endif
+
+
     if (.not.readgrid) then
 
     if (myrankGlobal /= 0) then
