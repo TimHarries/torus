@@ -6047,18 +6047,27 @@ CONTAINS
     INTEGER, INTENT(IN) :: subcell
     real :: r
     TYPE(vector) :: rVec
+    
 
     rVec = subcellCentre(thisOctal,subcell)
     r = rVec%y**2 + rVec%z**2
-
-    thisOctal%rho(subcell) = 1.d-30
-
-    if((abs(rVec%x) < 0.2d9) .and. r < 0.2d9) then
+    r = r**0.5
+    thisOctal%rho(subcell) = 1.d-40
+    thisOctal%ionFrac(subcell,1) = 1.
+    thisOctal%ionFrac(subcell,2) = 1.e-10
+    thisOctal%temperature(subcell) = 10.
+ !   print *, "abs(rVec%x)", abs(rVec%x)
+  !  print *, "r", r
+    if((abs(rVec%x) < 0.3d9) .and. r < 0.3d9) then
        !Inside cylinder
-       thisOctal%rho(subcell) = 100.d0*mHydrogen
+       thisOctal%rho(subcell) = 1000.d0*mHydrogen       
+!       print *, "found cylinder cell"
+       thisOctal%ionFrac(subcell,1) = 1.e-10
+       thisOctal%ionFrac(subcell,2) = 1.
+       thisOctal%temperature(subcell) = 10000.
     end if
 
-    thisOctal%temperature(subcell) = 10000.
+
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)

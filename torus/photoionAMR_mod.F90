@@ -1292,7 +1292,10 @@ end subroutine radiationHydro
                                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                     kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
                                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
-                                                              
+                                               
+                               
+
+               
                                if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
                                   call randomNumberGenerator(getDouble=r1)
                                   
@@ -4782,6 +4785,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
     call randomNumberGenerator(randomSeed=.true.)
 
+    
+
     absorbed = .false.
     escaped = .false.
 
@@ -5160,6 +5165,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
             kappaAbs=kappaAbsDust, kappaSca=kappaScaDust)
        kappaExt = kappaAbsDust + kappaScaDust
+
+!       if(grid%geometry == "imgTest") then
+!          write(*,*) "kappaExt",kappaExt
+!       end if
+
        thisPhoton%tau = thisPhoton%tau + tval * kappaExt
        thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
        if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
@@ -5208,6 +5218,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
             kappaAbs=kappaAbsDust, kappaSca=kappaScaDust)
        kappaExt = kappaAbsDust + kappaScaDust
+
+!       if(grid%geometry == "imgTest") then
+!          write(*,*) "kappaExt",kappaExt
+!       end if
+
 
        tau = kappaExt * tVal
 
@@ -5273,6 +5288,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
      call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal+1), totalProbArray(myRankGlobal+1))
      write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal+1)
+
 
      tArray = 0.d0
      call MPI_ALLREDUCE(totalEmissionArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
