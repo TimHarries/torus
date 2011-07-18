@@ -404,6 +404,9 @@ contains
 
   subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
        ngrain, abundance, grainname, thisDust)
+!DEC$ NOOPTIMIZE
+! This compiler directive disables optimisation in this subroutine, as  
+! ifort 12 was incorrectly setting up grid%oneKappaAbs and grid%oneKappaSca. 
     use mieDistCrossSection_mod, only: mieDistCrossSection
 
     implicit none
