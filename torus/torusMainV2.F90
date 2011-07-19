@@ -37,6 +37,8 @@ program torus
   use source_mod
   use random_mod
   use memory_mod
+  use zlib_mod
+
   type(GRIDTYPE) :: grid
 #ifdef MPI
    include 'mpif.h'  
@@ -63,6 +65,10 @@ program torus
   outputinfo     = .true.
   myRankIsZero   = .true.
 
+#ifdef USEZLIB
+  call test_compress()
+  stop
+#endif
 
   if (TorusMpi) then 
      if (myRankGlobal/=1) writeoutput  = .false.

@@ -3014,12 +3014,12 @@ end subroutine sumFluxes
        call writeInfo("Done", TRIVIAL)
     endif
 
-    if (readgrid) then
-       if(myrankglobal /= 0) then
-          call zeroPhiGas(grid%octreeRoot)
-          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-       endif
-    endif
+!    if (readgrid) then
+!       if(myrankglobal /= 0) then
+!          call zeroPhiGas(grid%octreeRoot)
+!          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+!       endif
+!    endif
 
 
     if (.not.readgrid) then
@@ -3118,9 +3118,9 @@ end subroutine sumFluxes
     iUnrefine = 0
 
 
-    write(plotfile,'(a)') "start.vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
+!    write(plotfile,'(a)') "start.vtk"
+!    call writeVtkFile(grid, plotfile, &
+!         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
 
     call findMassoverAllThreads(grid, initialMass)
 
@@ -7791,7 +7791,11 @@ end subroutine minMaxDepth
      do j = 1, nSource
         if (group(j) == 0) then
            newNSource = newNSource + 1
-           newSource(newNSource) = source(j)
+           newSource(newNSource)%mass = source(j)%mass
+           newSource(newNSource)%velocity = source(j)%velocity
+           newSource(newNSource)%position = source(j)%position
+           newSource(newNSource)%radius = source(j)%radius
+           newSource(newNSource)%age = source(j)%age
         endif
      enddo
 
@@ -7816,14 +7820,29 @@ end subroutine minMaxDepth
         newSource(newNSource)%mass = newMass
         newSource(newnSource)%velocity = (1.d0/newMass) * newVelocity 
         newSource(newnSource)%position = (1.d0/newMass) * newPosition
+        newSource(newnSource)%radius = rSol/1.d10
         newSource(newnSource)%age = newAge / dble(n)
-        call buildSphereNbody(newsource(newnsource)%position, grid%halfSmallestSubcell, newsource(newnsource)%surface, 20)
      enddo
 
-     source = newSource
-     nSource = newnSource
-     if (writeoutput) write(*,*) "Number of sources after merges: ",newnSource
+        
 
+     nSource = newnSource
+     source(1:nSource)%mass = newSource(1:nSource)%mass
+     source(1:nSource)%velocity = newSource(1:nSource)%velocity
+     source(1:nSource)%position = newSource(1:nSource)%position
+     source(1:nSource)%radius = newSource(1:nSource)%radius
+     source(1:nSource)%age = newSource(1:nSource)%age
+
+     do j = 1, nSource
+        call emptySurface(source(j)%surface)
+        call buildSphereNbody(source(j)%position, grid%halfSmallestSubcell, source(j)%surface, 20)
+     enddo
+
+     if (writeoutput) then
+        write(*,*) "Number of sources after merges: ",newnSource
+        call writesourcelist(source, nSource)
+        call writeVtkFilenBody(nsource, source, "nbody_temp.vtk", grid)
+     endif
      deallocate(newSource)
 666 continue
 
@@ -7835,7 +7854,7 @@ end subroutine minMaxDepth
      include 'mpif.h'
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
-     real(double) :: temp(7),rhomax
+     real(double) :: temp(8),rhomax
      integer :: nSource
      integer :: iThread
      integer :: j, tag, ierr
@@ -7852,13 +7871,13 @@ end subroutine minMaxDepth
            do j = 1, nHydroThreadsGlobal
               if (j /= myRankGlobal) then
                  temp(1) = 1.d30
-                 call mpi_send(temp, 7, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
+                 call mpi_send(temp, 8, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
               endif
            enddo
         else
            stillReceiving = .true.
            do while (stillReceiving)
-              call mpi_recv(temp, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+              call mpi_recv(temp, 8, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
               if (temp(1) > 1.d29) then
                  stillReceiving = .false.
                  exit
@@ -7871,6 +7890,7 @@ end subroutine minMaxDepth
                  source(nsource)%velocity%x = temp(5) 
                  source(nsource)%velocity%y = temp(6) 
                  source(nsource)%velocity%z = temp(7) 
+                 source(nsource)%radius = temp(8) 
                  call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
               endif
            enddo
@@ -7886,7 +7906,7 @@ end subroutine minMaxDepth
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: vel
     real(double) :: rhoJeans, bigJ, cs, e, rhomax
-    real(double) :: temp(7)
+    real(double) :: temp(8)
     integer :: nSource
     integer :: i, subcell, ierr, ithread, tag
     tag = 77
@@ -7922,6 +7942,7 @@ end subroutine minMaxDepth
              source(nsource)%velocity%x = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
              source(nsource)%velocity%y = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
              source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
+             source(nsource)%radius = rsol/1.d10
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
              vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
@@ -7940,10 +7961,11 @@ end subroutine minMaxDepth
              temp(5) = source(nsource)%velocity%x
              temp(6) = source(nsource)%velocity%y
              temp(7) = source(nsource)%velocity%z
+             temp(8) = source(nsource)%radius
              
              do iThread = 1, nHydroThreadsGlobal
                 if (iThread /= myRankGlobal) then
-                   call mpi_send(temp, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                   call mpi_send(temp, 8, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
                 endif
              enddo
              

@@ -6964,12 +6964,13 @@ CONTAINS
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
-
-    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+    thisOctal%temperature(subcell) = 10.d0
+    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+    thisOctal%pressure_i(subcell) = kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/(2.33d0*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
 
-    thisOctal%iEquationOfState(subcell) = 2
+    thisOctal%iEquationOfState(subcell) = 1
 
   end subroutine calcProtoBinDensity
     
@@ -11421,7 +11422,7 @@ end function readparameterfrom2dmap
              localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
              call locate(gamma, 8, localCooling, j)
              thisOctal%temperature(subcell) = logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j))
-             thisoctal%temperature(subcell) = max(0.0, min(5.0, thisOctal%temperature(subcell)))
+             thisoctal%temperature(subcell) = max(3.30, min(5.0, thisOctal%temperature(subcell)))
              thisOctal%temperature(subcell) = 10.d0**thisOctal%temperature(subcell)
           endif
        endif

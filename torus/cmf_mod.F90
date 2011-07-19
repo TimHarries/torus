@@ -1479,6 +1479,7 @@ contains
 #endif
     call setMicroturb(grid%octreeRoot, dble(vTurb))
 
+    call writeVTKfile(grid,"lte.vtk", valueTypeString = (/"ne","n4"/))
     call writeInfo("Done.")
 
     do i = 1, nAtom
@@ -2337,16 +2338,19 @@ contains
           end do
        else
 
-       iUpper = thisAtom(iatom)%iUpper(iTrans)
-       iLower = thisAtom(iatom)%iLower(iTrans)
-          nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
-          nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-
-          alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) 
-          call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
-
-          alphanu = alphanu * (nLower * Blu - nUpper * Bul)
-          thisOctal%chiLine(subcell) = alphanu * 1.d10
+          thisOctal%chiline(subcell) = 1.d-30
+          if (thisOctal%inflow(subcell)) then
+             iUpper = thisAtom(iatom)%iUpper(iTrans)
+             iLower = thisAtom(iatom)%iLower(iTrans)
+             nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+             nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+             
+             alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) 
+             call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
+             
+             alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+             thisOctal%chiLine(subcell) = alphanu * 1.d10
+          endif
 !          write(45,*) modulus(subcellCentre(thisOctal,subcell)), thisOctal%chiline(subcell)
           
        endif
@@ -2400,6 +2404,13 @@ contains
           end do
        else
 
+
+
+          thisOctal%kappaAbs(subcell,1) = 1.d-30
+          thisOctal%kappaSca(subcell,1) = 1.d-30
+          thisOctal%etaCont(subcell) = 1.d-30
+
+          if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 2000.0)) then
           do iatom = 1, size(thisAtom)
              do iLevel = 1, thisAtom(iatom)%nLevels-1
                 nStar = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
@@ -2407,12 +2418,6 @@ contains
                      thisOctal%atomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
              enddo
           enddo
-
-
-          thisOctal%kappaAbs(subcell,1) = 1.d-30
-          thisOctal%kappaSca(subcell,1) = 1.d-30
-          thisOctal%etaCont(subcell) = 1.d-30
-
           if (opticallyThickContinuum) then
              thisOctal%kappaAbs(subcell, 1) = bfOpacity(freq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), nstar, &
                   thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) * 1.d10
@@ -2422,7 +2427,7 @@ contains
                   dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell)) * 1.d10
           endif
 
-          
+       endif
        endif
     enddo
   end subroutine calcContinuumOpacities
@@ -3367,7 +3372,7 @@ contains
     call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
          "sourceline ",  &
     "ne         ", "jnu        ","haschild   ", &
-         "inflow     ","temperature","n4         "/))
+         "inflow     ","temperature"/))
 
 
     doCube = calcDataCube

@@ -39,6 +39,19 @@ module source_mod
 
   contains
 
+    subroutine writeSourceList(source, nSource)
+      type(SOURCETYPE) :: source(:)
+      integer :: nSource
+      integer :: i
+
+
+      do i = 1, nSource
+         write(*,'(i2.2, f7.4, f7.4, 1p,e12.3,e12.3,e12.3,e12.3)') i,source(i)%mass/msol, &
+              source(i)%radius*1.d10/rsol, source(i)%position%x, &
+              source(i)%position%y,source(i)%position%z
+      enddo
+    end subroutine writeSourceList
+
     subroutine writeSourceArray(filename)
       character(len=*) :: filename
       integer :: iSource

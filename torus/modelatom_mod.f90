@@ -723,6 +723,7 @@ contains
 
 
           if (t > 3.) then
+!             write(*,*) "t ",t, " ne ",ne
              N0overN1 = ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5
              n1overn2 = ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5
           else
