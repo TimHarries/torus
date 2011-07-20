@@ -3071,11 +3071,15 @@ end subroutine sumFluxes
        call setupQX(grid%octreeRoot, grid, direction)
 
        if (doselfGrav) then
+          write(*,*) myrank, " arrived at self grav "
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
+          write(*,*) myrank, " calling vtk write "
           call writeVtkFile(grid, "beforeselfgrav.vtk", &
                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
+          write(*,*) myrank, " calling zero phi gas"
           call zeroPhiGas(grid%octreeRoot)
+          write(*,*) myrank, " calling selfgrav"
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
 
           if (globalnSource > 0) then
@@ -7161,7 +7165,7 @@ end subroutine refineGridGeneric2
 !                  "u_i          ", &
 !                  "phi          "/))
 
-!             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
 

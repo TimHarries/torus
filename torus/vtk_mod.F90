@@ -1377,7 +1377,7 @@ contains
 !
 #ifdef MPI
 ! just return if the grid is decomposed and MPI job and this is rank zero thread
-!    if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+    if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 #endif
 
 
@@ -1430,7 +1430,7 @@ contains
 
 #ifdef MPI
     if (grid%splitOverMpi) then
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(amrCommunicator, ierr)
        allocate(iOffsetArray(1:nHydroThreadsGlobal))
        if (myrankGlobal /= 0) call countSubcellsMPI(grid, nVoxels, nSubcellArray = iOffsetArray)
        iOffsetArray(1) = 0
@@ -1481,7 +1481,7 @@ contains
 #ifdef MPI
     if (grid%splitOverMpi) then
     do iThread = 1, nThreadsGlobal
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(amrCommunicator, ierr)
        if (iThread == myRankGlobal) then
           call writePoints(grid, vtkFilename, nPoints, nCells, xml=writexml)
        endif
@@ -1495,7 +1495,7 @@ contains
     if (grid%splitOverMpi) then
 
     do iThread = 1, nThreadsGlobal
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(amrCommunicator, ierr)
        if (iThread == myRankGlobal) then
            call writeIndices(grid, vtkFilename, nPoints, nCells, iOffsetArray(myRankGlobal), xml=writexml)
        endif
@@ -1510,7 +1510,7 @@ contains
     if (grid%splitOverMpi) then
 
     do iThread = 1, nThreadsGlobal
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(amrCommunicator, ierr)
        if (iThread == myRankGlobal) then
            call writeOffsetsXML(grid, vtkFilename,  iOffsetArray(myRankGlobal))
        endif
@@ -1566,7 +1566,7 @@ endif
     if (grid%splitOverMpi) then
 
        do iThread = 1, nThreadsGlobal
-          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(amrCommunicator, ierr)
           if (iThread == myRankGlobal) then
              call writeValue(grid, vtkFilename, valueType(iType), writexml)
           endif

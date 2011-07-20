@@ -44,6 +44,7 @@ ifeq ($(SYSTEM), nagfor)
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
     CFITSIOLIBS = -L/Users/${USER}/cfitsio_nagfor/lib -lcfitsio 
+    ZLIBLIBS = -lz	
     EXE = torus.nagfor
     KNOWN_SYSTEM = yes
     memcheck = no
@@ -191,6 +192,7 @@ ifeq ($(SYSTEM), ompiosx)
     FASTFLAG = -O3
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
+    ZLIBLIBS = -lz	
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
