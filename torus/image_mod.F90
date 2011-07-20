@@ -551,7 +551,7 @@ module image_mod
 
 
      subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale)
-       use inputs_mod, only: nPixels
+!       use inputs_mod, only: nPixels
        real, intent(inout)      :: array(:,:)       
        real(double) :: inImage, strad, perAngstromToPerHz, scale
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^$
