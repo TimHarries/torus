@@ -1788,8 +1788,8 @@ contains
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
-    logical :: ok
-
+    logical :: ok, isRange
+    character(len=80) :: message
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
@@ -1797,14 +1797,21 @@ contains
     call getInteger("ninc", nInclination, cLine, fLine, nLines, &
          "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-    allocate(inclinations(nInclination))
-    call findRealArray("inclinations", inclinations, cLine, fLine, nLines, ok)
-    if (ok) then
-       call getRealArray("inclinations", inclinations, 1.0, cLine, fLine, nLines, &
-            "Inclinations (deg): ",90., ok, .false.)
-       inclinations(:) = inclinations(:) * degToRad
+    if (checkPresent("inclinations", cline, nlines)) then
+       call parameterDefinesRange("inclinations", firstInclination, lastInclination, isRange, cLine, fLine, nLines)
+       if (isRange) then 
+          write(message,'(a,f6.2,a,f6.2,a)') &
+               "SED inclination range is from ", firstInclination, " to ", lastInclination, " degrees"
+          call writeInfo(message,TRIVIAL)
+          firstInclination = firstInclination * degToRad
+          lastInclination = lastInclination * degToRad
+       else
+          allocate(inclinations(nInclination))
+          call getRealArray("inclinations", inclinations, 1.0, cLine, fLine, nLines, &
+               "Inclinations (deg): ",90., ok, .false.)
+          inclinations(:) = inclinations(:) * degToRad
+       end if
     else
-       deallocate(inclinations)
        call getReal("firstinc", firstInclination, 1.0, cLine, fLine, nLines, &
             "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
        firstInclination = firstInclination * degToRad
@@ -2088,6 +2095,35 @@ endif
  end do
  value = trim(value)
  end subroutine findString
+
+! Return the whole line containing a given keyword
+subroutine findLine(name, value, cLine, fLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ character(len=80) :: value
+ character(len=80) :: cLine(:)
+ logical :: fLine(:)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j, k
+
+ ok = .false.
+ do i = 1, nLines
+  j = len_trim(name)
+  k = index(cline(i)," ")-1
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (.not.ok) then
+        ok = .true.
+        value=(cLine(i))
+        fLine(i) = .true.
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
+  endif
+endif
+ end do
+ value = trim(value)
+ end subroutine findLine
 
 subroutine findRealArray(name, value, cLine, fLine, nLines, ok)
  implicit none
@@ -2447,6 +2483,44 @@ end subroutine getVector
        close(53)
     endif
   end subroutine testFileExists
+
+  subroutine parameterDefinesRange(name, firstVal, lastVal, isRange, cLine, fLine, nLines)
+
+    character(len=*), intent(in)  :: name 
+    real, intent(out)             :: firstVal
+    real, intent(out)             :: lastVal
+    logical, intent(out)          :: isRange
+    character(len=80), intent(in) :: cLine(:)
+    logical, intent(in)           :: fLine(:)
+    integer, intent(in)           :: nLines
+
+    character(len=80) :: thisString
+    logical           :: ok 
+    integer           :: i, j
+
+    call findLine(name, thisString, cLine, fLine, nLines, ok)
+
+! Look for .. to determine if this is a range of values 
+! The parameters file is 80 column maximum
+    isRange = .false. 
+    do i=1, 76
+       if (thisString(i:i+1) == "..") then 
+          isRange = .true.
+          thisString(i:i+1) = "  "
+          exit
+       end if
+    end do
+
+    if (isRange) then 
+       j = len_trim(name)
+       read(thisString(j+1:80),*) firstVal, lastVal
+    else
+       firstVal = -1.0e-33
+       lastVal  =  -1.0e-33
+       return
+    end if
+
+  end subroutine parameterDefinesRange
 
 end module inputs_mod
 
