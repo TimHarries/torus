@@ -5009,6 +5009,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           write(*,*) "theoretical ", theoretical
           close(123)
           call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", pointTest=.true.)
+       else if(grid%geometry == "imgTest") then
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", cylinderTest=.true.)
        else
           call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity")
        end if

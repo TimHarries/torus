@@ -519,7 +519,7 @@ module image_mod
 
 ! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
-     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, pointTest)
+     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, pointTest, cylinderTest)
        real, intent(inout)      :: array(:,:)
 !       real, intent(in)         :: lambda
        real         :: lambda
@@ -528,7 +528,7 @@ module image_mod
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
        real(double) :: nu, PerAngstromToPerHz, strad, scale
-       logical, optional :: pointTest
+       logical, optional :: pointTest, cylinderTest
 
 
        strad = (dx*1.d10/distance)**2
@@ -536,7 +536,7 @@ module image_mod
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
-       
+
        ! Factor of 1.0e20 converts dx to cm from Torus units
        array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
 
@@ -544,9 +544,42 @@ module image_mod
           call dumpPointTestData(array, strad, perAngstromToPerHz)
        end if
 
+       if(present(cylinderTesT)) then
+          call dumpLine(array, strad, perAngstromToPerHz, dx, scale)
+       end if
      end subroutine ConvertArrayToMJanskiesPerStr
 
+
+     subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale)
+       use inputs_mod, only: nPixels
+       real, intent(inout)      :: array(:,:)       
+       real(double) :: inImage, strad, perAngstromToPerHz, scale
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^$
+       real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
+       real(double) :: dx, r
+       integer :: i, j
+       logical, save :: firstTime=.true.
+
+       open (123, file="pixelFile.dat", status="unknown")
+
+       r = -((dx*201.)/2.d0) + (dx/2.d0)
+
+       do i = 1, 201
+          do j = 1, 201
+             inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
+             if(i == 101) then
+                write(123, *) r, inImage
+                r = r + dx
+             end if
+          end do
+       end do
+
+       close(123)
+       
+     end subroutine dumpLine
+
      subroutine dumpPointTestData(array, strad, perAngstromToPerHz)
+       use inputs_mod, only: nPixels
        real, intent(in)      :: array(:,:)
        real(double) :: inImage, strad, perAngstromToPerHz
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
@@ -578,8 +611,6 @@ module image_mod
                 end if
              end do
           end do
-
-
      end subroutine
 
 !
@@ -589,7 +620,7 @@ module image_mod
 !
 
 #ifdef USECFITSIO
-     subroutine writeFitsImage(image, filename, objectDistance, type, pointTest)
+     subroutine writeFitsImage(image, filename, objectDistance, type, pointTest, cylinderTest)
 
 ! Arguments
        
@@ -602,7 +633,7 @@ module image_mod
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
        real(double) :: scale,  dx, dy
-       logical, optional :: pointTest
+       logical, optional :: pointTest, cylinderTest
        logical :: simple,extend
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
@@ -673,7 +704,11 @@ module image_mod
 
       
        if(present(pointTest)) then
-          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, .true.)
+          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, &
+               pointTest=.true.)
+       else if(present(cylinderTest)) then
+          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, &
+               cylinderTest=.true.)
        else
           call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
        end if

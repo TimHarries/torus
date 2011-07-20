@@ -8,9 +8,9 @@ real, parameter :: pi=3.14159
 real, parameter :: angsToHz
 real, parameter :: scaleFac=1.e20
 real, parameter :: MJyConversionFactor=1.e17
-real :: j_to           !Total emission across grid
+real :: j_tot           !Total emission across grid
 real :: D              !Distance of observer from center of cylinder
-real :: R              !Radius of cylinder
+real :: R=3.e18              !Radius of cylinder
 real :: F_tot_p        !Total predicting flux
 real, allocatable :: F_s(:)            !Single cell flux
 real, allocatable :: A(:)              !Pixel value
@@ -75,7 +75,7 @@ do i = 1, line
 end do 
 
 !Read in values
-read(2, *, iostat=ierr) j_tot, D, R, steradPerPixel
+read(2, *, iostat=ierr) j_tot, D, steradPerPixel
 if(ierr /= 0) then
    print *, "Error reading from :" //valuesFile
    stop
