@@ -20,6 +20,7 @@ module image_mod
     real, pointer :: yAxisCentre(:) => null()
     real, pointer :: xAxisLH(:) => null()
     real, pointer :: yAxisBottom(:) => null()
+    integer, pointer :: nSamples(:,:) => null()
     integer :: nx
     integer :: ny
     real :: dx, dy
@@ -90,7 +91,7 @@ module image_mod
      allocate(initImage%pixel(1:nx,1:ny))
      allocate(initImage%vel(1:nx,1:ny))
      allocate(initImage%totWeight(1:nx,1:ny))
-
+     allocate(initImage%nSamples(1:nx,1:ny))
      allocate(initImage%xAxisCentre(1:nx))
      allocate(initImage%yAxisCentre(1:ny))
      allocate(initImage%xAxisLH(1:nx))
@@ -231,6 +232,9 @@ module image_mod
 
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
+
+        thisImage%nSamples(xPix, yPix) = thisImage%nSamples(xPix, yPix) + 1
+
      endif
 
      totalFlux = totalFlux + thisPhoton%stokes%i * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
@@ -519,8 +523,9 @@ module image_mod
 
 ! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
-     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, pointTest, cylinderTest)
+     subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, samplings, pointTest, cylinderTest)
        real, intent(inout)      :: array(:,:)
+       real, intent(inout)      :: samplings(:,:)
 !       real, intent(in)         :: lambda
        real         :: lambda
        real(double), intent(in) :: dx, distance
@@ -545,14 +550,15 @@ module image_mod
        end if
 
        if(present(cylinderTesT)) then
-          call dumpLine(array, strad, perAngstromToPerHz, dx, scale)
+          call dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
        end if
      end subroutine ConvertArrayToMJanskiesPerStr
 
 
-     subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale)
+     subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
 !       use inputs_mod, only: nPixels
        real, intent(inout)      :: array(:,:)       
+       real, intent(inout)      :: samplings(:,:)       
        real(double) :: inImage, strad, perAngstromToPerHz, scale
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^$
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
@@ -568,7 +574,7 @@ module image_mod
           do j = 1, 201
              inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
              if(i == 101) then
-                write(123, *) r, inImage
+                write(123, *) r, inImage, samplings(i,j)
                 r = r + dx
              end if
           end do
@@ -579,7 +585,7 @@ module image_mod
      end subroutine dumpLine
 
      subroutine dumpPointTestData(array, strad, perAngstromToPerHz)
-       use inputs_mod, only: nPixels
+ !      use inputs_mod, only: nPixels
        real, intent(in)      :: array(:,:)
        real(double) :: inImage, strad, perAngstromToPerHz
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
@@ -632,6 +638,7 @@ module image_mod
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
+       real, allocatable :: samplings(:,:)
        real(double) :: scale,  dx, dy
        logical, optional :: pointTest, cylinderTest
        logical :: simple,extend
@@ -695,22 +702,26 @@ module image_mod
              where (image%pixel%i /= 0.d0) 
                 array = sqrt(image%pixel%q**2 + image%pixel%u**2)
              end where
-          
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type
        end select
 
+
+
+
 !       if(lamStart = 0.d0) 
 
-      
+       samplings = 0
+
        if(present(pointTest)) then
           call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, &
-               pointTest=.true.)
+               samplings, pointTest=.true.)
        else if(present(cylinderTest)) then
+          samplings = image%nSamples
           call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, &
-               cylinderTest=.true.)
+               samplings, cylinderTest=.true.)
        else
-          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance)
+          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, samplings)
        end if
 
        call ftppre(unit,group,fpixel,nelements,array,status)

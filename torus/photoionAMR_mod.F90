@@ -4781,11 +4781,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     !THAW - dev
     real(double) :: weightSource,  sourceFac, theoretical
     integer :: nLams
+
 !    integer :: i
 
     call randomNumberGenerator(randomSeed=.true.)
-
-    
 
     absorbed = .false.
     escaped = .false.
@@ -4800,7 +4799,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     allocate(totalFluxArray(1:nThreadsGlobal-1))
     allocate(tempTotalFlux(1:nThreadsGlobal-1))
 
+
+
     totalFluxArray = 0.d0
+
 
     call zeroEtaCont(grid%octreeRoot)
     
@@ -5000,6 +5002,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
      call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1))
+
 #ifdef USECFITSIO
     if (myrankGlobal == 0) then
        if(grid%geometry == "point") then
