@@ -558,7 +558,7 @@ module image_mod
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double) :: dx, r
        integer :: i, j
-       logical, save :: firstTime=.true.
+!       logical, save :: firstTime=.true.
 
        open (123, file="pixelFile.dat", status="unknown")
 
