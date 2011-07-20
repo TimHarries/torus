@@ -65,10 +65,6 @@ program torus
   outputinfo     = .true.
   myRankIsZero   = .true.
 
-#ifdef USEZLIB
-  call test_compress()
-  stop
-#endif
 
   if (TorusMpi) then 
      if (myRankGlobal/=1) writeoutput  = .false.
@@ -94,6 +90,12 @@ program torus
 
 !  call testSuiteRandom()  
   call inputs()
+
+#ifdef USEZLIB
+
+#else
+  useBinaryXMLVTKfiles = .false.
+#endif
 
   call setupMicrophysics(grid)
 

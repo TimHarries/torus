@@ -9,12 +9,13 @@
 #    7. make trace=yes   : Make torus with ITAC profiling
 #    8. make openmp=yes  : Make torus with OpenMP 
 #    9. make coverage=yes: Generate coverage statistics with gnu compilers 
+#   10. make zlib=yes:   : Use z-lib compression libary to produce vtu files
 #-------------------------------------------------------------------------
 
 USEMKL  = no
 cfitsio = yes
 memcheck = yes
-zlib = no
+zlib = yes
 debug   = no
 profile = no
 static  = no
@@ -75,6 +76,7 @@ ifeq ($(SYSTEM), g95)
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
     CFITSIOLIBS = -lcfitsio
+    ZLIBLIBS = -lz	
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
     KNOWN_SYSTEM = yes
@@ -107,6 +109,7 @@ ifeq ($(SYSTEM), gfortran)
     else
         F95COMP = gfortran
     endif
+     ZLIBLIBS = -lz
     DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
@@ -198,6 +201,7 @@ ifeq ($(SYSTEM), ompi)
     DEBUGFLAG= -g3 -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
     CFITSIOLIBS = -lcfitsio
+    ZLIBLIBS = -lz
     EXE = torus.ompi
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -285,6 +289,7 @@ ifeq ($(SYSTEM), zen)
     STATICLIBS= -Bstatic
     STARLIBS= #-DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    ZLIBLIBS = -lz	
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
     KNOWN_SYSTEM=yes
@@ -430,6 +435,7 @@ ifeq ($(SYSTEM), darwin)
     F95COMP  = g95
     DEBUGFLAG= -g -fbounds-check -Wall
     FASTFLAG = -O3
+    ZLIBLIBS = -lz	
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS =  -L/usr/lib -lSystemStubs
     EXE = torus.darwin

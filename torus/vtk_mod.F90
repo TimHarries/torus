@@ -16,6 +16,7 @@ module vtk_mod
   use messages_mod
   use vector_mod
   use mpi_global_mod
+  use zlib_mod
 #ifdef PHOTOION
   use ion_mod, only: returnIonNumber
 #endif
@@ -47,19 +48,19 @@ contains
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
     if (writeHeader) then
        if (.not.xml) then
-          write(69,'(a,i12,a)') "POINTS ",nPoints, " float"
+          write(lunit,'(a,i12,a)') "POINTS ",nPoints, " float"
        else
-          write(69,'(a,i12,a,i12,a)') "<Piece NumberOfPoints='",nPoints,"' NumberOfCells='",nCells,"'>"
-          write(69,'(a)') "<Points>"
-          write(69,'(a)') "<DataArray type='Float32' Name='Position' NumberOfComponents='3' format='ascii'>"
+          write(lunit,'(a,i12,a,i12,a)') "<Piece NumberOfPoints='",nPoints,"' NumberOfCells='",nCells,"'>"
+          write(lunit,'(a)') "<Points>"
+          write(lunit,'(a)') "<DataArray type='Float32' Name='Position' NumberOfComponents='3' format='ascii'>"
        endif
     endif
 
 
     call recursiveWritePoints(grid%octreeRoot, lunit, grid)
     if (writeheader.and.xml) then
-       write(69,'(a)') "</DataArray>"
-       write(69,'(a)') "</Points>"
+       write(lunit,'(a)') "</DataArray>"
+       write(lunit,'(a)') "</Points>"
     endif
     close(lunit)
        
@@ -1028,7 +1029,6 @@ contains
                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
                        kappaSca=ksca, kappaAbs=kabs)
                   value = thisOctal%subcellSize * (ksca + kabs)
-!                  write(*,*) "sca ",thisOctal%subcellSize * ksca,ilambda,lambdasmooth
                   write(lunit, *) real(value)
 
                case("ross")
@@ -1730,6 +1730,93 @@ endif
       enddo
     end subroutine countVoxelsCylindrical
 
+   subroutine convertAndCompress(iBytes, iHeader, iArray64, iArray32, fArray32, iArray8)
+     integer(kind=bigInt), optional :: iArray64(:)
+     integer, optional :: iArray32(:)
+     integer(kind=1), optional :: iArray8(:)
+     real, optional :: fArray32(:)
+     integer(kind=1), pointer :: iBytes(:), iHeader(:),iBytesUncompressed(:)
+     integer  :: nBytes, nBytesUncompressed
+     integer(kind=4) :: i
+     integer(bigint), allocatable :: sizeCompressedBlock(:)
+     integer(kind=1), pointer :: thisBlock(:), iTemp(:)
+     integer :: iCurrent, blockSize, nBlocks, lastBlockSize
+     integer :: iStart, iEnd
+     integer(kind=1), pointer :: compressedBlock(:)
+     if (associated(iBytes)) deallocate(iBytes)
+     if (associated(iHeader)) deallocate(iHeader)
+
+     if (PRESENT(iArray64)) then
+        nBytes = 8 * SIZE(iarray64)
+        allocate(iBytesUncompressed(1:nBytes))
+        iBytesUncompressed = transfer(iArray64, iBytesUnCompressed)
+     endif
+
+     if (PRESENT(iArray32)) then
+        nBytes = 4 * SIZE(iarray32)
+        allocate(iBytesUncompressed(1:nBytes))
+        iBytesUncompressed = transfer(iArray32, iBytesUnCompressed)
+     endif
+
+     if (PRESENT(iArray8)) then
+        nBytes = SIZE(iarray8)
+        allocate(iBytesUncompressed(1:nBytes))
+        iBytesUncompressed = transfer(iArray8, iBytesUnCompressed)
+     endif
+
+     if (PRESENT(fArray32)) then
+        nBytes = 4 * SIZE(farray32)
+        allocate(iBytesUncompressed(1:nBytes))
+        iBytesUncompressed = transfer(fArray32, iBytesUnCompressed)
+     endif
+
+     nBytesUncompressed = SIZE(iBytesUncompressed, kind=bigint)
+
+     blockSize = 2**16
+     nBlocks = nBytesUncompressed / blockSize
+     lastBlockSize = nBytesUncompressed - nBlocks * blockSize 
+     if (lastBlockSize > 0) nBlocks = nBlocks + 1
+     if (lastBlockSize == 0) lastBlockSize = blockSize
+
+
+     allocate(sizeCompressedBlock(1:nBlocks))
+
+     allocate(iTemp(1:nBytesUncompressed))
+     iCurrent = 1
+     do i = 1, nBlocks
+        if (i < nBlocks) then
+           iStart = 1 + (i-1)*blockSize
+           iEnd = iStart + blockSize - 1
+           allocate(thisBlock(blockSize))
+        else
+           iStart = 1 + (i-1)*blockSize
+           iEnd = iStart + lastBlockSize - 1
+           allocate(thisBlock(lastBlockSize))
+        endif
+        thisBlock = iBytesUncompressed(iStart:iEnd)
+
+#ifdef USEZLIB
+        call compressBytes(thisBlock, SIZE(thisBlock, kind=bigint), compressedBlock, &
+             sizeCompressedBlock(i))
+#endif
+        iTemp(iCurrent:iCurrent+SizeCompressedBlock(i)-1) = compressedBlock(1:sizeCompressedBlock(i))
+        deallocate(thisBlock)
+        iCurrent = iCurrent + sizeCompressedblock(i)
+     enddo
+     allocate(iBytes(1:SUM(sizeCompressedBlock(1:nBlocks))))
+     iBytes(1:SIZE(ibytes)) = itemp(1:SIZE(iBytes))
+     deallocate(iTemp)
+
+     allocate(iHeader(1:(12 + nBlocks*4)))
+     iHeader(1 : 4) = transfer(nBlocks, iHeader(1 : 4))
+     iHeader(5 : 8) = transfer(blockSize, iHeader(5 : 8))
+     iHeader(9 :12) = transfer(lastBlockSize, iHeader(9:12))
+     do i = 1, nBlocks
+        iHeader(13 + (i-1)* 4: 13 + i*4 - 1) = transfer(sizeCompressedBlock(i), &
+             iHeader(13 + (i-1)* 4: 13 + i*4 - 1))
+     enddo
+
+   end subroutine convertAndCompress
 
   subroutine base64encode(writeheader, string, iCount, iArray32, iArray8, iArray64, float32, &
        inputnPad, inputiPad, outnpad, outipad, padend, nBytesHeader)
@@ -1774,8 +1861,7 @@ endif
        if (PRESENT(float32))    iArray(5:) = transfer(float32, iArray(5:))
        if (PRESENT(iArray8))    iArray(5:) = transfer(iArray8, iArray(5:))
        nBytes = nBytes + 4
-    endif
-    if ((.not.writeheader).and.present(inputnPad)) then
+    else if ((.not.writeheader).and.present(inputnPad)) then
        nBytes = nBytes + inputnPad
        allocate(iArray(1:nBytes))
        if (inputnPad > 0) then
@@ -1785,6 +1871,12 @@ endif
        if (PRESENT(iArray32))   iArray((inputnpad+1):) = transfer(iArray32, iArray((inputnpad+1):))
        if (PRESENT(float32))    iArray((inputnpad+1):) = transfer(float32, iArray((inputnpad+1):))
        if (PRESENT(iArray8))    iArray((inputnpad+1):) = transfer(iArray8, iArray((inputnpad+1):))
+    else
+       allocate(iArray(1:nBytes))
+       if (PRESENT(iArray64))   iArray = transfer(iArray64, iArray)
+       if (PRESENT(iArray32))   iArray = transfer(iArray32, iArray)
+       if (PRESENT(float32))    iArray = transfer(float32, iArray)
+       if (PRESENT(iArray8))    iArray = transfer(iArray8, iArray)
     endif
     allocate(string(1:((nBytes+4)*8/6)+20))
 
@@ -1794,7 +1886,6 @@ endif
        nPad = 3-mod(nBytes,3)
     endif
 
-!    write(*,*) iArray
     icount = 0
     do k = 1, nBytes,3
 
@@ -1902,14 +1993,15 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   integer(kind=1) :: int1
   Character(len=200) :: buffer
   character(len=1) :: lf
-  character, pointer :: pstring(:)
+  character, pointer :: pstring(:), pstring2(:)
   character(len=12) :: str1, str2
   logical :: vectorValue, scalarValue
   integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
-  integer :: nString
+  integer :: nString, nString2
   integer(kind=1), allocatable :: itest(:)
   real, allocatable :: float32(:)
   integer(kind=bigInt), allocatable :: itest64(:)
+  integer(kind=1), pointer :: iBytes(:) => null(), iHeader(:) => null()
 #ifdef MPI
   integer, allocatable :: nSubcellArray(:)
 #endif
@@ -2040,7 +2132,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      open(lunit, file=vtkFilename, form="unformatted",access="stream",status="replace")
      buffer = '<?xml version="1.0"?>'//lf
      write(lunit) trim(buffer)
-     buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf
+     buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">'//lf
      write(lunit) trim(buffer)
      buffer = '  <UnstructuredGrid>'//lf 
      write(lunit) trim(buffer)
@@ -2059,10 +2151,22 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   if (writeheader.and.(.not.grid%splitoverMPI)) then
      allocate(float32(1:(nPointsGlobal*3)))
      float32 = RESHAPE(points, (/SIZE(float32)/))
-     call base64encode(writeheader, pstring, nString, float32=float32)
+!     call base64encode(writeheader, pstring, nString, float32=float32)
+
+
+
      open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
-     write(lunit) pstring(1:nString)
-     deallocate(pString)
+!     write(lunit) pstring(1:nString)
+
+     call convertandcompress(iBytes, iHeader, farray32=float32)
+     call base64encode(.false., pstring, nString, iArray8=iHeader)
+     call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+     write(lunit) pstring(1:nString), pstring2(1:nString2)
+     deallocate(pString, pstring2)
+     deallocate(iBytes)
+
+
+!     deallocate(pString)
      deallocate(float32)
      close(lunit)
   else if (grid%splitOverMPI) then
@@ -2080,14 +2184,24 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      buffer = '      <Cells>'//lf
      write(lunit) trim(buffer)
 
-     buffer = '        <DataArray type="Int64" Name="connectivity" format="binary">'//lf
+     buffer = '        <DataArray type="Int64" Name="connectivity" format="binary"'// &
+          ' >'//lf
      write(lunit) trim(buffer)
      allocate(itest64(1:SIZE(connectivity)))
      itest64 = connectivity
-     call base64encode(writeheader, pstring, nString, iArray64=iTest64)
-     write(lunit) pstring(1:nString)
-     deallocate(pString)
-     deallocate(itest64)
+!     call base64encode(writeheader, pstring, nString, iArray64=iTest64)
+!     write(lunit) pstring(1:nString)
+!     deallocate(pString)
+!     deallocate(itest64)
+
+     call convertandcompress(iBytes, iHeader, iarray64=iTest64)
+     call base64encode(.false., pstring, nString, iArray8=iHeader)
+     call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+     write(lunit) pstring(1:nString), pstring2(1:nString2)
+     deallocate(pString, pstring2)
+     deallocate(itest64, iBytes)
+
+
      buffer = lf//'        </DataArray>'//lf
      write(lunit) trim(buffer)
 
@@ -2096,11 +2210,22 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      write(lunit) trim(buffer)
      allocate(itest64(1:SIZE(offsets)))
      itest64 = offsets
-     call base64encode(writeheader, pstring, nString, iArray64=itest64)
-     write(lunit) pstring(1:nString)
-     deallocate(pString)
-     deallocate(itest64)
-     buffer = lf//'        </DataArray>'//lf
+!     call base64encode(writeheader, pstring, nString, iArray64=itest64)
+!     write(lunit) pstring(1:nString)
+!     deallocate(pString)
+!     deallocate(itest64)
+     call convertandcompress(iBytes, iHeader, iarray64=iTest64)
+     call base64encode(.false., pstring, nString, iArray8=iHeader)
+     call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+     write(lunit) pstring(1:nString), pstring2(1:nString2)
+     deallocate(pString, pstring2)
+     deallocate(itest64, iBytes)
+ 
+
+
+
+
+    buffer = lf//'        </DataArray>'//lf
      write(lunit) trim(buffer)
 
 
@@ -2109,10 +2234,19 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
      allocate(itest(1:SIZE(cellTypes)))
      itest = cellTypes
-     call base64encode(writeheader, pstring, nString, iArray8=itest)
-     write(lunit) pstring(1:nString)
-     deallocate(pstring)
-     deallocate(itest)
+!     call base64encode(writeheader, pstring, nString, iArray8=itest)
+!     write(lunit) pstring(1:nString)
+!     deallocate(pstring)
+!     deallocate(itest)
+
+
+     call convertandcompress(iBytes, iHeader, iarray8=iTest)
+     call base64encode(.false., pstring, nString, iArray8=iHeader)
+     call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+     write(lunit) pstring(1:nString), pstring2(1:nString2)
+     deallocate(pString, pstring2)
+     deallocate(itest, iBytes)
+
      buffer = lf//'        </DataArray>'//lf
      write(lunit) trim(buffer)
 
@@ -2151,11 +2285,20 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            call getValues(grid, valueType(iValues), rarray)
            allocate(float32(1:nCellsGlobal))
            float32 = rarray(1,1:nCellsGlobal)
-           call base64encode(writeheader, pstring, nString, float32=float32)
+!           call base64encode(writeheader, pstring, nString, float32=float32)
            open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
-           write(lunit) pstring(1:nString)
+!           write(lunit) pstring(1:nString)
+
+           call convertandcompress(iBytes, iHeader, farray32=float32)
+           call base64encode(.false., pstring, nString, iArray8=iHeader)
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+           write(lunit) pstring(1:nString), pstring2(1:nString2)
+           deallocate(pString, pstring2)
+           deallocate(iBytes)
+
+
            close(lunit)
-           deallocate(pString)
+!           deallocate(pString)
            deallocate(float32)
            deallocate(rArray)
         else if (grid%splitOverMPI) then
@@ -2185,11 +2328,19 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            call getValues(grid, valueType(iValues), rarray)
            allocate(float32(1:nCellsGlobal*3))
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
-           call base64encode(writeheader,pstring, nString, float32=float32)
+!           call base64encode(writeheader,pstring, nString, float32=float32)
            open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
-           write(lunit) pstring(1:nString)
+
+           call convertandcompress(iBytes, iHeader, farray32=float32)
+           call base64encode(.false., pstring, nString, iArray8=iHeader)
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+           write(lunit) pstring(1:nString), pstring2(1:nString2)
+           deallocate(pString, pstring2)
+           deallocate(iBytes)
+
+!           write(lunit) pstring(1:nString)
            close(lunit)
-           deallocate(pString)
+!           deallocate(pString)
            deallocate(float32)
            deallocate(rArray)
         else if (grid%splitOverMPI) then
@@ -2642,18 +2793,17 @@ end subroutine writeXMLVtkFileAMR
     integer :: nCells, nCellsGlobal
     integer :: lunit
     integer :: iThread
-    logical :: padEnd
     integer :: ierr
-    integer :: nString
-    integer :: outnPad, outipad(2)
+    integer :: nString, nString2
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 51
-    integer :: tempInt(3), npad, ipad(2)
     real, pointer :: rArray(:,:)
     real, allocatable :: float32(:)
     character, pointer :: pstring(:)
-
+    character, pointer :: pstring2(:)
+    integer(kind=1), pointer :: iBytes(:) => null(), iHeader(:) => null()
     logical :: scalarvalue, vectorvalue
+    integer :: j, k
 
      select case (valueType)
      case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
@@ -2663,60 +2813,58 @@ end subroutine writeXMLVtkFileAMR
         scalarvalue = .true.
         vectorvalue = .false.
      end select
+
      
-     do iThread = 1, nHydroThreadsGlobal
-        if (myrankGlobal /= 0) then
-        if (iThread == myRankGlobal) then
-
-           nPad = 0
-           if (myRankGlobal /= 1) then
-              call MPI_RECV(tempInt, 3, MPI_INTEGER, iThread-1, tag, MPI_COMM_WORLD, status, ierr)
-              npad = tempInt(1) 
-              ipad(1:2) = tempInt(2:3)
-           endif
-           
-           outnpad = 0
-           padEnd = .false.
-           if (myRankGlobal == nHydroThreadsGlobal) padEnd = .true.
-           if (scalarValue) then
-              allocate(rArray(1:1, 1:nCells))
-              call getValues(grid, valueType, rarray)
-              allocate(float32(1:nCells))
-              float32 = rarray(1,1:nCells)
-              call base64encode(writeheader, pstring, nString, float32=float32, inputNpad=npad, inputipad=ipad, &
-                   outnpad=outnpad, outipad=outipad, padEnd=padEnd,nBytesHeader=nCellsGlobal*4)
-                 
-              open(lunit, file=vtkfilename, form="unformatted",access="stream",status="old",position="append")
-              write(lunit) pstring(1:nString)
-              close(lunit)
-              deallocate(pString)
-              deallocate(float32)
-              deallocate(rArray)
-           else
-              allocate(rArray(1:3, 1:nCells))
-              call getValues(grid, valueType, rarray)
-              allocate(float32(1:nCells*3))
-              float32 = RESHAPE(rarray, (/SIZE(float32)/))
-              call base64encode(writeheader, pstring, nString, float32=float32, inputNpad=npad, inputipad=ipad, &
-                   outnpad=outnpad, outipad=outipad, padEnd=padEnd, nBytesHeader=nCellsGlobal*4*3)
-
-              open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
-              write(lunit) pstring(1:nString)
-              close(lunit)
-              deallocate(pString)
-              deallocate(float32)
-              deallocate(rArray)
-           endif
-
-           if (myrankGlobal < nHydroThreadsGlobal) then
-              tempInt(1) = outnpad
-              tempInt(2:(1+outnPad)) = outipad(1:outnPad)
-              call MPI_SEND(tempInt, 3, MPI_INTEGER, iThread+1, tag, MPI_COMM_WORLD, ierr)
-           endif
+     if (myrankGlobal == 1) then
+        if (scalarValue) then
+           allocate(float32(1:nCellsGlobal))
+           allocate(rArray(1:1, 1:nCells))
+           call getValues(grid, valueType, rarray(1:1,1:nCells))
+           float32(1:nCells) = RESHAPE(rArray(1:1, 1:nCells),(/ncells/))
+           j = ncells + 1
+        else
+           allocate(float32(1:nCellsGlobal*3))
+           allocate(rArray(1:3, 1:nCells))
+           call getValues(grid, valueType, rarray)
+           float32(1:nCells*3) = RESHAPE(rarray, (/SIZE(float32(1:ncells*3))/))
+           j = ncells*3 + 1
         endif
+
+        do iThread = 2, nHydroThreadsGlobal
+           call MPI_RECV(k, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+           call MPI_RECV(float32(j:j+k-1), k, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+           j = j + k
+        enddo
+
+        call convertandcompress(iBytes, iHeader, farray32=float32)
+        call base64encode(.false., pstring, nString, iArray8=iHeader)
+        call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+        open(lunit, file=vtkFilename, form="unformatted",status="old", access="stream",position="append")
+        write(lunit) pstring(1:nString), pstring2(1:nString2)
+        close(lunit)
+        deallocate(pString, pstring2)
+        deallocate(iBytes, float32)
+
+     else
+     
+        if (scalarValue) then
+           allocate(float32(1:nCells))
+           allocate(rArray(1:1, 1:nCells))
+           call getValues(grid, valueType, rarray(1:1,1:nCells))
+           float32(1:nCells) = reshape(rArray(1:1, 1:nCells),(/ncells/))
+           j = nCells
+        else
+           allocate(float32(1:nCells*3))
+           allocate(rArray(1:3, 1:nCells))
+           call getValues(grid, valueType, rarray)
+           float32 = RESHAPE(rarray, (/SIZE(float32)/))
+           j = ncells*3
         endif
-     end do
-        call MPI_BARRIER(amrCommunicator, ierr)
+        call MPI_SEND(j, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(float32, j, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+     endif
+        
+     call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writeDomainDecomposed
 
   subroutine writePointsDecomposed(grid, vtkFilename, lunit, nPoints, nPointsGlobal)
@@ -2726,55 +2874,57 @@ end subroutine writeXMLVtkFileAMR
     integer :: nPoints, nPointsGlobal
     integer :: lunit
     integer :: iThread
-    logical :: padEnd
     integer :: ierr
-    integer :: nString
-    integer :: outnPad, outipad(2)
+    integer :: nString, nstring2
     integer :: status(MPI_STATUS_SIZE)
-    integer, parameter :: tag = 51
-    integer :: tempInt(3), npad, ipad(2)
+    integer, parameter :: tag = 55
     real, pointer :: rArray(:,:)
     real, allocatable :: float32(:)
     character, pointer :: pstring(:)
+    character, pointer :: pstring2(:)
+    integer(kind=1), pointer :: iBytes(:) => null(), iHeader(:) => null()
+    integer :: j, k
 
+     if (myrankGlobal == 1) then
+        allocate(float32(1:nPointsGlobal*3))
+        allocate(rArray(1:3, 1:nPoints))
+        call getPoints(grid, nPoints, rarray)
+        float32(1:nPoints*3) = RESHAPE(rarray(1:3,1:nPoints), (/SIZE(float32(1:nPoints*3))/))
+
+        j = nPoints*3 + 1
+        do iThread = 2, nHydroThreadsGlobal
+           call MPI_RECV(k, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+           call MPI_RECV(float32(j:(j+k-1)), k, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+           j = j + k
+        enddo
+
+        call convertandcompress(iBytes, iHeader, farray32=float32)
+        call base64encode(.false., pstring, nString, iArray8=iHeader)
+        call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+        open(lunit, file=vtkFilename, form="unformatted", status="old", access="stream", position="append")
+        write(lunit) pstring(1:nString), pstring2(1:nString2)
+        close(lunit)
+        deallocate(pString, pstring2)
+        deallocate(iBytes, float32)
+
+     else
      
-     do iThread = 1, nHydroThreadsGlobal
-        if (myrankGlobal /= 0) then
-           if (iThread == myRankGlobal) then
-              
-              nPad = 0
-              if (myRankGlobal /= 1) then
-                 call MPI_RECV(tempInt, 3, MPI_INTEGER, iThread-1, tag, MPI_COMM_WORLD, status, ierr)
-                 npad = tempInt(1) 
-                 ipad(1:2) = tempInt(2:3)
-              endif
-              
-              outnpad = 0
-              padEnd = .false.
-              if (myRankGlobal == nHydroThreadsGlobal) padEnd = .true.
-              allocate(rArray(1:3, 1:nPoints))
-              call getPoints(grid, nPoints, rArray)
-              allocate(float32(1:nPoints*3))
-              float32 = RESHAPE(rarray, (/SIZE(float32)/))
-              call base64encode(writeheader, pstring, nString, float32=float32, inputNpad=npad, inputipad=ipad, &
-                   outnpad=outnpad, outipad=outipad, padEnd=padEnd, nBytesHeader=nPointsGlobal*4*3)
-              
-              open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
-              write(lunit) pstring(1:nString)
-              close(lunit)
-              deallocate(pString)
-              deallocate(float32)
-              
-              if (myrankGlobal < nHydroThreadsGlobal) then
-                 tempInt(1) = outnpad
-                 tempInt(2:(1+outnPad)) = outipad(1:outnPad)
-                 call MPI_SEND(tempInt, 3, MPI_INTEGER, iThread+1, tag, MPI_COMM_WORLD, ierr)
-              endif
-           endif
-        endif
-     end do
+        allocate(float32(1:nPoints*3))
+        allocate(rArray(1:3, 1:nPoints))
+        call getPoints(grid, nPoints, rarray)
+        float32 = RESHAPE(rarray, (/SIZE(float32)/))
+        j = nPoints*3
+        call MPI_SEND(j, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(float32, j, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+     endif
+     
+
+
      call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writePointsDecomposed
+
+        
+
 #endif
 end module vtk_mod
 

@@ -1,5 +1,6 @@
 module zlib_mod
 
+  use kind_mod
   use, intrinsic :: ISO_C_BINDING
   implicit none
 
@@ -7,95 +8,61 @@ module zlib_mod
 
 
   interface
-     function compress(dest, destLen, source, sourceLen) bind(C, name = 'compress')
-       use, intrinsic :: ISO_C_BINDING
-       integer(c_int) :: compress
-       integer(c_int) :: sourceLen
-       integer(c_int) :: destLen
-       integer(c_char), pointer :: dest, source
-     end function compress
-  end interface
-
-  interface
      function compressBound(sourceLen) bind(C, name = 'compressBound')
        use, intrinsic :: ISO_C_BINDING
-       integer(c_int) :: sourceLen
+       integer(c_long), value :: sourceLen
+       integer(c_long) :: compressBound
      end function compressBound
   end interface
 
   interface
-     function deflateInit(stream, level) bind(C, name = 'deflateInit')
+     function compress(dest, destLen, source, sourceLen) bind(C, name = 'compress')
        use, intrinsic :: ISO_C_BINDING
-       type, bind(C) :: streamtype
-          integer(c_int) :: zalloc
-          integer(c_int) :: zfree
-          integer(c_int) :: opaque
-
-          character(c_char) :: msg(*)
-
-          integer(c_int) :: data_type
-          integer(c_int) :: adler
-          integer(c_int) :: reserved
-       end type 
-       integer(c_int) :: deflateInit
-       type(STREAMTYPE) :: stream
-       integer(c_int) :: level
-
-
-     end function deflateInit
+       type(c_ptr), value :: dest, source, destLen
+       integer(c_long), value ::  sourceLen
+       integer(c_int) :: compress
+     end function compress
   end interface
 
-  interface 
-     function gzOpen(path,mode) bind(C, NAME='gzopen') 
-       use, intrinsic :: ISO_C_BINDING 
-       character(c_char) path(*),mode(*) 
-       integer(c_int) :: gzOpen 
-     end function gzOpen
+  interface
+     function uncompress(dest, destLen, source, sourceLen) bind(C, name = 'uncompress')
+       use, intrinsic :: ISO_C_BINDING
+       type(c_ptr), value :: dest, source, destLen
+       integer(c_long), value ::  sourceLen
+       integer(c_int) :: uncompress
+     end function uncompress
   end interface
-  interface 
-     function gzGets(file,buf,len) bind(C, NAME='gzgets') 
-       use, intrinsic :: ISO_C_BINDING 
-       character(c_char) buf(*) 
-       type(c_ptr) :: gzGets 
-       integer(c_int),value :: file,len 
-     end function gzGets
-  end interface
-  interface 
-     function gzClose(file) bind(C, NAME='gzclose') 
-       use, intrinsic :: ISO_C_BINDING 
-       integer(c_int) :: gzClose 
-       integer(c_int),value :: file 
-     end function gzClose
-  end interface
-
-
 
   public
 
 contains
 
-  subroutine gzip_test()
+  subroutine compressBytes(inArray, nIn, outArray, nOut)
+    integer(kind=1), pointer :: inArray(:)
+    integer(bigint) :: nIn, nOut
+    integer(kind=1), pointer :: outArray(:)
+    type(c_ptr) :: c_outlen
+    integer :: j, iMax
+    integer(c_long), target :: outLen
+    integer(kind=1), pointer :: inBuffer(:), outBuffer(:)
+    type(c_ptr) :: c_inbuffer = c_null_ptr, c_outbuffer = c_null_ptr
 
-    type(c_ptr) :: buf 
-    character(len=10) :: mode = "r"//achar(0), file ="test.gz"//achar(0) 
-    integer(c_int) :: handle,sz,r 
-    character(kind=C_CHAR,len=100) :: buffer 
-    handle = gzOpen(file,mode) 
-    print *,handle 
-    sz=len(buffer) 
-    buf=gzGets(handle,buffer,sz) 
-    print *,buffer 
-    r=gzClose(handle) 
-    print *,r 
+    allocate(inBuffer(1:nIn))
+    inBuffer(1:nIn) = inArray(1:nIn)
+    iMax = compressBound(nIn)
+    allocate(outBuffer(1:iMax))
 
-  end subroutine gzip_test
+    c_inbuffer = c_loc(inBuffer(1))
+    c_outbuffer = c_loc(outBuffer(1))
+    outlen = iMax
+    c_outlen = c_loc(outlen)
+    j = compress(c_outbuffer, c_outLen, c_inbuffer, nIn)
+    nOut = outLen
+    allocate(outArray(1:nOut))
+    outArray(1:nOut) = outbuffer(1:nOut)
+    deallocate(inBuffer, outBuffer)
+  end subroutine compressBytes
 
-  subroutine test_compress()
-    integer(bigInt) :: iBytes, iSize
-    iBytes = 10000000000
-    iSize = compressBound(iBytes)
-    write(*,*) "max size ",isize
-  end subroutine test_compress
 #endif
 
 
