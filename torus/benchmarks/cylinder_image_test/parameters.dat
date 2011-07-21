@@ -12,6 +12,7 @@ amrgridcentrex  0.0000
 amrgridcentrey  0.0000
 amrgridcentrez  0.0000
 amrgridsize     1.d9
+griddistancescale 1.d10
 geometry        imgTest
 
 !
@@ -28,13 +29,13 @@ dustphysics      T
 !
 
 image T
-nphotons 2000000
+nphotons 40000000
 imagesize 8.25e5
-distance 1.
+distance 50.
 imagefile "testImage.fits"
 imagetype "freefree"
-lambdaimage 6562.8
-lamstart 6562.8
+lambdaimage 60000.
+lamstart 60000.
 npixels 201
 
 inclineX F

@@ -112,7 +112,7 @@ module image_mod
      initImage%pixel = STOKESVECTOR(0.,0.,0.,0.)
      initImage%nx = nx
      initImage%ny = ny
-
+     initImage%nSamples = 0
      initImage%vMin = vMin
      initImage%vMax = vMax
      initImage%vel = 0.
@@ -233,6 +233,9 @@ module image_mod
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
 
+
+!        print *, "dI = ", thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
+
         thisImage%nSamples(xPix, yPix) = thisImage%nSamples(xPix, yPix) + 1
 
      endif
@@ -325,10 +328,11 @@ module image_mod
        deallocate(thisImage%pixel)
        deallocate(thisImage%vel)
        deallocate(thisImage%totWeight)
+       deallocate(thisImage%nSamples)
        NULLIFY(thisImage%pixel)
        NULLIFY(thisImage%vel)
        NULLIFY(thisImage%totWeight)
-
+       NULLIFY(thisImage%nSamples)
      end subroutine freeImage
 
      subroutine freePVImage(thispvImage)
@@ -525,7 +529,7 @@ module image_mod
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
      subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, samplings, pointTest, cylinderTest)
        real, intent(inout)      :: array(:,:)
-       real, intent(inout)      :: samplings(:,:)
+       integer, intent(inout)      :: samplings(:,:)
 !       real, intent(in)         :: lambda
        real         :: lambda
        real(double), intent(in) :: dx, distance
@@ -558,7 +562,7 @@ module image_mod
      subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
 !       use inputs_mod, only: nPixels
        real, intent(inout)      :: array(:,:)       
-       real, intent(inout)      :: samplings(:,:)       
+       integer, intent(inout)      :: samplings(:,:)       
        real(double) :: inImage, strad, perAngstromToPerHz, scale
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^$
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
@@ -638,7 +642,7 @@ module image_mod
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       real, allocatable :: samplings(:,:)
+       integer, allocatable :: samplings(:,:)
        real(double) :: scale,  dx, dy
        logical, optional :: pointTest, cylinderTest
        logical :: simple,extend
@@ -648,6 +652,7 @@ module image_mod
 
 
        allocate(array(1:image%nx, 1:image%ny))
+       allocate(samplings(1:image%nx, 1:image%ny))
        call writeInfo("Writing fits image to: "//trim(filename),TRIVIAL)
        status=0
        !
@@ -1057,6 +1062,12 @@ module image_mod
      call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      thisImage%vel = reshape(tempRealArray2,SHAPE(thisImage%vel))
+
+     tempDoubleArray = reshape(thisImage%nSamples,(/SIZE(tempDoubleArray)/))
+     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     thisImage%nSamples = reshape(tempDoubleArray2,SHAPE(thisImage%nSamples))
+
 
      tempRealArray = reshape(thisImage%totWeight,(/SIZE(tempRealArray)/))
      call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
