@@ -1803,7 +1803,7 @@ endif
         deallocate(thisBlock)
         iCurrent = iCurrent + sizeCompressedblock(i)
      enddo
-     if (associated(compressBlock)) deallocate(compressedBlock)
+     if (associated(compressedBlock)) deallocate(compressedBlock)
      allocate(iBytes(1:SUM(sizeCompressedBlock(1:nBlocks))))
      iBytes(1:SIZE(ibytes)) = itemp(1:SIZE(iBytes))
      deallocate(iTemp)

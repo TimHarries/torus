@@ -7050,7 +7050,6 @@ CONTAINS
 
   subroutine calcShuDensity(thisOctal,subcell)
     use inputs_mod, only : gridDistanceScale
-    use utils_mod, only : alpha
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -11385,7 +11384,7 @@ end function readparameterfrom2dmap
 
   recursive subroutine assignTemperaturesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
     use inputs_mod, only : maxHartTemp
-    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    use magnetic_mod, only : inflowMahdavi
     real(double) :: astar, mdot, thisR, minRho, minr
     real(double) :: requiredMaxHeating, thisHeating, localCooling
     type(GRIDTYPE) :: grid
