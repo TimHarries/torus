@@ -1,2 +1,2 @@
 #/bin/csh
-echo 'character(len=10), parameter :: svnversion = "-'`svnversion`'"' > svn_version.h
+echo 'character(len=20), parameter :: svnversion = "-'`svnversion`'"' > svn_version.h
