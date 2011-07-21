@@ -1783,6 +1783,7 @@ endif
 
      allocate(iTemp(1:nBytesUncompressed))
      iCurrent = 1
+     allocate(compressedBlock(1:blockSize))
      do i = 1, nBlocks
         if (i < nBlocks) then
            iStart = 1 + (i-1)*blockSize
@@ -1803,7 +1804,7 @@ endif
         deallocate(thisBlock)
         iCurrent = iCurrent + sizeCompressedblock(i)
      enddo
-     if (associated(compressedBlock)) deallocate(compressedBlock)
+     deallocate(compressedBlock)
      allocate(iBytes(1:SUM(sizeCompressedBlock(1:nBlocks))))
      iBytes(1:SIZE(ibytes)) = itemp(1:SIZE(iBytes))
      deallocate(iTemp)
@@ -2209,12 +2210,11 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
      buffer = '        <DataArray type="Int64" Name="offsets" format="binary">'//lf
      write(lunit) trim(buffer)
+
+
      allocate(itest64(1:SIZE(offsets)))
      itest64 = offsets
-!     call base64encode(writeheader, pstring, nString, iArray64=itest64)
-!     write(lunit) pstring(1:nString)
-!     deallocate(pString)
-!     deallocate(itest64)
+
      call convertandcompress(iBytes, iHeader, iarray64=iTest64)
      call base64encode(.false., pstring, nString, iArray8=iHeader)
      call base64encode(.false., pstring2, nString2, iArray8=iBytes)
@@ -2370,7 +2370,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      write(lunit) trim(buffer)
      buffer = '</VTKFile>'//lf
      write(lunit) trim(buffer)
-     endfile(lunit)
      close(lunit)
   endif
 
