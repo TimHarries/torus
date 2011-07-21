@@ -1742,7 +1742,7 @@ endif
      integer(kind=1), pointer :: thisBlock(:), iTemp(:)
      integer :: iCurrent, blockSize, nBlocks, lastBlockSize
      integer :: iStart, iEnd
-     integer(kind=1), pointer :: compressedBlock(:)
+     integer(kind=1), pointer :: compressedBlock(:) => null()
      if (associated(iBytes)) deallocate(iBytes)
      if (associated(iHeader)) deallocate(iHeader)
 
@@ -1803,6 +1803,7 @@ endif
         deallocate(thisBlock)
         iCurrent = iCurrent + sizeCompressedblock(i)
      enddo
+     deallocate(compressedBlock)
      allocate(iBytes(1:SUM(sizeCompressedBlock(1:nBlocks))))
      iBytes(1:SIZE(ibytes)) = itemp(1:SIZE(iBytes))
      deallocate(iTemp)
