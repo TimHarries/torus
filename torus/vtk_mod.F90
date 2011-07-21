@@ -1890,8 +1890,8 @@ endif
 
 
     nPad = 0
-    if (mod(nBytes,3) /= 0) then
-       nPad = 3-mod(nBytes,3)
+    if (mod(nBytes,3_bigint) /= 0) then
+       nPad = 3-mod(nBytes,3_bigint)
     endif
 
     icount = 0
