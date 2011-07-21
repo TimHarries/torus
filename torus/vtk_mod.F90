@@ -1745,6 +1745,7 @@ endif
      integer(bigint) :: iStart, iEnd
      integer(kind=1), pointer :: compressedBlock(:) => null()
      integer :: i4
+     integer(kind=bigint) :: nBig
 
      if (associated(iBytes)) deallocate(iBytes)
      if (associated(iHeader)) deallocate(iHeader)
@@ -1774,8 +1775,8 @@ endif
      endif
 
      nBytesUncompressed = SIZE(iBytesUncompressed, kind=bigint)
-
-     blockSize = max(nBytesUncompressed/4, 2**16)
+     nbig = 2**16
+     blockSize = max(nBytesUncompressed/4, nbig)
      nBlocks = nBytesUncompressed / blockSize
      write(*,*) "Number of blocks ",nBlocks
      lastBlockSize = nBytesUncompressed - nBlocks * blockSize 
