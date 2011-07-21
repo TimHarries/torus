@@ -78,7 +78,7 @@ program torus
   call setVersion("V2.0")
   grid%version = torusVersion
   verbosityLevel = 5
-  call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)
+  call writeBanner("TORUS "//trim(torusVersion)//" model","-",IMPORTANT)
   call report_parallel_type
 
   ! For time statistics

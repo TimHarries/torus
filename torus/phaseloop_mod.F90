@@ -14,7 +14,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename, overrideInclinations)
 
   use kind_mod
-  use torus_version_mod
   use inputs_mod 
   use phasematrix_mod
   use disc_class

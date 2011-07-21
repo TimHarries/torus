@@ -1,12 +1,12 @@
 module torus_version_mod
 
-  character(len=10) :: torusVersion
-
   contains
     
     subroutine setVersion(v)
+      use constants_mod, only : torusVersion
+      include "svn_version.h"
       character(len=*) :: v
-      torusVersion = v
+      torusVersion = trim(v)//trim(svnversion)
     end subroutine setVersion
 
 end module torus_version_mod

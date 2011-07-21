@@ -1,6 +1,5 @@
 module gridio_mod
   use gridtype_mod
-  use torus_version_mod
   use kind_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math

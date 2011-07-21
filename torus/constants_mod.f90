@@ -3,10 +3,14 @@
 !
 
 module constants_mod
+
+
+
   
   use kind_mod
 
   public
+  character(len=10) :: torusVersion
   
   real, parameter :: reallySmall = 1.e-30
 

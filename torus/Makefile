@@ -556,7 +556,9 @@ endif
 # Source files
 #
 
-F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
+VERSIONSOURCE = torus_version_mod.f90 
+
+F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             sed_mod.f90 utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
@@ -579,7 +581,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             cmfgen_class.f90  \
             modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            nrtype.f90 nrutil.f90 magnetic_mod.f90 units_mod.f90 
+            nrtype.f90 nrutil.f90 magnetic_mod.f90 units_mod.f90 $(VERSIONSOURCE)
             
 
 
@@ -615,6 +617,7 @@ F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIF
 #
 #
 
+
 all: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
@@ -622,7 +625,6 @@ all: depends $(ALLOBJ)
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS)
-	    @echo "...done"
     else
 	    @echo ""
 	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
@@ -649,6 +651,7 @@ preprocess:
 	@echo "OpenMP = $(openmp)"
 	@echo "Debug  = $(debug)"
 
+
 depends: preprocess
 	@echo ""
 	@echo "Making dependency file..."
@@ -666,6 +669,13 @@ distclean: clean
 ctags:
 	@ctags --langmap='fortran:+(*.F90)' \
 	       *.f90 *.f *.F90
+
+svnver: 
+	    @echo "calling createsvnversion"
+	    @./createsvnversion.csh 
+	    @echo "...done"
+
+torus_version_mod.o: svnver $(VERSIONSOURCE)
 
 link: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
