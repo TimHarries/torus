@@ -1736,13 +1736,16 @@ endif
      integer(kind=1), optional :: iArray8(:)
      real, optional :: fArray32(:)
      integer(kind=1), pointer :: iBytes(:), iHeader(:),iBytesUncompressed(:)
-     integer  :: nBytes, nBytesUncompressed
+     integer (bigint) :: nBytes, nBytesUncompressed
      integer(kind=4) :: i
      integer(bigint), allocatable :: sizeCompressedBlock(:)
      integer(kind=1), pointer :: thisBlock(:), iTemp(:)
-     integer :: iCurrent, blockSize, nBlocks, lastBlockSize
-     integer :: iStart, iEnd
+     integer(bigint) :: iCurrent
+     integer :: blockSize, nBlocks, lastBlockSize
+     integer(bigint) :: iStart, iEnd
      integer(kind=1), pointer :: compressedBlock(:) => null()
+     integer :: i4
+
      if (associated(iBytes)) deallocate(iBytes)
      if (associated(iHeader)) deallocate(iHeader)
 
@@ -1772,8 +1775,9 @@ endif
 
      nBytesUncompressed = SIZE(iBytesUncompressed, kind=bigint)
 
-     blockSize = 2**16
+     blockSize = max(nBytesUncompressed/4, 2**16)
      nBlocks = nBytesUncompressed / blockSize
+     write(*,*) "Number of blocks ",nBlocks
      lastBlockSize = nBytesUncompressed - nBlocks * blockSize 
      if (lastBlockSize > 0) nBlocks = nBlocks + 1
      if (lastBlockSize == 0) lastBlockSize = blockSize
@@ -1814,9 +1818,11 @@ endif
      iHeader(5 : 8) = transfer(blockSize, iHeader(5 : 8))
      iHeader(9 :12) = transfer(lastBlockSize, iHeader(9:12))
      do i = 1, nBlocks
-        iHeader(13 + (i-1)* 4: 13 + i*4 - 1) = transfer(sizeCompressedBlock(i), &
+	i4 = sizeCompressedBlock(i)
+        iHeader(13 + (i-1)* 4: 13 + i*4 - 1) = transfer(i4, &
              iHeader(13 + (i-1)* 4: 13 + i*4 - 1))
      enddo
+     deallocate(iBytesUncompressed)
 
    end subroutine convertAndCompress
 
@@ -1829,17 +1835,17 @@ endif
     logical, optional :: padEnd
     integer :: npad
     integer,optional :: inputipad(:), outiPad(:)
-    integer :: j 
+    integer(bigint) :: j 
     real, optional :: float32(:)
     integer(bigInt), optional :: iarray64(:)
     integer, optional :: iarray32(:)
     integer(kind=1), optional :: iArray8(:)
     integer(kind=1), allocatable :: iArray(:)
     integer(kind=1) :: i6
-    integer :: iCount
+    integer(bigint) :: iCount
     integer :: ik, ik1, ik2, i32temp
     character, pointer :: string(:)
-    integer :: nBytes, k
+    integer(bigint) :: nBytes, k
     logical :: write32, dopadend
 
     if (PRESENT(outnpad)) outnpad = 0
@@ -1948,6 +1954,7 @@ endif
           string(iCount:iCount) = "="
        endif
     endif
+    deallocate(iArray)
   end subroutine base64encode
 
 function returnBase64Char(i) result(c)
@@ -1999,7 +2006,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   character(len=12) :: str1, str2
   logical :: vectorValue, scalarValue
   integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
-  integer :: nString, nString2
+  integer(bigint) :: nString, nString2
   integer(kind=1), allocatable :: itest(:)
   real, allocatable :: float32(:)
   integer(kind=bigInt), allocatable :: itest64(:)
@@ -2199,7 +2206,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      call convertandcompress(iBytes, iHeader, iarray64=iTest64)
      call base64encode(.false., pstring, nString, iArray8=iHeader)
      call base64encode(.false., pstring2, nString2, iArray8=iBytes)
-     write(lunit) pstring(1:nString), pstring2(1:nString2)
+     write(lunit) pstring(1:nString)
+     write(lunit) pstring2(1:nString2)
      deallocate(pString, pstring2)
      deallocate(itest64, iBytes)
 
@@ -2218,7 +2226,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      call convertandcompress(iBytes, iHeader, iarray64=iTest64)
      call base64encode(.false., pstring, nString, iArray8=iHeader)
      call base64encode(.false., pstring2, nString2, iArray8=iBytes)
-     write(lunit) pstring(1:nString), pstring2(1:nString2)
+     write(lunit) pstring(1:nString)
+     write(lunit) pstring2(1:nString2)
      deallocate(pString, pstring2)
      deallocate(itest64, iBytes)
  
@@ -2794,7 +2803,7 @@ end subroutine writeXMLVtkFileAMR
     integer :: lunit
     integer :: iThread
     integer :: ierr
-    integer :: nString, nString2
+    integer(bigint) :: nString, nString2
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 51
     real, pointer :: rArray(:,:)
@@ -2843,7 +2852,7 @@ end subroutine writeXMLVtkFileAMR
         write(lunit) pstring(1:nString), pstring2(1:nString2)
         close(lunit)
         deallocate(pString, pstring2)
-        deallocate(iBytes, float32)
+        deallocate(iBytes, float32, rarray)
 
      else
      
@@ -2862,6 +2871,7 @@ end subroutine writeXMLVtkFileAMR
         endif
         call MPI_SEND(j, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
         call MPI_SEND(float32, j, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+        deallocate(float32, rArray)
      endif
         
      call MPI_BARRIER(amrCommunicator, ierr)
@@ -2875,7 +2885,7 @@ end subroutine writeXMLVtkFileAMR
     integer :: lunit
     integer :: iThread
     integer :: ierr
-    integer :: nString, nstring2
+    integer(bigint) :: nString, nstring2
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 55
     real, pointer :: rArray(:,:)
@@ -2905,7 +2915,7 @@ end subroutine writeXMLVtkFileAMR
         write(lunit) pstring(1:nString), pstring2(1:nString2)
         close(lunit)
         deallocate(pString, pstring2)
-        deallocate(iBytes, float32)
+        deallocate(iBytes, float32, rArray)
 
      else
      
@@ -2916,6 +2926,7 @@ end subroutine writeXMLVtkFileAMR
         j = nPoints*3
         call MPI_SEND(j, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
         call MPI_SEND(float32, j, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+        deallocate(float32, rArray)
      endif
      
 
