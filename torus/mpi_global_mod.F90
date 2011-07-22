@@ -37,7 +37,7 @@ contains
     elseif (TorusOpenmp) then 
        call  writeInfo('Using OpenMP', FORINFO)
     elseif (TorusSerial) then
-       call  writeInfo('No parallelsim is in use', FORINFO)
+       call  writeInfo('No parallelism is in use', FORINFO)
     end if
 
   end subroutine report_parallel_type
