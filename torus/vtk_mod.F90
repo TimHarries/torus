@@ -1776,9 +1776,9 @@ endif
 
      nBytesUncompressed = SIZE(iBytesUncompressed, kind=bigint)
      nbig = 2**16
-     blockSize = max(nBytesUncompressed/4, nbig)
+!     blockSize = max(nBytesUncompressed/4, nbig)
+     blockSize = 2**15
      nBlocks = nBytesUncompressed / blockSize
-     write(*,*) "Number of blocks ",nBlocks
      lastBlockSize = nBytesUncompressed - nBlocks * blockSize 
      if (lastBlockSize > 0) nBlocks = nBlocks + 1
      if (lastBlockSize == 0) lastBlockSize = blockSize
