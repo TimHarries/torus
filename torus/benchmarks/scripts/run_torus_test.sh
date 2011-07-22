@@ -45,7 +45,8 @@ export TORUS_JOB_DIR=./
 
 case ${SYSTEM} in
     ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    nagfor|gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 &;;
+    gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 &;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
