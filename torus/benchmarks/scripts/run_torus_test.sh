@@ -14,7 +14,7 @@ ln -s ${TEST_DIR}/torus/* .
 case ${SYSTEM} in
     gfortran) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes >> ${log_file} 2>&1;;
     ompiosx) /usr/bin/make debug=${USEDEBUGFLAGS} openmp=yes >> ${log_file} 2>&1;;
-    *) /usr/bin/make debug=${USEDEBUGFLAGS} >> ${log_file} 2>&1;;
+    *) /usr/bin/make debug=${USEDEBUGFLAGS} zlib=no >> ${log_file} 2>&1;;
 esac
 
 if [[ $? -eq 0 ]]; then
@@ -94,6 +94,15 @@ mpirun -np 3 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
 ln -s tune.dat tune_${THIS_BENCH}.txt
 }
 
+# Run Torus with a domain decomposed grid.  
+run_dom_decomp_2D()
+{
+cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
+ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
+mpirun -np 9 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
+ln -s tune.dat tune_${THIS_BENCH}.txt
+}
+
 run_sphbench()
 {
 cd ${WORKING_DIR}/benchmarks/sphbench
@@ -153,6 +162,16 @@ check_hII()
 echo Compiling comparelex code
 ${TORUS_FC} -o comparelex comparelex.f90
 ./comparelex
+}
+
+check_image()
+{
+echo "Generating analytical solution"
+${TORUS_FC} -o analytical analytical.dat 
+./analytical
+echo "Checking Torus result"
+${TORUS_FC} -o comparison comparison.f90
+./comparison
 }
 
 prepare_run()
@@ -239,6 +258,18 @@ for sys in ${SYS_TO_TEST}; do
 	    cat check_log_${SYSTEM}_hII_MPI.txt
 	    echo ;;
 	*) echo "Domain decomposed HII region does not run on this system. Skipping"
+	    echo ;;
+    esac
+
+# Imaging test
+    case ${SYSTEM} in
+	ompi|zen)  echo "Running imaging benchmark"
+	    export THIS_BENCH=cylinder_image_test
+	    run_dom_decomp_2D
+	    check_image > check_log_${SYSTEM}_image.txt 2>&1 
+	    cat check_log_${SYSTEM}_image.txt
+	    echo ;;
+	*) echo "Imaging benchmark does not run on this system. Skipping"
 	    echo ;;
     esac
 
@@ -398,7 +429,7 @@ done
 case ${MODE} in 
 
     daily) export SYS_TO_TEST="ompi gfortran ompiosx"
-           export BUILD_ONLY="g95 nagfor"
+           export BUILD_ONLY="nagfor"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
@@ -408,7 +439,7 @@ case ${MODE} in
 	   echo;;
 
     build) export SYS_TO_TEST=" "
-           export BUILD_ONLY="g95 nagfor ompi gfortran ompiosx"
+           export BUILD_ONLY="nagfor ompi gfortran ompiosx"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="g95"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
