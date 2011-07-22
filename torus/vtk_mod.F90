@@ -1819,7 +1819,7 @@ endif
      iHeader(5 : 8) = transfer(blockSize, iHeader(5 : 8))
      iHeader(9 :12) = transfer(lastBlockSize, iHeader(9:12))
      do i = 1, nBlocks
-	i4 = sizeCompressedBlock(i)
+        i4 = sizeCompressedBlock(i)
         iHeader(13 + (i-1)* 4: 13 + i*4 - 1) = transfer(i4, &
              iHeader(13 + (i-1)* 4: 13 + i*4 - 1))
      enddo
@@ -1844,7 +1844,7 @@ endif
     integer(kind=1), allocatable :: iArray(:)
     integer(kind=1) :: i6
     integer(bigint) :: iCount
-    integer :: ik, ik1, ik2, i32temp
+    integer :: ik, ik1, ik2, i32temp, i4
     character, pointer :: string(:)
     integer(bigint) :: nBytes, k
     logical :: write32, dopadend
@@ -1863,7 +1863,8 @@ endif
        if (PRESENT(nBytesHeader)) then
           iarray(1:4) = transfer(nBytesHeader, iarray(1:4))
        else
-          iarray(1:4) = transfer(nBytes, iarray(1:4))
+          i4 = nBytes
+          iarray(1:4) = transfer(i4, iarray(1:4))
        endif
        if (PRESENT(iArray64))   iArray(5:) = transfer(iArray64, iArray(5:))
        if (PRESENT(iArray32))   iArray(5:) = transfer(iArray32, iArray(5:))
