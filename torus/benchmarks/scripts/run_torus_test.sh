@@ -45,7 +45,7 @@ export TORUS_JOB_DIR=./
 
 case ${SYSTEM} in
     ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 &;;
+    nagfor|gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 &;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
@@ -124,7 +124,7 @@ ${TORUS_FC} -o comparelex comparelex.f90
 check_image()
 {
 echo "Generating analytical solution"
-${TORUS_FC} -o analytical analytical.dat 
+${TORUS_FC} -o analytical analytical.f90
 ./analytical
 echo "Checking Torus result"
 ${TORUS_FC} -o comparison comparison.f90
@@ -189,7 +189,7 @@ for sys in ${SYS_TO_TEST}; do
 	exit 1
     fi
 
-    export WORKING_DIR=${TEST_DIR}/benchmarks_${SYSTEM}
+    export WORKING_DIR=${TEST_DIR}/benchmarks_${sys}
     mkdir ${WORKING_DIR}
     cd    ${WORKING_DIR} 
     cp -r ${TEST_DIR}/torus/benchmarks . 

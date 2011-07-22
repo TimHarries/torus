@@ -24,25 +24,10 @@ do
     fi
 done
 
-echo  >> ${LOG_FILE}
-echo "Checking if memory has been freed OK ..." >> ${LOG_FILE}
-echo  >> ${LOG_FILE}
-for file in benchmarks_ompi/benchmarks/*/run_log*
-do
-    num_not_freed=`/usr/bin/grep "Remaining memory:" ${file} | /usr/bin/wc -l`
-    if [[ ${num_not_freed} -gt 0 ]]; then
-	this_file=`basename ${file}`
-	echo "WARNING: Unfreed memory in ${this_file}" >> ${LOG_FILE}
-    fi
-done
-echo >> ${LOG_FILE}
-echo "Finished checking memory" >> ${LOG_FILE}
-echo  >> ${LOG_FILE}
-
 subject_line=" " 
 
 # Test for success of disc benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/disc/check_log_ompi_disc.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc/check_log_gfortran_disc.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
@@ -52,7 +37,7 @@ else
 fi
 
 # Test for success of molebench
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/molebench/check_log_ompi_molebench.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_gfortran_molebench.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
@@ -62,7 +47,7 @@ else
 fi
 
 # Test for success of hydro benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/hydro/check_log_ompi_hydro.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/hydro/check_log_ompiosx_hydro.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} Hydro benchmark successful. "
 else
@@ -70,7 +55,7 @@ else
 fi
 
 # Test for success of hII region benchmark
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/HII_region/check_log_ompi_hII.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx-openmp/benchmarks/HII_region/check_log_ompiosx_hII.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/HII_region/check_log_gfortran_hII.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/HII_region/check_log_ompiosx_hII.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
@@ -80,11 +65,19 @@ else
 fi
 
 # Test for success of domain decomposed hII region benchmark                                                                  
-num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompi/benchmarks/HII_regionMPI/check_log_ompi_hII_MPI.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/HII_regionMPI/check_log_ompiosx_hII_MPI.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} MPI HII region benchmark successful. "
 else
     subject_line="${subject_line} MPI HII region benchmark failed. "
+fi
+
+# Test for success of imaging benchmark
+num_success=`/usr/bin/grep "Test Successful" benchmarks_ompiosx/benchmarks/cylinder_image_test/check_log_ompiosx_image.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    subject_line="${subject_line} Image benchmark successful. "
+else
+    subject_line="${subject_line} Image benchmark failed. "
 fi
 
 # Move log file
