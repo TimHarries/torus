@@ -1020,8 +1020,9 @@ module image_mod
 #ifdef MPI
 ! Gather an MPI distributed image. 
   subroutine collateImages(thisImage)
+    use mpi
     implicit none
-    include 'mpif.h'
+
     type(IMAGETYPE) :: thisImage
     real, allocatable :: tempRealArray(:), tempRealArray2(:)
     real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:)
