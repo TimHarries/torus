@@ -1709,6 +1709,7 @@ end subroutine radiationHydro
 
  deallocate(nSaved)
  deallocate(photonPacketStack)
+ deallocate(nEscapedArray)
  deallocate(buffer)
 end subroutine photoIonizationloopAMR
 
