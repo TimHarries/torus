@@ -69,12 +69,11 @@ contains
 
     recursive subroutine recursiveWritePoints(thisOctal,lunit, grid)
       use octal_mod, only: returndPhi
+#ifdef MPI
+      use mpi
+#endif
 
       type(OCTAL), pointer :: thisOctal, child
-
-#ifdef MPI
-      include 'mpif.h'  
-#endif
       type(GRIDTYPE) :: grid
       integer :: lunit
       integer :: subcell, i
@@ -194,12 +193,12 @@ contains
 
     recursive subroutine recursiveGetPoints(grid, thisOctal,nPoints, points)
       use octal_mod, only: returndPhi
+#ifdef MPI
+      use mpi
+#endif
 
       type(OCTAL), pointer :: thisOctal, child
 
-#ifdef MPI
-      include 'mpif.h'  
-#endif
       type(GRIDTYPE) :: grid
       real :: points(:,:)
       integer :: nPoints
@@ -400,12 +399,12 @@ contains
   contains
 
     recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset, grid, xml)
+#ifdef MPI
+      use mpi
+#endif
+
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
-
-#ifdef MPI
-      include 'mpif.h'  
-#endif
       type(GRIDTYPE) :: grid
       integer :: lunit
       integer :: subcell, i,j,n
@@ -533,11 +532,12 @@ contains
   contains
 
     recursive subroutine recursivewriteOffsetsXML(thisOctal,lunit, nCount, iOffset, grid)
+#ifdef MPI
+      use mpi
+#endif
+
       type(OCTAL), pointer :: thisOctal, child
 
-#ifdef MPI
-      include 'mpif.h'  
-#endif
       type(GRIDTYPE) :: grid
       integer :: lunit
       integer :: subcell, i,j,n
@@ -596,11 +596,11 @@ contains
   contains
 
     recursive subroutine getOffsetsRecursive(thisOctal, nCount, offsets, iOffset, grid)
+#ifdef MPI
+      use mpi
+#endif
       type(OCTAL), pointer :: thisOctal, child
 
-#ifdef MPI
-      include 'mpif.h'  
-#endif
       type(GRIDTYPE) :: grid
       integer :: subcell, i,j,n
       integer :: iOffset, nCount
@@ -703,11 +703,11 @@ contains
 
     recursive subroutine recursiveWriteValue(thisOctal, valueType, grid, xml)
       use inputs_mod, only : lambdasmooth
+#ifdef MPI
+      use mpi
+#endif
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
-#ifdef MPI
-      include 'mpif.h'  
-#endif
       type(GRIDTYPE), intent(in) :: grid
       type(VECTOR) :: rVec, vel
       integer :: lunit = 69
@@ -1328,7 +1328,7 @@ contains
   subroutine writeVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString, xml)
     use inputs_mod, only : cylindrical, usebinaryxmlvtkfiles
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
 #endif
     type(GRIDTYPE) :: grid
     character(len=*) :: vtkFilename
@@ -1980,7 +1980,7 @@ end function returnBase64Char
 
 subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString)
 #ifdef MPI
-  include 'mpif.h'
+  use mpi
 #endif
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
@@ -2798,7 +2798,7 @@ end subroutine writeXMLVtkFileAMR
 
 #ifdef MPI
   subroutine writeDomainDecomposed(valueType, grid, vtkFilename, lunit, nCells, nCellsGlobal)
-    include 'mpif.h'
+    use mpi
     character(len=*) :: valueType, vtkFilename
     type(GRIDTYPE) :: grid
     integer :: nCells, nCellsGlobal
@@ -2880,7 +2880,7 @@ end subroutine writeXMLVtkFileAMR
    end subroutine writeDomainDecomposed
 
   subroutine writePointsDecomposed(grid, vtkFilename, lunit, nPoints, nPointsGlobal)
-    include 'mpif.h'
+    use mpi
     character(len=*) ::vtkFilename
     type(GRIDTYPE) :: grid
     integer :: nPoints, nPointsGlobal

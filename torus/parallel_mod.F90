@@ -17,9 +17,9 @@ contains
     ! this routine will divide a task into many small blocks, and
     !   hand them out to processes that request work.
   
+    use mpi
     use inputs_mod, only: blockhandout
     implicit none
-    include 'mpif.h'  
   
     integer, intent(in) :: nProc    ! the number of processes
     integer, intent(in) :: blockDivFactor ! used to set block size
@@ -182,9 +182,9 @@ contains
   subroutine mpiGetBlock(myRank,startUnit,endUnit,allDone,tag,setDebug)
     ! this requests a work unit from the root process (which runs mpiBlockHandout)
   
+    use mpi
     use inputs_mod, only: blockhandout
     implicit none
-    include 'mpif.h'  
   
     integer, intent(in) :: myRank
     integer, intent(out) :: startUnit, endUnit
@@ -261,10 +261,10 @@ contains
 
   subroutine torus_mpi_barrier(message)
 
+    use mpi
     USE mpi_global_mod, ONLY: myRankGlobal
 
     implicit none
-    include 'mpif.h'
 
     character(len=*), optional, intent(in) :: message 
     integer :: ierr
@@ -306,11 +306,13 @@ contains
 ! D. Acreman, September 2008
 
   subroutine torus_abort(message)
-
+#ifdef MPI
+    use mpi
+#endif
     implicit none
 
 #ifdef MPI
-    include 'mpif.h'
+    integer, parameter :: return_code=99
     integer :: ierr
 #endif
 
@@ -323,7 +325,7 @@ contains
     end if
 
 #ifdef MPI
-    call mpi_abort(MPI_COMM_WORLD, ierr)
+    call mpi_abort(MPI_COMM_WORLD, return_code, ierr)
 #else
     STOP
 #endif

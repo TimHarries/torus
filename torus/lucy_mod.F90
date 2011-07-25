@@ -37,11 +37,10 @@ contains
     use gridio_mod, only: writeAMRgrid
 #ifdef MPI
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+    use mpi
 #endif
     implicit none
-#ifdef MPI
-    include 'mpif.h'
-#endif
+
     type(GRIDTYPE) :: grid
     integer :: nSource
     integer :: iSmoothLam
@@ -2226,8 +2225,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   !
   recursive subroutine update_octal_MPI(thisOctal, grid)
     use mpi_global_mod, only: nThreadsGlobal
+    use mpi
     implicit none
-    include 'mpif.h'
 
     type(gridtype) :: grid
     type(octal), pointer  :: thisOctal
@@ -2271,8 +2270,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
   subroutine updateGridMPI(grid)
 !    use inputs_mod, only : storeScattered
+    use mpi
     implicit none
-    include 'mpif.h'
+
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
     real, allocatable :: nCrossings(:)
@@ -2795,7 +2795,7 @@ subroutine setBiasOnTau(grid, iLambda)
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
-    include 'mpif.h'
+    use mpi
 #endif
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal

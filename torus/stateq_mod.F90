@@ -2891,13 +2891,12 @@ contains
     USE inputs_mod, ONLY: LyContThick, statEq1stOctant
 #ifdef MPI
     USE inputs_mod, ONLY: blockHandout
+    use mpi
 #endif
     use parallel_mod
 
     implicit none
-#ifdef MPI
-    include 'mpif.h'
-#endif
+
     type(GRIDTYPE),intent(inout):: grid      
     logical,intent(in)          :: lte           ! true if lte conditions
     integer,intent(in)          :: nLower, nUpper! level populations
@@ -3115,10 +3114,10 @@ contains
     !   equilibrium. 
     use messages_mod, only : myRankIsZero
     use surface_mod, only: photoFluxIntegral
-
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
 #endif
+
     type(octalWrapper), intent(inout), dimension(:) :: octalArray
     logical, intent(in) :: setupCoeffs  ! whether to store the departure 
                                         !   coefficients in the octal structure.
@@ -3535,11 +3534,11 @@ contains
     USE amr_mod
     USE inputs_mod, ONLY: LyContThick, statEq1stOctant, lamLine
     use parallel_mod
-
-    implicit none
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
 #endif
+    implicit none
+
     type(GRIDTYPE),intent(inout):: grid      
     logical,intent(in)          :: lte           ! true if lte conditions
     integer,intent(in)          :: nLower, nUpper! level populations
@@ -3760,10 +3759,10 @@ contains
     !   equilibrium. 
     use messages_mod, only : myRankIsZero
     use surface_mod, only: photoFluxIntegral
-
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
 #endif
+
     type(octalWrapper), intent(inout), dimension(:) :: octalArray
     logical, intent(in) :: setupCoeffs  ! whether to store the departure 
                                         !   coefficients in the octal structure.
@@ -5141,7 +5140,7 @@ contains
 
 #ifdef MPI
       subroutine packAtomLevel(octalArray, nTemps, tArray, iLevel, ioctal_beg, ioctal_end)
-    include 'mpif.h'
+        use mpi
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         integer :: ioctal_beg, ioctal_end
@@ -5173,7 +5172,7 @@ contains
      end subroutine packAtomLevel
 
       subroutine unpackAtomLevel(octalArray, nTemps, tArray, iLevel)
-    include 'mpif.h'
+        use mpi
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real(double) :: tArray(:)
@@ -5200,7 +5199,7 @@ contains
      end subroutine unpackAtomLevel
 
       subroutine packNe(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
-    include 'mpif.h'
+        use mpi
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         integer :: ioctal_beg, ioctal_end
@@ -5231,7 +5230,7 @@ contains
      end subroutine packNe
 
       subroutine unpackNe(octalArray, nTemps, tArray)
-    include 'mpif.h'
+        use mpi
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real(double) :: tArray(:)

@@ -13,13 +13,15 @@ contains
 
 
   subroutine calculateGasSourceInteraction(source, nSource, grid, eps)
+#ifdef MPI
+    use mpi
+#endif
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     type(GRIDTYPE) :: grid
     real(double) :: eps
     integer :: i
 #ifdef MPI
-    include 'mpif.h'
     integer :: ierr
     integer :: n
     real(double), allocatable :: temp(:), temp2(:)
@@ -463,7 +465,7 @@ contains
 
   subroutine sumEnergy(source, nSource, totalenergy, ePot, eKin, grid)
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
     integer :: ierr
 #endif
     type(GRIDTYPE) :: grid

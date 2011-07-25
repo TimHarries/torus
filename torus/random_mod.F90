@@ -114,8 +114,8 @@ contains
 ! Syncronise random seed across all MPI processes. 
   subroutine sync_random_seed(iSeed)
 
+    use mpi
     implicit none
-    include 'mpif.h'
 
     integer(bigInt) :: iseed
     integer :: ierr
@@ -144,6 +144,7 @@ contains
 
   subroutine test_random_hybrid()
 #ifdef MPI
+    use mpi
     use mpi_global_mod, only : nThreadsGlobal
 #endif
     use mpi_global_mod, only : myRankGlobal
@@ -159,10 +160,6 @@ contains
     integer :: ierr
     integer, allocatable :: itemp(:)
 #endif
-#ifdef MPI
-    include 'mpif.h'
-#endif
-
 
     nOmpThreads = 1
     iOmpThread = 1
@@ -231,6 +228,7 @@ contains
 
   subroutine test_same_hybrid()
 #ifdef MPI
+    use mpi
     use mpi_global_mod, only : nThreadsGlobal
 #endif
     use mpi_global_mod, only : myRankGlobal
@@ -246,10 +244,6 @@ contains
     integer :: ierr
     integer, allocatable :: itemp(:)
 #endif
-#ifdef MPI
-    include 'mpif.h'
-#endif
-
 
     nOmpThreads = 1
     iOmpThread = 1
@@ -320,9 +314,9 @@ contains
 #ifdef MPI
 ! Test whether all threads are producing independent random numbers
   subroutine test_random_across_threads(debug)
+    use mpi
     use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
     implicit none
-    include 'mpif.h'
     real(double) :: r
     integer :: i, ierr
     integer, allocatable :: itest(:), itemp(:)

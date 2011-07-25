@@ -174,7 +174,7 @@ contains
     use inputs_mod, only : blockhandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
     use mpi_global_mod, only : myRankGlobal, nThreadsGlobal
-    include 'mpif.h'
+    use mpi
 #endif
     type(octal), pointer   :: thisOctal, neighbourOctal, startOctal
     type(GRIDTYPE) :: grid
@@ -1115,7 +1115,7 @@ subroutine setDiffOnTau(grid)
 #ifdef MPI
     use inputs_mod, only : blockHandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
-    include 'mpif.h'
+    use mpi
 #endif
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -1302,7 +1302,7 @@ subroutine setDiffOnTau(grid)
 
 #ifdef MPI
       subroutine packDiff(octalArray, nDiff, diffArray, tauArray, octalsBelongRank)
-    include 'mpif.h'
+        use mpi
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: octalsBelongRank(:)
         integer :: nDiff

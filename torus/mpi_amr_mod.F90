@@ -9,7 +9,7 @@ module mpi_amr_mod
 contains
 
   subroutine setupAMRCOMMUNICATOR
-    include 'mpif.h'
+    use mpi
     integer :: ierr, ranks(1)
     integer :: worldGroup, amrGroup
 
@@ -41,9 +41,9 @@ contains
 
 ! Free communicator created by setupAMRCOMMUNICATOR
   subroutine freeAMRCOMMUNICATOR
+    use mpi
     implicit none
 
-    include 'mpif.h'
     integer :: ierr
 
     if ( myRankGlobal /= 0 ) then 
@@ -53,7 +53,7 @@ contains
   end subroutine freeAMRCOMMUNICATOR
 
   subroutine findMassOverAllThreads(grid, mass)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: mass
     real(double), allocatable :: massOnThreads(:), temp(:), volumeOnThreads(:)
@@ -130,7 +130,7 @@ contains
   end subroutine findTotalMassMPI
 
   subroutine findEnergyOverAllThreads(grid, energy)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: energy
     real(double), allocatable :: energyOnThreads(:), temp(:)
@@ -192,7 +192,7 @@ contains
   
 
   subroutine getSquares(grid, plane, valueName, nSquares, corners, value, speed, ang)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     character(len=*) :: plane, valueName
     real, pointer :: corners(:,:), value(:), speed(:), ang(:)
@@ -235,7 +235,7 @@ contains
 
   recursive subroutine recursGetSquares(thisOctal, grid, plane, valueName, nSquares, corners, value, speed, ang)
 
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -380,7 +380,7 @@ contains
 
   subroutine receiveAcrossMpiBoundary(grid, boundaryType, receiveThread, sendThread)
 
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
     type(octal), pointer  :: neighbourOctal
@@ -599,7 +599,7 @@ contains
   end subroutine receiveAcrossMpiBoundary
   
   subroutine exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup, iGroup
@@ -658,7 +658,7 @@ contains
 
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
     type(octal), pointer  :: neighbourOctal
@@ -842,7 +842,7 @@ contains
   end subroutine receiveAcrossMpiBoundaryLevel
   
   subroutine exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, nDepth)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup, iGroup
@@ -891,7 +891,7 @@ contains
 
   recursive subroutine determineBoundaryPairs(thisOctal, grid, nPairs,  thread1, thread2, nBound, iThread)
 
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
@@ -981,7 +981,7 @@ contains
 
   subroutine returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     use utils_mod, only: indexx
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nPairs, thread1(:), thread2(:), nBound(:), nGroup, group(:)
     integer :: nThreads, iThread
@@ -1055,7 +1055,7 @@ contains
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
     type(VECTOR) :: direction, rVec
@@ -1315,7 +1315,7 @@ contains
   end function getNBoundFromDirection
 
   subroutine columnAlongPathAMR(grid, rVec, direction, sigma)
-    include 'mpif.h'
+    use mpi
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
@@ -1350,7 +1350,7 @@ contains
   end subroutine columnAlongPathAMR
 
   subroutine countSubcellsMPI(grid, nSubcells, nSubcellArray)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer :: nSubcells
     integer, optional :: nSubcellArray(:)
@@ -1409,7 +1409,7 @@ contains
     CONTAINS
     
       RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal, nVoxels)
-        include 'mpif.h'
+        use mpi
         integer :: nVoxels
         integer :: subcell
         TYPE(OCTAL), POINTER  :: thisOctal 
@@ -1535,7 +1535,7 @@ contains
   end function octalOnThread
 
   subroutine periodBoundary(grid, justGrav)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer :: iThread
     integer :: ierr, i
@@ -1575,7 +1575,7 @@ contains
   end subroutine periodBoundary
 
   subroutine periodBoundaryLevel(grid, nDepth, justGrav)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer :: iThread
     integer :: ierr, i, nDepth
@@ -1614,7 +1614,7 @@ contains
 
   recursive subroutine recursivePeriodSend(thisOctal, doJustGrav)
 
-    include 'mpif.h'
+    use mpi
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
     real(double) :: loc(3), tempStorage(8)
@@ -1682,7 +1682,7 @@ contains
 
   recursive subroutine recursivePeriodSendLevel(thisOctal, nDepth, doJustGrav)
 
-    include 'mpif.h'
+    use mpi
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
     integer :: nDepth
@@ -1751,7 +1751,7 @@ contains
   end subroutine recursivePeriodSendLevel
 
   subroutine periodBoundaryReceiveRequests(grid, receiveThread, doJustGrav)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     logical :: sendLoop
@@ -1800,7 +1800,7 @@ contains
 
 
   subroutine periodBoundaryReceiveRequestsLevel(grid, receiveThread, nDepth, doJustGrav)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     logical :: sendLoop
@@ -1851,7 +1851,7 @@ contains
 
 !THaw-to track evolution of I front with time
 subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
@@ -1971,7 +1971,7 @@ end subroutine dumpStromgrenRadius
 
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
@@ -2069,7 +2069,7 @@ end subroutine dumpStromgrenRadius
     
   subroutine grid_info_mpi(thisGrid, filename)
     use amr_mod, only:  countVoxels
-    include 'mpif.h'
+    use mpi
     type(gridtype), intent(in) :: thisGrid
     character(LEN=*), intent(in) :: filename
     integer :: UN
@@ -2131,7 +2131,7 @@ end subroutine dumpStromgrenRadius
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
     use inputs_mod, only : maxDepthAMR
     use octal_mod, only: subcellRadius
-    include 'mpif.h'
+    use mpi
     type(OCTAL), pointer :: parent, thisOctal
     integer :: iChild
     logical, optional :: constantGravity
@@ -2684,7 +2684,7 @@ end subroutine dumpStromgrenRadius
   end subroutine addNewChildWithInterp
 
   subroutine shutdownServers()
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     real(double) :: loc(3)
     integer, parameter :: tag = 50
@@ -2699,7 +2699,7 @@ end subroutine dumpStromgrenRadius
   end subroutine shutdownServers
 
   subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
     real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
@@ -2770,7 +2770,7 @@ end subroutine dumpStromgrenRadius
   end subroutine getHydroValues
 
   subroutine hydroValuesServer(grid, iThread)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     logical :: stillServing
     real(double) :: loc(3)
@@ -2828,7 +2828,7 @@ end subroutine dumpStromgrenRadius
   end subroutine hydroValuesServer
 
 !  subroutine fillVelocityCornersFromHydro(grid)
-!    include 'mpif.h'
+!    use mpi
 !    type(GRIDTYPE) :: grid
 !    integer :: iThread
 !    integer :: ierr
@@ -2896,7 +2896,7 @@ end subroutine dumpStromgrenRadius
 !
     subroutine distributeSphDataOverMPI()
       use sph_data_class, only : sphData, npart, init_sph_data
-      include 'mpif.h'
+      use mpi
       integer :: ierr
 
 
@@ -2985,7 +2985,7 @@ end subroutine dumpStromgrenRadius
 !redistribute thread ID's to the appropriate cells
 recursive subroutine distributeMPIthreadLabels(thisOctal)
 !  use mpi_global_mod, only : myRankGlobal
-  include 'mpif.h'
+  use mpi
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   integer :: subcell, i

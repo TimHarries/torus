@@ -1516,7 +1516,7 @@ contains
 #ifdef MPI
 
     subroutine receiveSingleIntegerFlexi(value)
-      include 'mpif.h'
+      use mpi
       integer, intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
@@ -1527,7 +1527,7 @@ contains
     end subroutine receiveSingleIntegerFlexi
 
     subroutine receiveSingleRealFlexi(value)
-      include 'mpif.h'
+      use mpi
       real, intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
@@ -1538,7 +1538,7 @@ contains
     end subroutine receiveSingleRealFlexi
 
     subroutine receiveSingleDoubleFlexi(value)
-      include 'mpif.h'
+      use mpi
       real(double), intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
@@ -1549,7 +1549,7 @@ contains
     end subroutine receiveSingleDoubleFlexi
 
     subroutine receiveSingleLogicalFlexi(value)
-      include 'mpif.h'
+      use mpi
       logical, intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
@@ -1560,7 +1560,7 @@ contains
     end subroutine receiveSingleLogicalFlexi
 
     subroutine receiveSingleVectorFlexi(value)
-      include 'mpif.h'
+      use mpi
       type(VECTOR), intent(out) :: value
       real(double) :: v(3)
       integer :: status(MPI_STATUS_SIZE)
@@ -1574,7 +1574,7 @@ contains
     end subroutine receiveSingleVectorFlexi
 
     subroutine receiveSingleCharacterFlexi(value)
-      include 'mpif.h'
+      use mpi
       character(len=*), intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
@@ -1936,7 +1936,7 @@ contains
 #ifdef MPI
 
   subroutine sendAttributePointerInteger1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -1956,7 +1956,7 @@ contains
   end subroutine sendAttributePointerInteger1DFlexi
 
   subroutine sendAttributePointerReal1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -1976,7 +1976,7 @@ contains
   end subroutine sendAttributePointerReal1DFlexi
 
   subroutine sendAttributePointerDouble1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -1996,7 +1996,7 @@ contains
   end subroutine sendAttributePointerDouble1DFlexi
 
   subroutine sendAttributePointerDouble2DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2021,7 +2021,7 @@ contains
   end subroutine sendAttributePointerDouble2DFlexi
 
   subroutine sendAttributePointerReal2DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2046,7 +2046,7 @@ contains
   end subroutine sendAttributePointerREAL2DFlexi
 
   subroutine sendAttributePointerDouble3DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2072,7 +2072,7 @@ contains
   end subroutine sendAttributePointerDouble3DFlexi
 
   subroutine sendAttributeStaticLogical1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2089,7 +2089,7 @@ contains
   end subroutine sendAttributeStaticLogical1DFlexi
 
   subroutine sendAttributeStaticLogicalSingleFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2105,7 +2105,7 @@ contains
   end subroutine sendAttributeStaticLogicalSingleFlexi
 
   subroutine sendAttributeStaticIntegerSingleFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2121,7 +2121,7 @@ contains
   end subroutine sendAttributeStaticIntegerSingleFlexi
 
   subroutine sendAttributeStaticRealSingleFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2137,7 +2137,7 @@ contains
   end subroutine sendAttributeStaticRealSingleFlexi
 
   subroutine sendAttributeStaticDoubleSingleFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2153,7 +2153,7 @@ contains
   end subroutine sendAttributeStaticDoubleSingleFlexi
 
   subroutine sendAttributeStaticVectorSingleFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2172,7 +2172,7 @@ contains
   end subroutine sendAttributeStaticVECTORSingleFlexi
 
   subroutine sendAttributeStaticCharacterSingleFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2189,7 +2189,7 @@ contains
   end subroutine sendAttributeStaticCharacterSingleFlexi
 
   subroutine sendAttributeStaticVector1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2219,7 +2219,7 @@ contains
   
 
   subroutine sendAttributeStaticInteger1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2237,7 +2237,7 @@ contains
   end subroutine sendAttributeStaticInteger1DFlexi
 
   subroutine sendAttributeStaticReal1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2254,7 +2254,7 @@ contains
   end subroutine sendAttributeStaticReal1DFlexi
 
   subroutine sendAttributeStaticDouble1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2272,7 +2272,7 @@ contains
   end subroutine sendAttributeStaticDouble1DFlexi
 
   subroutine sendAttributeStaticDouble2DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2295,7 +2295,7 @@ contains
      end subroutine sendAttributeStaticDouble2DFlexi
 
   subroutine sendAttributeStaticReal2DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2318,7 +2318,7 @@ contains
   end subroutine sendAttributeStaticReal2DFlexi
 
   subroutine sendAttributeStaticDouble3DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2342,7 +2342,7 @@ contains
   end subroutine sendAttributeStaticDouble3DFlexi
 
   subroutine sendAttributePointerLogical1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2362,7 +2362,7 @@ contains
   end subroutine sendAttributePointerLogical1DFlexi
 
   subroutine sendAttributePointerVector1DFlexi(iThread, name, value)
-    include 'mpif.h'
+    use mpi
     integer :: iThread
     character(len=*) :: name
     character(len=20) :: attributeName
@@ -2395,7 +2395,7 @@ contains
 
 
     subroutine receiveArrayIntegerFlexi(value)
-      include 'mpif.h'
+      use mpi
       integer, intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2408,7 +2408,7 @@ contains
     end subroutine receiveArrayIntegerFlexi
 
     subroutine receiveArrayRealFlexi(value)
-      include 'mpif.h'
+      use mpi
       real, intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2421,7 +2421,7 @@ contains
     end subroutine receiveArrayRealFlexi
 
     subroutine receiveArrayLogicalFlexi(value)
-      include 'mpif.h'
+      use mpi
       logical, intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2434,7 +2434,7 @@ contains
     end subroutine receiveArrayLogicalFlexi
 
     subroutine receiveArrayDoubleFlexi(value)
-      include 'mpif.h'
+      use mpi
       real(double), intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2447,7 +2447,7 @@ contains
     end subroutine receiveArrayDoubleFlexi
 
     subroutine receiveArrayVectorFlexi(value)
-      include 'mpif.h'
+      use mpi
       type(VECTOR), intent(out) :: value(:)
       integer :: n , n3, i, j
       real(double), allocatable :: temp(:)
@@ -2470,7 +2470,7 @@ contains
 
 
     subroutine receiveIntegerPointer1dFlexi(value)
-      include 'mpif.h'
+      use mpi
       integer, pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2488,7 +2488,7 @@ contains
     end subroutine receiveIntegerPointer1dFlexi
 
     subroutine receiveRealPointer1dFlexi(value)
-      include 'mpif.h'
+      use mpi
       real, pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2506,7 +2506,7 @@ contains
     end subroutine receiveRealPointer1dFlexi
 
     subroutine receiveDoublePointer1dFlexi(value)
-      include 'mpif.h'
+      use mpi
       real(double), pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2524,7 +2524,7 @@ contains
     end subroutine receiveDoublePointer1dFlexi
 
     subroutine receiveDoublePointer2dFlexi(value)
-      include 'mpif.h'
+      use mpi
       real(double), pointer :: value(:,:)
       integer :: n, m
       real(double), allocatable :: temp(:)
@@ -2546,7 +2546,7 @@ contains
     end subroutine receiveDoublePointer2dFlexi
 
     subroutine receiveDoublePointer3dFlexi(value)
-      include 'mpif.h'
+      use mpi
       real(double), pointer :: value(:,:,:)
       integer :: n, m, l
       real(double), allocatable :: temp(:)
@@ -2569,7 +2569,7 @@ contains
     end subroutine receiveDoublePointer3dFlexi
 
     subroutine receiveRealPointer2dFlexi(value)
-      include 'mpif.h'
+      use mpi
       real, pointer :: value(:,:)
       integer :: n, m
       real, allocatable :: temp(:)
@@ -2592,7 +2592,7 @@ contains
 
 
     subroutine receiveLogicalPointer1dFlexi(value)
-      include 'mpif.h'
+      use mpi
       logical, pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -2612,7 +2612,7 @@ contains
 
 
     subroutine receiveVectorPointer1dFlexi(value)
-      include 'mpif.h'
+      use mpi
       type(VECTOR), pointer :: value(:)
       integer :: n, n3, i, j
       integer :: status(MPI_STATUS_SIZE)
@@ -3607,7 +3607,7 @@ contains
 #ifdef MPI
 
    subroutine receiveOctalViaMPI(thisOctal)
-     include 'mpif.h'
+     use mpi
      type(OCTAL), pointer :: thisOctal
      integer :: status(MPI_STATUS_SIZE)
      integer, parameter :: mpitag = 50
@@ -3909,7 +3909,7 @@ contains
     end subroutine receiveOctalViaMPI
 
     subroutine sendOctalViaMPI(thisOctal, ithread)
-     include 'mpif.h'
+     use mpi
      type(OCTAL), pointer :: thisOctal
      integer, parameter :: mpitag = 50
      character(len=20) :: tmp
