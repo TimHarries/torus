@@ -1451,7 +1451,7 @@ contains
 
 
     call getLogical("fixedrhobound", fixedRhoBound, cLine, fLine, nLines, &
-         "Use fixed density boundary conditions?: ","(a,1l,1x,a)", .true., ok, .false.)
+         "Use fixed density boundary conditions?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("rhoconst", rho_const, 1.d0, cLine, fLine, nLines, &
          "Density for fixed density boundary conditions: ","(a,e12.3,1x,a)", 10.d0*mHydrogen, ok, .true.)
