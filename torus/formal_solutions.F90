@@ -244,11 +244,11 @@ contains
     use messages_mod, only : myRankIsZero
     use timing, only: tune
     use parallel_mod
-
-    implicit none
 #ifdef MPI
-    include 'mpif.h'        
+    use mpi
 #endif
+    implicit none
+
     real,         intent(in)  :: lambda0       ! [A] Wavelength of the line center
     real,         intent(in)  :: mass_ion      ! mass of atom in [g]
     real(double), intent(in)  :: R_star        ! [10^10 cm] radius of a star

@@ -622,11 +622,12 @@ contains
      use starburst_mod
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources
+#ifdef MPI
+     use mpi
+#endif
+
      integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
-#ifdef MPI
-   include 'mpif.h'  
-#endif
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
      real :: fAccretion

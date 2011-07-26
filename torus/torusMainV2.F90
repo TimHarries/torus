@@ -38,11 +38,11 @@ program torus
   use random_mod
   use memory_mod
   use zlib_mod
+#ifdef MPI
+  use mpi
+#endif
 
   type(GRIDTYPE) :: grid
-#ifdef MPI
-   include 'mpif.h'  
-#endif
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag

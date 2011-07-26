@@ -169,15 +169,13 @@ module angularImage
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
-
 #ifdef MPI
       use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
+      use mpi
 #endif
 
       implicit none
-#ifdef MPI
-      include 'mpif.h'
-#endif
+
      type(MOLECULETYPE) :: thisMolecule
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube

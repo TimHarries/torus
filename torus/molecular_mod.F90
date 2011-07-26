@@ -836,7 +836,7 @@ module molecular_mod
      use parallel_mod
 
 #ifdef MPI
-     include 'mpif.h'
+     use mpi
 #endif
 
      type(GRIDTYPE) :: grid
@@ -2313,7 +2313,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    use image_mod, only: deleteFitsFile
 #endif
 #ifdef MPI
-       include 'mpif.h'
+   use mpi
 #endif
 
 #ifdef USECFITSIO
@@ -2718,7 +2718,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 #endif
 #ifdef MPI
      use mpi_global_mod, only: nThreadsGlobal
-     include 'mpif.h'
+     use mpi
 #endif
      type(TELESCOPE) :: mytelescope
      type(MOLECULETYPE) :: thisMolecule
@@ -3927,16 +3927,15 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 #ifdef MPI 
        subroutine packMoleLevel(octalArray, nTemps, tArray, iLevel,ioctal_beg,ioctal_end)
 !         use inputs_mod,only : gettau
-         include 'mpif.h'
+
          integer :: ioctal_beg, ioctal_end
          type(OCTALWRAPPER) :: octalArray(:)
          integer :: nTemps
          real(double) :: tArray(:,:)
-         integer :: iOctal, iSubcell, my_rank, ierr
+         integer :: iOctal, iSubcell
          integer :: iLevel
          type(OCTAL), pointer :: thisOctal
 
-        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !
@@ -3971,16 +3970,15 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       end subroutine packMoleLevel
 
        subroutine packJnuTrans(octalArray, nTemps, tArray, iTrans, ioctal_beg,ioctal_end)
-         include 'mpif.h'
+
          integer :: ioctal_beg, ioctal_end
          type(OCTALWRAPPER) :: octalArray(:)
          integer :: nTemps
          real(double) :: tArray(:)
-         integer :: iOctal, iSubcell, my_rank, ierr
+         integer :: iOctal, iSubcell
          integer :: iTrans
          type(OCTAL), pointer :: thisOctal
 
-        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !
@@ -4004,14 +4002,13 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       subroutine unpackMoleLevel(octalArray, tArray, iLevel)
 !        use inputs_mod, only : gettau
-        include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         real(double) :: tArray(:,:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         integer :: iLevel, ntemp
         type(OCTAL), pointer :: thisOctal
         
-        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !
@@ -4036,14 +4033,13 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       end subroutine unpackMoleLevel
 
       subroutine unpackJnuTrans(octalArray, tArray, iTrans)
-        include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         integer :: iTrans, ntemp
         type(OCTAL), pointer :: thisOctal
         
-        call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
         !
         ! Update the edens values of grid computed by all processors.
         !
@@ -5985,9 +5981,9 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
  recursive subroutine sumDi(thisOctal, deltaNu, itot)
 #ifdef MPI
-     include 'mpif.h'
-     real(double) :: temp
-     integer :: ierr
+   use mpi
+   real(double) :: temp
+   integer :: ierr
 #endif
    type(octal), pointer   :: thisOctal
    type(octal), pointer  :: child 
@@ -6064,7 +6060,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 #ifdef MPI
 
  subroutine intensityAlongRaySplitOverMPI(position, direction, grid, thisMolecule, iTrans, deltaV,i0)
-   include 'mpif.h'
+   use mpi
    type(VECTOR) :: position, direction
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
@@ -6168,7 +6164,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
  end subroutine intensityAlongRaySplitOverMPI
 
  subroutine intensityAlongRayServer(grid, thisMolecule)
-   include 'mpif.h'
+   use mpi
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
    type(VECTOR) :: startPosition, direction
@@ -6216,7 +6212,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
  end subroutine intensityAlongRayServer
 
  subroutine shutdownServers()
-   include 'mpif.h'
+   use mpi
    integer :: iThread
    real(double) :: loc(10)
    integer, parameter :: tag = 50

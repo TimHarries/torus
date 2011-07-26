@@ -41,11 +41,9 @@ contains
     use spectrum_mod, only: getwavelength
 #ifdef MPI
     use parallel_mod, only: mpiBlockHandout, mpiGetblock
+    use mpi
 #endif
     implicit none
-#ifdef MPI
- include 'mpif.h'
-#endif
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, tempOctal
@@ -2628,8 +2626,9 @@ end subroutine readHeIIrecombination
 #ifdef MPI
   subroutine updateGridMPIphoto(grid)
     use amr_mod, only: countVoxels
+    use mpi
     implicit none
-    include 'mpif.h'
+
     type(gridtype) :: grid
     integer :: nOctals, nVoxels, i
     real, allocatable :: nCrossings(:)
@@ -3270,7 +3269,7 @@ end subroutine readHeIIrecombination
 #ifdef MPI
     use image_mod, only: collateImages
     use mpi_global_mod, only: nThreadsGlobal
-    include 'mpif.h'
+    use mpi
 #endif
     type(GRIDTYPE) :: grid
     character(len=*), intent(in) :: imageFilename

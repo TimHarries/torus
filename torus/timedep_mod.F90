@@ -367,6 +367,9 @@ contains
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
        nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow, observerPosition, observerDirection, &
        seedRun)
+#ifdef MPI
+    use mpi
+#endif
     type(GRIDTYPE) :: grid
     integer :: nSource
     logical :: varyingSource
@@ -425,7 +428,6 @@ contains
     integer :: nFromMatterThisThread
     real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy. 
 #ifdef MPI
-    include 'mpif.h'
     integer :: ierr
     real(double) :: tempDouble
     real(double), allocatable :: tempDoubleArray(:)
@@ -2344,8 +2346,9 @@ contains
 #ifdef MPI
 
   subroutine updateGridMPI(grid)
+    use mpi
     implicit none
-    include 'mpif.h'
+
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
     real(double), allocatable :: distanceGridAdot(:)

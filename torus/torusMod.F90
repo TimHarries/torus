@@ -151,12 +151,14 @@ end subroutine torus
     USE sph_data_class, only: sphData, get_udist
     USE messages_mod
     USE kind_mod
+#ifdef MPI
+    USE mpi
+#endif
 
     implicit none
 
 #ifdef MPI
 ! MPI specific variables
-    include 'mpif.h'
     real    :: mpi_max_deltaT, mpi_sum_deltaT
     integer :: ierr, mpi_iiigas
 #endif
@@ -243,9 +245,9 @@ end subroutine torus
 
     USE kind_mod
     USE sph_data_class, only: sphData, npart
+    USE mpi
 
     implicit none
-    include 'mpif.h'
 
     integer :: my_rank, n_proc, ierr, i 
     integer :: npart_all, nptmass_all

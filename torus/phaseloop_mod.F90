@@ -38,6 +38,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
   use mpi_global_mod, only: myRankGlobal
 #ifdef MPI
+  use mpi
   use mpi_global_mod, only: nThreadsGlobal
   use random_mod
   use grid_mod, only: freeGrid
@@ -58,11 +59,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use random_mod
   use sed_mod, only: getNumSedInc, getSedInc
   implicit none
-
-#ifdef MPI
-   include 'mpif.h'  
-   integer ::   tempInt, ierr     
-#endif
 
 ! Arguments
   type(GRIDTYPE) :: grid
@@ -238,6 +234,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !  integer, dimension(:), allocatable :: photonBelongsRank
 !  integer, parameter :: tag = 0
 !  logical :: rankComplete
+   integer ::   tempInt, ierr     
 #endif
 
   ! O VI spectrum stuff

@@ -1598,6 +1598,7 @@ endif
 
 !   subroutine writeIfitFile(grid, ifritFilename)
 !      use inputs_mod, only : minDepthAMR, maxDepthAMR
+!      use mpi
 !      type(GRIDTYPE) :: grid
 !      character(len=*) :: ifritFilename
 !      integer :: fileID, nValueType, nPointOffset
@@ -1605,7 +1606,6 @@ endif
 !      character(len=20) :: valueType(50)
 !      integer :: nCells, nPoints, nOctals, nVoxels
 !#ifdef MPI
-!      include 'mpif.h'
 !      integer :: ierr
 !      integer, allocatable :: iOffsetArray(:)
 !      integer :: myRank, nThreads, iThread

@@ -42,7 +42,7 @@ contains
 
   recursive subroutine fluxlimiter(thisoctal)
     use inputs_mod, only : limiterType
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -147,7 +147,7 @@ contains
 
 
   recursive subroutine updatedensitytree(thisoctal)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal, parentoctal, testoctal
     type(octal), pointer  :: child 
@@ -184,7 +184,7 @@ contains
   end subroutine updatedensitytree
 
   recursive subroutine updatephitree(thisoctal, ndepth)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -222,7 +222,7 @@ contains
 
 
   recursive subroutine constructflux(thisoctal, dt)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -275,7 +275,7 @@ contains
   end subroutine constructflux
 
   recursive subroutine updatecellq(thisoctal, dt)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -315,7 +315,7 @@ contains
   end subroutine updatecellq
 
   recursive subroutine synchronizefluxes(thisoctal, dt, idepth)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -551,7 +551,7 @@ contains
   end subroutine setupqx
 
   recursive subroutine setuprhophi(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -606,7 +606,7 @@ contains
   end subroutine setuprhophi
 
   recursive subroutine setupui(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -659,7 +659,7 @@ contains
   end subroutine setupui
 
   recursive subroutine setupvi(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -716,7 +716,7 @@ contains
   end subroutine setupvi
 
   recursive subroutine setupwi(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -774,7 +774,7 @@ contains
   end subroutine setupwi
 
   recursive subroutine setupflux(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -858,7 +858,7 @@ contains
 
 !THaw - Flux interpolation routine                                                                                                                                                                                                       
   subroutine normalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer :: thisoctal
     type(octal), pointer :: neighbourOctal
@@ -998,7 +998,7 @@ contains
   end subroutine normalFluxGradient
 
   recursive subroutine setuppressure(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
@@ -1050,7 +1050,7 @@ contains
   end subroutine setuppressure
 
   recursive subroutine setupupm(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -1099,7 +1099,7 @@ contains
   end subroutine setupupm
 
   recursive subroutine setupvpm(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -1148,7 +1148,7 @@ contains
   end subroutine setupvpm
 
   recursive subroutine setupwpm(thisoctal, grid, direction)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -1202,7 +1202,7 @@ contains
      !Subroutine to modify the cell interface velocities according to Rhie-Chow
      !interpolation
 
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -1244,7 +1244,7 @@ contains
 
   recursive subroutine computepressureGeneral(grid, thisOctal, withViscosity)
      use inputs_mod, only : etaViscosity, useViscosity
-     include 'mpif.h'
+     use mpi
      integer :: myrank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisoctal
@@ -1316,7 +1316,7 @@ contains
   end subroutine computepressureGeneral
 
   recursive subroutine pressureforceu(thisoctal, dt)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -1444,7 +1444,7 @@ contains
   end subroutine pressureforceu
 
   recursive subroutine pressureforcev(thisoctal, dt)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -1560,7 +1560,7 @@ contains
 
 
   recursive subroutine pressureforcew(thisoctal, dt)
-    include 'mpif.h'
+    use mpi
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2089,7 +2089,7 @@ contains
 
 
 recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
-  include 'mpif.h'
+  use mpi
   integer :: subcell, i
   type(octal), pointer :: thisOctal
   type(octal), pointer :: child
@@ -2614,7 +2614,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine computeCourantTime(grid, thisOctal, tc)
-    include 'mpif.h'
+    use mpi
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -2757,7 +2757,7 @@ end subroutine sumFluxes
 
   subroutine doHydrodynamics1d(grid)
     use inputs_mod, only : tStart, tEnd, tDump, dorefine
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     real(double) :: dt,  gamma, mu
     real(double) :: currentTime
@@ -2936,7 +2936,7 @@ end subroutine sumFluxes
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
     use inputs_mod, only : tdump, tend, doRefine, doUnrefine
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
     real(double) :: currentTime !, smallTime
@@ -3256,7 +3256,7 @@ end subroutine sumFluxes
 
   subroutine doHydrodynamics2d(grid)
     use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), mu
     real(double) :: currentTime
@@ -4195,7 +4195,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine setupGhostCells(thisOctal, grid, flag)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
@@ -4541,7 +4541,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine setupEdges(thisOctal, grid)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -4661,7 +4661,7 @@ end subroutine sumFluxes
   end subroutine setupEdges
 
   recursive subroutine setupEdgesLevel(thisOctal, grid, nDepth)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -4769,7 +4769,7 @@ end subroutine sumFluxes
   end subroutine setupEdgesLevel
 
   recursive subroutine setupGhosts(thisOctal, grid)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
@@ -4996,7 +4996,7 @@ end subroutine sumFluxes
   end subroutine setupGhosts
 
   recursive subroutine setupGhostsLevel(thisOctal, grid, nDepth)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
@@ -5231,7 +5231,7 @@ end subroutine sumFluxes
 
   subroutine refineGridGeneric(grid, tol)
     use inputs_mod, only : minDepthAMR, maxDepthAMR
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     integer :: iThread
     logical :: globalConverged(64), tConverged(64)
@@ -5265,7 +5265,7 @@ end subroutine sumFluxes
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
@@ -5465,7 +5465,7 @@ end subroutine refineGridGeneric2
   recursive subroutine refineEdges(thisOctal, grid,  converged, inherit)
 
     use inputs_mod, only : maxDepthAMR
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -5512,7 +5512,7 @@ end subroutine refineGridGeneric2
   recursive subroutine refineFeeders(thisOctal, grid,  converged, inherit)
 
     use inputs_mod, only : maxDepthAMR
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -5853,13 +5853,13 @@ end subroutine refineGridGeneric2
   end function sigma
 
   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
-
+    use mpi  
     use inputs_mod, only : minDepthAMR, maxDepthAMR
+
     type(GRIDTYPE) :: grid
     logical :: inheritFlag
     integer, optional :: dumpfiles
     integer :: myRank, nThreads, thisThread
-    include 'mpif.h'  
     integer :: ierr
     logical :: globalConverged(64), localChanged(64), tConverged(64)
     type(VECTOR) :: locs(200000), eLocs(200000)
@@ -6031,7 +6031,7 @@ end subroutine refineGridGeneric2
 
   recursive subroutine evenUpGrid(thisOctal, grid,  converged, inherit)
     use inputs_mod, only : maxDepthAMR
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
@@ -6505,7 +6505,7 @@ end subroutine refineGridGeneric2
   
   subroutine splitAtLocator(grid, locator, depth,  localchanged)
     use inputs_mod, only :  maxDepthAMR
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: locator
@@ -6533,7 +6533,7 @@ end subroutine refineGridGeneric2
 
   recursive subroutine locatorsToExternalCells(thisOctal, grid, nLocs, loc, thread, depth)
 
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
@@ -6615,7 +6615,7 @@ end subroutine refineGridGeneric2
 
   recursive subroutine determineDependentThreads(thisOctal, grid, nDependent,  dependentthread)
 
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
@@ -6702,7 +6702,7 @@ end subroutine refineGridGeneric2
 
 
   subroutine writeAMRgridMpiALL(filename,fileFormatted,grid)
-    include 'mpif.h'
+    use mpi
     character(len=*) :: filename
     type(GRIDTYPE) :: grid
     logical :: fileformatted
@@ -6718,7 +6718,7 @@ end subroutine refineGridGeneric2
   end subroutine writeAMRgridMpiALL
 
   subroutine readAMRgridMpiALL(filename,fileFormatted,grid)
-    include 'mpif.h'
+    use mpi
     character(len=*) :: filename
     type(GRIDTYPE) :: grid
     logical :: fileformatted
@@ -6741,7 +6741,7 @@ end subroutine refineGridGeneric2
 
 
   recursive subroutine gSweep(thisOctal, grid, deltaT, fracChange)
-    include 'mpif.h'
+    use mpi
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -6844,7 +6844,7 @@ end subroutine refineGridGeneric2
   end subroutine gSweep
 
   recursive subroutine gSweep2(thisOctal, grid, deltaT, fracChange)
-    include 'mpif.h'
+    use mpi
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -6983,7 +6983,7 @@ end subroutine refineGridGeneric2
   end subroutine gSweep2
 
   recursive subroutine gSweepLevel(thisOctal, grid, deltaT, fracChange, ghostFracChange, nDepth)
-    include 'mpif.h'
+    use mpi
     integer :: myRank, ierr, nd
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -7083,7 +7083,7 @@ end subroutine refineGridGeneric2
   
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
     use inputs_mod, only :  maxDepthAMR
-    include 'mpif.h'
+    use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid
     integer, parameter :: maxThreads = 100
@@ -7435,7 +7435,7 @@ end subroutine minMaxDepth
    end function legendre
 
    subroutine findCoM(grid, com)
-     include 'mpif.h'
+     use mpi
      type(GRIDTYPE) :: grid
      type(VECTOR) :: com
      real(double) :: totalMass, temp(3), temp2(3)
@@ -7549,7 +7549,7 @@ end subroutine minMaxDepth
    end subroutine multipoleExpansionLevel
 
    subroutine applyDirichlet(grid,level)
-     include 'mpif.h'
+     use mpi
      type(GRIDTYPE) :: grid
      type(VECTOR) :: com
      integer, optional :: level
@@ -7607,7 +7607,7 @@ end subroutine minMaxDepth
 
 
    recursive subroutine recursApplyDirichlet(grid, thisOctal, com)
-     include 'mpif.h'
+     use mpi
      type(GRIDTYPE) :: grid
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point
@@ -7661,7 +7661,7 @@ end subroutine minMaxDepth
    end subroutine recursApplyDirichlet
 
    recursive subroutine recursApplyDirichletLevel(grid, thisOctal, com, level)
-     include 'mpif.h'
+     use mpi
      type(GRIDTYPE) :: grid
      integer :: level
      type(OCTAL), pointer :: thisOctal, child
@@ -7851,7 +7851,7 @@ end subroutine minMaxDepth
      deallocate(group)
    end subroutine mergeSinks
    subroutine addSinks(grid, source, nSource)
-     include 'mpif.h'
+     use mpi
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
      real(double) :: temp(8),rhomax
@@ -7900,7 +7900,7 @@ end subroutine minMaxDepth
           
 
   recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
-    include 'mpif.h'
+    use mpi
     type(OCTAL), pointer :: thisOctal, child
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -8049,7 +8049,7 @@ end subroutine minMaxDepth
 
 
   recursive subroutine correctForRotationRecur(thisOctal, source, mdot, n, timestep)
-    include 'mpif.h'
+    use mpi
     type(SOURCETYPE) :: source
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -8093,7 +8093,7 @@ end subroutine minMaxDepth
   end subroutine correctForRotationRecur
 
   recursive subroutine sumAccretionRate(thisOctal, mDot)
-    include 'mpif.h'
+    use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -8242,7 +8242,7 @@ end subroutine minMaxDepth
 
 
   subroutine doAccretion(grid, sourceArray, nSource, timeStep)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: sourceArray(:)
     integer :: nSource
@@ -8343,7 +8343,7 @@ end subroutine minMaxDepth
   end subroutine doAccretion
 
   recursive subroutine correctMomenta(thisOctal, source, timestep, deltaMom)
-    include 'mpif.h'
+    use mpi
     type(SOURCETYPE) :: source
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -8373,7 +8373,7 @@ end subroutine minMaxDepth
   end subroutine correctMomenta
 
   recursive subroutine calculateWeights(thisOctal, source, rK, rAcc)
-    include 'mpif.h'
+    use mpi
     type(SOURCETYPE) :: source
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -8409,7 +8409,7 @@ end subroutine minMaxDepth
   end subroutine calculateWeights
 
   subroutine normalizeWeights(grid)
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     real(double) :: sum(1), temp(1)
     integer :: ierr
@@ -8425,7 +8425,7 @@ end subroutine minMaxDepth
   end subroutine normalizeWeights
 
   recursive subroutine calculateRhobar(thisOctal, rhobar)
-    include 'mpif.h'
+    use mpi
     real(double) :: rhobar
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -8452,7 +8452,7 @@ end subroutine minMaxDepth
   end subroutine calculateRhobar
 
   recursive subroutine sumWeights(thisOctal, sum)
-    include 'mpif.h'
+    use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -8480,7 +8480,7 @@ end subroutine minMaxDepth
   end subroutine sumWeights
 
   recursive subroutine normWeights(thisOctal, sum)
-    include 'mpif.h'
+    use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i

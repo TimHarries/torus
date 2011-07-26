@@ -60,7 +60,7 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto
-    include 'mpif.h'
+    use mpi
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -502,8 +502,8 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine
    !      optimizeStack, stackLimit, dStack
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
+    use mpi
     implicit none
-    include 'mpif.h'
     integer :: myRank, ierr
     integer(bigint) :: nMonte
     logical, optional :: sublimate
@@ -1716,7 +1716,7 @@ end subroutine photoIonizationloopAMR
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
   use inputs_mod, only : periodicX, periodicY, periodicZ
-  include 'mpif.h'
+  use mpi
 
   integer :: myRank, ierr!, trackErr, sclHandle, classHandle, stateHandle, sclStart, sclEnd
    type(GRIDTYPE) :: grid
@@ -2084,7 +2084,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt, timeSinceLastRecomb)
     use constants_mod, only : cspeed
-    include 'mpif.h'
+    use mpi
     TYPE(GRIDTYPE) :: grid
     TYPE(OCTAL),pointer :: thisOctal
     TYPE(OCTAL),pointer :: child
@@ -2151,7 +2151,7 @@ end subroutine advancedCheckForPhotoLoop
 recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   use constants_mod, only : cspeed
   use inputs_mod, only: lambdaSmooth, gridDistanceScale
-  include 'mpif.h'
+  use mpi
   TYPE(GRIDTYPE) :: grid
   TYPE(OCTAL),pointer :: thisOctal
   TYPE(OCTAL),pointer :: child
@@ -3585,7 +3585,7 @@ end function recombRate
 
 !Thaw - dumpLexington is incompatiable with MPI - will possibly move this subroutine to mpi_amr_mod
 subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
-  include 'mpif.h'
+  use mpi
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
@@ -4745,8 +4745,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
        lambdaImage, outputimageType, nPixels)
     use inputs_mod, only: nPhotons, gridDistance
+    use mpi
     real, intent(in) :: lambdaImage
-    include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: npixels
     character(len=*) :: imageFilename, outputImageType
@@ -5027,7 +5027,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
 
   subroutine sendPhoton(thisPhoton, iThread, endLoop, report, getPosition)
-    include 'mpif.h'
+    use mpi
     type(PHOTON) :: thisPhoton
     integer :: iThread
     logical :: endLoop
@@ -5085,7 +5085,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   end subroutine sendPhoton
 
   subroutine receivePhoton(thisPhoton, iSignal)
-    include 'mpif.h'
+    use mpi
     type(PHOTON) :: thisPhoton
     integer, parameter :: nTemp = 16
     real(double) :: temp(nTemp)
@@ -5278,7 +5278,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   end subroutine moveToNextScattering
 
    subroutine  computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
-     include 'mpif.h'
+     use mpi
      type(GRIDTYPE) :: grid
      real(double) :: totalEmission, totalProb, biasCorrection
      real(double) :: threadProbArray(:)

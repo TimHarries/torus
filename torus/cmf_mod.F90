@@ -1330,7 +1330,7 @@ contains
 #endif
 #ifdef MPI
     use amr_mod, only : countVoxels
-    include 'mpif.h'
+    use mpi
 #endif
 
     type(SOURCETYPE) :: source(:)
@@ -3304,7 +3304,7 @@ contains
     use datacube_mod, only : writedataCube
 #endif
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
 #endif
     logical, optional :: occultingDisc
     type(GRIDTYPE) :: grid
@@ -3609,7 +3609,7 @@ contains
          positionAngle
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
-    include 'mpif.h'
+    use mpi
 #endif
     integer :: nSource
     type(SOURCETYPE) :: source(:)
@@ -3861,16 +3861,15 @@ contains
 
 #ifdef MPI
       subroutine packAtomLevel(octalArray, nTemps, tArray, iAtom, iLevel, ioctal_beg, ioctal_end)
-    include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         integer :: ioctal_beg, ioctal_end
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
+        integer :: iOctal, iSubcell, iAtom
         integer :: iLevel
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -3893,15 +3892,14 @@ contains
      end subroutine packAtomLevel
 
       subroutine unpackAtomLevel(octalArray, nTemps, tArray, iAtom, iLevel)
-    include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
+        integer :: iOctal, iSubcell, iAtom
         integer :: iLevel
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -3920,15 +3918,14 @@ contains
      end subroutine unpackAtomLevel
 
       subroutine packjnu(octalArray, nTemps, tArray, iFreq, ioctal_beg, ioctal_end)
-    include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: ioctal_beg, ioctal_end
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr, iFreq
+        integer :: iOctal, iSubcell, iFreq
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -3951,15 +3948,14 @@ contains
      end subroutine packJnu
 
       subroutine packbiasline3d(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
-    include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: ioctal_beg, ioctal_end
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -3982,14 +3978,13 @@ contains
      end subroutine packbiasline3d
 
       subroutine unpackJnu(octalArray, nTemps, tArray, iFreq)
-    include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr, iFreq
+        integer :: iOctal, iSubcell, iFreq
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -4008,14 +4003,13 @@ contains
      end subroutine unpackJnu
 
       subroutine unpackbiasLine3d(octalArray, nTemps, tArray)
-    include 'mpif.h'
+
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real(double) :: tArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
+        integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
 
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
        !
        ! Update the edens values of grid computed by all processors.
        !
