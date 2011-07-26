@@ -3897,6 +3897,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine imposeBoundary(thisOctal)
+    use inputs_mod, only : fixedRhoBound, rho_const
     type(octal), pointer   :: thisOctal, bOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, bSubcell
@@ -4187,6 +4188,11 @@ end subroutine sumFluxes
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)
              end select
+             
+             if(fixedRhoBound) then
+                thisOctal%tempStorage(subcell,1) = rho_const
+             end if
+
           endif
       endif
     enddo

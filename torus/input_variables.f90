@@ -91,6 +91,8 @@
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
   logical :: useViscosity             !Use artificial viscosity
   logical :: fluxinterp               !Interpolate fluxes at fine to coarse cell advections
+  logical :: fixedRhoBound            !Use fixed density boundary conditions
+  real(double) :: rho_const           !Density of fixed density boundary conditions
   character(len=20) :: limiterType    !Flux limiter type
   integer :: idump                    !Hydrodynamics time step dump number
   real(double) :: gridDistanceScale   !Scale of grid
