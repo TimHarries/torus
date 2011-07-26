@@ -125,8 +125,8 @@ ${TORUS_FC} -o comparelex comparelex.f90
 check_image()
 {
 echo "Generating analytical solution"
-${TORUS_FC} -o analytical analytical.f90
-./analytical
+${TORUS_FC} -o cylinder_test cylinder_test.f90
+./cylinder_test
 echo "Checking Torus result"
 ${TORUS_FC} -o comparison comparison.f90
 ./comparison
