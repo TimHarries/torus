@@ -309,6 +309,7 @@ ifeq ($(SYSTEM), zensingle)
     STATICLIBS= -Bstatic
     STARLIBS= 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    ZLIBLIBS = -lz
     MPIFLAG = 
     KNOWN_SYSTEM=yes
 endif
