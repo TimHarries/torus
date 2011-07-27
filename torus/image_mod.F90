@@ -632,20 +632,22 @@ module image_mod
 #ifdef USECFITSIO
      subroutine writeFitsImage(image, filename, objectDistance, type, pointTest, cylinderTest)
 
+       use fits_utils_mod
+       use inputs_mod, only: lamStart, ImageinArcSec, fitsbitpix
+
 ! Arguments
-       
-       use inputs_mod, only: lamStart, ImageinArcSec
        type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
+       logical, optional :: pointTest, cylinderTest
 ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
        integer, allocatable :: samplings(:,:)
        real(double) :: scale,  dx, dy
-       logical, optional :: pointTest, cylinderTest
        logical :: simple,extend
+       logical :: oldFilePresent
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
@@ -654,12 +656,19 @@ module image_mod
        allocate(array(1:image%nx, 1:image%ny))
        allocate(samplings(1:image%nx, 1:image%ny))
        call writeInfo("Writing fits image to: "//trim(filename),TRIVIAL)
+
+       call checkBitpix(FitsBitpix)
+
        status=0
        !
        !  Delete the file if it already exists, so we can then recreate it.
        !
-       call deleteFitsFile ( filename, status )
-       
+       inquire(file=filename, exist=oldFilePresent)
+       if (oldFilePresent) then 
+          call writeInfo("Removing old file", FORINFO)
+          call deleteFitsFile ( filename, status )
+       end if
+
        !
        !  Get an unused Logical Unit Number to use to open the FITS file.
        !
@@ -673,7 +682,7 @@ module image_mod
        !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
        !
        simple=.true.
-       bitpix=-32
+       bitpix=fitsbitpix
        naxis=2
        naxes(1)=image%nx
        naxes(2)=image%ny
@@ -729,6 +738,9 @@ module image_mod
           call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, samplings)
        end if
 
+       ! Add keywords for bitpix=16 and bitpix=8 
+       call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
+
        call ftppre(unit,group,fpixel,nelements,array,status)
 
        !
@@ -775,96 +787,6 @@ module image_mod
        end if
 
      End subroutine writeFitsImage
-#endif
-
-#ifdef USECFITSIO
-     subroutine deleteFitsFile(filename,status)
-       
-! Arguments
-       character ( len = * ) filename
-       integer :: status
-
-! Local variables
-       integer unit,blocksize
-
-       !
-       !  Simply return if status is greater than zero.
-       !
-       if (status > 0) then
-          return
-       end if
-       !
-       !  Get an unused Logical Unit Number to use to open the FITS file
-       !
-       call ftgiou ( unit, status )
-       !
-       !  Try to open the file, to see if it exists
-       !
-       call ftopen ( unit, filename, 1, blocksize, status )
-
-       if ( status == 0 ) then
-          !
-          !  File was opened;  so now delete it 
-          !
-          call ftdelt(unit,status)
-
-       else if (status == 103)then
-          !
-          !  File doesn't exist, so just reset status to zero and clear errors
-          !
-          status=0
-          call ftcmsg
-
-       else
-          !
-          !  There was some other error opening the file; delete the file anyway
-          !
-          status=0
-          call ftcmsg
-          call ftdelt(unit,status)
-       end if
-       !
-       !  Free the unit number for later reuse.
-       !
-       call ftfiou(unit, status)
-
-     end subroutine deleteFitsFile
-#endif
-
-#ifdef USECFITSIO
-     subroutine printFitsError(status)
-
-       !
-       !*******************************************************************************
-       !
-       !! PRINT_ERROR prints out the FITSIO error messages to the user.
-       !
-       ! Arguments
-       integer :: status
-
-       ! Local variables
-       character ( len = 30 ) errtext
-       character ( len = 80 ) errmessage
-       !
-       !  Check if status is OK (no error); if so, simply return.
-       !
-       if (status <= 0) then
-          return
-       end if
-       !
-       !  Get the text string which describes the error
-       !
-       call ftgerr(status,errtext)
-       print *,'FITSIO Error Status =',status,': ',errtext
-       !
-       !  Read and print out all the error messages on the FITSIO stack
-       !
-       call ftgmsg(errmessage)
-       do while (errmessage .ne. ' ')
-          print *,errmessage
-          call ftgmsg(errmessage)
-       end do
-     end subroutine printFitsError
 #endif
 
      subroutine pixelLocate(image, xDist, yDist, ix, iy)
@@ -1019,14 +941,23 @@ module image_mod
 
 #ifdef MPI
 ! Gather an MPI distributed image. 
-  subroutine collateImages(thisImage)
+  subroutine collateImages(thisImage, dest)
     use mpi
     implicit none
 
     type(IMAGETYPE) :: thisImage
+    integer, optional, intent(in) :: dest
+    integer :: thisDest ! destination of the reduce operation
     real, allocatable :: tempRealArray(:), tempRealArray2(:)
     real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:)
     integer :: ierr
+
+! By default reduce to rank zero process but allow other destinations
+    if ( present(dest) ) then 
+       thisDest = dest
+    else
+       thisDest = 0.0
+    end if
 
      allocate(tempRealArray(SIZE(thisImage%pixel)))
      allocate(tempRealArray2(SIZE(thisImage%pixel)))
@@ -1040,39 +971,39 @@ module image_mod
      call writeInfo ("Collating images...", FORINFO)
      tempDoubleArray = reshape(thisImage%pixel%i,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%pixel%i = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%i))
 
      tempDoubleArray = reshape(thisImage%pixel%q,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%pixel%q = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%q))
 
      tempDoubleArray = reshape(thisImage%pixel%u,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%pixel%u = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%u))
 
      tempDoubleArray = reshape(thisImage%pixel%v,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%pixel%v = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%v))
 
 
      tempRealArray = reshape(thisImage%vel,(/SIZE(tempRealArray)/))
      call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%vel = reshape(tempRealArray2,SHAPE(thisImage%vel))
 
      tempDoubleArray = reshape(thisImage%nSamples,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%nSamples = reshape(tempDoubleArray2,SHAPE(thisImage%nSamples))
 
 
      tempRealArray = reshape(thisImage%totWeight,(/SIZE(tempRealArray)/))
      call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%totWeight = reshape(tempRealArray2,SHAPE(thisImage%totWeight))
 
      call writeInfo ("Done.", FORINFO)

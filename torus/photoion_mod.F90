@@ -3414,7 +3414,7 @@ end subroutine readHeIIrecombination
     end do mainloop
 
 #ifdef MPI
-    call collateImages(thisImage)
+    call collateImages(thisImage,dest=1) ! writeoutput is set for rank 1 process 
     call MPI_ALLREDUCE(totalFlux, tempTotalFlux, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
     totalFlux = tempTotalFlux
 #endif
@@ -3423,7 +3423,7 @@ end subroutine readHeIIrecombination
     call writeInfo(message,FORINFO)
 
 #ifdef USECFITSIO
-    if (myRankIsZero) then
+    if (writeoutput) then
        call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity")
     endif
 #else

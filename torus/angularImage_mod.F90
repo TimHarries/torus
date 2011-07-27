@@ -104,7 +104,7 @@ module angularImage
 
 
       call writeinfo("Initialising datacube",TRIVIAL)
-      call initCube(cube, npixels, npixels, nv)
+      call initCube(cube, npixels, npixels, nv, splitCubes=splitCubes, wantTau=wantTau)
       ! Reverse velocity axis 
       call addvelocityAxis(cube, maxVel, minVel) 
 

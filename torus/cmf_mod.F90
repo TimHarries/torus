@@ -3606,7 +3606,7 @@ contains
   subroutine createDataCube(cube, grid, viewVec,nSource, source, thisAtom, itrans)
     use mpi_global_mod
     use inputs_mod, only : npixels, nv, imageSide, maxVel, &
-         positionAngle
+         positionAngle, griddistance
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
 #ifdef MPI
     use mpi
@@ -3698,7 +3698,7 @@ contains
 
 
     call addSpatialAxes(cube, -dble(imageSide/2.), dble(imageSide/2.), &
-         -dble(imageSide/2.), dble(imageSide/2.))
+         -dble(imageSide/2.), dble(imageSide/2.), griddistance)
 
 
     if (myRankGlobal == 0) then

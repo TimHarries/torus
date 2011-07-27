@@ -2310,7 +2310,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
         gridDistance, imageside, npixels
 #ifdef USECFITSIO
-   use image_mod, only: deleteFitsFile
+   use fits_utils_mod
 #endif
 #ifdef MPI
    use mpi
@@ -2714,7 +2714,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
           maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, h21cm
 #ifdef USECFITSIO
     use inputs_mod, only : writetempfits
-    use image_mod, only : deleteFitsFile
+    use fits_utils_mod
 #endif
 #ifdef MPI
      use mpi_global_mod, only: nThreadsGlobal
@@ -2771,9 +2771,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      call writeinfo("Initialising datacube",TRIVIAL)
 
      if(nv .eq. 0) then
-        call initCube(cube, npixels, npixels, 200, mytelescope) ! Make cube
+        call initCube(cube, npixels, npixels, 200, mytelescope, wantTau=wantTau) ! Make cube
      else
-        call initCube(cube, npixels, npixels, nv, mytelescope) ! Make cube
+        call initCube(cube, npixels, npixels, nv, mytelescope, wantTau=wantTau) ! Make cube
      endif
 
      cube%obsDistance = gridDistance * 1d10!(in cm) Additional information that will be useful
@@ -2781,7 +2781,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      call writeinfo(message, TRIVIAL) 
      write(message,'(a,1pe12.3,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
      call writeinfo(message, TRIVIAL) 
-     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0)
+     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0, gridDistance)
 
      if ( present(revVel) ) then 
         doRevVel = revVel

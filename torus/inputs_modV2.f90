@@ -1784,7 +1784,11 @@ contains
                "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
     enddo
+
  end if
+
+  call getInteger("fitsbitpix", fitsBitpix, cLine, fLine, nLines, &
+      "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
        
   end subroutine readImageParameters
 

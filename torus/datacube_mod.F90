@@ -1,7 +1,6 @@
 module datacube_mod
 
   use kind_mod
-  use vector_mod
   use messages_mod
 
   implicit none
@@ -50,7 +49,7 @@ contains
 #ifdef USECFITSIO
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
-    use image_mod, only : deleteFitsFile
+    use fits_utils_mod
     use inputs_mod, only: FitsBitpix
 
     implicit none
@@ -189,7 +188,7 @@ contains
        call ftpkys(unit,'XUNIT',thisCube%xUnit,"Spatial unit",status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
        call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
-       call addScalingKeywords(maxval(thisCube%intensity), minval(thisCube%intensity))
+       call addScalingKeywords(maxval(thisCube%intensity), minval(thisCube%intensity), unit, FitsBitpix)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -210,7 +209,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',"Optical depth","Optical depth unit",status)
-       call addScalingKeywords(maxval(thisCube%tau), minval(thisCube%tau))
+       call addScalingKeywords(maxval(thisCube%tau), minval(thisCube%tau), unit, FitsBitpix)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -308,12 +307,12 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',"cm^-2","Column density unit",status)
-       call addScalingKeywords(maxval(thisCube%nCol), minval(thisCube%nCol))
+       call addScalingKeywords(maxval(thisCube%nCol), minval(thisCube%nCol), unit, FitsBitpix)
        call addWCSinfo
 
        !  Write the array to the FITS file.
        call ftppre(unit,group,fpixel,nelements,thisCube%nCol,status)
-       call print_error(status)
+       call printFitsError(status)
     endif
 
     if( do_write_ipos) then
@@ -330,7 +329,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
-       call addScalingKeywords(maxval(thisCube%i0_pos), minval(thisCube%i0_pos))
+       call addScalingKeywords(maxval(thisCube%i0_pos), minval(thisCube%i0_pos), unit, FitsBitpix)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -352,7 +351,7 @@ contains
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
-       call addScalingKeywords(maxval(thisCube%i0_neg), minval(thisCube%i0_neg))
+       call addScalingKeywords(maxval(thisCube%i0_neg), minval(thisCube%i0_neg), unit, FitsBitpix)
        call addWCSinfo
 
        !  Write the array to the FITS file.
@@ -365,7 +364,7 @@ contains
 
      !  Check for any error, and if so print out error messages
     if (status > 0) then
-       call print_error(status)
+       call printFitsError(status)
     end if
     
 
@@ -395,26 +394,6 @@ contains
         call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
 
       end subroutine addWCSinfo
-
-      subroutine addScalingKeywords(max, min)
-        real, intent(in) :: max, min        ! data max and min values
-        real(double) :: bscale, bzero       ! values of keywords
-        integer, parameter :: blank= -32768
-
-! Set scaling values used when packing data into an integer representation
-        if ( bitpix == 16 .or. bitpix == 8) then  
-           bscale = (max - min) / 65534.0
-           bzero = (max + min) / 2.0
-
-           call ftpkyd(unit,'BSCALE',   bscale,-9,'(max - min) / 65534.0',status)
-           if (status > 0) call print_error(status)
-           call ftpkyd(unit,'BZERO',    bzero, -9,'(max + min) / 2.0',status)
-           if (status > 0) call print_error(status)
-           call ftpkyj(unit,'BLANK', blank, 6, ' ', status)
-           if (status > 0) call print_error(status)
-        end if
-
-      end subroutine addScalingKeywords
     
     end subroutine writeDataCube
 
@@ -570,46 +549,16 @@ contains
   end subroutine readDataCube
 #endif
 
-  !**********************************************************************
-
-
-#ifdef USECFITSIO
-  subroutine print_error(status)
-    ! PRINT_ERROR prints out the FITSIO error messages to the user.
-    
-    integer status
-    character ( len = 30 ) errtext
-    character ( len = 80 ) errmessage
-
-    !  Check if status is OK (no error); if so, simply return.
-    if (status <= 0) then
-       return
-    end if
-
-    !  Get the text string which describes the error
-    call ftgerr(status,errtext)
-    print *,'FITSIO Error Status =',status,': ',errtext
-
-    !  Read and print out all the error messages on the FITSIO stack
-    call ftgmsg(errmessage)
-    do while (errmessage .ne. ' ')
-       print *,errmessage
-       call ftgmsg(errmessage)
-    end do
-
-    return
-  end subroutine print_error
-#endif    
-
   !***********************************************************
 
 ! Initialises cube - sets intensity for cube to 0 
-  subroutine initCube(thisCube, nx, ny, nv, mytelescope)
-    use inputs_mod, only: splitCubes, wanttau
+  subroutine initCube(thisCube, nx, ny, nv, mytelescope, splitCubes, wantTau)
 
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
+    logical, optional, intent(in) :: splitCubes, wantTau
+
     if(present(mytelescope)) then
        
        thisCube%telescope = mytelescope
@@ -637,38 +586,45 @@ contains
     allocate(thisCube%yAxis(1:ny))
     allocate(thisCube%vAxis(1:nv))
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
-    if(wanttau) allocate(thisCube%tau(1:nx,1:ny,1:nv))
+
     allocate(thisCube%nCol(1:nx,1:ny))
 !    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
 !    allocate(thisCube%converged(1:nx,1:ny,1:nv))
 !    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
-    if (wanttau) thisCube%tau =  0.d0
     thisCube%nCol = 0.d0
 
 !    thisCube%nsubpixels = 0.d0
 !    thisCube%converged = 0
 !    thisCube%weight = 1.d0
 
-    if (splitCubes) then 
-       ! flux component not required in configurations which use split cubes 
-       allocate(thisCube%i0_pos(1:nx,1:ny,1:nv))
-       allocate(thisCube%i0_neg(1:nx,1:ny,1:nv))
-       thisCube%i0_pos(:,:,:) = 0.0
-       thisCube%i0_neg(:,:,:) = 0.0
+    if ( present(wantTau) ) then 
+       if (wantTau) then
+          allocate(thisCube%tau(1:nx,1:ny,1:nv))
+          thisCube%tau = 0.d0
+       end if
+    end if
+
+    if ( present(splitCubes) ) then 
+       if (splitCubes) then 
+          allocate(thisCube%i0_pos(1:nx,1:ny,1:nv))
+          allocate(thisCube%i0_neg(1:nx,1:ny,1:nv))
+          thisCube%i0_pos(:,:,:) = 0.0
+          thisCube%i0_neg(:,:,:) = 0.0
+       end if
     end if
 
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
-  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
-    use inputs_mod , only : gridDistance
+  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax, griddistance)
     use constants_mod, only: auTocm, pi, rSol
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin, dx, dy
     integer :: i
     character(len=100) :: message
+    real, intent(in) :: gridDistance
 
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
@@ -913,8 +869,9 @@ subroutine freeDataCube(thiscube)
   
 #ifdef USECFITSIO
   subroutine writeCollapsedDataCube(thisCube, filename)
-    use image_mod, only : deleteFitsFile, printfitsError
-    use inputs_mod, only: FitsBitpix
+    use fits_utils_mod
+    use inputs_mod, only: FitsBitPix
+
     type(DATACUBE) :: thisCube
     character(len=*) :: filename
 
@@ -1021,27 +978,6 @@ subroutine freeDataCube(thiscube)
     close(38)
   end subroutine dumpCubeToSpectrum
        
-  ! Report whether the value of bitpix is valid
-  subroutine checkBitpix (thisBitpix)
-
-    integer, intent(in) :: thisBitPix
-    character(len=40)   :: message
-
-    if (thisBitPix == 8  .or. thisBitPix == 16  .or. &
-         thisBitPix == 32 .or. thisBitPix == -32 .or. &
-         thisBitPix == -64 ) then 
-    
-       write(message,'(a,i3)') "Writing FITS files using BITPIX= ", thisBitPix
-       call writeInfo(message)
-
-    else
-
-       write(message,'(a,i3)') "Invalid value of  BITPIX= ", thisBitPix
-       call writeWarning(message)
-
-    end if
-
-  end subroutine checkBitpix
 
 end module datacube_mod
 
