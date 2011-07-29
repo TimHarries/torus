@@ -1788,7 +1788,7 @@ endif
 
      allocate(iTemp(1:nBytesUncompressed))
      iCurrent = 1
-     allocate(compressedBlock(1:blockSize))
+!     allocate(compressedBlock(1:blockSize))
      do i = 1, nBlocks
         if (i < nBlocks) then
            iStart = 1 + (i-1)*blockSize
@@ -1808,8 +1808,8 @@ endif
         iTemp(iCurrent:iCurrent+SizeCompressedBlock(i)-1) = compressedBlock(1:sizeCompressedBlock(i))
         deallocate(thisBlock)
         iCurrent = iCurrent + sizeCompressedblock(i)
+        deallocate(compressedBlock)
      enddo
-     deallocate(compressedBlock)
      allocate(iBytes(1:SUM(sizeCompressedBlock(1:nBlocks))))
      iBytes(1:SIZE(ibytes)) = itemp(1:SIZE(iBytes))
      deallocate(iTemp)
@@ -1823,6 +1823,7 @@ endif
         iHeader(13 + (i-1)* 4: 13 + i*4 - 1) = transfer(i4, &
              iHeader(13 + (i-1)* 4: 13 + i*4 - 1))
      enddo
+     deallocate(sizeCompressedBlock)
      deallocate(iBytesUncompressed)
 
    end subroutine convertAndCompress
@@ -2175,9 +2176,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      write(lunit) pstring(1:nString), pstring2(1:nString2)
      deallocate(pString, pstring2)
      deallocate(iBytes)
-
-
-!     deallocate(pString)
      deallocate(float32)
      close(lunit)
   else if (grid%splitOverMPI) then
@@ -2387,6 +2385,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef MPI
 666 continue
 #endif
+  if (associated(iHeader)) deallocate(iHeader)
 end subroutine writeXMLVtkFileAMR
 
 

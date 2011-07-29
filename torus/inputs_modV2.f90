@@ -36,6 +36,7 @@ contains
     done = .false.
     ok = .true.
     oneKappa = .false.
+    monteCarloRT = .false.
 
     tMinGlobal = 3.
     nDustType = 1
@@ -335,6 +336,7 @@ contains
           oneKappa = .true.
           fastIntegrate = .false.
           lineEmission = .true.
+          monteCarloRT = .true.
           call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
                "Line emission wavelength: ","(a,f6.1,1x,a)", 850., ok, .true.)
 

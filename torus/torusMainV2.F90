@@ -26,6 +26,7 @@ program torus
   use constants_mod
   use messages_mod
   use mpi_global_mod
+  use zlib_mod
   use utils_mod
   use inputs_mod
   use timing
@@ -43,6 +44,7 @@ program torus
 #endif
 
   type(GRIDTYPE) :: grid
+
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag

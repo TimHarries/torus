@@ -524,6 +524,7 @@ contains
      if (PRESENT(atomicDataCube)) then
         if (atomicDataCube) then
            nLambda = nv
+           write(*,*) "nlambda, nv ",nlambda,nv
            allocate(xArray(1:nLambda))
            lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
            lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
@@ -562,7 +563,7 @@ contains
     if (associated(grid%lamArray)) deallocate(grid%lamArray)
     allocate(grid%lamArray(1:nLambda))
     grid%lamArray = xarray
-
+    write(*,*) "finishing nlambda ",nlambda
      contains
 
        subroutine setupLogSpacing

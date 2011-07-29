@@ -534,7 +534,6 @@ contains
 
     thisPhoton%weight = 1.d0
     thisPhoton%stokes%i = 1.d0 * energyPerPhoton
-
     thisPhoton%scattered = .false.
     thisPhoton%thermal = .false.
     thisPhoton%stellar = .false.
@@ -545,6 +544,7 @@ contains
 
     ! if we are doing this by sources then find out which source we are using
     
+    sourceWeight = 1.d0
     if (nSource > 0) then
        call randomSource(source, nSource, thisSource, sourceWeight)
     endif
@@ -595,7 +595,6 @@ contains
           photonFromEnvelope = .true.
        endif
     endif
-
 
     if (mie) then
        call randomNumberGenerator(getReal=r)

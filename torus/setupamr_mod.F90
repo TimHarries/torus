@@ -371,7 +371,6 @@ contains
        call postSetupChecks(grid)
        call writeVTKfile(grid, "rho.vtk")
 
-
     endif
 #ifdef MPI
         if (grid%splitOverMPI) then

@@ -20,6 +20,7 @@ contains
     use inputs_mod, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
     use inputs_mod, only : outfile, npixels, nImage, inclinationArray
     use inputs_mod, only : lamStart, lamEnd, lineEmission, outputImageType
+    use inputs_mod, only : monteCarloRT
 #ifdef MPI
     use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
 #endif
@@ -129,7 +130,7 @@ contains
        if (writeoutput) close(66)
     endif
 
-    if (atomicPhysics.and.calcSpectrum) then
+    if (atomicPhysics.and.calcSpectrum.and.(.not.monteCarloRT)) then
 
        if (cmf) then
           call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
@@ -288,7 +289,10 @@ contains
        lineEmission = .true.
        grid%lineEmission = .true.
        if ( calcspectrum ) then 
+          write(*,*) "calling setupxarray ",nv
           call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
+          write(*,*) "nlambda after setupxarray",nlambda,nv
+          nlambda = nv
           call do_phaseloop(grid, .true., 0., 0., 0.,  &
                VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                tsurface, 0., 0., tdisc, tvec, 1,       &
@@ -307,7 +311,6 @@ contains
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
-             call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              call do_phaseloop(grid, .true., 0., 0., 0.,  &
                   VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
                   tsurface, 0., 0., tdisc, tvec, 1,       &

@@ -1006,7 +1006,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
               ! initialize array
 
-              tauCont = 0.
+              tauCont(1:ntau,1:nLambda) = 0.
 
 
               ! we can ignore this if the line is very thin
@@ -1562,7 +1562,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
               ! initialize array
 
-              tauCont = 0.
+              tauCont(1:nTau,1:nLambda) = 0.
 
 
               ! we can ignore this if the line is very thin
@@ -1590,9 +1590,11 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
                     thisVel = real(j-1)/real(nLambda-1)
                     thisVel = grid%lamArray(j)
-                    thisVel = (lambda0-thisVel)/lambda0  + (uHat .dot. vVec)  &
+                    thisVel = (lambda0-thisVel)/lambda0   &
                          - (wavelength - lambda0)/lambda0 ! (+ve if moving toward)
-                    
+
+                    thisVel = thisVel + real(uHat.dot.vvec)
+
                     ! loop through the projected velocities to find the resonance zones
  
                     do i = 2, nTau-1, 1

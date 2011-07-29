@@ -294,6 +294,7 @@
 !--------------------------------
 
   real :: positionAngle(10), inclinationArray(10)
+  logical :: monteCarloRT
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
   integer :: FitsBitpix ! bitpix parameter for FITS representation of the data

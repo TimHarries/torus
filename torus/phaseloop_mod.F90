@@ -1004,6 +1004,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         if (writeoutput) write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
 
+        write(*,*) "nlambda ",nlambda
         ! set up the line and continuum weights
 
         if ((probLinePhoton /= 0.).and.(probContphoton /= 0.)) then
@@ -1326,6 +1327,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      
      call randomNumberGenerator(randomSeed=.true.)
 
+     weightSource = 1.d0
      if (nSource > 0) &
      call randomSource(source, nSource, i, weightSource,grid%lamArray, nLambda, initialize=.true.)  
 
@@ -1422,6 +1424,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !           if (writeoutput) write(*,*) "nInnerloop ",nInnerloop
 
         endif
+
 
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
@@ -1916,7 +1919,8 @@ CONTAINS
                       source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
-!                 write(*,*) "r, weight ", modulus(thisPhoton%position)/rcore,thisPhoton%weight, weightContPhoton
+!                 write(*,*) "r, weight, i ", modulus(thisPhoton%position)/rcore,thisPhoton%weight, weightContPhoton, &
+!                      Thisphoton%stokes%i
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
 !                 endif
@@ -2223,6 +2227,7 @@ CONTAINS
                        fac3 = contTau(nTau,i1)
                        if (thinLine) fac3 = 0.
                        obs_weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
+
 !$OMP CRITICAL ( updateYarray )
                        yArray(iLambda) = yArray(iLambda) + (thisPhoton%stokes * obs_weight)
 
