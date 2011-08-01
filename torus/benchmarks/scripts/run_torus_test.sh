@@ -8,7 +8,8 @@ cd    build
 
 echo "Building Torus for ${SYSTEM} OpenMP=${USEOPENMP}"
 log_file=compile_log_${SYSTEM}.txt
-ln -s ${TEST_DIR}/torus/* .
+rsync -a ${TEST_DIR}/torus/* .
+rsync -a ${TEST_DIR}/torus/.svn .
 
 /usr/bin/make depends > ${log_file} 2>&1 
 /usr/bin/make debug=${USEDEBUGFLAGS} openmp=${USEOPENMP} >> ${log_file} 2>&1
