@@ -588,13 +588,13 @@ end subroutine radiationHydro
     real(double) :: nIonizingPhotons
     logical :: crossedPeriodic = .false.
 
-    type(PHOTONPACKET), allocatable :: photonPacketStack(:)
+    type(PHOTONPACKET) :: photonPacketStack(stackLimit*nThreadsGlobal)
     type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
 
    !Custom MPI type variables
     integer(MPI_ADDRESS_KIND) :: displacement(8)
     integer :: count = 8
-    integer :: blocklengths(8) = (/ 8, 7, 6, 5, 4, 3, 2, 1/)
+    integer :: blocklengths(8) = (/ 1, 1, 1, 1, 1, 1, 1, 1/)
     integer :: oldTypes(8) 
     integer :: iDisp
 
@@ -677,7 +677,6 @@ end subroutine radiationHydro
     nescapedArray = 0    
 
 !    if(.not. optimizeStack) then
-       allocate(photonPacketStack(stackLimit*nThreads))
        photonPacketStack%Freq = 0.d0
        photonPacketStack%Destination = 0
        photonPacketStack%tPhot = 0.d0
@@ -1037,14 +1036,14 @@ end subroutine radiationHydro
              stackSize = 0
              nSaved = 0
              sendAllPhotons = .false.
-             !needNewPhotonArray = .true.    
+             !needNewPhotonArray = .true.  
              do while(.not.endLoop) 
                 crossedMPIboundary = .false.
 
                 !Get a new photon stack
                 iSignal = -1
                 if(stackSize == 0) then
-                      
+                     
                       call MPI_RECV(toSendStack, stackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
                       currentStack = toSendStack
                       
@@ -1708,7 +1707,6 @@ end subroutine radiationHydro
  call MPI_TYPE_FREE(mpi_photon_stack, ierr)
 
  deallocate(nSaved)
- deallocate(photonPacketStack)
  deallocate(nEscapedArray)
  deallocate(buffer)
 end subroutine photoIonizationloopAMR
