@@ -6718,7 +6718,7 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, fac, distance, radius
+    real(double) :: eThermal, rMod, fac, distance
     logical, save :: firstTime = .true.
     integer, parameter :: nr = 1000
     real(double), save :: r(nr), rho(nr)
