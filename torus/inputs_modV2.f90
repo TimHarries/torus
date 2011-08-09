@@ -111,6 +111,9 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
+    if(readgrid) call getLogical("justdump", justDump, cLine, fLine, nLines, &
+         "Dump a vtk file and abort: ","(a,1l,1x,a)", .false., ok, .false.)
+
     if (readgrid) call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
     

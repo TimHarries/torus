@@ -54,12 +54,13 @@ contains
 
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
-    use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend !, hOnly
+    use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto
+    use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -132,6 +133,14 @@ contains
        deltaTforDump = 1.57d11 !5kyr
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
+       if(justDump) then 
+          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
+          call writeVtkFile(grid, mpiFilename, &
+               valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+               "hydrovelocity","sourceCont   ","pressure     "/))
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          call torus_abort("vtk dump completed. Aborting...")
+       end if
     end if
 
     call writeVtkFile(grid, "ini.vtk", &
@@ -140,17 +149,11 @@ contains
     iunrefine = 0
     startFromNeutral = .false.
 
-!    if (grid%geometry == "bonnor") startFromNeutral = .true.
-
     if (readlucy) then
        write(mpiFilename,'(a, i4.4, a)') "dump_", iDump, ".grid"
        write(*,*) "Reading from: ",trim(mpiFilename)
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
-
-!    timeofNextDump = 0.d0
-    !timeofNextDump = deltaTforDump
-    
 
     if (myRank == 1) write(*,*) "CFL set to ", cfl
 
