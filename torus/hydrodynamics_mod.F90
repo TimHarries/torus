@@ -5271,7 +5271,7 @@ end subroutine sumFluxes
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature
-    use inputs_mod, only : refineonionization
+    use inputs_mod, only : refineonionization, massTol
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5284,7 +5284,7 @@ end subroutine sumFluxes
     logical :: split
     integer :: neighbourSubcell, nDir
     real(double) :: r, grad, maxGradient
-    real(double) :: limit 
+    real(double) :: limit, massTol
     integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
@@ -5294,6 +5294,8 @@ end subroutine sumFluxes
     converged_tmp=.true.
     
     refineOnGradient = .not.photoionization      
+
+!    massTol = 1.d-5*mSol
 
    if(refineonionization .and. .not. photoionization) then
       refineOnIonization = .false.
@@ -5411,7 +5413,7 @@ end subroutine sumFluxes
 !
 
     if (converged.and.refineOnMass) then
-       if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > 1.d-5*mSol) &
+       if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
           call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                inherit=.false., interp=.false., amrHydroInterp = .true.)
