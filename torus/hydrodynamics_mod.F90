@@ -5270,7 +5270,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
-    use inputs_mod, only : maxDepthAMR, photoionization, refineOneMass, refineOnTemperature
+    use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature
     use inputs_mod, only : refineonionization
     use mpi
     type(gridtype) :: grid
