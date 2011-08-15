@@ -5271,6 +5271,7 @@ end subroutine sumFluxes
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOneMass, refineOnTemperature
+    use inputs_mod, only : refineonionization
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5292,15 +5293,15 @@ end subroutine sumFluxes
     converged = .true.
     converged_tmp=.true.
     
+    refineOnGradient = .not.photoionization      
 
-    refineOnGradient = .not.photoionization
-!    refineOnMass = .false.
-    refineOnIonization = photoionization
-!    refineOnTemperature = .false.
+   if(refineonionization .and. .not. photoionization) then
+      refineOnIonization = .false.
+   end if
+
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-!    print *, "doing refinements"
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

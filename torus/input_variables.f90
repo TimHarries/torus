@@ -671,6 +671,7 @@
   logical :: cylindrical
   logical :: refineOnTemperature !refine grid using temperature gradient
   logical :: refineOnMass !refine grid using cell mass
+  logical :: refineOnIonization !refine grid using ionization gradient
 
   ! Grid smoothing based on optical depth
   real :: lambdaSmooth

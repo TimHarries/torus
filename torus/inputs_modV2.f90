@@ -918,6 +918,10 @@ contains
     call getLogical("refineontemperature", refineontemperature, cLine, fLine, nLines, &
          "Refine grid using temperature gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("refineonionization", refineonionization, cLine, fLine, nLines, &
+         "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
     call getDouble("amrgridcentrex", amrGridCentreX, 1.d0 , cLine, fLine, nLines, &
