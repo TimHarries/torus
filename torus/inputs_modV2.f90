@@ -912,6 +912,11 @@ contains
     call getLogical("dophotorefine", dophotorefine, cLine, fLine, nLines, &
          "Adaptively refine AMR grid in photoloop?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("refineonmass", refineonmass, cLine, fLine, nLines, &
+         "Refine grid using mass in cell?: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("refineontemperature", refineontemperature, cLine, fLine, nLines, &
+         "Refine grid using temperature gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 

@@ -5270,7 +5270,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
-    use inputs_mod, only : maxDepthAMR, photoionization
+    use inputs_mod, only : maxDepthAMR, photoionization, refineOneMass, refineOnTemperature
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5294,9 +5294,9 @@ end subroutine sumFluxes
     
 
     refineOnGradient = .not.photoionization
-    refineOnMass = .false.
+!    refineOnMass = .false.
     refineOnIonization = photoionization
-
+!    refineOnTemperature = .false.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -5419,6 +5419,36 @@ end subroutine sumFluxes
           exit
        endif
     endif
+
+   if(converged .and. refineOnTemperature)then
+       do i = 1, nDir
+          maxGradient = 1.d-30
+          locator = subcellCentre(thisOctal, subcell) + &
+          (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
+          if (inOctal(grid%octreeRoot, locator)) then
+
+             neighbourOctal => thisOctal
+
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+!Thaw - modded to use specifiable limit 
+
+             grad = abs((thisOctal%temperature(subcell) - neighbourOctal%temperature(neighbourSubcell)) / & 
+             (thisOctal%temperature(subcell)))
+
+             maxGradient = max(grad, maxGradient)
+
+             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
+                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+                   call addNewChildWithInterp(thisOctal, subcell, grid)
+                   converged = .false.
+                   exit
+                endif
+             endif
+          end if
+       enddo
+      endif
+
 
 
     if (converged.and.refineOnIonization) then
