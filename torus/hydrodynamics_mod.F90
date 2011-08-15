@@ -5286,7 +5286,7 @@ end subroutine sumFluxes
     real(double) :: r, grad, maxGradient
     real(double) :: limit 
     integer :: myRank, ierr
-    logical :: refineOnMass, refineOnIonization, refineOnGradient
+    logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
     integer :: nd
 
