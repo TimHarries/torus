@@ -5284,7 +5284,7 @@ end subroutine sumFluxes
     logical :: split
     integer :: neighbourSubcell, nDir
     real(double) :: r, grad, maxGradient
-    real(double) :: limit, massTol
+    real(double) :: limit
     integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
