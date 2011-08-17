@@ -2756,7 +2756,7 @@ end subroutine sumFluxes
   end function soundSpeed
 
   subroutine doHydrodynamics1d(grid)
-    use inputs_mod, only : tStart, tEnd, tDump, dorefine
+    use inputs_mod, only : tStart, tEnd, tDump, dorefine, amrTolerance
     use mpi
     type(gridtype) :: grid
     real(double) :: dt,  gamma, mu
@@ -2815,7 +2815,7 @@ end subroutine sumFluxes
        
        if(dorefine) then
 !          call refineGridGeneric(grid, 1.d-2)
-          call refineGridGeneric(grid, 1.d-1)
+          call refineGridGeneric(grid, amrTolerance)
        call writeInfo("Evening up grid", TRIVIAL)    
        end if
 
@@ -2883,7 +2883,7 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call zeroRefinedLastTime(grid%octreeRoot)
           if(dorefine) then
-             call refineGridGeneric(grid, 1.d-3)
+             call refineGridGeneric(grid, amrTolerance)
            end if
            call evenUpGridMPI(grid, .true., dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -2935,7 +2935,7 @@ end subroutine sumFluxes
 
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
-    use inputs_mod, only : tdump, tend, doRefine, doUnrefine
+    use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
@@ -3048,7 +3048,7 @@ end subroutine sumFluxes
 
        if(doRefine) then
            if (myrank == 1) call tune(6, "Initial refine")
-           call refineGridGeneric(grid, 5.d-3)
+           call refineGridGeneric(grid, amrTolerance)
            call writeInfo("Evening up grid", TRIVIAL)    
        end if
    end if
@@ -3194,7 +3194,7 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call writeInfo("Refining grid part 2", TRIVIAL)    
-             call refineGridGeneric(grid, 5.d-3)
+             call refineGridGeneric(grid, amrTolerance)
           !          
              call writeInfo("Done the refine part", TRIVIAL)                 
              call evenUpGridMPI(grid, .true., dorefine)
@@ -3255,7 +3255,7 @@ end subroutine sumFluxes
   end subroutine doHydrodynamics3d
 
   subroutine doHydrodynamics2d(grid)
-    use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine
+    use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), mu
@@ -3329,7 +3329,7 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
-             call refinegridGeneric(grid, 1.d-1)          
+             call refinegridGeneric(grid, amrTolerance)          
           end if
           call evenUpGridMPI(grid, .false.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3431,7 +3431,7 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
-          call refinegridGeneric(grid, 5.d-3)
+          call refinegridGeneric(grid, amrTolerance)
        end if
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -5294,8 +5294,6 @@ end subroutine sumFluxes
     converged_tmp=.true.
     
     refineOnGradient = .not.photoionization      
-
-!    massTol = 1.d-5*mSol
 
    if(refineonionization .and. .not. photoionization) then
       refineOnIonization = .false.

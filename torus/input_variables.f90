@@ -673,6 +673,7 @@
   logical :: refineOnMass !refine grid using cell mass
   real(double) :: massTol !cell mass tolerance
   logical :: refineOnIonization !refine grid using ionization gradient
+  real(double) :: amrTolerance !maximum gradient before AMR grid refines
 
   ! Grid smoothing based on optical depth
   real :: lambdaSmooth

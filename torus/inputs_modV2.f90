@@ -924,7 +924,9 @@ contains
     call getLogical("refineonionization", refineonionization, cLine, fLine, nLines, &
          "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
-
+    call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
+         "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-3, ok, .false.)
+  
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
     call getDouble("amrgridcentrex", amrGridCentreX, 1.d0 , cLine, fLine, nLines, &
