@@ -502,7 +502,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine
+         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance
    !      optimizeStack, stackLimit, dStack
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     use mpi
@@ -1683,7 +1683,7 @@ end subroutine radiationHydro
 !        
 !!!        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
         if(doPhotoRefine) then!
-           call refineGridGeneric(grid, 5.d-3) 
+           call refineGridGeneric(grid, amrtolerance) 
            call evenUpGridMPI(grid, .true., dorefine)
 !           call writeInfo("Done the even up part", TRIVIAL)
 !           
