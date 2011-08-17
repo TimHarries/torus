@@ -12,7 +12,7 @@ rsync -a ${TEST_DIR}/torus/* .
 rsync -a ${TEST_DIR}/torus/.svn .
 
 /usr/bin/make depends > ${log_file} 2>&1 
-/usr/bin/make debug=${USEDEBUGFLAGS} openmp=${USEOPENMP} >> ${log_file} 2>&1
+/usr/bin/make debug=${USEDEBUGFLAGS} openmp=${USEOPENMP} coverage=${USEGCOV} >> ${log_file} 2>&1
 
 if [[ $? -eq 0 ]]; then
 # Count number of warnings. Subtract 2 because there are always warnings
@@ -51,8 +51,8 @@ case ${SYSTEM} in
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
-#Tag the tune.dat file 
-ln -s tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt 
+#Rename the tune.dat file 
+mv tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt 
 
 }
 
@@ -62,7 +62,7 @@ run_dom_decomp()
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
 mpirun -np $1 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
-ln -s tune.dat tune_${THIS_BENCH}.txt
+mv tune.dat tune_${THIS_BENCH}.txt
 }
 
 run_sphbench()
@@ -164,6 +164,7 @@ echo
 for sys in ${SYS_TO_TEST}; do
 
 # Details of how to run each system are set here
+    export USEGCOV=no
     if [[ ${sys} == "ompiosx-openmp" ]]; then
 	export SYSTEM=ompiosx
 	export USEOPENMP=yes
@@ -174,6 +175,7 @@ for sys in ${SYS_TO_TEST}; do
 	export SYSTEM=ompiosx
 	export USEOPENMP=no
 	export NUM_MPI_PROC=4
+	export USEGCOV=yes
 	echo "Building ompiosx without OpenMP"
     elif [[ ${sys} == "gfortran" ]]; then
 	export SYSTEM=gfortran
@@ -327,6 +329,7 @@ echo
 for sys in ${BUILD_ONLY}; do
 
 # Details of how to build each system are set here
+    export USEGCOV=no
     if [[ ${sys} == "ompiosx-openmp" ]]; then
 	export SYSTEM=ompiosx
 	export USEOPENMP=yes

@@ -19,10 +19,12 @@ do
 	    echo "Warning: file ${file} has size ${file_size} k" >> ${LOG_FILE}
 	    echo "This file will not be mailed." >> ${LOG_FILE}
 	else
-	    attach_list="${attach_list} -a ${file}"
+	    attach_list="${attach_list} ${file}"
 	fi
     fi
 done
+
+tar cf torus_test_output.tar ${attach_list}
 
 subject_line=" " 
 
@@ -87,7 +89,7 @@ export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 # Send mail 
 mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk tjh202@exeter.ac.uk"
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "${subject_line}" ${attach_list} ${user} < ${LOG_FILE}
+    /sw/bin/mutt -s "${subject_line}" -a torus_test_output.tar ${user} < ${LOG_FILE}
 done
 
 exit
