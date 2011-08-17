@@ -84,10 +84,12 @@ contains
 
   end subroutine setSedParameters
 
+! Return the number of inclinations to be used
   integer function getNumSedInc()
     getNumSedInc = SedNInc
   end function getNumSedInc
 
+! Return inclination i from the list
   real function getSedInc(i)
     integer, intent(in) :: i
     getSedInc = SedInclinations(i)
