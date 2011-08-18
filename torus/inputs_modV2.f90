@@ -158,10 +158,10 @@ contains
          "Number of photons in image","(a,i8,a)", 8, ok, .false.)
 
     if (nBodyPhysics) then
-       call getDouble("tend", tEnd, 1.d0, cLine, fLine, nLines, &
+       call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
             "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .false.)
 
-       call getDouble("tdump", tDump, 1.d0, cLine, fLine, nLines, &
+       call getUnitDouble("tdump", tDump, "time", cLine, fLine, nLines, &
             "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
     endif
 
