@@ -3,12 +3,18 @@
 export BASE_DIR=/Users/acreman
 export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
 export LOG_FILE=${BASE_DIR}/torus_daily_test_log
+export PATH=/Users/acreman/bin:${PATH}
+
+# Process output from coverage analysis
+echo "Processing coverage output" >> ${LOG_FILE}
+cd ${TORUS_TEST_DIR}/benchmarks_ompiosx/build
+process_gcov.sh >> ${LOG_FILE}
 
 cd  ${TORUS_TEST_DIR}
 
 attach_list=""
 
-for file in svn_log.txt build_only_*/*/compile_log* benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt
+for file in svn_log.txt build_only_*/*/compile_log* benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt benchmarks_*/build/coverage_sorted.dat
  
 do
     if [[ ! -e ${file} ]]; then 
