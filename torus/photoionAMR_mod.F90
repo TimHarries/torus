@@ -4781,7 +4781,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     real(double) :: powerPerPhoton
     logical :: freefreeImage
     !THAW - dev
-    real(double) :: weightSource,  sourceFac, theoretical
+    real(double) :: weightSource,  sourceFac!, theoretical
     integer :: nLams
 
 !    integer :: i

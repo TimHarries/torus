@@ -6,7 +6,7 @@ module inputs_mod
   use messages_mod
   use kind_mod
   use constants_mod
-
+  use units_mod
   implicit none
 
   include "input_variables.f90"
@@ -1447,13 +1447,13 @@ contains
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &
          "Distance grid scale: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
 
-    call getDouble("tstart", tStart, 1.d0, cLine, fLine, nLines, &
+    call getUnitDouble("tstart", tStart, "time", cLine, fLine, nLines, &
          "Start time for hydrodynamical calculatione: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
-    call getDouble("tend", tEnd, 1.d0, cLine, fLine, nLines, &
+    call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
          "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
 
-    call getDouble("tdump", tDump, 1.d0, cLine, fLine, nLines, &
+    call getUnitDouble("tdump", tDump, "time", cLine, fLine, nLines, &
          "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .true.)
 
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
@@ -1987,6 +1987,43 @@ endif
 end do
  end subroutine findDouble
 
+ subroutine findUnitDouble(name, value, unit, cLine, fLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ real(double) :: value
+ character(len=80) :: cLine(:)
+ character(len=*) :: unit 
+ logical :: fLine(:)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j, k, readstat
+
+ ok = .false.
+ do i = 1, nLines
+  j = len_trim(name)
+  k = index(cline(i)," ")-1
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+     if (.not.ok) then
+        ok = .true.
+        read(cLine(i)(j+1:80),*,iostat=readstat) value, unit
+        if(readstat /= 0) then
+           read(cLine(i)(j+1:80),*,iostat=readstat) value
+           if(readstat /= 0) then
+              write(*,*) "parameters.dat entry with no value given!!"
+              stop
+           else
+              unit = "default"
+           end if
+        end if
+        fLine(i) = .true.
+     else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     stop
+  endif
+endif
+end do
+ end subroutine findUnitDouble
+
  subroutine findVECTOR(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
@@ -2289,8 +2326,8 @@ end subroutine getBigInteger
  end function checkPresent
 
 
- subroutine getDouble(name, dval, unitConversion, cLine, fLine, nLines, message, format, ddef, ok, &
-                    musthave)
+ subroutine getDouble(name, dval, unitConversion, cLine, fLine, nLines, message, &
+   format, ddef, ok, musthave)
   character(len=*) :: name
   real(double) :: dval, unitConversion
   logical :: musthave
@@ -2319,6 +2356,43 @@ end subroutine getBigInteger
  endif
  dval = dval  * unitConversion
  end subroutine getDouble
+
+
+ subroutine getUnitDouble(name, dval, unitType, cLine, fLine, nLines, message, &
+   format, ddef, ok, musthave)
+  character(len=*) :: name
+  real(double) :: dval
+  logical :: musthave
+  character(len=80) :: cLine(:)
+  logical :: fLine(:)
+  character(len=100) :: output
+  character(len=10) :: unitString
+  character(len=*) :: unitType
+  integer :: nLines
+  character(len=*) :: message, format
+  character(len=10) :: default
+  real(double) :: ddef
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findUnitDouble(name, dval, unitString, cLine, fLine, nLines, ok)
+  if(unitString == "default") then
+     write(*,*) "Unit not given, proceeding with default for ", unitType
+  end if
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
+       stop
+    endif
+    dval = ddef
+    default = " (default)"
+ endif
+ call convertToTorusUnits(unitString, unitType,  dval)
+ if (musthave) then
+    write(output,format) trim(message),dval,default
+    call writeInfo(output, TRIVIAL)
+ endif
+ end subroutine getUnitDouble
 
  subroutine getVector(name, dval, unitConversion, cLine, fLine, nLines, message, format, ddef, ok, &
                     musthave)

@@ -6,14 +6,16 @@ implicit none
 
 contains
 
-  subroutine convertToTorusUnits(unitString, unitType, torusUnit, inputValue)
+  subroutine convertToTorusUnits(unitString, unitType, inputValue)
 
     implicit none
     
-    character(len=*) :: unitString, unitType
-    real(double) :: torusUnit, inputValue
-    
-    
+    character(len=*) :: unitString
+    character(len=*) :: unitType
+    real(double) :: torusUnit
+    real(double), intent(inout) :: inputValue
+   
+
     if(unitType == "distance") then
        select case(unitString)
           !Distance units - TORUS uses cm 
@@ -34,7 +36,7 @@ contains
           
        case default
           write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
-             torusUnit = 1.d0
+          torusUnit = 1.d0
        end select
 
     else if(unitType == "wavelength" .or. unitType == "dust") then
@@ -71,7 +73,7 @@ contains
 
        case default
           write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
-             torusUnit = 1.d0
+          torusUnit = 1.d0
        end select
 
     else if(unitType == "angle") then
@@ -91,7 +93,7 @@ contains
 
        case default
           write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
-             torusUnit = 1.d0
+          torusUnit = 1.d0
        end select
        
     else if (unitType == "mass") then
@@ -158,9 +160,9 @@ contains
              torusUnit = 1.d0
           end select
        end if
-
+       
        inputvalue = inputValue * torusUnit
-    
+           
   end subroutine convertToTorusUnits
 
 end module
