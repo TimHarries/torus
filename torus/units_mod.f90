@@ -159,8 +159,30 @@ contains
 !             write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
              torusUnit = 1.d0
           end select
+
+
+       else if(unitType == "velocity") then
+          select case(unitString)
+          
+          case("cms")
+             torusUnit = 1.d0
+          case("ms")
+             torusUnit = 1.d2
+          case("kms")
+             torusUnit = 1.d5
+          case("c")
+             torusUnit = cspeed
+          case default
+             torusUnit = 1.d0
+
+       else if(unitType == "density") then
+          select case(unitString)
+            
+          case default
+             torusUnit = 1.d0
+          
        end if
-       
+    
        inputvalue = inputValue * torusUnit
            
   end subroutine convertToTorusUnits
