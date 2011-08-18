@@ -410,8 +410,8 @@ contains
        call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
             "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
-       call getDouble("radius", sphereRadius, rsol/1.d10, cLine, fLine, nLines, &
-            "Sphere radius (in R_sol): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
        call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
             "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)

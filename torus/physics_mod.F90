@@ -563,7 +563,6 @@ contains
     if (associated(grid%lamArray)) deallocate(grid%lamArray)
     allocate(grid%lamArray(1:nLambda))
     grid%lamArray = xarray
-    write(*,*) "finishing nlambda ",nlambda
      contains
 
        subroutine setupLogSpacing
