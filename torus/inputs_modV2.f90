@@ -915,11 +915,8 @@ contains
     call getLogical("refineonmass", refineonmass, cLine, fLine, nLines, &
          "Refine grid using mass in cell?: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getDouble("masstol", masstol, 1.d0 , cLine, fLine, nLines, &
+    call getUnitDouble("masstol", masstol, "mass" , cLine, fLine, nLines, &
          "Cell mass tolerance: ","(a,es9.3,1x,a)", 1.d-5*mSol, ok, .false.)
-
-
-
 
     call getLogical("refineontemperature", refineontemperature, cLine, fLine, nLines, &
          "Refine grid using temperature gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1110,7 +1107,7 @@ contains
             "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
 
        write(keyword, '(a,i1)') "teff",i
-       call getDouble(keyword, sourceTeff(i), 1.d0, cLine, fLine, nLines, &
+       call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
             "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
 
        write(keyword, '(a,i1)') "mass",i

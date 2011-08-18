@@ -202,8 +202,8 @@ contains
        !    nIon = nIon + 1
        !    call createIon(ionArray(nIon), 8, 4, 16, 1.139e2) ! O V
 
-!       nIon = nIon + 1
-!       call createIon(ionArray(nIon), 10, 10, 20, 2.156e1) ! Ne I
+       nIon = nIon + 1
+       call createIon(ionArray(nIon), 10, 10, 20, 2.156e1) ! Ne I
 
        nIon = nIon + 1
        call createIon(ionArray(nIon), 10, 9, 20, 4.096e1) ! Ne II
