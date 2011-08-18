@@ -38,11 +38,11 @@ module angularImage
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
       use inputs_mod, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
-           galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid, h21cm
+           galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid, h21cm, wanttau
       use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
       use datacube_mod, only : writeDataCube
-      use inputs_mod, only : dataCubeFilename, wanttau, h21cm
+      use inputs_mod, only : dataCubeFilename
 #endif
 
 
