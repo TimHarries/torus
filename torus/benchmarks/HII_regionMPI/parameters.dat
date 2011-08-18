@@ -6,8 +6,8 @@ splitovermpi    T
 readgrid        F
 
 amr1d           T
-mindepthamr     8
-maxdepthamr     8
+mindepthamr     7
+maxdepthamr     7
 amrgridcentrex  2.2e9
 amrgridcentrey  0.0000
 amrgridcentrez  0.0000

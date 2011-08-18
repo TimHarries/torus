@@ -576,6 +576,8 @@ end subroutine radiationHydro
     logical :: underSamFailed, escapeCheck
     logical :: sourcePhoton
 
+    integer :: dprCounter
+
     !optimisation variables
     integer, parameter :: stackLimit=200
     integer,parameter :: ZerothstackLimit=200
@@ -678,6 +680,7 @@ end subroutine radiationHydro
     allocate(nEscapedArray(1:nThreads-1))
     allocate(nSaved(nThreads))
     nescapedArray = 0    
+    dprCounter = 0
 
 !    if(.not. optimizeStack) then
        photonPacketStack%Freq = 0.d0
@@ -1683,8 +1686,12 @@ end subroutine radiationHydro
 !        
 !!!        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
         if(doPhotoRefine) then!
-           call refineGridGeneric(grid, amrtolerance) 
-           call evenUpGridMPI(grid, .true., dorefine)
+           dprCounter = dprCounter + 1
+           if(dprCounter == 4) then
+              call refineGridGeneric(grid, amrtolerance) 
+              call evenUpGridMPI(grid, .true., dorefine)
+              dprCounter = 0
+           end if
 !           call writeInfo("Done the even up part", TRIVIAL)
 !           
            !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)                                    
