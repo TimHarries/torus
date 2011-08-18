@@ -174,13 +174,14 @@ contains
              torusUnit = cspeed
           case default
              torusUnit = 1.d0
+          end select
 
        else if(unitType == "density") then
           select case(unitString)
             
           case default
              torusUnit = 1.d0
-          
+          end select
        end if
     
        inputvalue = inputValue * torusUnit
