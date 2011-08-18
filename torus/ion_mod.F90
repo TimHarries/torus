@@ -218,8 +218,8 @@ contains
        !    call createIon(ionArray(nIon), 10, 6, 20, 1.262e2) ! Ne V
 
 !THAW
-!       nIon = nIon + 1
-!       call createIon(ionArray(nIon), 16, 16, 32, 1.036e1) ! S I
+       nIon = nIon + 1
+       call createIon(ionArray(nIon), 16, 16, 32, 1.036e1) ! S I
 
        nIon = nIon + 1
        call createIon(ionArray(nIon), 16, 15, 32, 2.334e1) ! S II

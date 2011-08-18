@@ -35,7 +35,7 @@ contains
           torusUnit = rSol
           
        case default
-          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+!          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
           torusUnit = 1.d0
        end select
 
@@ -72,7 +72,7 @@ contains
           end if
 
        case default
-          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+!          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
           torusUnit = 1.d0
        end select
 
@@ -92,7 +92,7 @@ contains
           torusUnit = degToRad/3600.d0        
 
        case default
-          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+!          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
           torusUnit = 1.d0
        end select
        
@@ -109,7 +109,7 @@ contains
           torusUnit = 1.d3
 
        case default
-          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+!          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
              torusUnit = 1.d0
        end select
        
@@ -130,7 +130,7 @@ contains
           torusUnit = 1.d0/(secsToYears*1.d6)
 
        case default
-          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+!          write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
              torusUnit = 1.d0
        end select
 
@@ -141,7 +141,7 @@ contains
           if(unitString == "K") then
              torusUnit = 1.d0
           else
-             write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+ !            write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
              torusUnit = 1.d0
           end if
 
@@ -156,7 +156,7 @@ contains
              torusUnit = lsol
              
           case default
-             write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
+!             write(*,*) "Unrecognized ",unitType ," unit '", unitString, "'"
              torusUnit = 1.d0
           end select
        end if
