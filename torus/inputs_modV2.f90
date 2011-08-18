@@ -918,6 +918,9 @@ contains
     call getDouble("masstol", masstol, 1.d0 , cLine, fLine, nLines, &
          "Cell mass tolerance: ","(a,es9.3,1x,a)", 1.d-5*mSol, ok, .false.)
 
+
+
+
     call getLogical("refineontemperature", refineontemperature, cLine, fLine, nLines, &
          "Refine grid using temperature gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
