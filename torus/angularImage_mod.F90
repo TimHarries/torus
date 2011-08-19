@@ -34,7 +34,7 @@ module angularImage
 
     subroutine make_angular_image(grid)
 
-      use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube
+      use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube, convertVelocityAxis
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
       use inputs_mod, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
@@ -104,7 +104,7 @@ module angularImage
 
 
       call writeinfo("Initialising datacube",TRIVIAL)
-      call initCube(cube, npixels, npixels, nv, splitCubes=splitCubes, wantTau=wantTau)
+      call initCube(cube, npixels, npixels, nv, splitCubes=splitCubes, wantTau=wantTau, galacticPlaneSurvey=.true.)
       ! Reverse velocity axis 
       call addvelocityAxis(cube, maxVel, minVel) 
 
@@ -115,7 +115,7 @@ module angularImage
          call createAngImage(cube, grid, globalMolecule)
       end if
 
-      call process_cube_for_kvis(cube)
+      call convertVelocityAxis(cube, "m/s")
 
 #ifdef USECFITSIO
       call writeinfo("Writing data cubes", TRIVIAL)
@@ -797,27 +797,6 @@ module angularImage
        end subroutine write_los_info
 
    end subroutine intensityAlongRayRev
-
-!-----------------------------------------------------------------------------------------
-
-   subroutine process_cube_for_kvis(cube)
-
-     TYPE(datacube), intent(inout) :: cube 
-
-! Set up cube to be read by kvis
-!
-! FITS keywords for an angular image
-     cube%xUnit     = "degrees"
-     cube%xAxisType = "GLON-CAR"
-     cube%yAxisType = "GLAT-CAR"
-     cube%vAxisType = "VELO-LSR"
-     cube%intensityUnit = "K (Tb)  "
-
-! kvis assumes that the velocity axis is in m/s 
-     cube%vAxis(:) = cube%vAxis(:) * 1000.0 
-     cube%vUnit    = "m/s      "
-
-   end subroutine process_cube_for_kvis
 
 !-----------------------------------------------------------------------------------------
 
