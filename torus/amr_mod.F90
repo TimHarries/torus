@@ -10811,8 +10811,8 @@ end function readparameterfrom2dmap
       if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10 
    endif
 #else
-   kappaAbsGas = 0.0
-   kappaScaGas = 0.0
+   if (PRESENT(kappaAbsGas)) kappaAbsGas = 0.0
+   if (PRESENT(kappaScaGas)) kappaScaGas = 0.0
 #endif
 
   end subroutine returnKappa
