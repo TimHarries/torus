@@ -92,10 +92,10 @@ contains
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       do i = 1, 2
+       do i = 1, 50
           viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
           !       gridDistance = 140.d0* pctocm/1.d10
-          ang = pi * dble(i-1)
+          ang = twopi * dble(i-1)/50.
           viewVec =  rotatez(viewVec, ang)
           !       gridDistance = 140.d0* pctocm/1.d10
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &

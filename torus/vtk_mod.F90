@@ -1829,11 +1829,13 @@ endif
    end subroutine convertAndCompress
 
   subroutine base64encode(writeheader, string, iCount, iArray32, iArray8, iArray64, float32, &
-       inputnPad, inputiPad, outnpad, outipad, padend, nBytesHeader)
+       inputnPad, inputiPad, outnpad, outipad, padend, nBytesHeader, debug)
     implicit none
     logical :: writeheader
     integer, optional :: inputnPad, outnPad
     integer, optional :: nBytesHeader
+    logical, optional :: debug
+    logical :: writeDebug
     logical, optional :: padEnd
     integer :: npad
     integer,optional :: inputipad(:), outiPad(:)
@@ -1849,6 +1851,9 @@ endif
     character, pointer :: string(:)
     integer(bigint) :: nBytes, k
     logical :: write32, dopadend
+
+    writeDebug = .false.
+    if (PRESENT(debug)) writeDebug=debug
 
     if (PRESENT(outnpad)) outnpad = 0
     doPadEnd = .true.
@@ -1891,11 +1896,14 @@ endif
     endif
     allocate(string(1:((nBytes+4)*8/6)+20))
 
+    if (writeDebug) write(*,*) "nBytes ",nBytes
 
     nPad = 0
     if (mod(nBytes,3_bigint) /= 0) then
        nPad = 3-mod(nBytes,3_bigint)
     endif
+
+    if (writeDebug) write(*,*) "nPad ",nPad
 
     icount = 0
     do k = 1, nBytes,3
@@ -1910,6 +1918,8 @@ endif
           call mvbits(ik,0,8,i32temp,24)
           call mvbits(ik1,0,8,i32temp,16)
           call mvbits(ik2,0,8,i32temp,8)
+          if (writeDebug.and.((k+2)==nBytes)) write(*,*) "last (k+2 = nbytes)",i32temp
+
        else
           if ((k+1) == nBytes) then
              i32temp = iarray(k)*256**3 +iarray(k+1)*256**2
@@ -1918,6 +1928,7 @@ endif
              ik1 = iArray(k+1)
              call mvbits(ik,0,8,i32temp,24)
              call mvbits(ik1,0,8,i32temp,16)
+             if (writeDebug) write(*,*) "last (k+1 = nbytes)",i32temp
              if (PRESENT(outiPad)) then
                 outnPad = 2
                 outipad(1) = iArray(k)
@@ -1929,6 +1940,7 @@ endif
              i32temp = 0
              ik = iArray(k)
              call mvbits(ik,0,8,i32temp,24)
+             if (writeDebug) write(*,*) "last (k=nbytes)",i32temp
              if (PRESENT(outiPad)) then
                 outnPad = 1
                 outipad(1) = iArray(k)
@@ -2909,12 +2921,22 @@ end subroutine writeXMLVtkFileAMR
            j = j + k
         enddo
 
+        write(*,*) "Size float32 ",SIZE(float32)
+        do j = SIZE(float32)-10,SIZE(float32)
+           write(*,*) j, float32(j)
+        enddo
+
         call convertandcompress(iBytes, iHeader, farray32=float32)
+        write(*,*) "ibytes ", iBytes(SIZE(ibytes)-10:size(iBytes))
         call base64encode(.false., pstring, nString, iArray8=iHeader)
-        call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+        call base64encode(.false., pstring2, nString2, iArray8=iBytes, debug=.true.)
+        write(*,*) "nstring2 ",nstring2
+        write(*,*) "pstring2 ",pstring2(nstring2-10:nstring2)
         open(lunit, file=vtkFilename, form="unformatted", status="old", access="stream", position="append")
         write(lunit) pstring(1:nString), pstring2(1:nString2)
         close(lunit)
+
+
         deallocate(pString, pstring2)
         deallocate(iBytes, float32, rArray)
 
