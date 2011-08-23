@@ -2377,7 +2377,7 @@ end subroutine getBigInteger
   default = " "
   call findUnitDouble(name, dval, unitString, cLine, fLine, nLines, ok)
   if(unitString == "default") then
-     write(*,*) "Unit not given, proceeding with default for ", unitType
+!     write(*,*) "Unit not given, proceeding with default for ", unitType
   end if
   if (.not. ok) then
     if (musthave) then
